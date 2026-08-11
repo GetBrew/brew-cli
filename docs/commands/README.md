@@ -47,7 +47,6 @@ a `confirmCommand` otherwise, `--yes` to proceed).
 | `brew-cli emails edit` | write ($) | `PATCH /v1/emails/{emailId}` | AI-edit an email design (creates a new latest version) |
 | `brew-cli emails restore` | write | `POST /v1/emails/{emailId}/restore` | Restore a previous version as the new latest (non-destructive) |
 | `brew-cli emails delete` | destructive | `DELETE /v1/emails/{emailId}` | Hard-delete an email design and all its versions (idempotent) |
-| `brew-cli emails audit-accessibility` | write ($) | `POST /v1/emails/{emailId}/accessibility-audit` | Audit the rendered email against WCAG 2.1 (score + issues) |
 | `brew-cli emails send` | destructive | `POST /v1/sends` | Send an email: a real campaign, or a safe test with --test |
 | `brew-cli sends cancel` | destructive | `POST /v1/sends/{sendId}/cancel` | Cancel a scheduled or queued send before it goes out |
 | `brew-cli audiences list` | read | `GET /v1/audiences` | List audience segments |
@@ -79,6 +78,7 @@ a `confirmCommand` otherwise, `--yes` to proceed).
 | `brew-cli brand update` | write | `PATCH /v1/brand` | Update brand identity and/or design-system markdown (PATCH) |
 | `brew-cli brand get-images` | read | `GET /v1/brand/images` | Browse or semantically search the brand's image library |
 | `brew-cli domains list` | read | `GET /v1/domains` | List sending domains with verification state and DNS records |
+| `brew-cli domains get` | read | `GET /v1/domains` | Fetch one sending domain by id |
 | `brew-cli domains add` | write | `POST /v1/domains` | Add a sending domain (response lists the DNS records to set) |
 | `brew-cli domains verify` | write | `POST /v1/domains/{domainId}/verify` | Re-check DNS records and refresh domain verification |
 | `brew-cli domains update` | write | `PATCH /v1/domains/{domainId}` | Update default sender settings for a domain |
@@ -487,6 +487,7 @@ Restore a previous version as the new latest (non-destructive)
 - SDK: `brew.emails.restore(...)`
 - Argument `emailId` — Design id to restore
 - `--to-version <n>` — Version number to restore
+- `--idempotency-key <key>` — Idempotency-Key for safe retries (auto-generated otherwise)
 
 ```bash
 brew-cli emails restore eml_2SmZOWV3ZQ7W5x6g3m4p --to-version 2
@@ -503,21 +504,6 @@ Hard-delete an email design and all its versions (idempotent)
 
 ```bash
 brew-cli emails delete eml_2SmZOWV3ZQ7W5x6g3m4p --yes
-```
-
-### brew-cli emails audit-accessibility
-
-Audit the rendered email against WCAG 2.1 (score + issues)
-
-- Route: `POST /v1/emails/{emailId}/accessibility-audit`
-- Class: write
-- Consumes Brew credits
-- SDK: `brew.emails.auditAccessibility(...)`
-- Argument `emailId` — Design id to audit
-- `--idempotency-key <key>` — Idempotency-Key for safe retries (auto-generated otherwise)
-
-```bash
-brew-cli emails audit-accessibility eml_2SmZOWV3ZQ7W5x6g3m4p
 ```
 
 ### brew-cli emails send
@@ -540,7 +526,7 @@ Send an email: a real campaign, or a safe test with --test
 ```bash
 brew-cli emails send eml_1 --test --to qa@example.com --subject "Preview"
 brew-cli emails send eml_1 --subject "Fall sale" --domain dom_1 --audience aud_1 --yes
-brew-cli emails send eml_1 --subject "Fall sale" --domain dom_1 --schedule-at 2026-09-01T09:00:00Z --yes
+brew-cli emails send eml_1 --subject "Fall sale" --domain dom_1 --audience aud_1 --schedule-at 2026-09-01T09:00:00Z --yes
 ```
 
 ### brew-cli sends cancel
@@ -1044,6 +1030,19 @@ brew-cli domains list
 brew-cli domains list --sendable-only --json
 ```
 
+### brew-cli domains get
+
+Fetch one sending domain by id
+
+- Route: `GET /v1/domains`
+- Class: read
+- Derived from `brew.domains.list(...)`
+- Argument `domainId` — Domain id to fetch
+
+```bash
+brew-cli domains get dom_3k9sQ
+```
+
 ### brew-cli domains add
 
 Add a sending domain (response lists the DNS records to set)
@@ -1303,9 +1302,11 @@ SDK methods intentionally without a dedicated command:
 - `analytics.sends.listAll` — auto-pager covered by `analytics sends list --all`
 - `analytics.triggerInstances.listAll` — auto-pager covered by `analytics trigger-instances list --all`
 - `brand.update` — SDK alias of brand.patch, exposed as `brand update`
+- `emails.auditAccessibility` — SDK 8.0.0 issues GET on the wire for the POST-only spec operation (upstream bug); command lands when the SDK ships the POST
 
 Public API operations not yet available (tracked by the spec parity test):
 
+- `POST /v1/emails/{emailId}/accessibility-audit` — SDK 8.0.0 issues GET on the wire for this POST-only operation (upstream bug); command lands when the SDK ships the POST
 - `GET /v1/analytics/overview` — operation not yet in the published @brew.new/sdk (8.0.0); lands with the next SDK release — see GetBrew/typescript-sdk main
 - `POST /v1/audiences/from-events` — operation not yet in the published @brew.new/sdk (8.0.0); lands with the next SDK release — see GetBrew/typescript-sdk main
 - `POST /v1/audiences/{audienceId}/duplicate` — operation not yet in the published @brew.new/sdk (8.0.0); lands with the next SDK release — see GetBrew/typescript-sdk main

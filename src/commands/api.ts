@@ -53,12 +53,16 @@ export const apiCommand = defineCommand({
   run: async ({ ctx, args, flags }) => {
     const method = parseMethod(args.method)
     const path = parsePath(args.path)
+    const barePath = path.split('?')[0] ?? path
     const auth = resolveAuth({
       globals: ctx.globals,
       env: ctx.io.env,
-      allowAnonymous: (ANONYMOUS_PATHS as readonly string[]).includes(path),
+      allowAnonymous: (ANONYMOUS_PATHS as readonly string[]).includes(barePath),
     })
     const body = await readBody(ctx, flags.data)
+    if (method === 'GET' && body !== undefined) {
+      throw new CliUsageError('GET requests cannot carry --data.')
+    }
     const headers = new Headers({
       authorization: `Bearer ${auth.apiKey}`,
       'user-agent': `${CLI_NAME}/${CLI_VERSION}`,

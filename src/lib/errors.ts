@@ -141,7 +141,12 @@ export function toErrorEnvelope(error: unknown): CliErrorEnvelope {
       message: error.message === '' ? 'Aborted.' : error.message,
     }
   }
-  const message = error instanceof Error ? error.message : String(error)
+  let message = error instanceof Error ? error.message : String(error)
+  if (error instanceof Error && error.cause !== undefined) {
+    const cause =
+      error.cause instanceof Error ? error.cause.message : String(error.cause)
+    message = `${message} (${cause})`
+  }
   return { code: 'CLI_UNEXPECTED', type: 'internal_error', message }
 }
 

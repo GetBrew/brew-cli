@@ -1,6 +1,6 @@
 import { defineCommand } from '../../lib/define-command'
 import { CliUsageError } from '../../lib/errors'
-import { flagInt } from '../../lib/input'
+import { flagInt, IDEMPOTENCY_FLAG, requestOptions } from '../../lib/input'
 
 export const emailsRestoreCommand = defineCommand({
   path: ['emails', 'restore'],
@@ -12,7 +12,10 @@ export const emailsRestoreCommand = defineCommand({
     { name: 'emailId', summary: 'Design id to restore', isRequired: true },
   ],
   // --version is taken by the CLI itself, hence --to-version.
-  flags: [{ flag: '--to-version <n>', summary: 'Version number to restore' }],
+  flags: [
+    { flag: '--to-version <n>', summary: 'Version number to restore' },
+    IDEMPOTENCY_FLAG,
+  ],
   examples: ['brew-cli emails restore eml_2SmZOWV3ZQ7W5x6g3m4p --to-version 2'],
   run: async ({ ctx, args, flags }) => {
     const version = flagInt(flags.toVersion, '--to-version')
@@ -23,7 +26,10 @@ export const emailsRestoreCommand = defineCommand({
     }
     const result = await ctx
       .client()
-      .emails.restore({ emailId: args.emailId ?? '', version })
+      .emails.restore(
+        { emailId: args.emailId ?? '', version },
+        requestOptions(flags)
+      )
     return { data: result }
   },
 })

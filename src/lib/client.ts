@@ -95,11 +95,15 @@ export function isOrgLevelPath(url: string): boolean {
   try {
     pathname = new URL(url).pathname
   } catch {
-    pathname = url
+    pathname = url.split('?')[0] ?? url
   }
+  const versionIndex = pathname.indexOf('/v1/')
+  if (versionIndex === -1) {
+    return false
+  }
+  const apiPath = pathname.slice(versionIndex)
   return ORG_LEVEL_PATH_PREFIXES.some(
-    (prefix) =>
-      pathname.includes(`/api${prefix}`) || pathname.startsWith(prefix)
+    (prefix) => apiPath === prefix || apiPath.startsWith(`${prefix}/`)
   )
 }
 
@@ -127,8 +131,8 @@ function withBrandHeader(brandId: string): typeof globalThis.fetch {
 }
 
 export function maskApiKey(apiKey: string): string {
-  if (apiKey.length <= 10) {
-    return `${apiKey.slice(0, 5)}…`
+  if (apiKey.length <= 12) {
+    return `${apiKey.slice(0, 3)}…`
   }
   return `${apiKey.slice(0, 8)}…${apiKey.slice(-3)}`
 }

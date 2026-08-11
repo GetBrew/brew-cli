@@ -1,6 +1,6 @@
 {
   "name": "@brew.new/cli",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Official agent-first command-line interface for the Brew public API.",
   "license": "MIT",
   "author": "Brew",

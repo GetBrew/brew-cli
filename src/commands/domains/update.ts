@@ -48,8 +48,8 @@ export const domainsUpdateCommand = defineCommand({
     }
     const result = await ctx.client().domains.updateSettings(
       asSdkInput<UpdateDomainSettingsInput>({
-        domainId: args.domainId ?? '',
         ...input,
+        domainId: args.domainId ?? '',
       })
     )
     return { data: result }

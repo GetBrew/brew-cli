@@ -50,7 +50,7 @@ export const emailsEditCommand = defineCommand({
     const result = await ctx
       .client()
       .emails.edit(
-        asSdkInput<EditEmailInput>({ emailId: args.emailId ?? '', ...input }),
+        asSdkInput<EditEmailInput>({ ...input, emailId: args.emailId ?? '' }),
         { timeoutMs: 240_000 }
       )
     return { data: result }

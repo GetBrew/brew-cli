@@ -51,10 +51,10 @@ import { contentTransformCommand } from './commands/content/transform'
 import { docsApiCommand, docsCommand } from './commands/docs'
 import { domainsAddCommand } from './commands/domains/add'
 import { domainsDeleteCommand } from './commands/domains/delete'
+import { domainsGetCommand } from './commands/domains/get'
 import { domainsListCommand } from './commands/domains/list'
 import { domainsUpdateCommand } from './commands/domains/update'
 import { domainsVerifyCommand } from './commands/domains/verify'
-import { emailsAuditAccessibilityCommand } from './commands/emails/audit-accessibility'
 import { emailsDeleteCommand } from './commands/emails/delete'
 import { emailsEditCommand } from './commands/emails/edit'
 import { emailsGenerateCommand } from './commands/emails/generate'
@@ -108,7 +108,6 @@ export const ALL_COMMANDS: readonly CommandSpec[] = [
   emailsEditCommand,
   emailsRestoreCommand,
   emailsDeleteCommand,
-  emailsAuditAccessibilityCommand,
   emailsSendCommand,
   sendsCancelCommand,
   audiencesListCommand,
@@ -140,6 +139,7 @@ export const ALL_COMMANDS: readonly CommandSpec[] = [
   brandUpdateCommand,
   brandGetImagesCommand,
   domainsListCommand,
+  domainsGetCommand,
   domainsAddCommand,
   domainsVerifyCommand,
   domainsUpdateCommand,

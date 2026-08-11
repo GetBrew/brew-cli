@@ -487,3 +487,59 @@ describe('templates list', () => {
     expect(data.data[0]?.emailId).toBe('em_1')
   })
 })
+
+describe('content transform operation inference', () => {
+  it('infers resize when sizing knobs are present without --operation', async () => {
+    let body: Record<string, unknown> | undefined
+    server.use(
+      http.post(
+        'https://brew.new/api/v1/content/transform',
+        async ({ request }) => {
+          body = (await request.json()) as Record<string, unknown>
+          return HttpResponse.json({
+            imageUrl: 'https://cdn.example.com/out.png',
+          })
+        }
+      )
+    )
+    const result = await cli([
+      'content',
+      'transform',
+      '--url',
+      'https://cdn.example.com/hero.png',
+      '--width',
+      '1200',
+      '--height',
+      '630',
+    ])
+    expect(result.code).toBe(0)
+    expect(body?.operation).toBe('resize')
+    expect(body?.width).toBe(1200)
+  })
+
+  it('defaults to optimize for a bare URL', async () => {
+    let body: Record<string, unknown> | undefined
+    server.use(
+      http.post(
+        'https://brew.new/api/v1/content/transform',
+        async ({ request }) => {
+          body = (await request.json()) as Record<string, unknown>
+          return HttpResponse.json({
+            imageUrl: 'https://cdn.example.com/out.png',
+          })
+        }
+      )
+    )
+    const result = await cli([
+      'content',
+      'transform',
+      '--url',
+      'https://cdn.example.com/hero.png',
+    ])
+    expect(result.code).toBe(0)
+    expect(body).toEqual({
+      operation: 'optimize',
+      imageUrl: 'https://cdn.example.com/hero.png',
+    })
+  })
+})

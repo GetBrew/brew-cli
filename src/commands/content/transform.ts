@@ -54,10 +54,18 @@ export const contentTransformCommand = defineCommand({
     if (typeof input.imageUrl !== 'string' || input.imageUrl === '') {
       throw new CliUsageError('An image URL is required (--url or --input).')
     }
-    // The API requires the `operation` discriminator; optimize is the
-    // no-knob default.
+    // The API requires the `operation` discriminator. Resize knobs imply
+    // resize; the bare-URL case defaults to optimize (which accepts no
+    // other fields on the strict schema).
     if (input.operation === undefined) {
-      input.operation = 'optimize'
+      const hasResizeKnobs = [
+        input.width,
+        input.height,
+        input.prompt,
+        input.resolution,
+        input.outputFormat,
+      ].some((value) => value !== undefined)
+      input.operation = hasResizeKnobs ? 'resize' : 'optimize'
     }
     const result = await ctx
       .client()

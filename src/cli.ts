@@ -3,7 +3,13 @@ import { enforceConfirmation } from './lib/confirm'
 import { makeContext, makeFallbackContext } from './lib/context'
 import type { CommandSpec } from './lib/define-command'
 import { GLOBAL_FLAGS } from './lib/define-command'
-import { EXIT_OK, EXIT_USAGE, printError, toExitCode } from './lib/errors'
+import {
+  CliUsageError,
+  EXIT_OK,
+  EXIT_USAGE,
+  printError,
+  toExitCode,
+} from './lib/errors'
 import { printData } from './lib/output'
 import type { CliContext, CliIo } from './lib/types'
 import { ALL_COMMANDS } from './registry'
@@ -50,33 +56,85 @@ export async function run(
   commands: readonly CommandSpec[] = ALL_COMMANDS
 ): Promise<number> {
   let activeContext: CliContext | undefined
+  // Commander's own stderr (usage errors, error-mode help) is buffered so
+  // JSON mode can replace it with a structured envelope instead of mixing
+  // free text and JSON on the same stream.
+  const commanderStderr: string[] = []
   const program = buildProgram(
     io,
     argv,
     (ctx) => {
       activeContext = ctx
     },
-    commands
+    commands,
+    (text) => {
+      commanderStderr.push(text)
+    }
   )
+  const flushCommanderStderr = (): void => {
+    for (const text of commanderStderr) {
+      io.stderr.write(text)
+    }
+    commanderStderr.length = 0
+  }
   try {
     await program.parseAsync([...argv], { from: 'user' })
+    flushCommanderStderr()
     return EXIT_OK
   } catch (error) {
     if (error instanceof CommanderError) {
-      return commanderExitCode(error)
+      const ctx = activeContext ?? makeFallbackContext(io, argv)
+      return handleCommanderError(error, ctx, flushCommanderStderr)
     }
+    flushCommanderStderr()
     const ctx = activeContext ?? makeFallbackContext(io, argv)
     printError(ctx, error)
     return toExitCode(error)
   }
 }
 
+function handleCommanderError(
+  error: CommanderError,
+  ctx: CliContext,
+  flush: () => void
+): number {
+  const isHelpCode =
+    error.code === 'commander.helpDisplayed' || error.code === 'commander.help'
+  if (
+    error.code === 'commander.version' ||
+    (isHelpCode && error.exitCode === 0)
+  ) {
+    flush()
+    return EXIT_OK
+  }
+  if (isHelpCode) {
+    // Error-mode help: a group or bare invocation with no subcommand.
+    if (ctx.mode === 'json') {
+      printError(
+        ctx,
+        new CliUsageError('Incomplete command: a subcommand is required.')
+      )
+    } else {
+      flush()
+    }
+    return EXIT_USAGE
+  }
+  if (ctx.mode === 'json') {
+    printError(ctx, new CliUsageError(error.message.replace(/^error: /, '')))
+  } else {
+    flush()
+  }
+  return EXIT_USAGE
+}
+
 export function buildProgram(
   io: CliIo,
   rawArgv: readonly string[],
   onContext?: (ctx: CliContext) => void,
-  commands: readonly CommandSpec[] = ALL_COMMANDS
+  commands: readonly CommandSpec[] = ALL_COMMANDS,
+  errSink?: (text: string) => void
 ): Command {
+  const writeErr = errSink ?? ((text: string) => io.stderr.write(text))
   const program = new Command(CLI_NAME)
     .description('Agent-first CLI for the Brew public API (brew.new)')
     .version(CLI_VERSION, '--version', 'Print the CLI version')
@@ -87,10 +145,16 @@ export function buildProgram(
         io.stdout.write(str)
       },
       writeErr: (str) => {
-        io.stderr.write(str)
+        writeErr(str)
       },
     })
   program.addHelpText('after', AGENT_HELP_FOOTER)
+  // Global flags register on the root as well as every leaf so agents can
+  // place them on either side of the subcommand (`brew-cli --json usage`
+  // and `brew-cli usage --json` both work); optsWithGlobals merges them.
+  for (const flag of GLOBAL_FLAGS) {
+    program.option(flag.flag, flag.summary)
+  }
   for (const spec of commands) {
     registerCommand(program, spec, io, rawArgv, onContext)
   }
@@ -124,7 +188,18 @@ function registerCommand(
   leaf.addHelpText('after', buildCommandHelpFooter(spec))
   leaf.action(async (...actionArgs: unknown[]) => {
     const command = actionArgs.at(-1) as Command
-    const flags = command.opts<Record<string, unknown>>()
+    // optsWithGlobals lets ancestors overwrite the leaf; re-apply the
+    // leaf's own parsed values so the flag nearest the subcommand wins.
+    const flags: Record<string, unknown> = {
+      ...command.optsWithGlobals<Record<string, unknown>>(),
+    }
+    for (const [key, value] of Object.entries(
+      command.opts<Record<string, unknown>>()
+    )) {
+      if (value !== undefined) {
+        flags[key] = value
+      }
+    }
     const positional = (spec.args ?? []).reduce<Record<string, string>>(
       (acc, arg, index) => {
         const value = actionArgs[index]
@@ -156,6 +231,11 @@ function resolveGroup(program: Command, path: readonly string[]): Command {
     }
     const summary = GROUP_SUMMARIES[segment] ?? ''
     current = current.command(segment).description(summary)
+    // Groups accept the global flags too, so `brew-cli contacts --json list`
+    // parses instead of failing with a misleading unknown-command error.
+    for (const flag of GLOBAL_FLAGS) {
+      current.option(flag.flag, flag.summary)
+    }
   }
   return current
 }
@@ -177,15 +257,4 @@ function buildCommandHelpFooter(spec: CommandSpec): string {
   }
   lines.push('')
   return lines.join('\n')
-}
-
-function commanderExitCode(error: CommanderError): number {
-  if (
-    error.code === 'commander.helpDisplayed' ||
-    error.code === 'commander.help' ||
-    error.code === 'commander.version'
-  ) {
-    return EXIT_OK
-  }
-  return EXIT_USAGE
 }

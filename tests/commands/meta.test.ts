@@ -105,6 +105,48 @@ describe('whoami', () => {
     expect(data.apiKey).toBe('brew_abc…345')
     expect(String(data.apiKey)).not.toContain(KEY)
   })
+
+  it('degrades to usage:null on a server outage but keeps auth errors fatal', async () => {
+    server.use(
+      http.get('https://brew.new/api/v1/usage', () =>
+        HttpResponse.json(
+          {
+            error: {
+              code: 'INTERNAL_ERROR',
+              type: 'internal_error',
+              message: 'An unexpected error occurred.',
+            },
+          },
+          { status: 500 }
+        )
+      )
+    )
+    const degraded = await runCli(['whoami'], {
+      env: tempConfigEnv({ BREW_API_KEY: KEY }),
+    })
+    expect(degraded.code).toBe(0)
+    expect((degraded.json as { usage: unknown }).usage).toBeNull()
+    expect(degraded.stderr).toContain('could not reach /v1/usage')
+
+    server.use(
+      http.get('https://brew.new/api/v1/usage', () =>
+        HttpResponse.json(
+          {
+            error: {
+              code: 'INVALID_API_KEY',
+              type: 'authentication_error',
+              message: 'Invalid API key.',
+            },
+          },
+          { status: 401 }
+        )
+      )
+    )
+    const unauthorized = await runCli(['whoami'], {
+      env: tempConfigEnv({ BREW_API_KEY: KEY }),
+    })
+    expect(unauthorized.code).toBe(3)
+  })
 })
 
 describe('login / logout', () => {

@@ -144,6 +144,28 @@ describe('api escape hatch', () => {
     expect(parsed.error.requestId).toBe('req_9')
   })
 
+  it('rejects --data on GET with a usage error', async () => {
+    const result = await runCli(
+      ['api', 'GET', '/v1/fields', '--data', '{"a":1}'],
+      { env: env() }
+    )
+    expect(result.code).toBe(2)
+  })
+
+  it('keeps query-string health calls anonymous', async () => {
+    server.use(
+      http.get('https://brew.new/api/v1/health', () =>
+        HttpResponse.json({ status: 'ok' })
+      )
+    )
+    const result = await runCli(['api', 'GET', '/v1/health?verbose=1'], {
+      env: {
+        BREW_CLI_CONFIG_DIR: mkdtempSync(join(tmpdir(), 'brew-cli-test-')),
+      },
+    })
+    expect(result.code).toBe(0)
+  })
+
   it('rejects malformed --data with a usage error', async () => {
     const result = await runCli(
       ['api', 'POST', '/v1/contacts/search', '--data', '{nope', '--yes'],

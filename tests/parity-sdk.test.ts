@@ -39,9 +39,7 @@ describe('parity: SDK surface ↔ CLI commands', () => {
   const covered = new Set([...bound, ...skipped, ...PENDING_BUILD])
 
   it('covers every SDK method with a command, a skip entry, or a pending-build entry', () => {
-    const uncovered = leaves.filter(
-      (leaf) => leaf !== 'withBrand' && !covered.has(leaf)
-    )
+    const uncovered = leaves.filter((leaf) => !covered.has(leaf))
     expect(uncovered).toEqual([])
   })
 

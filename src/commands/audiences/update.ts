@@ -31,8 +31,8 @@ export const audiencesUpdateCommand = defineCommand({
     }
     const result = await ctx.client().audiences.update(
       asSdkInput<UpdateAudienceInput>({
-        audienceId: args.audienceId ?? '',
         ...input,
+        audienceId: args.audienceId ?? '',
       })
     )
     return { data: result }

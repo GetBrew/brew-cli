@@ -3,7 +3,6 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { HttpResponse, http } from 'msw'
 import { describe, expect, it } from 'vitest'
-import { emailsAuditAccessibilityCommand } from '../../src/commands/emails/audit-accessibility'
 import { emailsDeleteCommand } from '../../src/commands/emails/delete'
 import { emailsEditCommand } from '../../src/commands/emails/edit'
 import { emailsGenerateCommand } from '../../src/commands/emails/generate'
@@ -26,7 +25,6 @@ const EXTRA = [
   emailsRestoreCommand,
   emailsDeleteCommand,
   emailsSendCommand,
-  emailsAuditAccessibilityCommand,
 ]
 
 function env(): Record<string, string | undefined> {
@@ -397,19 +395,136 @@ describe('emails send', () => {
   })
 })
 
-describe('emails audit-accessibility', () => {
-  // SDK 8.0.0 issues GET for this call even though the API route is POST.
-  it('returns the audit result', async () => {
+describe('emails send with --input bodies (gate awareness)', () => {
+  it('skips the gate when --input carries test:true, and it reaches the wire', async () => {
+    let body: Record<string, unknown> | undefined
     server.use(
-      http.get(`${EMAILS_URL}/eml_1/accessibility-audit`, () =>
-        HttpResponse.json({ score: 92, summary: 'Good', issues: [] })
-      )
+      http.post(SENDS_URL, async ({ request }) => {
+        body = (await request.json()) as Record<string, unknown>
+        return HttpResponse.json({ status: 'sent', recipient: 'qa@x.com' })
+      })
     )
-    const result = await runCli(['emails', 'audit-accessibility', 'eml_1'], {
-      env: env(),
-      extraCommands: EXTRA,
-    })
+    const result = await runCli(
+      [
+        'emails',
+        'send',
+        'eml_1',
+        '--input',
+        '{"test":true,"to":"qa@x.com","subject":"Preview"}',
+      ],
+      { env: env(), extraCommands: EXTRA }
+    )
     expect(result.code).toBe(0)
-    expect((result.json as { score: number }).score).toBe(92)
+    expect(body?.test).toBe(true)
+    expect(body?.to).toBe('qa@x.com')
+  })
+
+  it('names the --input audience and schedule in the confirmation summary', async () => {
+    const result = await runCli(
+      [
+        'emails',
+        'send',
+        'eml_1',
+        '--subject',
+        'Fall sale',
+        '--domain',
+        'dom_1',
+        '--input',
+        '{"audienceId":"aud_9","scheduledAt":"2027-01-01T00:00:00Z"}',
+      ],
+      { env: env(), extraCommands: EXTRA }
+    )
+    expect(result.code).toBe(4)
+    const summary = (result.json as { summary: string }).summary
+    expect(summary).toContain('audience aud_9')
+    expect(summary).toContain('at 2027-01-01T00:00:00Z')
+    expect(summary).not.toContain(' now')
+  })
+
+  it('keeps test:true on the wire when --test is set against a contradicting --input', async () => {
+    let body: Record<string, unknown> | undefined
+    server.use(
+      http.post(SENDS_URL, async ({ request }) => {
+        body = (await request.json()) as Record<string, unknown>
+        return HttpResponse.json({ status: 'sent', recipient: 'qa@x.com' })
+      })
+    )
+    const result = await runCli(
+      [
+        'emails',
+        'send',
+        'eml_1',
+        '--test',
+        '--to',
+        'qa@x.com',
+        '--subject',
+        'Preview',
+        '--input',
+        '{"test":false}',
+      ],
+      { env: env(), extraCommands: EXTRA }
+    )
+    expect(result.code).toBe(0)
+    expect(body?.test).toBe(true)
+  })
+
+  it('requires --to for a --test send', async () => {
+    const result = await runCli(
+      ['emails', 'send', 'eml_1', '--test', '--subject', 'Preview'],
+      { env: env(), extraCommands: EXTRA }
+    )
+    expect(result.code).toBe(2)
+  })
+})
+
+describe('--input cannot retarget the positional id', () => {
+  it('pins the PATCH to the named email even when --input names another', async () => {
+    let path = ''
+    let body: Record<string, unknown> | undefined
+    server.use(
+      http.patch(`${EMAILS_URL}/eml_A`, async ({ request }) => {
+        path = new URL(request.url).pathname
+        body = (await request.json()) as Record<string, unknown>
+        return HttpResponse.json({ emailId: 'eml_A' })
+      })
+    )
+    const result = await runCli(
+      [
+        'emails',
+        'edit',
+        'eml_A',
+        '--input',
+        '{"emailId":"eml_B","prompt":"Rewrite the hero"}',
+      ],
+      { env: env(), extraCommands: EXTRA }
+    )
+    expect(result.code).toBe(0)
+    expect(path).toBe('/api/v1/emails/eml_A')
+    expect(body?.emailId).toBeUndefined()
+  })
+})
+
+describe('idempotency key plumbing', () => {
+  it('sends the exact --idempotency-key header on generate', async () => {
+    let idempotency: string | null = null
+    server.use(
+      http.post(EMAILS_URL, ({ request }) => {
+        idempotency = request.headers.get('idempotency-key')
+        return HttpResponse.json({ emailId: 'eml_1' }, { status: 201 })
+      })
+    )
+    const result = await runCli(
+      [
+        'emails',
+        'generate',
+        '--prompt',
+        'Welcome email',
+        '--idempotency-key',
+        'idem-42',
+      ],
+      { env: env(), extraCommands: EXTRA }
+    )
+    expect(result.code).toBe(0)
+    expect(idempotency).toBe('idem-42')
   })
 })

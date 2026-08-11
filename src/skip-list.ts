@@ -40,6 +40,11 @@ export const SDK_SKIP_LIST: readonly SdkSkip[] = [
     sdkPath: 'brand.update',
     reason: 'SDK alias of brand.patch, exposed as `brand update`',
   },
+  {
+    sdkPath: 'emails.auditAccessibility',
+    reason:
+      'SDK 8.0.0 issues GET on the wire for the POST-only spec operation (upstream bug); command lands when the SDK ships the POST',
+  },
 ]
 
 const SDK_RELEASE_GAP =
@@ -50,6 +55,12 @@ const SDK_RELEASE_GAP =
  * fails if one of these gains SDK support without gaining a command.
  */
 export const SPEC_SKIP_LIST: readonly SpecSkip[] = [
+  {
+    method: 'POST',
+    path: '/v1/emails/{emailId}/accessibility-audit',
+    reason:
+      'SDK 8.0.0 issues GET on the wire for this POST-only operation (upstream bug); command lands when the SDK ships the POST',
+  },
   { method: 'GET', path: '/v1/analytics/overview', reason: SDK_RELEASE_GAP },
   {
     method: 'POST',

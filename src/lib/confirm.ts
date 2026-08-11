@@ -43,7 +43,23 @@ export async function enforceConfirmation(
 }
 
 export function buildConfirmCommand(rawArgv: readonly string[]): string {
-  const tokens = rawArgv.map(shellQuote)
+  // The envelope goes to stdout and into agent transcripts — never echo a
+  // raw credential back. The re-run resolves the key from env/config.
+  const tokens: string[] = []
+  for (let index = 0; index < rawArgv.length; index += 1) {
+    const token = rawArgv[index]
+    if (token === undefined) {
+      continue
+    }
+    if (token === '--api-key') {
+      index += 1
+      continue
+    }
+    if (token.startsWith('--api-key=')) {
+      continue
+    }
+    tokens.push(shellQuote(token))
+  }
   return ['brew-cli', ...tokens, '--yes'].join(' ')
 }
 

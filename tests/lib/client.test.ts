@@ -62,6 +62,16 @@ describe('isOrgLevelPath', () => {
       false
     )
   })
+
+  it('boundary-matches and ignores query strings', () => {
+    expect(isOrgLevelPath('/v1/usage-report')).toBe(false)
+    expect(isOrgLevelPath('/v1/usagefoo')).toBe(false)
+    expect(isOrgLevelPath('/v1/healthz')).toBe(false)
+    expect(isOrgLevelPath('/v1/brand')).toBe(false)
+    expect(isOrgLevelPath('/v1/brands/bd_1')).toBe(true)
+    expect(isOrgLevelPath('/v1/contacts/search?next=/api/v1/usage')).toBe(false)
+    expect(isOrgLevelPath('https://brew.new/api/v1/usage?verbose=1')).toBe(true)
+  })
 })
 
 describe('maskApiKey', () => {
@@ -69,6 +79,7 @@ describe('maskApiKey', () => {
     expect(maskApiKey('brew_abcdefghijklmnopqrstuvwxyz012345')).toBe(
       'brew_abc…345'
     )
-    expect(maskApiKey('short')).toBe('short…')
+    expect(maskApiKey('short')).toBe('sho…')
+    expect(maskApiKey('brew_abcdef')).toBe('bre…')
   })
 })

@@ -10,6 +10,7 @@ import { audiencesListCommand } from '../../src/commands/audiences/list'
 import { audiencesUpdateCommand } from '../../src/commands/audiences/update'
 import { domainsAddCommand } from '../../src/commands/domains/add'
 import { domainsDeleteCommand } from '../../src/commands/domains/delete'
+import { domainsGetCommand } from '../../src/commands/domains/get'
 import { domainsListCommand } from '../../src/commands/domains/list'
 import { domainsUpdateCommand } from '../../src/commands/domains/update'
 import { domainsVerifyCommand } from '../../src/commands/domains/verify'
@@ -27,6 +28,7 @@ const EXTRA = [
   audiencesUpdateCommand,
   audiencesDeleteCommand,
   domainsListCommand,
+  domainsGetCommand,
   domainsAddCommand,
   domainsVerifyCommand,
   domainsUpdateCommand,
@@ -343,5 +345,103 @@ describe('domains delete (confirmation protocol)', () => {
     })
     expect(result.code).toBe(0)
     expect((result.json as { deleted: boolean }).deleted).toBe(true)
+  })
+})
+
+describe('--input cannot retarget the positional id (audiences/domains)', () => {
+  it('pins audiences update to the named audience', async () => {
+    let path = ''
+    let body: Record<string, unknown> | undefined
+    server.use(
+      http.patch(`${AUDIENCES_URL}/aud_A`, async ({ request }) => {
+        path = new URL(request.url).pathname
+        body = (await request.json()) as Record<string, unknown>
+        return HttpResponse.json({ audienceId: 'aud_A' })
+      })
+    )
+    const result = await runCli(
+      [
+        'audiences',
+        'update',
+        'aud_A',
+        '--input',
+        '{"audienceId":"aud_B","name":"Hijack"}',
+      ],
+      { env: env(), extraCommands: EXTRA }
+    )
+    expect(result.code).toBe(0)
+    expect(path).toBe('/api/v1/audiences/aud_A')
+    expect(body?.audienceId).toBeUndefined()
+    expect(body?.name).toBe('Hijack')
+  })
+
+  it('pins domains update to the named domain', async () => {
+    let path = ''
+    server.use(
+      http.patch(`${DOMAINS_URL}/dom_A`, async ({ request }) => {
+        path = new URL(request.url).pathname
+        await request.json()
+        return HttpResponse.json({ domainId: 'dom_A' })
+      })
+    )
+    const result = await runCli(
+      [
+        'domains',
+        'update',
+        'dom_A',
+        '--input',
+        '{"domainId":"dom_B","defaultSenderName":"Evil"}',
+      ],
+      { env: env(), extraCommands: EXTRA }
+    )
+    expect(result.code).toBe(0)
+    expect(path).toBe('/api/v1/domains/dom_A')
+  })
+})
+
+describe('audiences create validation', () => {
+  it('rejects a create without filters', async () => {
+    const result = await runCli(['audiences', 'create', '--name', 'VIPs'], {
+      env: env(),
+      extraCommands: EXTRA,
+    })
+    expect(result.code).toBe(2)
+  })
+})
+
+describe('domains get (derived)', () => {
+  it('returns the single domain by id', async () => {
+    let query = ''
+    server.use(
+      http.get(DOMAINS_URL, ({ request }) => {
+        query = new URL(request.url).search
+        return HttpResponse.json({
+          data: [{ domainId: 'dom_A', name: 'mail.example.com' }],
+          pagination: PAGE,
+        })
+      })
+    )
+    const result = await runCli(['domains', 'get', 'dom_A'], {
+      env: env(),
+      extraCommands: EXTRA,
+    })
+    expect(result.code).toBe(0)
+    expect(query).toContain('domainId=dom_A')
+    expect((result.json as { name: string }).name).toBe('mail.example.com')
+  })
+
+  it('exits 1 with DOMAIN_NOT_FOUND when missing', async () => {
+    server.use(
+      http.get(DOMAINS_URL, () =>
+        HttpResponse.json({ data: [], pagination: PAGE })
+      )
+    )
+    const result = await runCli(['domains', 'get', 'dom_missing'], {
+      env: env(),
+      extraCommands: EXTRA,
+    })
+    expect(result.code).toBe(1)
+    const parsed = JSON.parse(result.stderr) as { error: { code: string } }
+    expect(parsed.error.code).toBe('DOMAIN_NOT_FOUND')
   })
 })

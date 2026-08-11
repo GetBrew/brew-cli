@@ -41,16 +41,28 @@ export const emailsSendCommand = defineCommand({
   examples: [
     'brew-cli emails send eml_1 --test --to qa@example.com --subject "Preview"',
     'brew-cli emails send eml_1 --subject "Fall sale" --domain dom_1 --audience aud_1 --yes',
-    'brew-cli emails send eml_1 --subject "Fall sale" --domain dom_1 --schedule-at 2026-09-01T09:00:00Z --yes',
+    'brew-cli emails send eml_1 --subject "Fall sale" --domain dom_1 --audience aud_1 --schedule-at 2026-09-01T09:00:00Z --yes',
   ],
   confirmSummary: ({ args, flags }) => {
-    if (flags.test === true) {
+    // The gate must describe the MERGED send, not just the flags — an
+    // --input body can carry test/audienceId/to/scheduledAt on its own.
+    const inline = parseInlineInput(flags.input)
+    const isTest = flags.test === true || inline?.test === true
+    if (isTest) {
       return
     }
-    const audience = flagString(flags.audience)
-    const scheduleAt = flagString(flags.scheduleAt)
+    const audience = flagString(flags.audience) ?? asString(inline?.audienceId)
+    const scheduleAt =
+      flagString(flags.scheduleAt) ?? asString(inline?.scheduledAt)
+    const recipients = toStringArray(flags.to) ?? asRecipients(inline?.to)
     const target =
-      audience === undefined ? 'its recipients' : `audience ${audience}`
+      audience === undefined
+        ? recipients === undefined
+          ? flags.input === '-'
+            ? 'the recipients named in the --input body on stdin'
+            : 'its recipients'
+          : `${recipients.length} listed recipient(s)`
+        : `audience ${audience}`
     const timing = scheduleAt === undefined ? 'now' : `at ${scheduleAt}`
     return `Send email ${args.emailId ?? ''} as a REAL campaign to ${target} ${timing}. Real recipients receive it; this cannot be undone.`
   },
@@ -93,4 +105,33 @@ function collapseRecipients(
   }
   const [first] = values
   return values.length === 1 && first !== undefined ? first : values
+}
+
+/** Best-effort parse of an inline --input body (stdin `-` stays opaque). */
+function parseInlineInput(value: unknown): Record<string, unknown> | undefined {
+  if (typeof value !== 'string' || value === '-') {
+    return
+  }
+  try {
+    const parsed: unknown = JSON.parse(value)
+    return parsed !== null && typeof parsed === 'object'
+      ? (parsed as Record<string, unknown>)
+      : undefined
+  } catch {}
+}
+
+function asString(value: unknown): string | undefined {
+  return typeof value === 'string' && value !== '' ? value : undefined
+}
+
+function asRecipients(value: unknown): readonly string[] | undefined {
+  if (typeof value === 'string' && value !== '') {
+    return [value]
+  }
+  if (Array.isArray(value)) {
+    const items = value.filter(
+      (item): item is string => typeof item === 'string'
+    )
+    return items.length > 0 ? items : undefined
+  }
 }
