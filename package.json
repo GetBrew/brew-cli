@@ -1,0 +1,66 @@
+{
+  "name": "@brew.new/cli",
+  "version": "0.1.0",
+  "description": "Official agent-first command-line interface for the Brew public API.",
+  "license": "MIT",
+  "author": "Brew",
+  "homepage": "https://github.com/GetBrew/brew-cli#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/GetBrew/brew-cli.git"
+  },
+  "bugs": {
+    "url": "https://github.com/GetBrew/brew-cli/issues"
+  },
+  "keywords": [
+    "brew",
+    "brew.new",
+    "cli",
+    "email",
+    "marketing",
+    "agent",
+    "api"
+  ],
+  "type": "module",
+  "bin": {
+    "brew-cli": "./dist/bin.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsup",
+    "clean": "rm -rf dist",
+    "tsc": "tsc --noEmit",
+    "lint": "biome check .",
+    "fix": "biome check --write .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "parity": "vitest run tests/parity-sdk.test.ts tests/parity-spec.test.ts",
+    "check": "bun run tsc && bun run lint && bun run test",
+    "docs:commands": "bun run scripts/generate-command-docs.ts",
+    "docs:commands:check": "bun run scripts/generate-command-docs.ts --check",
+    "prepublishOnly": "bun run clean && bun run tsc && bun run lint && bun run test && bun run build"
+  },
+  "dependencies": {
+    "@brew.new/sdk": "^8.0.0",
+    "commander": "^14.0.0"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.6",
+    "@types/node": "^25.5.0",
+    "msw": "^2.13.2",
+    "tsup": "^8.5.0",
+    "typescript": "~6.0.2",
+    "vitest": "^4.1.2",
+    "yaml": "^2.8.0"
+  }
+}
