@@ -45,11 +45,20 @@ Exit codes:
 Agents: run \`${CLI_NAME} docs --agent\` for the machine-readable manifest.
 `
 
-export async function run(argv: readonly string[], io: CliIo): Promise<number> {
+export async function run(
+  argv: readonly string[],
+  io: CliIo,
+  commands: readonly CommandSpec[] = ALL_COMMANDS
+): Promise<number> {
   let activeContext: CliContext | undefined
-  const program = buildProgram(io, argv, (ctx) => {
-    activeContext = ctx
-  })
+  const program = buildProgram(
+    io,
+    argv,
+    (ctx) => {
+      activeContext = ctx
+    },
+    commands
+  )
   try {
     await program.parseAsync([...argv], { from: 'user' })
     return EXIT_OK
@@ -66,7 +75,8 @@ export async function run(argv: readonly string[], io: CliIo): Promise<number> {
 export function buildProgram(
   io: CliIo,
   rawArgv: readonly string[],
-  onContext?: (ctx: CliContext) => void
+  onContext?: (ctx: CliContext) => void,
+  commands: readonly CommandSpec[] = ALL_COMMANDS
 ): Command {
   const program = new Command(CLI_NAME)
     .description('Agent-first CLI for the Brew public API (brew.new)')
@@ -82,7 +92,7 @@ export function buildProgram(
       },
     })
   program.addHelpText('after', AGENT_HELP_FOOTER)
-  for (const spec of ALL_COMMANDS) {
+  for (const spec of commands) {
     registerCommand(program, spec, io, rawArgv, onContext)
   }
   return program

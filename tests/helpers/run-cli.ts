@@ -1,6 +1,8 @@
 import { PassThrough } from 'node:stream'
 import { run } from '../../src/cli'
+import type { CommandSpec } from '../../src/lib/define-command'
 import type { CliIo } from '../../src/lib/types'
+import { ALL_COMMANDS } from '../../src/registry'
 
 export type RunCliOptions = {
   /** Synthetic environment. Host env NEVER leaks into tests. */
@@ -11,6 +13,11 @@ export type RunCliOptions = {
   readonly promptAnswer?: string
   readonly ttyOut?: boolean
   readonly ttyIn?: boolean
+  /**
+   * Extra command specs to mount alongside the registry — lets a command
+   * be tested before it is wired into src/registry.ts.
+   */
+  readonly extraCommands?: readonly CommandSpec[]
 }
 
 export type RunCliResult = {
@@ -44,7 +51,13 @@ export async function runCli(
     readStdin: async () => options.stdin ?? '',
     readLine: async () => options.promptAnswer ?? '',
   }
-  const code = await run(argv, io)
+  const code = await run(
+    argv,
+    io,
+    options.extraCommands === undefined
+      ? undefined
+      : [...ALL_COMMANDS, ...options.extraCommands]
+  )
   return { code, stdout, stderr, json: tryParse(stdout) }
 }
 

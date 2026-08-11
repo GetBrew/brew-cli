@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    runs-on: ${{ vars.CI_RUNNER_SMALL || 'ubuntu-latest' }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - run: bun run tsc
+      - run: bun run lint
+      - run: bun run test
+      - run: bun run docs:commands:check
+      - run: bun run build
+      - name: Bin smoke
+        run: |
+          node dist/bin.js --version
+          node dist/bin.js --help > /dev/null
+          node dist/bin.js docs --agent > /dev/null

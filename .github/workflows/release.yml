@@ -1,0 +1,53 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*.*.*']
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  release:
+    runs-on: ${{ vars.CI_RUNNER_SMALL || 'ubuntu-latest' }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+      - run: bun install --frozen-lockfile
+      - name: Verify tag matches package.json
+        run: |
+          PKG_V=$(node -p "require('./package.json').version")
+          TAG_V=${GITHUB_REF_NAME#v}
+          if [ "$PKG_V" != "$TAG_V" ]; then
+            echo "package.json version $PKG_V does not match tag $TAG_V"
+            exit 1
+          fi
+      - run: bun run tsc
+      - run: bun run lint
+      - run: bun run test
+      - run: bun run docs:commands:check
+      - run: bun run build
+      - name: Publish to npm with provenance
+        run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Compile standalone binaries
+        run: bun run scripts/build-binaries.ts
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist-bin/*
+          generate_release_notes: true
+      - name: Bump Homebrew tap
+        run: bun run scripts/update-tap.ts
+        env:
+          TAP_GITHUB_TOKEN: ${{ secrets.TAP_GITHUB_TOKEN }}
