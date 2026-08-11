@@ -38,7 +38,7 @@ for (const { target, artifact } of TARGETS) {
       `--target=${target}`,
       `--outfile=${outfile}`,
       '--define',
-      `__CLI_VERSION__=${JSON.stringify(JSON.stringify(pkg.version))}`,
+      `__CLI_VERSION__=${JSON.stringify(pkg.version)}`,
     ],
     { cwd: root, stdio: 'inherit' }
   )

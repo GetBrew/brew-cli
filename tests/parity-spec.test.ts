@@ -9,51 +9,7 @@ import { SPEC_SKIP_LIST } from '../src/skip-list'
  * Spec operations whose commands are still being built, phase by phase.
  * This list must ONLY shrink; it must be empty before 0.1.0 ships.
  */
-const PENDING_BUILD_ROUTES: readonly string[] = [
-  'GET /v1/analytics/automations',
-  'GET /v1/analytics/campaigns',
-  'GET /v1/analytics/events',
-  'GET /v1/analytics/sends',
-  'GET /v1/analytics/trigger-instances',
-  'GET /v1/audiences',
-  'POST /v1/audiences',
-  'PATCH /v1/audiences/{audienceId}',
-  'DELETE /v1/audiences/{audienceId}',
-  'GET /v1/automations',
-  'POST /v1/automations',
-  'PATCH /v1/automations/{automationId}',
-  'DELETE /v1/automations/{automationId}',
-  'POST /v1/automations/{automationId}/test',
-  'GET /v1/automations/runs',
-  'GET /v1/automations/triggers',
-  'POST /v1/automations/triggers',
-  'PATCH /v1/automations/triggers/{triggerEventId}',
-  'DELETE /v1/automations/triggers/{triggerEventId}',
-  'POST /v1/automations/triggers/{triggerEventId}/fire',
-  'GET /v1/brand',
-  'PATCH /v1/brand',
-  'GET /v1/brand/images',
-  'GET /v1/domains',
-  'POST /v1/domains',
-  'PATCH /v1/domains/{domainId}',
-  'DELETE /v1/domains/{domainId}',
-  'POST /v1/domains/{domainId}/verify',
-  'GET /v1/emails',
-  'POST /v1/emails',
-  'PATCH /v1/emails/{emailId}',
-  'DELETE /v1/emails/{emailId}',
-  'POST /v1/emails/import',
-  'POST /v1/emails/{emailId}/restore',
-  'POST /v1/emails/{emailId}/accessibility-audit',
-  'POST /v1/content/add-image',
-  'POST /v1/content/generate-image',
-  'POST /v1/content/gif',
-  'POST /v1/content/html-to-png',
-  'POST /v1/content/transform',
-  'POST /v1/sends',
-  'POST /v1/sends/{sendId}/cancel',
-  'GET /v1/templates',
-]
+const PENDING_BUILD_ROUTES: readonly string[] = []
 
 function specOperations(): readonly string[] {
   const raw = readFileSync(

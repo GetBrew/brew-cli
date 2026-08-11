@@ -35,10 +35,6 @@ jobs:
       - run: bun run test
       - run: bun run docs:commands:check
       - run: bun run build
-      - name: Publish to npm with provenance
-        run: npm publish --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       - name: Compile standalone binaries
         run: bun run scripts/build-binaries.ts
       - name: Create GitHub Release
@@ -47,6 +43,16 @@ jobs:
           files: |
             dist-bin/*
           generate_release_notes: true
+      - name: Publish to npm with provenance
+        run: |
+          if [ -z "$NODE_AUTH_TOKEN" ]; then
+            echo "NPM_TOKEN secret not set — skipping npm publish." \
+              "Add it and re-run this workflow to publish."
+            exit 0
+          fi
+          npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       - name: Bump Homebrew tap
         run: bun run scripts/update-tap.ts
         env:

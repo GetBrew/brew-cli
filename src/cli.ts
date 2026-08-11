@@ -27,8 +27,7 @@ const GROUP_SUMMARIES: Readonly<Record<string, string>> = {
   templates: 'Browse the template gallery',
   triggers: 'Manage trigger events',
   runs: 'Automation run history',
-  'audience-runs': 'Audience-triggered run history and control',
-  sends__analytics: 'Send-level delivery reads',
+  'trigger-instances': 'Fired trigger instances',
 }
 
 const AGENT_HELP_FOOTER = `

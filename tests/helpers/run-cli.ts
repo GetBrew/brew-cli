@@ -56,7 +56,12 @@ export async function runCli(
     io,
     options.extraCommands === undefined
       ? undefined
-      : [...ALL_COMMANDS, ...options.extraCommands]
+      : [
+          ...ALL_COMMANDS,
+          ...options.extraCommands.filter(
+            (spec) => !ALL_COMMANDS.includes(spec)
+          ),
+        ]
   )
   return { code, stdout, stderr, json: tryParse(stdout) }
 }
