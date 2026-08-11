@@ -56,6 +56,7 @@ export async function run(
   commands: readonly CommandSpec[] = ALL_COMMANDS
 ): Promise<number> {
   let activeContext: CliContext | undefined
+  let commandExitCode: number | undefined
   // Commander's own stderr (usage errors, error-mode help) is buffered so
   // JSON mode can replace it with a structured envelope instead of mixing
   // free text and JSON on the same stream.
@@ -69,6 +70,9 @@ export async function run(
     commands,
     (text) => {
       commanderStderr.push(text)
+    },
+    (code) => {
+      commandExitCode = code
     }
   )
   const flushCommanderStderr = (): void => {
@@ -80,7 +84,7 @@ export async function run(
   try {
     await program.parseAsync([...argv], { from: 'user' })
     flushCommanderStderr()
-    return EXIT_OK
+    return commandExitCode ?? EXIT_OK
   } catch (error) {
     if (error instanceof CommanderError) {
       const ctx = activeContext ?? makeFallbackContext(io, argv)
@@ -132,7 +136,8 @@ export function buildProgram(
   rawArgv: readonly string[],
   onContext?: (ctx: CliContext) => void,
   commands: readonly CommandSpec[] = ALL_COMMANDS,
-  errSink?: (text: string) => void
+  errSink?: (text: string) => void,
+  onExitCode?: (code: number) => void
 ): Command {
   const writeErr = errSink ?? ((text: string) => io.stderr.write(text))
   const program = new Command(CLI_NAME)
@@ -156,7 +161,7 @@ export function buildProgram(
     program.option(flag.flag, flag.summary)
   }
   for (const spec of commands) {
-    registerCommand(program, spec, io, rawArgv, onContext)
+    registerCommand(program, spec, io, rawArgv, onContext, onExitCode)
   }
   return program
 }
@@ -166,7 +171,8 @@ function registerCommand(
   spec: CommandSpec,
   io: CliIo,
   rawArgv: readonly string[],
-  onContext?: (ctx: CliContext) => void
+  onContext?: (ctx: CliContext) => void,
+  onExitCode?: (code: number) => void
 ): void {
   const parent = resolveGroup(program, spec.path.slice(0, -1))
   const leafName = spec.path.at(-1)
@@ -222,6 +228,9 @@ function registerCommand(
     const outcome = await spec.run(invocation)
     if (outcome !== undefined) {
       printData(ctx, outcome.data, outcome.human)
+      if (outcome.exitCode !== undefined && outcome.exitCode !== 0) {
+        onExitCode?.(outcome.exitCode)
+      }
     }
   })
 }

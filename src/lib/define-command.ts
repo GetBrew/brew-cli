@@ -35,6 +35,12 @@ export type CommandOutcome = {
   readonly data: unknown
   /** Optional human rendering (tables, summaries) for TTY output. */
   readonly human?: string
+  /**
+   * Optional non-zero exit code for commands whose payload IS the result
+   * of a check (e.g. doctor): the report prints normally, then the
+   * process exits with this code so agents can gate on it.
+   */
+  readonly exitCode?: number
 }
 
 export type CommandSpec = {

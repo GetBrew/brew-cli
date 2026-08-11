@@ -29,6 +29,7 @@ are attached to every [GitHub Release](https://github.com/GetBrew/brew-cli/relea
 
 ```bash
 brew-cli login                       # paste an API key from https://brew.new/settings/api
+brew-cli doctor                      # trust check: auth, reachability, CLI-vs-API drift (exit-code gated)
 brew-cli whoami
 brew-cli contacts search --filter email:equals:jane@example.com
 brew-cli emails list --limit 10
@@ -103,6 +104,13 @@ SDK. Two parity tests gate CI here:
   without a command route or a reviewed skip — including operations the
   SDK itself has not wrapped yet, making this repo the outermost
   completeness sentinel of the whole chain.
+- **The nightly spec-drift sentinel** downloads the live published spec
+  and diffs it against the vendored copy, opening a labeled issue the day
+  the real API grows past this CLI.
+- **`brew-cli doctor`** closes the loop at runtime: it diffs the installed
+  command surface against the server's live `GET /v1/help` catalog and
+  exit-codes the verdict, so agents can gate work on a current, authed,
+  in-sync CLI. Agents: see [`skills/brew-cli/SKILL.md`](./skills/brew-cli/SKILL.md).
 
 Contributor guide: [`AGENTS.md`](./AGENTS.md) · Release process:
 [`RELEASING.md`](./RELEASING.md).

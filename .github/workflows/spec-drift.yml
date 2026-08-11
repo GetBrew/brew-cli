@@ -1,0 +1,41 @@
+name: Spec drift sentinel
+
+on:
+  schedule:
+    - cron: '17 6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  drift:
+    runs-on: ${{ vars.CI_RUNNER_SMALL || 'ubuntu-latest' }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - name: Download the live published spec
+        run: curl -fsSL https://brew.new/openapi/public-api-v1.yaml -o /tmp/live-spec.yaml
+      - name: Compare against the vendored spec
+        id: compare
+        run: bun run scripts/check-spec-drift.ts /tmp/live-spec.yaml
+      - name: Open or bump the drift issue
+        if: failure() && steps.compare.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          EXISTING=$(gh issue list --label spec-drift --state open --json number --jq '.[0].number // empty')
+          BODY="The nightly sentinel found drift between the live published spec (https://brew.new/openapi/public-api-v1.yaml) and this repo's vendored copy. See the [workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for the operation diff.
+
+          Fix: refresh the vendored spec (\`pnpm openapi:generate\` in the app repo mirrors it here), run \`bun run generate:types\`, and let the parity tests enumerate the commands to add."
+          if [ -n "$EXISTING" ]; then
+            gh issue comment "$EXISTING" --body "Still drifting as of $(date -u +%F). $BODY"
+          else
+            gh label create spec-drift --description "Live API differs from the vendored spec" --color D93F0B 2>/dev/null || true
+            gh issue create --title "Spec drift: live API differs from the vendored spec" --label spec-drift --body "$BODY"
+          fi

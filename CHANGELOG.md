@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.3.0
+
+The trust layer.
+
+- `brew-cli doctor` — auth validity, API reachability, and installed-CLI
+  vs live-API drift (diffed against the server's `GET /v1/help` catalog),
+  exit-code gated so agents can depend on it. Validated live against a
+  dev deployment: 95 commands, zero drift.
+- Nightly spec-drift sentinel workflow: downloads the live published
+  spec, diffs operations against the vendored copy, and opens/bumps a
+  `spec-drift` issue on divergence.
+- Commands can return a non-zero `exitCode` alongside their payload
+  (doctor uses it; reports print, then the process gates).
+- `skills/brew-cli/SKILL.md` — a focused agent skill covering the trust
+  loop, auth/dev targeting, the output/exit-code contract, and safe-send
+  guardrails.
+
 ## 0.2.0
 
 Full public-API coverage: every one of the 75 spec operations now has a

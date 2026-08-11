@@ -59,6 +59,7 @@ import { contentGifCommand } from './commands/content/gif'
 import { contentHtmlToPngCommand } from './commands/content/html-to-png'
 import { contentTransformCommand } from './commands/content/transform'
 import { docsApiCommand, docsCommand } from './commands/docs'
+import { doctorCommand } from './commands/doctor'
 import { domainsAddCommand } from './commands/domains/add'
 import { domainsDeleteCommand } from './commands/domains/delete'
 import { domainsGetCommand } from './commands/domains/get'
@@ -192,6 +193,7 @@ export const ALL_COMMANDS: readonly CommandSpec[] = [
   chatsGetCommand,
   healthCommand,
   usageCommand,
+  doctorCommand,
   docsCommand,
   docsApiCommand,
   apiCommand,

@@ -2,7 +2,7 @@
 
 <!-- GENERATED FILE — do not edit. Regenerate with `bun run docs:commands`. -->
 
-94 commands. Classes: read (always safe), write
+95 commands. Classes: read (always safe), write
 (mutating, retry-safe), destructive (irreversible — the confirmation
 protocol applies: interactive y/N on a TTY, exit 4 + JSON envelope with
 a `confirmCommand` otherwise, `--yes` to proceed).
@@ -111,6 +111,7 @@ a `confirmCommand` otherwise, `--yes` to proceed).
 | `brew-cli chats get` | read | `GET /v1/chats/{chatId}` | Brand-scoped digest of a Brew chat (artifacts + transcript tail) |
 | `brew-cli health` | read | `GET /v1/health` | Check Brew API liveness (no auth required) |
 | `brew-cli usage` | read | `GET /v1/usage` | Show plan, credit balance, and email-send quota |
+| `brew-cli doctor` | read | — | Trust check: auth, API reachability, and installed-CLI vs live-API drift |
 | `brew-cli docs` | read | — | Documentation pointers; --agent prints the command manifest |
 | `brew-cli docs api` | read | `GET /v1/help` | Fetch the live machine-readable API catalog (GET /v1/help) |
 | `brew-cli api` | destructive | — | Raw authenticated request against the Brew public API |
@@ -1574,6 +1575,17 @@ Show plan, credit balance, and email-send quota
 ```bash
 brew-cli usage
 brew-cli usage --json
+```
+
+### brew-cli doctor
+
+Trust check: auth, API reachability, and installed-CLI vs live-API drift
+
+- Class: read
+
+```bash
+brew-cli doctor
+brew-cli doctor --json
 ```
 
 ### brew-cli docs
