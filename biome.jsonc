@@ -9,7 +9,7 @@
     "useIgnoreFile": true
   },
   "files": {
-    "includes": ["**", "!dist", "!openapi", "!docs/commands"]
+    "includes": ["**", "!dist", "!openapi", "!docs/commands", "!src/generated"]
   },
   "formatter": {
     "enabled": true,

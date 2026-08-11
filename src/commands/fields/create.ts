@@ -1,12 +1,9 @@
 import type { CreateFieldInput } from '@brew.new/sdk'
 import { defineCommand } from '../../lib/define-command'
 import { CliUsageError } from '../../lib/errors'
-import {
-  asSdkInput,
-  flagString,
-  IDEMPOTENCY_FLAG,
-  requestOptions,
-} from '../../lib/input'
+import { flagString, IDEMPOTENCY_FLAG, requestOptions } from '../../lib/input'
+
+const FIELD_TYPES = ['string', 'number', 'date', 'bool'] as const
 
 export const fieldsCreateCommand = defineCommand({
   path: ['fields', 'create'],
@@ -24,17 +21,25 @@ export const fieldsCreateCommand = defineCommand({
   ],
   examples: ['brew-cli fields create --name plan --type string'],
   run: async ({ ctx, flags }) => {
-    const name = flagString(flags.name)
-    const type = flagString(flags.type)
-    if (name === undefined || type === undefined) {
+    const fieldName = flagString(flags.name)
+    const fieldType = flagString(flags.type)
+    if (fieldName === undefined || fieldType === undefined) {
       throw new CliUsageError('--name and --type are required.')
+    }
+    if (!(FIELD_TYPES as readonly string[]).includes(fieldType)) {
+      throw new CliUsageError(
+        `--type must be one of: ${FIELD_TYPES.join(', ')}`
+      )
+    }
+    // Typed literal on purpose — no asSdkInput cast, so the compiler holds
+    // this body to the generated contract (wire names are fieldName/fieldType).
+    const input: CreateFieldInput = {
+      fieldName,
+      fieldType: fieldType as CreateFieldInput['fieldType'],
     }
     const result = await ctx
       .client()
-      .fields.create(
-        asSdkInput<CreateFieldInput>({ name, type }),
-        requestOptions(flags)
-      )
+      .fields.create(input, requestOptions(flags))
     return { data: result }
   },
 })

@@ -204,6 +204,11 @@ function registerCommand(
       (acc, arg, index) => {
         const value = actionArgs[index]
         if (typeof value === 'string') {
+          // An empty required id would otherwise build a malformed API path
+          // (`/v1/x//action`) and surface as a confusing server-side 405.
+          if (arg.isRequired && value.trim() === '') {
+            throw new CliUsageError(`<${arg.name}> must not be empty.`)
+          }
           acc[arg.name] = value
         }
         return acc

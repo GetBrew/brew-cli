@@ -34,6 +34,23 @@ non-TTY), `errors.ts` (exit codes 0/1/2/3/4 + envelopes), `confirm.ts`
   until each new method gets a command or a reviewed skip. That failure is
   the system working — never silence it, close it.**
 
+## Raw-transport commands (SDK gaps)
+
+When the public API ships an operation the published SDK does not expose
+yet, the CLI still binds it — through `src/lib/raw-request.ts` — instead
+of leaving a hole:
+
+- The command sets `sdkMethod: null` + `isRawTransport: true` and types
+  its request/response against `src/generated/openapi-types.ts`
+  (generated from the vendored spec via `bun run generate:types`; CI
+  checks freshness; never hand-edit).
+- Raw calls are single-attempt (no SDK retry loop) — declare
+  `IDEMPOTENCY_FLAG` on POST commands.
+- The moment the SDK ships the operation, the parity-sdk sentinel fails
+  on the new uncovered method: swap the command to the SDK call, drop
+  `isRawTransport`, and delete any related skip entries. Raw transport is
+  a stopgap, never the destination.
+
 ## Adding a command
 
 1. One file: `src/commands/<resource>/<verb>.ts` exporting a

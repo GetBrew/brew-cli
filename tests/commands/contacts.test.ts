@@ -309,7 +309,7 @@ describe('fields', () => {
       { env: env() }
     )
     expect(result.code).toBe(0)
-    expect(body).toEqual({ name: 'plan', type: 'string' })
+    expect(body).toEqual({ fieldName: 'plan', fieldType: 'string' })
   })
 
   it('gates field deletion behind confirmation', async () => {

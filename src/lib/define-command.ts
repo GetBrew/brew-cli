@@ -56,6 +56,12 @@ export type CommandSpec = {
   readonly commandClass: CommandClass
   /** True when the operation consumes Brew credits. */
   readonly isCredited?: boolean
+  /**
+   * True when the command calls the API through the raw transport because
+   * the published SDK does not expose the operation yet. Swap to the SDK
+   * method (and drop this marker) when the SDK ships it.
+   */
+  readonly isRawTransport?: boolean
   readonly args?: readonly ArgSpec[]
   readonly flags?: readonly FlagSpec[]
   /** At least one realistic invocation; shown in help and the manifest. */

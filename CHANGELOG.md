@@ -1,5 +1,33 @@
 # Changelog
 
+## 0.2.0
+
+Full public-API coverage: every one of the 75 spec operations now has a
+command (spec skip-list is empty).
+
+- 20 new typed raw-transport commands closing every published-SDK gap:
+  `brands list/get/create`, `emails clone/export/import-figma/
+  preview-clients/audit-accessibility/create-inbox-placement-test/
+  get-inbox-placement-results`, `sends pause/resume`,
+  `audiences duplicate/from-events`, `automations run` +
+  `audience-runs list/control`, `analytics overview`, `domains health`,
+  `chats get`. Marked `transport: raw` in the manifest; each swaps to the
+  SDK method when the SDK ships it (the parity sentinel flags the moment).
+- Request/response types generated from the vendored OpenAPI spec
+  (`bun run generate:types`, CI-freshness-checked) — the same
+  openapi-typescript chain the SDK uses.
+- `fields create` sends the correct wire names (`fieldName`/`fieldType`)
+  and typechecks against the SDK contract without a cast.
+- Required positional ids reject empty strings (previously an empty id
+  built a malformed path and surfaced as a confusing server 405).
+- Error envelopes: legacy top-level `{code,message}` bodies (e.g. the
+  trigger fire endpoint) are surfaced instead of a generic fallback.
+- Validated end-to-end against a live dev deployment: the full lifecycle
+  (fields → contacts → audiences → AI generate/edit → clone → scheduled
+  campaign → cancel → automations create/publish/test/fire/unpublish →
+  brands/analytics/content) ran through the CLI with zero unwanted email
+  deliveries and full resource cleanup.
+
 ## 0.1.1
 
 Adversarial-review + live-validation fix wave.

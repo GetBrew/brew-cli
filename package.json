@@ -1,6 +1,6 @@
 {
   "name": "@brew.new/cli",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Official agent-first command-line interface for the Brew public API.",
   "license": "MIT",
   "author": "Brew",
@@ -48,6 +48,7 @@
     "check": "bun run tsc && bun run lint && bun run test",
     "docs:commands": "bun run scripts/generate-command-docs.ts",
     "docs:commands:check": "bun run scripts/generate-command-docs.ts --check",
+    "generate:types": "openapi-typescript openapi/public-api-v1.yaml --default-non-nullable false -o src/generated/openapi-types.ts",
     "prepublishOnly": "bun run clean && bun run tsc && bun run lint && bun run test && bun run build"
   },
   "dependencies": {
@@ -58,6 +59,7 @@
     "@biomejs/biome": "^2.5.6",
     "@types/node": "^25.5.0",
     "msw": "^2.13.2",
+    "openapi-typescript": "7.13.0",
     "tsup": "^8.5.0",
     "typescript": "~6.0.2",
     "vitest": "^4.1.2",

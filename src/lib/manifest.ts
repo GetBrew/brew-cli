@@ -46,6 +46,7 @@ export function buildManifest(): Record<string, unknown> {
       class: spec.commandClass,
       ...(spec.isCredited === true ? { credited: true } : {}),
       sdkMethod: spec.sdkMethod,
+      ...(spec.isRawTransport === true ? { transport: 'raw' } : {}),
       ...(spec.derivedFrom === undefined
         ? {}
         : { derivedFrom: spec.derivedFrom }),

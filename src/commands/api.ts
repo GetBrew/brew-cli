@@ -1,7 +1,11 @@
-import { isOrgLevelPath, resolveAuth } from '../lib/client'
+import { resolveAuth } from '../lib/client'
 import { defineCommand } from '../lib/define-command'
-import { CliApiError, CliUsageError } from '../lib/errors'
-import { CLI_NAME, CLI_VERSION } from '../version'
+import { CliUsageError } from '../lib/errors'
+import {
+  buildRawHeaders,
+  responseToApiError,
+  tryParseJson,
+} from '../lib/raw-request'
 
 const METHODS = ['GET', 'POST', 'PATCH', 'DELETE'] as const
 
@@ -63,20 +67,15 @@ export const apiCommand = defineCommand({
     if (method === 'GET' && body !== undefined) {
       throw new CliUsageError('GET requests cannot carry --data.')
     }
-    const headers = new Headers({
-      authorization: `Bearer ${auth.apiKey}`,
-      'user-agent': `${CLI_NAME}/${CLI_VERSION}`,
-      accept: 'application/json, text/plain;q=0.9',
+    const headers = buildRawHeaders({
+      auth,
+      path,
+      hasJsonBody: body !== undefined,
+      idempotencyKey:
+        typeof flags.idempotencyKey === 'string'
+          ? flags.idempotencyKey
+          : undefined,
     })
-    if (body !== undefined) {
-      headers.set('content-type', 'application/json')
-    }
-    if (auth.brandId !== undefined && !isOrgLevelPath(path)) {
-      headers.set('x-brand-id', auth.brandId)
-    }
-    if (typeof flags.idempotencyKey === 'string') {
-      headers.set('idempotency-key', flags.idempotencyKey)
-    }
     for (const header of readHeaderFlags(flags.header)) {
       const separator = header.indexOf(':')
       if (separator === -1) {
@@ -97,7 +96,7 @@ export const apiCommand = defineCommand({
     const text = await response.text()
     const parsed = tryParseJson(text)
     if (!response.ok) {
-      throw toApiError(response, parsed)
+      throw responseToApiError(response, parsed)
     }
     if (parsed !== undefined) {
       return { data: parsed }
@@ -144,40 +143,4 @@ function readHeaderFlags(value: unknown): readonly string[] {
     return value.filter((item): item is string => typeof item === 'string')
   }
   return typeof value === 'string' ? [value] : []
-}
-
-function tryParseJson(text: string): unknown {
-  try {
-    return JSON.parse(text) as unknown
-  } catch {}
-}
-
-function toApiError(response: Response, parsed: unknown): CliApiError {
-  const requestId = response.headers.get('x-request-id') ?? undefined
-  const envelope =
-    parsed !== null &&
-    typeof parsed === 'object' &&
-    'error' in parsed &&
-    parsed.error !== null &&
-    typeof parsed.error === 'object'
-      ? (parsed.error as Record<string, unknown>)
-      : undefined
-  const readField = (key: string): string | undefined => {
-    const value = envelope?.[key]
-    return typeof value === 'string' ? value : undefined
-  }
-  const param = readField('param')
-  const suggestion = readField('suggestion')
-  const docs = readField('docs')
-  return new CliApiError({
-    status: response.status,
-    code: readField('code') ?? 'HTTP_ERROR',
-    type: readField('type') ?? 'internal_error',
-    message:
-      readField('message') ?? `Request failed with status ${response.status}`,
-    ...(param === undefined ? {} : { param }),
-    ...(suggestion === undefined ? {} : { suggestion }),
-    ...(docs === undefined ? {} : { docs }),
-    ...(requestId === undefined ? {} : { requestId }),
-  })
 }

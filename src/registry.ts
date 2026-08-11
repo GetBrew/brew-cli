@@ -1,20 +1,26 @@
 import { analyticsAutomationsCommand } from './commands/analytics/automations'
 import { analyticsCampaignsCommand } from './commands/analytics/campaigns'
 import { analyticsEventsCommand } from './commands/analytics/events'
+import { analyticsOverviewCommand } from './commands/analytics/overview'
 import { analyticsSendsGetCommand } from './commands/analytics/sends/get'
 import { analyticsSendsListCommand } from './commands/analytics/sends/list'
 import { analyticsTriggerInstancesListCommand } from './commands/analytics/trigger-instances/list'
 import { apiCommand } from './commands/api'
 import { audiencesCreateCommand } from './commands/audiences/create'
 import { audiencesDeleteCommand } from './commands/audiences/delete'
+import { audiencesDuplicateCommand } from './commands/audiences/duplicate'
+import { audiencesFromEventsCommand } from './commands/audiences/from-events'
 import { audiencesGetCommand } from './commands/audiences/get'
 import { audiencesListCommand } from './commands/audiences/list'
 import { audiencesUpdateCommand } from './commands/audiences/update'
+import { automationsAudienceRunsControlCommand } from './commands/automations/audience-runs/control'
+import { automationsAudienceRunsListCommand } from './commands/automations/audience-runs/list'
 import { automationsCreateCommand } from './commands/automations/create'
 import { automationsDeleteCommand } from './commands/automations/delete'
 import { automationsGetCommand } from './commands/automations/get'
 import { automationsListCommand } from './commands/automations/list'
 import { automationsPublishCommand } from './commands/automations/publish'
+import { automationsRunCommand } from './commands/automations/run'
 import { automationsRunsListCommand } from './commands/automations/runs/list'
 import { automationsTestCommand } from './commands/automations/test'
 import { automationsTriggersCreateCommand } from './commands/automations/triggers/create'
@@ -27,6 +33,10 @@ import { automationsUpdateCommand } from './commands/automations/update'
 import { brandGetCommand } from './commands/brand/get'
 import { brandGetImagesCommand } from './commands/brand/get-images'
 import { brandUpdateCommand } from './commands/brand/update'
+import { brandsCreateCommand } from './commands/brands/create'
+import { brandsGetCommand } from './commands/brands/get'
+import { brandsListCommand } from './commands/brands/list'
+import { chatsGetCommand } from './commands/chats/get'
 import {
   configGetCommand,
   configListCommand,
@@ -52,15 +62,23 @@ import { docsApiCommand, docsCommand } from './commands/docs'
 import { domainsAddCommand } from './commands/domains/add'
 import { domainsDeleteCommand } from './commands/domains/delete'
 import { domainsGetCommand } from './commands/domains/get'
+import { domainsHealthCommand } from './commands/domains/health'
 import { domainsListCommand } from './commands/domains/list'
 import { domainsUpdateCommand } from './commands/domains/update'
 import { domainsVerifyCommand } from './commands/domains/verify'
+import { emailsAuditAccessibilityCommand } from './commands/emails/audit-accessibility'
+import { emailsCloneCommand } from './commands/emails/clone'
+import { emailsCreateInboxPlacementTestCommand } from './commands/emails/create-inbox-placement-test'
 import { emailsDeleteCommand } from './commands/emails/delete'
 import { emailsEditCommand } from './commands/emails/edit'
+import { emailsExportCommand } from './commands/emails/export'
 import { emailsGenerateCommand } from './commands/emails/generate'
 import { emailsGetCommand } from './commands/emails/get'
+import { emailsGetInboxPlacementResultsCommand } from './commands/emails/get-inbox-placement-results'
 import { emailsImportCommand } from './commands/emails/import'
+import { emailsImportFigmaCommand } from './commands/emails/import-figma'
 import { emailsListCommand } from './commands/emails/list'
+import { emailsPreviewClientsCommand } from './commands/emails/preview-clients'
 import { emailsRestoreCommand } from './commands/emails/restore'
 import { emailsSendCommand } from './commands/emails/send'
 import { fieldsCreateCommand } from './commands/fields/create'
@@ -70,6 +88,8 @@ import { healthCommand } from './commands/health'
 import { loginCommand } from './commands/login'
 import { logoutCommand } from './commands/logout'
 import { sendsCancelCommand } from './commands/sends/cancel'
+import { sendsPauseCommand } from './commands/sends/pause'
+import { sendsResumeCommand } from './commands/sends/resume'
 import { templatesListCommand } from './commands/templates/list'
 import { usageCommand } from './commands/usage'
 import { whoamiCommand } from './commands/whoami'
@@ -105,15 +125,26 @@ export const ALL_COMMANDS: readonly CommandSpec[] = [
   emailsGetCommand,
   emailsGenerateCommand,
   emailsImportCommand,
+  emailsImportFigmaCommand,
   emailsEditCommand,
+  emailsCloneCommand,
   emailsRestoreCommand,
   emailsDeleteCommand,
+  emailsExportCommand,
+  emailsAuditAccessibilityCommand,
+  emailsPreviewClientsCommand,
+  emailsCreateInboxPlacementTestCommand,
+  emailsGetInboxPlacementResultsCommand,
   emailsSendCommand,
   sendsCancelCommand,
+  sendsPauseCommand,
+  sendsResumeCommand,
   audiencesListCommand,
   audiencesGetCommand,
   audiencesCreateCommand,
   audiencesUpdateCommand,
+  audiencesDuplicateCommand,
+  audiencesFromEventsCommand,
   audiencesDeleteCommand,
   automationsListCommand,
   automationsGetCommand,
@@ -123,12 +154,16 @@ export const ALL_COMMANDS: readonly CommandSpec[] = [
   automationsUnpublishCommand,
   automationsDeleteCommand,
   automationsTestCommand,
+  automationsRunCommand,
   automationsTriggersListCommand,
   automationsTriggersCreateCommand,
   automationsTriggersUpdateCommand,
   automationsTriggersDeleteCommand,
   automationsTriggersFireCommand,
   automationsRunsListCommand,
+  automationsAudienceRunsListCommand,
+  automationsAudienceRunsControlCommand,
+  analyticsOverviewCommand,
   analyticsCampaignsCommand,
   analyticsAutomationsCommand,
   analyticsEventsCommand,
@@ -138,10 +173,14 @@ export const ALL_COMMANDS: readonly CommandSpec[] = [
   brandGetCommand,
   brandUpdateCommand,
   brandGetImagesCommand,
+  brandsListCommand,
+  brandsGetCommand,
+  brandsCreateCommand,
   domainsListCommand,
   domainsGetCommand,
   domainsAddCommand,
   domainsVerifyCommand,
+  domainsHealthCommand,
   domainsUpdateCommand,
   domainsDeleteCommand,
   contentGenerateImageCommand,
@@ -150,6 +189,7 @@ export const ALL_COMMANDS: readonly CommandSpec[] = [
   contentHtmlToPngCommand,
   contentAddImageCommand,
   templatesListCommand,
+  chatsGetCommand,
   healthCommand,
   usageCommand,
   docsCommand,
