@@ -30,11 +30,16 @@ export const emailsGenerateCommand = defineCommand({
       flag: '--content-urls <urls...>',
       summary: 'Page URL(s) to pull copy and imagery from, repeatable',
     },
+    {
+      flag: '--group-id <groupId>',
+      summary: 'Destination group id; omit or use ungrouped for Ungrouped',
+    },
     INPUT_FLAG,
     IDEMPOTENCY_FLAG,
   ],
   examples: [
     'brew-cli emails generate --prompt "Product-launch email for the fall sale"',
+    'brew-cli emails generate --prompt "Welcome email" --group-id grp_welcome',
     'brew-cli emails generate --prompt "Welcome email" --content-urls https://example.com/pricing',
   ],
   run: async ({ ctx, flags }) => {
@@ -43,6 +48,7 @@ export const emailsGenerateCommand = defineCommand({
       prompt: flagString(flags.prompt),
       referenceEmailId: flagString(flags.referenceEmailId),
       contentUrls: toStringArray(flags.contentUrls),
+      groupId: flagString(flags.groupId),
     })
     if (typeof input.prompt !== 'string' || input.prompt === '') {
       throw new CliUsageError(

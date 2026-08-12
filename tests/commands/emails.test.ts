@@ -7,6 +7,7 @@ import { emailsDeleteCommand } from '../../src/commands/emails/delete'
 import { emailsEditCommand } from '../../src/commands/emails/edit'
 import { emailsGenerateCommand } from '../../src/commands/emails/generate'
 import { emailsGetCommand } from '../../src/commands/emails/get'
+import { emailsGroupsListCommand } from '../../src/commands/emails/groups/list'
 import { emailsImportCommand } from '../../src/commands/emails/import'
 import { emailsListCommand } from '../../src/commands/emails/list'
 import { emailsRestoreCommand } from '../../src/commands/emails/restore'
@@ -18,6 +19,7 @@ const KEY = 'brew_abcdefghijklmnopqrstuvwxyz012345'
 
 const EXTRA = [
   emailsListCommand,
+  emailsGroupsListCommand,
   emailsGetCommand,
   emailsGenerateCommand,
   emailsImportCommand,
@@ -35,6 +37,7 @@ function env(): Record<string, string | undefined> {
 }
 
 const EMAILS_URL = 'https://brew.new/api/v1/emails'
+const EMAIL_GROUPS_URL = 'https://brew.new/api/v1/email-groups'
 const SENDS_URL = 'https://brew.new/api/v1/sends'
 const PAGE = { limit: 100, cursor: null, hasMore: false }
 
@@ -58,11 +61,27 @@ describe('emails list', () => {
       })
     )
     const result = await runCli(
-      ['emails', 'list', '--status', 'complete', '--limit', '10'],
+      [
+        'emails',
+        'list',
+        '--status',
+        'complete',
+        '--group-id',
+        'grp_lifecycle',
+        '--sort',
+        'title',
+        '--order',
+        'asc',
+        '--limit',
+        '10',
+      ],
       { env: env(), extraCommands: EXTRA }
     )
     expect(result.code).toBe(0)
     expect(url?.searchParams.get('status')).toBe('complete')
+    expect(url?.searchParams.get('groupId')).toBe('grp_lifecycle')
+    expect(url?.searchParams.get('sort')).toBe('title')
+    expect(url?.searchParams.get('order')).toBe('asc')
     expect(url?.searchParams.get('limit')).toBe('10')
     const data = result.json as { data: Array<{ emailId: string }> }
     expect(data.data[0]?.emailId).toBe('eml_1')
@@ -95,6 +114,46 @@ describe('emails list', () => {
     expect(cursors).toEqual([null, 'c1'])
     const data = result.json as { data: unknown[]; pagination: unknown }
     expect(data.data).toHaveLength(2)
+    expect(data.pagination).toEqual({ cursor: null, hasMore: false })
+  })
+})
+
+describe('emails groups list', () => {
+  it('drains every group page with --all', async () => {
+    const cursors: Array<string | null> = []
+    server.use(
+      http.get(EMAIL_GROUPS_URL, ({ request }) => {
+        const cursor = new URL(request.url).searchParams.get('cursor')
+        cursors.push(cursor)
+        return HttpResponse.json(
+          cursor === null
+            ? {
+                data: [{ groupId: 'grp_lifecycle', groupName: 'Lifecycle' }],
+                pagination: { limit: 1, cursor: 'c1', hasMore: true },
+              }
+            : {
+                data: [{ groupId: 'ungrouped', groupName: 'Ungrouped' }],
+                pagination: { limit: 1, cursor: null, hasMore: false },
+              }
+        )
+      })
+    )
+
+    const result = await runCli(['emails', 'groups', 'list', '--all'], {
+      env: env(),
+      extraCommands: EXTRA,
+    })
+
+    expect(result.code).toBe(0)
+    expect(cursors).toEqual([null, 'c1'])
+    const data = result.json as {
+      data: Array<{ groupId: string }>
+      pagination: unknown
+    }
+    expect(data.data.map((group) => group.groupId)).toEqual([
+      'grp_lifecycle',
+      'ungrouped',
+    ])
     expect(data.pagination).toEqual({ cursor: null, hasMore: false })
   })
 })
@@ -157,11 +216,21 @@ describe('emails generate', () => {
       })
     )
     const result = await runCli(
-      ['emails', 'generate', '--prompt', 'Fall launch email'],
+      [
+        'emails',
+        'generate',
+        '--prompt',
+        'Fall launch email',
+        '--group-id',
+        'grp_launches',
+      ],
       { env: env(), extraCommands: EXTRA }
     )
     expect(result.code).toBe(0)
-    expect(body).toEqual({ prompt: 'Fall launch email' })
+    expect(body).toEqual({
+      prompt: 'Fall launch email',
+      groupId: 'grp_launches',
+    })
     expect(result.stderr).toContain('Generating email')
   })
 

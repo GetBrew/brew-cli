@@ -27,6 +27,15 @@ export const emailsListCommand = defineCommand({
       flag: '--status <status>',
       summary: 'Filter by status: streaming | complete | error',
     },
+    {
+      flag: '--group-id <groupId>',
+      summary: 'Filter by one group id; use ungrouped for no saved group',
+    },
+    {
+      flag: '--sort <field>',
+      summary: 'Sort by updatedAt | createdAt | title',
+    },
+    { flag: '--order <order>', summary: 'Sort order: asc | desc' },
     { flag: '--created-at-from <iso>', summary: 'Created at or after (ISO)' },
     { flag: '--created-at-to <iso>', summary: 'Created at or before (ISO)' },
     { flag: '--updated-at-from <iso>', summary: 'Updated at or after (ISO)' },
@@ -38,6 +47,7 @@ export const emailsListCommand = defineCommand({
   ],
   examples: [
     'brew-cli emails list --status complete --limit 10',
+    'brew-cli emails list --group-id ungrouped --sort title --order asc',
     'brew-cli emails list --updated-at-from 2026-08-01T00:00:00Z',
     'brew-cli emails list --all --json',
   ],
@@ -45,6 +55,9 @@ export const emailsListCommand = defineCommand({
     const base = await readJsonFlag(ctx, flags.input, '--input')
     const input = mergeInput(base, {
       status: flagString(flags.status),
+      groupId: flagString(flags.groupId),
+      sort: flagString(flags.sort),
+      order: flagString(flags.order),
       createdAtFrom: flagString(flags.createdAtFrom),
       createdAtTo: flagString(flags.createdAtTo),
       updatedAtFrom: flagString(flags.updatedAtFrom),
@@ -80,6 +93,7 @@ function renderEmails(rows: ReadonlyArray<unknown>): string {
     { key: 'emailId', header: 'EMAIL ID' },
     { key: 'title', header: 'TITLE' },
     { key: 'status', header: 'STATUS' },
+    { key: 'groupName', header: 'GROUP' },
     { key: 'updatedAt', header: 'UPDATED' },
   ])
 }

@@ -44,7 +44,7 @@ security:
   - apiKeyAuth: []
 tags:
   - name: Emails
-    description: "Email designs and sending. Generate a design with the Brew email agent, edit, version, restore — then send it: `POST /v1/sends` delivers a design to a target (a saved audience, an inline list, or a single address) via a verified domain, and `POST /v1/sends/test` fires a one-off test. Sending is not campaign-specific. Send reads (list, status, per-send event feeds) live under Analytics (`/v1/analytics/sends`)."
+    description: "Email designs and sending. Generate a design with the Brew email agent, edit, version, restore — then send it: `POST /v1/sends` delivers a design to a target (a saved audience, an inline list, or a single address) via a verified domain, and `POST /v1/sends` with `test: true` fires a one-off test. Sending is not campaign-specific. Send reads (list, status, per-send event feeds) live under Analytics (`/v1/analytics/sends`)."
   - name: Brands
     description: "Brand lifecycle for ORGANIZATION-scoped credentials: list the brands a credential can reach, read one, and create a new one (extraction runs asynchronously — poll `GET /v1/brands/{brandId}` until `status: completed`). These endpoints act on the organization, so they take no `X-Brand-Id`."
   - name: Analytics
@@ -103,12 +103,22 @@ components:
         previewImage:
           type: string
           format: uri
+        createdAt:
+          type: string
+          format: date-time
         updatedAt:
           type: string
           format: date-time
+        groupId:
+          type: string
+          minLength: 1
+          maxLength: 64
+          description: One exact email group id, or "ungrouped" for emails outside a named group.
+        groupName:
+          type: string
+          minLength: 1
         previewText:
           type: string
-          description: The design's inbox preview line, read directly from the latest version's JSX <Preview> (its single source of truth) — what a send delivers when no explicit `previewText` override is passed to POST /v1/sends. Detail-only; absent when the design has no <Preview>.
         html:
           type: string
         versions:
@@ -134,7 +144,25 @@ components:
         - emailId
         - title
         - status
+        - createdAt
         - updatedAt
+        - groupId
+        - groupName
+      additionalProperties: false
+    EmailGroup:
+      type: object
+      properties:
+        groupId:
+          type: string
+          minLength: 1
+          maxLength: 64
+          description: One exact email group id, or "ungrouped" for emails outside a named group.
+        groupName:
+          type: string
+          minLength: 1
+      required:
+        - groupId
+        - groupName
       additionalProperties: false
     Send:
       type: object
@@ -2776,7 +2804,7 @@ components:
         - previewImage
         - updatedAt
       additionalProperties: false
-    EmailsListResponse:
+    EmailGroupsListResponse:
       type: object
       properties:
         data:
@@ -2784,56 +2812,17 @@ components:
           items:
             type: object
             properties:
-              emailId:
+              groupId:
                 type: string
                 minLength: 1
-              emailVersionId:
+                maxLength: 64
+                description: One exact email group id, or "ungrouped" for emails outside a named group.
+              groupName:
                 type: string
                 minLength: 1
-              title:
-                type: string
-                minLength: 1
-              status:
-                type: string
-                enum:
-                  - streaming
-                  - complete
-                  - error
-              previewImage:
-                type: string
-                format: uri
-              updatedAt:
-                type: string
-                format: date-time
-              previewText:
-                type: string
-                description: The design's inbox preview line, read directly from the latest version's JSX <Preview> (its single source of truth) — what a send delivers when no explicit `previewText` override is passed to POST /v1/sends. Detail-only; absent when the design has no <Preview>.
-              html:
-                type: string
-              versions:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    version:
-                      anyOf:
-                        - type: integer
-                          minimum: 0
-                        - type: string
-                          enum:
-                            - latest
-                    emailVersionId:
-                      type: string
-                      minLength: 1
-                  required:
-                    - version
-                    - emailVersionId
-                  additionalProperties: false
             required:
-              - emailId
-              - title
-              - status
-              - updatedAt
+              - groupId
+              - groupName
             additionalProperties: false
         pagination:
           type: object
@@ -2855,6 +2844,7 @@ components:
           additionalProperties: false
       required:
         - data
+        - pagination
       additionalProperties: false
     ApiErrorEnvelope:
       type: object
@@ -2904,6 +2894,99 @@ components:
             - docs
       required:
         - error
+    EmailsListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              emailId:
+                type: string
+                minLength: 1
+              emailVersionId:
+                type: string
+                minLength: 1
+              title:
+                type: string
+                minLength: 1
+              status:
+                type: string
+                enum:
+                  - streaming
+                  - complete
+                  - error
+              previewImage:
+                type: string
+                format: uri
+              createdAt:
+                type: string
+                format: date-time
+              updatedAt:
+                type: string
+                format: date-time
+              groupId:
+                type: string
+                minLength: 1
+                maxLength: 64
+                description: One exact email group id, or "ungrouped" for emails outside a named group.
+              groupName:
+                type: string
+                minLength: 1
+              previewText:
+                type: string
+              html:
+                type: string
+              versions:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    version:
+                      anyOf:
+                        - type: integer
+                          minimum: 0
+                        - type: string
+                          enum:
+                            - latest
+                    emailVersionId:
+                      type: string
+                      minLength: 1
+                  required:
+                    - version
+                    - emailVersionId
+                  additionalProperties: false
+            required:
+              - emailId
+              - title
+              - status
+              - createdAt
+              - updatedAt
+              - groupId
+              - groupName
+            additionalProperties: false
+        pagination:
+          type: object
+          properties:
+            limit:
+              type: integer
+              minimum: 1
+              maximum: 100
+            cursor:
+              type:
+                - string
+                - "null"
+            hasMore:
+              type: boolean
+          required:
+            - limit
+            - cursor
+            - hasMore
+          additionalProperties: false
+      required:
+        - data
+      additionalProperties: false
     EmailGenerateTextResponse:
       type: object
       properties:
@@ -2913,7 +2996,7 @@ components:
       required:
         - response
       additionalProperties: false
-    EmailGenerateGeneratedResponse:
+    EmailCreateGeneratedResponse:
       type: object
       properties:
         emailId:
@@ -2927,10 +3010,16 @@ components:
         previewImage:
           type: string
           format: uri
+        groupId:
+          type: string
+          minLength: 1
+          maxLength: 64
+          description: One exact email group id, or "ungrouped" for emails outside a named group.
       required:
         - emailId
         - emailVersionId
         - html
+        - groupId
       additionalProperties: false
     EmailGenerateRequest:
       type: object
@@ -2949,6 +3038,11 @@ components:
         referenceEmailId:
           type: string
           description: An existing design (`emailId` from `list_email_designs`) to use as the style/layout reference for the new email.
+        groupId:
+          type: string
+          minLength: 1
+          maxLength: 64
+          description: Create the generated email in this exact group. Omit or pass "ungrouped" to leave it outside named groups.
         category:
           type: string
           enum:
@@ -3009,6 +3103,7 @@ components:
                     enum:
                       - fetch_failed_retained
                       - non_image_resource_retained
+                      - social_icon_substituted
                       - unsafe_url_stripped
                       - unsupported_resource_retained
                       - upload_failed_retained
@@ -3189,6 +3284,25 @@ components:
       required:
         - emailId
         - deleted
+      additionalProperties: false
+    EmailGenerateGeneratedResponse:
+      type: object
+      properties:
+        emailId:
+          type: string
+          minLength: 1
+        emailVersionId:
+          type: string
+          minLength: 1
+        html:
+          type: string
+        previewImage:
+          type: string
+          format: uri
+      required:
+        - emailId
+        - emailVersionId
+        - html
       additionalProperties: false
     EmailCloneRequest:
       type: object
@@ -4201,6 +4315,24 @@ components:
             replyTo:
               type: string
               format: email
+            domainId:
+              type: string
+              minLength: 1
+              description: OPTIONAL verified sending domain for this test. Omit for the Brew default sender (hello@email.brew.new). Must be a verified domain owned by this org/brand — an unverified or foreign domain is rejected (404/422), never silently downgraded to the Brew default.
+            senderName:
+              type: string
+              minLength: 1
+              maxLength: 128
+            fromEmail:
+              type: string
+              minLength: 1
+              maxLength: 64
+            variables:
+              type: object
+              additionalProperties:
+                type: string
+                maxLength: 256
+              description: Example values for {{ var | fallback }} merge tags in the subject, previewText, and body. A supplied value wins over contact fields and the declared fallback; undefined variables render their fallback (or empty). Max 25 entries; keys must match the merge-tag grammar (letter/_/$ start, then word chars/dots/$, max 64 chars); values max 256 chars.
           required:
             - test
             - emailId
@@ -4402,13 +4534,7 @@ components:
             opened:
               type: integer
               minimum: 0
-            openedTotal:
-              type: integer
-              minimum: 0
             clicked:
-              type: integer
-              minimum: 0
-            clickedTotal:
               type: integer
               minimum: 0
             bounced:
@@ -4449,9 +4575,7 @@ components:
             - sent
             - delivered
             - opened
-            - openedTotal
             - clicked
-            - clickedTotal
             - bounced
             - complained
             - unsubscribed
@@ -4886,6 +5010,10 @@ components:
               machineGenerated:
                 type: boolean
               clickBotReason:
+                type: string
+              openBotReason:
+                type: string
+              openFetchSource:
                 type: string
               mode:
                 type: string
@@ -9427,6 +9555,243 @@ components:
       required:
         - data
       additionalProperties: false
+    AudienceWriteResponse:
+      type: object
+      properties:
+        audienceId:
+          type: string
+          minLength: 1
+          maxLength: 64
+        audienceName:
+          type: string
+          minLength: 1
+          maxLength: 200
+        filters:
+          type: object
+          properties:
+            filters:
+              type: array
+              items:
+                type: object
+                properties:
+                  field:
+                    type: string
+                    minLength: 1
+                  operator:
+                    type: string
+                    enum:
+                      - equals
+                      - not_equals
+                      - contains
+                      - not_contains
+                      - contains_any
+                      - not_contains_any
+                      - starts_with
+                      - ends_with
+                      - gt
+                      - gte
+                      - lt
+                      - lte
+                      - between
+                      - is_true
+                      - is_false
+                      - in
+                      - not_in
+                      - is_empty
+                      - not_exists
+                      - is_not_empty
+                      - exists
+                      - is_set
+                      - before
+                      - after
+                      - on_date
+                  value: {}
+                  type:
+                    type: string
+                    description: The field's value type — set `number`, `date`, or `boolean` for typed comparisons (dates are stored as epoch-ms, so a string `equals` on a date never matches). Omit for plain string fields.
+                required:
+                  - field
+                  - operator
+                additionalProperties: false
+            logicalOperator:
+              type: string
+              enum:
+                - and
+                - or
+          required:
+            - filters
+            - logicalOperator
+          additionalProperties: false
+        count:
+          type: integer
+          minimum: 0
+        materializationStatus:
+          type: string
+          enum:
+            - pending
+            - running
+            - ready
+            - failed
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        build:
+          type: object
+          properties:
+            jobId:
+              type: string
+              minLength: 1
+              maxLength: 64
+            status:
+              type: string
+              enum:
+                - pending
+                - running
+                - completed
+                - partial
+                - failed
+            cohort:
+              type: object
+              properties:
+                eventTypes:
+                  type: array
+                  items:
+                    type: string
+                    enum:
+                      - sent
+                      - delivered
+                      - delivery_delayed
+                      - opened
+                      - clicked
+                      - bounced
+                      - complained
+                      - failed
+                      - skipped
+                      - unsubscribed
+                  minItems: 1
+                  maxItems: 10
+                from:
+                  type: string
+                  format: date-time
+                to:
+                  type: string
+                  format: date-time
+                  description: Defaults to now.
+                sendId:
+                  type: string
+                  minLength: 1
+                  maxLength: 64
+                emailId:
+                  type: string
+                  minLength: 1
+                  maxLength: 64
+                automationIds:
+                  type: array
+                  items:
+                    type: string
+                    minLength: 1
+                    maxLength: 64
+                  maxItems: 20
+                audienceIds:
+                  type: array
+                  items:
+                    type: string
+                    minLength: 1
+                    maxLength: 64
+                  maxItems: 20
+                  description: Scope to events from sends that targeted these audiences.
+                recipient:
+                  type: array
+                  items:
+                    type: string
+                    minLength: 1
+                    maxLength: 320
+                  maxItems: 10
+                  description: Recipient rule tokens using the Events-page grammar.
+                includeMachineClicks:
+                  type: boolean
+              required:
+                - eventTypes
+                - from
+                - to
+              additionalProperties: false
+            field:
+              type: object
+              properties:
+                key:
+                  type: string
+                  minLength: 1
+                label:
+                  type: string
+                  minLength: 1
+                type:
+                  type: string
+                  enum:
+                    - date
+              required:
+                - key
+                - label
+                - type
+              additionalProperties: false
+            counts:
+              type: object
+              properties:
+                eventsScanned:
+                  type: integer
+                  minimum: 0
+                stampedContacts:
+                  type: integer
+                  minimum: 0
+              required:
+                - eventsScanned
+              additionalProperties: false
+            error:
+              type: string
+            enqueuedAt:
+              type: string
+              format: date-time
+            completedAt:
+              type: string
+              format: date-time
+          required:
+            - jobId
+            - status
+            - cohort
+            - field
+            - counts
+            - enqueuedAt
+          additionalProperties: false
+        emailListMaterializations:
+          type: array
+          items:
+            type: object
+            properties:
+              fieldName:
+                type: string
+                description: Custom-field key the address list was stamped onto.
+              providedEmails:
+                type: integer
+                description: Distinct addresses supplied after normalization.
+              matchedContacts:
+                type: integer
+                description: Addresses that matched an EXISTING contact and were stamped — a gap vs `providedEmails` means those addresses have no contact record (import them first).
+            required:
+              - fieldName
+              - providedEmails
+              - matchedContacts
+            additionalProperties: false
+          description: Present when an `email in [...]` clause with more than 100 addresses was auto-converted into a stamped custom-field snapshot.
+      required:
+        - audienceId
+        - audienceName
+        - filters
+        - count
+        - createdAt
+        - updatedAt
+      additionalProperties: false
     AudiencesPostRequest:
       type: object
       properties:
@@ -9491,6 +9856,7 @@ components:
             - filters
             - logicalOperator
           additionalProperties: false
+          description: 'Filter clauses combined by `logicalOperator`. For specific addresses use `{ field: "email", operator: "in", value: ["a@x.com", ...] }` — a list over 100 addresses is auto-converted into a stamped custom-field snapshot of the listed EXISTING contacts (addresses without a contact record are skipped; 10,000 max).'
       required:
         - name
         - filters
@@ -9852,6 +10218,7 @@ components:
             - filters
             - logicalOperator
           additionalProperties: false
+          description: 'Filter clauses combined by `logicalOperator`. For specific addresses use `{ field: "email", operator: "in", value: ["a@x.com", ...] }` — a list over 100 addresses is auto-converted into a stamped custom-field snapshot of the listed EXISTING contacts (addresses without a contact record are skipped; 10,000 max).'
         expectedUpdatedAt:
           type: string
           format: date-time
@@ -11411,13 +11778,226 @@ components:
       additionalProperties: {}
   parameters: {}
 paths:
+  /v1/email-groups:
+    get:
+      operationId: listEmailGroups
+      tags:
+        - Emails
+      summary: List email groups
+      description: "Lists the brand's saved email groups in their stored order, followed by the virtual `{ groupId: \"ungrouped\", groupName: \"Ungrouped\" }` group. The virtual group is returned even when there are no saved groups. Page with `limit` and `cursor`."
+      parameters:
+        - schema:
+            anyOf:
+              - type: number
+              - type: string
+          required: false
+          name: limit
+          in: query
+        - schema:
+            type: string
+            minLength: 1
+            maxLength: 512
+          required: false
+          name: cursor
+          in: query
+        - name: X-Brand-Id
+          in: header
+          required: false
+          description: The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 64
+          example: kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+      responses:
+        "200":
+          description: An ordered page of email groups.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+            X-RateLimit-Limit:
+              schema:
+                type: integer
+                description: Requests allowed in the current rolling rate limit window.
+                example: 100
+              required: true
+              description: Requests allowed in the current rolling rate limit window.
+            X-RateLimit-Remaining:
+              schema:
+                type: integer
+                description: Requests remaining in the current rolling rate limit window.
+                example: 99
+              required: true
+              description: Requests remaining in the current rolling rate limit window.
+            X-RateLimit-Reset:
+              schema:
+                type: integer
+                description: Unix timestamp in seconds for when the rolling window fully resets.
+                example: 1712592360
+              required: true
+              description: Unix timestamp in seconds for when the rolling window fully resets.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmailGroupsListResponse"
+              example:
+                data:
+                  - groupId: grp_lifecycle
+                    groupName: Lifecycle
+                  - groupId: ungrouped
+                    groupName: Ungrouped
+                pagination:
+                  limit: 100
+                  cursor: null
+                  hasMore: false
+        "400":
+          description: "The request body or query string was invalid (unknown key, wrong type, or missing required field). Strict schemas reject unknown keys — including `brandId`: a brand is named with the `X-Brand-Id` HEADER (organization-scoped credentials) or resolved from the credential itself (brand-scoped ones), never as a body or query field."
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              example:
+                error:
+                  code: INVALID_REQUEST
+                  type: invalid_request
+                  message: Request validation failed.
+                  suggestion: Fix the field reported in `param` and retry.
+                  docs: https://docs.brew.new/api-reference/api/errors
+                  param: cursor
+        "401":
+          description: The API key was missing, invalid, or revoked.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              example:
+                error:
+                  code: INVALID_API_KEY
+                  type: authentication_error
+                  message: The provided API key is invalid.
+                  suggestion: Check the API key format and retry with a valid active key.
+                  docs: https://docs.brew.new/api-reference/api/authentication
+        "403":
+          description: The caller does not have the required `emails` permission.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              example:
+                error:
+                  code: INSUFFICIENT_PERMISSIONS
+                  type: authorization_error
+                  message: The caller does not have the required permission.
+                  suggestion: Use an API key or session with the required permission.
+                  docs: https://docs.brew.new/api-reference/api/authentication
+                  param: emails
+        "429":
+          description: The request hit the rolling rate limit window.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+            X-RateLimit-Limit:
+              schema:
+                type: integer
+                description: Requests allowed in the current rolling rate limit window.
+                example: 100
+              required: true
+              description: Requests allowed in the current rolling rate limit window.
+            X-RateLimit-Remaining:
+              schema:
+                type: integer
+                description: Requests remaining in the current rolling rate limit window.
+                example: 99
+              required: true
+              description: Requests remaining in the current rolling rate limit window.
+            X-RateLimit-Reset:
+              schema:
+                type: integer
+                description: Unix timestamp in seconds for when the rolling window fully resets.
+                example: 1712592360
+              required: true
+              description: Unix timestamp in seconds for when the rolling window fully resets.
+            Retry-After:
+              schema:
+                type: integer
+                description: Seconds to wait before retrying the request.
+                example: 42
+              required: true
+              description: Seconds to wait before retrying the request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              example:
+                error:
+                  code: RATE_LIMITED
+                  type: rate_limit
+                  message: Too many requests.
+                  suggestion: Wait for the retry window before sending another request.
+                  docs: https://docs.brew.new/api-reference/api/rate-limits
+                  retryAfter: 42
+        "500":
+          description: Unexpected internal error.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              example:
+                error:
+                  code: INTERNAL_ERROR
+                  type: internal_error
+                  message: An unexpected error occurred.
+                  suggestion: Retry the request. If it keeps failing, contact support.
+                  docs: https://docs.brew.new/api-reference/api/errors
   /v1/emails:
     get:
       operationId: listEmails
       tags:
         - Emails
       summary: Get emails
-      description: "Unified email-design read. Omit `emailId` to LIST the brand’s designs (newest first) under `{ data, pagination }` — each row carries `emailId`, the latest `emailVersionId`, `title`, `status`, `previewImage` (when captured), and `updatedAt`. Filter with `?status=` and the `createdAtFrom/To` + `updatedAtFrom/To` ISO-8601 windows; paginate with `limit` + `cursor`. Pass `?emailId=` to fetch ONE design — returns `{ data: [row] }` (no `pagination`), `404 EMAIL_NOT_FOUND` on an unknown / cross-brand id. Add detail-only `?include=html` (rendered HTML) and/or `?include=versions` (lean `{ version, emailVersionId }` history) — both rejected without `emailId`."
+      description: "Unified email-design read. Omit `emailId` to LIST the brand’s designs under `{ data, pagination }` — each row carries `emailId`, the latest `emailVersionId`, `title`, `status`, `previewImage` (when captured), `createdAt`, `updatedAt`, `groupId`, and `groupName`. Filter with one `?groupId=` (`ungrouped` selects designs with no saved group), `?status=`, and the `createdAtFrom/To` + `updatedAtFrom/To` ISO-8601 windows. Sort with `sort=updatedAt|createdAt|title` and `order=asc|desc`; defaults are `updatedAt desc`. Paginate with `limit` + `cursor`. An unknown group returns an empty page. Pass `?emailId=` to fetch ONE design — returns `{ data: [row] }` (no `pagination`), `404 EMAIL_NOT_FOUND` on an unknown / cross-brand id. Add detail-only `?include=html` (rendered HTML) and/or `?include=versions` (lean `{ version, emailVersionId }` history) — detail reads reject the list-only group/sort/order fields."
       parameters:
         - schema:
             type: string
@@ -11437,31 +12017,71 @@ paths:
               - streaming
               - complete
               - error
+            description: Only designs in this generation status.
           required: false
+          description: Only designs in this generation status.
           name: status
           in: query
         - schema:
             type: string
-            format: date-time
+            minLength: 1
+            maxLength: 64
+            description: One exact email group id, or "ungrouped" for emails outside a named group.
           required: false
+          description: One exact email group id, or "ungrouped" for emails outside a named group.
+          name: groupId
+          in: query
+        - schema:
+            type: string
+            enum:
+              - updatedAt
+              - createdAt
+              - title
+            description: Catalog field to sort by. Defaults to updatedAt.
+          required: false
+          description: Catalog field to sort by. Defaults to updatedAt.
+          name: sort
+          in: query
+        - schema:
+            type: string
+            enum:
+              - asc
+              - desc
+            description: Sort direction. Defaults to desc.
+          required: false
+          description: Sort direction. Defaults to desc.
+          name: order
+          in: query
+        - schema:
+            type: string
+            format: date-time
+            description: Include designs created at or after this ISO-8601 timestamp.
+          required: false
+          description: Include designs created at or after this ISO-8601 timestamp.
           name: createdAtFrom
           in: query
         - schema:
             type: string
             format: date-time
+            description: Include designs created at or before this ISO-8601 timestamp.
           required: false
+          description: Include designs created at or before this ISO-8601 timestamp.
           name: createdAtTo
           in: query
         - schema:
             type: string
             format: date-time
+            description: Include designs updated at or after this ISO-8601 timestamp.
           required: false
+          description: Include designs updated at or after this ISO-8601 timestamp.
           name: updatedAtFrom
           in: query
         - schema:
             type: string
             format: date-time
+            description: Include designs updated at or before this ISO-8601 timestamp.
           required: false
+          description: Include designs updated at or before this ISO-8601 timestamp.
           name: updatedAtTo
           in: query
         - schema:
@@ -11530,18 +12150,24 @@ paths:
                     title: Welcome Email
                     status: complete
                     previewImage: https://cdn.brew.new/p/eml_welcome.png
+                    createdAt: 2026-04-01T10:00:00.000Z
                     updatedAt: 2026-04-08T12:34:56.789Z
+                    groupId: grp_lifecycle
+                    groupName: Lifecycle
                   - emailId: eml_digest
                     emailVersionId: emv_digest_v1
                     title: May product digest
                     status: complete
+                    createdAt: 2026-04-07T08:00:00.000Z
                     updatedAt: 2026-04-07T09:00:00.000Z
+                    groupId: ungrouped
+                    groupName: Ungrouped
                 pagination:
                   limit: 100
                   cursor: null
                   hasMore: false
         "400":
-          description: Invalid query (unknown param, bad enum, `*From` later than its `*To`, or `include` without `emailId`).
+          description: Invalid query (unknown param, bad enum, incompatible cursor, `*From` later than its `*To`, detail-only `include` without `emailId`, or list-only group/sort/order with `emailId`).
           headers:
             x-request-id:
               schema:
@@ -11706,7 +12332,9 @@ paths:
       description: |-
         Generates a new design through the Brew email agent. Emails are pure DESIGNS in the decoupled model — no send state, no type. Sending happens later — `POST /v1/sends` delivers the design to a target (a saved audience, an inline list, or a single address) via a verified domain (or fires a one-off test with `test: true`), or a `sendEmail` node in an automation graph references the returned `emailId` + `emailVersionId`.
 
-        Returns `201` with `{ emailId, emailVersionId, html, previewImage? }` when a design was persisted, or `200` with `{ response }` when the agent answered in prose without writing a design. Supports `Idempotency-Key` for safe retries.
+        Pass an optional `groupId` from `GET /v1/email-groups` to place the new design in that group. Omit it or pass `ungrouped` for Ungrouped. The group is validated before metered generation begins.
+
+        Returns `201` with `{ emailId, emailVersionId, html, previewImage?, groupId }` when a design was persisted, or `200` with `{ response }` when the agent answered in prose without writing a design. Supports `Idempotency-Key` for safe retries.
       parameters:
         - &a1
           name: Idempotency-Key
@@ -11745,6 +12373,7 @@ paths:
                   prompt: Summarize this month’s product updates into a newsletter.
                   contentUrls:
                     - https://example.com/blog/product-launch
+                  groupId: grp_newsletters
       responses:
         "200":
           description: The agent answered in prose without writing a design (`{ response }`).
@@ -11817,12 +12446,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/EmailGenerateGeneratedResponse"
+                $ref: "#/components/schemas/EmailCreateGeneratedResponse"
               example: &a2
                 emailId: eml_2SmZOWV3ZQ7W5x6g3m4p
                 emailVersionId: emv_2SmZOWV3ZQ7W5x6g3m4p_v1
                 html: <!DOCTYPE html><html><body>Welcome to Brew.</body></html>
                 previewImage: https://storage.example.com/emails/eml_2SmZOWV3ZQ7W5x6g3m4p.png
+                groupId: ungrouped
         "400":
           description: "The request body or query string was invalid (unknown key, wrong type, or missing required field). Strict schemas reject unknown keys — including `brandId`: a brand is named with the `X-Brand-Id` HEADER (organization-scoped credentials) or resolved from the credential itself (brand-scoped ones), never as a body or query field."
           headers:
@@ -11914,7 +12544,7 @@ paths:
                   docs: https://docs.brew.new/api-reference/api/authentication
                   param: emails
         "404":
-          description: The brand bound to the API key is missing or not accessible.
+          description: The brand is missing/inaccessible, or the requested email group does not exist in that brand.
           headers:
             x-request-id:
               schema:
@@ -11927,13 +12557,26 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelope"
-              example:
-                error:
-                  code: BRAND_NOT_FOUND
-                  type: not_found
-                  message: The requested brand was not found.
-                  suggestion: Verify in the dashboard that the brand bound to this API key still exists.
-                  docs: https://docs.brew.new/api-reference/api/errors
+              examples:
+                brandNotFound:
+                  summary: Brand is unavailable
+                  value:
+                    error:
+                      code: BRAND_NOT_FOUND
+                      type: not_found
+                      message: The requested brand was not found.
+                      suggestion: Verify in the dashboard that the brand bound to this API key still exists.
+                      docs: https://docs.brew.new/api-reference/api/errors
+                groupNotFound:
+                  summary: Email group is unavailable
+                  value:
+                    error:
+                      code: EMAIL_GROUP_NOT_FOUND
+                      type: not_found
+                      message: No email group exists with id 'grp_missing'.
+                      suggestion: List email groups with GET /v1/email-groups to find a valid groupId.
+                      docs: https://docs.brew.new/api-reference/api/errors
+                      param: groupId
         "409":
           description: The same `Idempotency-Key` was reused with a different request body.
           headers:
@@ -15601,7 +16244,7 @@ paths:
       description: |-
         Sends an email design. Polymorphic on the `test` flag:
 
-        - **`test: true`** → a synchronous one-off TEST delivery of the design’s current (or pinned) body to a single address. Forces the Brew default sender (no verified domain needed), targets one `to` address, and never creates a `Send` row. Returns **`200`** `{ status: "sent", recipient }`.
+        - **`test: true`** → a synchronous one-off TEST delivery of the design’s current (or pinned) body to a single address, with a `[TEST]` subject prefix. Sends from the Brew default sender unless a verified org-owned `domainId` is supplied (`fromEmail`/`senderName` customize it; an unverified/foreign domain is rejected, never downgraded). Optional `variables` supply example values for `{{ var | fallback }}` merge tags — a value wins over the declared fallback. Targets one `to` address and never creates a `Send` row. Returns **`200`** `{ status: "sent", recipient }`.
         - **default / `test: false`** → a campaign send combining the design (`emailId`, optionally pinned to `emailVersionId`), a verified `domainId`, and a target — a saved `audienceId` OR inline `to` (a single email or an array, max 50) — into one delivery event. The same design can be sent unlimited times; every call mints a new send. Returns **`202`** `{ sendId, runId }` — poll via `GET /v1/analytics/sends?sendId=`.
 
         Campaign target — provide EXACTLY ONE of `audienceId` or `to`. Inline recipients face the same unsubscribe/suppression gate and per-recipient quota as audience sends. For per-recipient event-driven delivery, publish an automation and fire its trigger (`POST /v1/automations/triggers/{triggerEventId}/fire`).
@@ -15632,6 +16275,17 @@ paths:
                   emailId: eml_welcome
                   subject: Welcome to Brew
                   to: qa@acme.com
+              testVerifiedDomain:
+                summary: Test from your verified domain with example merge-tag values
+                value:
+                  test: true
+                  emailId: eml_welcome
+                  subject: Welcome {{ firstName | there }}
+                  to: qa@acme.com
+                  domainId: kx7bkh53hasmfeh5kd7sqgykt187g8ww
+                  senderName: Vanessa
+                  variables:
+                    firstName: Sarah
               now:
                 summary: Send the latest version to an audience now
                 value:
@@ -16610,7 +17264,7 @@ paths:
       tags:
         - Analytics
       summary: Brand overview (totals, rates, timeseries)
-      description: "Windowed brand overview — the EXACT read behind the app's /analytics metric cards + chart (same unique-recipient and machine-click rules), so API/MCP numbers can never disagree with the page. Defaults to the last 7 days. Optional filters, all of which COMPOSE freely: `source` (csv of send sources), `automationId`, `emailId`, `audienceId` (csv, ≤20), `triggerEventId` (csv, ≤10 — integration trigger-events, resolved to their wired automations), `domain` (sending domain), and `recipient` (csv of recipient rules — same grammar and name as `GET /v1/analytics/events`). A single filter is answered from pre-aggregated rollup rows; any combination (and anything with `domain` or `recipient`, neither of which has a rollup dimension) is answered by aggregating raw events instead — exact, but capped, so watch `truncated` on wide windows. Returns `{ totals, rates, buckets, granularity, timeZone, range, truncated }` — `truncated: true` means the window exceeded the scan budget; narrow the range. Requires the `emails` scope."
+      description: "Windowed brand overview — the EXACT read behind the app's /analytics metric cards + chart (same per-recipient dedup and machine-click/open exclusion rules), so API/MCP numbers can never disagree with the page. Defaults to the last 7 days. Optional filters, all of which COMPOSE freely: `source` (csv of send sources), `automationId`, `emailId`, `audienceId` (csv, ≤20), `triggerEventId` (csv, ≤10 — integration trigger-events, resolved to their wired automations), `domain` (sending domain), and `recipient` (csv of recipient rules — same grammar and name as `GET /v1/analytics/events`). A single filter is answered from pre-aggregated rollup rows; any combination (and anything with `domain` or `recipient`, neither of which has a rollup dimension) is answered by aggregating raw events instead — exact, but capped, so watch `truncated` on wide windows. Returns `{ totals, rates, buckets, granularity, timeZone, range, truncated }` — `truncated: true` means the window exceeded the scan budget; narrow the range. Requires the `emails` scope."
       parameters:
         - name: from
           in: query
@@ -16730,9 +17384,7 @@ paths:
                   sent: 5000
                   delivered: 4920
                   opened: 2110
-                  openedTotal: 3480
                   clicked: 540
-                  clickedTotal: 812
                   bounced: 80
                   complained: 3
                   unsubscribed: 12
@@ -17364,7 +18016,7 @@ paths:
       tags:
         - Analytics
       summary: Unified events feed
-      description: "Read-only window over the brand’s analytics events across domains (email, automation, trigger, inbound). Defaults to the last 7 days. Equality filters: `recipientEmail`, `eventType`, `automationId`, `sendId` (join back to `/v1/analytics/sends?sendId=`). Recipient rules — `recipient` (csv, ≤10): a full address matches exactly, `@domain` matches everyone on that domain, any other text matches as a substring, and a `!` prefix excludes (`recipient=@clay.com,!ceo@clay.com` = clay recipients except the CEO); includes OR together, excludes always apply. Send-object facets — `source` (csv of send sources), `audienceId` (csv, ≤20), `emailId` (design), `domain` (sending domain), `triggerEventId` (csv, ≤10 — integration trigger-events resolved to their wired automations): when ANY facet or recipient rule is present the feed narrows to EMAIL events only and each row is enriched with `sendSource` + `sendContext` (plus `triggerProvider`/`triggerTitle` on integration/custom-triggered rows). Machine/bot-classified `clicked` rows are EXCLUDED by default (matching `/v1/analytics/overview`); pass `includeMachineClicks=true` to include the raw rows (audit/debug only). Cursor pagination — pass `pagination.cursor` back as `?cursor=`; loop `while (cursor !== null)`. Requires the `emails` scope."
+      description: "Read-only window over the brand’s analytics events across domains (email, automation, trigger, inbound). Defaults to the last 7 days. Equality filters: `recipientEmail`, `eventType`, `automationId`, `sendId` (join back to `/v1/analytics/sends?sendId=`). Recipient rules — `recipient` (csv, ≤10): a full address matches exactly, `@domain` matches everyone on that domain, any other text matches as a substring, and a `!` prefix excludes (`recipient=@clay.com,!ceo@clay.com` = clay recipients except the CEO); includes OR together, excludes always apply. Send-object facets — `source` (csv of send sources), `audienceId` (csv, ≤20), `emailId` (design), `domain` (sending domain), `triggerEventId` (csv, ≤10 — integration trigger-events resolved to their wired automations): when ANY facet or recipient rule is present the feed narrows to EMAIL events only and each row is enriched with `sendSource` + `sendContext` (plus `triggerProvider`/`triggerTitle` on integration/custom-triggered rows). Machine/bot-classified `clicked` AND `opened` rows (scanner detonation, Apple-proxy prefetch) are EXCLUDED by default (matching `/v1/analytics/overview`); pass `includeMachineClicks=true` / `includeMachineOpens=true` to include the raw rows (audit/debug only). Cursor pagination — pass `pagination.cursor` back as `?cursor=`; loop `while (cursor !== null)`. Requires the `emails` scope."
       parameters:
         - name: from
           in: query
@@ -17457,6 +18109,12 @@ paths:
           in: query
           required: false
           description: "Machine/bot-classified `clicked` rows are excluded by default. Pass `true` to include the raw rows (they carry `machineGenerated: true` + a `clickBotReason`; audit/debug only)."
+          schema:
+            type: boolean
+        - name: includeMachineOpens
+          in: query
+          required: false
+          description: Machine/bot-classified `opened` rows (security-scanner pixel detonation, Apple-proxy prefetch) and still-classifying opens are excluded by default. Pass `true` to include the raw rows (they carry `machineGenerated` + an `openBotReason` and `openFetchSource`; audit/debug only).
           schema:
             type: boolean
         - name: limit
@@ -24382,7 +25040,7 @@ paths:
       tags:
         - Audiences
       summary: Create an audience
-      description: 'Creates a saved audience from a name + filter set (`{ filters: [{ field, operator, value? }], logicalOperator: "and" | "or" }`). Returns `201` with the bare audience row.'
+      description: 'Creates a saved audience from a name + filter set (`{ filters: [{ field, operator, value? }], logicalOperator: "and" | "or" }`). Returns `201` with the bare audience row. An `email in [...]` clause listing more than 100 addresses is converted automatically: a fresh date custom field is stamped on the listed EXISTING contacts and the stored filter becomes `customFields.<field> is_not_empty` (a snapshot — addresses with no contact record are skipped), reported back as `emailListMaterializations`; 10,000 addresses max per clause.'
       parameters:
         - *a1
         - name: X-Brand-Id
@@ -24443,7 +25101,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Audience"
+                $ref: "#/components/schemas/AudienceWriteResponse"
               example: *a16
         "400":
           description: "The request body or query string was invalid (unknown key, wrong type, or missing required field). Strict schemas reject unknown keys — including `brandId`: a brand is named with the `X-Brand-Id` HEADER (organization-scoped credentials) or resolved from the credential itself (brand-scoped ones), never as a body or query field."
@@ -24859,7 +25517,7 @@ paths:
       tags:
         - Audiences
       summary: Update an audience
-      description: Updates `name` and/or `filters` (at least one required). Pass the latest row’s `updatedAt` as `expectedUpdatedAt` to reject stale read-modify-write edits. Returns the bare updated row.
+      description: "Updates `name` and/or `filters` (at least one required). Pass the latest row’s `updatedAt` as `expectedUpdatedAt` to reject stale read-modify-write edits. Returns the bare updated row. Replacement filters follow the same email-list rule as create: an `email in [...]` clause over 100 addresses is converted into a stamped custom-field snapshot (a fresh field per update), reported as `emailListMaterializations`."
       parameters:
         - schema:
             type: string
@@ -24923,7 +25581,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Audience"
+                $ref: "#/components/schemas/AudienceWriteResponse"
               example: *a16
         "400":
           description: Strict-body violation or no editable field supplied (at least one of `name` / `filters` is required).
