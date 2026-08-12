@@ -76,6 +76,7 @@ import { emailsExportCommand } from './commands/emails/export'
 import { emailsGenerateCommand } from './commands/emails/generate'
 import { emailsGetCommand } from './commands/emails/get'
 import { emailsGetInboxPlacementResultsCommand } from './commands/emails/get-inbox-placement-results'
+import { emailsGroupsListCommand } from './commands/emails/groups/list'
 import { emailsImportCommand } from './commands/emails/import'
 import { emailsImportFigmaCommand } from './commands/emails/import-figma'
 import { emailsListCommand } from './commands/emails/list'
@@ -123,6 +124,7 @@ export const ALL_COMMANDS: readonly CommandSpec[] = [
   fieldsCreateCommand,
   fieldsDeleteCommand,
   emailsListCommand,
+  emailsGroupsListCommand,
   emailsGetCommand,
   emailsGenerateCommand,
   emailsImportCommand,

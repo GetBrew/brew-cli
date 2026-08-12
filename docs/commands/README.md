@@ -2,7 +2,7 @@
 
 <!-- GENERATED FILE — do not edit. Regenerate with `bun run docs:commands`. -->
 
-95 commands. Classes: read (always safe), write
+96 commands. Classes: read (always safe), write
 (mutating, retry-safe), destructive (irreversible — the confirmation
 protocol applies: interactive y/N on a TTY, exit 4 + JSON envelope with
 a `confirmCommand` otherwise, `--yes` to proceed).
@@ -41,6 +41,7 @@ a `confirmCommand` otherwise, `--yes` to proceed).
 | `brew-cli fields create` | write | `POST /v1/fields` | Create a custom contact field |
 | `brew-cli fields delete` | destructive | `DELETE /v1/fields/{fieldName}` | Delete a custom field definition |
 | `brew-cli emails list` | read | `GET /v1/emails` | List email designs (the single email read) |
+| `brew-cli emails groups list` | read | `GET /v1/email-groups` | List email groups in display order, including Ungrouped |
 | `brew-cli emails get` | read | `GET /v1/emails` | Fetch one email design by id |
 | `brew-cli emails generate` | write ($) | `POST /v1/emails` | Generate a new on-brand email design from a prompt |
 | `brew-cli emails import` | write | `POST /v1/emails/import` | Import existing HTML, MJML, or JSX as a new editable design |
@@ -413,6 +414,9 @@ List email designs (the single email read)
 - Class: read
 - SDK: `brew.emails.list(...)`
 - `--status <status>` — Filter by status: streaming | complete | error
+- `--group-id <groupId>` — Filter by one group id; use ungrouped for no saved group
+- `--sort <field>` — Sort by updatedAt | createdAt | title
+- `--order <order>` — Sort order: asc | desc
 - `--created-at-from <iso>` — Created at or after (ISO)
 - `--created-at-to <iso>` — Created at or before (ISO)
 - `--updated-at-from <iso>` — Updated at or after (ISO)
@@ -424,8 +428,25 @@ List email designs (the single email read)
 
 ```bash
 brew-cli emails list --status complete --limit 10
+brew-cli emails list --group-id ungrouped --sort title --order asc
 brew-cli emails list --updated-at-from 2026-08-01T00:00:00Z
 brew-cli emails list --all --json
+```
+
+### brew-cli emails groups list
+
+List email groups in display order, including Ungrouped
+
+- Route: `GET /v1/email-groups`
+- Class: read
+- `--limit <n>` — Page size, 1-100 (default 100)
+- `--cursor <cursor>` — Opaque pagination cursor from a previous page
+- `--all` — Follow the cursor and return every page as one result
+- `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
+
+```bash
+brew-cli emails groups list
+brew-cli emails groups list --all --json
 ```
 
 ### brew-cli emails get
@@ -454,11 +475,13 @@ Generate a new on-brand email design from a prompt
 - `--prompt <text>` — What the email should be
 - `--reference-email-id <emailId>` — Existing design or template to base the layout on
 - `--content-urls <urls...>` — Page URL(s) to pull copy and imagery from, repeatable
+- `--group-id <groupId>` — Destination group id; omit or use ungrouped for Ungrouped
 - `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
 - `--idempotency-key <key>` — Idempotency-Key for safe retries (auto-generated otherwise)
 
 ```bash
 brew-cli emails generate --prompt "Product-launch email for the fall sale"
+brew-cli emails generate --prompt "Welcome email" --group-id grp_welcome
 brew-cli emails generate --prompt "Welcome email" --content-urls https://example.com/pricing
 ```
 
