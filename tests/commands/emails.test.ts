@@ -234,6 +234,35 @@ describe('emails generate', () => {
     expect(result.stderr).toContain('Generating email')
   })
 
+  it('sends --subject-line as subjectLine', async () => {
+    let body: unknown
+    server.use(
+      http.post(EMAILS_URL, async ({ request }) => {
+        body = await request.json()
+        return HttpResponse.json(
+          { emailId: 'eml_new', status: 'complete' },
+          { status: 201 }
+        )
+      })
+    )
+    const result = await runCli(
+      [
+        'emails',
+        'generate',
+        '--prompt',
+        'Fall launch email',
+        '--subject-line',
+        'Fall arrivals are here',
+      ],
+      { env: env(), extraCommands: EXTRA }
+    )
+    expect(result.code).toBe(0)
+    expect(body).toEqual({
+      prompt: 'Fall launch email',
+      subjectLine: 'Fall arrivals are here',
+    })
+  })
+
   it('requires a prompt', async () => {
     const result = await runCli(['emails', 'generate'], {
       env: env(),
@@ -275,6 +304,34 @@ describe('emails import', () => {
       title: 'Legacy',
     })
   })
+
+  it('sends --subject-line as subjectLine', async () => {
+    let body: unknown
+    server.use(
+      http.post(`${EMAILS_URL}/import`, async ({ request }) => {
+        body = await request.json()
+        return HttpResponse.json({ emailId: 'eml_imp' }, { status: 201 })
+      })
+    )
+    const dir = mkdtempSync(join(tmpdir(), 'brew-cli-import-'))
+    const filePath = join(dir, 'legacy.html')
+    writeFileSync(filePath, '<html><body>Hi</body></html>')
+    const result = await runCli(
+      [
+        'emails',
+        'import',
+        '--file',
+        filePath,
+        '--format',
+        'html',
+        '--subject-line',
+        'This month at Brew',
+      ],
+      { env: env(), extraCommands: EXTRA }
+    )
+    expect(result.code).toBe(0)
+    expect(body).toMatchObject({ subjectLine: 'This month at Brew' })
+  })
 })
 
 describe('emails edit', () => {
@@ -295,7 +352,55 @@ describe('emails edit', () => {
     expect(result.stderr).toContain('Editing email')
   })
 
-  it('requires a prompt or --input', async () => {
+  it('patches subject-only without an AI prompt (no generation heartbeat)', async () => {
+    let body: unknown
+    server.use(
+      http.patch(`${EMAILS_URL}/eml_1`, async ({ request }) => {
+        body = await request.json()
+        return HttpResponse.json({ emailId: 'eml_1', status: 'complete' })
+      })
+    )
+    const result = await runCli(
+      ['emails', 'edit', 'eml_1', '--subject-line', 'Your September roundup'],
+      { env: env(), extraCommands: EXTRA }
+    )
+    expect(result.code).toBe(0)
+    expect(body).toEqual({ subjectLine: 'Your September roundup' })
+    // Subject-only skips the agent server-side, so promising a 30-90s edit
+    // would be a lie.
+    expect(result.stderr).toContain('Setting the subject line')
+    expect(result.stderr).not.toContain('Editing email')
+  })
+
+  it('sends both when a prompt and a subject line are given', async () => {
+    let body: unknown
+    server.use(
+      http.patch(`${EMAILS_URL}/eml_1`, async ({ request }) => {
+        body = await request.json()
+        return HttpResponse.json({ emailId: 'eml_1', status: 'complete' })
+      })
+    )
+    const result = await runCli(
+      [
+        'emails',
+        'edit',
+        'eml_1',
+        '--prompt',
+        'Tighten the hero copy',
+        '--subject-line',
+        'Fall arrivals are here',
+      ],
+      { env: env(), extraCommands: EXTRA }
+    )
+    expect(result.code).toBe(0)
+    expect(body).toEqual({
+      prompt: 'Tighten the hero copy',
+      subjectLine: 'Fall arrivals are here',
+    })
+    expect(result.stderr).toContain('Editing email')
+  })
+
+  it('requires a prompt or a subject line (or --input)', async () => {
     const result = await runCli(['emails', 'edit', 'eml_1'], {
       env: env(),
       extraCommands: EXTRA,

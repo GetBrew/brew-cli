@@ -46,7 +46,7 @@ a `confirmCommand` otherwise, `--yes` to proceed).
 | `brew-cli emails generate` | write ($) | `POST /v1/emails` | Generate a new on-brand email design from a prompt |
 | `brew-cli emails import` | write | `POST /v1/emails/import` | Import existing HTML, MJML, or JSX as a new editable design |
 | `brew-cli emails import-figma` | write | `POST /v1/emails/figma` | Convert one Figma frame into an editable design (deterministic, free) |
-| `brew-cli emails edit` | write ($) | `PATCH /v1/emails/{emailId}` | AI-edit an email design (creates a new latest version) |
+| `brew-cli emails edit` | write ($) | `PATCH /v1/emails/{emailId}` | AI-edit an email design, and/or set its subject line (subject-only is free) |
 | `brew-cli emails clone` | write | `POST /v1/emails/{emailId}/clone` | Clone a design into a new one (exact snapshot copy, no AI) |
 | `brew-cli emails restore` | write | `POST /v1/emails/{emailId}/restore` | Restore a previous version as the new latest (non-destructive) |
 | `brew-cli emails delete` | destructive | `DELETE /v1/emails/{emailId}` | Hard-delete an email design and all its versions (idempotent) |
@@ -476,12 +476,14 @@ Generate a new on-brand email design from a prompt
 - `--reference-email-id <emailId>` — Existing design or template to base the layout on
 - `--content-urls <urls...>` — Page URL(s) to pull copy and imagery from, repeatable
 - `--group-id <groupId>` — Destination group id; omit or use ungrouped for Ungrouped
+- `--subject-line <text>` — The design's default inbox subject line
 - `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
 - `--idempotency-key <key>` — Idempotency-Key for safe retries (auto-generated otherwise)
 
 ```bash
 brew-cli emails generate --prompt "Product-launch email for the fall sale"
 brew-cli emails generate --prompt "Welcome email" --group-id grp_welcome
+brew-cli emails generate --prompt "Welcome email" --subject-line "Welcome to Brew"
 brew-cli emails generate --prompt "Welcome email" --content-urls https://example.com/pricing
 ```
 
@@ -496,11 +498,13 @@ Import existing HTML, MJML, or JSX as a new editable design
 - `--format <format>` — Source format: html | mjml | jsx
 - `--title <title>` — Design title
 - `--base-url <url>` — Base URL for resolving relative asset links
+- `--subject-line <text>` — The design's default inbox subject line
 - `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
 - `--idempotency-key <key>` — Idempotency-Key for safe retries (auto-generated otherwise)
 
 ```bash
 brew-cli emails import --file newsletter.html --format html --title "Legacy newsletter"
+brew-cli emails import --file newsletter.html --format html --subject-line "This month at Brew"
 cat email.html | brew-cli emails import --file - --format html
 ```
 
@@ -513,15 +517,17 @@ Convert one Figma frame into an editable design (deterministic, free)
 - `--url <figmaUrl>` — Figma frame link; must include a node-id query parameter
 - `--title <title>` — Design title (default: the Figma frame name)
 - `--format <format>` — Representation returned in content: jsx (default) or html
+- `--subject-line <text>` — The design's default inbox subject line
 - `--idempotency-key <key>` — Idempotency-Key for safe retries (auto-generated otherwise)
 
 ```bash
 brew-cli emails import-figma --url "https://www.figma.com/design/abc123/Launch?node-id=1-2"
+brew-cli emails import-figma --url "https://www.figma.com/design/abc123/Launch?node-id=1-2" --subject-line "Launch day is here"
 ```
 
 ### brew-cli emails edit
 
-AI-edit an email design (creates a new latest version)
+AI-edit an email design, and/or set its subject line (subject-only is free)
 
 - Route: `PATCH /v1/emails/{emailId}`
 - Class: write
@@ -529,12 +535,14 @@ AI-edit an email design (creates a new latest version)
 - SDK: `brew.emails.edit(...)`
 - Argument `emailId` — Design id to edit
 - `--prompt <text>` — The edit instruction
-- `--email-version-id <id>` — Edit from a specific version (default: latest)
+- `--email-version-id <id>` — Edit from a specific version (default: latest); needs --prompt
 - `--content-urls <urls...>` — Page URL(s) to pull copy and imagery from, repeatable
+- `--subject-line <text>` — The design's default inbox subject line; alone it skips the AI run
 - `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
 
 ```bash
 brew-cli emails edit eml_2SmZOWV3ZQ7W5x6g3m4p --prompt "Tighten the hero copy"
+brew-cli emails edit eml_2SmZOWV3ZQ7W5x6g3m4p --subject-line "Your September roundup"
 ```
 
 ### brew-cli emails clone

@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+- `--subject-line <text>` on `emails generate`, `emails import`,
+  `emails import-figma`, and `emails edit` — sets the design's default
+  inbox subject (distinct from `--title`, the canvas name). Sends still
+  take their own `--subject`.
+- `emails edit` no longer requires `--prompt`: pass `--subject-line`
+  alone to set the subject without an AI run. That call is a
+  deterministic in-place patch server-side — no new version, no credits,
+  and it returns immediately instead of printing the 30-90s heartbeat.
+  `--email-version-id` still requires `--prompt`.
+
 ## 0.3.0
 
 The trust layer.

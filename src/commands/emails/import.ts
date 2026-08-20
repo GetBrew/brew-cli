@@ -29,11 +29,16 @@ export const emailsImportCommand = defineCommand({
       flag: '--base-url <url>',
       summary: 'Base URL for resolving relative asset links',
     },
+    {
+      flag: '--subject-line <text>',
+      summary: "The design's default inbox subject line",
+    },
     INPUT_FLAG,
     IDEMPOTENCY_FLAG,
   ],
   examples: [
     'brew-cli emails import --file newsletter.html --format html --title "Legacy newsletter"',
+    'brew-cli emails import --file newsletter.html --format html --subject-line "This month at Brew"',
     'cat email.html | brew-cli emails import --file - --format html',
   ],
   run: async ({ ctx, flags }) => {
@@ -44,6 +49,7 @@ export const emailsImportCommand = defineCommand({
       format: flagString(flags.format),
       title: flagString(flags.title),
       baseUrl: flagString(flags.baseUrl),
+      subjectLine: flagString(flags.subjectLine),
     })
     if (typeof input.content !== 'string' || input.content.trim() === '') {
       throw new CliUsageError(

@@ -165,6 +165,43 @@ describe('emails import-figma', () => {
     expect(result.code).toBe(0)
     expect(body).toEqual({ figmaUrl: url, format: 'html' })
   })
+
+  it('sends --subject-line as subjectLine, and omits it otherwise', async () => {
+    const bodies: Array<unknown> = []
+    server.use(
+      http.post(`${API}/v1/emails/figma`, async ({ request }) => {
+        bodies.push(await request.json())
+        return HttpResponse.json(
+          { emailId: 'eml_figma', emailVersionId: 'emv_1', format: 'jsx' },
+          { status: 201 }
+        )
+      })
+    )
+    const url = 'https://www.figma.com/design/abc123/Launch?node-id=1-2'
+    const withSubject = await runCli(
+      [
+        'emails',
+        'import-figma',
+        '--url',
+        url,
+        '--subject-line',
+        'Launch day is here',
+      ],
+      { env: env(), extraCommands: EXTRA }
+    )
+    const without = await runCli(['emails', 'import-figma', '--url', url], {
+      env: env(),
+      extraCommands: EXTRA,
+    })
+
+    expect(withSubject.code).toBe(0)
+    expect(without.code).toBe(0)
+    expect(bodies[0]).toEqual({
+      figmaUrl: url,
+      subjectLine: 'Launch day is here',
+    })
+    expect(bodies[1]).toEqual({ figmaUrl: url })
+  })
 })
 
 describe('emails preview-clients', () => {
