@@ -27,10 +27,15 @@ export const emailsImportFigmaCommand = defineCommand({
       flag: '--format <format>',
       summary: 'Representation returned in content: jsx (default) or html',
     },
+    {
+      flag: '--subject-line <text>',
+      summary: "The design's default inbox subject line",
+    },
     IDEMPOTENCY_FLAG,
   ],
   examples: [
     'brew-cli emails import-figma --url "https://www.figma.com/design/abc123/Launch?node-id=1-2"',
+    'brew-cli emails import-figma --url "https://www.figma.com/design/abc123/Launch?node-id=1-2" --subject-line "Launch day is here"',
   ],
   run: async ({ ctx, flags }) => {
     const figmaUrl = flagString(flags.url)
@@ -41,6 +46,7 @@ export const emailsImportFigmaCommand = defineCommand({
     }
     const title = flagString(flags.title)
     const format = flagString(flags.format)
+    const subjectLine = flagString(flags.subjectLine)
     return {
       data: await rawRequest<FigmaToEmailResponse>(ctx, {
         method: 'POST',
@@ -49,6 +55,7 @@ export const emailsImportFigmaCommand = defineCommand({
           figmaUrl,
           ...(title === undefined ? {} : { title }),
           ...(format === undefined ? {} : { format }),
+          ...(subjectLine === undefined ? {} : { subjectLine }),
         },
         idempotencyKey: flagString(flags.idempotencyKey),
       }),
