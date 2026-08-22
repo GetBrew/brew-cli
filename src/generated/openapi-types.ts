@@ -402,7 +402,7 @@ export interface paths {
         };
         /**
          * Get a transactional email
-         * @description Read a reusable transactional email object: locked `domainId` / `emailId` / `emailVersionId`, envelope defaults, and the merge-tag list for snippets. Fire it with `POST /v1/sends { transactionId, to, payload? }`. Permission: `sends`. There is no `messageClass` on this object — purpose lives on the sending domain.
+         * @description Read a reusable transactional email object: locked `domainId` / `emailId` / `emailVersionId`, envelope defaults, and the merge-tag list for snippets. On Liquid-enabled workspaces the response also carries the payload contract — `variableTree` (every `trigger.*` / `customer.*` path the pinned template references, with array/object shape and fallbacks), `examplePayload` (a nested payload that fires verbatim), and `templating` (engine + parse validity). Recomputed from the pinned design on every read. Fire it with `POST /v1/sends { transactionId, to, payload? }`. Permission: `sends`. There is no `messageClass` on this object — purpose lives on the sending domain.
          */
         get: operations["getTransactionalEmail"];
         put?: never;
@@ -717,7 +717,15 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /**
+         * Pre-flight a trigger (ready check)
+         * @description Verifies a fire would be accepted WITHOUT firing: authenticates the key, resolves the trigger in your organization/brand scope, and checks permissions — the same gates a real `POST` hits. `status: "ready"` returns the contract a caller needs to wire an external service: `details.payloadSchema`, `details.endpoint`, and the matched published consumers (`publishedAutomations`, `publishedTransactionalEmails`, `counts`).
+         *
+         *     Use it while integrating, before anything is published: a ready trigger with `counts.automations: 0` accepts fires but starts no runs until an attached automation is published.
+         *
+         *     **Response-shape note** — responds with the same legacy fire envelope as the `POST` (`{ success, status, code, message, receivedAt, details }`).
+         */
+        get: operations["checkTriggerReady"];
         put?: never;
         /**
          * Fire a trigger
@@ -1640,6 +1648,7 @@ export interface components {
             examplePayload?: {
                 [key: string]: components["schemas"]["TransactionalPayloadValue"];
             };
+            skill?: string;
         };
         TransactionalVariableTreeNode: {
             key: string;
@@ -1650,6 +1659,9 @@ export interface components {
             /** @enum {string} */
             namespace: "trigger" | "customer" | "other";
             children: components["schemas"]["TransactionalVariableTreeNode"][];
+            /** @enum {string} */
+            inferredType?: "string" | "number" | "boolean";
+            usedIn?: ("body" | "subject" | "previewText")[];
         };
         TransactionalPayloadValue: TransactionalPayloadValue;
         AutomationNode: {
@@ -2283,6 +2295,7 @@ export interface components {
             createdAt: string;
             /** Format: date-time */
             updatedAt: string;
+            skill?: string;
         };
         TriggerEventInstance: {
             triggerInstanceId: string;
@@ -4479,6 +4492,7 @@ export interface components {
                 createdAt: string;
                 /** Format: date-time */
                 updatedAt: string;
+                skill?: string;
             }[];
             pagination?: {
                 limit: number;
@@ -10830,7 +10844,10 @@ export interface operations {
     };
     getTransactionalEmail: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Pass `skill` to add a `skill` field to the response: a complete SKILL.md-shaped wiring brief (endpoint, auth, typed payload contract, copy-paste snippets) for a coding agent or your repo. */
+                include?: "skill";
+            };
             header?: {
                 /**
                  * @description The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
@@ -10881,7 +10898,36 @@ export interface operations {
                      *           "type": "string",
                      *           "fallback": "there"
                      *         }
-                     *       ]
+                     *       ],
+                     *       "templating": {
+                     *         "engine": "liquid",
+                     *         "valid": true,
+                     *         "errors": []
+                     *       },
+                     *       "variableTree": [
+                     *         {
+                     *           "key": "order",
+                     *           "path": "trigger.order",
+                     *           "kind": "object",
+                     *           "fallback": null,
+                     *           "namespace": "trigger",
+                     *           "children": [
+                     *             {
+                     *               "key": "total",
+                     *               "path": "trigger.order.total",
+                     *               "kind": "scalar",
+                     *               "fallback": null,
+                     *               "namespace": "trigger",
+                     *               "children": []
+                     *             }
+                     *           ]
+                     *         }
+                     *       ],
+                     *       "examplePayload": {
+                     *         "order": {
+                     *           "total": "example_total"
+                     *         }
+                     *       }
                      *     }
                      */
                     "application/json": components["schemas"]["TransactionalEmail"];
@@ -13714,6 +13760,8 @@ export interface operations {
             query?: {
                 /** @description Fetch a single trigger by id (detail mode → `{ data: [row] }`). Omit to list. */
                 triggerEventId?: string;
+                /** @description Detail mode only: pass `skill` to add a `skill` field to the row — a SKILL.md-shaped wiring brief for the fire endpoint. Ignored in list mode. */
+                include?: "skill";
                 /**
                  * @description Page size (1–100). Defaults to 100.
                  * @example 50
@@ -14515,6 +14563,185 @@ export interface operations {
                      *         "suggestion": "Edit the event configuration in the integration that provisioned this trigger.",
                      *         "docs": "https://docs.brew.new/api-reference/api/errors",
                      *         "param": "triggerEventId"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description The request hit the rolling rate limit window. */
+            429: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    "X-RateLimit-Reset": number;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "RATE_LIMITED",
+                     *         "type": "rate_limit",
+                     *         "message": "Too many requests.",
+                     *         "suggestion": "Wait for the retry window before sending another request.",
+                     *         "docs": "https://docs.brew.new/api-reference/api/rate-limits",
+                     *         "retryAfter": 42
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected internal error. */
+            500: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "INTERNAL_ERROR",
+                     *         "type": "internal_error",
+                     *         "message": "An unexpected error occurred.",
+                     *         "suggestion": "Retry the request. If it keeps failing, contact support.",
+                     *         "docs": "https://docs.brew.new/api-reference/api/errors"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+        };
+    };
+    checkTriggerReady: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+                 * @example kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+                 */
+                "X-Brand-Id"?: string;
+            };
+            path: {
+                /** @description Trigger id returned by `POST /v1/automations/triggers`. Custom triggers use `tri_…` ids; integration triggers use composite ids (e.g. `clerk:org_…:brand_…:user.created`, URL-encode the colons). */
+                triggerEventId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Ready: the key, scope, and permissions all pass; `details` carries the payload contract and matched consumers. */
+            200: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    "X-RateLimit-Reset": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": true,
+                     *       "status": "ready",
+                     *       "code": "TRIGGER_EVENT_READY",
+                     *       "message": "Trigger event definition loaded successfully.",
+                     *       "triggerEventId": "tri_signup",
+                     *       "receivedAt": "2026-04-08T12:34:56.789Z",
+                     *       "details": {
+                     *         "title": "User Signed Up",
+                     *         "provider": "brew_api",
+                     *         "payloadSchema": {
+                     *           "type": "object",
+                     *           "fields": [
+                     *             {
+                     *               "key": "email",
+                     *               "type": "string",
+                     *               "required": true
+                     *             },
+                     *             {
+                     *               "key": "firstName",
+                     *               "type": "string",
+                     *               "required": false
+                     *             }
+                     *           ]
+                     *         },
+                     *         "endpoint": {
+                     *           "method": "POST",
+                     *           "path": "/v1/automations/triggers/tri_signup/fire"
+                     *         },
+                     *         "publishedAutomations": [
+                     *           {
+                     *             "automationId": "auto_abc",
+                     *             "title": "Welcome flow"
+                     *           }
+                     *         ],
+                     *         "publishedTransactionalEmails": [],
+                     *         "counts": {
+                     *           "transactionalEmails": 0,
+                     *           "automations": 1
+                     *         }
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["TriggerFireResponse"];
+                };
+            };
+            /** @description The API key was missing, invalid, or revoked. */
+            401: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "INVALID_API_KEY",
+                     *         "type": "authentication_error",
+                     *         "message": "The provided API key is invalid.",
+                     *         "suggestion": "Check the API key format and retry with a valid active key.",
+                     *         "docs": "https://docs.brew.new/api-reference/api/authentication"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description The caller does not have the required `automations` permission. */
+            403: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "INSUFFICIENT_PERMISSIONS",
+                     *         "type": "authorization_error",
+                     *         "message": "The caller does not have the required permission.",
+                     *         "suggestion": "Use an API key or session with the required permission.",
+                     *         "docs": "https://docs.brew.new/api-reference/api/authentication",
+                     *         "param": "automations"
                      *       }
                      *     }
                      */

@@ -589,6 +589,8 @@ components:
           type: object
           additionalProperties:
             $ref: "#/components/schemas/TransactionalPayloadValue"
+        skill:
+          type: string
       required:
         - transactionId
         - emailId
@@ -628,6 +630,20 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/TransactionalVariableTreeNode"
+        inferredType:
+          type: string
+          enum:
+            - string
+            - number
+            - boolean
+        usedIn:
+          type: array
+          items:
+            type: string
+            enum:
+              - body
+              - subject
+              - previewText
       required:
         - key
         - path
@@ -2398,6 +2414,8 @@ components:
         updatedAt:
           type: string
           format: date-time
+        skill:
+          type: string
       required:
         - triggerEventId
         - title
@@ -8711,6 +8729,8 @@ components:
               updatedAt:
                 type: string
                 format: date-time
+              skill:
+                type: string
             required:
               - triggerEventId
               - title
@@ -18807,8 +18827,16 @@ paths:
       tags:
         - Emails
       summary: Get a transactional email
-      description: "Read a reusable transactional email object: locked `domainId` / `emailId` / `emailVersionId`, envelope defaults, and the merge-tag list for snippets. Fire it with `POST /v1/sends { transactionId, to, payload? }`. Permission: `sends`. There is no `messageClass` on this object — purpose lives on the sending domain."
+      description: "Read a reusable transactional email object: locked `domainId` / `emailId` / `emailVersionId`, envelope defaults, and the merge-tag list for snippets. On Liquid-enabled workspaces the response also carries the payload contract — `variableTree` (every `trigger.*` / `customer.*` path the pinned template references, with array/object shape and fallbacks), `examplePayload` (a nested payload that fires verbatim), and `templating` (engine + parse validity). Recomputed from the pinned design on every read. Fire it with `POST /v1/sends { transactionId, to, payload? }`. Permission: `sends`. There is no `messageClass` on this object — purpose lives on the sending domain."
       parameters:
+        - name: include
+          in: query
+          required: false
+          description: "Pass `skill` to add a `skill` field to the response: a complete SKILL.md-shaped wiring brief (endpoint, auth, typed payload contract, copy-paste snippets) for a coding agent or your repo."
+          schema:
+            type: string
+            enum:
+              - skill
         - schema:
             type: string
             minLength: 1
@@ -18880,6 +18908,26 @@ paths:
                   - name: firstName
                     type: string
                     fallback: there
+                templating:
+                  engine: liquid
+                  valid: true
+                  errors: []
+                variableTree:
+                  - key: order
+                    path: trigger.order
+                    kind: object
+                    fallback: null
+                    namespace: trigger
+                    children:
+                      - key: total
+                        path: trigger.order.total
+                        kind: scalar
+                        fallback: null
+                        namespace: trigger
+                        children: []
+                examplePayload:
+                  order:
+                    total: example_total
         "401":
           description: The API key was missing, invalid, or revoked.
           headers:
@@ -22797,6 +22845,14 @@ paths:
             type: string
             minLength: 1
             maxLength: 64
+        - name: include
+          in: query
+          required: false
+          description: "Detail mode only: pass `skill` to add a `skill` field to the row — a SKILL.md-shaped wiring brief for the fire endpoint. Ignored in list mode."
+          schema:
+            type: string
+            enum:
+              - skill
         - *a7
         - *a8
         - name: X-Brand-Id
@@ -23486,6 +23542,216 @@ paths:
                   suggestion: Retry the request. If it keeps failing, contact support.
                   docs: https://docs.brew.new/api-reference/api/errors
   /v1/automations/triggers/{triggerEventId}/fire:
+    get:
+      operationId: checkTriggerReady
+      tags:
+        - Automations
+      summary: Pre-flight a trigger (ready check)
+      description: |-
+        Verifies a fire would be accepted WITHOUT firing: authenticates the key, resolves the trigger in your organization/brand scope, and checks permissions — the same gates a real `POST` hits. `status: "ready"` returns the contract a caller needs to wire an external service: `details.payloadSchema`, `details.endpoint`, and the matched published consumers (`publishedAutomations`, `publishedTransactionalEmails`, `counts`).
+
+        Use it while integrating, before anything is published: a ready trigger with `counts.automations: 0` accepts fires but starts no runs until an attached automation is published.
+
+        **Response-shape note** — responds with the same legacy fire envelope as the `POST` (`{ success, status, code, message, receivedAt, details }`).
+      parameters:
+        - schema:
+            type: string
+            minLength: 1
+            maxLength: 256
+            description: Trigger id returned by `POST /v1/automations/triggers`. Custom triggers use `tri_…` ids; integration triggers use composite ids (e.g. `clerk:org_…:brand_…:user.created`, URL-encode the colons).
+            example: tri_signup
+          required: true
+          description: Trigger id returned by `POST /v1/automations/triggers`. Custom triggers use `tri_…` ids; integration triggers use composite ids (e.g. `clerk:org_…:brand_…:user.created`, URL-encode the colons).
+          name: triggerEventId
+          in: path
+        - name: X-Brand-Id
+          in: header
+          required: false
+          description: The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 64
+          example: kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+      responses:
+        "200":
+          description: "Ready: the key, scope, and permissions all pass; `details` carries the payload contract and matched consumers."
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+            X-RateLimit-Limit:
+              schema:
+                type: integer
+                description: Requests allowed in the current rolling rate limit window.
+                example: 100
+              required: true
+              description: Requests allowed in the current rolling rate limit window.
+            X-RateLimit-Remaining:
+              schema:
+                type: integer
+                description: Requests remaining in the current rolling rate limit window.
+                example: 99
+              required: true
+              description: Requests remaining in the current rolling rate limit window.
+            X-RateLimit-Reset:
+              schema:
+                type: integer
+                description: Unix timestamp in seconds for when the rolling window fully resets.
+                example: 1712592360
+              required: true
+              description: Unix timestamp in seconds for when the rolling window fully resets.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TriggerFireResponse"
+              example:
+                success: true
+                status: ready
+                code: TRIGGER_EVENT_READY
+                message: Trigger event definition loaded successfully.
+                triggerEventId: tri_signup
+                receivedAt: 2026-04-08T12:34:56.789Z
+                details:
+                  title: User Signed Up
+                  provider: brew_api
+                  payloadSchema:
+                    type: object
+                    fields:
+                      - key: email
+                        type: string
+                        required: true
+                      - key: firstName
+                        type: string
+                        required: false
+                  endpoint:
+                    method: POST
+                    path: /v1/automations/triggers/tri_signup/fire
+                  publishedAutomations:
+                    - automationId: auto_abc
+                      title: Welcome flow
+                  publishedTransactionalEmails: []
+                  counts:
+                    transactionalEmails: 0
+                    automations: 1
+        "401":
+          description: The API key was missing, invalid, or revoked.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              example:
+                error:
+                  code: INVALID_API_KEY
+                  type: authentication_error
+                  message: The provided API key is invalid.
+                  suggestion: Check the API key format and retry with a valid active key.
+                  docs: https://docs.brew.new/api-reference/api/authentication
+        "403":
+          description: The caller does not have the required `automations` permission.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              example:
+                error:
+                  code: INSUFFICIENT_PERMISSIONS
+                  type: authorization_error
+                  message: The caller does not have the required permission.
+                  suggestion: Use an API key or session with the required permission.
+                  docs: https://docs.brew.new/api-reference/api/authentication
+                  param: automations
+        "429":
+          description: The request hit the rolling rate limit window.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+            X-RateLimit-Limit:
+              schema:
+                type: integer
+                description: Requests allowed in the current rolling rate limit window.
+                example: 100
+              required: true
+              description: Requests allowed in the current rolling rate limit window.
+            X-RateLimit-Remaining:
+              schema:
+                type: integer
+                description: Requests remaining in the current rolling rate limit window.
+                example: 99
+              required: true
+              description: Requests remaining in the current rolling rate limit window.
+            X-RateLimit-Reset:
+              schema:
+                type: integer
+                description: Unix timestamp in seconds for when the rolling window fully resets.
+                example: 1712592360
+              required: true
+              description: Unix timestamp in seconds for when the rolling window fully resets.
+            Retry-After:
+              schema:
+                type: integer
+                description: Seconds to wait before retrying the request.
+                example: 42
+              required: true
+              description: Seconds to wait before retrying the request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              example:
+                error:
+                  code: RATE_LIMITED
+                  type: rate_limit
+                  message: Too many requests.
+                  suggestion: Wait for the retry window before sending another request.
+                  docs: https://docs.brew.new/api-reference/api/rate-limits
+                  retryAfter: 42
+        "500":
+          description: Unexpected internal error.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              example:
+                error:
+                  code: INTERNAL_ERROR
+                  type: internal_error
+                  message: An unexpected error occurred.
+                  suggestion: Retry the request. If it keeps failing, contact support.
+                  docs: https://docs.brew.new/api-reference/api/errors
     post:
       operationId: fireTrigger
       tags:
