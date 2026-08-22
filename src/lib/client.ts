@@ -28,6 +28,7 @@ const ORG_LEVEL_PATH_PREFIXES = [
   '/v1/health',
   '/v1/help',
   '/v1/llms.txt',
+  '/v1/api-keys',
 ] as const
 
 export type AuthSource = 'anonymous' | 'config' | 'env' | 'flag'

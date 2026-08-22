@@ -2,7 +2,7 @@
 
 <!-- GENERATED FILE — do not edit. Regenerate with `bun run docs:commands`. -->
 
-96 commands. Classes: read (always safe), write
+104 commands. Classes: read (always safe), write
 (mutating, retry-safe), destructive (irreversible — the confirmation
 protocol applies: interactive y/N on a TTY, exit 4 + JSON envelope with
 a `confirmCommand` otherwise, `--yes` to proceed).
@@ -42,6 +42,9 @@ a `confirmCommand` otherwise, `--yes` to proceed).
 | `brew-cli fields delete` | destructive | `DELETE /v1/fields/{fieldName}` | Delete a custom field definition |
 | `brew-cli emails list` | read | `GET /v1/emails` | List email designs (the single email read) |
 | `brew-cli emails groups list` | read | `GET /v1/email-groups` | List email groups in display order, including Ungrouped |
+| `brew-cli emails groups create` | write | `POST /v1/email-groups` | Create a named email folder (group) |
+| `brew-cli emails groups update` | write | `PATCH /v1/email-groups/{groupId}` | Rename an email folder (group) |
+| `brew-cli emails groups delete` | destructive | `DELETE /v1/email-groups/{groupId}` | Delete an email folder (group); its emails move to Ungrouped |
 | `brew-cli emails get` | read | `GET /v1/emails` | Fetch one email design by id |
 | `brew-cli emails generate` | write ($) | `POST /v1/emails` | Generate a new on-brand email design from a prompt |
 | `brew-cli emails import` | write | `POST /v1/emails/import` | Import existing HTML, MJML, or JSX as a new editable design |
@@ -59,6 +62,7 @@ a `confirmCommand` otherwise, `--yes` to proceed).
 | `brew-cli sends cancel` | destructive | `POST /v1/sends/{sendId}/cancel` | Cancel a scheduled or queued send before it goes out |
 | `brew-cli sends pause` | write | `POST /v1/sends/{sendId}/pause` | Pause an in-flight or scheduled send (resumable) |
 | `brew-cli sends resume` | write | `POST /v1/sends/{sendId}/resume` | Resume a paused gradual send (the unsent tail is re-spread) |
+| `brew-cli transactional get` | read | `GET /v1/transactional/{transactionId}` | Read a transactional email object: locked design/domain/envelope; Liquid workspaces add `variableTree` + a fireable `examplePayload` |
 | `brew-cli audiences list` | read | `GET /v1/audiences` | List audience segments |
 | `brew-cli audiences get` | read | `GET /v1/audiences` | Fetch one audience segment by id |
 | `brew-cli audiences create` | write | `POST /v1/audiences` | Create an audience segment from a filter definition |
@@ -96,6 +100,9 @@ a `confirmCommand` otherwise, `--yes` to proceed).
 | `brew-cli brands list` | read | `GET /v1/brands` | List every brand in the organization |
 | `brew-cli brands get` | read | `GET /v1/brands/{brandId}` | One brand's lifecycle state (the extraction polling endpoint) |
 | `brew-cli brands create` | write | `POST /v1/brands` | Create a brand and start async extraction (needs an ORGANIZATION-scoped key); poll `brands get` until ready |
+| `brew-cli api-keys list` | read | `GET /v1/api-keys` | List API keys in the organization (already-redacted `keyPreview`, never the secret) |
+| `brew-cli api-keys create` | write | `POST /v1/api-keys` | Mint an API key; the plaintext `key` is returned ONCE — this output is the only copy |
+| `brew-cli api-keys delete` | destructive | `DELETE /v1/api-keys/{keyId}` | Revoke an API key |
 | `brew-cli domains list` | read | `GET /v1/domains` | List sending domains with verification state and DNS records |
 | `brew-cli domains get` | read | `GET /v1/domains` | Fetch one sending domain by id |
 | `brew-cli domains add` | write | `POST /v1/domains` | Add a sending domain (response lists the DNS records to set) |
@@ -109,6 +116,7 @@ a `confirmCommand` otherwise, `--yes` to proceed).
 | `brew-cli content html-to-png` | write ($) | `POST /v1/content/html-to-png` | Render HTML to a hosted PNG |
 | `brew-cli content add-image` | write ($) | `POST /v1/content/add-image` | Mirror an external image onto Brew-hosted storage |
 | `brew-cli templates list` | read | `GET /v1/templates` | List public templates (each row carries the rendered html) |
+| `brew-cli integrations list` | read | `GET /v1/integrations` | List the integration catalog with per-provider connected state (connect via Settings, not this CLI) |
 | `brew-cli chats get` | read | `GET /v1/chats/{chatId}` | Brand-scoped digest of a Brew chat (artifacts + transcript tail) |
 | `brew-cli health` | read | `GET /v1/health` | Check Brew API liveness (no auth required) |
 | `brew-cli usage` | read | `GET /v1/usage` | Show plan, credit balance, and email-send quota |
@@ -449,6 +457,46 @@ brew-cli emails groups list
 brew-cli emails groups list --all --json
 ```
 
+### brew-cli emails groups create
+
+Create a named email folder (group)
+
+- Route: `POST /v1/email-groups`
+- Class: write
+- `--name <name>` — Folder label, 1-60 chars (Ungrouped is reserved)
+- `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
+- `--idempotency-key <key>` — Idempotency-Key for safe retries (auto-generated otherwise)
+
+```bash
+brew-cli emails groups create --name Welcome
+```
+
+### brew-cli emails groups update
+
+Rename an email folder (group)
+
+- Route: `PATCH /v1/email-groups/{groupId}`
+- Class: write
+- Argument `groupId` — Named group id (grp_*); Ungrouped cannot be renamed
+- `--name <name>` — New folder label, 1-60 chars
+- `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
+
+```bash
+brew-cli emails groups update grp_welcome --name "Welcome series"
+```
+
+### brew-cli emails groups delete
+
+Delete an email folder (group); its emails move to Ungrouped
+
+- Route: `DELETE /v1/email-groups/{groupId}`
+- Class: destructive
+- Argument `groupId` — Named group id (grp_*); Ungrouped cannot be deleted
+
+```bash
+brew-cli emails groups delete grp_welcome --yes
+```
+
 ### brew-cli emails get
 
 Fetch one email design by id
@@ -729,6 +777,18 @@ Resume a paused gradual send (the unsent tail is re-spread)
 
 ```bash
 brew-cli sends resume snd_123
+```
+
+### brew-cli transactional get
+
+Read a transactional email object: locked design/domain/envelope; Liquid workspaces add `variableTree` + a fireable `examplePayload`
+
+- Route: `GET /v1/transactional/{transactionId}`
+- Class: read
+- Argument `transactionId` — Transactional email id (txn_…) from Email Actions → Transactional Email
+
+```bash
+brew-cli transactional get txn_8fK2mQ4pLx
 ```
 
 ### brew-cli audiences list
@@ -1344,6 +1404,47 @@ brew-cli brands create --url acme.com
 brew-cli brands create --url acme.com --instructions "Primary brand color is the deep navy in the header"
 ```
 
+### brew-cli api-keys list
+
+List API keys in the organization (already-redacted `keyPreview`, never the secret)
+
+- Route: `GET /v1/api-keys`
+- Class: read
+
+```bash
+brew-cli api-keys list
+brew-cli api-keys list --json
+```
+
+### brew-cli api-keys create
+
+Mint an API key; the plaintext `key` is returned ONCE — this output is the only copy
+
+- Route: `POST /v1/api-keys`
+- Class: write
+- `--name <name>` — Label for the key
+- `--permissions <scopes...>` — all | contacts | emails | automations | transactional | domains | sends | audiences | brands (default: all)
+- `--brand-id <brandId>` — Bind the NEW key to this brand id (omit for an organization-wide key); not the acting --brand
+- `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
+- `--idempotency-key <key>` — Idempotency-Key for safe retries (auto-generated otherwise)
+
+```bash
+brew-cli api-keys create --name CI --permissions emails domains
+brew-cli api-keys create --name "Acme key" --brand-id kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+```
+
+### brew-cli api-keys delete
+
+Revoke an API key
+
+- Route: `DELETE /v1/api-keys/{keyId}`
+- Class: destructive
+- Argument `keyId` — API key id to revoke
+
+```bash
+brew-cli api-keys delete kd7b3s7fapqz8mjm12ekz1kxdx87yceg --yes
+```
+
 ### brew-cli domains list
 
 List sending domains with verification state and DNS records
@@ -1569,6 +1670,18 @@ List public templates (each row carries the rendered html)
 ```bash
 brew-cli templates list --category welcome
 brew-cli templates list --semantic "minimal product launch" --json
+```
+
+### brew-cli integrations list
+
+List the integration catalog with per-provider connected state (connect via Settings, not this CLI)
+
+- Route: `GET /v1/integrations`
+- Class: read
+
+```bash
+brew-cli integrations list
+brew-cli integrations list --json
 ```
 
 ### brew-cli chats get

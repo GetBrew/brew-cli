@@ -6,6 +6,9 @@ import { analyticsSendsGetCommand } from './commands/analytics/sends/get'
 import { analyticsSendsListCommand } from './commands/analytics/sends/list'
 import { analyticsTriggerInstancesListCommand } from './commands/analytics/trigger-instances/list'
 import { apiCommand } from './commands/api'
+import { apiKeysCreateCommand } from './commands/api-keys/create'
+import { apiKeysDeleteCommand } from './commands/api-keys/delete'
+import { apiKeysListCommand } from './commands/api-keys/list'
 import { audiencesCreateCommand } from './commands/audiences/create'
 import { audiencesDeleteCommand } from './commands/audiences/delete'
 import { audiencesDuplicateCommand } from './commands/audiences/duplicate'
@@ -76,7 +79,10 @@ import { emailsExportCommand } from './commands/emails/export'
 import { emailsGenerateCommand } from './commands/emails/generate'
 import { emailsGetCommand } from './commands/emails/get'
 import { emailsGetInboxPlacementResultsCommand } from './commands/emails/get-inbox-placement-results'
+import { emailsGroupsCreateCommand } from './commands/emails/groups/create'
+import { emailsGroupsDeleteCommand } from './commands/emails/groups/delete'
 import { emailsGroupsListCommand } from './commands/emails/groups/list'
+import { emailsGroupsUpdateCommand } from './commands/emails/groups/update'
 import { emailsImportCommand } from './commands/emails/import'
 import { emailsImportFigmaCommand } from './commands/emails/import-figma'
 import { emailsListCommand } from './commands/emails/list'
@@ -87,12 +93,14 @@ import { fieldsCreateCommand } from './commands/fields/create'
 import { fieldsDeleteCommand } from './commands/fields/delete'
 import { fieldsListCommand } from './commands/fields/list'
 import { healthCommand } from './commands/health'
+import { integrationsListCommand } from './commands/integrations/list'
 import { loginCommand } from './commands/login'
 import { logoutCommand } from './commands/logout'
 import { sendsCancelCommand } from './commands/sends/cancel'
 import { sendsPauseCommand } from './commands/sends/pause'
 import { sendsResumeCommand } from './commands/sends/resume'
 import { templatesListCommand } from './commands/templates/list'
+import { transactionalGetCommand } from './commands/transactional/get'
 import { usageCommand } from './commands/usage'
 import { whoamiCommand } from './commands/whoami'
 import type { CommandSpec } from './lib/define-command'
@@ -125,6 +133,9 @@ export const ALL_COMMANDS: readonly CommandSpec[] = [
   fieldsDeleteCommand,
   emailsListCommand,
   emailsGroupsListCommand,
+  emailsGroupsCreateCommand,
+  emailsGroupsUpdateCommand,
+  emailsGroupsDeleteCommand,
   emailsGetCommand,
   emailsGenerateCommand,
   emailsImportCommand,
@@ -142,6 +153,7 @@ export const ALL_COMMANDS: readonly CommandSpec[] = [
   sendsCancelCommand,
   sendsPauseCommand,
   sendsResumeCommand,
+  transactionalGetCommand,
   audiencesListCommand,
   audiencesGetCommand,
   audiencesCreateCommand,
@@ -179,6 +191,9 @@ export const ALL_COMMANDS: readonly CommandSpec[] = [
   brandsListCommand,
   brandsGetCommand,
   brandsCreateCommand,
+  apiKeysListCommand,
+  apiKeysCreateCommand,
+  apiKeysDeleteCommand,
   domainsListCommand,
   domainsGetCommand,
   domainsAddCommand,
@@ -192,6 +207,7 @@ export const ALL_COMMANDS: readonly CommandSpec[] = [
   contentHtmlToPngCommand,
   contentAddImageCommand,
   templatesListCommand,
+  integrationsListCommand,
   chatsGetCommand,
   healthCommand,
   usageCommand,

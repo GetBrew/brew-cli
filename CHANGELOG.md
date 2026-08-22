@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+- Spec resync for the Liquid templating release: `payload` on sends is
+  the recursive nested-JSON contract (typed end to end via the new
+  `scripts/generate-types.mjs`, which emits the self-referencing union
+  as a standalone alias so `tsc` accepts it).
+- `transactional get <transactionId>` — the object's locked config plus
+  `variableTree` and `examplePayload`, the shape to feed a send's
+  `payload`. Nested payload values need Liquid on the workspace (400
+  otherwise, test sends included).
+- `integrations list`, `api-keys list|create|delete` (create prints the
+  plaintext secret exactly once; delete is confirm-gated), and
+  `emails groups create|update|delete` beside the existing list. 104
+  commands, spec parity back to zero uncovered.
+
 - `--subject-line <text>` on `emails generate`, `emails import`,
   `emails import-figma`, and `emails edit` — sets the design's default
   inbox subject (distinct from `--title`, the canvas name). Sends still
