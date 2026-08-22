@@ -17,6 +17,7 @@ import { CLI_NAME, CLI_VERSION } from './version'
 
 const GROUP_SUMMARIES: Readonly<Record<string, string>> = {
   analytics: 'Read campaign, automation, send, and event analytics',
+  'api-keys': 'Manage organization API keys',
   audiences: 'Manage audience segments',
   automations: 'Manage automation graphs, triggers, and runs',
   brand: "Read and update the active brand's design context",
@@ -29,8 +30,11 @@ const GROUP_SUMMARIES: Readonly<Record<string, string>> = {
   domains: 'Manage sending domains',
   emails: 'Manage email designs and send campaigns',
   fields: 'Manage custom contact fields',
+  groups: 'Manage email folders (groups)',
+  integrations: 'Read the connected-integration catalog',
   sends: 'Control in-flight or scheduled sends',
   templates: 'Browse the template gallery',
+  transactional: 'Read reusable transactional email objects',
   triggers: 'Manage trigger events',
   runs: 'Automation run history',
   'trigger-instances': 'Fired trigger instances',
