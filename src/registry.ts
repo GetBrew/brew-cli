@@ -30,6 +30,7 @@ import { automationsTriggersCreateCommand } from './commands/automations/trigger
 import { automationsTriggersDeleteCommand } from './commands/automations/triggers/delete'
 import { automationsTriggersFireCommand } from './commands/automations/triggers/fire'
 import { automationsTriggersListCommand } from './commands/automations/triggers/list'
+import { automationsTriggersReadyCommand } from './commands/automations/triggers/ready'
 import { automationsTriggersUpdateCommand } from './commands/automations/triggers/update'
 import { automationsUnpublishCommand } from './commands/automations/unpublish'
 import { automationsUpdateCommand } from './commands/automations/update'
@@ -101,6 +102,7 @@ import { sendsPauseCommand } from './commands/sends/pause'
 import { sendsResumeCommand } from './commands/sends/resume'
 import { templatesListCommand } from './commands/templates/list'
 import { transactionalGetCommand } from './commands/transactional/get'
+import { typesCommand } from './commands/types'
 import { usageCommand } from './commands/usage'
 import { whoamiCommand } from './commands/whoami'
 import type { CommandSpec } from './lib/define-command'
@@ -154,6 +156,7 @@ export const ALL_COMMANDS: readonly CommandSpec[] = [
   sendsPauseCommand,
   sendsResumeCommand,
   transactionalGetCommand,
+  typesCommand,
   audiencesListCommand,
   audiencesGetCommand,
   audiencesCreateCommand,
@@ -171,6 +174,7 @@ export const ALL_COMMANDS: readonly CommandSpec[] = [
   automationsTestCommand,
   automationsRunCommand,
   automationsTriggersListCommand,
+  automationsTriggersReadyCommand,
   automationsTriggersCreateCommand,
   automationsTriggersUpdateCommand,
   automationsTriggersDeleteCommand,
