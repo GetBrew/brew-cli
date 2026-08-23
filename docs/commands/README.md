@@ -822,6 +822,9 @@ Declare (or replace) the stored payload contract for a transactional email — t
 - Class: write
 - Argument `transactionId` — Transactional email id (txn_…)
 - `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
+- `--enforce` — Turn fire-time enforcement ON for this contract (fires are validated against it)
+- `--no-enforce` — Turn fire-time enforcement OFF (contract stays advisory)
+- `--enforcement <mode>` — How enforcement treats undeclared keys: strict | prune (default) | passthrough
 
 ```bash
 brew-cli transactional contract put txn_8fK2mQ4pLx --input '{"fields":[{"key":"total","type":"float","required":true}]}'
@@ -1162,6 +1165,9 @@ Declare (or replace) the stored payload contract for a trigger — tree-validate
 - Class: write
 - Argument `triggerEventId` — Trigger id (tri_…)
 - `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
+- `--enforce` — Turn fire-time enforcement ON for this contract (fires are validated against it)
+- `--no-enforce` — Turn fire-time enforcement OFF (contract stays advisory)
+- `--enforcement <mode>` — How enforcement treats undeclared keys: strict | prune (default) | passthrough
 
 ```bash
 brew-cli automations triggers contract put tri_signup --input '{"fields":[{"key":"email","type":"string","required":true}],"mode":"declared"}'

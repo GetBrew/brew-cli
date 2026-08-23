@@ -21,6 +21,8 @@ const FORMAT_FLAG = {
 
 const FORMATS = new Set(['json', 'ts', 'zod', 'jsonschema', 'skill'])
 
+const ENFORCEMENT_MODES = new Set(['strict', 'prune', 'passthrough'])
+
 function formatQuery(value: unknown): string {
   const format = flagString(value)
   if (format === undefined) {
@@ -90,7 +92,23 @@ export const automationsTriggersContractPutCommand = defineCommand({
       isRequired: true,
     },
   ],
-  flags: [INPUT_FLAG],
+  flags: [
+    INPUT_FLAG,
+    {
+      flag: '--enforce',
+      summary:
+        'Turn fire-time enforcement ON for this contract (fires are validated against it)',
+    },
+    {
+      flag: '--no-enforce',
+      summary: 'Turn fire-time enforcement OFF (contract stays advisory)',
+    },
+    {
+      flag: '--enforcement <mode>',
+      summary:
+        'How enforcement treats undeclared keys: strict | prune (default) | passthrough',
+    },
+  ],
   examples: [
     `brew-cli automations triggers contract put tri_signup --input '{"fields":[{"key":"email","type":"string","required":true}],"mode":"declared"}'`,
   ],
@@ -107,10 +125,33 @@ export const automationsTriggersContractPutCommand = defineCommand({
         '--input with a fields array is required (the contract tree to store).'
       )
     }
+    // `--enforce` / `--no-enforce` are the explicit opt-in; omitting both
+    // leaves the stored state alone (new contracts start advisory).
+    const enforcement = flagString(flags.enforcement)
+    if (enforcement !== undefined && !ENFORCEMENT_MODES.has(enforcement)) {
+      throw new CliUsageError(
+        `Unknown --enforcement '${enforcement}' (expected strict | prune | passthrough).`
+      )
+    }
+    if (flags.enforce === true && flags['no-enforce'] === true) {
+      throw new CliUsageError(
+        'Pass either --enforce or --no-enforce, not both.'
+      )
+    }
+    const enforced =
+      flags.enforce === true
+        ? true
+        : flags['no-enforce'] === true
+          ? false
+          : undefined
     const body = await rawRequest<ContractGetResponse>(ctx, {
       method: 'PUT',
       path: `/v1/automations/triggers/${encodeURIComponent(args.triggerEventId ?? '')}/contract`,
-      body: input,
+      body: {
+        ...input,
+        ...(enforced !== undefined ? { enforced } : {}),
+        ...(enforcement !== undefined ? { enforcement } : {}),
+      },
     })
     return { data: body }
   },

@@ -4813,6 +4813,11 @@ components:
               additionalProperties:
                 $ref: "#/components/schemas/TransactionalPayloadValue"
               description: "Template data for this fire. Flat scalar keys resolve legacy {{ tag | fallback }} merge tags; the full (optionally nested) JSON is exposed to Liquid templates as trigger.* / payload.*. Extra keys are ignored; missing keys use design fallbacks (or fail the send when the design opts into strict templating). Caps: 64 KiB serialized, 10 nesting levels, 250 items per array, 100 top-level keys."
+            expectedContractHash:
+              type: string
+              minLength: 64
+              maxLength: 64
+              description: "Optimistic contract pin: the contractHash your generated types were built from (GET …/contract). A mismatch — or a pin against an object with no stored contract — fails the fire with 409 CONTRACT_DRIFTED before anything sends."
             strict:
               type: boolean
               description: "Strictness override for this fire: true fails the send on any unresolved template variable (customer.io parity) instead of rendering blank. Defaults to the transactional object setting."
@@ -8888,20 +8893,17 @@ components:
         version:
           type: integer
           minimum: 1
-        mode:
-          type: string
-          enum:
-            - declared
-            - derived
-            - hybrid
         enforcement:
           type: string
           enum:
-            - strict
+            - off
             - prune
-            - passthrough
-        enforced:
-          type: boolean
+            - strict
+        driftStatus:
+          type: string
+          enum:
+            - fresh
+            - stale
         fields:
           type: array
           items:
@@ -8921,6 +8923,7 @@ components:
         - subjectId
         - source
         - typeName
+        - format
       additionalProperties: false
     PayloadContractFieldNode:
       type: object
@@ -8981,11 +8984,6 @@ components:
             - type: string
               enum:
                 - unknown
-        origin:
-          type: string
-          enum:
-            - declared
-            - derived
         usedIn:
           type: array
           items:
@@ -9014,18 +9012,16 @@ components:
             $ref: "#/components/schemas/PayloadContractFieldNode"
           minItems: 1
           maxItems: 100
-        mode:
-          type: string
-          enum:
-            - declared
-            - derived
-            - hybrid
         name:
           type: string
           minLength: 1
           maxLength: 160
-      required:
-        - fields
+        enforcement:
+          type: string
+          enum:
+            - off
+            - prune
+            - strict
       additionalProperties: false
     PayloadContractValidateResponse:
       type: object
@@ -9116,9 +9112,8 @@ components:
         enforcement:
           type: string
           enum:
-            - strict
             - prune
-            - passthrough
+            - strict
       required:
         - payload
       additionalProperties: false
@@ -9149,6 +9144,11 @@ components:
         example:
           type: object
           additionalProperties: {}
+        subjectKind:
+          type: string
+          enum:
+            - trigger
+            - transactional
       required:
         - example
       additionalProperties: false
@@ -18244,28 +18244,7 @@ paths:
                   docs: https://docs.brew.new/api-reference/api/errors
                   param: emailId
         "409":
-          description: The same `Idempotency-Key` was reused with a different request body.
-          headers:
-            x-request-id:
-              schema:
-                type: string
-                description: Unique request identifier. Share this with support when debugging a request.
-                example: req_8cac13fd94e6420cacdd75a1aa403a28
-              required: true
-              description: Unique request identifier. Share this with support when debugging a request.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiErrorEnvelope"
-              example:
-                error:
-                  code: IDEMPOTENCY_CONFLICT
-                  type: conflict
-                  message: The same idempotency key was reused with a different request payload.
-                  suggestion: Reuse the original payload or send a new idempotency key.
-                  docs: https://docs.brew.new/api-reference/api/idempotency
-        "422":
-          description: The referenced resource exists but is not ready.
+          description: Idempotency-Key replay with a different body, or (transactional fires) a stale `expectedContractHash` pin — the stored contract changed since your types were generated, or no contract is stored at all. Fails closed before anything sends.
           headers:
             x-request-id:
               schema:
@@ -18279,6 +18258,61 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelope"
               examples:
+                idempotencyConflict:
+                  summary: Idempotency-Key reused with a different body
+                  value:
+                    error:
+                      code: IDEMPOTENCY_CONFLICT
+                      type: conflict
+                      message: This Idempotency-Key was already used with a different request body.
+                      suggestion: Use a new key to send a different request.
+                      docs: https://docs.brew.new/api-reference/api/errors
+                contractDrifted:
+                  summary: expectedContractHash no longer matches
+                  value:
+                    error:
+                      code: CONTRACT_DRIFTED
+                      type: conflict
+                      message: The stored payload contract no longer matches expectedContractHash — regenerate your types from GET …/contract and retry.
+                      suggestion: GET /v1/transactional/{transactionId}/contract returns the current contractHash; regenerate generated types and retry with the fresh hash.
+                      docs: https://docs.brew.new/api-reference/api/errors
+                      param: expectedContractHash
+                      details:
+                        expectedHash: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+                        actualHash: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+        "422":
+          description: The referenced resource exists but is not ready, or (transactional fires with an ENFORCED contract) the payload failed contract validation.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                contractValidationFailed:
+                  summary: Enforced contract rejected the payload
+                  value:
+                    error:
+                      code: CONTRACT_VALIDATION_FAILED
+                      type: invalid_request
+                      message: 'Payload failed the enforced contract: Required field "total" is missing'
+                      suggestion: Fix the payload per `details.errors`, or dry-run with POST …/contract/validate.
+                      docs: https://docs.brew.new/api-reference/api/errors
+                      param: payload
+                      details:
+                        errors:
+                          - code: missing_required
+                            field: total
+                            message: Required field "total" is missing
+                        warnings: []
+                        contractHash: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+                        enforcement: prune
                 domainNotReady:
                   summary: Domain not verified
                   value:
@@ -24235,7 +24269,7 @@ paths:
         - Automations
       summary: Get a trigger payload contract
       description: |-
-        The payload contract for the trigger: the STORED contract when one has been declared (`source: "stored"`, with `contractHash`, `version`, `mode`, `enforcement`, `enforced`), otherwise the derived one (`source: "derived_from_schema"`, built from the trigger’s flat `payloadSchema`).
+        The payload contract for the trigger: the STORED contract when one has been declared (`source: "stored"`, with `contractHash`, `version`, `enforcement`), otherwise the derived one (`source: "derived_from_schema"`, built from the trigger’s flat `payloadSchema`).
 
         Contract fields form a tree: scalars (`string` | `int` | `float` | `boolean` | `date` | `enum`), `object` nodes with `children`, and `array` nodes with `children` (element object shape) or `itemType` (scalar elements). Derived contracts may carry `type: "unknown"` where no type evidence exists.
 
@@ -24316,9 +24350,7 @@ paths:
                 typeName: UserSignedUpPayload
                 contractHash: 22545d11e1d174ba0717ed37c9c4b460c96bed51ae31ea0af18266ebba30f76a
                 version: 2
-                mode: declared
-                enforcement: prune
-                enforced: false
+                enforcement: off
                 fields: &a20
                   - key: email
                     type: string
@@ -24501,7 +24533,7 @@ paths:
         - Automations
       summary: Declare a trigger payload contract
       description: |-
-        Declares (or replaces) the stored payload contract for the trigger. The whole tree is validated structurally BEFORE any write — unknown-typed nodes are refused (declare a concrete type), keys must be unique per level, and nested `object`/`array` fields require the Liquid templating engine. Trigger contracts MUST keep a top-level `{ key: "email", type: "string", required: true }` field so automations can resolve a recipient.
+        Declares the stored payload contract for the trigger, changes how it is enforced, or both — in one call. `fields` is optional, so flipping enforcement never means re-sending the whole tree. The whole tree is validated structurally BEFORE any write — unknown-typed nodes are refused (declare a concrete type), keys must be unique per level, and an `object` field must declare at least one child. Trigger contracts MUST keep a top-level `{ key: "email", type: "string", required: true }` field so automations can resolve a recipient.
 
         The contract version bumps only when the behavioral surface changes (keys, types, required, fallbacks — not descriptions or examples). Declaring a contract never changes fire behavior by itself: enforcement stays off until explicitly enabled.
 
@@ -24552,7 +24584,6 @@ paths:
                     - key: total
                       type: float
                       required: true
-              mode: declared
       responses:
         "200":
           description: Stored. The contract as a follow-up GET would return it.
@@ -24750,7 +24781,7 @@ paths:
       description: |-
         Dry-runs a payload against the trigger's contract — the SAME validator the live path runs, against the stored contract when one exists (derived otherwise; `source` says which). Nothing fires, sends, or writes.
 
-        An invalid payload is still a `200`: the verdict is the response — read `valid`, `errors`, `warnings`, `resolvedPayload` (fallbacks applied), and `prunedKeys`. Pass `enforcement: "strict" | "prune" | "passthrough"` to preview a different mode than the stored one. Fire for real with `POST …/fire`.
+        An invalid payload is still a `200`: the verdict is the response — read `valid`, `errors`, `warnings`, `resolvedPayload` (fallbacks applied), and `prunedKeys`. Pass `enforcement: "prune" | "strict"` to preview a different mode than the stored one. Fire for real with `POST …/fire`.
       parameters:
         - schema:
             type: string
@@ -24989,7 +25020,7 @@ paths:
         - Emails
       summary: Get a transactional payload contract
       description: |-
-        The payload contract for the transactional email: the STORED contract when one has been declared (`source: "stored"`, with `contractHash`, `version`, `mode`, `enforcement`, `enforced`), otherwise the derived one (`source: "derived_from_template"`, collected from the pinned template’s variables).
+        The payload contract for the transactional email: the STORED contract when one has been declared (`source: "stored"`, with `contractHash`, `version`, `enforcement`), otherwise the derived one (`source: "derived_from_template"`, collected from the pinned template’s variables).
 
         Contract fields form a tree: scalars (`string` | `int` | `float` | `boolean` | `date` | `enum`), `object` nodes with `children`, and `array` nodes with `children` (element object shape) or `itemType` (scalar elements). Derived contracts may carry `type: "unknown"` where no type evidence exists.
 
@@ -25058,9 +25089,7 @@ paths:
                 typeName: OrderReceiptPayload
                 contractHash: 22545d11e1d174ba0717ed37c9c4b460c96bed51ae31ea0af18266ebba30f76a
                 version: 2
-                mode: declared
-                enforcement: prune
-                enforced: false
+                enforcement: off
                 fields: *a20
         "400":
           description: "The request body or query string was invalid (unknown key, wrong type, or missing required field). Strict schemas reject unknown keys — including `brandId`: a brand is named with the `X-Brand-Id` HEADER (organization-scoped credentials) or resolved from the credential itself (brand-scoped ones), never as a body or query field."
@@ -25226,7 +25255,7 @@ paths:
         - Emails
       summary: Declare a transactional payload contract
       description: |-
-        Declares (or replaces) the stored payload contract for the transactional email. The whole tree is validated structurally BEFORE any write — unknown-typed nodes are refused (declare a concrete type), keys must be unique per level, and nested `object`/`array` fields require the Liquid templating engine.
+        Declares the stored payload contract for the transactional email, changes how it is enforced, or both — in one call. `fields` is optional, so flipping enforcement never means re-sending the whole tree. The whole tree is validated structurally BEFORE any write — unknown-typed nodes are refused (declare a concrete type), keys must be unique per level, and an `object` field must declare at least one child.
 
         The contract version bumps only when the behavioral surface changes (keys, types, required, fallbacks — not descriptions or examples). Declaring a contract never changes fire behavior by itself: enforcement stays off until explicitly enabled.
 
@@ -25301,9 +25330,7 @@ paths:
                 typeName: OrderReceiptPayload
                 contractHash: 22545d11e1d174ba0717ed37c9c4b460c96bed51ae31ea0af18266ebba30f76a
                 version: 2
-                mode: declared
-                enforcement: prune
-                enforced: false
+                enforcement: off
                 fields: *a20
         "400":
           description: Structurally invalid contract — duplicate keys, unknown-typed nodes, or nested fields on a workspace without the Liquid engine.
@@ -25465,7 +25492,7 @@ paths:
       description: |-
         Dry-runs a payload against the transactional email's contract — the SAME validator the live path runs, against the stored contract when one exists (derived otherwise; `source` says which). Nothing fires, sends, or writes.
 
-        An invalid payload is still a `200`: the verdict is the response — read `valid`, `errors`, `warnings`, `resolvedPayload` (fallbacks applied), and `prunedKeys`. Pass `enforcement: "strict" | "prune" | "passthrough"` to preview a different mode than the stored one. Send for real with `POST /v1/sends` (`kind: "transactional"`).
+        An invalid payload is still a `200`: the verdict is the response — read `valid`, `errors`, `warnings`, `resolvedPayload` (fallbacks applied), and `prunedKeys`. Pass `enforcement: "prune" | "strict"` to preview a different mode than the stored one. Send for real with `POST /v1/sends` (`kind: "transactional"`).
       parameters:
         - schema:
             type: string

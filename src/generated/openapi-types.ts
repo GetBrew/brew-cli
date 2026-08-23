@@ -751,7 +751,7 @@ export interface paths {
         };
         /**
          * Get a trigger payload contract
-         * @description The payload contract for the trigger: the STORED contract when one has been declared (`source: "stored"`, with `contractHash`, `version`, `mode`, `enforcement`, `enforced`), otherwise the derived one (`source: "derived_from_schema"`, built from the trigger’s flat `payloadSchema`).
+         * @description The payload contract for the trigger: the STORED contract when one has been declared (`source: "stored"`, with `contractHash`, `version`, `enforcement`), otherwise the derived one (`source: "derived_from_schema"`, built from the trigger’s flat `payloadSchema`).
          *
          *     Contract fields form a tree: scalars (`string` | `int` | `float` | `boolean` | `date` | `enum`), `object` nodes with `children`, and `array` nodes with `children` (element object shape) or `itemType` (scalar elements). Derived contracts may carry `type: "unknown"` where no type evidence exists.
          *
@@ -760,7 +760,7 @@ export interface paths {
         get: operations["getTriggerContract"];
         /**
          * Declare a trigger payload contract
-         * @description Declares (or replaces) the stored payload contract for the trigger. The whole tree is validated structurally BEFORE any write — unknown-typed nodes are refused (declare a concrete type), keys must be unique per level, and nested `object`/`array` fields require the Liquid templating engine. Trigger contracts MUST keep a top-level `{ key: "email", type: "string", required: true }` field so automations can resolve a recipient.
+         * @description Declares the stored payload contract for the trigger, changes how it is enforced, or both — in one call. `fields` is optional, so flipping enforcement never means re-sending the whole tree. The whole tree is validated structurally BEFORE any write — unknown-typed nodes are refused (declare a concrete type), keys must be unique per level, and an `object` field must declare at least one child. Trigger contracts MUST keep a top-level `{ key: "email", type: "string", required: true }` field so automations can resolve a recipient.
          *
          *     The contract version bumps only when the behavioral surface changes (keys, types, required, fallbacks — not descriptions or examples). Declaring a contract never changes fire behavior by itself: enforcement stays off until explicitly enabled.
          *
@@ -787,7 +787,7 @@ export interface paths {
          * Validate a trigger payload
          * @description Dry-runs a payload against the trigger's contract — the SAME validator the live path runs, against the stored contract when one exists (derived otherwise; `source` says which). Nothing fires, sends, or writes.
          *
-         *     An invalid payload is still a `200`: the verdict is the response — read `valid`, `errors`, `warnings`, `resolvedPayload` (fallbacks applied), and `prunedKeys`. Pass `enforcement: "strict" | "prune" | "passthrough"` to preview a different mode than the stored one. Fire for real with `POST …/fire`.
+         *     An invalid payload is still a `200`: the verdict is the response — read `valid`, `errors`, `warnings`, `resolvedPayload` (fallbacks applied), and `prunedKeys`. Pass `enforcement: "prune" | "strict"` to preview a different mode than the stored one. Fire for real with `POST …/fire`.
          */
         post: operations["validateTriggerPayload"];
         delete?: never;
@@ -805,7 +805,7 @@ export interface paths {
         };
         /**
          * Get a transactional payload contract
-         * @description The payload contract for the transactional email: the STORED contract when one has been declared (`source: "stored"`, with `contractHash`, `version`, `mode`, `enforcement`, `enforced`), otherwise the derived one (`source: "derived_from_template"`, collected from the pinned template’s variables).
+         * @description The payload contract for the transactional email: the STORED contract when one has been declared (`source: "stored"`, with `contractHash`, `version`, `enforcement`), otherwise the derived one (`source: "derived_from_template"`, collected from the pinned template’s variables).
          *
          *     Contract fields form a tree: scalars (`string` | `int` | `float` | `boolean` | `date` | `enum`), `object` nodes with `children`, and `array` nodes with `children` (element object shape) or `itemType` (scalar elements). Derived contracts may carry `type: "unknown"` where no type evidence exists.
          *
@@ -814,7 +814,7 @@ export interface paths {
         get: operations["getTransactionalContract"];
         /**
          * Declare a transactional payload contract
-         * @description Declares (or replaces) the stored payload contract for the transactional email. The whole tree is validated structurally BEFORE any write — unknown-typed nodes are refused (declare a concrete type), keys must be unique per level, and nested `object`/`array` fields require the Liquid templating engine.
+         * @description Declares the stored payload contract for the transactional email, changes how it is enforced, or both — in one call. `fields` is optional, so flipping enforcement never means re-sending the whole tree. The whole tree is validated structurally BEFORE any write — unknown-typed nodes are refused (declare a concrete type), keys must be unique per level, and an `object` field must declare at least one child.
          *
          *     The contract version bumps only when the behavioral surface changes (keys, types, required, fallbacks — not descriptions or examples). Declaring a contract never changes fire behavior by itself: enforcement stays off until explicitly enabled.
          *
@@ -841,7 +841,7 @@ export interface paths {
          * Validate a transactional payload
          * @description Dry-runs a payload against the transactional email's contract — the SAME validator the live path runs, against the stored contract when one exists (derived otherwise; `source` says which). Nothing fires, sends, or writes.
          *
-         *     An invalid payload is still a `200`: the verdict is the response — read `valid`, `errors`, `warnings`, `resolvedPayload` (fallbacks applied), and `prunedKeys`. Pass `enforcement: "strict" | "prune" | "passthrough"` to preview a different mode than the stored one. Send for real with `POST /v1/sends` (`kind: "transactional"`).
+         *     An invalid payload is still a `200`: the verdict is the response — read `valid`, `errors`, `warnings`, `resolvedPayload` (fallbacks applied), and `prunedKeys`. Pass `enforcement: "prune" | "strict"` to preview a different mode than the stored one. Send for real with `POST /v1/sends` (`kind: "transactional"`).
          */
         post: operations["validateTransactionalPayload"];
         delete?: never;
@@ -3231,6 +3231,8 @@ export interface components {
             payload?: {
                 [key: string]: components["schemas"]["TransactionalPayloadValue"];
             };
+            /** @description Optimistic contract pin: the contractHash your generated types were built from (GET …/contract). A mismatch — or a pin against an object with no stored contract — fails the fire with 409 CONTRACT_DRIFTED before anything sends. */
+            expectedContractHash?: string;
             /** @description Strictness override for this fire: true fails the send on any unresolved template variable (customer.io parity) instead of rendering blank. Defaults to the transactional object setting. */
             strict?: boolean;
             /** @description Reply-to address. Accepts a bare email (`a@b.com`) or the display-name form (`Name <a@b.com>`). */
@@ -4686,13 +4688,12 @@ export interface components {
             contractHash?: string;
             version?: number;
             /** @enum {string} */
-            mode?: "declared" | "derived" | "hybrid";
+            enforcement?: "off" | "prune" | "strict";
             /** @enum {string} */
-            enforcement?: "strict" | "prune" | "passthrough";
-            enforced?: boolean;
+            driftStatus?: "fresh" | "stale";
             fields?: components["schemas"]["PayloadContractFieldNode"][];
             /** @enum {string} */
-            format?: "json" | "ts" | "zod" | "jsonschema" | "skill";
+            format: "json" | "ts" | "zod" | "jsonschema" | "skill";
             content?: string;
         };
         PayloadContractFieldNode: {
@@ -4707,16 +4708,14 @@ export interface components {
             pii?: "none" | "low" | "high";
             enumValues?: string[];
             itemType?: ("string" | "int" | "float" | "boolean" | "date" | "enum") | "unknown";
-            /** @enum {string} */
-            origin?: "declared" | "derived";
             usedIn?: ("body" | "subject" | "previewText")[];
             children?: components["schemas"]["PayloadContractFieldNode"][];
         };
         PayloadContractPutRequest: {
-            fields: components["schemas"]["PayloadContractFieldNode"][];
-            /** @enum {string} */
-            mode?: "declared" | "derived" | "hybrid";
+            fields?: components["schemas"]["PayloadContractFieldNode"][];
             name?: string;
+            /** @enum {string} */
+            enforcement?: "off" | "prune" | "strict";
         };
         PayloadContractValidateResponse: {
             valid: boolean;
@@ -4749,7 +4748,7 @@ export interface components {
                 [key: string]: unknown;
             };
             /** @enum {string} */
-            enforcement?: "strict" | "prune" | "passthrough";
+            enforcement?: "prune" | "strict";
         };
         PayloadContractInferResponse: {
             fields: components["schemas"]["PayloadContractFieldNode"][];
@@ -4761,6 +4760,8 @@ export interface components {
             example: {
                 [key: string]: unknown;
             };
+            /** @enum {string} */
+            subjectKind?: "trigger" | "transactional";
         };
         EventsListResponse: {
             data: {
@@ -10356,7 +10357,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description The same `Idempotency-Key` was reused with a different request body. */
+            /** @description Idempotency-Key replay with a different body, or (transactional fires) a stale `expectedContractHash` pin — the stored contract changed since your types were generated, or no contract is stored at all. Fails closed before anything sends. */
             409: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -10364,21 +10365,10 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    /**
-                     * @example {
-                     *       "error": {
-                     *         "code": "IDEMPOTENCY_CONFLICT",
-                     *         "type": "conflict",
-                     *         "message": "The same idempotency key was reused with a different request payload.",
-                     *         "suggestion": "Reuse the original payload or send a new idempotency key.",
-                     *         "docs": "https://docs.brew.new/api-reference/api/idempotency"
-                     *       }
-                     *     }
-                     */
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description The referenced resource exists but is not ready. */
+            /** @description The referenced resource exists but is not ready, or (transactional fires with an ENFORCED contract) the payload failed contract validation. */
             422: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -15267,9 +15257,7 @@ export interface operations {
                      *       "typeName": "UserSignedUpPayload",
                      *       "contractHash": "22545d11e1d174ba0717ed37c9c4b460c96bed51ae31ea0af18266ebba30f76a",
                      *       "version": 2,
-                     *       "mode": "declared",
-                     *       "enforcement": "prune",
-                     *       "enforced": false,
+                     *       "enforcement": "off",
                      *       "fields": [
                      *         {
                      *           "key": "email",
@@ -15499,8 +15487,7 @@ export interface operations {
                  *             }
                  *           ]
                  *         }
-                 *       ],
-                 *       "mode": "declared"
+                 *       ]
                  *     }
                  */
                 "application/json": components["schemas"]["PayloadContractPutRequest"];
@@ -15529,9 +15516,7 @@ export interface operations {
                      *       "typeName": "UserSignedUpPayload",
                      *       "contractHash": "22545d11e1d174ba0717ed37c9c4b460c96bed51ae31ea0af18266ebba30f76a",
                      *       "version": 2,
-                     *       "mode": "declared",
-                     *       "enforcement": "prune",
-                     *       "enforced": false,
+                     *       "enforcement": "off",
                      *       "fields": [
                      *         {
                      *           "key": "email",
@@ -15970,9 +15955,7 @@ export interface operations {
                      *       "typeName": "OrderReceiptPayload",
                      *       "contractHash": "22545d11e1d174ba0717ed37c9c4b460c96bed51ae31ea0af18266ebba30f76a",
                      *       "version": 2,
-                     *       "mode": "declared",
-                     *       "enforcement": "prune",
-                     *       "enforced": false,
+                     *       "enforcement": "off",
                      *       "fields": [
                      *         {
                      *           "key": "email",
@@ -16202,8 +16185,7 @@ export interface operations {
                  *             }
                  *           ]
                  *         }
-                 *       ],
-                 *       "mode": "declared"
+                 *       ]
                  *     }
                  */
                 "application/json": components["schemas"]["PayloadContractPutRequest"];
@@ -16232,9 +16214,7 @@ export interface operations {
                      *       "typeName": "OrderReceiptPayload",
                      *       "contractHash": "22545d11e1d174ba0717ed37c9c4b460c96bed51ae31ea0af18266ebba30f76a",
                      *       "version": 2,
-                     *       "mode": "declared",
-                     *       "enforcement": "prune",
-                     *       "enforced": false,
+                     *       "enforcement": "off",
                      *       "fields": [
                      *         {
                      *           "key": "email",
