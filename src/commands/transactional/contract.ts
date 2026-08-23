@@ -21,7 +21,7 @@ const FORMAT_FLAG = {
 
 const FORMATS = new Set(['json', 'ts', 'zod', 'jsonschema', 'skill'])
 
-const ENFORCEMENT_MODES = new Set(['strict', 'prune', 'passthrough'])
+const ENFORCEMENT_MODES = new Set(['off', 'prune', 'strict'])
 
 function formatQuery(value: unknown): string {
   const format = flagString(value)
@@ -71,7 +71,7 @@ export const transactionalContractGetCommand = defineCommand({
 export const transactionalContractPutCommand = defineCommand({
   path: ['transactional', 'contract', 'put'],
   summary:
-    'Declare (or replace) the stored payload contract for a transactional email — tree-validated before any write',
+    'Declare the payload contract for a transactional email, change how it is checked, or both',
   sdkMethod: null,
   isRawTransport: true,
   route: { method: 'PUT', path: '/v1/transactional/{transactionId}/contract' },
@@ -86,22 +86,14 @@ export const transactionalContractPutCommand = defineCommand({
   flags: [
     INPUT_FLAG,
     {
-      flag: '--enforce',
-      summary:
-        'Turn fire-time enforcement ON for this contract (fires are validated against it)',
-    },
-    {
-      flag: '--no-enforce',
-      summary: 'Turn fire-time enforcement OFF (contract stays advisory)',
-    },
-    {
       flag: '--enforcement <mode>',
       summary:
-        'How enforcement treats undeclared keys: strict | prune (default) | passthrough',
+        'off (advisory, the default) | prune (drop fields not on the list) | strict (reject a payload carrying them)',
     },
   ],
   examples: [
     `brew-cli transactional contract put txn_8fK2mQ4pLx --input '{"fields":[{"key":"total","type":"float","required":true}]}'`,
+    'brew-cli transactional contract put txn_8fK2mQ4pLx --enforcement prune',
   ],
   run: async ({ ctx, args, flags }) => {
     const input = mergeInput(
@@ -113,31 +105,18 @@ export const transactionalContractPutCommand = defineCommand({
         '--input with a fields array is required (the contract tree to store).'
       )
     }
-    // `--enforce` / `--no-enforce` are the explicit opt-in; omitting both
-    // leaves the stored state alone (new contracts start advisory).
+    // One knob. Omitting it leaves the stored setting alone.
     const enforcement = flagString(flags.enforcement)
     if (enforcement !== undefined && !ENFORCEMENT_MODES.has(enforcement)) {
       throw new CliUsageError(
-        `Unknown --enforcement '${enforcement}' (expected strict | prune | passthrough).`
+        `Unknown --enforcement '${enforcement}' (expected off | prune | strict).`
       )
     }
-    if (flags.enforce === true && flags['no-enforce'] === true) {
-      throw new CliUsageError(
-        'Pass either --enforce or --no-enforce, not both.'
-      )
-    }
-    const enforced =
-      flags.enforce === true
-        ? true
-        : flags['no-enforce'] === true
-          ? false
-          : undefined
     const body = await rawRequest<ContractGetResponse>(ctx, {
       method: 'PUT',
       path: `/v1/transactional/${encodeURIComponent(args.transactionId ?? '')}/contract`,
       body: {
         ...input,
-        ...(enforced !== undefined ? { enforced } : {}),
         ...(enforcement !== undefined ? { enforcement } : {}),
       },
     })
