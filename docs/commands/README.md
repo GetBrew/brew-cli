@@ -63,7 +63,7 @@ a `confirmCommand` otherwise, `--yes` to proceed).
 | `brew-cli sends pause` | write | `POST /v1/sends/{sendId}/pause` | Pause an in-flight or scheduled send (resumable) |
 | `brew-cli sends resume` | write | `POST /v1/sends/{sendId}/resume` | Resume a paused gradual send (the unsent tail is re-spread) |
 | `brew-cli transactional get` | read | `GET /v1/transactional/{transactionId}` | Read a transactional email object: locked design/domain/envelope; Liquid workspaces add `variableTree` + a fireable `examplePayload` |
-| `brew-cli types` | read | `GET /v1/automations/triggers` | Generate TypeScript payload contracts (triggers + transactional objects) into your codebase; --check is the CI drift gate |
+| `brew-cli types` | read | `GET /v1/automations/triggers` | Generate TypeScript payload contracts (triggers + transactional objects) into your codebase; --check is the CI drift gate (exit 1 on drift). Needs the automations scope; --transaction also needs sends |
 | `brew-cli audiences list` | read | `GET /v1/audiences` | List audience segments |
 | `brew-cli audiences get` | read | `GET /v1/audiences` | Fetch one audience segment by id |
 | `brew-cli audiences create` | write | `POST /v1/audiences` | Create an audience segment from a filter definition |
@@ -795,7 +795,7 @@ brew-cli transactional get txn_8fK2mQ4pLx
 
 ### brew-cli types
 
-Generate TypeScript payload contracts (triggers + transactional objects) into your codebase; --check is the CI drift gate
+Generate TypeScript payload contracts (triggers + transactional objects) into your codebase; --check is the CI drift gate (exit 1 on drift). Needs the automations scope; --transaction also needs sends
 
 - Route: `GET /v1/automations/triggers`
 - Class: read

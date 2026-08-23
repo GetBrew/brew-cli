@@ -113,9 +113,10 @@ describe('types', () => {
     expect(text).toContain('  email: string')
     expect(text).toContain('  seats?: number')
     expect(text).toContain('  "kebab-key"?: string')
-    // Transactional plane: trigger root unwrapped, customer excluded,
+    // Transactional plane: named from the SUBJECT (same rule as the app's
+    // Copy-as / SKILL.md), trigger root unwrapped, customer excluded,
     // no-fallback = required, inferredType honored.
-    expect(text).toContain('export type TxnReceiptPayload = {')
+    expect(text).toContain('export type YourReceiptPayload = {')
     expect(text).toContain('  total: number')
     expect(text).toContain('  note?: string')
     expect(text).not.toContain('customer')
@@ -150,8 +151,155 @@ describe('types', () => {
       env: testEnv,
       extraCommands: [typesCommand],
     })
-    expect(drifted.code).not.toBe(0)
-    expect(drifted.stderr).toContain('stale')
+    // Documented drift contract: exit 1 specifically (2 = usage error).
+    expect(drifted.code).toBe(1)
+    expect(
+      (drifted.json as { upToDate: boolean } | null)?.upToDate ?? null
+    ).toBe(false)
+  })
+})
+
+describe('types — audit hardening', () => {
+  it('follows the pagination cursor instead of capping at one page', async () => {
+    const pageOne = Array.from({ length: 100 }, (_, i) => ({
+      ...TRIGGER,
+      triggerEventId: `tri_page1_${String(i).padStart(3, '0')}`,
+      title: `Page One ${i}`,
+    }))
+    const pageTwo = [
+      { ...TRIGGER, triggerEventId: 'tri_tail', title: 'Tail Trigger' },
+    ]
+    server.use(
+      http.get(`${API}/v1/automations/triggers`, ({ request }) => {
+        const cursor = new URL(request.url).searchParams.get('cursor')
+        return cursor === 'c2'
+          ? HttpResponse.json({
+              data: pageTwo,
+              pagination: { cursor: null, hasMore: false },
+            })
+          : HttpResponse.json({
+              data: pageOne,
+              pagination: { cursor: 'c2', hasMore: true },
+            })
+      })
+    )
+    const dir = mkdtempSync(join(tmpdir(), 'brew-types-'))
+    const out = join(dir, 'brew-contracts.ts')
+    const result = await runCli(['types', '--out', out], {
+      env: env(),
+      extraCommands: [typesCommand],
+    })
+    expect(result.code).toBe(0)
+    const text = readFileSync(out, 'utf8')
+    expect(text).toContain('TailTriggerPayload')
+    expect((result.json as { triggers: number }).triggers).toBe(101)
+  })
+
+  it('deduplicates colliding type names so the file always compiles', async () => {
+    server.use(
+      http.get(`${API}/v1/automations/triggers`, () =>
+        HttpResponse.json({
+          data: [
+            { ...TRIGGER, triggerEventId: 'tri_a', title: 'User Signed Up' },
+            { ...TRIGGER, triggerEventId: 'tri_b', title: 'user signed-up!' },
+          ],
+          pagination: { cursor: null, hasMore: false },
+        })
+      )
+    )
+    const dir = mkdtempSync(join(tmpdir(), 'brew-types-'))
+    const out = join(dir, 'brew-contracts.ts')
+    await runCli(['types', '--out', out], {
+      env: env(),
+      extraCommands: [typesCommand],
+    })
+    const text = readFileSync(out, 'utf8')
+    const declarations = text.match(/export type (\w+) =/g) ?? []
+    expect(declarations.length).toBe(2)
+    expect(new Set(declarations).size).toBe(2)
+    expect(text).toContain('export type UserSignedUpPayload =')
+    expect(text).toContain('export type UserSignedUpPayloadTriB =')
+  })
+
+  it('mirrors the app naming rule: digit-led titles get the Payload prefix', async () => {
+    server.use(
+      http.get(`${API}/v1/automations/triggers`, () =>
+        HttpResponse.json({
+          data: [{ ...TRIGGER, triggerEventId: 'tri_l', title: '2026 Launch' }],
+          pagination: { cursor: null, hasMore: false },
+        })
+      )
+    )
+    const dir = mkdtempSync(join(tmpdir(), 'brew-types-'))
+    const out = join(dir, 'brew-contracts.ts')
+    await runCli(['types', '--out', out], {
+      env: env(),
+      extraCommands: [typesCommand],
+    })
+    expect(readFileSync(out, 'utf8')).toContain(
+      'export type Payload2026Launch ='
+    )
+  })
+
+  it('emits unknown for bare references with no type evidence (app parity)', async () => {
+    server.use(
+      http.get(`${API}/v1/automations/triggers`, () =>
+        HttpResponse.json({
+          data: [],
+          pagination: { cursor: null, hasMore: false },
+        })
+      ),
+      http.get(`${API}/v1/transactional/txn_bare`, () =>
+        HttpResponse.json({
+          ...TRANSACTIONAL,
+          transactionId: 'txn_bare',
+          subject: 'Bare Ref',
+          variableTree: [
+            {
+              key: 'trigger',
+              path: 'trigger',
+              kind: 'object',
+              fallback: null,
+              namespace: 'trigger',
+              children: [
+                {
+                  key: 'mystery',
+                  path: 'trigger.mystery',
+                  kind: 'scalar',
+                  fallback: null,
+                  namespace: 'trigger',
+                  children: [],
+                },
+              ],
+            },
+          ],
+        })
+      )
+    )
+    const dir = mkdtempSync(join(tmpdir(), 'brew-types-'))
+    const out = join(dir, 'brew-contracts.ts')
+    await runCli(['types', '--out', out, '--transaction', 'txn_bare'], {
+      env: env(),
+      extraCommands: [typesCommand],
+    })
+    expect(readFileSync(out, 'utf8')).toContain('  mystery: unknown')
+  })
+
+  it('--check tolerates CRLF checkouts', async () => {
+    mockApi()
+    const dir = mkdtempSync(join(tmpdir(), 'brew-types-'))
+    const out = join(dir, 'brew-contracts.ts')
+    const testEnv = env()
+    await runCli(['types', '--out', out], {
+      env: testEnv,
+      extraCommands: [typesCommand],
+    })
+    writeFileSync(out, readFileSync(out, 'utf8').replaceAll('\n', '\r\n'))
+    const result = await runCli(['types', '--out', out, '--check'], {
+      env: testEnv,
+      extraCommands: [typesCommand],
+    })
+    expect(result.code).toBe(0)
   })
 })
 
