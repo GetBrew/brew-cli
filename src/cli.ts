@@ -35,6 +35,8 @@ const GROUP_SUMMARIES: Readonly<Record<string, string>> = {
   sends: 'Control in-flight or scheduled sends',
   templates: 'Browse the template gallery',
   transactional: 'Read reusable transactional email objects',
+  contract: 'Stored payload contracts (get, put, validate)',
+  contracts: 'Cross-plane payload-contract helpers',
   triggers: 'Manage trigger events',
   runs: 'Automation run history',
   'trigger-instances': 'Fired trigger instances',
