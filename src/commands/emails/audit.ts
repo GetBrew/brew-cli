@@ -4,6 +4,7 @@ import { CliUsageError } from '../../lib/errors'
 import {
   asSdkInput,
   flagString,
+  IDEMPOTENCY_FLAG,
   INPUT_FLAG,
   mergeInput,
   readJsonFlag,
@@ -18,11 +19,6 @@ const SENDING_PURPOSES = new Set(['marketing', 'transactional'])
 
 /** Allows the server's bounded 50-second audit plus transport overhead. */
 export const AUDIT_EMAIL_DEFAULT_TIMEOUT_MS = 65_000
-
-const AUDIT_IDEMPOTENCY_FLAG = {
-  flag: '--idempotency-key <key>',
-  summary: 'Idempotency-Key for safe retries of this raw request',
-} as const
 
 function optionalText(value: unknown): string | undefined {
   return typeof value === 'string' ? value : undefined
@@ -52,7 +48,7 @@ export const emailsAuditCommand = defineCommand({
       summary: 'marketing | transactional (default: marketing)',
     },
     INPUT_FLAG,
-    AUDIT_IDEMPOTENCY_FLAG,
+    IDEMPOTENCY_FLAG,
   ],
   examples: [
     'brew-cli emails audit --file newsletter.html --subject "August update" --sending-purpose marketing',

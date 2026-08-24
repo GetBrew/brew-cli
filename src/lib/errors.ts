@@ -134,6 +134,15 @@ export function toErrorEnvelope(error: unknown): CliErrorEnvelope {
       message: error.message,
     }
   }
+  if (error instanceof Error && error.name === 'TimeoutError') {
+    return {
+      code: 'CLI_TIMEOUT',
+      type: 'service_unavailable',
+      message: 'The request timed out before the API responded.',
+      suggestion:
+        'Retry the request. Reuse the same Idempotency-Key for a POST request.',
+    }
+  }
   if (error instanceof CommandAbortedError) {
     return {
       code: 'CLI_ABORTED',

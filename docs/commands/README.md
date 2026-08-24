@@ -667,7 +667,7 @@ Audit raw email content for production readiness (5 credits when complete)
 - `--preview-text <text>` — Inbox preview text; an explicit empty value stays empty
 - `--sending-purpose <purpose>` — marketing | transactional (default: marketing)
 - `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
-- `--idempotency-key <key>` — Idempotency-Key for safe retries of this raw request
+- `--idempotency-key <key>` — Idempotency-Key for safe retries (auto-generated otherwise)
 
 ```bash
 brew-cli emails audit --file newsletter.html --subject "August update" --sending-purpose marketing
