@@ -102,6 +102,29 @@ describe('emails audit', () => {
     })
   })
 
+  it('auto-generates an idempotency key when the flag is omitted', async () => {
+    let idempotencyKey: string | null = null
+    server.use(
+      http.post(`${API}/v1/emails/audit`, ({ request }) => {
+        idempotencyKey = request.headers.get('idempotency-key')
+        return HttpResponse.json({
+          schemaVersion: 1,
+          completion: { status: 'complete', readiness: 'ready', score: 100 },
+        })
+      })
+    )
+
+    const result = await runCli(
+      ['emails', 'audit', '--input', '{"emailHtml":"<p>Hello</p>"}'],
+      { env: env(), extraCommands: [emailsAuditCommand] }
+    )
+
+    expect(result.code).toBe(0)
+    expect(idempotencyKey).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
+    )
+  })
+
   it('reports the local audit deadline as a retryable timeout', async () => {
     vi.spyOn(globalThis, 'fetch').mockRejectedValue(
       new DOMException(
