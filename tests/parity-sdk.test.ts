@@ -38,7 +38,7 @@ describe('parity: SDK surface ↔ CLI commands', () => {
   const skipped = SDK_SKIP_LIST.map((entry) => entry.sdkPath)
   const covered = new Set([...bound, ...skipped, ...PENDING_BUILD])
 
-  it('covers every SDK method with a command, a skip entry, or a pending-build entry', () => {
+  it('covers every installed SDK method with an explicit disposition', () => {
     const uncovered = leaves.filter((leaf) => !covered.has(leaf))
     expect(uncovered).toEqual([])
   })

@@ -1,24 +1,16 @@
-import type { components } from '../../generated/openapi-types'
 import { defineCommand } from '../../lib/define-command'
 import { renderTable } from '../../lib/output'
-import { rawRequest } from '../../lib/raw-request'
-
-type ApiKeysListResponse = components['schemas']['ApiKeysListResponse']
 
 export const apiKeysListCommand = defineCommand({
   path: ['api-keys', 'list'],
   summary:
     'List API keys in the organization (already-redacted `keyPreview`, never the secret)',
-  sdkMethod: null,
-  isRawTransport: true,
+  sdkMethod: 'apiKeys.list',
   route: { method: 'GET', path: '/v1/api-keys' },
   commandClass: 'read',
   examples: ['brew-cli api-keys list', 'brew-cli api-keys list --json'],
   run: async ({ ctx }) => {
-    const result = await rawRequest<ApiKeysListResponse>(ctx, {
-      method: 'GET',
-      path: '/v1/api-keys',
-    })
+    const result = await ctx.client().apiKeys.list()
     return { data: result, human: renderApiKeys(result.data) }
   },
 })

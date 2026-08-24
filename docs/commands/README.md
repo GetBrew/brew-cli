@@ -54,7 +54,7 @@ a `confirmCommand` otherwise, `--yes` to proceed).
 | `brew-cli emails restore` | write | `POST /v1/emails/{emailId}/restore` | Restore a previous version as the new latest (non-destructive) |
 | `brew-cli emails delete` | destructive | `DELETE /v1/emails/{emailId}` | Hard-delete an email design and all its versions (idempotent) |
 | `brew-cli emails export` | write | `POST /v1/emails/{emailId}/export` | Export a design to a connected ESP as a template (not a send) |
-| `brew-cli emails audit-accessibility` | write ($) | `POST /v1/emails/{emailId}/accessibility-audit` | WCAG 2.1 audit of the latest rendered HTML (5 credits) |
+| `brew-cli emails audit` | write ($) | `POST /v1/emails/audit` | Audit raw email content for production readiness (5 credits when complete) |
 | `brew-cli emails preview-clients` | write ($) | `POST /v1/emails/{emailId}/client-previews` | Render the design across real email clients (10 credits) |
 | `brew-cli emails create-inbox-placement-test` | write ($) | `POST /v1/emails/{emailId}/inbox-placement-tests` | Seed-test where the design lands (inbox vs spam) via a real small send (10 credits) |
 | `brew-cli emails get-inbox-placement-results` | read | `GET /v1/emails/{emailId}/inbox-placement-tests` | Inbox placement results: one test with --test-id, else the recent tests |
@@ -449,6 +449,7 @@ List email groups in display order, including Ungrouped
 
 - Route: `GET /v1/email-groups`
 - Class: read
+- SDK: `brew.emailGroups.list(...)`
 - `--limit <n>` — Page size, 1-100 (default 100)
 - `--cursor <cursor>` — Opaque pagination cursor from a previous page
 - `--all` — Follow the cursor and return every page as one result
@@ -465,6 +466,7 @@ Create a named email folder (group)
 
 - Route: `POST /v1/email-groups`
 - Class: write
+- SDK: `brew.emailGroups.create(...)`
 - `--name <name>` — Folder label, 1-60 chars (Ungrouped is reserved)
 - `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
 - `--idempotency-key <key>` — Idempotency-Key for safe retries (auto-generated otherwise)
@@ -479,6 +481,7 @@ Rename an email folder (group)
 
 - Route: `PATCH /v1/email-groups/{groupId}`
 - Class: write
+- SDK: `brew.emailGroups.update(...)`
 - Argument `groupId` — Named group id (grp_*); Ungrouped cannot be renamed
 - `--name <name>` — New folder label, 1-60 chars
 - `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
@@ -493,6 +496,7 @@ Delete an email folder (group); its emails move to Ungrouped
 
 - Route: `DELETE /v1/email-groups/{groupId}`
 - Class: destructive
+- SDK: `brew.emailGroups.delete(...)`
 - Argument `groupId` — Named group id (grp_*); Ungrouped cannot be deleted
 
 ```bash
@@ -564,6 +568,7 @@ Convert one Figma frame into an editable design (deterministic, free)
 
 - Route: `POST /v1/emails/figma`
 - Class: write
+- SDK: `brew.emails.importFigma(...)`
 - `--url <figmaUrl>` — Figma frame link; must include a node-id query parameter
 - `--title <title>` — Design title (default: the Figma frame name)
 - `--format <format>` — Representation returned in content: jsx (default) or html
@@ -601,6 +606,7 @@ Clone a design into a new one (exact snapshot copy, no AI)
 
 - Route: `POST /v1/emails/{emailId}/clone`
 - Class: write
+- SDK: `brew.emails.clone(...)`
 - Argument `emailId` — Design id to clone
 - `--email-version-id <id>` — Exact source version to clone (default: latest)
 - `--idempotency-key <key>` — Idempotency-Key for safe retries (auto-generated otherwise)
@@ -644,6 +650,7 @@ Export a design to a connected ESP as a template (not a send)
 
 - Route: `POST /v1/emails/{emailId}/export`
 - Class: write
+- SDK: `brew.emails.export(...)`
 - Argument `emailId` — Design id to export
 - `--provider <provider>` — Connected ESP: braze, hubspot, klaviyo, mailchimp, iterable, postmark, onesignal, mailgun, sendgrid
 - `--template-name <name>` — Template name in the ESP (default: the email title)
@@ -655,18 +662,25 @@ brew-cli emails export eml_2SmZOWV3ZQ7W5x6g3m4p --provider klaviyo
 brew-cli emails export eml_2SmZOWV3ZQ7W5x6g3m4p --provider mailchimp --template-name "Fall sale" --dry-run
 ```
 
-### brew-cli emails audit-accessibility
+### brew-cli emails audit
 
-WCAG 2.1 audit of the latest rendered HTML (5 credits)
+Audit raw email content for production readiness (5 credits when complete)
 
-- Route: `POST /v1/emails/{emailId}/accessibility-audit`
+- Route: `POST /v1/emails/audit`
 - Class: write
 - Consumes Brew credits
-- Argument `emailId` — Design id to audit
+- SDK: `brew.emails.auditEmail(...)`
+- `--file <path>` — Email HTML file to audit, or - for stdin
+- `--subject <text>` — Inbox subject line
+- `--preview-text <text>` — Inbox preview text; an explicit empty value stays empty
+- `--sending-purpose <purpose>` — marketing | transactional (default: marketing)
+- `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
 - `--idempotency-key <key>` — Idempotency-Key for safe retries (auto-generated otherwise)
 
 ```bash
-brew-cli emails audit-accessibility eml_2SmZOWV3ZQ7W5x6g3m4p
+brew-cli emails audit --file newsletter.html --subject "August update" --sending-purpose marketing
+cat email.html | brew-cli emails audit --file - --subject "Receipt" --sending-purpose transactional
+brew-cli emails audit --input '{"emailHtml":"<p>Hello</p>","subject":"Hello"}'
 ```
 
 ### brew-cli emails preview-clients
@@ -676,6 +690,7 @@ Render the design across real email clients (10 credits)
 - Route: `POST /v1/emails/{emailId}/client-previews`
 - Class: write
 - Consumes Brew credits
+- SDK: `brew.emails.previewClients(...)`
 - Argument `emailId` — Design id to preview
 - `--clients <ids...>` — Client id(s) to render, repeatable (e.g. applemail16 iphone16_18); default: a popular spread
 - `--idempotency-key <key>` — Idempotency-Key for safe retries (auto-generated otherwise)
@@ -692,6 +707,7 @@ Seed-test where the design lands (inbox vs spam) via a real small send (10 credi
 - Route: `POST /v1/emails/{emailId}/inbox-placement-tests`
 - Class: write
 - Consumes Brew credits
+- SDK: `brew.emails.createInboxPlacementTest(...)`
 - Argument `emailId` — Design id to test
 - `--domain <domainId>` — Verified sending domain id the seed send goes out on
 - `--subject <text>` — Seed-send subject (default: the email title)
@@ -711,6 +727,7 @@ Inbox placement results: one test with --test-id, else the recent tests
 
 - Route: `GET /v1/emails/{emailId}/inbox-placement-tests`
 - Class: read
+- SDK: `brew.emails.getInboxPlacementResults(...)`
 - Argument `emailId` — Design id the tests ran on
 - `--test-id <id>` — One test: live status + per-provider placement (re-poll ~30s until completed)
 
@@ -761,6 +778,7 @@ Pause an in-flight or scheduled send (resumable)
 
 - Route: `POST /v1/sends/{sendId}/pause`
 - Class: write
+- SDK: `brew.sends.pause(...)`
 - Argument `sendId` — Send id to pause
 - `--idempotency-key <key>` — Idempotency-Key for safe retries (auto-generated otherwise)
 
@@ -774,6 +792,7 @@ Resume a paused gradual send (the unsent tail is re-spread)
 
 - Route: `POST /v1/sends/{sendId}/resume`
 - Class: write
+- SDK: `brew.sends.resume(...)`
 - Argument `sendId` — Send id to resume
 - `--idempotency-key <key>` — Idempotency-Key for safe retries (auto-generated otherwise)
 
@@ -787,6 +806,7 @@ Read a transactional email object: locked design/domain/envelope; Liquid workspa
 
 - Route: `GET /v1/transactional/{transactionId}`
 - Class: read
+- SDK: `brew.transactional.get(...)`
 - Argument `transactionId` — Transactional email id (txn_…) from Email Actions → Transactional Email
 
 ```bash
@@ -799,6 +819,7 @@ Generate TypeScript payload contracts (triggers + transactional objects) into yo
 
 - Route: `GET /v1/automations/triggers`
 - Class: read
+- Derived from `brew.automations.triggers.list(...)`
 - `--out <file>` — Output file (default brew-contracts.ts)
 - `--transaction <transactionIds...>` — Transactional object ids (txn_…) to include, contract derived from each pinned template
 - `--check` — Verify the output file is up to date instead of writing; exits 1 on drift
@@ -879,6 +900,7 @@ Copy an audience segment (the copy gets a "(copy)" name)
 
 - Route: `POST /v1/audiences/{audienceId}/duplicate`
 - Class: write
+- SDK: `brew.audiences.duplicate(...)`
 - Argument `audienceId` — Audience id to duplicate
 - `--idempotency-key <key>` — Idempotency-Key for safe retries (auto-generated otherwise)
 
@@ -892,6 +914,7 @@ Create a frozen audience snapshot from analytics events (async build)
 
 - Route: `POST /v1/audiences/from-events`
 - Class: write
+- SDK: `brew.audiences.fromEvents(...)`
 - `--name <name>` — Audience name
 - `--event-types <types...>` — Event type(s), repeatable: sent, delivered, delivery_delayed, opened, clicked, bounced, complained, failed, skipped, unsubscribed
 - `--since <datetime>` — Cohort window start (ISO-8601, max 90 days back)
@@ -1049,6 +1072,7 @@ Run a manual-audience automation (live send; --dry-run previews)
 
 - Route: `POST /v1/automations/{automationId}/run`
 - Class: destructive
+- SDK: `brew.automations.run(...)`
 - Argument `automationId` — Manual-audience automation id to run
 - `--dry-run` — Preview the resolved plan without sending (skips the gate)
 - `--schedule-at <iso>` — Launch at an ISO-8601 time instead of now
@@ -1085,6 +1109,7 @@ Preflight a trigger without firing: key + scope + permissions pass/fail, the pay
 
 - Route: `GET /v1/automations/triggers/{triggerEventId}/fire`
 - Class: read
+- SDK: `brew.automations.triggers.ready(...)`
 - Argument `triggerEventId` — Trigger id (tri_…, or an integration composite id)
 
 ```bash
@@ -1185,6 +1210,7 @@ List manual-audience runs (newest first)
 
 - Route: `GET /v1/automations/audience-runs`
 - Class: read
+- SDK: `brew.automations.audienceRuns.list(...)`
 - `--audience-run-id <id>` — Fetch a single audience run by id
 - `--automation-id <id>` — Filter runs to a single automation
 - `--limit <n>` — Max rows, 1-200 (default 50)
@@ -1200,6 +1226,7 @@ Pause, resume, or cancel an in-flight manual-audience run
 
 - Route: `POST /v1/automations/audience-runs/{audienceRunId}/control`
 - Class: destructive
+- SDK: `brew.automations.audienceRuns.control(...)`
 - Argument `audienceRunId` — Audience run id to control
 - `--action <action>` — pause (resumable) | resume | cancel (final)
 
@@ -1214,6 +1241,7 @@ Brand overview: totals, rates, timeseries (default last 7 days)
 
 - Route: `GET /v1/analytics/overview`
 - Class: read
+- SDK: `brew.analytics.overview(...)`
 - `--since <datetime>` — Window start (ISO-8601, default 7 days ago)
 - `--until <datetime>` — Window end (ISO-8601, default now)
 - `--source <sources>` — CSV of send sources: audience, api, automation_manual, automation_integration, automation_custom
@@ -1398,6 +1426,7 @@ List every brand in the organization
 
 - Route: `GET /v1/brands`
 - Class: read
+- SDK: `brew.brands.list(...)`
 
 ```bash
 brew-cli brands list --json
@@ -1409,6 +1438,7 @@ One brand's lifecycle state (the extraction polling endpoint)
 
 - Route: `GET /v1/brands/{brandId}`
 - Class: read
+- SDK: `brew.brands.get(...)`
 - Argument `brandId` — Brand id to fetch
 
 ```bash
@@ -1421,6 +1451,7 @@ Create a brand and start async extraction (needs an ORGANIZATION-scoped key); po
 
 - Route: `POST /v1/brands`
 - Class: write
+- SDK: `brew.brands.create(...)`
 - `--url <url>` — Website to extract the brand from
 - `--instructions <text>` — Guidance for the extraction (tone sources, brand color, …)
 - `--include-paths <paths...>` — Site path(s) the crawl must include, repeatable
@@ -1440,6 +1471,7 @@ List API keys in the organization (already-redacted `keyPreview`, never the secr
 
 - Route: `GET /v1/api-keys`
 - Class: read
+- SDK: `brew.apiKeys.list(...)`
 
 ```bash
 brew-cli api-keys list
@@ -1452,6 +1484,7 @@ Mint an API key; the plaintext `key` is returned ONCE — this output is the onl
 
 - Route: `POST /v1/api-keys`
 - Class: write
+- SDK: `brew.apiKeys.create(...)`
 - `--name <name>` — Label for the key
 - `--permissions <scopes...>` — all | contacts | emails | automations | transactional | domains | sends | audiences | brands (default: all)
 - `--brand-id <brandId>` — Bind the NEW key to this brand id (omit for an organization-wide key); not the acting --brand
@@ -1469,6 +1502,7 @@ Revoke an API key
 
 - Route: `DELETE /v1/api-keys/{keyId}`
 - Class: destructive
+- SDK: `brew.apiKeys.revoke(...)`
 - Argument `keyId` — API key id to revoke
 
 ```bash
@@ -1542,6 +1576,7 @@ Deliverability health: verdict, signals, DNS/auth, reputation
 
 - Route: `GET /v1/domains/{domainId}/health`
 - Class: read
+- SDK: `brew.domains.health(...)`
 - Argument `domainId` — Domain id to inspect
 
 ```bash
@@ -1708,6 +1743,7 @@ List the integration catalog with per-provider connected state (connect via Sett
 
 - Route: `GET /v1/integrations`
 - Class: read
+- SDK: `brew.integrations.list(...)`
 
 ```bash
 brew-cli integrations list
@@ -1720,6 +1756,7 @@ Brand-scoped digest of a Brew chat (artifacts + transcript tail)
 
 - Route: `GET /v1/chats/{chatId}`
 - Class: read
+- SDK: `brew.chats.get(...)`
 - Argument `chatId` — Brew chat id (from the chat URL / the app)
 
 ```bash
@@ -1812,7 +1849,7 @@ SDK methods intentionally without a dedicated command:
 - `analytics.sends.listAll` — auto-pager covered by `analytics sends list --all`
 - `analytics.triggerInstances.listAll` — auto-pager covered by `analytics trigger-instances list --all`
 - `brand.update` — SDK alias of brand.patch, exposed as `brand update`
-- `emails.auditAccessibility` — SDK 8.0.0 issues GET for the POST-only operation (upstream bug); `emails audit-accessibility` binds via raw transport instead
+- `withBrand` — client scoping helper activated by the global `--brand`; not an API command
 
 Public API operations not yet available (tracked by the spec parity test):
 

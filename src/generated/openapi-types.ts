@@ -165,7 +165,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/v1/emails/{emailId}/accessibility-audit": {
+    "/v1/emails/audit": {
         parameters: {
             query?: never;
             header?: never;
@@ -175,10 +175,10 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Accessibility audit
-         * @description Audit the email’s latest rendered HTML for accessibility issues against WCAG 2.1 (missing alt text, non-descriptive links, low text contrast, tiny fonts, missing `lang`, empty headings). Returns a `score` (0–100), a `summary`, and a list of `issues` with their WCAG criterion. FIXED cost: 5 credits (`X-Credit-Cost: 5`), charged ONLY on success — if the audit cannot complete in time, the call returns a retryable `503` and is NOT billed.
+         * Audit an email
+         * @description Lint raw email content for production readiness. `emailHtml` is capped at 5,000,000 UTF-8 bytes and the complete JSON body at 6 MiB; `subject` and `previewText` each have a 1,000-character transport cap. Omitted preview text is extracted from the authored preheader, while an explicit empty string stays empty. Omitted `sendingPurpose` defaults to marketing and is reported as defaulted. Independent checks run in parallel across unsubscribe compliance, links and images, total loaded size, accessibility, markup, subject line, and preview text. The stable versioned response reports every check, up to 100 normalized findings, exact totals, metrics, and a nested `completion` discriminator. A complete result has a 0–100 score and costs 5 credits (`X-Credit-Cost: 5`). If a required lane is unavailable, the endpoint returns a partial result with `score: null`, never establishes readiness, costs 0 credits (`X-Credit-Cost: 0`), and releases the idempotency key so the same key can retry. Admission is limited to 6 requests per minute per credential or session and 20 per minute across the organization, shared by public API, MCP, and agent calls. Brew runs at most 4 audits concurrently per organization and 16 globally; capacity rejections return `429 RATE_LIMITED` with `Retry-After` and do not run or charge the audit.
          */
-        post: operations["auditEmailAccessibility"];
+        post: operations["auditEmail"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2740,20 +2740,145 @@ export interface components {
             /** @description Accepted alias of `dryRun`. */
             dry_run?: boolean;
         };
-        EmailAccessibilityAuditResponse: {
-            score: number;
+        EmailAuditResponse: {
+            /** @enum {number} */
+            schemaVersion: 1;
+            rulesetVersion: string;
+            /** Format: uuid */
+            auditId: string;
+            contentHash: string;
+            /** Format: date-time */
+            auditedAt: string;
+            /** Format: date-time */
+            expiresAt: string;
+            policy: {
+                /** @enum {string} */
+                purpose: "marketing" | "transactional" | "unknown";
+                /** @enum {string} */
+                source: "provided" | "defaulted" | "trusted_adapter";
+                /** @enum {string} */
+                unsubscribe: "required" | "not_required" | "not_evaluated";
+            };
             summary: {
+                blockers: number;
                 errors: number;
                 warnings: number;
+                info: number;
+                total: number;
             };
-            issues: {
-                rule: string;
+            checks: ({
+                id: string;
                 /** @enum {string} */
-                severity: "error" | "warning";
+                status: "passed";
+                durationMs: number;
+                /** @enum {number} */
+                findingCount: 0;
+            } | {
+                id: string;
+                /** @enum {string} */
+                status: "issues";
+                durationMs: number;
+                findingCount: number;
+            } | {
+                id: string;
+                /** @enum {string} */
+                status: "not_applicable";
+                /** @enum {string} */
+                reason: "no_remote_links" | "no_remote_images" | "no_remote_assets" | "missing_copy" | "requires_sending_domain" | "send_transport_owned" | "requires_audience_context" | "separate_deliverability_test" | "transactional_purpose" | "unknown_purpose";
+            } | {
+                id: string;
+                /** @enum {string} */
+                status: "unavailable";
+                /** @enum {string} */
+                reason: "timeout" | "upstream" | "invalid_response";
+                retryable: boolean;
+                durationMs: number;
+            })[];
+            metrics: {
+                htmlBytes: number;
+                linkCount: number;
+                imageCount: number;
+                gifCount: number;
+                loadedSize: {
+                    /** @enum {string} */
+                    status: "exact";
+                    htmlBytes: number;
+                    remoteAssetBytes: number;
+                    totalBytes: number;
+                    assetCount: number;
+                } | {
+                    /** @enum {string} */
+                    status: "lower_bound";
+                    htmlBytes: number;
+                    knownRemoteAssetBytes: number;
+                    knownTotalBytes: number;
+                    unknownAssetCount: number;
+                };
+            };
+            findings: {
+                id: string;
+                ruleId: string;
+                /** @enum {string} */
+                category: "compliance" | "links" | "images" | "accessibility" | "compatibility" | "copy" | "size" | "markup";
+                /** @enum {string} */
+                severity: "blocker" | "error" | "warning" | "info";
+                /** @enum {string} */
+                impact: "block" | "confirm" | "advisory";
                 message: string;
-                wcag?: string;
-                element?: string;
+                remediation: string;
+                occurrenceCount?: number;
+                sources: string[];
+                standards?: {
+                    id: string;
+                    url?: string;
+                }[];
+                target: {
+                    /** @enum {string} */
+                    kind: "email";
+                } | {
+                    /** @enum {string} */
+                    kind: "subject";
+                } | {
+                    /** @enum {string} */
+                    kind: "preview_text";
+                } | {
+                    /** @enum {string} */
+                    kind: "link";
+                    index: number;
+                    displayUrl: string;
+                } | {
+                    /** @enum {string} */
+                    kind: "image";
+                    index: number;
+                    displayUrl: string;
+                } | {
+                    /** @enum {string} */
+                    kind: "element";
+                    selector: string;
+                };
             }[];
+            totalFindings: number;
+            findingsTruncated: boolean;
+            completion: {
+                /** @enum {string} */
+                status: "complete";
+                /** @enum {string} */
+                readiness: "ready" | "needs_review" | "not_ready";
+                score: number;
+            } | {
+                /** @enum {string} */
+                status: "partial";
+                /** @enum {string} */
+                readiness: "unknown" | "not_ready";
+                score: null;
+            };
+        };
+        EmailAuditRequest: {
+            emailHtml: string;
+            subject?: string;
+            previewText?: string;
+            /** @enum {string} */
+            sendingPurpose?: "marketing" | "transactional";
         };
         EmailClientPreviewResponse: {
             emailId: string;
@@ -7987,25 +8112,39 @@ export interface operations {
             };
         };
     };
-    auditEmailAccessibility: {
+    auditEmail: {
         parameters: {
             query?: never;
             header?: {
+                /**
+                 * @description Optional idempotency key for safe retries. Reusing the same key with the same request body returns the original response for 24 hours.
+                 * @example api-request-2026-04-08-001
+                 */
+                "Idempotency-Key"?: string;
                 /**
                  * @description The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
                  * @example kx7b3s7fapqz8mjm12ekz1kxdx87yceg
                  */
                 "X-Brand-Id"?: string;
             };
-            path: {
-                /** @description Design id returned by `POST /v1/emails` and listed by `GET /v1/emails`. */
-                emailId: string;
-            };
+            path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "emailHtml": "<!doctype html><html lang=\"en\"><body><a href=\"https://example.com/account\">View account</a><a href=\"{{ unsubscribe_url }}\">Unsubscribe</a></body></html>",
+                 *       "subject": "Your August account update",
+                 *       "previewText": "A quick look at what changed this month.",
+                 *       "sendingPurpose": "marketing"
+                 *     }
+                 */
+                "application/json": components["schemas"]["EmailAuditRequest"];
+            };
+        };
         responses: {
-            /** @description The audit result. */
+            /** @description A complete or partial audit. Branch on `completion.status`; only `complete` carries a numeric score. A partial response is not cached under its idempotency key and may be retried with the same key. */
             200: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -8016,28 +8155,104 @@ export interface operations {
                     "X-RateLimit-Remaining": number;
                     /** @description Unix timestamp in seconds for when the rolling window fully resets. */
                     "X-RateLimit-Reset": number;
+                    /** @description Credits charged for this completed operation. */
+                    "X-Credit-Cost": number;
+                    /** @description Credits remaining after this operation. */
+                    "X-Credits-Remaining": number;
                     [name: string]: unknown;
                 };
                 content: {
                     /**
                      * @example {
-                     *       "score": 90,
-                     *       "summary": {
-                     *         "errors": 1,
-                     *         "warnings": 0
+                     *       "schemaVersion": 1,
+                     *       "rulesetVersion": "2026-08-24.1",
+                     *       "auditId": "00000000-0000-4000-8000-000000000001",
+                     *       "contentHash": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+                     *       "auditedAt": "2026-08-23T00:00:00.000Z",
+                     *       "expiresAt": "2026-08-23T00:15:00.000Z",
+                     *       "policy": {
+                     *         "purpose": "marketing",
+                     *         "source": "provided",
+                     *         "unsubscribe": "required"
                      *       },
-                     *       "issues": [
+                     *       "summary": {
+                     *         "blockers": 0,
+                     *         "errors": 0,
+                     *         "warnings": 1,
+                     *         "info": 0,
+                     *         "total": 1
+                     *       },
+                     *       "checks": [
                      *         {
-                     *           "rule": "img-alt",
-                     *           "severity": "error",
-                     *           "wcag": "1.1.1",
-                     *           "message": "Image is missing an alt attribute. Add descriptive alt text, or alt=\"\" if it is purely decorative.",
-                     *           "element": "<img src=\"https://cdn.brew.new/hero.png\">"
+                     *           "id": "preflight",
+                     *           "status": "issues",
+                     *           "durationMs": 0,
+                     *           "findingCount": 1
                      *         }
-                     *       ]
+                     *       ],
+                     *       "metrics": {
+                     *         "htmlBytes": 2134,
+                     *         "linkCount": 2,
+                     *         "imageCount": 0,
+                     *         "gifCount": 0,
+                     *         "loadedSize": {
+                     *           "status": "exact",
+                     *           "htmlBytes": 2134,
+                     *           "remoteAssetBytes": 0,
+                     *           "totalBytes": 2134,
+                     *           "assetCount": 0
+                     *         }
+                     *       },
+                     *       "findings": [
+                     *         {
+                     *           "id": "copy.subject.long:subject",
+                     *           "ruleId": "copy.subject.long",
+                     *           "category": "copy",
+                     *           "severity": "warning",
+                     *           "impact": "advisory",
+                     *           "message": "The subject may truncate on smaller inboxes.",
+                     *           "remediation": "Shorten it while keeping the main benefit clear.",
+                     *           "sources": [
+                     *             "preflight"
+                     *           ],
+                     *           "target": {
+                     *             "kind": "subject"
+                     *           }
+                     *         }
+                     *       ],
+                     *       "totalFindings": 1,
+                     *       "findingsTruncated": false,
+                     *       "completion": {
+                     *         "status": "complete",
+                     *         "readiness": "needs_review",
+                     *         "score": 97
+                     *       }
                      *     }
                      */
-                    "application/json": components["schemas"]["EmailAccessibilityAuditResponse"];
+                    "application/json": components["schemas"]["EmailAuditResponse"];
+                };
+            };
+            /** @description Invalid raw email content, an unknown field, or an invalid sendingPurpose. */
+            400: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "INVALID_REQUEST",
+                     *         "type": "invalid_request",
+                     *         "message": "Request validation failed.",
+                     *         "suggestion": "Fix the field reported in `param` and retry.",
+                     *         "docs": "https://docs.brew.new/api-reference/api/errors",
+                     *         "param": "emailHtml"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
             /** @description The API key was missing, invalid, or revoked. */
@@ -8079,7 +8294,7 @@ export interface operations {
                      *         "suggestion": "Upgrade your plan or wait for the next billing period to reset. Check your balance up front with GET /v1/usage.",
                      *         "docs": "https://docs.brew.new/api-reference/api/credits",
                      *         "details": {
-                     *           "cost": 2,
+                     *           "cost": 5,
                      *           "remaining": 0,
                      *           "planKey": "free"
                      *         }
@@ -8112,8 +8327,8 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description No email exists with that id (cross-brand ids surface as 404). */
-            404: {
+            /** @description The same `Idempotency-Key` was reused with a different request body. */
+            409: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
                     "x-request-id": string;
@@ -8123,19 +8338,19 @@ export interface operations {
                     /**
                      * @example {
                      *       "error": {
-                     *         "code": "EMAIL_NOT_FOUND",
-                     *         "type": "not_found",
-                     *         "message": "No email exists with id 'eml_welcome'.",
-                     *         "suggestion": "Verify the emailId via GET /v1/emails.",
-                     *         "docs": "https://docs.brew.new/api-reference/api/errors"
+                     *         "code": "IDEMPOTENCY_CONFLICT",
+                     *         "type": "conflict",
+                     *         "message": "The same idempotency key was reused with a different request payload.",
+                     *         "suggestion": "Reuse the original payload or send a new idempotency key.",
+                     *         "docs": "https://docs.brew.new/api-reference/api/idempotency"
                      *       }
                      *     }
                      */
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description The email has no rendered HTML yet (still generating). */
-            422: {
+            /** @description The complete JSON request body exceeds the 6 MiB transport limit. */
+            413: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
                     "x-request-id": string;
@@ -8145,10 +8360,10 @@ export interface operations {
                     /**
                      * @example {
                      *       "error": {
-                     *         "code": "CONTENT_OPERATION_FAILED",
+                     *         "code": "PAYLOAD_TOO_LARGE",
                      *         "type": "invalid_request",
-                     *         "message": "accessibility-audit failed: the email has no rendered HTML yet.",
-                     *         "suggestion": "Poll GET /v1/emails?emailId= until status is complete, then retry.",
+                     *         "message": "Request body must not exceed 6291456 bytes.",
+                     *         "suggestion": "Reduce the payload size and retry.",
                      *         "docs": "https://docs.brew.new/api-reference/api/errors"
                      *       }
                      *     }

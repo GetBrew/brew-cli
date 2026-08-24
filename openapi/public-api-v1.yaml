@@ -3738,53 +3738,503 @@ components:
       required:
         - provider
       additionalProperties: false
-    EmailAccessibilityAuditResponse:
+    EmailAuditResponse:
       type: object
       properties:
-        score:
-          type: integer
-          minimum: 0
-          maximum: 100
+        schemaVersion:
+          type: number
+          enum:
+            - 1
+        rulesetVersion:
+          type: string
+          minLength: 1
+          maxLength: 100
+        auditId:
+          type: string
+          format: uuid
+        contentHash:
+          type: string
+          pattern: ^sha256:[0-9a-f]{64}$
+        auditedAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+        policy:
+          type: object
+          properties:
+            purpose:
+              type: string
+              enum:
+                - marketing
+                - transactional
+                - unknown
+            source:
+              type: string
+              enum:
+                - provided
+                - defaulted
+                - trusted_adapter
+            unsubscribe:
+              type: string
+              enum:
+                - required
+                - not_required
+                - not_evaluated
+          required:
+            - purpose
+            - source
+            - unsubscribe
+          additionalProperties: false
         summary:
           type: object
           properties:
+            blockers:
+              type: integer
+              minimum: 0
             errors:
               type: integer
               minimum: 0
             warnings:
               type: integer
               minimum: 0
+            info:
+              type: integer
+              minimum: 0
+            total:
+              type: integer
+              minimum: 0
           required:
+            - blockers
             - errors
             - warnings
+            - info
+            - total
           additionalProperties: false
-        issues:
+        checks:
+          type: array
+          items:
+            oneOf:
+              - type: object
+                properties:
+                  id:
+                    type: string
+                    minLength: 1
+                    maxLength: 128
+                  status:
+                    type: string
+                    enum:
+                      - passed
+                  durationMs:
+                    type: integer
+                    minimum: 0
+                  findingCount:
+                    type: number
+                    enum:
+                      - 0
+                required:
+                  - id
+                  - status
+                  - durationMs
+                  - findingCount
+                additionalProperties: false
+              - type: object
+                properties:
+                  id:
+                    type: string
+                    minLength: 1
+                    maxLength: 128
+                  status:
+                    type: string
+                    enum:
+                      - issues
+                  durationMs:
+                    type: integer
+                    minimum: 0
+                  findingCount:
+                    type: integer
+                    exclusiveMinimum: 0
+                required:
+                  - id
+                  - status
+                  - durationMs
+                  - findingCount
+                additionalProperties: false
+              - type: object
+                properties:
+                  id:
+                    type: string
+                    minLength: 1
+                    maxLength: 128
+                  status:
+                    type: string
+                    enum:
+                      - not_applicable
+                  reason:
+                    type: string
+                    enum:
+                      - no_remote_links
+                      - no_remote_images
+                      - no_remote_assets
+                      - missing_copy
+                      - requires_sending_domain
+                      - send_transport_owned
+                      - requires_audience_context
+                      - separate_deliverability_test
+                      - transactional_purpose
+                      - unknown_purpose
+                required:
+                  - id
+                  - status
+                  - reason
+                additionalProperties: false
+              - type: object
+                properties:
+                  id:
+                    type: string
+                    minLength: 1
+                    maxLength: 128
+                  status:
+                    type: string
+                    enum:
+                      - unavailable
+                  reason:
+                    type: string
+                    enum:
+                      - timeout
+                      - upstream
+                      - invalid_response
+                  retryable:
+                    type: boolean
+                  durationMs:
+                    type: integer
+                    minimum: 0
+                required:
+                  - id
+                  - status
+                  - reason
+                  - retryable
+                  - durationMs
+                additionalProperties: false
+          maxItems: 32
+        metrics:
+          type: object
+          properties:
+            htmlBytes:
+              type: integer
+              minimum: 0
+            linkCount:
+              type: integer
+              minimum: 0
+            imageCount:
+              type: integer
+              minimum: 0
+            gifCount:
+              type: integer
+              minimum: 0
+            loadedSize:
+              oneOf:
+                - type: object
+                  properties:
+                    status:
+                      type: string
+                      enum:
+                        - exact
+                    htmlBytes:
+                      type: integer
+                      minimum: 0
+                    remoteAssetBytes:
+                      type: integer
+                      minimum: 0
+                    totalBytes:
+                      type: integer
+                      minimum: 0
+                    assetCount:
+                      type: integer
+                      minimum: 0
+                  required:
+                    - status
+                    - htmlBytes
+                    - remoteAssetBytes
+                    - totalBytes
+                    - assetCount
+                  additionalProperties: false
+                - type: object
+                  properties:
+                    status:
+                      type: string
+                      enum:
+                        - lower_bound
+                    htmlBytes:
+                      type: integer
+                      minimum: 0
+                    knownRemoteAssetBytes:
+                      type: integer
+                      minimum: 0
+                    knownTotalBytes:
+                      type: integer
+                      minimum: 0
+                    unknownAssetCount:
+                      type: integer
+                      exclusiveMinimum: 0
+                  required:
+                    - status
+                    - htmlBytes
+                    - knownRemoteAssetBytes
+                    - knownTotalBytes
+                    - unknownAssetCount
+                  additionalProperties: false
+          required:
+            - htmlBytes
+            - linkCount
+            - imageCount
+            - gifCount
+            - loadedSize
+          additionalProperties: false
+        findings:
           type: array
           items:
             type: object
             properties:
-              rule:
+              id:
                 type: string
+                minLength: 1
+                maxLength: 512
+              ruleId:
+                type: string
+                minLength: 1
+                maxLength: 128
+              category:
+                type: string
+                enum:
+                  - compliance
+                  - links
+                  - images
+                  - accessibility
+                  - compatibility
+                  - copy
+                  - size
+                  - markup
               severity:
                 type: string
                 enum:
+                  - blocker
                   - error
                   - warning
+                  - info
+              impact:
+                type: string
+                enum:
+                  - block
+                  - confirm
+                  - advisory
               message:
                 type: string
-              wcag:
+                minLength: 1
+                maxLength: 1000
+              remediation:
                 type: string
-              element:
-                type: string
+                minLength: 1
+                maxLength: 1000
+              occurrenceCount:
+                type: integer
+                exclusiveMinimum: 0
+              sources:
+                type: array
+                items:
+                  type: string
+                  minLength: 1
+                  maxLength: 64
+                minItems: 1
+                maxItems: 16
+              standards:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      minLength: 1
+                      maxLength: 128
+                    url:
+                      type: string
+                      maxLength: 2048
+                      pattern: ^https?:\/\/
+                  required:
+                    - id
+                  additionalProperties: false
+                maxItems: 8
+              target:
+                oneOf:
+                  - type: object
+                    properties:
+                      kind:
+                        type: string
+                        enum:
+                          - email
+                    required:
+                      - kind
+                    additionalProperties: false
+                  - type: object
+                    properties:
+                      kind:
+                        type: string
+                        enum:
+                          - subject
+                    required:
+                      - kind
+                    additionalProperties: false
+                  - type: object
+                    properties:
+                      kind:
+                        type: string
+                        enum:
+                          - preview_text
+                    required:
+                      - kind
+                    additionalProperties: false
+                  - type: object
+                    properties:
+                      kind:
+                        type: string
+                        enum:
+                          - link
+                      index:
+                        type: integer
+                        minimum: 0
+                      displayUrl:
+                        type: string
+                        maxLength: 300
+                    required:
+                      - kind
+                      - index
+                      - displayUrl
+                    additionalProperties: false
+                  - type: object
+                    properties:
+                      kind:
+                        type: string
+                        enum:
+                          - image
+                      index:
+                        type: integer
+                        minimum: 0
+                      displayUrl:
+                        type: string
+                        maxLength: 300
+                    required:
+                      - kind
+                      - index
+                      - displayUrl
+                    additionalProperties: false
+                  - type: object
+                    properties:
+                      kind:
+                        type: string
+                        enum:
+                          - element
+                      selector:
+                        type: string
+                        minLength: 1
+                        maxLength: 300
+                    required:
+                      - kind
+                      - selector
+                    additionalProperties: false
             required:
-              - rule
+              - id
+              - ruleId
+              - category
               - severity
+              - impact
               - message
+              - remediation
+              - sources
+              - target
             additionalProperties: false
+          maxItems: 100
+        totalFindings:
+          type: integer
+          minimum: 0
+        findingsTruncated:
+          type: boolean
+        completion:
+          oneOf:
+            - type: object
+              properties:
+                status:
+                  type: string
+                  enum:
+                    - complete
+                readiness:
+                  type: string
+                  enum:
+                    - ready
+                    - needs_review
+                    - not_ready
+                score:
+                  type: integer
+                  minimum: 0
+                  maximum: 100
+              required:
+                - status
+                - readiness
+                - score
+              additionalProperties: false
+            - type: object
+              properties:
+                status:
+                  type: string
+                  enum:
+                    - partial
+                readiness:
+                  type: string
+                  enum:
+                    - unknown
+                    - not_ready
+                score:
+                  type: "null"
+              required:
+                - status
+                - readiness
+                - score
+              additionalProperties: false
       required:
-        - score
+        - schemaVersion
+        - rulesetVersion
+        - auditId
+        - contentHash
+        - auditedAt
+        - expiresAt
+        - policy
         - summary
-        - issues
+        - checks
+        - metrics
+        - findings
+        - totalFindings
+        - findingsTruncated
+        - completion
+      additionalProperties: false
+    EmailAuditRequest:
+      type: object
+      properties:
+        emailHtml:
+          type: string
+          minLength: 1
+        subject:
+          type: string
+          maxLength: 1000
+        previewText:
+          type: string
+          maxLength: 1000
+        sendingPurpose:
+          type: string
+          enum:
+            - marketing
+            - transactional
+      required:
+        - emailHtml
       additionalProperties: false
     EmailClientPreviewResponse:
       type: object
@@ -15352,24 +15802,15 @@ paths:
                   message: Klaviyo rejected the template export.
                   suggestion: Check the connection in Klaviyo and retry. Reconnect it if authorization has expired.
                   docs: https://docs.brew.new/api-reference/api/errors
-  /v1/emails/{emailId}/accessibility-audit:
+  /v1/emails/audit:
     post:
-      operationId: auditEmailAccessibility
+      operationId: auditEmail
       tags:
         - Emails
-      summary: Accessibility audit
-      description: "Audit the email’s latest rendered HTML for accessibility issues against WCAG 2.1 (missing alt text, non-descriptive links, low text contrast, tiny fonts, missing `lang`, empty headings). Returns a `score` (0–100), a `summary`, and a list of `issues` with their WCAG criterion. FIXED cost: 5 credits (`X-Credit-Cost: 5`), charged ONLY on success — if the audit cannot complete in time, the call returns a retryable `503` and is NOT billed."
+      summary: Audit an email
+      description: "Lint raw email content for production readiness. `emailHtml` is capped at 5,000,000 UTF-8 bytes and the complete JSON body at 6 MiB; `subject` and `previewText` each have a 1,000-character transport cap. Omitted preview text is extracted from the authored preheader, while an explicit empty string stays empty. Omitted `sendingPurpose` defaults to marketing and is reported as defaulted. Independent checks run in parallel across unsubscribe compliance, links and images, total loaded size, accessibility, markup, subject line, and preview text. The stable versioned response reports every check, up to 100 normalized findings, exact totals, metrics, and a nested `completion` discriminator. A complete result has a 0–100 score and costs 5 credits (`X-Credit-Cost: 5`). If a required lane is unavailable, the endpoint returns a partial result with `score: null`, never establishes readiness, costs 0 credits (`X-Credit-Cost: 0`), and releases the idempotency key so the same key can retry. Admission is limited to 6 requests per minute per credential or session and 20 per minute across the organization, shared by public API, MCP, and agent calls. Brew runs at most 4 audits concurrently per organization and 16 globally; capacity rejections return `429 RATE_LIMITED` with `Retry-After` and do not run or charge the audit."
       parameters:
-        - schema:
-            type: string
-            minLength: 1
-            maxLength: 64
-            description: Design id returned by `POST /v1/emails` and listed by `GET /v1/emails`.
-            example: eml_2SmZOWV3ZQ7W5x6g3m4p
-          required: true
-          description: Design id returned by `POST /v1/emails` and listed by `GET /v1/emails`.
-          name: emailId
-          in: path
+        - *a1
         - name: X-Brand-Id
           in: header
           required: false
@@ -15379,9 +15820,20 @@ paths:
             minLength: 1
             maxLength: 64
           example: kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmailAuditRequest"
+            example:
+              emailHtml: <!doctype html><html lang="en"><body><a href="https://example.com/account">View account</a><a href="{{ unsubscribe_url }}">Unsubscribe</a></body></html>
+              subject: Your August account update
+              previewText: A quick look at what changed this month.
+              sendingPurpose: marketing
       responses:
         "200":
-          description: The audit result.
+          description: A complete or partial audit. Branch on `completion.status`; only `complete` carries a numeric score. A partial response is not cached under its idempotency key and may be retried with the same key.
           headers:
             x-request-id:
               schema:
@@ -15411,21 +15863,99 @@ paths:
                 example: 1712592360
               required: true
               description: Unix timestamp in seconds for when the rolling window fully resets.
+            X-Credit-Cost:
+              schema:
+                type: integer
+                minimum: 0
+                description: Credits charged for this completed operation.
+                example: 5
+              required: true
+              description: Credits charged for this completed operation.
+            X-Credits-Remaining:
+              schema:
+                type: integer
+                minimum: 0
+                description: Credits remaining after this operation.
+                example: 95
+              required: true
+              description: Credits remaining after this operation.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/EmailAccessibilityAuditResponse"
+                $ref: "#/components/schemas/EmailAuditResponse"
               example:
-                score: 90
+                schemaVersion: 1
+                rulesetVersion: 2026-08-24.1
+                auditId: 00000000-0000-4000-8000-000000000001
+                contentHash: sha256:0000000000000000000000000000000000000000000000000000000000000000
+                auditedAt: 2026-08-23T00:00:00.000Z
+                expiresAt: 2026-08-23T00:15:00.000Z
+                policy:
+                  purpose: marketing
+                  source: provided
+                  unsubscribe: required
                 summary:
-                  errors: 1
-                  warnings: 0
-                issues:
-                  - rule: img-alt
-                    severity: error
-                    wcag: 1.1.1
-                    message: Image is missing an alt attribute. Add descriptive alt text, or alt="" if it is purely decorative.
-                    element: <img src="https://cdn.brew.new/hero.png">
+                  blockers: 0
+                  errors: 0
+                  warnings: 1
+                  info: 0
+                  total: 1
+                checks:
+                  - id: preflight
+                    status: issues
+                    durationMs: 0
+                    findingCount: 1
+                metrics:
+                  htmlBytes: 2134
+                  linkCount: 2
+                  imageCount: 0
+                  gifCount: 0
+                  loadedSize:
+                    status: exact
+                    htmlBytes: 2134
+                    remoteAssetBytes: 0
+                    totalBytes: 2134
+                    assetCount: 0
+                findings:
+                  - id: copy.subject.long:subject
+                    ruleId: copy.subject.long
+                    category: copy
+                    severity: warning
+                    impact: advisory
+                    message: The subject may truncate on smaller inboxes.
+                    remediation: Shorten it while keeping the main benefit clear.
+                    sources:
+                      - preflight
+                    target:
+                      kind: subject
+                totalFindings: 1
+                findingsTruncated: false
+                completion:
+                  status: complete
+                  readiness: needs_review
+                  score: 97
+        "400":
+          description: Invalid raw email content, an unknown field, or an invalid sendingPurpose.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              example:
+                error:
+                  code: INVALID_REQUEST
+                  type: invalid_request
+                  message: Request validation failed.
+                  suggestion: Fix the field reported in `param` and retry.
+                  docs: https://docs.brew.new/api-reference/api/errors
+                  param: emailHtml
         "401":
           description: The API key was missing, invalid, or revoked.
           headers:
@@ -15469,7 +15999,7 @@ paths:
                   suggestion: Upgrade your plan or wait for the next billing period to reset. Check your balance up front with GET /v1/usage.
                   docs: https://docs.brew.new/api-reference/api/credits
                   details:
-                    cost: 2
+                    cost: 5
                     remaining: 0
                     planKey: free
         "403":
@@ -15494,8 +16024,8 @@ paths:
                   suggestion: Use an API key or session with the required permission.
                   docs: https://docs.brew.new/api-reference/api/authentication
                   param: emails
-        "404":
-          description: No email exists with that id (cross-brand ids surface as 404).
+        "409":
+          description: The same `Idempotency-Key` was reused with a different request body.
           headers:
             x-request-id:
               schema:
@@ -15510,13 +16040,13 @@ paths:
                 $ref: "#/components/schemas/ApiErrorEnvelope"
               example:
                 error:
-                  code: EMAIL_NOT_FOUND
-                  type: not_found
-                  message: No email exists with id 'eml_welcome'.
-                  suggestion: Verify the emailId via GET /v1/emails.
-                  docs: https://docs.brew.new/api-reference/api/errors
-        "422":
-          description: The email has no rendered HTML yet (still generating).
+                  code: IDEMPOTENCY_CONFLICT
+                  type: conflict
+                  message: The same idempotency key was reused with a different request payload.
+                  suggestion: Reuse the original payload or send a new idempotency key.
+                  docs: https://docs.brew.new/api-reference/api/idempotency
+        "413":
+          description: The complete JSON request body exceeds the 6 MiB transport limit.
           headers:
             x-request-id:
               schema:
@@ -15531,10 +16061,10 @@ paths:
                 $ref: "#/components/schemas/ApiErrorEnvelope"
               example:
                 error:
-                  code: CONTENT_OPERATION_FAILED
+                  code: PAYLOAD_TOO_LARGE
                   type: invalid_request
-                  message: "accessibility-audit failed: the email has no rendered HTML yet."
-                  suggestion: Poll GET /v1/emails?emailId= until status is complete, then retry.
+                  message: Request body must not exceed 6291456 bytes.
+                  suggestion: Reduce the payload size and retry.
                   docs: https://docs.brew.new/api-reference/api/errors
         "429":
           description: The request hit the rolling rate limit window.

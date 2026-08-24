@@ -1,15 +1,10 @@
-import type { components } from '../../generated/openapi-types'
 import { defineCommand } from '../../lib/define-command'
-import { rawRequest } from '../../lib/raw-request'
-
-type TransactionalEmail = components['schemas']['TransactionalEmail']
 
 export const transactionalGetCommand = defineCommand({
   path: ['transactional', 'get'],
   summary:
     'Read a transactional email object: locked design/domain/envelope; Liquid workspaces add `variableTree` + a fireable `examplePayload`',
-  sdkMethod: null,
-  isRawTransport: true,
+  sdkMethod: 'transactional.get',
   route: { method: 'GET', path: '/v1/transactional/{transactionId}' },
   commandClass: 'read',
   args: [
@@ -32,9 +27,6 @@ export const transactionalGetCommand = defineCommand({
   // same live-fire rendering parity, so an examplePayload preview matches
   // what a real fire produces.
   run: async ({ ctx, args }) => ({
-    data: await rawRequest<TransactionalEmail>(ctx, {
-      method: 'GET',
-      path: `/v1/transactional/${encodeURIComponent(args.transactionId ?? '')}`,
-    }),
+    data: await ctx.client().transactional.get(args.transactionId ?? ''),
   }),
 })

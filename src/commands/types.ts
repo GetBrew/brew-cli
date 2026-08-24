@@ -1,11 +1,16 @@
 import { createHash } from 'node:crypto'
 import { readFileSync, writeFileSync } from 'node:fs'
 
+import type {
+  ListTriggersInput,
+  ListTriggersResponse,
+  Trigger,
+} from '@brew.new/sdk'
 import type { components } from '../generated/openapi-types'
 import { defineCommand } from '../lib/define-command'
-import { rawRequest } from '../lib/raw-request'
+import { asSdkInput } from '../lib/input'
 
-type TriggerRow = components['schemas']['TriggerRow']
+type TriggerRow = Trigger
 type TransactionalEmail = components['schemas']['TransactionalEmail']
 type VariableTreeNode = NonNullable<
   TransactionalEmail['variableTree']
@@ -227,7 +232,7 @@ export const typesCommand = defineCommand({
   summary:
     'Generate TypeScript payload contracts (triggers + transactional objects) into your codebase; --check is the CI drift gate (exit 1 on drift). Needs the automations scope; --transaction also needs sends',
   sdkMethod: null,
-  isRawTransport: true,
+  derivedFrom: 'automations.triggers.list',
   route: { method: 'GET', path: '/v1/automations/triggers' },
   commandClass: 'read',
   flags: [
@@ -259,13 +264,14 @@ export const typesCommand = defineCommand({
     const triggers: Array<TriggerRow> = []
     let cursor: string | null = null
     for (let page = 0; page < 50; page++) {
-      const url: string = cursor
-        ? `/v1/automations/triggers?limit=100&cursor=${encodeURIComponent(cursor)}`
-        : '/v1/automations/triggers?limit=100'
-      const listResponse: {
-        data: Array<TriggerRow>
-        pagination?: { cursor: string | null; hasMore: boolean }
-      } = await rawRequest(ctx, { method: 'GET', path: url })
+      const listResponse: ListTriggersResponse = await ctx
+        .client()
+        .automations.triggers.list(
+          asSdkInput<ListTriggersInput>({
+            limit: 100,
+            ...(cursor === null ? {} : { cursor }),
+          })
+        )
       triggers.push(...(listResponse.data ?? []))
       if (
         !listResponse.pagination?.hasMore ||
@@ -280,12 +286,7 @@ export const typesCommand = defineCommand({
       : []
     const transactionals: Array<TransactionalEmail> = []
     for (const transactionId of transactionIds) {
-      transactionals.push(
-        await rawRequest<TransactionalEmail>(ctx, {
-          method: 'GET',
-          path: `/v1/transactional/${encodeURIComponent(transactionId)}`,
-        })
-      )
+      transactionals.push(await ctx.client().transactional.get(transactionId))
     }
     const text = buildFileText({ transactionals, triggers })
     const outPath =

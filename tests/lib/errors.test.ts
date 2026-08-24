@@ -82,4 +82,14 @@ describe('toErrorEnvelope', () => {
     expect(envelope.code).toBe('CLI_UNEXPECTED')
     expect(envelope.type).toBe('internal_error')
   })
+
+  it('recognizes a timeout by name without requiring Error inheritance', () => {
+    expect(toErrorEnvelope({ name: 'TimeoutError' })).toEqual({
+      code: 'CLI_TIMEOUT',
+      type: 'service_unavailable',
+      message: 'The request timed out before the API responded.',
+      suggestion:
+        'Retry the request. Reuse the same Idempotency-Key for a POST request.',
+    })
+  })
 })

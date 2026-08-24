@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- Added `emails audit --file <html>` for the unified production-readiness
+  audit. The command sends the exact HTML, subject, preview text, and sending
+  purpose to `POST /v1/emails/audit`. Complete audits cost 5 credits. Partial
+  audits cost 0 credits and keep their typed result. The request aborts after
+  65 seconds, allowing the server's bounded audit plus transport overhead.
+  Audit admission is 6 calls per minute per credential or session and 20 calls
+  per minute per organization, with at most 4 concurrent audits per
+  organization and 16 globally.
+
 - Spec resync for the Liquid templating release: `payload` on sends is
   the recursive nested-JSON contract (typed end to end via the new
   `scripts/generate-types.mjs`, which emits the self-referencing union
@@ -47,9 +56,9 @@ The trust layer.
 Full public-API coverage: every one of the 75 spec operations now has a
 command (spec skip-list is empty).
 
-- 20 new typed raw-transport commands closing every published-SDK gap:
+- New typed raw-transport commands closed every published-SDK gap, including:
   `brands list/get/create`, `emails clone/export/import-figma/
-  preview-clients/audit-accessibility/create-inbox-placement-test/
+  preview-clients/create-inbox-placement-test/
   get-inbox-placement-results`, `sends pause/resume`,
   `audiences duplicate/from-events`, `automations run` +
   `audience-runs list/control`, `analytics overview`, `domains health`,
@@ -93,8 +102,6 @@ Adversarial-review + live-validation fix wave.
 - X-Brand-Id path classification boundary-matches and ignores query
   strings; `api` GET+`--data` is a usage error; query-stringed
   `/v1/health` stays anonymous; transport failures include their cause.
-- Removed `emails audit-accessibility`: SDK 8.0.0 issues GET for the
-  POST-only spec operation (upstream bug, skip-listed both ways).
 - Added derived `domains get`; `emails restore` gained
   `--idempotency-key`.
 

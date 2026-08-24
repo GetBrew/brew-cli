@@ -1,16 +1,11 @@
-import type { components } from '../../generated/openapi-types'
+import type { AnalyticsOverviewInput } from '@brew.new/sdk'
 import { defineCommand } from '../../lib/define-command'
-import { flagString } from '../../lib/input'
-import { rawRequest } from '../../lib/raw-request'
-
-type AnalyticsOverviewResponse =
-  components['schemas']['AnalyticsOverviewResponse']
+import { asSdkInput, flagString } from '../../lib/input'
 
 export const analyticsOverviewCommand = defineCommand({
   path: ['analytics', 'overview'],
   summary: 'Brand overview: totals, rates, timeseries (default last 7 days)',
-  sdkMethod: null,
-  isRawTransport: true,
+  sdkMethod: 'analytics.overview',
   route: { method: 'GET', path: '/v1/analytics/overview' },
   commandClass: 'read',
   flags: [
@@ -49,10 +44,8 @@ export const analyticsOverviewCommand = defineCommand({
     'brew-cli analytics overview --since 2026-08-01T00:00:00Z --source audience --json',
   ],
   run: async ({ ctx, flags }) => ({
-    data: await rawRequest<AnalyticsOverviewResponse>(ctx, {
-      method: 'GET',
-      path: '/v1/analytics/overview',
-      query: {
+    data: await ctx.client().analytics.overview(
+      asSdkInput<AnalyticsOverviewInput>({
         from: flagString(flags.since),
         to: flagString(flags.until),
         source: flagString(flags.source),
@@ -62,7 +55,7 @@ export const analyticsOverviewCommand = defineCommand({
         triggerEventId: flagString(flags.triggerEventId),
         domain: flagString(flags.domain),
         recipient: flagString(flags.recipient),
-      },
-    }),
+      })
+    ),
   }),
 })

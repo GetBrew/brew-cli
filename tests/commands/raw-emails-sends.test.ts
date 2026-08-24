@@ -3,7 +3,6 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { HttpResponse, http } from 'msw'
 import { describe, expect, it } from 'vitest'
-import { emailsAuditAccessibilityCommand } from '../../src/commands/emails/audit-accessibility'
 import { emailsCloneCommand } from '../../src/commands/emails/clone'
 import { emailsCreateInboxPlacementTestCommand } from '../../src/commands/emails/create-inbox-placement-test'
 import { emailsExportCommand } from '../../src/commands/emails/export'
@@ -22,7 +21,6 @@ const EXTRA = [
   emailsExportCommand,
   emailsImportFigmaCommand,
   emailsPreviewClientsCommand,
-  emailsAuditAccessibilityCommand,
   emailsCreateInboxPlacementTestCommand,
   emailsGetInboxPlacementResultsCommand,
   sendsPauseCommand,
@@ -38,7 +36,7 @@ function env(): Record<string, string | undefined> {
 
 const API = 'https://brew.new/api'
 
-describe('sends pause / resume (raw transport)', () => {
+describe('sends pause / resume', () => {
   it('pauses a send with POST /v1/sends/{sendId}/pause', async () => {
     server.use(
       http.post(`${API}/v1/sends/snd_1/pause`, () =>
@@ -89,7 +87,7 @@ describe('emails clone', () => {
     expect((result.json as { emailId: string }).emailId).toBe('eml_2')
   })
 
-  it('omits the body when cloning latest', async () => {
+  it('sends an empty object when cloning latest through the SDK', async () => {
     let text: string | undefined
     server.use(
       http.post(`${API}/v1/emails/eml_1/clone`, async ({ request }) => {
@@ -102,7 +100,7 @@ describe('emails clone', () => {
       extraCommands: EXTRA,
     })
     expect(result.code).toBe(0)
-    expect(text).toBe('')
+    expect(text).toBe('{}')
   })
 })
 
@@ -231,34 +229,6 @@ describe('emails preview-clients', () => {
     )
     expect(result.code).toBe(0)
     expect(body).toEqual({ clients: ['applemail16', 'iphone16_18'] })
-  })
-})
-
-describe('emails audit-accessibility', () => {
-  it('issues the spec-correct POST (not GET) with the idempotency key', async () => {
-    let method: string | undefined
-    let idempotencyKey: string | null = null
-    server.use(
-      http.post(`${API}/v1/emails/eml_1/accessibility-audit`, ({ request }) => {
-        method = request.method
-        idempotencyKey = request.headers.get('idempotency-key')
-        return HttpResponse.json({ score: 90, issues: [] })
-      })
-    )
-    const result = await runCli(
-      [
-        'emails',
-        'audit-accessibility',
-        'eml_1',
-        '--idempotency-key',
-        'audit-1',
-      ],
-      { env: env(), extraCommands: EXTRA }
-    )
-    expect(result.code).toBe(0)
-    expect(method).toBe('POST')
-    expect(idempotencyKey).toBe('audit-1')
-    expect((result.json as { score: number }).score).toBe(90)
   })
 })
 
