@@ -402,7 +402,7 @@ export interface paths {
         };
         /**
          * Get a transactional email
-         * @description Read a reusable transactional email object: locked `domainId` / `emailId` / `emailVersionId`, envelope defaults, and the merge-tag list for snippets. On Liquid-enabled workspaces the response also carries the payload contract — `variableTree` (every `trigger.*` / `customer.*` path the pinned template references, with array/object shape and fallbacks), `examplePayload` (a nested payload that fires verbatim), and `templating` (engine + parse validity). Recomputed from the pinned design on every read. Fire it with `POST /v1/sends { transactionId, to, payload? }`. Permission: `sends`. There is no `messageClass` on this object — purpose lives on the sending domain.
+         * @description Read a reusable transactional email object: locked `domainId` / `emailId` / `emailVersionId`, envelope defaults, and the merge-tag list for snippets. The response also carries the payload contract — `variableTree` (every `trigger.*` / `customer.*` path the pinned template references, with array/object shape and fallbacks), `examplePayload` (a nested payload that fires verbatim), and `templating` (parse validity). Recomputed from the pinned design on every read. Fire it with `POST /v1/sends { transactionId, to, payload? }`. Permission: `sends`. There is no `messageClass` on this object — purpose lives on the sending domain.
          */
         get: operations["getTransactionalEmail"];
         put?: never;
@@ -1633,8 +1633,6 @@ export interface components {
                 fallback: string | null;
             }[];
             templating?: {
-                /** @enum {string} */
-                engine: "legacy" | "liquid";
                 valid: boolean;
                 errors: {
                     /** @enum {string} */
@@ -2276,26 +2274,29 @@ export interface components {
             payloadSchema: {
                 /** @enum {string} */
                 type: "object";
-                fields: {
-                    /** @description Variable name used by emails and automations, e.g. email or firstName. Prefer self-descriptive keys; this column has no separate description field. */
-                    key: string;
-                    /** @enum {string} */
-                    type: "string" | "int" | "boolean";
-                    required: boolean;
-                    /** @description Substitution value when the inbound payload is missing this field. Also used as the email agent's `e.g. {{ key | fallback }}` example. */
-                    fallbackValue?: string | number | boolean;
-                    /**
-                     * @description PII classification for redaction. "high" auto-redacts the value in execution logs and the inbound log. "low" (default when omitted) preserves the value. "none" is an explicit marker that the field is non-personal.
-                     * @enum {string}
-                     */
-                    pii?: "none" | "low" | "high";
-                }[];
+                fields: components["schemas"]["TriggerPayloadField"][];
             };
             /** Format: date-time */
             createdAt: string;
             /** Format: date-time */
             updatedAt: string;
             skill?: string;
+        };
+        TriggerPayloadField: {
+            /** @description Variable name used by emails and automations, e.g. email or firstName. Prefer self-descriptive keys; this column has no separate description field. */
+            key: string;
+            /** @enum {string} */
+            type: "string" | "int" | "boolean" | "object";
+            required: boolean;
+            /** @description Substitution value when the inbound payload is missing this field. Also used as the email agent's `e.g. {{ key | fallback }}` example. */
+            fallbackValue?: string | number | boolean;
+            /**
+             * @description PII classification for redaction. "high" auto-redacts the value in execution logs and the inbound log. "low" (default when omitted) preserves the value. "none" is an explicit marker that the field is non-personal.
+             * @enum {string}
+             */
+            pii?: "none" | "low" | "high";
+            /** @description Nested fields. REQUIRED (non-empty) when type is "object", and rejected otherwise. A leaf is addressed by its dotted path, e.g. {{ user.plan }}. */
+            children?: components["schemas"]["TriggerPayloadField"][];
         };
         TriggerEventInstance: {
             triggerInstanceId: string;
@@ -3088,7 +3089,7 @@ export interface components {
             variables?: {
                 [key: string]: string;
             };
-            /** @description Nested JSON template data for Liquid-mode designs, exposed as trigger.* / payload.*. Flat `variables` still resolve legacy {{ tag | fallback }} merge tags; send both if a design mixes syntaxes. Live-fire parity on non-Liquid workspaces: scalar keys resolve merge tags (below `variables`) and nested values are rejected with a 400. */
+            /** @description Nested JSON template data, exposed to the template as trigger.* / payload.* and spread at the top level. Flat `variables` still resolve `{{ tag | fallback }}` merge tags and win on a name collision; send both if a design mixes syntaxes. */
             payload?: {
                 [key: string]: components["schemas"]["TransactionalPayloadValue"];
             };
@@ -3100,7 +3101,7 @@ export interface components {
             payload?: {
                 [key: string]: components["schemas"]["TransactionalPayloadValue"];
             };
-            /** @description Liquid strictness override for this fire: true fails the send on any unresolved template variable (customer.io parity) instead of rendering blank. Defaults to the transactional object setting. Ignored for legacy-engine orgs. */
+            /** @description Strictness override for this fire: true fails the send on any unresolved template variable (customer.io parity) instead of rendering blank. Defaults to the transactional object setting. */
             strict?: boolean;
             /** @description Reply-to address. Accepts a bare email (`a@b.com`) or the display-name form (`Name <a@b.com>`). */
             replyTo?: string;
@@ -4446,20 +4447,7 @@ export interface components {
             payloadSchema: {
                 /** @enum {string} */
                 type: "object";
-                fields: {
-                    /** @description Variable name used by emails and automations, e.g. email or firstName. Prefer self-descriptive keys; this column has no separate description field. */
-                    key: string;
-                    /** @enum {string} */
-                    type: "string" | "int" | "boolean";
-                    required: boolean;
-                    /** @description Substitution value when the inbound payload is missing this field. Also used as the email agent's `e.g. {{ key | fallback }}` example. */
-                    fallbackValue?: string | number | boolean;
-                    /**
-                     * @description PII classification for redaction. "high" auto-redacts the value in execution logs and the inbound log. "low" (default when omitted) preserves the value. "none" is an explicit marker that the field is non-personal.
-                     * @enum {string}
-                     */
-                    pii?: "none" | "low" | "high";
-                }[];
+                fields: components["schemas"]["TriggerPayloadField"][];
             };
         };
         TriggersListResponse: {
@@ -4473,20 +4461,7 @@ export interface components {
                 payloadSchema: {
                     /** @enum {string} */
                     type: "object";
-                    fields: {
-                        /** @description Variable name used by emails and automations, e.g. email or firstName. Prefer self-descriptive keys; this column has no separate description field. */
-                        key: string;
-                        /** @enum {string} */
-                        type: "string" | "int" | "boolean";
-                        required: boolean;
-                        /** @description Substitution value when the inbound payload is missing this field. Also used as the email agent's `e.g. {{ key | fallback }}` example. */
-                        fallbackValue?: string | number | boolean;
-                        /**
-                         * @description PII classification for redaction. "high" auto-redacts the value in execution logs and the inbound log. "low" (default when omitted) preserves the value. "none" is an explicit marker that the field is non-personal.
-                         * @enum {string}
-                         */
-                        pii?: "none" | "low" | "high";
-                    }[];
+                    fields: components["schemas"]["TriggerPayloadField"][];
                 };
                 /** Format: date-time */
                 createdAt: string;
@@ -4506,20 +4481,7 @@ export interface components {
             payloadSchema?: {
                 /** @enum {string} */
                 type: "object";
-                fields: {
-                    /** @description Variable name used by emails and automations, e.g. email or firstName. Prefer self-descriptive keys; this column has no separate description field. */
-                    key: string;
-                    /** @enum {string} */
-                    type: "string" | "int" | "boolean";
-                    required: boolean;
-                    /** @description Substitution value when the inbound payload is missing this field. Also used as the email agent's `e.g. {{ key | fallback }}` example. */
-                    fallbackValue?: string | number | boolean;
-                    /**
-                     * @description PII classification for redaction. "high" auto-redacts the value in execution logs and the inbound log. "low" (default when omitted) preserves the value. "none" is an explicit marker that the field is non-personal.
-                     * @enum {string}
-                     */
-                    pii?: "none" | "low" | "high";
-                }[];
+                fields: components["schemas"]["TriggerPayloadField"][];
             };
         };
         TriggersDeleteResponse: {
@@ -10900,7 +10862,6 @@ export interface operations {
                      *         }
                      *       ],
                      *       "templating": {
-                     *         "engine": "liquid",
                      *         "valid": true,
                      *         "errors": []
                      *       },

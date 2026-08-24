@@ -21,16 +21,14 @@ export const transactionalGetCommand = defineCommand({
     },
   ],
   examples: ['brew-cli transactional get txn_8fK2mQ4pLx'],
-  // `variables` (legacy merge tags) is always present. `templating.engine`,
-  // `variableTree`, and `examplePayload` only appear on Liquid-enabled
-  // workspaces: variableTree lists every trigger.*/customer.* path the
-  // pinned template references, and examplePayload is a ready-to-send
-  // `payload` body for `emails send` (or `POST /v1/sends { transactionId,
-  // to, payload }`). Nested payload values are Liquid-only — the same
-  // shape sent to a non-Liquid workspace is rejected with 400. A `--test`
-  // send on `emails send` accepts the identical `payload` shape with the
-  // same live-fire rendering parity, so an examplePayload preview matches
-  // what a real fire produces.
+  // `variables` lists the flat merge tags; `variableTree` lists every
+  // trigger.*/customer.* path the pinned template references, and
+  // `examplePayload` is a ready-to-send `payload` body for `emails send`
+  // (or `POST /v1/sends { transactionId, to, payload }`). Nested payload
+  // values are accepted everywhere. `templating` reports whether the
+  // pinned template parses. A `--test` send on `emails send` accepts the
+  // identical `payload` shape with the same rendering, so an
+  // examplePayload preview matches what a real fire produces.
   run: async ({ ctx, args }) => ({
     data: await rawRequest<TransactionalEmail>(ctx, {
       method: 'GET',

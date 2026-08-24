@@ -548,11 +548,6 @@ components:
         templating:
           type: object
           properties:
-            engine:
-              type: string
-              enum:
-                - legacy
-                - liquid
             valid:
               type: boolean
             errors:
@@ -577,7 +572,6 @@ components:
                   - message
                 additionalProperties: false
           required:
-            - engine
             - valid
             - errors
           additionalProperties: false
@@ -2374,37 +2368,7 @@ components:
             fields:
               type: array
               items:
-                type: object
-                properties:
-                  key:
-                    type: string
-                    minLength: 1
-                    description: Variable name used by emails and automations, e.g. email or firstName. Prefer self-descriptive keys; this column has no separate description field.
-                  type:
-                    type: string
-                    enum:
-                      - string
-                      - int
-                      - boolean
-                  required:
-                    type: boolean
-                  fallbackValue:
-                    anyOf:
-                      - type: string
-                      - type: number
-                      - type: boolean
-                    description: Substitution value when the inbound payload is missing this field. Also used as the email agent's `e.g. {{ key | fallback }}` example.
-                  pii:
-                    type: string
-                    enum:
-                      - none
-                      - low
-                      - high
-                    description: PII classification for redaction. "high" auto-redacts the value in execution logs and the inbound log. "low" (default when omitted) preserves the value. "none" is an explicit marker that the field is non-personal.
-                required:
-                  - key
-                  - type
-                  - required
+                $ref: "#/components/schemas/TriggerPayloadField"
           required:
             - type
             - fields
@@ -2424,6 +2388,44 @@ components:
         - createdAt
         - updatedAt
       additionalProperties: false
+    TriggerPayloadField:
+      type: object
+      properties:
+        key:
+          type: string
+          minLength: 1
+          description: Variable name used by emails and automations, e.g. email or firstName. Prefer self-descriptive keys; this column has no separate description field.
+        type:
+          type: string
+          enum:
+            - string
+            - int
+            - boolean
+            - object
+        required:
+          type: boolean
+        fallbackValue:
+          anyOf:
+            - type: string
+            - type: number
+            - type: boolean
+          description: Substitution value when the inbound payload is missing this field. Also used as the email agent's `e.g. {{ key | fallback }}` example.
+        pii:
+          type: string
+          enum:
+            - none
+            - low
+            - high
+          description: PII classification for redaction. "high" auto-redacts the value in execution logs and the inbound log. "low" (default when omitted) preserves the value. "none" is an explicit marker that the field is non-personal.
+        children:
+          type: array
+          items:
+            $ref: "#/components/schemas/TriggerPayloadField"
+          description: Nested fields. REQUIRED (non-empty) when type is "object", and rejected otherwise. A leaf is addressed by its dotted path, e.g. {{ user.plan }}.
+      required:
+        - key
+        - type
+        - required
     TriggerEventInstance:
       type: object
       properties:
@@ -4782,7 +4784,7 @@ components:
               type: object
               additionalProperties:
                 $ref: "#/components/schemas/TransactionalPayloadValue"
-              description: "Nested JSON template data for Liquid-mode designs, exposed as trigger.* / payload.*. Flat `variables` still resolve legacy {{ tag | fallback }} merge tags; send both if a design mixes syntaxes. Live-fire parity on non-Liquid workspaces: scalar keys resolve merge tags (below `variables`) and nested values are rejected with a 400."
+              description: Nested JSON template data, exposed to the template as trigger.* / payload.* and spread at the top level. Flat `variables` still resolve `{{ tag | fallback }}` merge tags and win on a name collision; send both if a design mixes syntaxes.
           required:
             - test
             - emailId
@@ -4813,7 +4815,7 @@ components:
               description: "Template data for this fire. Flat scalar keys resolve legacy {{ tag | fallback }} merge tags; the full (optionally nested) JSON is exposed to Liquid templates as trigger.* / payload.*. Extra keys are ignored; missing keys use design fallbacks (or fail the send when the design opts into strict templating). Caps: 64 KiB serialized, 10 nesting levels, 250 items per array, 100 top-level keys."
             strict:
               type: boolean
-              description: "Liquid strictness override for this fire: true fails the send on any unresolved template variable (customer.io parity) instead of rendering blank. Defaults to the transactional object setting. Ignored for legacy-engine orgs."
+              description: "Strictness override for this fire: true fails the send on any unresolved template variable (customer.io parity) instead of rendering blank. Defaults to the transactional object setting."
             replyTo:
               type: string
               description: Reply-to address. Accepts a bare email (`a@b.com`) or the display-name form (`Name <a@b.com>`).
@@ -8608,37 +8610,7 @@ components:
             fields:
               type: array
               items:
-                type: object
-                properties:
-                  key:
-                    type: string
-                    minLength: 1
-                    description: Variable name used by emails and automations, e.g. email or firstName. Prefer self-descriptive keys; this column has no separate description field.
-                  type:
-                    type: string
-                    enum:
-                      - string
-                      - int
-                      - boolean
-                  required:
-                    type: boolean
-                  fallbackValue:
-                    anyOf:
-                      - type: string
-                      - type: number
-                      - type: boolean
-                    description: Substitution value when the inbound payload is missing this field. Also used as the email agent's `e.g. {{ key | fallback }}` example.
-                  pii:
-                    type: string
-                    enum:
-                      - none
-                      - low
-                      - high
-                    description: PII classification for redaction. "high" auto-redacts the value in execution logs and the inbound log. "low" (default when omitted) preserves the value. "none" is an explicit marker that the field is non-personal.
-                required:
-                  - key
-                  - type
-                  - required
+                $ref: "#/components/schemas/TriggerPayloadField"
           required:
             - type
             - fields
@@ -8689,37 +8661,7 @@ components:
                   fields:
                     type: array
                     items:
-                      type: object
-                      properties:
-                        key:
-                          type: string
-                          minLength: 1
-                          description: Variable name used by emails and automations, e.g. email or firstName. Prefer self-descriptive keys; this column has no separate description field.
-                        type:
-                          type: string
-                          enum:
-                            - string
-                            - int
-                            - boolean
-                        required:
-                          type: boolean
-                        fallbackValue:
-                          anyOf:
-                            - type: string
-                            - type: number
-                            - type: boolean
-                          description: Substitution value when the inbound payload is missing this field. Also used as the email agent's `e.g. {{ key | fallback }}` example.
-                        pii:
-                          type: string
-                          enum:
-                            - none
-                            - low
-                            - high
-                          description: PII classification for redaction. "high" auto-redacts the value in execution logs and the inbound log. "low" (default when omitted) preserves the value. "none" is an explicit marker that the field is non-personal.
-                      required:
-                        - key
-                        - type
-                        - required
+                      $ref: "#/components/schemas/TriggerPayloadField"
                 required:
                   - type
                   - fields
@@ -8780,37 +8722,7 @@ components:
             fields:
               type: array
               items:
-                type: object
-                properties:
-                  key:
-                    type: string
-                    minLength: 1
-                    description: Variable name used by emails and automations, e.g. email or firstName. Prefer self-descriptive keys; this column has no separate description field.
-                  type:
-                    type: string
-                    enum:
-                      - string
-                      - int
-                      - boolean
-                  required:
-                    type: boolean
-                  fallbackValue:
-                    anyOf:
-                      - type: string
-                      - type: number
-                      - type: boolean
-                    description: Substitution value when the inbound payload is missing this field. Also used as the email agent's `e.g. {{ key | fallback }}` example.
-                  pii:
-                    type: string
-                    enum:
-                      - none
-                      - low
-                      - high
-                    description: PII classification for redaction. "high" auto-redacts the value in execution logs and the inbound log. "low" (default when omitted) preserves the value. "none" is an explicit marker that the field is non-personal.
-                required:
-                  - key
-                  - type
-                  - required
+                $ref: "#/components/schemas/TriggerPayloadField"
           required:
             - type
             - fields
@@ -18827,7 +18739,7 @@ paths:
       tags:
         - Emails
       summary: Get a transactional email
-      description: "Read a reusable transactional email object: locked `domainId` / `emailId` / `emailVersionId`, envelope defaults, and the merge-tag list for snippets. On Liquid-enabled workspaces the response also carries the payload contract — `variableTree` (every `trigger.*` / `customer.*` path the pinned template references, with array/object shape and fallbacks), `examplePayload` (a nested payload that fires verbatim), and `templating` (engine + parse validity). Recomputed from the pinned design on every read. Fire it with `POST /v1/sends { transactionId, to, payload? }`. Permission: `sends`. There is no `messageClass` on this object — purpose lives on the sending domain."
+      description: "Read a reusable transactional email object: locked `domainId` / `emailId` / `emailVersionId`, envelope defaults, and the merge-tag list for snippets. The response also carries the payload contract — `variableTree` (every `trigger.*` / `customer.*` path the pinned template references, with array/object shape and fallbacks), `examplePayload` (a nested payload that fires verbatim), and `templating` (parse validity). Recomputed from the pinned design on every read. Fire it with `POST /v1/sends { transactionId, to, payload? }`. Permission: `sends`. There is no `messageClass` on this object — purpose lives on the sending domain."
       parameters:
         - name: include
           in: query
@@ -18909,7 +18821,6 @@ paths:
                     type: string
                     fallback: there
                 templating:
-                  engine: liquid
                   valid: true
                   errors: []
                 variableTree:
