@@ -1,24 +1,22 @@
-import type { components } from '../../generated/openapi-types'
+import type { CreateBrandInput } from '@brew.new/sdk'
 import { defineCommand } from '../../lib/define-command'
 import { CliUsageError } from '../../lib/errors'
 import {
+  asSdkInput,
   flagString,
   IDEMPOTENCY_FLAG,
   INPUT_FLAG,
   mergeInput,
   readJsonFlag,
+  requestOptions,
   toStringArray,
 } from '../../lib/input'
-import { rawRequest } from '../../lib/raw-request'
-
-type BrandsCreateResponse = components['schemas']['BrandsCreateResponse']
 
 export const brandsCreateCommand = defineCommand({
   path: ['brands', 'create'],
   summary:
     'Create a brand and start async extraction (needs an ORGANIZATION-scoped key); poll `brands get` until ready',
-  sdkMethod: null,
-  isRawTransport: true,
+  sdkMethod: 'brands.create',
   route: { method: 'POST', path: '/v1/brands' },
   commandClass: 'write',
   flags: [
@@ -59,12 +57,12 @@ export const brandsCreateCommand = defineCommand({
       throw new CliUsageError('--url is required (or provide it via --input).')
     }
     return {
-      data: await rawRequest<BrandsCreateResponse>(ctx, {
-        method: 'POST',
-        path: '/v1/brands',
-        body: input,
-        idempotencyKey: flagString(flags.idempotencyKey),
-      }),
+      data: await ctx
+        .client()
+        .brands.create(
+          asSdkInput<CreateBrandInput>(input),
+          requestOptions(flags)
+        ),
     }
   },
 })

@@ -1,25 +1,16 @@
-import type { components } from '../../generated/openapi-types'
 import { defineCommand } from '../../lib/define-command'
 import { renderTable } from '../../lib/output'
-import { rawRequest } from '../../lib/raw-request'
-
-type IntegrationsListResponse =
-  components['schemas']['IntegrationsListResponse']
 
 export const integrationsListCommand = defineCommand({
   path: ['integrations', 'list'],
   summary:
     'List the integration catalog with per-provider connected state (connect via Settings, not this CLI)',
-  sdkMethod: null,
-  isRawTransport: true,
+  sdkMethod: 'integrations.list',
   route: { method: 'GET', path: '/v1/integrations' },
   commandClass: 'read',
   examples: ['brew-cli integrations list', 'brew-cli integrations list --json'],
   run: async ({ ctx }) => {
-    const result = await rawRequest<IntegrationsListResponse>(ctx, {
-      method: 'GET',
-      path: '/v1/integrations',
-    })
+    const result = await ctx.client().integrations.list()
     return { data: result, human: renderIntegrations(result.data) }
   },
 })

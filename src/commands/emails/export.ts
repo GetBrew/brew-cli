@@ -1,16 +1,19 @@
-import type { components } from '../../generated/openapi-types'
+import type { BrewClient } from '@brew.new/sdk'
 import { defineCommand } from '../../lib/define-command'
 import { CliUsageError } from '../../lib/errors'
-import { flagString, IDEMPOTENCY_FLAG } from '../../lib/input'
-import { rawRequest } from '../../lib/raw-request'
+import {
+  asSdkInput,
+  flagString,
+  IDEMPOTENCY_FLAG,
+  requestOptions,
+} from '../../lib/input'
 
-type EmailExportResponse = components['schemas']['EmailExportResponse']
+type ExportEmailInput = Parameters<BrewClient['emails']['export']>[0]
 
 export const emailsExportCommand = defineCommand({
   path: ['emails', 'export'],
   summary: 'Export a design to a connected ESP as a template (not a send)',
-  sdkMethod: null,
-  isRawTransport: true,
+  sdkMethod: 'emails.export',
   route: { method: 'POST', path: '/v1/emails/{emailId}/export' },
   commandClass: 'write',
   args: [{ name: 'emailId', summary: 'Design id to export', isRequired: true }],
@@ -44,17 +47,16 @@ export const emailsExportCommand = defineCommand({
     }
     const templateName = flagString(flags.templateName)
     return {
-      data: await rawRequest<EmailExportResponse>(ctx, {
-        method: 'POST',
-        path: `/v1/emails/${encodeURIComponent(args.emailId ?? '')}/export`,
-        body: {
+      data: await ctx.client().emails.export(
+        asSdkInput<ExportEmailInput>({
+          emailId: args.emailId ?? '',
           provider,
           ...(templateName === undefined ? {} : { templateName }),
           // The spec field is snake_case, unlike the rest of the API surface.
           ...(flags.dryRun === true ? { dry_run: true } : {}),
-        },
-        idempotencyKey: flagString(flags.idempotencyKey),
-      }),
+        }),
+        requestOptions(flags)
+      ),
     }
   },
 })

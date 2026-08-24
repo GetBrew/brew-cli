@@ -1,6 +1,7 @@
-import type { components } from '../../../generated/openapi-types'
+import type { ListEmailGroupsInput } from '@brew.new/sdk'
 import { defineCommand } from '../../../lib/define-command'
 import {
+  asSdkInput,
   flagInt,
   flagString,
   INPUT_FLAG,
@@ -14,15 +15,11 @@ import {
   collectAll,
   LIMIT_FLAG,
 } from '../../../lib/paginate'
-import { rawRequest } from '../../../lib/raw-request'
-
-type EmailGroupsListResponse = components['schemas']['EmailGroupsListResponse']
 
 export const emailsGroupsListCommand = defineCommand({
   path: ['emails', 'groups', 'list'],
   summary: 'List email groups in display order, including Ungrouped',
-  sdkMethod: null,
-  isRawTransport: true,
+  sdkMethod: 'emailGroups.list',
   route: { method: 'GET', path: '/v1/email-groups' },
   commandClass: 'read',
   flags: [LIMIT_FLAG, CURSOR_FLAG, ALL_FLAG, INPUT_FLAG],
@@ -37,17 +34,12 @@ export const emailsGroupsListCommand = defineCommand({
       cursor: flagString(flags.cursor),
     })
     const fetchPage = (cursor: string | undefined) =>
-      rawRequest<EmailGroupsListResponse>(ctx, {
-        method: 'GET',
-        path: '/v1/email-groups',
-        query: {
-          limit:
-            typeof input.limit === 'number' ? String(input.limit) : undefined,
-          cursor:
-            cursor ??
-            (typeof input.cursor === 'string' ? input.cursor : undefined),
-        },
-      })
+      ctx.client().emailGroups.list(
+        asSdkInput<ListEmailGroupsInput>({
+          ...input,
+          ...(cursor === undefined ? {} : { cursor }),
+        })
+      )
     if (flags.all === true) {
       const rows = await collectAll(ctx, fetchPage)
       return {

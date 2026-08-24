@@ -1,15 +1,11 @@
-import type { components } from '../../../generated/openapi-types'
+import type { DeleteEmailGroupInput } from '@brew.new/sdk'
 import { defineCommand } from '../../../lib/define-command'
-import { rawRequest } from '../../../lib/raw-request'
-
-type EmailGroupDeleteResponse =
-  components['schemas']['EmailGroupDeleteResponse']
+import { asSdkInput } from '../../../lib/input'
 
 export const emailsGroupsDeleteCommand = defineCommand({
   path: ['emails', 'groups', 'delete'],
   summary: 'Delete an email folder (group); its emails move to Ungrouped',
-  sdkMethod: null,
-  isRawTransport: true,
+  sdkMethod: 'emailGroups.delete',
   route: { method: 'DELETE', path: '/v1/email-groups/{groupId}' },
   commandClass: 'destructive',
   args: [
@@ -23,9 +19,10 @@ export const emailsGroupsDeleteCommand = defineCommand({
   confirmSummary: ({ args }) =>
     `Delete email group ${args.groupId ?? ''}. Its emails move to Ungrouped; the folder itself cannot be recovered.`,
   run: async ({ ctx, args }) => ({
-    data: await rawRequest<EmailGroupDeleteResponse>(ctx, {
-      method: 'DELETE',
-      path: `/v1/email-groups/${encodeURIComponent(args.groupId ?? '')}`,
-    }),
+    data: await ctx
+      .client()
+      .emailGroups.delete(
+        asSdkInput<DeleteEmailGroupInput>({ groupId: args.groupId ?? '' })
+      ),
   }),
 })

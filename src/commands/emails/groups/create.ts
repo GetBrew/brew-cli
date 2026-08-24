@@ -1,22 +1,20 @@
-import type { components } from '../../../generated/openapi-types'
+import type { CreateEmailGroupInput } from '@brew.new/sdk'
 import { defineCommand } from '../../../lib/define-command'
 import { CliUsageError } from '../../../lib/errors'
 import {
+  asSdkInput,
   flagString,
   IDEMPOTENCY_FLAG,
   INPUT_FLAG,
   mergeInput,
   readJsonFlag,
+  requestOptions,
 } from '../../../lib/input'
-import { rawRequest } from '../../../lib/raw-request'
-
-type EmailGroupSummary = components['schemas']['EmailGroupSummary']
 
 export const emailsGroupsCreateCommand = defineCommand({
   path: ['emails', 'groups', 'create'],
   summary: 'Create a named email folder (group)',
-  sdkMethod: null,
-  isRawTransport: true,
+  sdkMethod: 'emailGroups.create',
   route: { method: 'POST', path: '/v1/email-groups' },
   commandClass: 'write',
   flags: [
@@ -35,12 +33,12 @@ export const emailsGroupsCreateCommand = defineCommand({
       throw new CliUsageError('--name is required (or provide it via --input).')
     }
     return {
-      data: await rawRequest<EmailGroupSummary>(ctx, {
-        method: 'POST',
-        path: '/v1/email-groups',
-        body: input,
-        idempotencyKey: flagString(flags.idempotencyKey),
-      }),
+      data: await ctx
+        .client()
+        .emailGroups.create(
+          asSdkInput<CreateEmailGroupInput>(input),
+          requestOptions(flags)
+        ),
     }
   },
 })

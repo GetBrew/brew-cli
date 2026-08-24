@@ -1,16 +1,18 @@
-import type { components } from '../../generated/openapi-types'
+import type { BrewClient } from '@brew.new/sdk'
 import { defineCommand } from '../../lib/define-command'
-import { flagString, IDEMPOTENCY_FLAG } from '../../lib/input'
-import { rawRequest } from '../../lib/raw-request'
+import {
+  asSdkInput,
+  flagString,
+  IDEMPOTENCY_FLAG,
+  requestOptions,
+} from '../../lib/input'
 
-type EmailCloneResponse =
-  components['schemas']['EmailGenerateGeneratedResponse']
+type CloneEmailInput = Parameters<BrewClient['emails']['clone']>[0]
 
 export const emailsCloneCommand = defineCommand({
   path: ['emails', 'clone'],
   summary: 'Clone a design into a new one (exact snapshot copy, no AI)',
-  sdkMethod: null,
-  isRawTransport: true,
+  sdkMethod: 'emails.clone',
   route: { method: 'POST', path: '/v1/emails/{emailId}/clone' },
   commandClass: 'write',
   args: [{ name: 'emailId', summary: 'Design id to clone', isRequired: true }],
@@ -28,13 +30,13 @@ export const emailsCloneCommand = defineCommand({
   run: async ({ ctx, args, flags }) => {
     const emailVersionId = flagString(flags.emailVersionId)
     return {
-      data: await rawRequest<EmailCloneResponse>(ctx, {
-        method: 'POST',
-        path: `/v1/emails/${encodeURIComponent(args.emailId ?? '')}/clone`,
-        // The body is optional; omit it entirely to clone the latest version.
-        ...(emailVersionId === undefined ? {} : { body: { emailVersionId } }),
-        idempotencyKey: flagString(flags.idempotencyKey),
-      }),
+      data: await ctx.client().emails.clone(
+        asSdkInput<CloneEmailInput>({
+          emailId: args.emailId ?? '',
+          ...(emailVersionId === undefined ? {} : { emailVersionId }),
+        }),
+        requestOptions(flags)
+      ),
     }
   },
 })

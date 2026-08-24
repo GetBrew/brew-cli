@@ -4059,8 +4059,8 @@ components:
                       maxLength: 128
                     url:
                       type: string
-                      pattern: ^https?:\/\/
                       maxLength: 2048
+                      pattern: ^https?:\/\/
                   required:
                     - id
                   additionalProperties: false

@@ -1,17 +1,12 @@
-import type { components } from '../../../generated/openapi-types'
+import type { ControlAudienceRunInput } from '@brew.new/sdk'
 import { defineCommand } from '../../../lib/define-command'
 import { CliUsageError } from '../../../lib/errors'
-import { flagString } from '../../../lib/input'
-import { rawRequest } from '../../../lib/raw-request'
-
-type AudienceRunControlResponse =
-  components['schemas']['AudienceRunControlResponse']
+import { asSdkInput, flagString } from '../../../lib/input'
 
 export const automationsAudienceRunsControlCommand = defineCommand({
   path: ['automations', 'audience-runs', 'control'],
   summary: 'Pause, resume, or cancel an in-flight manual-audience run',
-  sdkMethod: null,
-  isRawTransport: true,
+  sdkMethod: 'automations.audienceRuns.control',
   route: {
     method: 'POST',
     path: '/v1/automations/audience-runs/{audienceRunId}/control',
@@ -45,11 +40,12 @@ export const automationsAudienceRunsControlCommand = defineCommand({
       throw new CliUsageError('--action is required: pause, resume, or cancel.')
     }
     return {
-      data: await rawRequest<AudienceRunControlResponse>(ctx, {
-        method: 'POST',
-        path: `/v1/automations/audience-runs/${encodeURIComponent(args.audienceRunId ?? '')}/control`,
-        body: { action },
-      }),
+      data: await ctx.client().automations.audienceRuns.control(
+        asSdkInput<ControlAudienceRunInput>({
+          audienceRunId: args.audienceRunId ?? '',
+          action,
+        })
+      ),
     }
   },
 })

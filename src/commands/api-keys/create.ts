@@ -1,23 +1,21 @@
-import type { components } from '../../generated/openapi-types'
+import type { CreateApiKeyInput } from '@brew.new/sdk'
 import { defineCommand } from '../../lib/define-command'
 import {
+  asSdkInput,
   flagString,
   IDEMPOTENCY_FLAG,
   INPUT_FLAG,
   mergeInput,
   readJsonFlag,
+  requestOptions,
   toStringArray,
 } from '../../lib/input'
-import { rawRequest } from '../../lib/raw-request'
-
-type ApiKeysCreateResponse = components['schemas']['ApiKeysCreateResponse']
 
 export const apiKeysCreateCommand = defineCommand({
   path: ['api-keys', 'create'],
   summary:
     'Mint an API key; the plaintext `key` is returned ONCE — this output is the only copy',
-  sdkMethod: null,
-  isRawTransport: true,
+  sdkMethod: 'apiKeys.create',
   route: { method: 'POST', path: '/v1/api-keys' },
   commandClass: 'write',
   flags: [
@@ -50,12 +48,12 @@ export const apiKeysCreateCommand = defineCommand({
     // API response through verbatim (no masking) or the command loses its
     // only purpose.
     return {
-      data: await rawRequest<ApiKeysCreateResponse>(ctx, {
-        method: 'POST',
-        path: '/v1/api-keys',
-        body: input,
-        idempotencyKey: flagString(flags.idempotencyKey),
-      }),
+      data: await ctx
+        .client()
+        .apiKeys.create(
+          asSdkInput<CreateApiKeyInput>(input),
+          requestOptions(flags)
+        ),
     }
   },
 })

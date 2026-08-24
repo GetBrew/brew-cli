@@ -1,16 +1,9 @@
-import type { operations } from '../../generated/openapi-types'
 import { defineCommand } from '../../lib/define-command'
-import { rawRequest } from '../../lib/raw-request'
-
-/** The spec inlines this response; there is no named component schema. */
-type ChatContextResponse =
-  operations['getChatContext']['responses'][200]['content']['application/json']
 
 export const chatsGetCommand = defineCommand({
   path: ['chats', 'get'],
   summary: 'Brand-scoped digest of a Brew chat (artifacts + transcript tail)',
-  sdkMethod: null,
-  isRawTransport: true,
+  sdkMethod: 'chats.get',
   route: { method: 'GET', path: '/v1/chats/{chatId}' },
   commandClass: 'read',
   args: [
@@ -22,9 +15,6 @@ export const chatsGetCommand = defineCommand({
   ],
   examples: ['brew-cli chats get Hk2mZ8t9QbY3sW1vR0pLd'],
   run: async ({ ctx, args }) => ({
-    data: await rawRequest<ChatContextResponse>(ctx, {
-      method: 'GET',
-      path: `/v1/chats/${encodeURIComponent(args.chatId ?? '')}`,
-    }),
+    data: await ctx.client().chats.get(args.chatId ?? ''),
   }),
 })

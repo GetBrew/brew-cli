@@ -40,6 +40,11 @@ export const SDK_SKIP_LIST: readonly SdkSkip[] = [
     sdkPath: 'brand.update',
     reason: 'SDK alias of brand.patch, exposed as `brand update`',
   },
+  {
+    sdkPath: 'withBrand',
+    reason:
+      'client scoping helper activated by the global `--brand`; not an API command',
+  },
 ]
 
 /**

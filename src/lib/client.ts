@@ -85,9 +85,7 @@ export function buildSdkClient(auth: ResolvedAuth): BrewClient {
     apiKey: auth.apiKey,
     baseUrl: auth.apiUrl,
     userAgent: `${CLI_NAME}/${CLI_VERSION}`,
-    ...(auth.brandId === undefined
-      ? {}
-      : { fetch: withBrandHeader(auth.brandId) }),
+    ...(auth.brandId === undefined ? {} : { brandId: auth.brandId }),
   })
 }
 
@@ -106,29 +104,6 @@ export function isOrgLevelPath(url: string): boolean {
   return ORG_LEVEL_PATH_PREFIXES.some(
     (prefix) => apiPath === prefix || apiPath.startsWith(`${prefix}/`)
   )
-}
-
-/**
- * SDK 8.0.0 predates native organization-scoped keys (`withBrand`). The
- * public API already accepts the stable X-Brand-Id header, so until the
- * SDK ships native support the CLI injects it through the SDK's public
- * custom-fetch knob. Remove once @brew.new/sdk exposes withBrand.
- */
-function withBrandHeader(brandId: string): typeof globalThis.fetch {
-  return (input, init) => {
-    const url =
-      typeof input === 'string'
-        ? input
-        : input instanceof URL
-          ? input.toString()
-          : input.url
-    if (isOrgLevelPath(url)) {
-      return globalThis.fetch(input, init)
-    }
-    const headers = new Headers(init?.headers)
-    headers.set('X-Brand-Id', brandId)
-    return globalThis.fetch(input, { ...init, headers })
-  }
 }
 
 export function maskApiKey(apiKey: string): string {

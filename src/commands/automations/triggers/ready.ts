@@ -1,15 +1,12 @@
-import type { components } from '../../../generated/openapi-types'
+import type { TriggerReadyInput } from '@brew.new/sdk'
 import { defineCommand } from '../../../lib/define-command'
-import { rawRequest } from '../../../lib/raw-request'
-
-type TriggerFireResponse = components['schemas']['TriggerFireResponse']
+import { asSdkInput } from '../../../lib/input'
 
 export const automationsTriggersReadyCommand = defineCommand({
   path: ['automations', 'triggers', 'ready'],
   summary:
     'Preflight a trigger without firing: key + scope + permissions pass/fail, the payload contract, and what a fire would start',
-  sdkMethod: null,
-  isRawTransport: true,
+  sdkMethod: 'automations.triggers.ready',
   route: {
     method: 'GET',
     path: '/v1/automations/triggers/{triggerEventId}/fire',
@@ -27,10 +24,11 @@ export const automationsTriggersReadyCommand = defineCommand({
   // trigger; `details.counts.automations: 0` means fires are accepted and
   // logged but start no runs until a wired automation is published.
   run: async ({ ctx, args }) => {
-    const result = await rawRequest<TriggerFireResponse>(ctx, {
-      method: 'GET',
-      path: `/v1/automations/triggers/${encodeURIComponent(args.triggerEventId ?? '')}/fire`,
-    })
+    const result = await ctx.client().automations.triggers.ready(
+      asSdkInput<TriggerReadyInput>({
+        triggerEventId: args.triggerEventId ?? '',
+      })
+    )
     return { data: result }
   },
 })
