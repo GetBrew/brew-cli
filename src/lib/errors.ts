@@ -134,7 +134,7 @@ export function toErrorEnvelope(error: unknown): CliErrorEnvelope {
       message: error.message,
     }
   }
-  if (error instanceof Error && error.name === 'TimeoutError') {
+  if (isTimeoutError(error)) {
     return {
       code: 'CLI_TIMEOUT',
       type: 'service_unavailable',
@@ -191,4 +191,13 @@ function apiErrorStatus(error: unknown): number | undefined {
   if (error instanceof BrewApiError || error instanceof CliApiError) {
     return error.status
   }
+}
+
+function isTimeoutError(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'name' in error &&
+    error.name === 'TimeoutError'
+  )
 }
