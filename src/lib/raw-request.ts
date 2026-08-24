@@ -22,6 +22,7 @@ export async function rawRequest<TResponse>(
     readonly query?: Readonly<Record<string, string | undefined>>
     readonly idempotencyKey?: string | undefined
     readonly allowAnonymous?: boolean
+    readonly signal?: AbortSignal
   }
 ): Promise<TResponse> {
   const auth = resolveAuth({
@@ -46,6 +47,7 @@ export async function rawRequest<TResponse>(
     method: request.method,
     headers,
     ...(hasBody ? { body: JSON.stringify(request.body) } : {}),
+    ...(request.signal === undefined ? {} : { signal: request.signal }),
   })
   const text = await response.text()
   const parsed = tryParseJson(text)

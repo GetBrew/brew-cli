@@ -77,7 +77,7 @@ import { domainsHealthCommand } from './commands/domains/health'
 import { domainsListCommand } from './commands/domains/list'
 import { domainsUpdateCommand } from './commands/domains/update'
 import { domainsVerifyCommand } from './commands/domains/verify'
-import { emailsAuditAccessibilityCommand } from './commands/emails/audit-accessibility'
+import { emailsAuditCommand } from './commands/emails/audit'
 import { emailsCloneCommand } from './commands/emails/clone'
 import { emailsCreateInboxPlacementTestCommand } from './commands/emails/create-inbox-placement-test'
 import { emailsDeleteCommand } from './commands/emails/delete'
@@ -158,7 +158,7 @@ export const ALL_COMMANDS: readonly CommandSpec[] = [
   emailsRestoreCommand,
   emailsDeleteCommand,
   emailsExportCommand,
-  emailsAuditAccessibilityCommand,
+  emailsAuditCommand,
   emailsPreviewClientsCommand,
   emailsCreateInboxPlacementTestCommand,
   emailsGetInboxPlacementResultsCommand,
