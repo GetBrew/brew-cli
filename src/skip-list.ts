@@ -40,11 +40,6 @@ export const SDK_SKIP_LIST: readonly SdkSkip[] = [
     sdkPath: 'brand.update',
     reason: 'SDK alias of brand.patch, exposed as `brand update`',
   },
-  {
-    sdkPath: 'emails.auditAccessibility',
-    reason:
-      'SDK 8.0.0 issues GET for the POST-only operation (upstream bug); `emails audit-accessibility` binds via raw transport instead',
-  },
 ]
 
 /**

@@ -54,7 +54,7 @@ a `confirmCommand` otherwise, `--yes` to proceed).
 | `brew-cli emails restore` | write | `POST /v1/emails/{emailId}/restore` | Restore a previous version as the new latest (non-destructive) |
 | `brew-cli emails delete` | destructive | `DELETE /v1/emails/{emailId}` | Hard-delete an email design and all its versions (idempotent) |
 | `brew-cli emails export` | write | `POST /v1/emails/{emailId}/export` | Export a design to a connected ESP as a template (not a send) |
-| `brew-cli emails audit-accessibility` | write ($) | `POST /v1/emails/{emailId}/accessibility-audit` | WCAG 2.1 audit of the latest rendered HTML (5 credits) |
+| `brew-cli emails audit` | write ($) | `POST /v1/emails/audit` | Audit raw email content for production readiness (5 credits when complete) |
 | `brew-cli emails preview-clients` | write ($) | `POST /v1/emails/{emailId}/client-previews` | Render the design across real email clients (10 credits) |
 | `brew-cli emails create-inbox-placement-test` | write ($) | `POST /v1/emails/{emailId}/inbox-placement-tests` | Seed-test where the design lands (inbox vs spam) via a real small send (10 credits) |
 | `brew-cli emails get-inbox-placement-results` | read | `GET /v1/emails/{emailId}/inbox-placement-tests` | Inbox placement results: one test with --test-id, else the recent tests |
@@ -655,18 +655,24 @@ brew-cli emails export eml_2SmZOWV3ZQ7W5x6g3m4p --provider klaviyo
 brew-cli emails export eml_2SmZOWV3ZQ7W5x6g3m4p --provider mailchimp --template-name "Fall sale" --dry-run
 ```
 
-### brew-cli emails audit-accessibility
+### brew-cli emails audit
 
-WCAG 2.1 audit of the latest rendered HTML (5 credits)
+Audit raw email content for production readiness (5 credits when complete)
 
-- Route: `POST /v1/emails/{emailId}/accessibility-audit`
+- Route: `POST /v1/emails/audit`
 - Class: write
 - Consumes Brew credits
-- Argument `emailId` — Design id to audit
-- `--idempotency-key <key>` — Idempotency-Key for safe retries (auto-generated otherwise)
+- `--file <path>` — Email HTML file to audit, or - for stdin
+- `--subject <text>` — Inbox subject line
+- `--preview-text <text>` — Inbox preview text; an explicit empty value stays empty
+- `--sending-purpose <purpose>` — marketing | transactional (default: marketing)
+- `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
+- `--idempotency-key <key>` — Idempotency-Key for safe retries of this raw request
 
 ```bash
-brew-cli emails audit-accessibility eml_2SmZOWV3ZQ7W5x6g3m4p
+brew-cli emails audit --file newsletter.html --subject "August update" --sending-purpose marketing
+cat email.html | brew-cli emails audit --file - --subject "Receipt" --sending-purpose transactional
+brew-cli emails audit --input '{"emailHtml":"<p>Hello</p>","subject":"Hello"}'
 ```
 
 ### brew-cli emails preview-clients
@@ -1812,7 +1818,6 @@ SDK methods intentionally without a dedicated command:
 - `analytics.sends.listAll` — auto-pager covered by `analytics sends list --all`
 - `analytics.triggerInstances.listAll` — auto-pager covered by `analytics trigger-instances list --all`
 - `brand.update` — SDK alias of brand.patch, exposed as `brand update`
-- `emails.auditAccessibility` — SDK 8.0.0 issues GET for the POST-only operation (upstream bug); `emails audit-accessibility` binds via raw transport instead
 
 Public API operations not yet available (tracked by the spec parity test):
 
