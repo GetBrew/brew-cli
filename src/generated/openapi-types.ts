@@ -8165,7 +8165,7 @@ export interface operations {
                     /**
                      * @example {
                      *       "schemaVersion": 1,
-                     *       "rulesetVersion": "2026-08-24.2",
+                     *       "rulesetVersion": "2026-08-24.3",
                      *       "auditId": "00000000-0000-4000-8000-000000000001",
                      *       "contentHash": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
                      *       "auditedAt": "2026-08-23T00:00:00.000Z",
