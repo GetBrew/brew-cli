@@ -1,5 +1,5 @@
-export type TransactionalPayloadValue = string | number | boolean | null | TransactionalPayloadValue[] | {
-    [key: string]: TransactionalPayloadValue;
+export type SendPayloadValue = string | number | boolean | null | SendPayloadValue[] | {
+    [key: string]: SendPayloadValue;
 };
 export interface paths {
     "/v1/emails": {
@@ -165,7 +165,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/v1/emails/{emailId}/accessibility-audit": {
+    "/v1/emails/audit": {
         parameters: {
             query?: never;
             header?: never;
@@ -175,10 +175,10 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Accessibility audit
-         * @description Audit the email’s latest rendered HTML for accessibility issues against WCAG 2.1 (missing alt text, non-descriptive links, low text contrast, tiny fonts, missing `lang`, empty headings). Returns a `score` (0–100), a `summary`, and a list of `issues` with their WCAG criterion. FIXED cost: 5 credits (`X-Credit-Cost: 5`), charged ONLY on success — if the audit cannot complete in time, the call returns a retryable `503` and is NOT billed.
+         * Audit an email
+         * @description Lint raw email content for production readiness. `emailHtml` is capped at 5,000,000 UTF-8 bytes and the complete JSON body at 6 MiB; `subject` and `previewText` each have a 1,000-character transport cap. Omitted preview text is extracted from the authored preheader, while an explicit empty string stays empty. Omitted `sendingPurpose` defaults to marketing and is reported as defaulted. Independent checks run in parallel across unsubscribe compliance, links and images, total loaded size, accessibility, markup, subject line, and preview text. The stable versioned response reports every check, up to 100 normalized findings, exact totals, metrics, and a nested `completion` discriminator. A complete result has a 0–100 score and costs 5 credits (`X-Credit-Cost: 5`). If a required lane is unavailable, the endpoint returns a partial result with `score: null`, never establishes readiness, costs 0 credits (`X-Credit-Cost: 0`), and releases the idempotency key so the same key can retry. Admission is limited to 6 requests per minute per credential or session and 20 per minute across the organization, shared by public API, MCP, and agent calls. Brew runs at most 4 audits concurrently per organization and 16 globally; capacity rejections return `429 RATE_LIMITED` with `Retry-After` and do not run or charge the audit.
          */
-        post: operations["auditEmailAccessibility"];
+        post: operations["auditEmail"];
         delete?: never;
         options?: never;
         head?: never;
@@ -294,7 +294,7 @@ export interface paths {
         };
         /**
          * Get email sends
-         * @description Unified send read. A send is the unit of delivery + analytics: one design delivered to a target (audience, inline list, or single address) via one domain. Default LIST is campaign-only. Filter object-fired transactional rows with `?kind=transactional` and/or `?transactionId=`. Leftover `?messageClass=` still filters campaign-era rows. Omit `sendId` to LIST newest first under `{ data, pagination }`; also filter with `?status=`, `?emailId=`, or the `from`/`to` ISO-8601 window. Pass `?sendId=` to fetch ONE — returns `{ data: [row] }` (no `pagination`), `404 SEND_NOT_FOUND` on an unknown / cross-brand id; add `?include=events` (detail only) for a bounded first page of the send’s analytics events. `sendId` and `emailId` are mutually exclusive.
+         * @description Unified send read. A send is the unit of delivery + analytics: one design delivered to a target (audience, inline list, or single address) via one domain. Default LIST is campaign-only. Filter by `?messageClass=` (`marketing` | `transactional` — the admission snapshot from the sending domain). Omit `sendId` to LIST newest first under `{ data, pagination }`; also filter with `?status=`, `?emailId=`, or the `from`/`to` ISO-8601 window. Pass `?sendId=` to fetch ONE — returns `{ data: [row] }` (no `pagination`), `404 SEND_NOT_FOUND` on an unknown / cross-brand id; add `?include=events` (detail only) for a bounded first page of the send’s analytics events. `sendId` and `emailId` are mutually exclusive.
          */
         get: operations["listSends"];
         put?: never;
@@ -316,10 +316,9 @@ export interface paths {
         put?: never;
         /**
          * Send an email
-         * @description Sends an email design. Polymorphic on `test` / `transactionId`:
+         * @description Sends an email design. Polymorphic on `test`:
          *
          *     - **`test: true`** → a synchronous one-off TEST delivery of the design’s current (or pinned) body to a single address, with a `[TEST]` subject prefix. Sends from the Brew default sender unless a verified org-owned `domainId` is supplied (`fromEmail`/`senderName` customize it; an unverified/foreign domain is rejected, never downgraded). Optional `variables` supply example values for `{{ var | fallback }}` merge tags — a value wins over the declared fallback. Targets one `to` address and never creates a `Send` row. Returns **`200`** `{ status: "sent", recipient }`.
-         *     - **`transactionId`** → fire a reusable transactional email object. Domain and design are locked on the object; `to` (1–50) is required; optional `payload` supplies merge-tag values. Optional envelope overrides: `replyTo`, `senderName`, `fromEmail`, `subject`, `previewText`. Creates a `sends` row with `kind: transactional`. Returns **`202`** `{ sendId, runId }`. Prefer this over leftover inline `emailId` + `domainId` + `to` on a transactional domain.
          *     - **default / `test: false`** → a campaign send combining the design (`emailId`, optionally pinned to `emailVersionId`), a verified `domainId`, and a target — a saved `audienceId` OR inline `to` (a single email or an array, max 50) — into one delivery event. The same design can be sent unlimited times; every call mints a new send. Returns **`202`** `{ sendId, runId }` — poll via `GET /v1/analytics/sends?sendId=`.
          *
          *     Campaign target — provide EXACTLY ONE of `audienceId` or `to`. Inline recipients face the same unsubscribe/suppression gate and per-recipient quota as audience sends. For per-recipient event-driven delivery, publish an automation and fire its trigger (`POST /v1/automations/triggers/{triggerEventId}/fire`).
@@ -387,26 +386,6 @@ export interface paths {
          * @description Resumes a manually paused GRADUAL send. The unsent tail is re-spread and later batches shift so missed intervals do not compress into a burst. A send that is not a `paused` gradual send returns `409 SEND_NOT_RESUMABLE`. Brand-scoped: an unknown / cross-brand `sendId` is `404`.
          */
         post: operations["resumeSend"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/transactional/{transactionId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get a transactional email
-         * @description Read a reusable transactional email object: locked `domainId` / `emailId` / `emailVersionId`, envelope defaults, and the merge-tag list for snippets. The response also carries the payload contract — `variableTree` (every `trigger.*` / `customer.*` path the pinned template references, with array/object shape and fallbacks), `examplePayload` (a nested payload that fires verbatim), and `templating` (parse validity). Recomputed from the pinned design on every read. Fire it with `POST /v1/sends { transactionId, to, payload? }`. Permission: `sends`. There is no `messageClass` on this object — purpose lives on the sending domain.
-         */
-        get: operations["getTransactionalEmail"];
-        put?: never;
-        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -482,7 +461,7 @@ export interface paths {
         };
         /**
          * Unified events feed
-         * @description Read-only window over the brand’s analytics events across domains (email, automation, trigger, inbound). Defaults to the last 7 days. Equality filters: `recipientEmail`, `eventType`, `automationId`, `sendId` (join back to `/v1/analytics/sends?sendId=`), `messageClass` (`marketing` | `transactional` — same event object; absent stamps match as marketing). Recipient rules — `recipient` (csv, ≤10): a full address matches exactly, `@domain` matches everyone on that domain, any other text matches as a substring, and a `!` prefix excludes (`recipient=@clay.com,!ceo@clay.com` = clay recipients except the CEO); includes OR together, excludes always apply. Send-object facets — `source` (csv of send sources), `audienceId` (csv, ≤20), `emailId` (design), `domain` (sending domain), `triggerEventId` (csv, ≤10 — integration trigger-events resolved to their wired automations), `messageClass`: when ANY facet or recipient rule is present the feed narrows to EMAIL events only and each row is enriched with `sendSource` + `sendContext` + `messageClass` (plus `triggerProvider`/`triggerTitle` on integration/custom-triggered rows). Overview/insights collect transactional events like any other email event. Machine/bot-classified `clicked` AND `opened` rows (scanner detonation, Apple-proxy prefetch) are EXCLUDED by default (matching `/v1/analytics/overview`); pass `includeMachineClicks=true` / `includeMachineOpens=true` to include the raw rows (audit/debug only). Cursor pagination — pass `pagination.cursor` back as `?cursor=`; loop `while (cursor !== null)`. Requires the `emails` scope.
+         * @description Read-only window over the brand’s analytics events across domains (email, automation, trigger, inbound). Defaults to the last 7 days. Equality filters: `recipientEmail`, `eventType`, `automationId`, `sendId` (join back to `/v1/analytics/sends?sendId=`), `messageClass` (`marketing` | `transactional` — same event object; absent stamps match as marketing). Recipient rules — `recipient` (csv, ≤10): a full address matches exactly, `@domain` matches everyone on that domain, any other text matches as a substring, and a `!` prefix excludes (`recipient=@clay.com,!ceo@clay.com` = clay recipients except the CEO); includes OR together, excludes always apply. Send-object facets — `source` (csv of send sources), `audienceId` (csv, ≤20), `emailId` (design), `domain` (sending domain), `triggerEventId` (csv, ≤10 — integration trigger-events resolved to their wired automations), `messageClass`: when ANY facet or recipient rule is present the feed narrows to EMAIL events only and each row is enriched with `sendSource` + `sendContext` + `messageClass` (plus `triggerProvider`/`triggerTitle` on integration/custom-triggered rows). Overview/insights collect transactional-class events like any other email event. Machine/bot-classified `clicked` AND `opened` rows (scanner detonation, Apple-proxy prefetch) are EXCLUDED by default (matching `/v1/analytics/overview`); pass `includeMachineClicks=true` / `includeMachineOpens=true` to include the raw rows (audit/debug only). Cursor pagination — pass `pagination.cursor` back as `?cursor=`; loop `while (cursor !== null)`. Requires the `emails` scope.
          */
         get: operations["getEventsAnalytics"];
         put?: never;
@@ -514,7 +493,7 @@ export interface paths {
          *
          *     **Typed conditions:** every filter and condition-mode split uses a non-empty `conditions` array. Each condition requires `field`, `type` (`string`, `number`, `date`, or `bool`), and a canonical snake_case `operator`. Unary operators omit `value`; comparisons require a type-correct scalar, non-empty array, or exact two-value `between` tuple as documented by `AutomationNode`.
          *
-         *     Chain `POST /v1/emails { prompt }` first to mint the design each `sendEmail` node references — every `sendEmail` node MUST carry `emailId`, `emailVersionId`, `subject` (`previewText` is optional: the email design's JSX `<Preview>` is the preview source of truth). `domainId` is optional on create/save; publishing (`PATCH … { published: true }`) or running (`POST …/run`) requires a verified `domainId` from `GET /v1/domains`. `messageClass` is optional and behaves as `"marketing"` at send time when unset.
+         *     Chain `POST /v1/emails { prompt }` first to mint the design each `sendEmail` node references — every `sendEmail` node MUST carry `emailId`, `emailVersionId`, `subject` (`previewText` is optional: the email design's JSX `<Preview>` is the preview source of truth). `domainId` is optional on create/save; publishing (`PATCH … { published: true }`) or running (`POST …/run`) requires a verified `domainId` from `GET /v1/domains`. There is no `messageClass` key: the delivery class always derives from the sending domain's `sendingPurpose` (a transactional-purpose domain sends with no unsubscribe link and delivers to unsubscribed contacts) — pick the class by picking the domain.
          *
          *     **Dry-run** — add `dryRun: true` (alias `dry_run`) to validate without persisting; returns `200` with an `AutomationDryRunReport`: `{ valid, blockers[], warnings[], blockingIssues[], nodeCounts }`. `blockers[]` (severity `error`) fail publish; `warnings[]` are advisory. `blockingIssues[]` lists per-node references the bound trigger or contact catalog cannot provide. `valid` is false when any blocker or any blocking issue is present.
          */
@@ -719,7 +698,7 @@ export interface paths {
         };
         /**
          * Pre-flight a trigger (ready check)
-         * @description Verifies a fire would be accepted WITHOUT firing: authenticates the key, resolves the trigger in your organization/brand scope, and checks permissions — the same gates a real `POST` hits. `status: "ready"` returns the contract a caller needs to wire an external service: `details.payloadSchema`, `details.endpoint`, and the matched published consumers (`publishedAutomations`, `publishedTransactionalEmails`, `counts`).
+         * @description Verifies a fire would be accepted WITHOUT firing: authenticates the key, resolves the trigger in your organization/brand scope, and checks permissions — the same gates a real `POST` hits. `status: "ready"` returns the contract a caller needs to wire an external service: `details.payloadSchema`, `details.endpoint`, and the matched published consumers (`publishedAutomations`, `counts.automations`).
          *
          *     Use it while integrating, before anything is published: a ready trigger with `counts.automations: 0` accepts fires but starts no runs until an attached automation is published.
          *
@@ -1035,13 +1014,13 @@ export interface paths {
         };
         /**
          * Get domains
-         * @description Unified domain read. Omit `domainId` to LIST the brand’s sending domains under `{ data, pagination }` — ALL lifecycle states by default (so callers mid-verification can read `pending` rows + their DNS `records`); pass `?sendableOnly=true` for only verified, send-ready domains (the set valid for `POST /v1/sends` and automation `sendEmail` nodes). Pass `?sendingPurpose=marketing` to hide transactional domains (automations and campaigns require marketing). Pass `?domainId=` to fetch ONE domain — returns `{ data: [row] }` (no `pagination`), `404 DOMAIN_NOT_FOUND` on an unknown / cross-brand id.
+         * @description Unified domain read. Omit `domainId` to LIST the brand’s sending domains under `{ data, pagination }` — ALL lifecycle states by default (so callers mid-verification can read `pending` rows + their DNS `records`); pass `?sendableOnly=true` for only verified, send-ready domains (the set valid for `POST /v1/sends` and automation `sendEmail` nodes). Pass `?sendingPurpose=marketing` to hide transactional domains (campaigns and audience sends require marketing; automation sendEmail nodes accept both). Pass `?domainId=` to fetch ONE domain — returns `{ data: [row] }` (no `pagination`), `404 DOMAIN_NOT_FOUND` on an unknown / cross-brand id.
          */
         get: operations["listDomains"];
         put?: never;
         /**
          * Add a domain
-         * @description Registers a sending domain with the provider. Optional `sendingPurpose` is `marketing` (default; campaigns and automations) or `transactional` (API/MCP inline `to` only). Returns `201` with the bare row in `status: "pending"` plus the DNS `records` to publish. Once the records are live, call `POST /v1/domains/{domainId}/verify` until `sendable: true`.
+         * @description Registers a sending domain with the provider. Optional `sendingPurpose` is `marketing` (default; campaigns, audience sends, automations) or `transactional` (event-triggered automation mail — no unsubscribe link required, merely-unsubscribed contacts still receive it). Returns `201` with the bare row in `status: "pending"` plus the DNS `records` to publish. Once the records are live, call `POST /v1/domains/{domainId}/verify` until `sendable: true`.
          */
         post: operations["addDomain"];
         delete?: never;
@@ -1069,7 +1048,7 @@ export interface paths {
         head?: never;
         /**
          * Update domain settings
-         * @description Updates sender defaults (`defaultSenderName`, `defaultFromEmail`, `defaultReplyToEmail`) and/or `sendingPurpose` — at least one required. Live gates fail closed if a campaign or automation still points at a transactional domain. Verification is its own action: `POST /v1/domains/{domainId}/verify`. Returns the bare updated row.
+         * @description Updates sender defaults (`defaultSenderName`, `defaultFromEmail`, `defaultReplyToEmail`) and/or `sendingPurpose` — at least one required. Live gates fail closed if a campaign still points at a transactional domain. Verification is its own action: `POST /v1/domains/{domainId}/verify`. Returns the bare updated row.
          */
         patch: operations["updateDomain"];
         trace?: never;
@@ -1512,10 +1491,9 @@ export interface components {
         Send: {
             sendId: string;
             /** @enum {string} */
-            kind: "campaign" | "automation" | "transactional";
+            kind: "campaign" | "automation";
             /** @enum {string} */
             messageClass?: "marketing" | "transactional";
-            transactionId?: string;
             emailId: string;
             emailVersionId?: string;
             /** @enum {string} */
@@ -1613,55 +1591,6 @@ export interface components {
             machineGenerated?: boolean;
             clickBotReason?: string;
         };
-        TransactionalEmail: {
-            transactionId: string;
-            emailId: string;
-            emailVersionId: string;
-            domainId: string;
-            replyTo?: string;
-            senderName?: string;
-            fromEmail?: string;
-            subject: string;
-            previewText?: string;
-            /** Format: date-time */
-            createdAt: string;
-            /** Format: date-time */
-            updatedAt: string;
-            variables: {
-                name: string;
-                type: string;
-                fallback: string | null;
-            }[];
-            templating?: {
-                valid: boolean;
-                errors: {
-                    /** @enum {string} */
-                    source: "body" | "subject" | "previewText";
-                    message: string;
-                    line?: number;
-                    col?: number;
-                }[];
-            };
-            variableTree?: components["schemas"]["TransactionalVariableTreeNode"][];
-            examplePayload?: {
-                [key: string]: components["schemas"]["TransactionalPayloadValue"];
-            };
-            skill?: string;
-        };
-        TransactionalVariableTreeNode: {
-            key: string;
-            path: string;
-            /** @enum {string} */
-            kind: "scalar" | "array" | "object";
-            fallback: string | null;
-            /** @enum {string} */
-            namespace: "trigger" | "customer" | "other";
-            children: components["schemas"]["TransactionalVariableTreeNode"][];
-            /** @enum {string} */
-            inferredType?: "string" | "number" | "boolean";
-            usedIn?: ("body" | "subject" | "previewText")[];
-        };
-        TransactionalPayloadValue: TransactionalPayloadValue;
         AutomationNode: {
             id: string;
             label: string;
@@ -1700,11 +1629,6 @@ export interface components {
                 subject: string;
                 /** @description Inbox preheader — optional; the email design's <Preview> is the source of truth and wins when present. */
                 previewText?: string;
-                /**
-                 * @description Leftover snapshot; ignored at delivery — the class comes from the sending domain’s purpose (automations always send marketing-class mail).
-                 * @enum {string}
-                 */
-                messageClass?: "marketing" | "transactional";
                 /** @description Sender display name; resolved from the domain default when unset. */
                 fromName?: string;
                 /**
@@ -2064,8 +1988,6 @@ export interface components {
                     emailTitle?: string;
                     subject?: string;
                     previewText?: string;
-                    /** @enum {string} */
-                    messageClass?: "marketing" | "transactional";
                     fromName?: string;
                     fromAddress?: string;
                     domainId?: string;
@@ -2286,17 +2208,22 @@ export interface components {
             /** @description Variable name used by emails and automations, e.g. email or firstName. Prefer self-descriptive keys; this column has no separate description field. */
             key: string;
             /** @enum {string} */
-            type: "string" | "int" | "boolean" | "object";
+            type: "string" | "int" | "boolean" | "object" | "array";
             required: boolean;
-            /** @description Substitution value when the inbound payload is missing this field. Also used as the email agent's `e.g. {{ key | fallback }}` example. */
+            /** @description Substitution value when the inbound payload is missing this SCALAR field. Also used as the email agent's `e.g. {{ key | fallback }}` example. Scalar leaves only. */
             fallbackValue?: string | number | boolean;
             /**
-             * @description PII classification for redaction. "high" auto-redacts the value in execution logs and the inbound log. "low" (default when omitted) preserves the value. "none" is an explicit marker that the field is non-personal.
+             * @description PII classification for redaction. "high" auto-redacts the value (a container redacts its whole subtree) in execution logs and the inbound log. "low" (default when omitted) preserves the value. "none" is an explicit marker that the field is non-personal.
              * @enum {string}
              */
             pii?: "none" | "low" | "high";
-            /** @description Nested fields. REQUIRED (non-empty) when type is "object", and rejected otherwise. A leaf is addressed by its dotted path, e.g. {{ user.plan }}. */
+            /** @description Nested field nodes for type "object", or the element shape for an array of objects. Emails reference nested leaves as dotted paths ({{ order.total }}) and arrays via {% for %}. */
             children?: components["schemas"]["TriggerPayloadField"][];
+            /**
+             * @description Element type for a type "array" of scalars. Omit when the array carries objects (declare `children` instead).
+             * @enum {string}
+             */
+            itemType?: "string" | "int" | "boolean";
         };
         TriggerEventInstance: {
             triggerInstanceId: string;
@@ -2483,7 +2410,7 @@ export interface components {
             sendingEnabled: boolean;
             sendable: boolean;
             /**
-             * @description marketing (default) or transactional. Transactional domains skip unsubscribe and may only send via API/MCP inline `to` (or a test send).
+             * @description marketing (default) or transactional. Transactional domains skip unsubscribe and send via automation sendEmail nodes (or a test send).
              * @enum {string}
              */
             sendingPurpose: "marketing" | "transactional";
@@ -2585,10 +2512,10 @@ export interface components {
             /** @description An existing design (`emailId` from `list_email_designs`) to use as the style/layout reference for the new email. */
             referenceEmailId?: string;
             /**
-             * @description Marketing email category that steers the design treatment (exemplars, hero recipe, personalization) — mirrors what the in-app agent infers per request. One of: welcome, newsletter, promotional, product-launch, product-update, cart-abandonment, event-invitation, event-reminder, feedback-request, re-engagement, referral, business, internal, general. Omit for a general treatment. Transactional emails (receipts, password resets, order confirmations) are sent via automations with a trigger, not this endpoint.
+             * @description Email category that steers the design treatment (exemplars, hero recipe, personalization) — mirrors what the in-app agent infers per request. One of: welcome, newsletter, promotional, product-launch, product-update, order-confirmation, shipping-update, receipt, cart-abandonment, subscription, password-reset, verification, security-alert, account-update, event-invitation, event-reminder, feedback-request, re-engagement, referral, support, business, internal, notification, general. Omit for a general treatment. Transactional categories (receipt, password-reset, order-confirmation, …) steer receipt/reset design conventions; to DELIVER those emails, wire the design into an automation with a trigger and a transactional-purpose sending domain, then fire the trigger.
              * @enum {string}
              */
-            category?: "welcome" | "newsletter" | "promotional" | "product-launch" | "product-update" | "cart-abandonment" | "event-invitation" | "event-reminder" | "feedback-request" | "re-engagement" | "referral" | "business" | "internal" | "general";
+            category?: "welcome" | "newsletter" | "promotional" | "product-launch" | "product-update" | "order-confirmation" | "shipping-update" | "receipt" | "cart-abandonment" | "subscription" | "password-reset" | "verification" | "security-alert" | "account-update" | "event-invitation" | "event-reminder" | "feedback-request" | "re-engagement" | "referral" | "support" | "business" | "internal" | "notification" | "general";
             /** @description Inbox subject line to set on the design (`subjectLine` — distinct from `title`, the canvas name). Sends still take an explicit per-send `subject`; this is the design's default, seeded into the send dialog and returned by `GET /v1/emails?emailId=`. */
             subjectLine?: string;
             /** @description Existing canvas group id (`grp_…`), or `ungrouped`. Mutually exclusive with `targetGroupName`. */
@@ -2741,20 +2668,145 @@ export interface components {
             /** @description Accepted alias of `dryRun`. */
             dry_run?: boolean;
         };
-        EmailAccessibilityAuditResponse: {
-            score: number;
+        EmailAuditResponse: {
+            /** @enum {number} */
+            schemaVersion: 1;
+            rulesetVersion: string;
+            /** Format: uuid */
+            auditId: string;
+            contentHash: string;
+            /** Format: date-time */
+            auditedAt: string;
+            /** Format: date-time */
+            expiresAt: string;
+            policy: {
+                /** @enum {string} */
+                purpose: "marketing" | "transactional" | "unknown";
+                /** @enum {string} */
+                source: "provided" | "defaulted" | "trusted_adapter";
+                /** @enum {string} */
+                unsubscribe: "required" | "not_required" | "not_evaluated";
+            };
             summary: {
+                blockers: number;
                 errors: number;
                 warnings: number;
+                info: number;
+                total: number;
             };
-            issues: {
-                rule: string;
+            checks: ({
+                id: string;
                 /** @enum {string} */
-                severity: "error" | "warning";
+                status: "passed";
+                durationMs: number;
+                /** @enum {number} */
+                findingCount: 0;
+            } | {
+                id: string;
+                /** @enum {string} */
+                status: "issues";
+                durationMs: number;
+                findingCount: number;
+            } | {
+                id: string;
+                /** @enum {string} */
+                status: "not_applicable";
+                /** @enum {string} */
+                reason: "no_remote_links" | "no_remote_images" | "no_remote_assets" | "missing_copy" | "requires_sending_domain" | "send_transport_owned" | "requires_audience_context" | "separate_deliverability_test" | "transactional_purpose" | "unknown_purpose";
+            } | {
+                id: string;
+                /** @enum {string} */
+                status: "unavailable";
+                /** @enum {string} */
+                reason: "timeout" | "upstream" | "invalid_response";
+                retryable: boolean;
+                durationMs: number;
+            })[];
+            metrics: {
+                htmlBytes: number;
+                linkCount: number;
+                imageCount: number;
+                gifCount: number;
+                loadedSize: {
+                    /** @enum {string} */
+                    status: "exact";
+                    htmlBytes: number;
+                    remoteAssetBytes: number;
+                    totalBytes: number;
+                    assetCount: number;
+                } | {
+                    /** @enum {string} */
+                    status: "lower_bound";
+                    htmlBytes: number;
+                    knownRemoteAssetBytes: number;
+                    knownTotalBytes: number;
+                    unknownAssetCount: number;
+                };
+            };
+            findings: {
+                id: string;
+                ruleId: string;
+                /** @enum {string} */
+                category: "compliance" | "links" | "images" | "accessibility" | "compatibility" | "copy" | "size" | "markup";
+                /** @enum {string} */
+                severity: "blocker" | "error" | "warning" | "info";
+                /** @enum {string} */
+                impact: "block" | "confirm" | "advisory";
                 message: string;
-                wcag?: string;
-                element?: string;
+                remediation: string;
+                occurrenceCount?: number;
+                sources: string[];
+                standards?: {
+                    id: string;
+                    url?: string;
+                }[];
+                target: {
+                    /** @enum {string} */
+                    kind: "email";
+                } | {
+                    /** @enum {string} */
+                    kind: "subject";
+                } | {
+                    /** @enum {string} */
+                    kind: "preview_text";
+                } | {
+                    /** @enum {string} */
+                    kind: "link";
+                    index: number;
+                    displayUrl: string;
+                } | {
+                    /** @enum {string} */
+                    kind: "image";
+                    index: number;
+                    displayUrl: string;
+                } | {
+                    /** @enum {string} */
+                    kind: "element";
+                    selector: string;
+                };
             }[];
+            totalFindings: number;
+            findingsTruncated: boolean;
+            completion: {
+                /** @enum {string} */
+                status: "complete";
+                /** @enum {string} */
+                readiness: "ready" | "needs_review" | "not_ready";
+                score: number;
+            } | {
+                /** @enum {string} */
+                status: "partial";
+                /** @enum {string} */
+                readiness: "unknown" | "not_ready";
+                score: null;
+            };
+        };
+        EmailAuditRequest: {
+            emailHtml: string;
+            subject?: string;
+            previewText?: string;
+            /** @enum {string} */
+            sendingPurpose?: "marketing" | "transactional";
         };
         EmailClientPreviewResponse: {
             emailId: string;
@@ -2952,10 +3004,9 @@ export interface components {
             data: {
                 sendId: string;
                 /** @enum {string} */
-                kind: "campaign" | "automation" | "transactional";
+                kind: "campaign" | "automation";
                 /** @enum {string} */
                 messageClass?: "marketing" | "transactional";
-                transactionId?: string;
                 emailId: string;
                 emailVersionId?: string;
                 /** @enum {string} */
@@ -3089,26 +3140,10 @@ export interface components {
             variables?: {
                 [key: string]: string;
             };
-            /** @description Nested JSON template data, exposed to the template as trigger.* / payload.* and spread at the top level. Flat `variables` still resolve `{{ tag | fallback }}` merge tags and win on a name collision; send both if a design mixes syntaxes. */
+            /** @description Nested JSON template data, exposed to the ONE Liquid engine as trigger.* / payload.* and as top-level keys. Nested values are always legal and resolve via dotted access ({{ plan.name }}) and {% for %}. Flat `variables` resolve {{ tag | fallback }} merge tags at higher precedence; send both if a design mixes syntaxes. */
             payload?: {
-                [key: string]: components["schemas"]["TransactionalPayloadValue"];
+                [key: string]: components["schemas"]["SendPayloadValue"];
             };
-        } | {
-            transactionId: string;
-            /** @description Recipient addresses (max 50). Required. */
-            to: string | string[];
-            /** @description Template data for this fire. Flat scalar keys resolve legacy {{ tag | fallback }} merge tags; the full (optionally nested) JSON is exposed to Liquid templates as trigger.* / payload.*. Extra keys are ignored; missing keys use design fallbacks (or fail the send when the design opts into strict templating). Caps: 64 KiB serialized, 10 nesting levels, 250 items per array, 100 top-level keys. */
-            payload?: {
-                [key: string]: components["schemas"]["TransactionalPayloadValue"];
-            };
-            /** @description Strictness override for this fire: true fails the send on any unresolved template variable (customer.io parity) instead of rendering blank. Defaults to the transactional object setting. */
-            strict?: boolean;
-            /** @description Reply-to address. Accepts a bare email (`a@b.com`) or the display-name form (`Name <a@b.com>`). */
-            replyTo?: string;
-            senderName?: string;
-            fromEmail?: string;
-            subject?: string;
-            previewText?: string;
         } | {
             /** @enum {boolean} */
             test?: false;
@@ -3121,8 +3156,6 @@ export interface components {
             replyTo?: string;
             senderName?: string;
             fromEmail?: string;
-            /** @enum {string} */
-            messageClass?: "marketing" | "transactional";
             consent?: {
                 /** @enum {string} */
                 source: "api" | "form" | "import";
@@ -3153,6 +3186,7 @@ export interface components {
                 timeZone: string;
             };
         };
+        SendPayloadValue: SendPayloadValue;
         SendCancelResponse: {
             sendId: string;
             /** @enum {string} */
@@ -3329,7 +3363,6 @@ export interface components {
                 sendSource?: "audience" | "api" | "automation_manual" | "automation_integration" | "automation_custom";
                 /** @enum {string} */
                 messageClass?: "marketing" | "transactional";
-                transactionId?: string;
                 sendContext?: string;
                 triggerProvider?: string;
                 triggerTitle?: string;
@@ -3388,11 +3421,6 @@ export interface components {
                     subject: string;
                     /** @description Inbox preheader — optional; the email design's <Preview> is the source of truth and wins when present. */
                     previewText?: string;
-                    /**
-                     * @description Leftover snapshot; ignored at delivery — the class comes from the sending domain’s purpose (automations always send marketing-class mail).
-                     * @enum {string}
-                     */
-                    messageClass?: "marketing" | "transactional";
                     /** @description Sender display name; resolved from the domain default when unset. */
                     fromName?: string;
                     /**
@@ -3759,8 +3787,6 @@ export interface components {
                         emailTitle?: string;
                         subject?: string;
                         previewText?: string;
-                        /** @enum {string} */
-                        messageClass?: "marketing" | "transactional";
                         fromName?: string;
                         fromAddress?: string;
                         domainId?: string;
@@ -3922,11 +3948,6 @@ export interface components {
                     subject: string;
                     /** @description Inbox preheader — optional; the email design's <Preview> is the source of truth and wins when present. */
                     previewText?: string;
-                    /**
-                     * @description Leftover snapshot; ignored at delivery — the class comes from the sending domain’s purpose (automations always send marketing-class mail).
-                     * @enum {string}
-                     */
-                    messageClass?: "marketing" | "transactional";
                     /** @description Sender display name; resolved from the domain default when unset. */
                     fromName?: string;
                     /**
@@ -4266,7 +4287,6 @@ export interface components {
             status: "triggered" | "idempotent_replay" | "test_started" | "replay_started";
             counts?: {
                 automations: number;
-                transactionalEmails: number;
             };
             /** Format: date-time */
             receivedAt: string;
@@ -4516,12 +4536,6 @@ export interface components {
                 idempotencyKey?: string;
                 /** @description Unique identifier for the persisted inbound row. Useful for support and replay. Set whenever an Idempotency-Key was provided. */
                 triggerInstanceId?: string;
-                publishedTransactionalEmails?: ({
-                    emailId: string;
-                    title?: string;
-                } & {
-                    [key: string]: unknown;
-                })[];
                 publishedAutomations?: ({
                     automationId: string;
                     name?: string;
@@ -4531,7 +4545,6 @@ export interface components {
                 })[];
                 automationRunIds?: string[];
                 counts?: {
-                    transactionalEmails: number;
                     automations: number;
                 };
             } & {
@@ -5183,7 +5196,7 @@ export interface components {
                 sendingEnabled: boolean;
                 sendable: boolean;
                 /**
-                 * @description marketing (default) or transactional. Transactional domains skip unsubscribe and may only send via API/MCP inline `to` (or a test send).
+                 * @description marketing (default) or transactional. Transactional domains skip unsubscribe and send via automation sendEmail nodes (or a test send).
                  * @enum {string}
                  */
                 sendingPurpose: "marketing" | "transactional";
@@ -5217,7 +5230,7 @@ export interface components {
             region?: "us-east-1";
             customReturnPath?: string;
             /**
-             * @description marketing (default) for campaigns and automations, or transactional for API/MCP inline `to` only.
+             * @description marketing (default) for campaigns and audience sends, or transactional for event-triggered automation mail (no unsubscribe requirement).
              * @default marketing
              * @enum {string}
              */
@@ -5230,7 +5243,7 @@ export interface components {
             /** Format: email */
             defaultReplyToEmail?: string;
             /**
-             * @description Change the domain purpose. Live gates fail closed if a campaign or automation still points at a transactional domain.
+             * @description Change the domain purpose. Live gates fail closed if a campaign still points at a transactional domain; automation sends re-derive their class from the new purpose.
              * @enum {string}
              */
             sendingPurpose?: "marketing" | "transactional";
@@ -7949,25 +7962,39 @@ export interface operations {
             };
         };
     };
-    auditEmailAccessibility: {
+    auditEmail: {
         parameters: {
             query?: never;
             header?: {
+                /**
+                 * @description Optional idempotency key for safe retries. Reusing the same key with the same request body returns the original response for 24 hours.
+                 * @example api-request-2026-04-08-001
+                 */
+                "Idempotency-Key"?: string;
                 /**
                  * @description The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
                  * @example kx7b3s7fapqz8mjm12ekz1kxdx87yceg
                  */
                 "X-Brand-Id"?: string;
             };
-            path: {
-                /** @description Design id returned by `POST /v1/emails` and listed by `GET /v1/emails`. */
-                emailId: string;
-            };
+            path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "emailHtml": "<!doctype html><html lang=\"en\"><body><a href=\"https://example.com/account\">View account</a><a href=\"{{ unsubscribe_url }}\">Unsubscribe</a></body></html>",
+                 *       "subject": "Your August account update",
+                 *       "previewText": "A quick look at what changed this month.",
+                 *       "sendingPurpose": "marketing"
+                 *     }
+                 */
+                "application/json": components["schemas"]["EmailAuditRequest"];
+            };
+        };
         responses: {
-            /** @description The audit result. */
+            /** @description A complete or partial audit. Branch on `completion.status`; only `complete` carries a numeric score. A partial response is not cached under its idempotency key and may be retried with the same key. */
             200: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -7978,28 +8005,104 @@ export interface operations {
                     "X-RateLimit-Remaining": number;
                     /** @description Unix timestamp in seconds for when the rolling window fully resets. */
                     "X-RateLimit-Reset": number;
+                    /** @description Credits charged for this completed operation. */
+                    "X-Credit-Cost": number;
+                    /** @description Credits remaining after this operation. */
+                    "X-Credits-Remaining": number;
                     [name: string]: unknown;
                 };
                 content: {
                     /**
                      * @example {
-                     *       "score": 90,
-                     *       "summary": {
-                     *         "errors": 1,
-                     *         "warnings": 0
+                     *       "schemaVersion": 1,
+                     *       "rulesetVersion": "2026-08-24.3",
+                     *       "auditId": "00000000-0000-4000-8000-000000000001",
+                     *       "contentHash": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+                     *       "auditedAt": "2026-08-23T00:00:00.000Z",
+                     *       "expiresAt": "2026-08-23T00:15:00.000Z",
+                     *       "policy": {
+                     *         "purpose": "marketing",
+                     *         "source": "provided",
+                     *         "unsubscribe": "required"
                      *       },
-                     *       "issues": [
+                     *       "summary": {
+                     *         "blockers": 0,
+                     *         "errors": 0,
+                     *         "warnings": 1,
+                     *         "info": 0,
+                     *         "total": 1
+                     *       },
+                     *       "checks": [
                      *         {
-                     *           "rule": "img-alt",
-                     *           "severity": "error",
-                     *           "wcag": "1.1.1",
-                     *           "message": "Image is missing an alt attribute. Add descriptive alt text, or alt=\"\" if it is purely decorative.",
-                     *           "element": "<img src=\"https://cdn.brew.new/hero.png\">"
+                     *           "id": "preflight",
+                     *           "status": "issues",
+                     *           "durationMs": 0,
+                     *           "findingCount": 1
                      *         }
-                     *       ]
+                     *       ],
+                     *       "metrics": {
+                     *         "htmlBytes": 2134,
+                     *         "linkCount": 2,
+                     *         "imageCount": 0,
+                     *         "gifCount": 0,
+                     *         "loadedSize": {
+                     *           "status": "exact",
+                     *           "htmlBytes": 2134,
+                     *           "remoteAssetBytes": 0,
+                     *           "totalBytes": 2134,
+                     *           "assetCount": 0
+                     *         }
+                     *       },
+                     *       "findings": [
+                     *         {
+                     *           "id": "copy.subject.long:subject",
+                     *           "ruleId": "copy.subject.long",
+                     *           "category": "copy",
+                     *           "severity": "warning",
+                     *           "impact": "advisory",
+                     *           "message": "The subject may truncate on smaller inboxes.",
+                     *           "remediation": "Shorten it while keeping the main benefit clear.",
+                     *           "sources": [
+                     *             "preflight"
+                     *           ],
+                     *           "target": {
+                     *             "kind": "subject"
+                     *           }
+                     *         }
+                     *       ],
+                     *       "totalFindings": 1,
+                     *       "findingsTruncated": false,
+                     *       "completion": {
+                     *         "status": "complete",
+                     *         "readiness": "needs_review",
+                     *         "score": 97
+                     *       }
                      *     }
                      */
-                    "application/json": components["schemas"]["EmailAccessibilityAuditResponse"];
+                    "application/json": components["schemas"]["EmailAuditResponse"];
+                };
+            };
+            /** @description Invalid raw email content, an unknown field, or an invalid sendingPurpose. */
+            400: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "INVALID_REQUEST",
+                     *         "type": "invalid_request",
+                     *         "message": "Request validation failed.",
+                     *         "suggestion": "Fix the field reported in `param` and retry.",
+                     *         "docs": "https://docs.brew.new/api-reference/api/errors",
+                     *         "param": "emailHtml"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
             /** @description The API key was missing, invalid, or revoked. */
@@ -8041,7 +8144,7 @@ export interface operations {
                      *         "suggestion": "Upgrade your plan or wait for the next billing period to reset. Check your balance up front with GET /v1/usage.",
                      *         "docs": "https://docs.brew.new/api-reference/api/credits",
                      *         "details": {
-                     *           "cost": 2,
+                     *           "cost": 5,
                      *           "remaining": 0,
                      *           "planKey": "free"
                      *         }
@@ -8074,8 +8177,8 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description No email exists with that id (cross-brand ids surface as 404). */
-            404: {
+            /** @description The same `Idempotency-Key` was reused with a different request body. */
+            409: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
                     "x-request-id": string;
@@ -8085,19 +8188,19 @@ export interface operations {
                     /**
                      * @example {
                      *       "error": {
-                     *         "code": "EMAIL_NOT_FOUND",
-                     *         "type": "not_found",
-                     *         "message": "No email exists with id 'eml_welcome'.",
-                     *         "suggestion": "Verify the emailId via GET /v1/emails.",
-                     *         "docs": "https://docs.brew.new/api-reference/api/errors"
+                     *         "code": "IDEMPOTENCY_CONFLICT",
+                     *         "type": "conflict",
+                     *         "message": "The same idempotency key was reused with a different request payload.",
+                     *         "suggestion": "Reuse the original payload or send a new idempotency key.",
+                     *         "docs": "https://docs.brew.new/api-reference/api/idempotency"
                      *       }
                      *     }
                      */
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description The email has no rendered HTML yet (still generating). */
-            422: {
+            /** @description The complete JSON request body exceeds the 6 MiB transport limit. */
+            413: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
                     "x-request-id": string;
@@ -8107,10 +8210,10 @@ export interface operations {
                     /**
                      * @example {
                      *       "error": {
-                     *         "code": "CONTENT_OPERATION_FAILED",
+                     *         "code": "PAYLOAD_TOO_LARGE",
                      *         "type": "invalid_request",
-                     *         "message": "accessibility-audit failed: the email has no rendered HTML yet.",
-                     *         "suggestion": "Poll GET /v1/emails?emailId= until status is complete, then retry.",
+                     *         "message": "Request body must not exceed 6291456 bytes.",
+                     *         "suggestion": "Reduce the payload size and retry.",
                      *         "docs": "https://docs.brew.new/api-reference/api/errors"
                      *       }
                      *     }
@@ -9752,12 +9855,8 @@ export interface operations {
                 /** @description Detail-only expansion: `events` inlines a bounded first page of the send’s analytics events. Rejected without `sendId`. */
                 include?: "events";
                 status?: "scheduled" | "queued" | "sending" | "paused" | "sent" | "partially_sent" | "failed" | "canceled";
-                /** @description Admission snapshot on leftover campaign-era rows (`marketing` | `transactional`). Prefer `kind` / `transactionId` for object-fired transactional sends. Absent stamps match as marketing. */
+                /** @description Admission snapshot copied from the sending domain (`marketing` | `transactional`). Absent stamps match as marketing. */
                 messageClass?: "marketing" | "transactional";
-                /** @description List `campaign` (default) or `transactional` fires. Object-fired rows use `kind: transactional` and carry `transactionId`. */
-                kind?: "campaign" | "transactional";
-                /** @description List fires for one transactional email object (`txn_…`). Implies transactional rows. */
-                transactionId?: string;
                 from?: string;
                 to?: string;
                 /**
@@ -10804,219 +10903,6 @@ export interface operations {
             };
         };
     };
-    getTransactionalEmail: {
-        parameters: {
-            query?: {
-                /** @description Pass `skill` to add a `skill` field to the response: a complete SKILL.md-shaped wiring brief (endpoint, auth, typed payload contract, copy-paste snippets) for a coding agent or your repo. */
-                include?: "skill";
-            };
-            header?: {
-                /**
-                 * @description The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
-                 * @example kx7b3s7fapqz8mjm12ekz1kxdx87yceg
-                 */
-                "X-Brand-Id"?: string;
-            };
-            path: {
-                /** @description Public transactional email id (`txn_…`) returned when the object is created. */
-                transactionId: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description The transactional email object. */
-            200: {
-                headers: {
-                    /** @description Unique request identifier. Share this with support when debugging a request. */
-                    "x-request-id": string;
-                    /** @description Requests allowed in the current rolling rate limit window. */
-                    "X-RateLimit-Limit": number;
-                    /** @description Requests remaining in the current rolling rate limit window. */
-                    "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
-                    "X-RateLimit-Reset": number;
-                    [name: string]: unknown;
-                };
-                content: {
-                    /**
-                     * @example {
-                     *       "transactionId": "txn_8fK2mQ4pLx",
-                     *       "emailId": "eml_receipt",
-                     *       "emailVersionId": "emv_receipt_v2",
-                     *       "domainId": "kx7bkh53hasmfeh5kd7sqgykt187g8ww",
-                     *       "subject": "Your receipt from Acme",
-                     *       "previewText": "Order #1234",
-                     *       "createdAt": "2026-08-18T12:00:00.000Z",
-                     *       "updatedAt": "2026-08-18T12:00:00.000Z",
-                     *       "variables": [
-                     *         {
-                     *           "name": "orderId",
-                     *           "type": "string",
-                     *           "fallback": null
-                     *         },
-                     *         {
-                     *           "name": "firstName",
-                     *           "type": "string",
-                     *           "fallback": "there"
-                     *         }
-                     *       ],
-                     *       "templating": {
-                     *         "valid": true,
-                     *         "errors": []
-                     *       },
-                     *       "variableTree": [
-                     *         {
-                     *           "key": "order",
-                     *           "path": "trigger.order",
-                     *           "kind": "object",
-                     *           "fallback": null,
-                     *           "namespace": "trigger",
-                     *           "children": [
-                     *             {
-                     *               "key": "total",
-                     *               "path": "trigger.order.total",
-                     *               "kind": "scalar",
-                     *               "fallback": null,
-                     *               "namespace": "trigger",
-                     *               "children": []
-                     *             }
-                     *           ]
-                     *         }
-                     *       ],
-                     *       "examplePayload": {
-                     *         "order": {
-                     *           "total": "example_total"
-                     *         }
-                     *       }
-                     *     }
-                     */
-                    "application/json": components["schemas"]["TransactionalEmail"];
-                };
-            };
-            /** @description The API key was missing, invalid, or revoked. */
-            401: {
-                headers: {
-                    /** @description Unique request identifier. Share this with support when debugging a request. */
-                    "x-request-id": string;
-                    [name: string]: unknown;
-                };
-                content: {
-                    /**
-                     * @example {
-                     *       "error": {
-                     *         "code": "INVALID_API_KEY",
-                     *         "type": "authentication_error",
-                     *         "message": "The provided API key is invalid.",
-                     *         "suggestion": "Check the API key format and retry with a valid active key.",
-                     *         "docs": "https://docs.brew.new/api-reference/api/authentication"
-                     *       }
-                     *     }
-                     */
-                    "application/json": components["schemas"]["ApiErrorEnvelope"];
-                };
-            };
-            /** @description The caller does not have the required `sends` permission. */
-            403: {
-                headers: {
-                    /** @description Unique request identifier. Share this with support when debugging a request. */
-                    "x-request-id": string;
-                    [name: string]: unknown;
-                };
-                content: {
-                    /**
-                     * @example {
-                     *       "error": {
-                     *         "code": "INSUFFICIENT_PERMISSIONS",
-                     *         "type": "authorization_error",
-                     *         "message": "The caller does not have the required permission.",
-                     *         "suggestion": "Use an API key or session with the required permission.",
-                     *         "docs": "https://docs.brew.new/api-reference/api/authentication",
-                     *         "param": "sends"
-                     *       }
-                     *     }
-                     */
-                    "application/json": components["schemas"]["ApiErrorEnvelope"];
-                };
-            };
-            /** @description Transactional email not found in the API-key brand. Cross-brand ids intentionally surface as 404 (never 403) so the API does not leak cross-brand existence. */
-            404: {
-                headers: {
-                    /** @description Unique request identifier. Share this with support when debugging a request. */
-                    "x-request-id": string;
-                    [name: string]: unknown;
-                };
-                content: {
-                    /**
-                     * @example {
-                     *       "error": {
-                     *         "code": "TRANSACTIONAL_EMAIL_NOT_FOUND",
-                     *         "type": "not_found",
-                     *         "message": "No transactional email was found with id 'txn_xxx'.",
-                     *         "suggestion": "Create one from Email Actions → Transactional Email, then fire it with POST /v1/sends { transactionId, to }.",
-                     *         "docs": "https://docs.brew.new/api-reference/api/errors",
-                     *         "param": "transactionId"
-                     *       }
-                     *     }
-                     */
-                    "application/json": components["schemas"]["ApiErrorEnvelope"];
-                };
-            };
-            /** @description The request hit the rolling rate limit window. */
-            429: {
-                headers: {
-                    /** @description Unique request identifier. Share this with support when debugging a request. */
-                    "x-request-id": string;
-                    /** @description Requests allowed in the current rolling rate limit window. */
-                    "X-RateLimit-Limit": number;
-                    /** @description Requests remaining in the current rolling rate limit window. */
-                    "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
-                    "X-RateLimit-Reset": number;
-                    /** @description Seconds to wait before retrying the request. */
-                    "Retry-After": number;
-                    [name: string]: unknown;
-                };
-                content: {
-                    /**
-                     * @example {
-                     *       "error": {
-                     *         "code": "RATE_LIMITED",
-                     *         "type": "rate_limit",
-                     *         "message": "Too many requests.",
-                     *         "suggestion": "Wait for the retry window before sending another request.",
-                     *         "docs": "https://docs.brew.new/api-reference/api/rate-limits",
-                     *         "retryAfter": 42
-                     *       }
-                     *     }
-                     */
-                    "application/json": components["schemas"]["ApiErrorEnvelope"];
-                };
-            };
-            /** @description Unexpected internal error. */
-            500: {
-                headers: {
-                    /** @description Unique request identifier. Share this with support when debugging a request. */
-                    "x-request-id": string;
-                    [name: string]: unknown;
-                };
-                content: {
-                    /**
-                     * @example {
-                     *       "error": {
-                     *         "code": "INTERNAL_ERROR",
-                     *         "type": "internal_error",
-                     *         "message": "An unexpected error occurred.",
-                     *         "suggestion": "Retry the request. If it keeps failing, contact support.",
-                     *         "docs": "https://docs.brew.new/api-reference/api/errors"
-                     *       }
-                     *     }
-                     */
-                    "application/json": components["schemas"]["ApiErrorEnvelope"];
-                };
-            };
-        };
-    };
     getAnalyticsOverview: {
         parameters: {
             query?: {
@@ -11639,8 +11525,6 @@ export interface operations {
                 sendId?: string;
                 /** @description Admission snapshot on the send behind the event (`marketing` | `transactional`). Same event object for both classes; absent stamps match as marketing. Narrows the feed to email events. */
                 messageClass?: "marketing" | "transactional";
-                /** @description Transactional-object scope (`txn_…`): events from EVERY fire of one reusable transactional email object. Prefer this over `sendId` for object-level reporting; rows carry `transactionId` back. Narrows the feed to email events. */
-                transactionId?: string;
                 /** @description Send-object facet: CSV of send sources (valid values: audience, api, automation_manual, automation_integration, automation_custom). Narrows the feed to email events. */
                 source?: string;
                 /** @description Send-object facet: CSV of audience ids (max 20) — events from the audiences' sends. Narrows the feed to email events. */
@@ -14650,12 +14534,10 @@ export interface operations {
                      *         "publishedAutomations": [
                      *           {
                      *             "automationId": "auto_abc",
-                     *             "title": "Welcome flow"
+                     *             "name": "Welcome flow"
                      *           }
                      *         ],
-                     *         "publishedTransactionalEmails": [],
                      *         "counts": {
-                     *           "transactionalEmails": 0,
                      *           "automations": 1
                      *         }
                      *       }
@@ -14830,14 +14712,13 @@ export interface operations {
                      *         "publishedAutomations": [
                      *           {
                      *             "automationId": "auto_abc",
-                     *             "title": "Welcome flow"
+                     *             "name": "Welcome flow"
                      *           }
                      *         ],
                      *         "automationRunIds": [
                      *           "run_01HZ"
                      *         ],
                      *         "counts": {
-                     *           "transactionalEmails": 0,
                      *           "automations": 1
                      *         }
                      *       }
@@ -18619,7 +18500,7 @@ export interface operations {
                 domainId?: string;
                 /** @description List mode only — when `true`, only verified send-ready domains. */
                 sendableOnly?: "true" | "false";
-                /** @description List mode only — filter by `marketing` or `transactional`. Use marketing for campaigns and automations. */
+                /** @description List mode only — filter by `marketing` or `transactional`. Campaigns require marketing; automation sendEmail nodes accept both. */
                 sendingPurpose?: "marketing" | "transactional";
                 /**
                  * @description Page size (1–100). Defaults to 100.

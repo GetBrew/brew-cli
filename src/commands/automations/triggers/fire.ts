@@ -27,7 +27,7 @@ export const automationsTriggersFireCommand = defineCommand({
   ],
   flags: [INPUT_FLAG, IDEMPOTENCY_FLAG],
   examples: [
-    `brew-cli automations triggers fire tev_123 --input '{"payload":{"userId":"u_1"}}' --yes`,
+    `brew-cli automations triggers fire tri_signup --input '{"payload":{"email":"jane@example.com"}}' --yes`,
   ],
   confirmSummary: ({ args }) =>
     `Fire trigger ${args.triggerEventId ?? ''} — starts REAL runs on every published automation listening to it.`,

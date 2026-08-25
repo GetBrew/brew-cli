@@ -1,6 +1,6 @@
 import type { CliContext } from './types'
 
-export type HttpMethod = 'DELETE' | 'GET' | 'PATCH' | 'POST'
+export type HttpMethod = 'DELETE' | 'GET' | 'PATCH' | 'POST' | 'PUT'
 
 /**
  * read        — no writes; always safe.
