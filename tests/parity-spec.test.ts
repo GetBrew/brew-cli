@@ -11,6 +11,21 @@ import { SPEC_SKIP_LIST } from '../src/skip-list'
  */
 const PENDING_BUILD_ROUTES: readonly string[] = []
 
+/**
+ * Commands built AHEAD of the platform: the payload-contract wave-2 API
+ * routes are not in the live published spec yet (the platform PRs are
+ * still open), so the vendored spec cannot list them. Keep this fact in
+ * the parity test, not in production command metadata. Every entry
+ * becomes stale — and the guard below fails — the moment the refreshed
+ * spec publishes the route; delete it then.
+ */
+const PENDING_SPEC_ROUTES: readonly string[] = [
+  'GET /v1/automations/triggers/{triggerEventId}/contract',
+  'PUT /v1/automations/triggers/{triggerEventId}/contract',
+  'POST /v1/automations/triggers/{triggerEventId}/contract/validate',
+  'POST /v1/payload-contracts/infer',
+]
+
 function specOperations(): readonly string[] {
   const raw = readFileSync(
     join(import.meta.dirname, '../openapi/public-api-v1.yaml'),
@@ -55,8 +70,21 @@ describe('parity: vendored OpenAPI spec ↔ CLI commands', () => {
 
   it('declares only real spec operations on commands', () => {
     const opSet = new Set(ops)
-    const phantom = [...commandRoutes].filter((route) => !opSet.has(route))
+    const phantom = [...commandRoutes].filter(
+      (route) => !(opSet.has(route) || PENDING_SPEC_ROUTES.includes(route))
+    )
     expect(phantom).toEqual([])
+  })
+
+  it('keeps pending-spec routes only while the spec lacks them', () => {
+    const opSet = new Set(ops)
+    const stale = PENDING_SPEC_ROUTES.filter((route) => opSet.has(route))
+    expect(stale).toEqual([])
+    // Each entry must back a real registered command, or it is dead weight.
+    const unbacked = PENDING_SPEC_ROUTES.filter(
+      (route) => !commandRoutes.has(route)
+    )
+    expect(unbacked).toEqual([])
   })
 
   it('has no stale spec skip-list entries', () => {

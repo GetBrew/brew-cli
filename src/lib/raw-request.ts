@@ -17,7 +17,7 @@ import type { CliContext } from './types'
 export async function rawRequest<TResponse>(
   ctx: CliContext,
   request: {
-    readonly method: 'DELETE' | 'GET' | 'PATCH' | 'POST'
+    readonly method: 'DELETE' | 'GET' | 'PATCH' | 'POST' | 'PUT'
     readonly path: string
     readonly body?: unknown
     readonly query?: Readonly<Record<string, string | undefined>>
@@ -71,7 +71,7 @@ export async function rawRequest<TResponse>(
 }
 
 function resolveRawIdempotencyKey(
-  method: 'DELETE' | 'GET' | 'PATCH' | 'POST',
+  method: 'DELETE' | 'GET' | 'PATCH' | 'POST' | 'PUT',
   provided: string | undefined
 ): string | undefined {
   if (provided !== undefined && provided !== '') {

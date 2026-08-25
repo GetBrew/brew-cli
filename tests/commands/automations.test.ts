@@ -10,6 +10,10 @@ import { automationsListCommand } from '../../src/commands/automations/list'
 import { automationsPublishCommand } from '../../src/commands/automations/publish'
 import { automationsRunsListCommand } from '../../src/commands/automations/runs/list'
 import { automationsTestCommand } from '../../src/commands/automations/test'
+import {
+  automationsTriggersContractPutCommand,
+  automationsTriggersContractValidateCommand,
+} from '../../src/commands/automations/triggers/contract'
 import { automationsTriggersCreateCommand } from '../../src/commands/automations/triggers/create'
 import { automationsTriggersDeleteCommand } from '../../src/commands/automations/triggers/delete'
 import { automationsTriggersFireCommand } from '../../src/commands/automations/triggers/fire'
@@ -36,6 +40,8 @@ const EXTRA = [
   automationsTriggersUpdateCommand,
   automationsTriggersDeleteCommand,
   automationsTriggersFireCommand,
+  automationsTriggersContractPutCommand,
+  automationsTriggersContractValidateCommand,
   automationsRunsListCommand,
 ]
 
@@ -439,6 +445,81 @@ describe('automations triggers fire (confirmation protocol)', () => {
     ])
     expect(result.code).toBe(0)
     expect(body).toEqual({ payload: { userId: 'u_1' } })
+  })
+})
+
+describe('automations triggers contract put', () => {
+  it('sends an enforcement-only patch — no --input required', async () => {
+    let body: unknown
+    server.use(
+      http.put(
+        `${API}/v1/automations/triggers/tri_signup/contract`,
+        async ({ request }) => {
+          body = await request.json()
+          return HttpResponse.json({
+            triggerEventId: 'tri_signup',
+            enforcement: 'strict',
+            version: 2,
+          })
+        }
+      )
+    )
+    const result = await cli([
+      'automations',
+      'triggers',
+      'contract',
+      'put',
+      'tri_signup',
+      '--enforcement',
+      'strict',
+    ])
+    expect(result.code).toBe(0)
+    // The designed one-field patch: exactly { enforcement } on the wire.
+    expect(body).toEqual({ enforcement: 'strict' })
+  })
+
+  it('rejects an empty body with a usage error before any request', async () => {
+    const result = await cli([
+      'automations',
+      'triggers',
+      'contract',
+      'put',
+      'tri_signup',
+    ])
+    expect(result.code).toBe(2)
+    expect(result.stderr).toContain('Empty contract body')
+  })
+
+  it('rejects a non-array fields value client-side', async () => {
+    const result = await cli([
+      'automations',
+      'triggers',
+      'contract',
+      'put',
+      'tri_signup',
+      '--input',
+      '{"fields":{"key":"email"}}',
+    ])
+    expect(result.code).toBe(2)
+    expect(result.stderr).toContain('.fields must be an array')
+  })
+})
+
+describe('automations triggers contract validate', () => {
+  it('rejects --enforcement passthrough client-side with the valid values', async () => {
+    const result = await cli([
+      'automations',
+      'triggers',
+      'contract',
+      'validate',
+      'tri_signup',
+      '--input',
+      '{"payload":{"email":"jane@example.com"}}',
+      '--enforcement',
+      'passthrough',
+    ])
+    expect(result.code).toBe(2)
+    expect(result.stderr).toContain('prune | strict')
   })
 })
 

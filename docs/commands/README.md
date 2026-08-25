@@ -2,7 +2,7 @@
 
 <!-- GENERATED FILE — do not edit. Regenerate with `bun run docs:commands`. -->
 
-106 commands. Classes: read (always safe), write
+109 commands. Classes: read (always safe), write
 (mutating, retry-safe), destructive (irreversible — the confirmation
 protocol applies: interactive y/N on a TTY, exit 4 + JSON envelope with
 a `confirmCommand` otherwise, `--yes` to proceed).
@@ -62,8 +62,7 @@ a `confirmCommand` otherwise, `--yes` to proceed).
 | `brew-cli sends cancel` | destructive | `POST /v1/sends/{sendId}/cancel` | Cancel a scheduled or queued send before it goes out |
 | `brew-cli sends pause` | write | `POST /v1/sends/{sendId}/pause` | Pause an in-flight or scheduled send (resumable) |
 | `brew-cli sends resume` | write | `POST /v1/sends/{sendId}/resume` | Resume a paused gradual send (the unsent tail is re-spread) |
-| `brew-cli transactional get` | read | `GET /v1/transactional/{transactionId}` | Read a transactional email object: locked design/domain/envelope; Liquid workspaces add `variableTree` + a fireable `examplePayload` |
-| `brew-cli types` | read | `GET /v1/automations/triggers` | Generate TypeScript payload contracts (triggers + transactional objects) into your codebase; --check is the CI drift gate (exit 1 on drift). Needs the automations scope; --transaction also needs sends |
+| `brew-cli types` | read | `GET /v1/automations/triggers` | Generate TypeScript payload contracts for this workspace's triggers into your codebase; --check is the CI drift gate (exit 1 on drift). Needs the automations scope |
 | `brew-cli audiences list` | read | `GET /v1/audiences` | List audience segments |
 | `brew-cli audiences get` | read | `GET /v1/audiences` | Fetch one audience segment by id |
 | `brew-cli audiences create` | write | `POST /v1/audiences` | Create an audience segment from a filter definition |
@@ -82,6 +81,10 @@ a `confirmCommand` otherwise, `--yes` to proceed).
 | `brew-cli automations run` | destructive | `POST /v1/automations/{automationId}/run` | Run a manual-audience automation (live send; --dry-run previews) |
 | `brew-cli automations triggers list` | read | `GET /v1/automations/triggers` | List trigger events (their payload schemas drive fires) |
 | `brew-cli automations triggers ready` | read | `GET /v1/automations/triggers/{triggerEventId}/fire` | Preflight a trigger without firing: key + scope + permissions pass/fail, the payload contract, and what a fire would start |
+| `brew-cli automations triggers contract get` | read | `GET /v1/automations/triggers/{triggerEventId}/contract` | Read a trigger payload contract: stored when declared, derived otherwise; --format renders ts/zod/jsonschema/skill |
+| `brew-cli automations triggers contract put` | write | `PUT /v1/automations/triggers/{triggerEventId}/contract` | Declare (or replace) the stored payload contract for a trigger — tree-validated before any write; omitting --enforcement leaves the stored setting unchanged |
+| `brew-cli automations triggers contract validate` | read | `POST /v1/automations/triggers/{triggerEventId}/contract/validate` | Dry-run a payload against a trigger's contract (the fire path's validator) — never fires; invalid payloads still exit 0 |
+| `brew-cli contracts infer` | read | `POST /v1/payload-contracts/infer` | Draft a payload contract from a real example payload — nothing is saved; PUT the draft on a trigger |
 | `brew-cli automations triggers create` | write | `POST /v1/automations/triggers` | Create a trigger event (title + typed payload schema) |
 | `brew-cli automations triggers update` | write | `PATCH /v1/automations/triggers/{triggerEventId}` | Update a trigger event (title, description, payload schema) |
 | `brew-cli automations triggers delete` | destructive | `DELETE /v1/automations/triggers/{triggerEventId}` | Delete a trigger event (rejected while automations depend on it) |
@@ -800,33 +803,19 @@ Resume a paused gradual send (the unsent tail is re-spread)
 brew-cli sends resume snd_123
 ```
 
-### brew-cli transactional get
-
-Read a transactional email object: locked design/domain/envelope; Liquid workspaces add `variableTree` + a fireable `examplePayload`
-
-- Route: `GET /v1/transactional/{transactionId}`
-- Class: read
-- SDK: `brew.transactional.get(...)`
-- Argument `transactionId` — Transactional email id (txn_…) from Email Actions → Transactional Email
-
-```bash
-brew-cli transactional get txn_8fK2mQ4pLx
-```
-
 ### brew-cli types
 
-Generate TypeScript payload contracts (triggers + transactional objects) into your codebase; --check is the CI drift gate (exit 1 on drift). Needs the automations scope; --transaction also needs sends
+Generate TypeScript payload contracts for this workspace's triggers into your codebase; --check is the CI drift gate (exit 1 on drift). Needs the automations scope
 
 - Route: `GET /v1/automations/triggers`
 - Class: read
 - Derived from `brew.automations.triggers.list(...)`
 - `--out <file>` — Output file (default brew-contracts.ts)
-- `--transaction <transactionIds...>` — Transactional object ids (txn_…) to include, contract derived from each pinned template
 - `--check` — Verify the output file is up to date instead of writing; exits 1 on drift
 
 ```bash
 brew-cli types
-brew-cli types --out src/brew-contracts.ts --transaction txn_8fK2mQ4pLx
+brew-cli types --out src/brew-contracts.ts
 brew-cli types --check
 ```
 
@@ -1116,6 +1105,62 @@ Preflight a trigger without firing: key + scope + permissions pass/fail, the pay
 brew-cli automations triggers ready tri_signup
 ```
 
+### brew-cli automations triggers contract get
+
+Read a trigger payload contract: stored when declared, derived otherwise; --format renders ts/zod/jsonschema/skill
+
+- Route: `GET /v1/automations/triggers/{triggerEventId}/contract`
+- Class: read
+- Argument `triggerEventId` — Trigger id (tri_…, or an integration composite id)
+- `--format <format>` — Rendering: json (default, the contract object) or ts | zod | jsonschema | skill ({format, content})
+
+```bash
+brew-cli automations triggers contract get tri_signup
+brew-cli automations triggers contract get tri_signup --format ts
+brew-cli automations triggers contract get tri_signup --format skill --json | jq -r .content
+```
+
+### brew-cli automations triggers contract put
+
+Declare (or replace) the stored payload contract for a trigger — tree-validated before any write; omitting --enforcement leaves the stored setting unchanged
+
+- Route: `PUT /v1/automations/triggers/{triggerEventId}/contract`
+- Class: write
+- Argument `triggerEventId` — Trigger id (tri_…)
+- `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
+- `--enforcement <mode>` — off (advisory, the default) | prune (drop fields not on the list) | strict (reject a payload carrying them)
+
+```bash
+brew-cli automations triggers contract put tri_signup --input '{"fields":[{"key":"email","type":"string","required":true}]}'
+brew-cli automations triggers contract put tri_signup --enforcement strict
+```
+
+### brew-cli automations triggers contract validate
+
+Dry-run a payload against a trigger's contract (the fire path's validator) — never fires; invalid payloads still exit 0
+
+- Route: `POST /v1/automations/triggers/{triggerEventId}/contract/validate`
+- Class: read
+- Argument `triggerEventId` — Trigger id (tri_…)
+- `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
+- `--enforcement <mode>` — Preview a mode other than the stored one: prune | strict
+
+```bash
+brew-cli automations triggers contract validate tri_signup --input '{"payload":{"email":"jane@example.com"}}'
+```
+
+### brew-cli contracts infer
+
+Draft a payload contract from a real example payload — nothing is saved; PUT the draft on a trigger
+
+- Route: `POST /v1/payload-contracts/infer`
+- Class: read
+- `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
+
+```bash
+brew-cli contracts infer --input '{"email":"jane@example.com","order":{"total":9.5}}'
+```
+
 ### brew-cli automations triggers create
 
 Create a trigger event (title + typed payload schema)
@@ -1174,7 +1219,7 @@ Fire a trigger event with a payload (starts LIVE runs)
 - `--idempotency-key <key>` — Idempotency-Key for safe retries (auto-generated otherwise)
 
 ```bash
-brew-cli automations triggers fire tev_123 --input '{"payload":{"userId":"u_1"}}' --yes
+brew-cli automations triggers fire tri_signup --input '{"payload":{"email":"jane@example.com"}}' --yes
 ```
 
 ### brew-cli automations runs list

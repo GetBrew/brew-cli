@@ -26,6 +26,11 @@ import { automationsPublishCommand } from './commands/automations/publish'
 import { automationsRunCommand } from './commands/automations/run'
 import { automationsRunsListCommand } from './commands/automations/runs/list'
 import { automationsTestCommand } from './commands/automations/test'
+import {
+  automationsTriggersContractGetCommand,
+  automationsTriggersContractPutCommand,
+  automationsTriggersContractValidateCommand,
+} from './commands/automations/triggers/contract'
 import { automationsTriggersCreateCommand } from './commands/automations/triggers/create'
 import { automationsTriggersDeleteCommand } from './commands/automations/triggers/delete'
 import { automationsTriggersFireCommand } from './commands/automations/triggers/fire'
@@ -62,6 +67,7 @@ import { contentGenerateImageCommand } from './commands/content/generate-image'
 import { contentGifCommand } from './commands/content/gif'
 import { contentHtmlToPngCommand } from './commands/content/html-to-png'
 import { contentTransformCommand } from './commands/content/transform'
+import { contractsInferCommand } from './commands/contracts/infer'
 import { docsApiCommand, docsCommand } from './commands/docs'
 import { doctorCommand } from './commands/doctor'
 import { domainsAddCommand } from './commands/domains/add'
@@ -101,7 +107,6 @@ import { sendsCancelCommand } from './commands/sends/cancel'
 import { sendsPauseCommand } from './commands/sends/pause'
 import { sendsResumeCommand } from './commands/sends/resume'
 import { templatesListCommand } from './commands/templates/list'
-import { transactionalGetCommand } from './commands/transactional/get'
 import { typesCommand } from './commands/types'
 import { usageCommand } from './commands/usage'
 import { whoamiCommand } from './commands/whoami'
@@ -155,7 +160,6 @@ export const ALL_COMMANDS: readonly CommandSpec[] = [
   sendsCancelCommand,
   sendsPauseCommand,
   sendsResumeCommand,
-  transactionalGetCommand,
   typesCommand,
   audiencesListCommand,
   audiencesGetCommand,
@@ -175,6 +179,10 @@ export const ALL_COMMANDS: readonly CommandSpec[] = [
   automationsRunCommand,
   automationsTriggersListCommand,
   automationsTriggersReadyCommand,
+  automationsTriggersContractGetCommand,
+  automationsTriggersContractPutCommand,
+  automationsTriggersContractValidateCommand,
+  contractsInferCommand,
   automationsTriggersCreateCommand,
   automationsTriggersUpdateCommand,
   automationsTriggersDeleteCommand,
