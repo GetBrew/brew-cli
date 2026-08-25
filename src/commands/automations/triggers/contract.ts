@@ -27,6 +27,13 @@ const FORMATS = new Set(['json', 'ts', 'zod', 'jsonschema', 'skill'])
 
 const ENFORCEMENT_MODES = new Set(['off', 'prune', 'strict'])
 
+/**
+ * The validate preview knob is the VALIDATOR's enum — it is only ever
+ * consulted once a contract is enforcing, so `off` is not representable
+ * (platform `ContractEnforcementMode`).
+ */
+const VALIDATE_ENFORCEMENT_MODES = new Set(['prune', 'strict'])
+
 function formatQuery(value: unknown): string {
   const format = flagString(value)
   if (format === undefined) {
@@ -81,7 +88,7 @@ export const automationsTriggersContractGetCommand = defineCommand({
 export const automationsTriggersContractPutCommand = defineCommand({
   path: ['automations', 'triggers', 'contract', 'put'],
   summary:
-    'Declare (or replace) the stored payload contract for a trigger — tree-validated before any write; enforcement stays off',
+    'Declare (or replace) the stored payload contract for a trigger — tree-validated before any write; omitting --enforcement leaves the stored setting unchanged',
   sdkMethod: null,
   isRawTransport: true,
   route: {
@@ -116,9 +123,11 @@ export const automationsTriggersContractPutCommand = defineCommand({
       await readJsonFlag(ctx, flags.input, '--input'),
       {}
     )
-    if (input.fields === undefined) {
+    // The platform PUT takes fields?, name?, enforcement? — each optional,
+    // so an enforcement-only (or rename-only) patch is designed usage.
+    if (input.fields !== undefined && !Array.isArray(input.fields)) {
       throw new CliUsageError(
-        '--input with a fields array is required (the contract tree to store).'
+        '--input .fields must be an array of contract field nodes.'
       )
     }
     // One knob. Omitting it leaves the stored setting alone.
@@ -128,13 +137,19 @@ export const automationsTriggersContractPutCommand = defineCommand({
         `Unknown --enforcement '${enforcement}' (expected off | prune | strict).`
       )
     }
+    const requestBody = {
+      ...input,
+      ...(enforcement !== undefined ? { enforcement } : {}),
+    }
+    if (Object.keys(requestBody).length === 0) {
+      throw new CliUsageError(
+        'Empty contract body — pass --input (fields and/or name) or --enforcement <mode>.'
+      )
+    }
     const body = await rawRequest<ContractGetResponse>(ctx, {
       method: 'PUT',
       path: `/v1/automations/triggers/${encodeURIComponent(args.triggerEventId ?? '')}/contract`,
-      body: {
-        ...input,
-        ...(enforcement !== undefined ? { enforcement } : {}),
-      },
+      body: requestBody,
     })
     return { data: body }
   },
@@ -162,8 +177,7 @@ export const automationsTriggersContractValidateCommand = defineCommand({
     INPUT_FLAG,
     {
       flag: '--enforcement <mode>',
-      summary:
-        'Preview a mode other than the stored one: strict | prune | passthrough',
+      summary: 'Preview a mode other than the stored one: prune | strict',
     },
   ],
   examples: [
@@ -176,6 +190,14 @@ export const automationsTriggersContractValidateCommand = defineCommand({
     )
     const payload = input.payload ?? input
     const enforcement = flagString(flags.enforcement)
+    if (
+      enforcement !== undefined &&
+      !VALIDATE_ENFORCEMENT_MODES.has(enforcement)
+    ) {
+      throw new CliUsageError(
+        `Unknown --enforcement '${enforcement}' (expected prune | strict).`
+      )
+    }
     const body = await rawRequest<ContractValidateResponse>(ctx, {
       method: 'POST',
       path: `/v1/automations/triggers/${encodeURIComponent(args.triggerEventId ?? '')}/contract/validate`,

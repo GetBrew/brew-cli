@@ -82,7 +82,7 @@ a `confirmCommand` otherwise, `--yes` to proceed).
 | `brew-cli automations triggers list` | read | `GET /v1/automations/triggers` | List trigger events (their payload schemas drive fires) |
 | `brew-cli automations triggers ready` | read | `GET /v1/automations/triggers/{triggerEventId}/fire` | Preflight a trigger without firing: key + scope + permissions pass/fail, the payload contract, and what a fire would start |
 | `brew-cli automations triggers contract get` | read | `GET /v1/automations/triggers/{triggerEventId}/contract` | Read a trigger payload contract: stored when declared, derived otherwise; --format renders ts/zod/jsonschema/skill |
-| `brew-cli automations triggers contract put` | write | `PUT /v1/automations/triggers/{triggerEventId}/contract` | Declare (or replace) the stored payload contract for a trigger — tree-validated before any write; enforcement stays off |
+| `brew-cli automations triggers contract put` | write | `PUT /v1/automations/triggers/{triggerEventId}/contract` | Declare (or replace) the stored payload contract for a trigger — tree-validated before any write; omitting --enforcement leaves the stored setting unchanged |
 | `brew-cli automations triggers contract validate` | read | `POST /v1/automations/triggers/{triggerEventId}/contract/validate` | Dry-run a payload against a trigger's contract (the fire path's validator) — never fires; invalid payloads still exit 0 |
 | `brew-cli contracts infer` | read | `POST /v1/payload-contracts/infer` | Draft a payload contract from a real example payload — nothing is saved; PUT the draft on a trigger |
 | `brew-cli automations triggers create` | write | `POST /v1/automations/triggers` | Create a trigger event (title + typed payload schema) |
@@ -1104,7 +1104,7 @@ brew-cli automations triggers contract get tri_signup --format skill --json | jq
 
 ### brew-cli automations triggers contract put
 
-Declare (or replace) the stored payload contract for a trigger — tree-validated before any write; enforcement stays off
+Declare (or replace) the stored payload contract for a trigger — tree-validated before any write; omitting --enforcement leaves the stored setting unchanged
 
 - Route: `PUT /v1/automations/triggers/{triggerEventId}/contract`
 - Class: write
@@ -1125,7 +1125,7 @@ Dry-run a payload against a trigger's contract (the fire path's validator) — n
 - Class: read
 - Argument `triggerEventId` — Trigger id (tri_…)
 - `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
-- `--enforcement <mode>` — Preview a mode other than the stored one: strict | prune | passthrough
+- `--enforcement <mode>` — Preview a mode other than the stored one: prune | strict
 
 ```bash
 brew-cli automations triggers contract validate tri_signup --input '{"payload":{"email":"jane@example.com"}}'
@@ -1201,7 +1201,7 @@ Fire a trigger event with a payload (starts LIVE runs)
 - `--idempotency-key <key>` — Idempotency-Key for safe retries (auto-generated otherwise)
 
 ```bash
-brew-cli automations triggers fire tev_123 --input '{"payload":{"userId":"u_1"}}' --yes
+brew-cli automations triggers fire tri_signup --input '{"payload":{"email":"jane@example.com"}}' --yes
 ```
 
 ### brew-cli automations runs list

@@ -23539,7 +23539,7 @@ paths:
                     path: /v1/automations/triggers/tri_signup/fire
                   publishedAutomations:
                     - automationId: auto_abc
-                      title: Welcome flow
+                      name: Welcome flow
                   counts:
                     automations: 1
         "401":
@@ -23748,7 +23748,7 @@ paths:
                   triggerInstanceId: tin_8f2k
                   publishedAutomations:
                     - automationId: auto_abc
-                      title: Welcome flow
+                      name: Welcome flow
                   automationRunIds:
                     - run_01HZ
                   counts:

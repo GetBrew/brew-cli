@@ -14534,7 +14534,7 @@ export interface operations {
                      *         "publishedAutomations": [
                      *           {
                      *             "automationId": "auto_abc",
-                     *             "title": "Welcome flow"
+                     *             "name": "Welcome flow"
                      *           }
                      *         ],
                      *         "counts": {
@@ -14712,7 +14712,7 @@ export interface operations {
                      *         "publishedAutomations": [
                      *           {
                      *             "automationId": "auto_abc",
-                     *             "title": "Welcome flow"
+                     *             "name": "Welcome flow"
                      *           }
                      *         ],
                      *         "automationRunIds": [

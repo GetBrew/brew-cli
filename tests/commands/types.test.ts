@@ -102,6 +102,120 @@ describe('types', () => {
   })
 })
 
+describe('types — nested contracts', () => {
+  const NESTED_TRIGGER = {
+    triggerEventId: 'tri_order_receipt',
+    title: 'Order Receipt',
+    provider: 'brew_api',
+    payloadSchema: {
+      type: 'object',
+      fields: [
+        { key: 'email', type: 'string', required: true },
+        {
+          key: 'order',
+          type: 'object',
+          required: true,
+          children: [
+            { key: 'total', type: 'float', required: true },
+            {
+              key: 'items',
+              type: 'array',
+              required: true,
+              children: [
+                { key: 'name', type: 'string', required: true },
+                { key: 'qty', type: 'int', required: false },
+              ],
+            },
+          ],
+        },
+        { key: 'tags', type: 'array', required: false, itemType: 'string' },
+        {
+          key: 'status',
+          type: 'enum',
+          required: true,
+          enumValues: ['paid', 'refunded'],
+        },
+        { key: 'placedAt', type: 'date', required: true },
+        { key: 'meta', type: 'unknown', required: false },
+        { key: 'note', type: 'string', required: false },
+      ],
+    },
+    createdAt: '2026-08-01T00:00:00.000Z',
+    updatedAt: '2026-08-01T00:00:00.000Z',
+  }
+
+  // The exact shape the platform codegen (lib/payload-contract/codegen.ts)
+  // emits — and the docs guide's OrderReceiptPayload example: inline
+  // nested object literals, Array<{ … }> members, two-space indent per
+  // level, unions from enumValues.
+  const EXPECTED = [
+    '/** Fire: POST /v1/automations/triggers/tri_order_receipt/fire — body { payload: OrderReceiptPayload } */',
+    'export type OrderReceiptPayload = {',
+    '  email: string',
+    '  order: {',
+    '    total: number',
+    '    items: Array<{',
+    '      name: string',
+    '      qty?: number',
+    '    }>',
+    '  }',
+    '  tags?: Array<string>',
+    '  status: "paid" | "refunded"',
+    '  placedAt: string',
+    '  meta?: unknown',
+    '  note?: string',
+    '}',
+  ].join('\n')
+
+  function mockNestedApi() {
+    server.use(
+      http.get(`${API}/v1/automations/triggers`, () =>
+        HttpResponse.json({
+          data: [NESTED_TRIGGER],
+          pagination: { cursor: null, hasMore: false },
+        })
+      )
+    )
+  }
+
+  it('emits nested object / array-of-object / scalar-array / enum fields exactly', async () => {
+    mockNestedApi()
+    const dir = mkdtempSync(join(tmpdir(), 'brew-types-'))
+    const out = join(dir, 'brew-contracts.ts')
+    const result = await runCli(['types', '--out', out], {
+      extraCommands: [typesCommand],
+      env: env(),
+    })
+    expect(result.code).toBe(0)
+    expect(readFileSync(out, 'utf8')).toContain(EXPECTED)
+  })
+
+  it('--check stays deterministic for nested output', async () => {
+    mockNestedApi()
+    const dir = mkdtempSync(join(tmpdir(), 'brew-types-'))
+    const out = join(dir, 'brew-contracts.ts')
+    const testEnv = env()
+    await runCli(['types', '--out', out], {
+      env: testEnv,
+      extraCommands: [typesCommand],
+    })
+    const first = readFileSync(out, 'utf8')
+
+    const check = await runCli(['types', '--out', out, '--check'], {
+      env: testEnv,
+      extraCommands: [typesCommand],
+    })
+    expect(check.code).toBe(0)
+
+    const again = await runCli(['types', '--out', out], {
+      env: testEnv,
+      extraCommands: [typesCommand],
+    })
+    expect(again.code).toBe(0)
+    expect(readFileSync(out, 'utf8')).toBe(first)
+  })
+})
+
 describe('types — audit hardening', () => {
   it('follows the pagination cursor instead of capping at one page', async () => {
     const pageOne = Array.from({ length: 100 }, (_, i) => ({

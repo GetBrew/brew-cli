@@ -50,29 +50,103 @@ function propertyKey(key: string): string {
   return IDENTIFIER_RE.test(key) ? key : JSON.stringify(key)
 }
 
-function triggerFieldType(type: string): string {
-  if (type === 'int') {
-    return 'number'
+/**
+ * The full contract-node lattice the platform can emit — the app's
+ * `ContractFieldNode` (lib/payload-contract/types.ts). Deliberately wider
+ * than the vendored `TriggerPayloadField` so nested / enum nodes survive
+ * a vendored-spec lag: the emitter reads the wire JSON, not the spec.
+ */
+type TriggerFieldNode = {
+  key: string
+  type: string
+  required: boolean
+  /** `type: 'enum'` (or an array of enums via `itemType`): allowed values. */
+  enumValues?: ReadonlyArray<string>
+  /** `object`: properties. `array` with object elements: element properties. */
+  children?: ReadonlyArray<TriggerFieldNode>
+  /** `array` with scalar elements: the element type. */
+  itemType?: string
+}
+
+/**
+ * Scalar mapping mirrored from the app's `lib/payload-contract/codegen.ts`
+ * (`scalarTsType`): int/float → number, date → ISO string, enum → a
+ * literal union when `enumValues` exist. A type this build does not know
+ * (including the platform's derived-view `'unknown'`) is honestly
+ * `unknown` — never a silently-wrong `string`.
+ */
+function scalarTsType(type: string, node: TriggerFieldNode): string {
+  switch (type) {
+    case 'string':
+      return 'string'
+    case 'int':
+    case 'float':
+      return 'number'
+    case 'boolean':
+      return 'boolean'
+    case 'date':
+      // ISO-8601 date-time string on the wire.
+      return 'string'
+    case 'enum':
+      return node.enumValues && node.enumValues.length > 0
+        ? node.enumValues.map((value) => JSON.stringify(value)).join(' | ')
+        : 'string'
+    default:
+      return 'unknown'
   }
-  if (type === 'boolean') {
-    return 'boolean'
+}
+
+function triggerFieldType(node: TriggerFieldNode, indent: string): string {
+  if (node.type === 'object') {
+    return triggerObjectLiteral(node.children ?? [], indent)
   }
-  return 'string'
+  if (node.type === 'array') {
+    if (node.children && node.children.length > 0) {
+      return `Array<${triggerObjectLiteral(node.children, indent)}>`
+    }
+    const element = node.itemType
+      ? scalarTsType(node.itemType, node)
+      : 'unknown'
+    return `Array<${element}>`
+  }
+  return scalarTsType(node.type, node)
+}
+
+/**
+ * Nested emission mirrored from the app codegen's `tsObjectLiteral`:
+ * field order as given, `?:` from `required`, two-space indent per level.
+ * Flat contracts emit byte-identically to the pre-nested emitter (the
+ * sha256 header + `--check` gates depend on that stability), which is
+ * also why the app's per-field doc comments are NOT ported here.
+ */
+function triggerObjectLiteral(
+  nodes: ReadonlyArray<TriggerFieldNode>,
+  indent: string
+): string {
+  if (nodes.length === 0) {
+    // Top level: zero declared fields means "send nothing". A NESTED
+    // childless object is different: its inner shape is unknown, not
+    // empty.
+    return indent === '' ? 'Record<string, never>' : 'Record<string, unknown>'
+  }
+  const inner = `${indent}  `
+  const lines: Array<string> = ['{']
+  for (const node of nodes) {
+    const optional = node.required ? '' : '?'
+    lines.push(
+      `${inner}${propertyKey(node.key)}${optional}: ${triggerFieldType(node, inner)}`
+    )
+  }
+  lines.push(`${indent}}`)
+  return lines.join('\n')
 }
 
 function emitTriggerType(trigger: TriggerRow, name: string): string {
-  const fields = trigger.payloadSchema?.fields ?? []
-  const lines = fields.map((field) => {
-    const optional = field.required ? '' : '?'
-    return `  ${propertyKey(field.key)}${optional}: ${triggerFieldType(field.type)}`
-  })
-  const body =
-    fields.length === 0
-      ? `export type ${name} = Record<string, never>`
-      : [`export type ${name} = {`, ...lines, '}'].join('\n')
+  const fields: ReadonlyArray<TriggerFieldNode> =
+    trigger.payloadSchema?.fields ?? []
   return [
     `/** Fire: POST /v1/automations/triggers/${trigger.triggerEventId}/fire — body { payload: ${name} } */`,
-    body,
+    `export type ${name} = ${triggerObjectLiteral(fields, '')}`,
   ].join('\n')
 }
 
