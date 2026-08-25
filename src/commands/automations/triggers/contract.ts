@@ -1,3 +1,4 @@
+import type { components } from '../../../generated/openapi-types'
 import { defineCommand } from '../../../lib/define-command'
 import { CliUsageError } from '../../../lib/errors'
 import {
@@ -8,14 +9,9 @@ import {
 } from '../../../lib/input'
 import { rawRequest } from '../../../lib/raw-request'
 
-// The payload-contract wave-2 schemas are not in the vendored spec yet
-// (the platform PRs are still open) — see PENDING_SPEC_ROUTES in
-// tests/parity-spec.test.ts. Structural stand-ins until the refreshed
-// spec publishes `PayloadContractGetResponse` /
-// `PayloadContractValidateResponse`; switch back to
-// `components['schemas'][…]` then.
-type ContractGetResponse = { content?: string } & Record<string, unknown>
-type ContractValidateResponse = Record<string, unknown>
+type ContractGetResponse = components['schemas']['PayloadContractGetResponse']
+type ContractValidateResponse =
+  components['schemas']['PayloadContractValidateResponse']
 
 const FORMAT_FLAG = {
   flag: '--format <format>',

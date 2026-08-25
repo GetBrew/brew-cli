@@ -1,14 +1,11 @@
+import type { components } from '../../generated/openapi-types'
 import { defineCommand } from '../../lib/define-command'
 import { CliUsageError } from '../../lib/errors'
 import { INPUT_FLAG, mergeInput, readJsonFlag } from '../../lib/input'
 import { rawRequest } from '../../lib/raw-request'
 
-// The payload-contract wave-2 schemas are not in the vendored spec yet
-// (the platform PRs are still open) — see PENDING_SPEC_ROUTES in
-// tests/parity-spec.test.ts. Structural stand-in until the refreshed
-// spec publishes `PayloadContractInferResponse`; switch back to
-// `components['schemas'][…]` then.
-type ContractInferResponse = Record<string, unknown>
+type ContractInferResponse =
+  components['schemas']['PayloadContractInferResponse']
 
 export const contractsInferCommand = defineCommand({
   path: ['contracts', 'infer'],

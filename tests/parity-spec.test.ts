@@ -19,12 +19,7 @@ const PENDING_BUILD_ROUTES: readonly string[] = []
  * becomes stale — and the guard below fails — the moment the refreshed
  * spec publishes the route; delete it then.
  */
-const PENDING_SPEC_ROUTES: readonly string[] = [
-  'GET /v1/automations/triggers/{triggerEventId}/contract',
-  'PUT /v1/automations/triggers/{triggerEventId}/contract',
-  'POST /v1/automations/triggers/{triggerEventId}/contract/validate',
-  'POST /v1/payload-contracts/infer',
-]
+const PENDING_SPEC_ROUTES: readonly string[] = []
 
 function specOperations(): readonly string[] {
   const raw = readFileSync(

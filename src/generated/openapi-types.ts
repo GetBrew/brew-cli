@@ -721,6 +721,82 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/automations/triggers/{triggerEventId}/contract": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get a trigger payload contract
+         * @description The payload contract for the trigger: the STORED contract when one has been declared (`source: "stored"`, with `contractHash`, `version`, `enforcement`), otherwise the derived one (`source: "derived_from_schema"`, built from the trigger’s flat `payloadSchema`).
+         *
+         *     Contract fields form a tree: scalars (`string` | `int` | `float` | `boolean` | `date` | `enum`), `object` nodes with `children`, and `array` nodes with `children` (element object shape) or `itemType` (scalar elements). Derived contracts may carry `type: "unknown"` where no type evidence exists.
+         *
+         *     Pass `?format=` for generated artifacts instead of the JSON contract.
+         */
+        get: operations["getTriggerContract"];
+        /**
+         * Declare a trigger payload contract
+         * @description Declares the stored payload contract for the trigger, changes how it is enforced, or both — in one call. `fields` is optional, so flipping enforcement never means re-sending the whole tree. The whole tree is validated structurally BEFORE any write — unknown-typed nodes are refused (declare a concrete type), keys must be unique per level, and an `object` field must declare at least one child. Trigger contracts MUST keep a top-level `{ key: "email", type: "string", required: true }` field so automations can resolve a recipient.
+         *
+         *     The contract version bumps only when the behavioral surface changes (keys, types, required, fallbacks — not descriptions or examples). Declaring a contract never changes fire behavior by itself: enforcement stays off until explicitly enabled.
+         *
+         *     Responds with the same body a follow-up `GET …/contract` would return.
+         */
+        put: operations["setTriggerContract"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/automations/triggers/{triggerEventId}/contract/validate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Validate a trigger payload
+         * @description Dry-runs a payload against the trigger's contract — the SAME validator the live path runs, against the stored contract when one exists (derived otherwise; `source` says which). Nothing fires, sends, or writes.
+         *
+         *     An invalid payload is still a `200`: the verdict is the response — read `valid`, `errors`, `warnings`, `resolvedPayload` (fallbacks applied), and `prunedKeys`. Pass `enforcement: "prune" | "strict"` to preview a different mode than the stored one. Fire for real with `POST …/fire`.
+         */
+        post: operations["validateTriggerPayload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/payload-contracts/infer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Infer a payload contract from an example
+         * @description Drafts a contract from a real example payload: paste the JSON your system sends and get back typed `fields` — integers and floats split automatically, full ISO timestamps become `date`, object/array shapes are walked recursively. Every inferred field is `required: true` (relax explicitly).
+         *
+         *     Spots inference cannot type (nulls, empty arrays) degrade honestly and are listed in `issues` with the offending path. Nothing is saved: review the draft, then `PUT` it to `…/triggers/{triggerEventId}/contract`.
+         */
+        post: operations["inferPayloadContract"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/analytics/trigger-instances": {
         parameters: {
             query?: never;
@@ -4558,6 +4634,91 @@ export interface components {
             };
             /** @description Legacy body-field alternative to the `Idempotency-Key` HTTP header. Prefer the header for new integrations. The token is namespaced server-side with the API key org so different tenants cannot collide. */
             idempotencyKey?: string;
+        };
+        PayloadContractGetResponse: {
+            /** @enum {string} */
+            subjectKind: "trigger";
+            subjectId: string;
+            /** @enum {string} */
+            source: "stored" | "derived_from_schema" | "derived_from_template";
+            typeName: string;
+            contractHash?: string;
+            version?: number;
+            /** @enum {string} */
+            enforcement?: "off" | "prune" | "strict";
+            /** @enum {string} */
+            driftStatus?: "fresh" | "stale";
+            fields?: components["schemas"]["PayloadContractFieldNode"][];
+            /** @enum {string} */
+            format: "json" | "ts" | "zod" | "jsonschema" | "skill";
+            content?: string;
+        };
+        PayloadContractFieldNode: {
+            key: string;
+            /** @enum {string} */
+            type: "string" | "int" | "float" | "boolean" | "date" | "enum" | "object" | "array" | "unknown";
+            required: boolean;
+            description?: string;
+            exampleValue?: string | number | boolean;
+            fallbackValue?: string | number | boolean;
+            /** @enum {string} */
+            pii?: "none" | "low" | "high";
+            enumValues?: string[];
+            itemType?: ("string" | "int" | "float" | "boolean" | "date" | "enum") | "unknown";
+            usedIn?: ("body" | "subject" | "previewText")[];
+            children?: components["schemas"]["PayloadContractFieldNode"][];
+        };
+        PayloadContractPutRequest: {
+            fields?: components["schemas"]["PayloadContractFieldNode"][];
+            name?: string;
+            /** @enum {string} */
+            enforcement?: "off" | "prune" | "strict";
+        };
+        PayloadContractValidateResponse: {
+            valid: boolean;
+            errors: {
+                /** @enum {string} */
+                code: "payload_not_object" | "missing_required" | "invalid_type" | "unexpected_key";
+                field: string;
+                message: string;
+                expectedType?: string;
+                actualType?: string;
+            }[];
+            warnings: {
+                /** @enum {string} */
+                code: "payload_not_object" | "missing_required" | "invalid_type" | "unexpected_key";
+                field: string;
+                message: string;
+                expectedType?: string;
+                actualType?: string;
+            }[];
+            resolvedPayload: {
+                [key: string]: unknown;
+            };
+            prunedKeys: string[];
+            /** @enum {string} */
+            source: "stored" | "derived_from_schema" | "derived_from_template";
+            contractHash?: string;
+        };
+        PayloadContractValidateRequest: {
+            payload: {
+                [key: string]: unknown;
+            };
+            /** @enum {string} */
+            enforcement?: "prune" | "strict";
+        };
+        PayloadContractInferResponse: {
+            fields: components["schemas"]["PayloadContractFieldNode"][];
+            issues: {
+                message: string;
+            }[];
+        };
+        PayloadContractInferRequest: {
+            example: {
+                [key: string]: unknown;
+            };
+            /** @enum {string} */
+            subjectKind?: "trigger";
         };
         EventsListResponse: {
             data: {
@@ -10239,7 +10400,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description The same `Idempotency-Key` was reused with a different request body. */
+            /** @description Idempotency-Key replay with a different request body. */
             409: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -10247,21 +10408,10 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    /**
-                     * @example {
-                     *       "error": {
-                     *         "code": "IDEMPOTENCY_CONFLICT",
-                     *         "type": "conflict",
-                     *         "message": "The same idempotency key was reused with a different request payload.",
-                     *         "suggestion": "Reuse the original payload or send a new idempotency key.",
-                     *         "docs": "https://docs.brew.new/api-reference/api/idempotency"
-                     *       }
-                     *     }
-                     */
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description The referenced resource exists but is not ready. */
+            /** @description The referenced resource exists but is not ready for sending. */
             422: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -14832,6 +14982,903 @@ export interface operations {
                      *     }
                      */
                     "application/json": components["schemas"]["TriggerFireResponse"];
+                };
+            };
+            /** @description The request hit the rolling rate limit window. */
+            429: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    "X-RateLimit-Reset": number;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "RATE_LIMITED",
+                     *         "type": "rate_limit",
+                     *         "message": "Too many requests.",
+                     *         "suggestion": "Wait for the retry window before sending another request.",
+                     *         "docs": "https://docs.brew.new/api-reference/api/rate-limits",
+                     *         "retryAfter": 42
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected internal error. */
+            500: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "INTERNAL_ERROR",
+                     *         "type": "internal_error",
+                     *         "message": "An unexpected error occurred.",
+                     *         "suggestion": "Retry the request. If it keeps failing, contact support.",
+                     *         "docs": "https://docs.brew.new/api-reference/api/errors"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getTriggerContract: {
+        parameters: {
+            query?: {
+                /** @description Rendering. `json` (default) returns the contract object; `ts` | `zod` | `jsonschema` | `skill` return `{format, content}` — a generated TypeScript type, Zod schema, JSON Schema document, or SKILL.md wiring brief. */
+                format?: "json" | "ts" | "zod" | "jsonschema" | "skill";
+            };
+            header?: {
+                /**
+                 * @description The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+                 * @example kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+                 */
+                "X-Brand-Id"?: string;
+            };
+            path: {
+                /** @description Trigger id returned by `POST /v1/automations/triggers` (integration triggers use composite ids — URL-encode the colons). */
+                triggerEventId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The contract (`format=json`, default) or `{format, content}` for text formats. */
+            200: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    "X-RateLimit-Reset": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "subjectKind": "trigger",
+                     *       "subjectId": "tri_signup",
+                     *       "source": "stored",
+                     *       "typeName": "UserSignedUpPayload",
+                     *       "contractHash": "22545d11e1d174ba0717ed37c9c4b460c96bed51ae31ea0af18266ebba30f76a",
+                     *       "version": 2,
+                     *       "enforcement": "off",
+                     *       "fields": [
+                     *         {
+                     *           "key": "email",
+                     *           "type": "string",
+                     *           "required": true
+                     *         },
+                     *         {
+                     *           "key": "plan",
+                     *           "type": "enum",
+                     *           "required": false,
+                     *           "enumValues": [
+                     *             "free",
+                     *             "pro"
+                     *           ],
+                     *           "fallbackValue": "free"
+                     *         },
+                     *         {
+                     *           "key": "order",
+                     *           "type": "object",
+                     *           "required": false,
+                     *           "children": [
+                     *             {
+                     *               "key": "total",
+                     *               "type": "float",
+                     *               "required": true
+                     *             }
+                     *           ]
+                     *         }
+                     *       ]
+                     *     }
+                     */
+                    "application/json": components["schemas"]["PayloadContractGetResponse"];
+                };
+            };
+            /** @description The request body or query string was invalid (unknown key, wrong type, or missing required field). Strict schemas reject unknown keys — including `brandId`: a brand is named with the `X-Brand-Id` HEADER (organization-scoped credentials) or resolved from the credential itself (brand-scoped ones), never as a body or query field. */
+            400: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "INVALID_REQUEST",
+                     *         "type": "invalid_request",
+                     *         "message": "Request validation failed.",
+                     *         "suggestion": "Fix the field reported in `param` and retry.",
+                     *         "docs": "https://docs.brew.new/api-reference/api/errors",
+                     *         "param": "format"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description The API key was missing, invalid, or revoked. */
+            401: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "INVALID_API_KEY",
+                     *         "type": "authentication_error",
+                     *         "message": "The provided API key is invalid.",
+                     *         "suggestion": "Check the API key format and retry with a valid active key.",
+                     *         "docs": "https://docs.brew.new/api-reference/api/authentication"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description The caller does not have the required `automations` permission. */
+            403: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "INSUFFICIENT_PERMISSIONS",
+                     *         "type": "authorization_error",
+                     *         "message": "The caller does not have the required permission.",
+                     *         "suggestion": "Use an API key or session with the required permission.",
+                     *         "docs": "https://docs.brew.new/api-reference/api/authentication",
+                     *         "param": "automations"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description Trigger not found in the API-key brand. Cross-brand ids intentionally surface as 404 (never 403) so the API does not leak cross-brand existence. */
+            404: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "TRIGGER_EVENT_NOT_FOUND",
+                     *         "type": "not_found",
+                     *         "message": "Trigger event 'tri_xxx' was not found.",
+                     *         "suggestion": "List triggers with GET /v1/automations/triggers.",
+                     *         "docs": "https://docs.brew.new/api-reference/api/errors",
+                     *         "param": "triggerEventId"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description The request hit the rolling rate limit window. */
+            429: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    "X-RateLimit-Reset": number;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "RATE_LIMITED",
+                     *         "type": "rate_limit",
+                     *         "message": "Too many requests.",
+                     *         "suggestion": "Wait for the retry window before sending another request.",
+                     *         "docs": "https://docs.brew.new/api-reference/api/rate-limits",
+                     *         "retryAfter": 42
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected internal error. */
+            500: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "INTERNAL_ERROR",
+                     *         "type": "internal_error",
+                     *         "message": "An unexpected error occurred.",
+                     *         "suggestion": "Retry the request. If it keeps failing, contact support.",
+                     *         "docs": "https://docs.brew.new/api-reference/api/errors"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+        };
+    };
+    setTriggerContract: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+                 * @example kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+                 */
+                "X-Brand-Id"?: string;
+            };
+            path: {
+                /** @description Trigger id returned by `POST /v1/automations/triggers` (integration triggers use composite ids — URL-encode the colons). */
+                triggerEventId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "fields": [
+                 *         {
+                 *           "key": "email",
+                 *           "type": "string",
+                 *           "required": true
+                 *         },
+                 *         {
+                 *           "key": "plan",
+                 *           "type": "enum",
+                 *           "required": false,
+                 *           "enumValues": [
+                 *             "free",
+                 *             "pro"
+                 *           ],
+                 *           "fallbackValue": "free",
+                 *           "description": "Billing plan at signup time."
+                 *         },
+                 *         {
+                 *           "key": "order",
+                 *           "type": "object",
+                 *           "required": false,
+                 *           "children": [
+                 *             {
+                 *               "key": "total",
+                 *               "type": "float",
+                 *               "required": true
+                 *             }
+                 *           ]
+                 *         }
+                 *       ]
+                 *     }
+                 */
+                "application/json": components["schemas"]["PayloadContractPutRequest"];
+            };
+        };
+        responses: {
+            /** @description Stored. The contract as a follow-up GET would return it. */
+            200: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    "X-RateLimit-Reset": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "subjectKind": "trigger",
+                     *       "subjectId": "tri_signup",
+                     *       "source": "stored",
+                     *       "typeName": "UserSignedUpPayload",
+                     *       "contractHash": "22545d11e1d174ba0717ed37c9c4b460c96bed51ae31ea0af18266ebba30f76a",
+                     *       "version": 2,
+                     *       "enforcement": "off",
+                     *       "fields": [
+                     *         {
+                     *           "key": "email",
+                     *           "type": "string",
+                     *           "required": true
+                     *         },
+                     *         {
+                     *           "key": "plan",
+                     *           "type": "enum",
+                     *           "required": false,
+                     *           "enumValues": [
+                     *             "free",
+                     *             "pro"
+                     *           ],
+                     *           "fallbackValue": "free"
+                     *         },
+                     *         {
+                     *           "key": "order",
+                     *           "type": "object",
+                     *           "required": false,
+                     *           "children": [
+                     *             {
+                     *               "key": "total",
+                     *               "type": "float",
+                     *               "required": true
+                     *             }
+                     *           ]
+                     *         }
+                     *       ]
+                     *     }
+                     */
+                    "application/json": components["schemas"]["PayloadContractGetResponse"];
+                };
+            };
+            /** @description Structurally invalid contract — duplicate keys, unknown-typed nodes, a missing required `email` string, or nested fields on a workspace without the Liquid engine. */
+            400: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "INVALID_REQUEST",
+                     *         "type": "invalid_request",
+                     *         "message": "Trigger contracts must declare a top-level required \"email\" string field.",
+                     *         "suggestion": "Fix the contract fields and retry; POST …/contract/validate never writes and returns per-field verdicts.",
+                     *         "docs": "https://docs.brew.new/api-reference/api/errors",
+                     *         "param": "fields"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description The API key was missing, invalid, or revoked. */
+            401: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "INVALID_API_KEY",
+                     *         "type": "authentication_error",
+                     *         "message": "The provided API key is invalid.",
+                     *         "suggestion": "Check the API key format and retry with a valid active key.",
+                     *         "docs": "https://docs.brew.new/api-reference/api/authentication"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description The caller does not have the required `automations` permission. */
+            403: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "INSUFFICIENT_PERMISSIONS",
+                     *         "type": "authorization_error",
+                     *         "message": "The caller does not have the required permission.",
+                     *         "suggestion": "Use an API key or session with the required permission.",
+                     *         "docs": "https://docs.brew.new/api-reference/api/authentication",
+                     *         "param": "automations"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description Trigger not found in the API-key brand. Cross-brand ids intentionally surface as 404 (never 403) so the API does not leak cross-brand existence. */
+            404: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "TRIGGER_EVENT_NOT_FOUND",
+                     *         "type": "not_found",
+                     *         "message": "Trigger event 'tri_xxx' was not found.",
+                     *         "suggestion": "List triggers with GET /v1/automations/triggers.",
+                     *         "docs": "https://docs.brew.new/api-reference/api/errors",
+                     *         "param": "triggerEventId"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description The request hit the rolling rate limit window. */
+            429: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    "X-RateLimit-Reset": number;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "RATE_LIMITED",
+                     *         "type": "rate_limit",
+                     *         "message": "Too many requests.",
+                     *         "suggestion": "Wait for the retry window before sending another request.",
+                     *         "docs": "https://docs.brew.new/api-reference/api/rate-limits",
+                     *         "retryAfter": 42
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected internal error. */
+            500: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "INTERNAL_ERROR",
+                     *         "type": "internal_error",
+                     *         "message": "An unexpected error occurred.",
+                     *         "suggestion": "Retry the request. If it keeps failing, contact support.",
+                     *         "docs": "https://docs.brew.new/api-reference/api/errors"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+        };
+    };
+    validateTriggerPayload: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+                 * @example kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+                 */
+                "X-Brand-Id"?: string;
+            };
+            path: {
+                /** @description Trigger id returned by `POST /v1/automations/triggers` (integration triggers use composite ids — URL-encode the colons). */
+                triggerEventId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "payload": {
+                 *         "email": "jane@example.com",
+                 *         "coupon": "SPRING"
+                 *       }
+                 *     }
+                 */
+                "application/json": components["schemas"]["PayloadContractValidateRequest"];
+            };
+        };
+        responses: {
+            /** @description The verdict — for BOTH valid and invalid payloads (`valid` discriminates). */
+            200: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    "X-RateLimit-Reset": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "valid": true,
+                     *       "errors": [],
+                     *       "warnings": [
+                     *         {
+                     *           "code": "unexpected_key",
+                     *           "field": "coupon",
+                     *           "message": "Field \"coupon\" is not declared in the contract"
+                     *         }
+                     *       ],
+                     *       "resolvedPayload": {
+                     *         "email": "jane@example.com",
+                     *         "plan": "free"
+                     *       },
+                     *       "prunedKeys": [
+                     *         "coupon"
+                     *       ],
+                     *       "source": "stored",
+                     *       "contractHash": "22545d11e1d174ba0717ed37c9c4b460c96bed51ae31ea0af18266ebba30f76a"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["PayloadContractValidateResponse"];
+                };
+            };
+            /** @description The request body or query string was invalid (unknown key, wrong type, or missing required field). Strict schemas reject unknown keys — including `brandId`: a brand is named with the `X-Brand-Id` HEADER (organization-scoped credentials) or resolved from the credential itself (brand-scoped ones), never as a body or query field. */
+            400: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "INVALID_REQUEST",
+                     *         "type": "invalid_request",
+                     *         "message": "Request validation failed.",
+                     *         "suggestion": "Fix the field reported in `param` and retry.",
+                     *         "docs": "https://docs.brew.new/api-reference/api/errors",
+                     *         "param": "payload"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description The API key was missing, invalid, or revoked. */
+            401: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "INVALID_API_KEY",
+                     *         "type": "authentication_error",
+                     *         "message": "The provided API key is invalid.",
+                     *         "suggestion": "Check the API key format and retry with a valid active key.",
+                     *         "docs": "https://docs.brew.new/api-reference/api/authentication"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description The caller does not have the required `automations` permission. */
+            403: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "INSUFFICIENT_PERMISSIONS",
+                     *         "type": "authorization_error",
+                     *         "message": "The caller does not have the required permission.",
+                     *         "suggestion": "Use an API key or session with the required permission.",
+                     *         "docs": "https://docs.brew.new/api-reference/api/authentication",
+                     *         "param": "automations"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description Trigger not found in the API-key brand. Cross-brand ids intentionally surface as 404 (never 403) so the API does not leak cross-brand existence. */
+            404: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "TRIGGER_EVENT_NOT_FOUND",
+                     *         "type": "not_found",
+                     *         "message": "Trigger event 'tri_xxx' was not found.",
+                     *         "suggestion": "List triggers with GET /v1/automations/triggers.",
+                     *         "docs": "https://docs.brew.new/api-reference/api/errors",
+                     *         "param": "triggerEventId"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description The request hit the rolling rate limit window. */
+            429: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    "X-RateLimit-Reset": number;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "RATE_LIMITED",
+                     *         "type": "rate_limit",
+                     *         "message": "Too many requests.",
+                     *         "suggestion": "Wait for the retry window before sending another request.",
+                     *         "docs": "https://docs.brew.new/api-reference/api/rate-limits",
+                     *         "retryAfter": 42
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected internal error. */
+            500: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "INTERNAL_ERROR",
+                     *         "type": "internal_error",
+                     *         "message": "An unexpected error occurred.",
+                     *         "suggestion": "Retry the request. If it keeps failing, contact support.",
+                     *         "docs": "https://docs.brew.new/api-reference/api/errors"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+        };
+    };
+    inferPayloadContract: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+                 * @example kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+                 */
+                "X-Brand-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "example": {
+                 *         "email": "jane@example.com",
+                 *         "order": {
+                 *           "total": 9.5,
+                 *           "placedAt": "2026-04-08T12:00:00.000Z"
+                 *         }
+                 *       }
+                 *     }
+                 */
+                "application/json": components["schemas"]["PayloadContractInferRequest"];
+            };
+        };
+        responses: {
+            /** @description The unsaved contract draft. */
+            200: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    "X-RateLimit-Reset": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "fields": [
+                     *         {
+                     *           "key": "email",
+                     *           "type": "string",
+                     *           "required": true
+                     *         },
+                     *         {
+                     *           "key": "order",
+                     *           "type": "object",
+                     *           "required": true,
+                     *           "children": [
+                     *             {
+                     *               "key": "total",
+                     *               "type": "float",
+                     *               "required": true
+                     *             },
+                     *             {
+                     *               "key": "placedAt",
+                     *               "type": "date",
+                     *               "required": true
+                     *             }
+                     *           ]
+                     *         }
+                     *       ],
+                     *       "issues": []
+                     *     }
+                     */
+                    "application/json": components["schemas"]["PayloadContractInferResponse"];
+                };
+            };
+            /** @description The request body or query string was invalid (unknown key, wrong type, or missing required field). Strict schemas reject unknown keys — including `brandId`: a brand is named with the `X-Brand-Id` HEADER (organization-scoped credentials) or resolved from the credential itself (brand-scoped ones), never as a body or query field. */
+            400: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "INVALID_REQUEST",
+                     *         "type": "invalid_request",
+                     *         "message": "Request validation failed.",
+                     *         "suggestion": "Fix the field reported in `param` and retry.",
+                     *         "docs": "https://docs.brew.new/api-reference/api/errors",
+                     *         "param": "example"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description The API key was missing, invalid, or revoked. */
+            401: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "INVALID_API_KEY",
+                     *         "type": "authentication_error",
+                     *         "message": "The provided API key is invalid.",
+                     *         "suggestion": "Check the API key format and retry with a valid active key.",
+                     *         "docs": "https://docs.brew.new/api-reference/api/authentication"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description The caller does not have the required `automations` permission. */
+            403: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "INSUFFICIENT_PERMISSIONS",
+                     *         "type": "authorization_error",
+                     *         "message": "The caller does not have the required permission.",
+                     *         "suggestion": "Use an API key or session with the required permission.",
+                     *         "docs": "https://docs.brew.new/api-reference/api/authentication",
+                     *         "param": "automations"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
             /** @description The request hit the rolling rate limit window. */

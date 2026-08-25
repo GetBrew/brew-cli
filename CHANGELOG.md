@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.5.0
 
 - **Breaking**: the `transactional` command group (`transactional get`,
   `transactional contract get|put|validate`) and the `types --transaction`
