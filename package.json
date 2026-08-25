@@ -1,6 +1,6 @@
 {
   "name": "@brew.new/cli",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Official agent-first command-line interface for the Brew public API.",
   "license": "MIT",
   "author": "Brew",
@@ -23,7 +23,7 @@
   ],
   "type": "module",
   "bin": {
-    "brew-cli": "./dist/bin.js"
+    "brew-cli": "dist/bin.js"
   },
   "files": [
     "dist",
@@ -52,7 +52,7 @@
     "prepublishOnly": "bun run clean && bun run tsc && bun run lint && bun run test && bun run build"
   },
   "dependencies": {
-    "@brew.new/sdk": "^8.0.0",
+    "@brew.new/sdk": "^8.1.1",
     "commander": "^14.0.0"
   },
   "devDependencies": {

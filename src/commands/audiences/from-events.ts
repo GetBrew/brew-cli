@@ -1,25 +1,22 @@
-import type { components } from '../../generated/openapi-types'
+import type { AudienceFromEventsInput } from '@brew.new/sdk'
 import { defineCommand } from '../../lib/define-command'
 import { CliUsageError } from '../../lib/errors'
 import {
+  asSdkInput,
   flagString,
   IDEMPOTENCY_FLAG,
   INPUT_FLAG,
   mergeInput,
   readJsonFlag,
+  requestOptions,
   toStringArray,
 } from '../../lib/input'
-import { rawRequest } from '../../lib/raw-request'
-
-type AudiencesFromEventsResponse =
-  components['schemas']['AudiencesFromEventsResponse']
 
 export const audiencesFromEventsCommand = defineCommand({
   path: ['audiences', 'from-events'],
   summary:
     'Create a frozen audience snapshot from analytics events (async build)',
-  sdkMethod: null,
-  isRawTransport: true,
+  sdkMethod: 'audiences.fromEvents',
   route: { method: 'POST', path: '/v1/audiences/from-events' },
   commandClass: 'write',
   flags: [
@@ -68,12 +65,12 @@ export const audiencesFromEventsCommand = defineCommand({
       )
     }
     return {
-      data: await rawRequest<AudiencesFromEventsResponse>(ctx, {
-        method: 'POST',
-        path: '/v1/audiences/from-events',
-        body: { ...input, cohort },
-        idempotencyKey: flagString(flags.idempotencyKey),
-      }),
+      data: await ctx
+        .client()
+        .audiences.fromEvents(
+          asSdkInput<AudienceFromEventsInput>({ ...input, cohort }),
+          requestOptions(flags)
+        ),
     }
   },
 })

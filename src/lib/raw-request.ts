@@ -10,8 +10,9 @@ import type { CliContext } from './types'
  * error-envelope mapping with the `api` escape hatch. Each caller swaps to
  * the SDK method when it ships — the parity-sdk sentinel flags the moment
  * that becomes possible. Unlike the SDK transport, raw calls are
- * single-attempt (no retry loop), so POST callers should pass an
- * idempotency key when re-running matters.
+ * single-attempt (no retry loop). POST calls receive an invocation-scoped
+ * idempotency key automatically; callers can provide a stable key when they
+ * need to replay safely across process restarts.
  */
 export async function rawRequest<TResponse>(
   ctx: CliContext,
@@ -31,11 +32,15 @@ export async function rawRequest<TResponse>(
     ...(request.allowAnonymous === true ? { allowAnonymous: true } : {}),
   })
   const hasBody = request.body !== undefined
+  const idempotencyKey = resolveRawIdempotencyKey(
+    request.method,
+    request.idempotencyKey
+  )
   const headers = buildRawHeaders({
     auth,
     path: request.path,
     hasJsonBody: hasBody,
-    idempotencyKey: request.idempotencyKey,
+    idempotencyKey,
   })
   const url = new URL(`${auth.apiUrl}${request.path}`)
   for (const [key, value] of Object.entries(request.query ?? {})) {
@@ -63,6 +68,16 @@ export async function rawRequest<TResponse>(
     })
   }
   return parsed as TResponse
+}
+
+function resolveRawIdempotencyKey(
+  method: 'DELETE' | 'GET' | 'PATCH' | 'POST' | 'PUT',
+  provided: string | undefined
+): string | undefined {
+  if (provided !== undefined && provided !== '') {
+    return provided
+  }
+  return method === 'POST' ? crypto.randomUUID() : undefined
 }
 
 export function buildRawHeaders(input: {

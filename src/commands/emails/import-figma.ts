@@ -1,17 +1,20 @@
-import type { components } from '../../generated/openapi-types'
+import type { BrewClient } from '@brew.new/sdk'
 import { defineCommand } from '../../lib/define-command'
 import { CliUsageError } from '../../lib/errors'
-import { flagString, IDEMPOTENCY_FLAG } from '../../lib/input'
-import { rawRequest } from '../../lib/raw-request'
+import {
+  asSdkInput,
+  flagString,
+  IDEMPOTENCY_FLAG,
+  requestOptions,
+} from '../../lib/input'
 
-type FigmaToEmailResponse = components['schemas']['FigmaToEmailResponse']
+type ImportFigmaInput = Parameters<BrewClient['emails']['importFigma']>[0]
 
 export const emailsImportFigmaCommand = defineCommand({
   path: ['emails', 'import-figma'],
   summary:
     'Convert one Figma frame into an editable design (deterministic, free)',
-  sdkMethod: null,
-  isRawTransport: true,
+  sdkMethod: 'emails.importFigma',
   route: { method: 'POST', path: '/v1/emails/figma' },
   commandClass: 'write',
   flags: [
@@ -48,17 +51,15 @@ export const emailsImportFigmaCommand = defineCommand({
     const format = flagString(flags.format)
     const subjectLine = flagString(flags.subjectLine)
     return {
-      data: await rawRequest<FigmaToEmailResponse>(ctx, {
-        method: 'POST',
-        path: '/v1/emails/figma',
-        body: {
+      data: await ctx.client().emails.importFigma(
+        asSdkInput<ImportFigmaInput>({
           figmaUrl,
           ...(title === undefined ? {} : { title }),
           ...(format === undefined ? {} : { format }),
           ...(subjectLine === undefined ? {} : { subjectLine }),
-        },
-        idempotencyKey: flagString(flags.idempotencyKey),
-      }),
+        }),
+        requestOptions(flags)
+      ),
     }
   },
 })

@@ -36,7 +36,7 @@ function env(): Record<string, string | undefined> {
 
 const API = 'https://brew.new/api'
 
-describe('sends pause / resume (raw transport)', () => {
+describe('sends pause / resume', () => {
   it('pauses a send with POST /v1/sends/{sendId}/pause', async () => {
     server.use(
       http.post(`${API}/v1/sends/snd_1/pause`, () =>
@@ -87,7 +87,7 @@ describe('emails clone', () => {
     expect((result.json as { emailId: string }).emailId).toBe('eml_2')
   })
 
-  it('omits the body when cloning latest', async () => {
+  it('sends an empty object when cloning latest through the SDK', async () => {
     let text: string | undefined
     server.use(
       http.post(`${API}/v1/emails/eml_1/clone`, async ({ request }) => {
@@ -100,7 +100,7 @@ describe('emails clone', () => {
       extraCommands: EXTRA,
     })
     expect(result.code).toBe(0)
-    expect(text).toBe('')
+    expect(text).toBe('{}')
   })
 })
 

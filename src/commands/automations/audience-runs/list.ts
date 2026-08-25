@@ -1,16 +1,11 @@
-import type { components } from '../../../generated/openapi-types'
+import type { ListAudienceRunsInput } from '@brew.new/sdk'
 import { defineCommand } from '../../../lib/define-command'
-import { flagInt, flagString } from '../../../lib/input'
-import { rawRequest } from '../../../lib/raw-request'
-
-type AudienceRunsListResponse =
-  components['schemas']['AudienceRunsListResponse']
+import { asSdkInput, flagInt, flagString } from '../../../lib/input'
 
 export const automationsAudienceRunsListCommand = defineCommand({
   path: ['automations', 'audience-runs', 'list'],
   summary: 'List manual-audience runs (newest first)',
-  sdkMethod: null,
-  isRawTransport: true,
+  sdkMethod: 'automations.audienceRuns.list',
   route: { method: 'GET', path: '/v1/automations/audience-runs' },
   commandClass: 'read',
   // The spec paginates by --limit only: no cursor, and the response carries
@@ -33,15 +28,13 @@ export const automationsAudienceRunsListCommand = defineCommand({
   run: async ({ ctx, flags }) => {
     const limit = flagInt(flags.limit, '--limit')
     return {
-      data: await rawRequest<AudienceRunsListResponse>(ctx, {
-        method: 'GET',
-        path: '/v1/automations/audience-runs',
-        query: {
+      data: await ctx.client().automations.audienceRuns.list(
+        asSdkInput<ListAudienceRunsInput>({
           audienceRunId: flagString(flags.audienceRunId),
           automationId: flagString(flags.automationId),
-          limit: limit === undefined ? undefined : String(limit),
-        },
-      }),
+          limit,
+        })
+      ),
     }
   },
 })

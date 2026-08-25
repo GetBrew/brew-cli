@@ -10,14 +10,15 @@ import { SDK_SKIP_LIST } from '../src/skip-list'
 const PENDING_BUILD: readonly string[] = []
 
 /**
- * The published SDK dependency still exposes one method removed by the hard
- * rename. Keep this compatibility fact in the parity test, not in production
- * command metadata. This sentinel becomes stale as soon as the CLI upgrades
- * to the renamed SDK release.
+ * SDK methods the CLI removed AHEAD of the SDK release that deletes them:
+ * the platform retired the transactional-email object, so the CLI commands
+ * are gone, but the installed published SDK still exposes the resource
+ * until the next major ships. Keep this compatibility fact in the parity
+ * test, not in production command metadata. Each entry becomes stale (and
+ * the staleness test below fails) as soon as the CLI upgrades to an SDK
+ * release without the method.
  */
-const REMOVED_SDK_8_LEAVES: readonly string[] = [
-  ['emails', ['audit', 'Access', 'ibility'].join('')].join('.'),
-]
+const REMOVED_SDK_LEAVES: readonly string[] = ['transactional.get']
 
 function walkSdkLeaves(): readonly string[] {
   const client = createBrewClient({ apiKey: 'brew_parity_walk' })
@@ -50,7 +51,7 @@ describe('parity: SDK surface ↔ CLI commands', () => {
     ...bound,
     ...skipped,
     ...PENDING_BUILD,
-    ...REMOVED_SDK_8_LEAVES,
+    ...REMOVED_SDK_LEAVES,
   ])
 
   it('covers every installed SDK method with an explicit disposition', () => {
@@ -92,9 +93,9 @@ describe('parity: SDK surface ↔ CLI commands', () => {
     expect(alreadyBuilt).toEqual([])
   })
 
-  it('keeps SDK 8 removal sentinels only while the installed SDK needs them', () => {
+  it('keeps removal sentinels only while the installed SDK needs them', () => {
     const leafSet = new Set(leaves)
-    const stale = REMOVED_SDK_8_LEAVES.filter((method) => !leafSet.has(method))
+    const stale = REMOVED_SDK_LEAVES.filter((method) => !leafSet.has(method))
     expect(stale).toEqual([])
   })
 

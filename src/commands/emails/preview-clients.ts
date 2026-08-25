@@ -1,16 +1,16 @@
-import type { components } from '../../generated/openapi-types'
+import type { PreviewEmailClientsInput } from '@brew.new/sdk'
 import { defineCommand } from '../../lib/define-command'
-import { flagString, IDEMPOTENCY_FLAG, toStringArray } from '../../lib/input'
-import { rawRequest } from '../../lib/raw-request'
-
-type EmailClientPreviewResponse =
-  components['schemas']['EmailClientPreviewResponse']
+import {
+  asSdkInput,
+  IDEMPOTENCY_FLAG,
+  requestOptions,
+  toStringArray,
+} from '../../lib/input'
 
 export const emailsPreviewClientsCommand = defineCommand({
   path: ['emails', 'preview-clients'],
   summary: 'Render the design across real email clients (10 credits)',
-  sdkMethod: null,
-  isRawTransport: true,
+  sdkMethod: 'emails.previewClients',
   route: { method: 'POST', path: '/v1/emails/{emailId}/client-previews' },
   commandClass: 'write',
   isCredited: true,
@@ -32,13 +32,13 @@ export const emailsPreviewClientsCommand = defineCommand({
   run: async ({ ctx, args, flags }) => {
     const clients = toStringArray(flags.clients)
     return {
-      data: await rawRequest<EmailClientPreviewResponse>(ctx, {
-        method: 'POST',
-        path: `/v1/emails/${encodeURIComponent(args.emailId ?? '')}/client-previews`,
-        // The body is required; an empty object requests the default spread.
-        body: clients === undefined ? {} : { clients },
-        idempotencyKey: flagString(flags.idempotencyKey),
-      }),
+      data: await ctx.client().emails.previewClients(
+        asSdkInput<PreviewEmailClientsInput>({
+          emailId: args.emailId ?? '',
+          ...(clients === undefined ? {} : { clients }),
+        }),
+        requestOptions(flags)
+      ),
     }
   },
 })

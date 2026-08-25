@@ -33,6 +33,25 @@ function context(): CliContext {
 }
 
 describe('rawRequest', () => {
+  it('auto-generates an idempotency key for POST requests', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ ok: true }), {
+        headers: { 'content-type': 'application/json' },
+      })
+    )
+
+    await rawRequest(context(), {
+      method: 'POST',
+      path: '/v1/emails/audit',
+      body: { emailHtml: '<p>Hello</p>' },
+    })
+
+    const headers = new Headers(fetchSpy.mock.calls[0]?.[1]?.headers)
+    expect(headers.get('idempotency-key')).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
+    )
+  })
+
   it('forwards a caller-provided abort signal to fetch', async () => {
     const controller = new AbortController()
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(

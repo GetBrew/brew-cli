@@ -134,6 +134,15 @@ export function toErrorEnvelope(error: unknown): CliErrorEnvelope {
       message: error.message,
     }
   }
+  if (isTimeoutError(error)) {
+    return {
+      code: 'CLI_TIMEOUT',
+      type: 'service_unavailable',
+      message: 'The request timed out before the API responded.',
+      suggestion:
+        'Retry the request. Reuse the same Idempotency-Key for a POST request.',
+    }
+  }
   if (error instanceof CommandAbortedError) {
     return {
       code: 'CLI_ABORTED',
@@ -182,4 +191,13 @@ function apiErrorStatus(error: unknown): number | undefined {
   if (error instanceof BrewApiError || error instanceof CliApiError) {
     return error.status
   }
+}
+
+function isTimeoutError(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'name' in error &&
+    error.name === 'TimeoutError'
+  )
 }

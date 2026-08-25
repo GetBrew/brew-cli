@@ -1,15 +1,11 @@
-import type { components } from '../../generated/openapi-types'
+import type { DuplicateAudienceInput } from '@brew.new/sdk'
 import { defineCommand } from '../../lib/define-command'
-import { flagString, IDEMPOTENCY_FLAG } from '../../lib/input'
-import { rawRequest } from '../../lib/raw-request'
-
-type Audience = components['schemas']['Audience']
+import { asSdkInput, IDEMPOTENCY_FLAG, requestOptions } from '../../lib/input'
 
 export const audiencesDuplicateCommand = defineCommand({
   path: ['audiences', 'duplicate'],
   summary: 'Copy an audience segment (the copy gets a "(copy)" name)',
-  sdkMethod: null,
-  isRawTransport: true,
+  sdkMethod: 'audiences.duplicate',
   route: { method: 'POST', path: '/v1/audiences/{audienceId}/duplicate' },
   commandClass: 'write',
   args: [
@@ -23,10 +19,11 @@ export const audiencesDuplicateCommand = defineCommand({
   flags: [IDEMPOTENCY_FLAG],
   examples: ['brew-cli audiences duplicate aud_3k9sQ'],
   run: async ({ ctx, args, flags }) => ({
-    data: await rawRequest<Audience>(ctx, {
-      method: 'POST',
-      path: `/v1/audiences/${encodeURIComponent(args.audienceId ?? '')}/duplicate`,
-      idempotencyKey: flagString(flags.idempotencyKey),
-    }),
+    data: await ctx.client().audiences.duplicate(
+      asSdkInput<DuplicateAudienceInput>({
+        audienceId: args.audienceId ?? '',
+      }),
+      requestOptions(flags)
+    ),
   }),
 })

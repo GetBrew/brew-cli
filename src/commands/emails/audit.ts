@@ -1,28 +1,23 @@
-import type { components } from '../../generated/openapi-types'
+import {
+  AUDIT_EMAIL_DEFAULT_TIMEOUT_MS,
+  type AuditEmailInput,
+} from '@brew.new/sdk'
 import { defineCommand } from '../../lib/define-command'
 import { CliUsageError } from '../../lib/errors'
 import {
   asSdkInput,
   flagString,
+  IDEMPOTENCY_FLAG,
   INPUT_FLAG,
   mergeInput,
   readJsonFlag,
   readTextFlag,
+  requestOptions,
 } from '../../lib/input'
-import { rawRequest } from '../../lib/raw-request'
-
-type EmailAuditRequest = components['schemas']['EmailAuditRequest']
-type EmailAuditResponse = components['schemas']['EmailAuditResponse']
 
 const SENDING_PURPOSES = new Set(['marketing', 'transactional'])
 
-/** Allows the server's bounded 50-second audit plus transport overhead. */
-export const AUDIT_EMAIL_DEFAULT_TIMEOUT_MS = 65_000
-
-const AUDIT_IDEMPOTENCY_FLAG = {
-  flag: '--idempotency-key <key>',
-  summary: 'Idempotency-Key for safe retries of this raw request',
-} as const
+export { AUDIT_EMAIL_DEFAULT_TIMEOUT_MS }
 
 function optionalText(value: unknown): string | undefined {
   return typeof value === 'string' ? value : undefined
@@ -32,8 +27,7 @@ export const emailsAuditCommand = defineCommand({
   path: ['emails', 'audit'],
   summary:
     'Audit raw email content for production readiness (5 credits when complete)',
-  sdkMethod: null,
-  isRawTransport: true,
+  sdkMethod: 'emails.auditEmail',
   route: { method: 'POST', path: '/v1/emails/audit' },
   commandClass: 'write',
   isCredited: true,
@@ -52,7 +46,7 @@ export const emailsAuditCommand = defineCommand({
       summary: 'marketing | transactional (default: marketing)',
     },
     INPUT_FLAG,
-    AUDIT_IDEMPOTENCY_FLAG,
+    IDEMPOTENCY_FLAG,
   ],
   examples: [
     'brew-cli emails audit --file newsletter.html --subject "August update" --sending-purpose marketing',
@@ -79,14 +73,20 @@ export const emailsAuditCommand = defineCommand({
         '--file is required (a path, or - for stdin), or emailHtml via --input.'
       )
     }
-    return {
-      data: await rawRequest<EmailAuditResponse>(ctx, {
-        method: 'POST',
-        path: '/v1/emails/audit',
-        body: asSdkInput<EmailAuditRequest>(input),
-        idempotencyKey: flagString(flags.idempotencyKey),
-        signal: AbortSignal.timeout(AUDIT_EMAIL_DEFAULT_TIMEOUT_MS),
-      }),
+    const signal = AbortSignal.timeout(AUDIT_EMAIL_DEFAULT_TIMEOUT_MS)
+    try {
+      const result = await ctx
+        .client()
+        .emails.auditEmail(asSdkInput<AuditEmailInput>(input), {
+          signal,
+          ...(requestOptions(flags) ?? {}),
+        })
+      return { data: result }
+    } catch (error) {
+      if (signal.aborted) {
+        throw signal.reason
+      }
+      throw error
     }
   },
 })

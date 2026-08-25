@@ -101,4 +101,52 @@ describe('emails audit', () => {
       sendingPurpose: 'transactional',
     })
   })
+
+  it('auto-generates an idempotency key when the flag is omitted', async () => {
+    let idempotencyKey: string | null = null
+    server.use(
+      http.post(`${API}/v1/emails/audit`, ({ request }) => {
+        idempotencyKey = request.headers.get('idempotency-key')
+        return HttpResponse.json({
+          schemaVersion: 1,
+          completion: { status: 'complete', readiness: 'ready', score: 100 },
+        })
+      })
+    )
+
+    const result = await runCli(
+      ['emails', 'audit', '--input', '{"emailHtml":"<p>Hello</p>"}'],
+      { env: env(), extraCommands: [emailsAuditCommand] }
+    )
+
+    expect(result.code).toBe(0)
+    expect(idempotencyKey).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
+    )
+  })
+
+  it('reports the local audit deadline as a retryable timeout', async () => {
+    vi.spyOn(globalThis, 'fetch').mockRejectedValue(
+      new DOMException(
+        'The operation was aborted due to timeout',
+        'TimeoutError'
+      )
+    )
+
+    const result = await runCli(
+      ['emails', 'audit', '--input', '{"emailHtml":"<p>Hello</p>"}'],
+      { env: env(), extraCommands: [emailsAuditCommand] }
+    )
+
+    expect(result.code).toBe(1)
+    expect(JSON.parse(result.stderr)).toEqual({
+      error: {
+        code: 'CLI_TIMEOUT',
+        type: 'service_unavailable',
+        message: 'The request timed out before the API responded.',
+        suggestion:
+          'Retry the request. Reuse the same Idempotency-Key for a POST request.',
+      },
+    })
+  })
 })

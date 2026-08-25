@@ -1,21 +1,18 @@
-import type { components } from '../../../generated/openapi-types'
+import type { UpdateEmailGroupInput } from '@brew.new/sdk'
 import { defineCommand } from '../../../lib/define-command'
 import { CliUsageError } from '../../../lib/errors'
 import {
+  asSdkInput,
   flagString,
   INPUT_FLAG,
   mergeInput,
   readJsonFlag,
 } from '../../../lib/input'
-import { rawRequest } from '../../../lib/raw-request'
-
-type EmailGroupSummary = components['schemas']['EmailGroupSummary']
 
 export const emailsGroupsUpdateCommand = defineCommand({
   path: ['emails', 'groups', 'update'],
   summary: 'Rename an email folder (group)',
-  sdkMethod: null,
-  isRawTransport: true,
+  sdkMethod: 'emailGroups.update',
   route: { method: 'PATCH', path: '/v1/email-groups/{groupId}' },
   commandClass: 'write',
   args: [
@@ -39,11 +36,12 @@ export const emailsGroupsUpdateCommand = defineCommand({
       throw new CliUsageError('--name is required (or provide it via --input).')
     }
     return {
-      data: await rawRequest<EmailGroupSummary>(ctx, {
-        method: 'PATCH',
-        path: `/v1/email-groups/${encodeURIComponent(args.groupId ?? '')}`,
-        body: input,
-      }),
+      data: await ctx.client().emailGroups.update(
+        asSdkInput<UpdateEmailGroupInput>({
+          ...input,
+          groupId: args.groupId ?? '',
+        })
+      ),
     }
   },
 })

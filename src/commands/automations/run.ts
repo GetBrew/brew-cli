@@ -1,23 +1,19 @@
-import type { components } from '../../generated/openapi-types'
+import type { RunAutomationInput } from '@brew.new/sdk'
 import { defineCommand } from '../../lib/define-command'
 import {
+  asSdkInput,
   flagString,
   IDEMPOTENCY_FLAG,
   INPUT_FLAG,
   mergeInput,
   readJsonFlag,
+  requestOptions,
 } from '../../lib/input'
-import { rawRequest } from '../../lib/raw-request'
-
-type AutomationRunResponse =
-  | components['schemas']['AudienceAutomationRunStartedResponse']
-  | components['schemas']['AutomationRunDryRunResponse']
 
 export const automationsRunCommand = defineCommand({
   path: ['automations', 'run'],
   summary: 'Run a manual-audience automation (live send; --dry-run previews)',
-  sdkMethod: null,
-  isRawTransport: true,
+  sdkMethod: 'automations.run',
   route: { method: 'POST', path: '/v1/automations/{automationId}/run' },
   commandClass: 'destructive',
   args: [
@@ -64,12 +60,13 @@ export const automationsRunCommand = defineCommand({
       scheduledAt: flagString(flags.scheduleAt),
     })
     return {
-      data: await rawRequest<AutomationRunResponse>(ctx, {
-        method: 'POST',
-        path: `/v1/automations/${encodeURIComponent(args.automationId ?? '')}/run`,
-        body: input,
-        idempotencyKey: flagString(flags.idempotencyKey),
-      }),
+      data: await ctx.client().automations.run(
+        asSdkInput<RunAutomationInput>({
+          ...input,
+          automationId: args.automationId ?? '',
+        }),
+        requestOptions(flags)
+      ),
     }
   },
 })
