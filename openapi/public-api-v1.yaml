@@ -191,15 +191,11 @@ components:
           enum:
             - campaign
             - automation
-            - transactional
         messageClass:
           type: string
           enum:
             - marketing
             - transactional
-        transactionId:
-          type: string
-          minLength: 1
         emailId:
           type: string
           minLength: 1
@@ -493,176 +489,6 @@ components:
         - eventType
         - occurredAt
       additionalProperties: false
-    TransactionalEmail:
-      type: object
-      properties:
-        transactionId:
-          type: string
-          minLength: 1
-        emailId:
-          type: string
-          minLength: 1
-        emailVersionId:
-          type: string
-          minLength: 1
-        domainId:
-          type: string
-          minLength: 1
-        replyTo:
-          type: string
-        senderName:
-          type: string
-        fromEmail:
-          type: string
-        subject:
-          type: string
-          minLength: 1
-        previewText:
-          type: string
-        createdAt:
-          type: string
-          format: date-time
-        updatedAt:
-          type: string
-          format: date-time
-        variables:
-          type: array
-          items:
-            type: object
-            properties:
-              name:
-                type: string
-                minLength: 1
-              type:
-                type: string
-                minLength: 1
-              fallback:
-                type:
-                  - string
-                  - "null"
-            required:
-              - name
-              - type
-              - fallback
-            additionalProperties: false
-        templating:
-          type: object
-          properties:
-            valid:
-              type: boolean
-            errors:
-              type: array
-              items:
-                type: object
-                properties:
-                  source:
-                    type: string
-                    enum:
-                      - body
-                      - subject
-                      - previewText
-                  message:
-                    type: string
-                  line:
-                    type: number
-                  col:
-                    type: number
-                required:
-                  - source
-                  - message
-                additionalProperties: false
-          required:
-            - valid
-            - errors
-          additionalProperties: false
-        variableTree:
-          type: array
-          items:
-            $ref: "#/components/schemas/TransactionalVariableTreeNode"
-        examplePayload:
-          type: object
-          additionalProperties:
-            $ref: "#/components/schemas/TransactionalPayloadValue"
-        skill:
-          type: string
-      required:
-        - transactionId
-        - emailId
-        - emailVersionId
-        - domainId
-        - subject
-        - createdAt
-        - updatedAt
-        - variables
-      additionalProperties: false
-    TransactionalVariableTreeNode:
-      type: object
-      properties:
-        key:
-          type: string
-          minLength: 1
-        path:
-          type: string
-          minLength: 1
-        kind:
-          type: string
-          enum:
-            - scalar
-            - array
-            - object
-        fallback:
-          type:
-            - string
-            - "null"
-        namespace:
-          type: string
-          enum:
-            - trigger
-            - customer
-            - other
-        children:
-          type: array
-          items:
-            $ref: "#/components/schemas/TransactionalVariableTreeNode"
-        inferredType:
-          type: string
-          enum:
-            - string
-            - number
-            - boolean
-        usedIn:
-          type: array
-          items:
-            type: string
-            enum:
-              - body
-              - subject
-              - previewText
-      required:
-        - key
-        - path
-        - kind
-        - fallback
-        - namespace
-        - children
-      additionalProperties: false
-    TransactionalPayloadValue:
-      anyOf:
-        - type: string
-        - type: number
-        - type: boolean
-        - type: "null"
-        - type: array
-          items:
-            oneOf:
-              - $ref: "#/components/schemas/TransactionalPayloadValue"
-              - type: "null"
-          maxItems: 250
-        - type: object
-          additionalProperties:
-            oneOf:
-              - $ref: "#/components/schemas/TransactionalPayloadValue"
-              - type: "null"
     AutomationNode:
       oneOf:
         - type: object
@@ -755,12 +581,6 @@ components:
                 previewText:
                   type: string
                   description: Inbox preheader — optional; the email design's <Preview> is the source of truth and wins when present.
-                messageClass:
-                  type: string
-                  enum:
-                    - marketing
-                    - transactional
-                  description: Leftover snapshot; ignored at delivery — the class comes from the sending domain’s purpose (automations always send marketing-class mail).
                 fromName:
                   type: string
                   minLength: 1
@@ -1751,11 +1571,6 @@ components:
                         type: string
                       previewText:
                         type: string
-                      messageClass:
-                        type: string
-                        enum:
-                          - marketing
-                          - transactional
                       fromName:
                         type: string
                       fromAddress:
@@ -2402,6 +2217,7 @@ components:
             - int
             - boolean
             - object
+            - array
         required:
           type: boolean
         fallbackValue:
@@ -2409,19 +2225,26 @@ components:
             - type: string
             - type: number
             - type: boolean
-          description: Substitution value when the inbound payload is missing this field. Also used as the email agent's `e.g. {{ key | fallback }}` example.
+          description: Substitution value when the inbound payload is missing this SCALAR field. Also used as the email agent's `e.g. {{ key | fallback }}` example. Scalar leaves only.
         pii:
           type: string
           enum:
             - none
             - low
             - high
-          description: PII classification for redaction. "high" auto-redacts the value in execution logs and the inbound log. "low" (default when omitted) preserves the value. "none" is an explicit marker that the field is non-personal.
+          description: PII classification for redaction. "high" auto-redacts the value (a container redacts its whole subtree) in execution logs and the inbound log. "low" (default when omitted) preserves the value. "none" is an explicit marker that the field is non-personal.
         children:
           type: array
           items:
             $ref: "#/components/schemas/TriggerPayloadField"
-          description: Nested fields. REQUIRED (non-empty) when type is "object", and rejected otherwise. A leaf is addressed by its dotted path, e.g. {{ user.plan }}.
+          description: Nested field nodes for type "object", or the element shape for an array of objects. Emails reference nested leaves as dotted paths ({{ order.total }}) and arrays via {% for %}.
+        itemType:
+          type: string
+          enum:
+            - string
+            - int
+            - boolean
+          description: Element type for a type "array" of scalars. Omit when the array carries objects (declare `children` instead).
       required:
         - key
         - type
@@ -2993,7 +2816,7 @@ components:
           enum:
             - marketing
             - transactional
-          description: marketing (default) or transactional. Transactional domains skip unsubscribe and may only send via API/MCP inline `to` (or a test send).
+          description: marketing (default) or transactional. Transactional domains skip unsubscribe and send via automation sendEmail nodes (or a test send).
         records:
           type: array
           items:
@@ -3300,16 +3123,26 @@ components:
             - promotional
             - product-launch
             - product-update
+            - order-confirmation
+            - shipping-update
+            - receipt
             - cart-abandonment
+            - subscription
+            - password-reset
+            - verification
+            - security-alert
+            - account-update
             - event-invitation
             - event-reminder
             - feedback-request
             - re-engagement
             - referral
+            - support
             - business
             - internal
+            - notification
             - general
-          description: "Marketing email category that steers the design treatment (exemplars, hero recipe, personalization) — mirrors what the in-app agent infers per request. One of: welcome, newsletter, promotional, product-launch, product-update, cart-abandonment, event-invitation, event-reminder, feedback-request, re-engagement, referral, business, internal, general. Omit for a general treatment. Transactional emails (receipts, password resets, order confirmations) are sent via automations with a trigger, not this endpoint."
+          description: "Email category that steers the design treatment (exemplars, hero recipe, personalization) — mirrors what the in-app agent infers per request. One of: welcome, newsletter, promotional, product-launch, product-update, order-confirmation, shipping-update, receipt, cart-abandonment, subscription, password-reset, verification, security-alert, account-update, event-invitation, event-reminder, feedback-request, re-engagement, referral, support, business, internal, notification, general. Omit for a general treatment. Transactional categories (receipt, password-reset, order-confirmation, …) steer receipt/reset design conventions; to DELIVER those emails, wire the design into an automation with a trigger and a transactional-purpose sending domain, then fire the trigger."
         subjectLine:
           type: string
           minLength: 1
@@ -4061,8 +3894,8 @@ components:
                       maxLength: 128
                     url:
                       type: string
-                      pattern: ^https?:\/\/
                       maxLength: 2048
+                      pattern: ^https?:\/\/
                   required:
                     - id
                   additionalProperties: false
@@ -4843,15 +4676,11 @@ components:
                 enum:
                   - campaign
                   - automation
-                  - transactional
               messageClass:
                 type: string
                 enum:
                   - marketing
                   - transactional
-              transactionId:
-                type: string
-                minLength: 1
               emailId:
                 type: string
                 minLength: 1
@@ -5233,63 +5062,12 @@ components:
             payload:
               type: object
               additionalProperties:
-                $ref: "#/components/schemas/TransactionalPayloadValue"
-              description: Nested JSON template data, exposed to the template as trigger.* / payload.* and spread at the top level. Flat `variables` still resolve `{{ tag | fallback }}` merge tags and win on a name collision; send both if a design mixes syntaxes.
+                $ref: "#/components/schemas/SendPayloadValue"
+              description: Nested JSON template data, exposed to the ONE Liquid engine as trigger.* / payload.* and as top-level keys. Nested values are always legal and resolve via dotted access ({{ plan.name }}) and {% for %}. Flat `variables` resolve {{ tag | fallback }} merge tags at higher precedence; send both if a design mixes syntaxes.
           required:
             - test
             - emailId
             - subject
-            - to
-          additionalProperties: false
-        - type: object
-          properties:
-            transactionId:
-              type: string
-              minLength: 1
-              maxLength: 128
-            to:
-              anyOf:
-                - type: string
-                  format: email
-                - type: array
-                  items:
-                    type: string
-                    format: email
-                  minItems: 1
-                  maxItems: 50
-              description: Recipient addresses (max 50). Required.
-            payload:
-              type: object
-              additionalProperties:
-                $ref: "#/components/schemas/TransactionalPayloadValue"
-              description: "Template data for this fire. Flat scalar keys resolve legacy {{ tag | fallback }} merge tags; the full (optionally nested) JSON is exposed to Liquid templates as trigger.* / payload.*. Extra keys are ignored; missing keys use design fallbacks (or fail the send when the design opts into strict templating). Caps: 64 KiB serialized, 10 nesting levels, 250 items per array, 100 top-level keys."
-            expectedContractHash:
-              type: string
-              minLength: 64
-              maxLength: 64
-              description: "Optimistic contract pin: the contractHash your generated types were built from (GET …/contract). A mismatch — or a pin against an object with no stored contract — fails the fire with 409 CONTRACT_DRIFTED before anything sends."
-            strict:
-              type: boolean
-              description: "Strictness override for this fire: true fails the send on any unresolved template variable (customer.io parity) instead of rendering blank. Defaults to the transactional object setting."
-            replyTo:
-              type: string
-              description: Reply-to address. Accepts a bare email (`a@b.com`) or the display-name form (`Name <a@b.com>`).
-            senderName:
-              type: string
-              minLength: 1
-              maxLength: 128
-            fromEmail:
-              type: string
-              minLength: 1
-              maxLength: 64
-            subject:
-              type: string
-              minLength: 1
-            previewText:
-              type: string
-              maxLength: 200
-          required:
-            - transactionId
             - to
           additionalProperties: false
         - type: object
@@ -5322,11 +5100,6 @@ components:
               type: string
               minLength: 1
               maxLength: 64
-            messageClass:
-              type: string
-              enum:
-                - marketing
-                - transactional
             consent:
               type: object
               properties:
@@ -5425,6 +5198,23 @@ components:
             - subject
             - domainId
           additionalProperties: false
+    SendPayloadValue:
+      anyOf:
+        - type: string
+        - type: number
+        - type: boolean
+        - type: "null"
+        - type: array
+          items:
+            oneOf:
+              - $ref: "#/components/schemas/SendPayloadValue"
+              - type: "null"
+          maxItems: 250
+        - type: object
+          additionalProperties:
+            oneOf:
+              - $ref: "#/components/schemas/SendPayloadValue"
+              - type: "null"
     SendCancelResponse:
       type: object
       properties:
@@ -5987,8 +5777,6 @@ components:
                 enum:
                   - marketing
                   - transactional
-              transactionId:
-                type: string
               sendContext:
                 type: string
               triggerProvider:
@@ -6145,12 +5933,6 @@ components:
                       previewText:
                         type: string
                         description: Inbox preheader — optional; the email design's <Preview> is the source of truth and wins when present.
-                      messageClass:
-                        type: string
-                        enum:
-                          - marketing
-                          - transactional
-                        description: Leftover snapshot; ignored at delivery — the class comes from the sending domain’s purpose (automations always send marketing-class mail).
                       fromName:
                         type: string
                         minLength: 1
@@ -7161,11 +6943,6 @@ components:
                               type: string
                             previewText:
                               type: string
-                            messageClass:
-                              type: string
-                              enum:
-                                - marketing
-                                - transactional
                             fromName:
                               type: string
                             fromAddress:
@@ -7638,12 +7415,6 @@ components:
                       previewText:
                         type: string
                         description: Inbox preheader — optional; the email design's <Preview> is the source of truth and wins when present.
-                      messageClass:
-                        type: string
-                        enum:
-                          - marketing
-                          - transactional
-                        description: Leftover snapshot; ignored at delivery — the class comes from the sending domain’s purpose (automations always send marketing-class mail).
                       fromName:
                         type: string
                         minLength: 1
@@ -8567,12 +8338,8 @@ components:
             automations:
               type: integer
               minimum: 0
-            transactionalEmails:
-              type: integer
-              minimum: 0
           required:
             - automations
-            - transactionalEmails
           additionalProperties: false
         receivedAt:
           type: string
@@ -9253,18 +9020,6 @@ components:
             triggerInstanceId:
               type: string
               description: Unique identifier for the persisted inbound row. Useful for support and replay. Set whenever an Idempotency-Key was provided.
-            publishedTransactionalEmails:
-              type: array
-              items:
-                type: object
-                properties:
-                  emailId:
-                    type: string
-                  title:
-                    type: string
-                required:
-                  - emailId
-                additionalProperties: {}
             publishedAutomations:
               type: array
               items:
@@ -9286,12 +9041,9 @@ components:
             counts:
               type: object
               properties:
-                transactionalEmails:
-                  type: integer
                 automations:
                   type: integer
               required:
-                - transactionalEmails
                 - automations
           additionalProperties: {}
       required:
@@ -9315,292 +9067,6 @@ components:
           description: Legacy body-field alternative to the `Idempotency-Key` HTTP header. Prefer the header for new integrations. The token is namespaced server-side with the API key org so different tenants cannot collide.
       required:
         - payload
-      additionalProperties: false
-    PayloadContractGetResponse:
-      type: object
-      properties:
-        subjectKind:
-          type: string
-          enum:
-            - trigger
-            - transactional
-        subjectId:
-          type: string
-          minLength: 1
-        source:
-          type: string
-          enum:
-            - stored
-            - derived_from_schema
-            - derived_from_template
-        typeName:
-          type: string
-          minLength: 1
-        contractHash:
-          type: string
-          minLength: 64
-          maxLength: 64
-        version:
-          type: integer
-          minimum: 1
-        enforcement:
-          type: string
-          enum:
-            - off
-            - prune
-            - strict
-        driftStatus:
-          type: string
-          enum:
-            - fresh
-            - stale
-        fields:
-          type: array
-          items:
-            $ref: "#/components/schemas/PayloadContractFieldNode"
-        format:
-          type: string
-          enum:
-            - json
-            - ts
-            - zod
-            - jsonschema
-            - skill
-        content:
-          type: string
-      required:
-        - subjectKind
-        - subjectId
-        - source
-        - typeName
-        - format
-      additionalProperties: false
-    PayloadContractFieldNode:
-      type: object
-      properties:
-        key:
-          type: string
-          minLength: 1
-          maxLength: 120
-        type:
-          type: string
-          enum:
-            - string
-            - int
-            - float
-            - boolean
-            - date
-            - enum
-            - object
-            - array
-            - unknown
-        required:
-          type: boolean
-        description:
-          type: string
-          maxLength: 500
-        exampleValue:
-          anyOf:
-            - type: string
-            - type: number
-            - type: boolean
-        fallbackValue:
-          anyOf:
-            - type: string
-            - type: number
-            - type: boolean
-        pii:
-          type: string
-          enum:
-            - none
-            - low
-            - high
-        enumValues:
-          type: array
-          items:
-            type: string
-            minLength: 1
-          maxItems: 50
-        itemType:
-          anyOf:
-            - type: string
-              enum:
-                - string
-                - int
-                - float
-                - boolean
-                - date
-                - enum
-            - type: string
-              enum:
-                - unknown
-        usedIn:
-          type: array
-          items:
-            type: string
-            enum:
-              - body
-              - subject
-              - previewText
-          maxItems: 3
-        children:
-          type: array
-          items:
-            $ref: "#/components/schemas/PayloadContractFieldNode"
-          maxItems: 100
-      required:
-        - key
-        - type
-        - required
-      additionalProperties: false
-    PayloadContractPutRequest:
-      type: object
-      properties:
-        fields:
-          type: array
-          items:
-            $ref: "#/components/schemas/PayloadContractFieldNode"
-          minItems: 1
-          maxItems: 100
-        name:
-          type: string
-          minLength: 1
-          maxLength: 160
-        enforcement:
-          type: string
-          enum:
-            - off
-            - prune
-            - strict
-      additionalProperties: false
-    PayloadContractValidateResponse:
-      type: object
-      properties:
-        valid:
-          type: boolean
-        errors:
-          type: array
-          items:
-            type: object
-            properties:
-              code:
-                type: string
-                enum:
-                  - payload_not_object
-                  - missing_required
-                  - invalid_type
-                  - unexpected_key
-              field:
-                type: string
-              message:
-                type: string
-              expectedType:
-                type: string
-              actualType:
-                type: string
-            required:
-              - code
-              - field
-              - message
-            additionalProperties: false
-        warnings:
-          type: array
-          items:
-            type: object
-            properties:
-              code:
-                type: string
-                enum:
-                  - payload_not_object
-                  - missing_required
-                  - invalid_type
-                  - unexpected_key
-              field:
-                type: string
-              message:
-                type: string
-              expectedType:
-                type: string
-              actualType:
-                type: string
-            required:
-              - code
-              - field
-              - message
-            additionalProperties: false
-        resolvedPayload:
-          type: object
-          additionalProperties: {}
-        prunedKeys:
-          type: array
-          items:
-            type: string
-        source:
-          type: string
-          enum:
-            - stored
-            - derived_from_schema
-            - derived_from_template
-        contractHash:
-          type: string
-          minLength: 64
-          maxLength: 64
-      required:
-        - valid
-        - errors
-        - warnings
-        - resolvedPayload
-        - prunedKeys
-        - source
-      additionalProperties: false
-    PayloadContractValidateRequest:
-      type: object
-      properties:
-        payload:
-          type: object
-          additionalProperties: {}
-        enforcement:
-          type: string
-          enum:
-            - prune
-            - strict
-      required:
-        - payload
-      additionalProperties: false
-    PayloadContractInferResponse:
-      type: object
-      properties:
-        fields:
-          type: array
-          items:
-            $ref: "#/components/schemas/PayloadContractFieldNode"
-        issues:
-          type: array
-          items:
-            type: object
-            properties:
-              message:
-                type: string
-            required:
-              - message
-            additionalProperties: false
-      required:
-        - fields
-        - issues
-      additionalProperties: false
-    PayloadContractInferRequest:
-      type: object
-      properties:
-        example:
-          type: object
-          additionalProperties: {}
-        subjectKind:
-          type: string
-          enum:
-            - trigger
-            - transactional
-      required:
-        - example
       additionalProperties: false
     EventsListResponse:
       type: object
@@ -11544,7 +11010,7 @@ components:
                 enum:
                   - marketing
                   - transactional
-                description: marketing (default) or transactional. Transactional domains skip unsubscribe and may only send via API/MCP inline `to` (or a test send).
+                description: marketing (default) or transactional. Transactional domains skip unsubscribe and send via automation sendEmail nodes (or a test send).
               records:
                 type: array
                 items:
@@ -11640,7 +11106,7 @@ components:
             - marketing
             - transactional
           default: marketing
-          description: marketing (default) for campaigns and automations, or transactional for API/MCP inline `to` only.
+          description: marketing (default) for campaigns and audience sends, or transactional for event-triggered automation mail (no unsubscribe requirement).
       required:
         - name
       additionalProperties: false
@@ -11661,7 +11127,7 @@ components:
           enum:
             - marketing
             - transactional
-          description: Change the domain purpose. Live gates fail closed if a campaign or automation still points at a transactional domain.
+          description: Change the domain purpose. Live gates fail closed if a campaign still points at a transactional domain; automation sends re-derive their class from the new purpose.
       additionalProperties: false
     DomainsDeleteResponse:
       type: object
@@ -16088,7 +15554,7 @@ paths:
                 $ref: "#/components/schemas/EmailAuditResponse"
               example:
                 schemaVersion: 1
-                rulesetVersion: 2026-08-23.4
+                rulesetVersion: 2026-08-24.3
                 auditId: 00000000-0000-4000-8000-000000000001
                 contentHash: sha256:0000000000000000000000000000000000000000000000000000000000000000
                 auditedAt: 2026-08-23T00:00:00.000Z
@@ -18179,7 +17645,7 @@ paths:
       tags:
         - Analytics
       summary: Get email sends
-      description: "Unified send read. A send is the unit of delivery + analytics: one design delivered to a target (audience, inline list, or single address) via one domain. Default LIST is campaign-only. Filter object-fired transactional rows with `?kind=transactional` and/or `?transactionId=`. Leftover `?messageClass=` still filters campaign-era rows. Omit `sendId` to LIST newest first under `{ data, pagination }`; also filter with `?status=`, `?emailId=`, or the `from`/`to` ISO-8601 window. Pass `?sendId=` to fetch ONE — returns `{ data: [row] }` (no `pagination`), `404 SEND_NOT_FOUND` on an unknown / cross-brand id; add `?include=events` (detail only) for a bounded first page of the send’s analytics events. `sendId` and `emailId` are mutually exclusive."
+      description: "Unified send read. A send is the unit of delivery + analytics: one design delivered to a target (audience, inline list, or single address) via one domain. Default LIST is campaign-only. Filter by `?messageClass=` (`marketing` | `transactional` — the admission snapshot from the sending domain). Omit `sendId` to LIST newest first under `{ data, pagination }`; also filter with `?status=`, `?emailId=`, or the `from`/`to` ISO-8601 window. Pass `?sendId=` to fetch ONE — returns `{ data: [row] }` (no `pagination`), `404 SEND_NOT_FOUND` on an unknown / cross-brand id; add `?include=events` (detail only) for a bounded first page of the send’s analytics events. `sendId` and `emailId` are mutually exclusive."
       parameters:
         - name: sendId
           in: query
@@ -18222,29 +17688,12 @@ paths:
         - name: messageClass
           in: query
           required: false
-          description: Admission snapshot on leftover campaign-era rows (`marketing` | `transactional`). Prefer `kind` / `transactionId` for object-fired transactional sends. Absent stamps match as marketing.
+          description: Admission snapshot copied from the sending domain (`marketing` | `transactional`). Absent stamps match as marketing.
           schema:
             type: string
             enum:
               - marketing
               - transactional
-        - name: kind
-          in: query
-          required: false
-          description: "List `campaign` (default) or `transactional` fires. Object-fired rows use `kind: transactional` and carry `transactionId`."
-          schema:
-            type: string
-            enum:
-              - campaign
-              - transactional
-        - name: transactionId
-          in: query
-          required: false
-          description: List fires for one transactional email object (`txn_…`). Implies transactional rows.
-          schema:
-            type: string
-            minLength: 1
-            maxLength: 128
         - name: from
           in: query
           required: false
@@ -18513,10 +17962,9 @@ paths:
         - Emails
       summary: Send an email
       description: |-
-        Sends an email design. Polymorphic on `test` / `transactionId`:
+        Sends an email design. Polymorphic on `test`:
 
         - **`test: true`** → a synchronous one-off TEST delivery of the design’s current (or pinned) body to a single address, with a `[TEST]` subject prefix. Sends from the Brew default sender unless a verified org-owned `domainId` is supplied (`fromEmail`/`senderName` customize it; an unverified/foreign domain is rejected, never downgraded). Optional `variables` supply example values for `{{ var | fallback }}` merge tags — a value wins over the declared fallback. Targets one `to` address and never creates a `Send` row. Returns **`200`** `{ status: "sent", recipient }`.
-        - **`transactionId`** → fire a reusable transactional email object. Domain and design are locked on the object; `to` (1–50) is required; optional `payload` supplies merge-tag values. Optional envelope overrides: `replyTo`, `senderName`, `fromEmail`, `subject`, `previewText`. Creates a `sends` row with `kind: transactional`. Returns **`202`** `{ sendId, runId }`. Prefer this over leftover inline `emailId` + `domainId` + `to` on a transactional domain.
         - **default / `test: false`** → a campaign send combining the design (`emailId`, optionally pinned to `emailVersionId`), a verified `domainId`, and a target — a saved `audienceId` OR inline `to` (a single email or an array, max 50) — into one delivery event. The same design can be sent unlimited times; every call mints a new send. Returns **`202`** `{ sendId, runId }` — poll via `GET /v1/analytics/sends?sendId=`.
 
         Campaign target — provide EXACTLY ONE of `audienceId` or `to`. Inline recipients face the same unsubscribe/suppression gate and per-recipient quota as audience sends. For per-recipient event-driven delivery, publish an automation and fire its trigger (`POST /v1/automations/triggers/{triggerEventId}/fire`).
@@ -18584,30 +18032,6 @@ paths:
                   to:
                     - founder@acme.com
                     - design@acme.com
-              transactional:
-                summary: Fire a transactional email by transactionId
-                value:
-                  transactionId: txn_8fK2mQ4pLx
-                  to: customer@acme.com
-                  payload:
-                    orderId: "1234"
-                    firstName: Ada
-              transactionalNested:
-                summary: Fire a Liquid-templated transactional email with nested payload data
-                value:
-                  transactionId: txn_8fK2mQ4pLx
-                  to: customer@acme.com
-                  payload:
-                    projects:
-                      - project_name: Q3 Consolidation
-                        mappings:
-                          - quickbooks_account:
-                              entity_name: FRC
-                              number: "1218"
-                              name: Investment Account
-                            consolidation_account:
-                              number: null
-                              name: Other Assets
       responses:
         "200":
           description: "The TEST send (`test: true`) was delivered synchronously to the single recipient."
@@ -18774,7 +18198,7 @@ paths:
                   docs: https://docs.brew.new/api-reference/api/errors
                   param: emailId
         "409":
-          description: Idempotency-Key replay with a different body, or (transactional fires) a stale `expectedContractHash` pin — the stored contract changed since your types were generated, or no contract is stored at all. Fails closed before anything sends.
+          description: The same `Idempotency-Key` was reused with a different request body.
           headers:
             x-request-id:
               schema:
@@ -18787,31 +18211,15 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelope"
-              examples:
-                idempotencyConflict:
-                  summary: Idempotency-Key reused with a different body
-                  value:
-                    error:
-                      code: IDEMPOTENCY_CONFLICT
-                      type: conflict
-                      message: This Idempotency-Key was already used with a different request body.
-                      suggestion: Use a new key to send a different request.
-                      docs: https://docs.brew.new/api-reference/api/errors
-                contractDrifted:
-                  summary: expectedContractHash no longer matches
-                  value:
-                    error:
-                      code: CONTRACT_DRIFTED
-                      type: conflict
-                      message: The stored payload contract no longer matches expectedContractHash — regenerate your types from GET …/contract and retry.
-                      suggestion: GET /v1/transactional/{transactionId}/contract returns the current contractHash; regenerate generated types and retry with the fresh hash.
-                      docs: https://docs.brew.new/api-reference/api/errors
-                      param: expectedContractHash
-                      details:
-                        expectedHash: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-                        actualHash: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+              example:
+                error:
+                  code: IDEMPOTENCY_CONFLICT
+                  type: conflict
+                  message: The same idempotency key was reused with a different request payload.
+                  suggestion: Reuse the original payload or send a new idempotency key.
+                  docs: https://docs.brew.new/api-reference/api/idempotency
         "422":
-          description: The referenced resource exists but is not ready, or (transactional fires with an ENFORCED contract) the payload failed contract validation.
+          description: The referenced resource exists but is not ready.
           headers:
             x-request-id:
               schema:
@@ -18825,24 +18233,6 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelope"
               examples:
-                contractValidationFailed:
-                  summary: Enforced contract rejected the payload
-                  value:
-                    error:
-                      code: CONTRACT_VALIDATION_FAILED
-                      type: invalid_request
-                      message: 'Payload failed the enforced contract: Required field "total" is missing'
-                      suggestion: Fix the payload per `details.errors`, or dry-run with POST …/contract/validate.
-                      docs: https://docs.brew.new/api-reference/api/errors
-                      param: payload
-                      details:
-                        errors:
-                          - code: missing_required
-                            field: total
-                            message: Required field "total" is missing
-                        warnings: []
-                        contractHash: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-                        enforcement: prune
                 domainNotReady:
                   summary: Domain not verified
                   value:
@@ -19517,248 +18907,6 @@ paths:
                   suggestion: Check the send status via GET /v1/analytics/sends?sendId=… — only a paused gradual send can be resumed.
                   docs: https://docs.brew.new/api-reference/api/errors
                   param: sendId
-        "429":
-          description: The request hit the rolling rate limit window.
-          headers:
-            x-request-id:
-              schema:
-                type: string
-                description: Unique request identifier. Share this with support when debugging a request.
-                example: req_8cac13fd94e6420cacdd75a1aa403a28
-              required: true
-              description: Unique request identifier. Share this with support when debugging a request.
-            X-RateLimit-Limit:
-              schema:
-                type: integer
-                description: Requests allowed in the current rolling rate limit window.
-                example: 100
-              required: true
-              description: Requests allowed in the current rolling rate limit window.
-            X-RateLimit-Remaining:
-              schema:
-                type: integer
-                description: Requests remaining in the current rolling rate limit window.
-                example: 99
-              required: true
-              description: Requests remaining in the current rolling rate limit window.
-            X-RateLimit-Reset:
-              schema:
-                type: integer
-                description: Unix timestamp in seconds for when the rolling window fully resets.
-                example: 1712592360
-              required: true
-              description: Unix timestamp in seconds for when the rolling window fully resets.
-            Retry-After:
-              schema:
-                type: integer
-                description: Seconds to wait before retrying the request.
-                example: 42
-              required: true
-              description: Seconds to wait before retrying the request.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiErrorEnvelope"
-              example:
-                error:
-                  code: RATE_LIMITED
-                  type: rate_limit
-                  message: Too many requests.
-                  suggestion: Wait for the retry window before sending another request.
-                  docs: https://docs.brew.new/api-reference/api/rate-limits
-                  retryAfter: 42
-        "500":
-          description: Unexpected internal error.
-          headers:
-            x-request-id:
-              schema:
-                type: string
-                description: Unique request identifier. Share this with support when debugging a request.
-                example: req_8cac13fd94e6420cacdd75a1aa403a28
-              required: true
-              description: Unique request identifier. Share this with support when debugging a request.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiErrorEnvelope"
-              example:
-                error:
-                  code: INTERNAL_ERROR
-                  type: internal_error
-                  message: An unexpected error occurred.
-                  suggestion: Retry the request. If it keeps failing, contact support.
-                  docs: https://docs.brew.new/api-reference/api/errors
-  /v1/transactional/{transactionId}:
-    get:
-      operationId: getTransactionalEmail
-      tags:
-        - Emails
-      summary: Get a transactional email
-      description: "Read a reusable transactional email object: locked `domainId` / `emailId` / `emailVersionId`, envelope defaults, and the merge-tag list for snippets. The response also carries the payload contract — `variableTree` (every `trigger.*` / `customer.*` path the pinned template references, with array/object shape and fallbacks), `examplePayload` (a nested payload that fires verbatim), and `templating` (parse validity). Recomputed from the pinned design on every read. Fire it with `POST /v1/sends { transactionId, to, payload? }`. Permission: `sends`. There is no `messageClass` on this object — purpose lives on the sending domain."
-      parameters:
-        - name: include
-          in: query
-          required: false
-          description: "Pass `skill` to add a `skill` field to the response: a complete SKILL.md-shaped wiring brief (endpoint, auth, typed payload contract, copy-paste snippets) for a coding agent or your repo."
-          schema:
-            type: string
-            enum:
-              - skill
-        - schema:
-            type: string
-            minLength: 1
-            maxLength: 128
-            description: Public transactional email id (`txn_…`) returned when the object is created.
-            example: txn_8fK2mQ4pLx
-          required: true
-          description: Public transactional email id (`txn_…`) returned when the object is created.
-          name: transactionId
-          in: path
-        - name: X-Brand-Id
-          in: header
-          required: false
-          description: The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
-          schema:
-            type: string
-            minLength: 1
-            maxLength: 64
-          example: kx7b3s7fapqz8mjm12ekz1kxdx87yceg
-      responses:
-        "200":
-          description: The transactional email object.
-          headers:
-            x-request-id:
-              schema:
-                type: string
-                description: Unique request identifier. Share this with support when debugging a request.
-                example: req_8cac13fd94e6420cacdd75a1aa403a28
-              required: true
-              description: Unique request identifier. Share this with support when debugging a request.
-            X-RateLimit-Limit:
-              schema:
-                type: integer
-                description: Requests allowed in the current rolling rate limit window.
-                example: 100
-              required: true
-              description: Requests allowed in the current rolling rate limit window.
-            X-RateLimit-Remaining:
-              schema:
-                type: integer
-                description: Requests remaining in the current rolling rate limit window.
-                example: 99
-              required: true
-              description: Requests remaining in the current rolling rate limit window.
-            X-RateLimit-Reset:
-              schema:
-                type: integer
-                description: Unix timestamp in seconds for when the rolling window fully resets.
-                example: 1712592360
-              required: true
-              description: Unix timestamp in seconds for when the rolling window fully resets.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/TransactionalEmail"
-              example:
-                transactionId: txn_8fK2mQ4pLx
-                emailId: eml_receipt
-                emailVersionId: emv_receipt_v2
-                domainId: kx7bkh53hasmfeh5kd7sqgykt187g8ww
-                subject: Your receipt from Acme
-                previewText: "Order #1234"
-                createdAt: 2026-08-18T12:00:00.000Z
-                updatedAt: 2026-08-18T12:00:00.000Z
-                variables:
-                  - name: orderId
-                    type: string
-                    fallback: null
-                  - name: firstName
-                    type: string
-                    fallback: there
-                templating:
-                  valid: true
-                  errors: []
-                variableTree:
-                  - key: order
-                    path: trigger.order
-                    kind: object
-                    fallback: null
-                    namespace: trigger
-                    children:
-                      - key: total
-                        path: trigger.order.total
-                        kind: scalar
-                        fallback: null
-                        namespace: trigger
-                        children: []
-                examplePayload:
-                  order:
-                    total: example_total
-        "401":
-          description: The API key was missing, invalid, or revoked.
-          headers:
-            x-request-id:
-              schema:
-                type: string
-                description: Unique request identifier. Share this with support when debugging a request.
-                example: req_8cac13fd94e6420cacdd75a1aa403a28
-              required: true
-              description: Unique request identifier. Share this with support when debugging a request.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiErrorEnvelope"
-              example:
-                error:
-                  code: INVALID_API_KEY
-                  type: authentication_error
-                  message: The provided API key is invalid.
-                  suggestion: Check the API key format and retry with a valid active key.
-                  docs: https://docs.brew.new/api-reference/api/authentication
-        "403":
-          description: The caller does not have the required `sends` permission.
-          headers:
-            x-request-id:
-              schema:
-                type: string
-                description: Unique request identifier. Share this with support when debugging a request.
-                example: req_8cac13fd94e6420cacdd75a1aa403a28
-              required: true
-              description: Unique request identifier. Share this with support when debugging a request.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiErrorEnvelope"
-              example:
-                error:
-                  code: INSUFFICIENT_PERMISSIONS
-                  type: authorization_error
-                  message: The caller does not have the required permission.
-                  suggestion: Use an API key or session with the required permission.
-                  docs: https://docs.brew.new/api-reference/api/authentication
-                  param: sends
-        "404":
-          description: Transactional email not found in the API-key brand. Cross-brand ids intentionally surface as 404 (never 403) so the API does not leak cross-brand existence.
-          headers:
-            x-request-id:
-              schema:
-                type: string
-                description: Unique request identifier. Share this with support when debugging a request.
-                example: req_8cac13fd94e6420cacdd75a1aa403a28
-              required: true
-              description: Unique request identifier. Share this with support when debugging a request.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiErrorEnvelope"
-              example:
-                error:
-                  code: TRANSACTIONAL_EMAIL_NOT_FOUND
-                  type: not_found
-                  message: No transactional email was found with id 'txn_xxx'.
-                  suggestion: Create one from Email Actions → Transactional Email, then fire it with POST /v1/sends { transactionId, to }.
-                  docs: https://docs.brew.new/api-reference/api/errors
-                  param: transactionId
         "429":
           description: The request hit the rolling rate limit window.
           headers:
@@ -20588,7 +19736,7 @@ paths:
       tags:
         - Analytics
       summary: Unified events feed
-      description: "Read-only window over the brand’s analytics events across domains (email, automation, trigger, inbound). Defaults to the last 7 days. Equality filters: `recipientEmail`, `eventType`, `automationId`, `sendId` (join back to `/v1/analytics/sends?sendId=`), `messageClass` (`marketing` | `transactional` — same event object; absent stamps match as marketing). Recipient rules — `recipient` (csv, ≤10): a full address matches exactly, `@domain` matches everyone on that domain, any other text matches as a substring, and a `!` prefix excludes (`recipient=@clay.com,!ceo@clay.com` = clay recipients except the CEO); includes OR together, excludes always apply. Send-object facets — `source` (csv of send sources), `audienceId` (csv, ≤20), `emailId` (design), `domain` (sending domain), `triggerEventId` (csv, ≤10 — integration trigger-events resolved to their wired automations), `messageClass`: when ANY facet or recipient rule is present the feed narrows to EMAIL events only and each row is enriched with `sendSource` + `sendContext` + `messageClass` (plus `triggerProvider`/`triggerTitle` on integration/custom-triggered rows). Overview/insights collect transactional events like any other email event. Machine/bot-classified `clicked` AND `opened` rows (scanner detonation, Apple-proxy prefetch) are EXCLUDED by default (matching `/v1/analytics/overview`); pass `includeMachineClicks=true` / `includeMachineOpens=true` to include the raw rows (audit/debug only). Cursor pagination — pass `pagination.cursor` back as `?cursor=`; loop `while (cursor !== null)`. Requires the `emails` scope."
+      description: "Read-only window over the brand’s analytics events across domains (email, automation, trigger, inbound). Defaults to the last 7 days. Equality filters: `recipientEmail`, `eventType`, `automationId`, `sendId` (join back to `/v1/analytics/sends?sendId=`), `messageClass` (`marketing` | `transactional` — same event object; absent stamps match as marketing). Recipient rules — `recipient` (csv, ≤10): a full address matches exactly, `@domain` matches everyone on that domain, any other text matches as a substring, and a `!` prefix excludes (`recipient=@clay.com,!ceo@clay.com` = clay recipients except the CEO); includes OR together, excludes always apply. Send-object facets — `source` (csv of send sources), `audienceId` (csv, ≤20), `emailId` (design), `domain` (sending domain), `triggerEventId` (csv, ≤10 — integration trigger-events resolved to their wired automations), `messageClass`: when ANY facet or recipient rule is present the feed narrows to EMAIL events only and each row is enriched with `sendSource` + `sendContext` + `messageClass` (plus `triggerProvider`/`triggerTitle` on integration/custom-triggered rows). Overview/insights collect transactional-class events like any other email event. Machine/bot-classified `clicked` AND `opened` rows (scanner detonation, Apple-proxy prefetch) are EXCLUDED by default (matching `/v1/analytics/overview`); pass `includeMachineClicks=true` / `includeMachineOpens=true` to include the raw rows (audit/debug only). Cursor pagination — pass `pagination.cursor` back as `?cursor=`; loop `while (cursor !== null)`. Requires the `emails` scope."
       parameters:
         - name: from
           in: query
@@ -20646,14 +19794,6 @@ paths:
             enum:
               - marketing
               - transactional
-        - name: transactionId
-          in: query
-          required: false
-          description: "Transactional-object scope (`txn_…`): events from EVERY fire of one reusable transactional email object. Prefer this over `sendId` for object-level reporting; rows carry `transactionId` back. Narrows the feed to email events."
-          schema:
-            type: string
-            minLength: 1
-            maxLength: 128
         - name: source
           in: query
           required: false
@@ -20931,7 +20071,7 @@ paths:
 
         **Typed conditions:** every filter and condition-mode split uses a non-empty `conditions` array. Each condition requires `field`, `type` (`string`, `number`, `date`, or `bool`), and a canonical snake_case `operator`. Unary operators omit `value`; comparisons require a type-correct scalar, non-empty array, or exact two-value `between` tuple as documented by `AutomationNode`.
 
-        Chain `POST /v1/emails { prompt }` first to mint the design each `sendEmail` node references — every `sendEmail` node MUST carry `emailId`, `emailVersionId`, `subject` (`previewText` is optional: the email design's JSX `<Preview>` is the preview source of truth). `domainId` is optional on create/save; publishing (`PATCH … { published: true }`) or running (`POST …/run`) requires a verified `domainId` from `GET /v1/domains`. `messageClass` is optional and behaves as `"marketing"` at send time when unset.
+        Chain `POST /v1/emails { prompt }` first to mint the design each `sendEmail` node references — every `sendEmail` node MUST carry `emailId`, `emailVersionId`, `subject` (`previewText` is optional: the email design's JSX `<Preview>` is the preview source of truth). `domainId` is optional on create/save; publishing (`PATCH … { published: true }`) or running (`POST …/run`) requires a verified `domainId` from `GET /v1/domains`. There is no `messageClass` key: the delivery class always derives from the sending domain's `sendingPurpose` (a transactional-purpose domain sends with no unsubscribe link and delivers to unsubscribed contacts) — pick the class by picking the domain.
 
         **Dry-run** — add `dryRun: true` (alias `dry_run`) to validate without persisting; returns `200` with an `AutomationDryRunReport`: `{ valid, blockers[], warnings[], blockingIssues[], nodeCounts }`. `blockers[]` (severity `error`) fail publish; `warnings[]` are advisory. `blockingIssues[]` lists per-node references the bound trigger or contact catalog cannot provide. `valid` is false when any blocker or any blocking issue is present.
       parameters:
@@ -24314,7 +23454,7 @@ paths:
         - Automations
       summary: Pre-flight a trigger (ready check)
       description: |-
-        Verifies a fire would be accepted WITHOUT firing: authenticates the key, resolves the trigger in your organization/brand scope, and checks permissions — the same gates a real `POST` hits. `status: "ready"` returns the contract a caller needs to wire an external service: `details.payloadSchema`, `details.endpoint`, and the matched published consumers (`publishedAutomations`, `publishedTransactionalEmails`, `counts`).
+        Verifies a fire would be accepted WITHOUT firing: authenticates the key, resolves the trigger in your organization/brand scope, and checks permissions — the same gates a real `POST` hits. `status: "ready"` returns the contract a caller needs to wire an external service: `details.payloadSchema`, `details.endpoint`, and the matched published consumers (`publishedAutomations`, `counts.automations`).
 
         Use it while integrating, before anything is published: a ready trigger with `counts.automations: 0` accepts fires but starts no runs until an attached automation is published.
 
@@ -24400,9 +23540,7 @@ paths:
                   publishedAutomations:
                     - automationId: auto_abc
                       title: Welcome flow
-                  publishedTransactionalEmails: []
                   counts:
-                    transactionalEmails: 0
                     automations: 1
         "401":
           description: The API key was missing, invalid, or revoked.
@@ -24614,7 +23752,6 @@ paths:
                   automationRunIds:
                     - run_01HZ
                   counts:
-                    transactionalEmails: 0
                     automations: 1
         "400":
           description: 'Invalid JSON, or the payload does not satisfy the trigger’s `payloadSchema` (`status: "payload_mismatch"`). Errors use the same fire envelope with `success: false`.'
@@ -24792,1679 +23929,6 @@ paths:
                   message: An unexpected error occurred.
                   suggestion: Retry the request. If it keeps failing, contact support.
                   docs: https://docs.brew.new/api-reference/api/errors
-  /v1/automations/triggers/{triggerEventId}/contract:
-    get:
-      operationId: getTriggerContract
-      tags:
-        - Automations
-      summary: Get a trigger payload contract
-      description: |-
-        The payload contract for the trigger: the STORED contract when one has been declared (`source: "stored"`, with `contractHash`, `version`, `enforcement`), otherwise the derived one (`source: "derived_from_schema"`, built from the trigger’s flat `payloadSchema`).
-
-        Contract fields form a tree: scalars (`string` | `int` | `float` | `boolean` | `date` | `enum`), `object` nodes with `children`, and `array` nodes with `children` (element object shape) or `itemType` (scalar elements). Derived contracts may carry `type: "unknown"` where no type evidence exists.
-
-        Pass `?format=` for generated artifacts instead of the JSON contract.
-      parameters:
-        - &a19
-          name: format
-          in: query
-          required: false
-          description: Rendering. `json` (default) returns the contract object; `ts` | `zod` | `jsonschema` | `skill` return `{format, content}` — a generated TypeScript type, Zod schema, JSON Schema document, or SKILL.md wiring brief.
-          schema:
-            type: string
-            enum:
-              - json
-              - ts
-              - zod
-              - jsonschema
-              - skill
-        - schema:
-            type: string
-            minLength: 1
-            maxLength: 256
-            description: Trigger id returned by `POST /v1/automations/triggers` (integration triggers use composite ids — URL-encode the colons).
-            example: tri_signup
-          required: true
-          description: Trigger id returned by `POST /v1/automations/triggers` (integration triggers use composite ids — URL-encode the colons).
-          name: triggerEventId
-          in: path
-        - name: X-Brand-Id
-          in: header
-          required: false
-          description: The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
-          schema:
-            type: string
-            minLength: 1
-            maxLength: 64
-          example: kx7b3s7fapqz8mjm12ekz1kxdx87yceg
-      responses:
-        "200":
-          description: The contract (`format=json`, default) or `{format, content}` for text formats.
-          headers:
-            x-request-id:
-              schema:
-                type: string
-                description: Unique request identifier. Share this with support when debugging a request.
-                example: req_8cac13fd94e6420cacdd75a1aa403a28
-              required: true
-              description: Unique request identifier. Share this with support when debugging a request.
-            X-RateLimit-Limit:
-              schema:
-                type: integer
-                description: Requests allowed in the current rolling rate limit window.
-                example: 100
-              required: true
-              description: Requests allowed in the current rolling rate limit window.
-            X-RateLimit-Remaining:
-              schema:
-                type: integer
-                description: Requests remaining in the current rolling rate limit window.
-                example: 99
-              required: true
-              description: Requests remaining in the current rolling rate limit window.
-            X-RateLimit-Reset:
-              schema:
-                type: integer
-                description: Unix timestamp in seconds for when the rolling window fully resets.
-                example: 1712592360
-              required: true
-              description: Unix timestamp in seconds for when the rolling window fully resets.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/PayloadContractGetResponse"
-              example: &a17
-                subjectKind: trigger
-                subjectId: tri_signup
-                source: stored
-                typeName: UserSignedUpPayload
-                contractHash: 22545d11e1d174ba0717ed37c9c4b460c96bed51ae31ea0af18266ebba30f76a
-                version: 2
-                enforcement: off
-                fields: &a20
-                  - key: email
-                    type: string
-                    required: true
-                  - key: plan
-                    type: enum
-                    required: false
-                    enumValues:
-                      - free
-                      - pro
-                    fallbackValue: free
-                  - key: order
-                    type: object
-                    required: false
-                    children:
-                      - key: total
-                        type: float
-                        required: true
-        "400":
-          description: "The request body or query string was invalid (unknown key, wrong type, or missing required field). Strict schemas reject unknown keys — including `brandId`: a brand is named with the `X-Brand-Id` HEADER (organization-scoped credentials) or resolved from the credential itself (brand-scoped ones), never as a body or query field."
-          headers:
-            x-request-id:
-              schema:
-                type: string
-                description: Unique request identifier. Share this with support when debugging a request.
-                example: req_8cac13fd94e6420cacdd75a1aa403a28
-              required: true
-              description: Unique request identifier. Share this with support when debugging a request.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiErrorEnvelope"
-              example:
-                error:
-                  code: INVALID_REQUEST
-                  type: invalid_request
-                  message: Request validation failed.
-                  suggestion: Fix the field reported in `param` and retry.
-                  docs: https://docs.brew.new/api-reference/api/errors
-                  param: format
-        "401":
-          description: The API key was missing, invalid, or revoked.
-          headers:
-            x-request-id:
-              schema:
-                type: string
-                description: Unique request identifier. Share this with support when debugging a request.
-                example: req_8cac13fd94e6420cacdd75a1aa403a28
-              required: true
-              description: Unique request identifier. Share this with support when debugging a request.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiErrorEnvelope"
-              example:
-                error:
-                  code: INVALID_API_KEY
-                  type: authentication_error
-                  message: The provided API key is invalid.
-                  suggestion: Check the API key format and retry with a valid active key.
-                  docs: https://docs.brew.new/api-reference/api/authentication
-        "403":
-          description: The caller does not have the required `automations` permission.
-          headers:
-            x-request-id:
-              schema:
-                type: string
-                description: Unique request identifier. Share this with support when debugging a request.
-                example: req_8cac13fd94e6420cacdd75a1aa403a28
-              required: true
-              description: Unique request identifier. Share this with support when debugging a request.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiErrorEnvelope"
-              example:
-                error:
-                  code: INSUFFICIENT_PERMISSIONS
-                  type: authorization_error
-                  message: The caller does not have the required permission.
-                  suggestion: Use an API key or session with the required permission.
-                  docs: https://docs.brew.new/api-reference/api/authentication
-                  param: automations
-        "404":
-          description: Trigger not found in the API-key brand. Cross-brand ids intentionally surface as 404 (never 403) so the API does not leak cross-brand existence.
-          headers:
-            x-request-id:
-              schema:
-                type: string
-                description: Unique request identifier. Share this with support when debugging a request.
-                example: req_8cac13fd94e6420cacdd75a1aa403a28
-              required: true
-              description: Unique request identifier. Share this with support when debugging a request.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiErrorEnvelope"
-              example: &a18
-                error:
-                  code: TRIGGER_EVENT_NOT_FOUND
-                  type: not_found
-                  message: Trigger event 'tri_xxx' was not found.
-                  suggestion: List triggers with GET /v1/automations/triggers.
-                  docs: https://docs.brew.new/api-reference/api/errors
-                  param: triggerEventId
-        "429":
-          description: The request hit the rolling rate limit window.
-          headers:
-            x-request-id:
-              schema:
-                type: string
-                description: Unique request identifier. Share this with support when debugging a request.
-                example: req_8cac13fd94e6420cacdd75a1aa403a28
-              required: true
-              description: Unique request identifier. Share this with support when debugging a request.
-            X-RateLimit-Limit:
-              schema:
-                type: integer
-                description: Requests allowed in the current rolling rate limit window.
-                example: 100
-              required: true
-              description: Requests allowed in the current rolling rate limit window.
-            X-RateLimit-Remaining:
-              schema:
-                type: integer
-                description: Requests remaining in the current rolling rate limit window.
-                example: 99
-              required: true
-              description: Requests remaining in the current rolling rate limit window.
-            X-RateLimit-Reset:
-              schema:
-                type: integer
-                description: Unix timestamp in seconds for when the rolling window fully resets.
-                example: 1712592360
-              required: true
-              description: Unix timestamp in seconds for when the rolling window fully resets.
-            Retry-After:
-              schema:
-                type: integer
-                description: Seconds to wait before retrying the request.
-                example: 42
-              required: true
-              description: Seconds to wait before retrying the request.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiErrorEnvelope"
-              example:
-                error:
-                  code: RATE_LIMITED
-                  type: rate_limit
-                  message: Too many requests.
-                  suggestion: Wait for the retry window before sending another request.
-                  docs: https://docs.brew.new/api-reference/api/rate-limits
-                  retryAfter: 42
-        "500":
-          description: Unexpected internal error.
-          headers:
-            x-request-id:
-              schema:
-                type: string
-                description: Unique request identifier. Share this with support when debugging a request.
-                example: req_8cac13fd94e6420cacdd75a1aa403a28
-              required: true
-              description: Unique request identifier. Share this with support when debugging a request.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiErrorEnvelope"
-              example:
-                error:
-                  code: INTERNAL_ERROR
-                  type: internal_error
-                  message: An unexpected error occurred.
-                  suggestion: Retry the request. If it keeps failing, contact support.
-                  docs: https://docs.brew.new/api-reference/api/errors
-    put:
-      operationId: setTriggerContract
-      tags:
-        - Automations
-      summary: Declare a trigger payload contract
-      description: |-
-        Declares the stored payload contract for the trigger, changes how it is enforced, or both — in one call. `fields` is optional, so flipping enforcement never means re-sending the whole tree. The whole tree is validated structurally BEFORE any write — unknown-typed nodes are refused (declare a concrete type), keys must be unique per level, and an `object` field must declare at least one child. Trigger contracts MUST keep a top-level `{ key: "email", type: "string", required: true }` field so automations can resolve a recipient.
-
-        The contract version bumps only when the behavioral surface changes (keys, types, required, fallbacks — not descriptions or examples). Declaring a contract never changes fire behavior by itself: enforcement stays off until explicitly enabled.
-
-        Responds with the same body a follow-up `GET …/contract` would return.
-      parameters:
-        - schema:
-            type: string
-            minLength: 1
-            maxLength: 256
-            description: Trigger id returned by `POST /v1/automations/triggers` (integration triggers use composite ids — URL-encode the colons).
-            example: tri_signup
-          required: true
-          description: Trigger id returned by `POST /v1/automations/triggers` (integration triggers use composite ids — URL-encode the colons).
-          name: triggerEventId
-          in: path
-        - name: X-Brand-Id
-          in: header
-          required: false
-          description: The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
-          schema:
-            type: string
-            minLength: 1
-            maxLength: 64
-          example: kx7b3s7fapqz8mjm12ekz1kxdx87yceg
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/PayloadContractPutRequest"
-            example: &a21
-              fields:
-                - key: email
-                  type: string
-                  required: true
-                - key: plan
-                  type: enum
-                  required: false
-                  enumValues:
-                    - free
-                    - pro
-                  fallbackValue: free
-                  description: Billing plan at signup time.
-                - key: order
-                  type: object
-                  required: false
-                  children:
-                    - key: total
-                      type: float
-                      required: true
-      responses:
-        "200":
-          description: Stored. The contract as a follow-up GET would return it.
-          headers:
-            x-request-id:
-              schema:
-                type: string
-                description: Unique request identifier. Share this with support when debugging a request.
-                example: req_8cac13fd94e6420cacdd75a1aa403a28
-              required: true
-              description: Unique request identifier. Share this with support when debugging a request.
-            X-RateLimit-Limit:
-              schema:
-                type: integer
-                description: Requests allowed in the current rolling rate limit window.
-                example: 100
-              required: true
-              description: Requests allowed in the current rolling rate limit window.
-            X-RateLimit-Remaining:
-              schema:
-                type: integer
-                description: Requests remaining in the current rolling rate limit window.
-                example: 99
-              required: true
-              description: Requests remaining in the current rolling rate limit window.
-            X-RateLimit-Reset:
-              schema:
-                type: integer
-                description: Unix timestamp in seconds for when the rolling window fully resets.
-                example: 1712592360
-              required: true
-              description: Unix timestamp in seconds for when the rolling window fully resets.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/PayloadContractGetResponse"
-              example: *a17
-        "400":
-          description: Structurally invalid contract — duplicate keys, unknown-typed nodes, a missing required `email` string, or nested fields on a workspace without the Liquid engine.
-          headers:
-            x-request-id:
-              schema:
-                type: string
-                description: Unique request identifier. Share this with support when debugging a request.
-                example: req_8cac13fd94e6420cacdd75a1aa403a28
-              required: true
-              description: Unique request identifier. Share this with support when debugging a request.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiErrorEnvelope"
-              example:
-                error:
-                  code: INVALID_REQUEST
-                  type: invalid_request
-                  message: Trigger contracts must declare a top-level required "email" string field.
-                  suggestion: Fix the contract fields and retry; POST …/contract/validate never writes and returns per-field verdicts.
-                  docs: https://docs.brew.new/api-reference/api/errors
-                  param: fields
-        "401":
-          description: The API key was missing, invalid, or revoked.
-          headers:
-            x-request-id:
-              schema:
-                type: string
-                description: Unique request identifier. Share this with support when debugging a request.
-                example: req_8cac13fd94e6420cacdd75a1aa403a28
-              required: true
-              description: Unique request identifier. Share this with support when debugging a request.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiErrorEnvelope"
-              example:
-                error:
-                  code: INVALID_API_KEY
-                  type: authentication_error
-                  message: The provided API key is invalid.
-                  suggestion: Check the API key format and retry with a valid active key.
-                  docs: https://docs.brew.new/api-reference/api/authentication
-        "403":
-          description: The caller does not have the required `automations` permission.
-          headers:
-            x-request-id:
-              schema:
-                type: string
-                description: Unique request identifier. Share this with support when debugging a request.
-                example: req_8cac13fd94e6420cacdd75a1aa403a28
-              required: true
-              description: Unique request identifier. Share this with support when debugging a request.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiErrorEnvelope"
-              example:
-                error:
-                  code: INSUFFICIENT_PERMISSIONS
-                  type: authorization_error
-                  message: The caller does not have the required permission.
-                  suggestion: Use an API key or session with the required permission.
-                  docs: https://docs.brew.new/api-reference/api/authentication
-                  param: automations
-        "404":
-          description: Trigger not found in the API-key brand. Cross-brand ids intentionally surface as 404 (never 403) so the API does not leak cross-brand existence.
-          headers:
-            x-request-id:
-              schema:
-                type: string
-                description: Unique request identifier. Share this with support when debugging a request.
-                example: req_8cac13fd94e6420cacdd75a1aa403a28
-              required: true
-              description: Unique request identifier. Share this with support when debugging a request.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiErrorEnvelope"
-              example: *a18
-        "429":
-          description: The request hit the rolling rate limit window.
-          headers:
-            x-request-id:
-              schema:
-                type: string
-                description: Unique request identifier. Share this with support when debugging a request.
-                example: req_8cac13fd94e6420cacdd75a1aa403a28
-              required: true
-              description: Unique request identifier. Share this with support when debugging a request.
-            X-RateLimit-Limit:
-              schema:
-                type: integer
-                description: Requests allowed in the current rolling rate limit window.
-                example: 100
-              required: true
-              description: Requests allowed in the current rolling rate limit window.
-            X-RateLimit-Remaining:
-              schema:
-                type: integer
-                description: Requests remaining in the current rolling rate limit window.
-                example: 99
-              required: true
-              description: Requests remaining in the current rolling rate limit window.
-            X-RateLimit-Reset:
-              schema:
-                type: integer
-                description: Unix timestamp in seconds for when the rolling window fully resets.
-                example: 1712592360
-              required: true
-              description: Unix timestamp in seconds for when the rolling window fully resets.
-            Retry-After:
-              schema:
-                type: integer
-                description: Seconds to wait before retrying the request.
-                example: 42
-              required: true
-              description: Seconds to wait before retrying the request.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiErrorEnvelope"
-              example:
-                error:
-                  code: RATE_LIMITED
-                  type: rate_limit
-                  message: Too many requests.
-                  suggestion: Wait for the retry window before sending another request.
-                  docs: https://docs.brew.new/api-reference/api/rate-limits
-                  retryAfter: 42
-        "500":
-          description: Unexpected internal error.
-          headers:
-            x-request-id:
-              schema:
-                type: string
-                description: Unique request identifier. Share this with support when debugging a request.
-                example: req_8cac13fd94e6420cacdd75a1aa403a28
-              required: true
-              description: Unique request identifier. Share this with support when debugging a request.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiErrorEnvelope"
-              example:
-                error:
-                  code: INTERNAL_ERROR
-                  type: internal_error
-                  message: An unexpected error occurred.
-                  suggestion: Retry the request. If it keeps failing, contact support.
-                  docs: https://docs.brew.new/api-reference/api/errors
-  /v1/automations/triggers/{triggerEventId}/contract/validate:
-    post:
-      operationId: validateTriggerPayload
-      tags:
-        - Automations
-      summary: Validate a trigger payload
-      description: |-
-        Dry-runs a payload against the trigger's contract — the SAME validator the live path runs, against the stored contract when one exists (derived otherwise; `source` says which). Nothing fires, sends, or writes.
-
-        An invalid payload is still a `200`: the verdict is the response — read `valid`, `errors`, `warnings`, `resolvedPayload` (fallbacks applied), and `prunedKeys`. Pass `enforcement: "prune" | "strict"` to preview a different mode than the stored one. Fire for real with `POST …/fire`.
-      parameters:
-        - schema:
-            type: string
-            minLength: 1
-            maxLength: 256
-            description: Trigger id returned by `POST /v1/automations/triggers` (integration triggers use composite ids — URL-encode the colons).
-            example: tri_signup
-          required: true
-          description: Trigger id returned by `POST /v1/automations/triggers` (integration triggers use composite ids — URL-encode the colons).
-          name: triggerEventId
-          in: path
-        - name: X-Brand-Id
-          in: header
-          required: false
-          description: The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
-          schema:
-            type: string
-            minLength: 1
-            maxLength: 64
-          example: kx7b3s7fapqz8mjm12ekz1kxdx87yceg
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/PayloadContractValidateRequest"
-            example: &a23
-              payload:
-                email: jane@example.com
-                coupon: SPRING
-      responses:
-        "200":
-          description: The verdict — for BOTH valid and invalid payloads (`valid` discriminates).
-          headers:
-            x-request-id:
-              schema:
-                type: string
-                description: Unique request identifier. Share this with support when debugging a request.
-                example: req_8cac13fd94e6420cacdd75a1aa403a28
-              required: true
-              description: Unique request identifier. Share this with support when debugging a request.
-            X-RateLimit-Limit:
-              schema:
-                type: integer
-                description: Requests allowed in the current rolling rate limit window.
-                example: 100
-              required: true
-              description: Requests allowed in the current rolling rate limit window.
-            X-RateLimit-Remaining:
-              schema:
-                type: integer
-                description: Requests remaining in the current rolling rate limit window.
-                example: 99
-              required: true
-              description: Requests remaining in the current rolling rate limit window.
-            X-RateLimit-Reset:
-              schema:
-                type: integer
-                description: Unix timestamp in seconds for when the rolling window fully resets.
-                example: 1712592360
-              required: true
-              description: Unix timestamp in seconds for when the rolling window fully resets.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/PayloadContractValidateResponse"
-              example:
-                valid: true
-                errors: &a24 []
-                warnings: &a25
-                  - code: unexpected_key
-                    field: coupon
-                    message: Field "coupon" is not declared in the contract
-                resolvedPayload: &a26
-                  email: jane@example.com
-                  plan: free
-                prunedKeys: &a27
-                  - coupon
-                source: stored
-                contractHash: 22545d11e1d174ba0717ed37c9c4b460c96bed51ae31ea0af18266ebba30f76a
-        "400":
-          description: "The request body or query string was invalid (unknown key, wrong type, or missing required field). Strict schemas reject unknown keys — including `brandId`: a brand is named with the `X-Brand-Id` HEADER (organization-scoped credentials) or resolved from the credential itself (brand-scoped ones), never as a body or query field."
-          headers:
-            x-request-id:
-              schema:
-                type: string
-                description: Unique request identifier. Share this with support when debugging a request.
-                example: req_8cac13fd94e6420cacdd75a1aa403a28
-              required: true
-              description: Unique request identifier. Share this with support when debugging a request.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiErrorEnvelope"
-              example:
-                error:
-                  code: INVALID_REQUEST
-                  type: invalid_request
-                  message: Request validation failed.
-                  suggestion: Fix the field reported in `param` and retry.
-                  docs: https://docs.brew.new/api-reference/api/errors
-                  param: payload
-        "401":
-          description: The API key was missing, invalid, or revoked.
-          headers:
-            x-request-id:
-              schema:
-                type: string
-                description: Unique request identifier. Share this with support when debugging a request.
-                example: req_8cac13fd94e6420cacdd75a1aa403a28
-              required: true
-              description: Unique request identifier. Share this with support when debugging a request.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiErrorEnvelope"
-              example:
-                error:
-                  code: INVALID_API_KEY
-                  type: authentication_error
-                  message: The provided API key is invalid.
-                  suggestion: Check the API key format and retry with a valid active key.
-                  docs: https://docs.brew.new/api-reference/api/authentication
-        "403":
-          description: The caller does not have the required `automations` permission.
-          headers:
-            x-request-id:
-              schema:
-                type: string
-                description: Unique request identifier. Share this with support when debugging a request.
-                example: req_8cac13fd94e6420cacdd75a1aa403a28
-              required: true
-              description: Unique request identifier. Share this with support when debugging a request.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiErrorEnvelope"
-              example:
-                error:
-                  code: INSUFFICIENT_PERMISSIONS
-                  type: authorization_error
-                  message: The caller does not have the required permission.
-                  suggestion: Use an API key or session with the required permission.
-                  docs: https://docs.brew.new/api-reference/api/authentication
-                  param: automations
-        "404":
-          description: Trigger not found in the API-key brand. Cross-brand ids intentionally surface as 404 (never 403) so the API does not leak cross-brand existence.
-          headers:
-            x-request-id:
-              schema:
-                type: string
-                description: Unique request identifier. Share this with support when debugging a request.
-                example: req_8cac13fd94e6420cacdd75a1aa403a28
-              required: true
-              description: Unique request identifier. Share this with support when debugging a request.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiErrorEnvelope"
-              example: *a18
-        "429":
-          description: The request hit the rolling rate limit window.
-          headers:
-            x-request-id:
-              schema:
-                type: string
-                description: Unique request identifier. Share this with support when debugging a request.
-                example: req_8cac13fd94e6420cacdd75a1aa403a28
-              required: true
-              description: Unique request identifier. Share this with support when debugging a request.
-            X-RateLimit-Limit:
-              schema:
-                type: integer
-                description: Requests allowed in the current rolling rate limit window.
-                example: 100
-              required: true
-              description: Requests allowed in the current rolling rate limit window.
-            X-RateLimit-Remaining:
-              schema:
-                type: integer
-                description: Requests remaining in the current rolling rate limit window.
-                example: 99
-              required: true
-              description: Requests remaining in the current rolling rate limit window.
-            X-RateLimit-Reset:
-              schema:
-                type: integer
-                description: Unix timestamp in seconds for when the rolling window fully resets.
-                example: 1712592360
-              required: true
-              description: Unix timestamp in seconds for when the rolling window fully resets.
-            Retry-After:
-              schema:
-                type: integer
-                description: Seconds to wait before retrying the request.
-                example: 42
-              required: true
-              description: Seconds to wait before retrying the request.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiErrorEnvelope"
-              example:
-                error:
-                  code: RATE_LIMITED
-                  type: rate_limit
-                  message: Too many requests.
-                  suggestion: Wait for the retry window before sending another request.
-                  docs: https://docs.brew.new/api-reference/api/rate-limits
-                  retryAfter: 42
-        "500":
-          description: Unexpected internal error.
-          headers:
-            x-request-id:
-              schema:
-                type: string
-                description: Unique request identifier. Share this with support when debugging a request.
-                example: req_8cac13fd94e6420cacdd75a1aa403a28
-              required: true
-              description: Unique request identifier. Share this with support when debugging a request.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiErrorEnvelope"
-              example:
-                error:
-                  code: INTERNAL_ERROR
-                  type: internal_error
-                  message: An unexpected error occurred.
-                  suggestion: Retry the request. If it keeps failing, contact support.
-                  docs: https://docs.brew.new/api-reference/api/errors
-  /v1/transactional/{transactionId}/contract:
-    get:
-      operationId: getTransactionalContract
-      tags:
-        - Emails
-      summary: Get a transactional payload contract
-      description: |-
-        The payload contract for the transactional email: the STORED contract when one has been declared (`source: "stored"`, with `contractHash`, `version`, `enforcement`), otherwise the derived one (`source: "derived_from_template"`, collected from the pinned template’s variables).
-
-        Contract fields form a tree: scalars (`string` | `int` | `float` | `boolean` | `date` | `enum`), `object` nodes with `children`, and `array` nodes with `children` (element object shape) or `itemType` (scalar elements). Derived contracts may carry `type: "unknown"` where no type evidence exists.
-
-        Pass `?format=` for generated artifacts instead of the JSON contract.
-      parameters:
-        - *a19
-        - schema:
-            type: string
-            minLength: 1
-            maxLength: 64
-            description: Transactional email id (`txn_…`).
-            example: txn_8f2kQ
-          required: true
-          description: Transactional email id (`txn_…`).
-          name: transactionId
-          in: path
-        - name: X-Brand-Id
-          in: header
-          required: false
-          description: The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
-          schema:
-            type: string
-            minLength: 1
-            maxLength: 64
-          example: kx7b3s7fapqz8mjm12ekz1kxdx87yceg
-      responses:
-        "200":
-          description: The contract (`format=json`, default) or `{format, content}` for text formats.
-          headers:
-            x-request-id:
-              schema:
-                type: string
-                description: Unique request identifier. Share this with support when debugging a request.
-                example: req_8cac13fd94e6420cacdd75a1aa403a28
-              required: true
-              description: Unique request identifier. Share this with support when debugging a request.
-            X-RateLimit-Limit:
-              schema:
-                type: integer
-                description: Requests allowed in the current rolling rate limit window.
-                example: 100
-              required: true
-              description: Requests allowed in the current rolling rate limit window.
-            X-RateLimit-Remaining:
-              schema:
-                type: integer
-                description: Requests remaining in the current rolling rate limit window.
-                example: 99
-              required: true
-              description: Requests remaining in the current rolling rate limit window.
-            X-RateLimit-Reset:
-              schema:
-                type: integer
-                description: Unix timestamp in seconds for when the rolling window fully resets.
-                example: 1712592360
-              required: true
-              description: Unix timestamp in seconds for when the rolling window fully resets.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/PayloadContractGetResponse"
-              example:
-                subjectKind: transactional
-                subjectId: txn_8f2kQ
-                source: stored
-                typeName: OrderReceiptPayload
-                contractHash: 22545d11e1d174ba0717ed37c9c4b460c96bed51ae31ea0af18266ebba30f76a
-                version: 2
-                enforcement: off
-                fields: *a20
-        "400":
-          description: "The request body or query string was invalid (unknown key, wrong type, or missing required field). Strict schemas reject unknown keys — including `brandId`: a brand is named with the `X-Brand-Id` HEADER (organization-scoped credentials) or resolved from the credential itself (brand-scoped ones), never as a body or query field."
-          headers:
-            x-request-id:
-              schema:
-                type: string
-                description: Unique request identifier. Share this with support when debugging a request.
-                example: req_8cac13fd94e6420cacdd75a1aa403a28
-              required: true
-              description: Unique request identifier. Share this with support when debugging a request.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiErrorEnvelope"
-              example:
-                error:
-                  code: INVALID_REQUEST
-                  type: invalid_request
-                  message: Request validation failed.
-                  suggestion: Fix the field reported in `param` and retry.
-                  docs: https://docs.brew.new/api-reference/api/errors
-                  param: format
-        "401":
-          description: The API key was missing, invalid, or revoked.
-          headers:
-            x-request-id:
-              schema:
-                type: string
-                description: Unique request identifier. Share this with support when debugging a request.
-                example: req_8cac13fd94e6420cacdd75a1aa403a28
-              required: true
-              description: Unique request identifier. Share this with support when debugging a request.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiErrorEnvelope"
-              example:
-                error:
-                  code: INVALID_API_KEY
-                  type: authentication_error
-                  message: The provided API key is invalid.
-                  suggestion: Check the API key format and retry with a valid active key.
-                  docs: https://docs.brew.new/api-reference/api/authentication
-        "403":
-          description: The caller does not have the required `sends` permission.
-          headers:
-            x-request-id:
-              schema:
-                type: string
-                description: Unique request identifier. Share this with support when debugging a request.
-                example: req_8cac13fd94e6420cacdd75a1aa403a28
-              required: true
-              description: Unique request identifier. Share this with support when debugging a request.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiErrorEnvelope"
-              example:
-                error:
-                  code: INSUFFICIENT_PERMISSIONS
-                  type: authorization_error
-                  message: The caller does not have the required permission.
-                  suggestion: Use an API key or session with the required permission.
-                  docs: https://docs.brew.new/api-reference/api/authentication
-                  param: sends
-        "404":
-          description: Transactional email not found in the API-key brand. Cross-brand ids intentionally surface as 404 (never 403) so the API does not leak cross-brand existence.
-          headers:
-            x-request-id:
-              schema:
-                type: string
-                description: Unique request identifier. Share this with support when debugging a request.
-                example: req_8cac13fd94e6420cacdd75a1aa403a28
-              required: true
-              description: Unique request identifier. Share this with support when debugging a request.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiErrorEnvelope"
-              example: &a22
-                error:
-                  code: TRANSACTIONAL_EMAIL_NOT_FOUND
-                  type: not_found
-                  message: No transactional email was found with id 'txn_xxx'.
-                  suggestion: Create a transactional email in the app.
-                  docs: https://docs.brew.new/api-reference/api/errors
-                  param: transactionId
-        "429":
-          description: The request hit the rolling rate limit window.
-          headers:
-            x-request-id:
-              schema:
-                type: string
-                description: Unique request identifier. Share this with support when debugging a request.
-                example: req_8cac13fd94e6420cacdd75a1aa403a28
-              required: true
-              description: Unique request identifier. Share this with support when debugging a request.
-            X-RateLimit-Limit:
-              schema:
-                type: integer
-                description: Requests allowed in the current rolling rate limit window.
-                example: 100
-              required: true
-              description: Requests allowed in the current rolling rate limit window.
-            X-RateLimit-Remaining:
-              schema:
-                type: integer
-                description: Requests remaining in the current rolling rate limit window.
-                example: 99
-              required: true
-              description: Requests remaining in the current rolling rate limit window.
-            X-RateLimit-Reset:
-              schema:
-                type: integer
-                description: Unix timestamp in seconds for when the rolling window fully resets.
-                example: 1712592360
-              required: true
-              description: Unix timestamp in seconds for when the rolling window fully resets.
-            Retry-After:
-              schema:
-                type: integer
-                description: Seconds to wait before retrying the request.
-                example: 42
-              required: true
-              description: Seconds to wait before retrying the request.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiErrorEnvelope"
-              example:
-                error:
-                  code: RATE_LIMITED
-                  type: rate_limit
-                  message: Too many requests.
-                  suggestion: Wait for the retry window before sending another request.
-                  docs: https://docs.brew.new/api-reference/api/rate-limits
-                  retryAfter: 42
-        "500":
-          description: Unexpected internal error.
-          headers:
-            x-request-id:
-              schema:
-                type: string
-                description: Unique request identifier. Share this with support when debugging a request.
-                example: req_8cac13fd94e6420cacdd75a1aa403a28
-              required: true
-              description: Unique request identifier. Share this with support when debugging a request.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiErrorEnvelope"
-              example:
-                error:
-                  code: INTERNAL_ERROR
-                  type: internal_error
-                  message: An unexpected error occurred.
-                  suggestion: Retry the request. If it keeps failing, contact support.
-                  docs: https://docs.brew.new/api-reference/api/errors
-    put:
-      operationId: setTransactionalContract
-      tags:
-        - Emails
-      summary: Declare a transactional payload contract
-      description: |-
-        Declares the stored payload contract for the transactional email, changes how it is enforced, or both — in one call. `fields` is optional, so flipping enforcement never means re-sending the whole tree. The whole tree is validated structurally BEFORE any write — unknown-typed nodes are refused (declare a concrete type), keys must be unique per level, and an `object` field must declare at least one child.
-
-        The contract version bumps only when the behavioral surface changes (keys, types, required, fallbacks — not descriptions or examples). Declaring a contract never changes fire behavior by itself: enforcement stays off until explicitly enabled.
-
-        Responds with the same body a follow-up `GET …/contract` would return.
-      parameters:
-        - schema:
-            type: string
-            minLength: 1
-            maxLength: 64
-            description: Transactional email id (`txn_…`).
-            example: txn_8f2kQ
-          required: true
-          description: Transactional email id (`txn_…`).
-          name: transactionId
-          in: path
-        - name: X-Brand-Id
-          in: header
-          required: false
-          description: The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
-          schema:
-            type: string
-            minLength: 1
-            maxLength: 64
-          example: kx7b3s7fapqz8mjm12ekz1kxdx87yceg
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/PayloadContractPutRequest"
-            example: *a21
-      responses:
-        "200":
-          description: Stored. The contract as a follow-up GET would return it.
-          headers:
-            x-request-id:
-              schema:
-                type: string
-                description: Unique request identifier. Share this with support when debugging a request.
-                example: req_8cac13fd94e6420cacdd75a1aa403a28
-              required: true
-              description: Unique request identifier. Share this with support when debugging a request.
-            X-RateLimit-Limit:
-              schema:
-                type: integer
-                description: Requests allowed in the current rolling rate limit window.
-                example: 100
-              required: true
-              description: Requests allowed in the current rolling rate limit window.
-            X-RateLimit-Remaining:
-              schema:
-                type: integer
-                description: Requests remaining in the current rolling rate limit window.
-                example: 99
-              required: true
-              description: Requests remaining in the current rolling rate limit window.
-            X-RateLimit-Reset:
-              schema:
-                type: integer
-                description: Unix timestamp in seconds for when the rolling window fully resets.
-                example: 1712592360
-              required: true
-              description: Unix timestamp in seconds for when the rolling window fully resets.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/PayloadContractGetResponse"
-              example:
-                subjectKind: transactional
-                subjectId: txn_8f2kQ
-                source: stored
-                typeName: OrderReceiptPayload
-                contractHash: 22545d11e1d174ba0717ed37c9c4b460c96bed51ae31ea0af18266ebba30f76a
-                version: 2
-                enforcement: off
-                fields: *a20
-        "400":
-          description: Structurally invalid contract — duplicate keys, unknown-typed nodes, or nested fields on a workspace without the Liquid engine.
-          headers:
-            x-request-id:
-              schema:
-                type: string
-                description: Unique request identifier. Share this with support when debugging a request.
-                example: req_8cac13fd94e6420cacdd75a1aa403a28
-              required: true
-              description: Unique request identifier. Share this with support when debugging a request.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiErrorEnvelope"
-              example:
-                error:
-                  code: INVALID_REQUEST
-                  type: invalid_request
-                  message: Contract fields must have unique keys per level.
-                  suggestion: Fix the contract fields and retry; POST …/contract/validate never writes and returns per-field verdicts.
-                  docs: https://docs.brew.new/api-reference/api/errors
-                  param: fields
-        "401":
-          description: The API key was missing, invalid, or revoked.
-          headers:
-            x-request-id:
-              schema:
-                type: string
-                description: Unique request identifier. Share this with support when debugging a request.
-                example: req_8cac13fd94e6420cacdd75a1aa403a28
-              required: true
-              description: Unique request identifier. Share this with support when debugging a request.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiErrorEnvelope"
-              example:
-                error:
-                  code: INVALID_API_KEY
-                  type: authentication_error
-                  message: The provided API key is invalid.
-                  suggestion: Check the API key format and retry with a valid active key.
-                  docs: https://docs.brew.new/api-reference/api/authentication
-        "403":
-          description: The caller does not have the required `sends` permission.
-          headers:
-            x-request-id:
-              schema:
-                type: string
-                description: Unique request identifier. Share this with support when debugging a request.
-                example: req_8cac13fd94e6420cacdd75a1aa403a28
-              required: true
-              description: Unique request identifier. Share this with support when debugging a request.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiErrorEnvelope"
-              example:
-                error:
-                  code: INSUFFICIENT_PERMISSIONS
-                  type: authorization_error
-                  message: The caller does not have the required permission.
-                  suggestion: Use an API key or session with the required permission.
-                  docs: https://docs.brew.new/api-reference/api/authentication
-                  param: sends
-        "404":
-          description: Transactional email not found in the API-key brand. Cross-brand ids intentionally surface as 404 (never 403) so the API does not leak cross-brand existence.
-          headers:
-            x-request-id:
-              schema:
-                type: string
-                description: Unique request identifier. Share this with support when debugging a request.
-                example: req_8cac13fd94e6420cacdd75a1aa403a28
-              required: true
-              description: Unique request identifier. Share this with support when debugging a request.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiErrorEnvelope"
-              example: *a22
-        "429":
-          description: The request hit the rolling rate limit window.
-          headers:
-            x-request-id:
-              schema:
-                type: string
-                description: Unique request identifier. Share this with support when debugging a request.
-                example: req_8cac13fd94e6420cacdd75a1aa403a28
-              required: true
-              description: Unique request identifier. Share this with support when debugging a request.
-            X-RateLimit-Limit:
-              schema:
-                type: integer
-                description: Requests allowed in the current rolling rate limit window.
-                example: 100
-              required: true
-              description: Requests allowed in the current rolling rate limit window.
-            X-RateLimit-Remaining:
-              schema:
-                type: integer
-                description: Requests remaining in the current rolling rate limit window.
-                example: 99
-              required: true
-              description: Requests remaining in the current rolling rate limit window.
-            X-RateLimit-Reset:
-              schema:
-                type: integer
-                description: Unix timestamp in seconds for when the rolling window fully resets.
-                example: 1712592360
-              required: true
-              description: Unix timestamp in seconds for when the rolling window fully resets.
-            Retry-After:
-              schema:
-                type: integer
-                description: Seconds to wait before retrying the request.
-                example: 42
-              required: true
-              description: Seconds to wait before retrying the request.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiErrorEnvelope"
-              example:
-                error:
-                  code: RATE_LIMITED
-                  type: rate_limit
-                  message: Too many requests.
-                  suggestion: Wait for the retry window before sending another request.
-                  docs: https://docs.brew.new/api-reference/api/rate-limits
-                  retryAfter: 42
-        "500":
-          description: Unexpected internal error.
-          headers:
-            x-request-id:
-              schema:
-                type: string
-                description: Unique request identifier. Share this with support when debugging a request.
-                example: req_8cac13fd94e6420cacdd75a1aa403a28
-              required: true
-              description: Unique request identifier. Share this with support when debugging a request.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiErrorEnvelope"
-              example:
-                error:
-                  code: INTERNAL_ERROR
-                  type: internal_error
-                  message: An unexpected error occurred.
-                  suggestion: Retry the request. If it keeps failing, contact support.
-                  docs: https://docs.brew.new/api-reference/api/errors
-  /v1/transactional/{transactionId}/contract/validate:
-    post:
-      operationId: validateTransactionalPayload
-      tags:
-        - Emails
-      summary: Validate a transactional payload
-      description: |-
-        Dry-runs a payload against the transactional email's contract — the SAME validator the live path runs, against the stored contract when one exists (derived otherwise; `source` says which). Nothing fires, sends, or writes.
-
-        An invalid payload is still a `200`: the verdict is the response — read `valid`, `errors`, `warnings`, `resolvedPayload` (fallbacks applied), and `prunedKeys`. Pass `enforcement: "prune" | "strict"` to preview a different mode than the stored one. Send for real with `POST /v1/sends` (`kind: "transactional"`).
-      parameters:
-        - schema:
-            type: string
-            minLength: 1
-            maxLength: 64
-            description: Transactional email id (`txn_…`).
-            example: txn_8f2kQ
-          required: true
-          description: Transactional email id (`txn_…`).
-          name: transactionId
-          in: path
-        - name: X-Brand-Id
-          in: header
-          required: false
-          description: The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
-          schema:
-            type: string
-            minLength: 1
-            maxLength: 64
-          example: kx7b3s7fapqz8mjm12ekz1kxdx87yceg
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/PayloadContractValidateRequest"
-            example: *a23
-      responses:
-        "200":
-          description: The verdict — for BOTH valid and invalid payloads (`valid` discriminates).
-          headers:
-            x-request-id:
-              schema:
-                type: string
-                description: Unique request identifier. Share this with support when debugging a request.
-                example: req_8cac13fd94e6420cacdd75a1aa403a28
-              required: true
-              description: Unique request identifier. Share this with support when debugging a request.
-            X-RateLimit-Limit:
-              schema:
-                type: integer
-                description: Requests allowed in the current rolling rate limit window.
-                example: 100
-              required: true
-              description: Requests allowed in the current rolling rate limit window.
-            X-RateLimit-Remaining:
-              schema:
-                type: integer
-                description: Requests remaining in the current rolling rate limit window.
-                example: 99
-              required: true
-              description: Requests remaining in the current rolling rate limit window.
-            X-RateLimit-Reset:
-              schema:
-                type: integer
-                description: Unix timestamp in seconds for when the rolling window fully resets.
-                example: 1712592360
-              required: true
-              description: Unix timestamp in seconds for when the rolling window fully resets.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/PayloadContractValidateResponse"
-              example:
-                valid: true
-                errors: *a24
-                warnings: *a25
-                resolvedPayload: *a26
-                prunedKeys: *a27
-                source: stored
-                contractHash: 22545d11e1d174ba0717ed37c9c4b460c96bed51ae31ea0af18266ebba30f76a
-        "400":
-          description: "The request body or query string was invalid (unknown key, wrong type, or missing required field). Strict schemas reject unknown keys — including `brandId`: a brand is named with the `X-Brand-Id` HEADER (organization-scoped credentials) or resolved from the credential itself (brand-scoped ones), never as a body or query field."
-          headers:
-            x-request-id:
-              schema:
-                type: string
-                description: Unique request identifier. Share this with support when debugging a request.
-                example: req_8cac13fd94e6420cacdd75a1aa403a28
-              required: true
-              description: Unique request identifier. Share this with support when debugging a request.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiErrorEnvelope"
-              example:
-                error:
-                  code: INVALID_REQUEST
-                  type: invalid_request
-                  message: Request validation failed.
-                  suggestion: Fix the field reported in `param` and retry.
-                  docs: https://docs.brew.new/api-reference/api/errors
-                  param: payload
-        "401":
-          description: The API key was missing, invalid, or revoked.
-          headers:
-            x-request-id:
-              schema:
-                type: string
-                description: Unique request identifier. Share this with support when debugging a request.
-                example: req_8cac13fd94e6420cacdd75a1aa403a28
-              required: true
-              description: Unique request identifier. Share this with support when debugging a request.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiErrorEnvelope"
-              example:
-                error:
-                  code: INVALID_API_KEY
-                  type: authentication_error
-                  message: The provided API key is invalid.
-                  suggestion: Check the API key format and retry with a valid active key.
-                  docs: https://docs.brew.new/api-reference/api/authentication
-        "403":
-          description: The caller does not have the required `sends` permission.
-          headers:
-            x-request-id:
-              schema:
-                type: string
-                description: Unique request identifier. Share this with support when debugging a request.
-                example: req_8cac13fd94e6420cacdd75a1aa403a28
-              required: true
-              description: Unique request identifier. Share this with support when debugging a request.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiErrorEnvelope"
-              example:
-                error:
-                  code: INSUFFICIENT_PERMISSIONS
-                  type: authorization_error
-                  message: The caller does not have the required permission.
-                  suggestion: Use an API key or session with the required permission.
-                  docs: https://docs.brew.new/api-reference/api/authentication
-                  param: sends
-        "404":
-          description: Transactional email not found in the API-key brand. Cross-brand ids intentionally surface as 404 (never 403) so the API does not leak cross-brand existence.
-          headers:
-            x-request-id:
-              schema:
-                type: string
-                description: Unique request identifier. Share this with support when debugging a request.
-                example: req_8cac13fd94e6420cacdd75a1aa403a28
-              required: true
-              description: Unique request identifier. Share this with support when debugging a request.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiErrorEnvelope"
-              example: *a22
-        "429":
-          description: The request hit the rolling rate limit window.
-          headers:
-            x-request-id:
-              schema:
-                type: string
-                description: Unique request identifier. Share this with support when debugging a request.
-                example: req_8cac13fd94e6420cacdd75a1aa403a28
-              required: true
-              description: Unique request identifier. Share this with support when debugging a request.
-            X-RateLimit-Limit:
-              schema:
-                type: integer
-                description: Requests allowed in the current rolling rate limit window.
-                example: 100
-              required: true
-              description: Requests allowed in the current rolling rate limit window.
-            X-RateLimit-Remaining:
-              schema:
-                type: integer
-                description: Requests remaining in the current rolling rate limit window.
-                example: 99
-              required: true
-              description: Requests remaining in the current rolling rate limit window.
-            X-RateLimit-Reset:
-              schema:
-                type: integer
-                description: Unix timestamp in seconds for when the rolling window fully resets.
-                example: 1712592360
-              required: true
-              description: Unix timestamp in seconds for when the rolling window fully resets.
-            Retry-After:
-              schema:
-                type: integer
-                description: Seconds to wait before retrying the request.
-                example: 42
-              required: true
-              description: Seconds to wait before retrying the request.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiErrorEnvelope"
-              example:
-                error:
-                  code: RATE_LIMITED
-                  type: rate_limit
-                  message: Too many requests.
-                  suggestion: Wait for the retry window before sending another request.
-                  docs: https://docs.brew.new/api-reference/api/rate-limits
-                  retryAfter: 42
-        "500":
-          description: Unexpected internal error.
-          headers:
-            x-request-id:
-              schema:
-                type: string
-                description: Unique request identifier. Share this with support when debugging a request.
-                example: req_8cac13fd94e6420cacdd75a1aa403a28
-              required: true
-              description: Unique request identifier. Share this with support when debugging a request.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiErrorEnvelope"
-              example:
-                error:
-                  code: INTERNAL_ERROR
-                  type: internal_error
-                  message: An unexpected error occurred.
-                  suggestion: Retry the request. If it keeps failing, contact support.
-                  docs: https://docs.brew.new/api-reference/api/errors
-  /v1/payload-contracts/infer:
-    post:
-      operationId: inferPayloadContract
-      tags:
-        - Automations
-      summary: Infer a payload contract from an example
-      description: |-
-        Drafts a contract from a real example payload: paste the JSON your system sends and get back typed `fields` — integers and floats split automatically, full ISO timestamps become `date`, object/array shapes are walked recursively. Every inferred field is `required: true` (relax explicitly).
-
-        Spots inference cannot type (nulls, empty arrays) degrade honestly and are listed in `issues` with the offending path. Nothing is saved: review the draft, then `PUT` it to `…/triggers/{triggerEventId}/contract` or `…/transactional/{transactionId}/contract`.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/PayloadContractInferRequest"
-            example:
-              example:
-                email: jane@example.com
-                order:
-                  total: 9.5
-                  placedAt: 2026-04-08T12:00:00.000Z
-      responses:
-        "200":
-          description: The unsaved contract draft.
-          headers:
-            x-request-id:
-              schema:
-                type: string
-                description: Unique request identifier. Share this with support when debugging a request.
-                example: req_8cac13fd94e6420cacdd75a1aa403a28
-              required: true
-              description: Unique request identifier. Share this with support when debugging a request.
-            X-RateLimit-Limit:
-              schema:
-                type: integer
-                description: Requests allowed in the current rolling rate limit window.
-                example: 100
-              required: true
-              description: Requests allowed in the current rolling rate limit window.
-            X-RateLimit-Remaining:
-              schema:
-                type: integer
-                description: Requests remaining in the current rolling rate limit window.
-                example: 99
-              required: true
-              description: Requests remaining in the current rolling rate limit window.
-            X-RateLimit-Reset:
-              schema:
-                type: integer
-                description: Unix timestamp in seconds for when the rolling window fully resets.
-                example: 1712592360
-              required: true
-              description: Unix timestamp in seconds for when the rolling window fully resets.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/PayloadContractInferResponse"
-              example:
-                fields:
-                  - key: email
-                    type: string
-                    required: true
-                  - key: order
-                    type: object
-                    required: true
-                    children:
-                      - key: total
-                        type: float
-                        required: true
-                      - key: placedAt
-                        type: date
-                        required: true
-                issues: []
-        "400":
-          description: "The request body or query string was invalid (unknown key, wrong type, or missing required field). Strict schemas reject unknown keys — including `brandId`: a brand is named with the `X-Brand-Id` HEADER (organization-scoped credentials) or resolved from the credential itself (brand-scoped ones), never as a body or query field."
-          headers:
-            x-request-id:
-              schema:
-                type: string
-                description: Unique request identifier. Share this with support when debugging a request.
-                example: req_8cac13fd94e6420cacdd75a1aa403a28
-              required: true
-              description: Unique request identifier. Share this with support when debugging a request.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiErrorEnvelope"
-              example:
-                error:
-                  code: INVALID_REQUEST
-                  type: invalid_request
-                  message: Request validation failed.
-                  suggestion: Fix the field reported in `param` and retry.
-                  docs: https://docs.brew.new/api-reference/api/errors
-                  param: example
-        "401":
-          description: The API key was missing, invalid, or revoked.
-          headers:
-            x-request-id:
-              schema:
-                type: string
-                description: Unique request identifier. Share this with support when debugging a request.
-                example: req_8cac13fd94e6420cacdd75a1aa403a28
-              required: true
-              description: Unique request identifier. Share this with support when debugging a request.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiErrorEnvelope"
-              example:
-                error:
-                  code: INVALID_API_KEY
-                  type: authentication_error
-                  message: The provided API key is invalid.
-                  suggestion: Check the API key format and retry with a valid active key.
-                  docs: https://docs.brew.new/api-reference/api/authentication
-        "403":
-          description: The caller does not have the required `automations` permission.
-          headers:
-            x-request-id:
-              schema:
-                type: string
-                description: Unique request identifier. Share this with support when debugging a request.
-                example: req_8cac13fd94e6420cacdd75a1aa403a28
-              required: true
-              description: Unique request identifier. Share this with support when debugging a request.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiErrorEnvelope"
-              example:
-                error:
-                  code: INSUFFICIENT_PERMISSIONS
-                  type: authorization_error
-                  message: The caller does not have the required permission.
-                  suggestion: Use an API key or session with the required permission.
-                  docs: https://docs.brew.new/api-reference/api/authentication
-                  param: automations
-        "429":
-          description: The request hit the rolling rate limit window.
-          headers:
-            x-request-id:
-              schema:
-                type: string
-                description: Unique request identifier. Share this with support when debugging a request.
-                example: req_8cac13fd94e6420cacdd75a1aa403a28
-              required: true
-              description: Unique request identifier. Share this with support when debugging a request.
-            X-RateLimit-Limit:
-              schema:
-                type: integer
-                description: Requests allowed in the current rolling rate limit window.
-                example: 100
-              required: true
-              description: Requests allowed in the current rolling rate limit window.
-            X-RateLimit-Remaining:
-              schema:
-                type: integer
-                description: Requests remaining in the current rolling rate limit window.
-                example: 99
-              required: true
-              description: Requests remaining in the current rolling rate limit window.
-            X-RateLimit-Reset:
-              schema:
-                type: integer
-                description: Unix timestamp in seconds for when the rolling window fully resets.
-                example: 1712592360
-              required: true
-              description: Unix timestamp in seconds for when the rolling window fully resets.
-            Retry-After:
-              schema:
-                type: integer
-                description: Seconds to wait before retrying the request.
-                example: 42
-              required: true
-              description: Seconds to wait before retrying the request.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiErrorEnvelope"
-              example:
-                error:
-                  code: RATE_LIMITED
-                  type: rate_limit
-                  message: Too many requests.
-                  suggestion: Wait for the retry window before sending another request.
-                  docs: https://docs.brew.new/api-reference/api/rate-limits
-                  retryAfter: 42
-        "500":
-          description: Unexpected internal error.
-          headers:
-            x-request-id:
-              schema:
-                type: string
-                description: Unique request identifier. Share this with support when debugging a request.
-                example: req_8cac13fd94e6420cacdd75a1aa403a28
-              required: true
-              description: Unique request identifier. Share this with support when debugging a request.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiErrorEnvelope"
-              example:
-                error:
-                  code: INTERNAL_ERROR
-                  type: internal_error
-                  message: An unexpected error occurred.
-                  suggestion: Retry the request. If it keeps failing, contact support.
-                  docs: https://docs.brew.new/api-reference/api/errors
-      parameters:
-        - name: X-Brand-Id
-          in: header
-          required: false
-          description: The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
-          schema:
-            type: string
-            minLength: 1
-            maxLength: 64
-          example: kx7b3s7fapqz8mjm12ekz1kxdx87yceg
   /v1/analytics/trigger-instances:
     get:
       operationId: listEvents
@@ -26834,7 +24298,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ContactsPostSingleResponse"
               example:
-                contact: &a29
+                contact: &a18
                   email: jane@example.com
                   firstName: Jane
                   lastName: Doe
@@ -26846,7 +24310,7 @@ paths:
                   createdAt: 2026-04-08T12:00:00.000Z
                   updatedAt: 2026-04-08T12:05:00.000Z
                   importId: null
-                  customFields: &a28
+                  customFields: &a17
                     plan: enterprise
                     revenue: 4200
                 created: true
@@ -27142,7 +24606,7 @@ paths:
                   createdAt: 2026-04-08T12:00:00.000Z
                   updatedAt: 2026-04-08T12:05:00.000Z
                   importId: null
-                  customFields: *a28
+                  customFields: *a17
                 updated:
                   - firstName
                   - plan
@@ -27584,7 +25048,7 @@ paths:
                   summary: Result page
                   value:
                     data:
-                      - *a29
+                      - *a18
                       - email: john@example.com
                         firstName: John
                         lastName: Smith
@@ -29371,10 +26835,10 @@ paths:
                 $ref: "#/components/schemas/AudiencesListResponse"
               example:
                 data:
-                  - &a30
+                  - &a19
                     audienceId: jn7a8w4q8m9k2p1x7c3b5v6n9h7s2d4f
                     audienceName: Nordic Founders
-                    filters: &a32
+                    filters: &a21
                       filters:
                         - field: country
                           operator: equals
@@ -29466,7 +26930,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelope"
-              example: &a31
+              example: &a20
                 error:
                   code: AUDIENCE_NOT_FOUND
                   type: not_found
@@ -29612,7 +27076,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AudienceWriteResponse"
-              example: *a30
+              example: *a19
         "400":
           description: "The request body or query string was invalid (unknown key, wrong type, or missing required field). Strict schemas reject unknown keys — including `brandId`: a brand is named with the `X-Brand-Id` HEADER (organization-scoped credentials) or resolved from the credential itself (brand-scoped ones), never as a body or query field."
           headers:
@@ -30092,7 +27556,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AudienceWriteResponse"
-              example: *a30
+              example: *a19
         "400":
           description: Strict-body violation or no editable field supplied (at least one of `name` / `filters` is required).
           headers:
@@ -30172,7 +27636,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelope"
-              example: *a31
+              example: *a20
         "409":
           description: The `expectedUpdatedAt` precondition is stale; reload the audience before retrying.
           headers:
@@ -30511,7 +27975,7 @@ paths:
               example:
                 audienceId: mh8b9x5r9n1k3p2y8c4d6w7q1j9t3f5g
                 audienceName: Nordic Founders (copy)
-                filters: *a32
+                filters: *a21
                 count: 1284
                 createdAt: 2026-04-08T12:34:56.789Z
                 updatedAt: 2026-04-08T12:34:56.789Z
@@ -30572,7 +28036,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelope"
-              example: *a31
+              example: *a20
         "409":
           description: The same `Idempotency-Key` was reused with a different request body.
           headers:
@@ -30671,7 +28135,7 @@ paths:
       tags:
         - Domains
       summary: Get domains
-      description: "Unified domain read. Omit `domainId` to LIST the brand’s sending domains under `{ data, pagination }` — ALL lifecycle states by default (so callers mid-verification can read `pending` rows + their DNS `records`); pass `?sendableOnly=true` for only verified, send-ready domains (the set valid for `POST /v1/sends` and automation `sendEmail` nodes). Pass `?sendingPurpose=marketing` to hide transactional domains (automations and campaigns require marketing). Pass `?domainId=` to fetch ONE domain — returns `{ data: [row] }` (no `pagination`), `404 DOMAIN_NOT_FOUND` on an unknown / cross-brand id."
+      description: "Unified domain read. Omit `domainId` to LIST the brand’s sending domains under `{ data, pagination }` — ALL lifecycle states by default (so callers mid-verification can read `pending` rows + their DNS `records`); pass `?sendableOnly=true` for only verified, send-ready domains (the set valid for `POST /v1/sends` and automation `sendEmail` nodes). Pass `?sendingPurpose=marketing` to hide transactional domains (campaigns and audience sends require marketing; automation sendEmail nodes accept both). Pass `?domainId=` to fetch ONE domain — returns `{ data: [row] }` (no `pagination`), `404 DOMAIN_NOT_FOUND` on an unknown / cross-brand id."
       parameters:
         - name: domainId
           in: query
@@ -30693,7 +28157,7 @@ paths:
         - name: sendingPurpose
           in: query
           required: false
-          description: List mode only — filter by `marketing` or `transactional`. Use marketing for campaigns and automations.
+          description: List mode only — filter by `marketing` or `transactional`. Campaigns require marketing; automation sendEmail nodes accept both.
           schema:
             type: string
             enum:
@@ -30748,7 +28212,7 @@ paths:
                 $ref: "#/components/schemas/DomainsListResponse"
               example:
                 data:
-                  - &a33
+                  - &a22
                     domainId: kx7bkh53hasmfeh5kd7sqgykt187g8ww
                     domainUrl: https://send.example.com
                     name: send.example.com
@@ -30757,7 +28221,7 @@ paths:
                     sendingEnabled: true
                     sendable: false
                     sendingPurpose: marketing
-                    records: &a35
+                    records: &a24
                       - record: DKIM
                         name: resend._domainkey
                         type: TXT
@@ -30849,7 +28313,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelope"
-              example: &a34
+              example: &a23
                 error:
                   code: DOMAIN_NOT_FOUND
                   type: not_found
@@ -30933,7 +28397,7 @@ paths:
       tags:
         - Domains
       summary: Add a domain
-      description: 'Registers a sending domain with the provider. Optional `sendingPurpose` is `marketing` (default; campaigns and automations) or `transactional` (API/MCP inline `to` only). Returns `201` with the bare row in `status: "pending"` plus the DNS `records` to publish. Once the records are live, call `POST /v1/domains/{domainId}/verify` until `sendable: true`.'
+      description: 'Registers a sending domain with the provider. Optional `sendingPurpose` is `marketing` (default; campaigns, audience sends, automations) or `transactional` (event-triggered automation mail — no unsubscribe link required, merely-unsubscribed contacts still receive it). Returns `201` with the bare row in `status: "pending"` plus the DNS `records` to publish. Once the records are live, call `POST /v1/domains/{domainId}/verify` until `sendable: true`.'
       parameters:
         - *a1
         - name: X-Brand-Id
@@ -30989,7 +28453,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Domain"
-              example: *a33
+              example: *a22
         "400":
           description: "The request body or query string was invalid (unknown key, wrong type, or missing required field). Strict schemas reject unknown keys — including `brandId`: a brand is named with the `X-Brand-Id` HEADER (organization-scoped credentials) or resolved from the credential itself (brand-scoped ones), never as a body or query field."
           headers:
@@ -31153,7 +28617,7 @@ paths:
       tags:
         - Domains
       summary: Update domain settings
-      description: "Updates sender defaults (`defaultSenderName`, `defaultFromEmail`, `defaultReplyToEmail`) and/or `sendingPurpose` — at least one required. Live gates fail closed if a campaign or automation still points at a transactional domain. Verification is its own action: `POST /v1/domains/{domainId}/verify`. Returns the bare updated row."
+      description: "Updates sender defaults (`defaultSenderName`, `defaultFromEmail`, `defaultReplyToEmail`) and/or `sendingPurpose` — at least one required. Live gates fail closed if a campaign still points at a transactional domain. Verification is its own action: `POST /v1/domains/{domainId}/verify`. Returns the bare updated row."
       parameters:
         - schema:
             type: string
@@ -31219,7 +28683,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Domain"
-              example: *a33
+              example: *a22
         "400":
           description: Strict-body violation or no editable field supplied (at least one of `defaultSenderName` / `defaultFromEmail` / `defaultReplyToEmail` / `sendingPurpose`).
           headers:
@@ -31299,7 +28763,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelope"
-              example: *a34
+              example: *a23
         "429":
           description: The request hit the rolling rate limit window.
           headers:
@@ -31623,7 +29087,7 @@ paths:
                 sendingEnabled: true
                 sendable: true
                 sendingPurpose: marketing
-                records: *a35
+                records: *a24
                 createdAt: 2026-04-08T12:34:56.789Z
                 updatedAt: 2026-04-08T12:34:56.789Z
                 verifiedAt: 2026-04-08T13:00:00.000Z
@@ -31684,7 +29148,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelope"
-              example: *a34
+              example: *a23
         "409":
           description: The same `Idempotency-Key` was reused with a different request body.
           headers:
@@ -31956,7 +29420,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelope"
-              example: *a34
+              example: *a23
         "429":
           description: The request hit the rolling rate limit window.
           headers:
@@ -33755,7 +31219,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelope"
-              example: &a36
+              example: &a25
                 error:
                   code: CONTENT_OPERATION_FAILED
                   type: invalid_request
@@ -34050,7 +31514,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelope"
-              example: *a36
+              example: *a25
         "429":
           description: The request hit the rolling rate limit window.
           headers:
@@ -34336,7 +31800,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelope"
-              example: *a36
+              example: *a25
         "429":
           description: The request hit the rolling rate limit window.
           headers:
@@ -34622,7 +32086,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelope"
-              example: *a36
+              example: *a25
         "429":
           description: The request hit the rolling rate limit window.
           headers:
@@ -34927,7 +32391,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelope"
-              example: *a36
+              example: *a25
         "429":
           description: The request hit the rolling rate limit window.
           headers:

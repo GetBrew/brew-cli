@@ -107,12 +107,6 @@ import { sendsCancelCommand } from './commands/sends/cancel'
 import { sendsPauseCommand } from './commands/sends/pause'
 import { sendsResumeCommand } from './commands/sends/resume'
 import { templatesListCommand } from './commands/templates/list'
-import {
-  transactionalContractGetCommand,
-  transactionalContractPutCommand,
-  transactionalContractValidateCommand,
-} from './commands/transactional/contract'
-import { transactionalGetCommand } from './commands/transactional/get'
 import { typesCommand } from './commands/types'
 import { usageCommand } from './commands/usage'
 import { whoamiCommand } from './commands/whoami'
@@ -166,10 +160,6 @@ export const ALL_COMMANDS: readonly CommandSpec[] = [
   sendsCancelCommand,
   sendsPauseCommand,
   sendsResumeCommand,
-  transactionalGetCommand,
-  transactionalContractGetCommand,
-  transactionalContractPutCommand,
-  transactionalContractValidateCommand,
   typesCommand,
   audiencesListCommand,
   audiencesGetCommand,

@@ -1,16 +1,19 @@
-import type { components } from '../../generated/openapi-types'
 import { defineCommand } from '../../lib/define-command'
 import { CliUsageError } from '../../lib/errors'
 import { INPUT_FLAG, mergeInput, readJsonFlag } from '../../lib/input'
 import { rawRequest } from '../../lib/raw-request'
 
-type ContractInferResponse =
-  components['schemas']['PayloadContractInferResponse']
+// The payload-contract wave-2 schemas are not in the vendored spec yet
+// (the platform PRs are still open) — see PENDING_SPEC_ROUTES in
+// tests/parity-spec.test.ts. Structural stand-in until the refreshed
+// spec publishes `PayloadContractInferResponse`; switch back to
+// `components['schemas'][…]` then.
+type ContractInferResponse = Record<string, unknown>
 
 export const contractsInferCommand = defineCommand({
   path: ['contracts', 'infer'],
   summary:
-    'Draft a payload contract from a real example payload — nothing is saved; PUT the draft on a trigger or transactional email',
+    'Draft a payload contract from a real example payload — nothing is saved; PUT the draft on a trigger',
   sdkMethod: null,
   isRawTransport: true,
   route: { method: 'POST', path: '/v1/payload-contracts/infer' },
