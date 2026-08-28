@@ -3875,6 +3875,7 @@ components:
               occurrenceCount:
                 type: integer
                 exclusiveMinimum: 0
+                description: Total occurrences of this RULE across the email, stamped on every representative finding of the rule so the total survives representative truncation. Reconcile by max per rule — summing across findings overcounts.
               sources:
                 type: array
                 items:
@@ -12825,6 +12826,23 @@ components:
         - emailSends
         - period
       additionalProperties: false
+    DataCommandResponse:
+      type: object
+      properties:
+        exitCode:
+          type: integer
+          description: 0 = success; non-zero = the command failed (see output)
+        output:
+          type: string
+          description: stdout, then stderr under a `[stderr]` marker when present. Row contents are customer data.
+        truncated:
+          type: boolean
+          description: true when the output was cut at the size budget
+      required:
+        - exitCode
+        - output
+        - truncated
+      additionalProperties: false
     IntegrationsListResponse:
       type: object
       properties:
@@ -15838,7 +15856,7 @@ paths:
                 $ref: "#/components/schemas/EmailAuditResponse"
               example:
                 schemaVersion: 1
-                rulesetVersion: 2026-08-24.3
+                rulesetVersion: 2026-08-27.1
                 auditId: 00000000-0000-4000-8000-000000000001
                 contentHash: sha256:0000000000000000000000000000000000000000000000000000000000000000
                 auditedAt: 2026-08-23T00:00:00.000Z
@@ -33892,6 +33910,177 @@ paths:
                   message: An unexpected error occurred.
                   suggestion: Retry the request. If it keeps failing, contact support.
                   docs: https://docs.brew.new/api-reference/api/errors
+  /v1/data:
+    post:
+      operationId: runDataCommand
+      tags:
+        - Data
+      summary: Run a data command
+      description: "One unified surface over the brand's data: runs a sandboxed bash command with the `db` verbs (`db ls` / `db schema <table>` / `db find` / `db agg` / `db get` / `db insert` / `db set` / `db del`) plus jq/grep/sort/head pipes. `find` and `agg` take `--since`/`--until` time ranges (epoch ms, ISO, or relative like 7d) on every table; `agg` aggregates server-side (--fn count|sum:f|avg:f|min:f|max:f, --group-by, --bucket hour|day|week|month) — the same engine behind the MCP `run_data_command` tool and the in-app agent. Start with `db ls` (tables your credential may touch) and `db schema <table>`. `find` prints NDJSON on stdout; counts and the next-page cursor arrive on stderr. Tables are permission-scoped per credential; writes are policy-gated, and a refusal names the endpoint that owns the operation. A failed COMMAND is still HTTP 200 with `exitCode != 0` and the message in `output` — read the output, adjust, retry."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                command:
+                  type: string
+                  minLength: 1
+                  maxLength: 4000
+                  description: "Bash command line, e.g.: db find audiences name=vip --fields name | jq -r '.name'"
+              required:
+                - command
+              additionalProperties: false
+            example:
+              command: db find audiences --fields name,cachedCount --limit 10 | jq -r '.name'
+      responses:
+        "200":
+          description: Command result. `exitCode` 0 = success; non-zero = the command failed (message in `output`).
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+            X-RateLimit-Limit:
+              schema:
+                type: integer
+                description: Requests allowed in the current rolling rate limit window.
+                example: 100
+              required: true
+              description: Requests allowed in the current rolling rate limit window.
+            X-RateLimit-Remaining:
+              schema:
+                type: integer
+                description: Requests remaining in the current rolling rate limit window.
+                example: 99
+              required: true
+              description: Requests remaining in the current rolling rate limit window.
+            X-RateLimit-Reset:
+              schema:
+                type: integer
+                description: Unix timestamp in seconds for when the rolling window fully resets.
+                example: 1712592360
+              required: true
+              description: Unix timestamp in seconds for when the rolling window fully resets.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DataCommandResponse"
+              example:
+                exitCode: 0
+                output: |-
+                  Newsletter VIPs
+                  Churn risks
+
+                  [stderr]
+                  # 2 row(s)
+                truncated: false
+        "401":
+          description: The API key was missing, invalid, or revoked.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              example:
+                error:
+                  code: INVALID_API_KEY
+                  type: authentication_error
+                  message: The provided API key is invalid.
+                  suggestion: Check the API key format and retry with a valid active key.
+                  docs: https://docs.brew.new/api-reference/api/authentication
+        "429":
+          description: The request hit the rolling rate limit window.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+            X-RateLimit-Limit:
+              schema:
+                type: integer
+                description: Requests allowed in the current rolling rate limit window.
+                example: 100
+              required: true
+              description: Requests allowed in the current rolling rate limit window.
+            X-RateLimit-Remaining:
+              schema:
+                type: integer
+                description: Requests remaining in the current rolling rate limit window.
+                example: 99
+              required: true
+              description: Requests remaining in the current rolling rate limit window.
+            X-RateLimit-Reset:
+              schema:
+                type: integer
+                description: Unix timestamp in seconds for when the rolling window fully resets.
+                example: 1712592360
+              required: true
+              description: Unix timestamp in seconds for when the rolling window fully resets.
+            Retry-After:
+              schema:
+                type: integer
+                description: Seconds to wait before retrying the request.
+                example: 42
+              required: true
+              description: Seconds to wait before retrying the request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              example:
+                error:
+                  code: RATE_LIMITED
+                  type: rate_limit
+                  message: Too many requests.
+                  suggestion: Wait for the retry window before sending another request.
+                  docs: https://docs.brew.new/api-reference/api/rate-limits
+                  retryAfter: 42
+        "500":
+          description: Unexpected internal error.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              example:
+                error:
+                  code: INTERNAL_ERROR
+                  type: internal_error
+                  message: An unexpected error occurred.
+                  suggestion: Retry the request. If it keeps failing, contact support.
+                  docs: https://docs.brew.new/api-reference/api/errors
+      parameters:
+        - name: X-Brand-Id
+          in: header
+          required: false
+          description: The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 64
+          example: kx7b3s7fapqz8mjm12ekz1kxdx87yceg
   /v1/integrations:
     get:
       operationId: listIntegrations
