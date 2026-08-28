@@ -21,25 +21,6 @@ export type SpecSkip = {
 /** SDK methods that intentionally have no dedicated CLI command. */
 export const SDK_SKIP_LIST: readonly SdkSkip[] = [
   {
-    sdkPath: 'automations.triggers.getContract',
-    reason:
-      'covered by `automations triggers contract get` (raw route, bound pre-SDK-v9; SDK-method migration rides the v9 alignment)',
-  },
-  {
-    sdkPath: 'automations.triggers.putContract',
-    reason:
-      'covered by `automations triggers contract put` (raw route, bound pre-SDK-v9)',
-  },
-  {
-    sdkPath: 'automations.triggers.validatePayload',
-    reason:
-      'covered by `automations triggers contract validate` (raw route, bound pre-SDK-v9)',
-  },
-  {
-    sdkPath: 'payloadContracts.infer',
-    reason: 'covered by `contracts infer` (raw route, bound pre-SDK-v9)',
-  },
-  {
     sdkPath: 'contacts.searchAll',
     reason: 'auto-pager covered by `contacts search --all`',
   },

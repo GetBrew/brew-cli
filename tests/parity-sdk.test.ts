@@ -18,7 +18,7 @@ const PENDING_BUILD: readonly string[] = []
  * the staleness test below fails) as soon as the CLI upgrades to an SDK
  * release without the method.
  */
-const REMOVED_SDK_LEAVES: readonly string[] = []
+const REMOVED_SDK_LEAVES: readonly string[] = ['transactional.get']
 
 function walkSdkLeaves(): readonly string[] {
   const client = createBrewClient({ apiKey: 'brew_parity_walk' })
