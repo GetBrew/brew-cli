@@ -1,6 +1,6 @@
 {
   "name": "@brew.new/cli",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "Official agent-first command-line interface for the Brew public API.",
   "license": "MIT",
   "author": "Brew",
@@ -52,7 +52,7 @@
     "prepublishOnly": "bun run clean && bun run tsc && bun run lint && bun run test && bun run build"
   },
   "dependencies": {
-    "@brew.new/sdk": "^8.1.1",
+    "@brew.new/sdk": "^9.1.0",
     "commander": "^14.0.0"
   },
   "devDependencies": {

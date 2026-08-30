@@ -1168,6 +1168,7 @@ Run a `db …` command over the brand's data
 
 - Route: `POST /v1/data`
 - Class: read
+- SDK: `brew.data.run(...)`
 - Argument `command` — The db command line, e.g. 'db find audiences --fields name'
 
 ```bash
@@ -1904,6 +1905,10 @@ brew-cli api GET /v1/llms.txt
 
 SDK methods intentionally without a dedicated command:
 
+- `automations.triggers.getContract` — covered by `automations triggers contract get` (raw route, bound pre-SDK-v9; SDK-method migration tracked separately)
+- `automations.triggers.putContract` — covered by `automations triggers contract put` (raw route, bound pre-SDK-v9)
+- `automations.triggers.validatePayload` — covered by `automations triggers contract validate` (raw route, bound pre-SDK-v9)
+- `payloadContracts.infer` — covered by `contracts infer` (raw route, bound pre-SDK-v9)
 - `contacts.searchAll` — auto-pager covered by `contacts search --all`
 - `analytics.eventsAll` — auto-pager covered by `analytics events --all`
 - `analytics.sends.listAll` — auto-pager covered by `analytics sends list --all`
