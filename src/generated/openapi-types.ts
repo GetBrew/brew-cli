@@ -1407,6 +1407,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/data": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Run a data command
+         * @description One unified surface over the brand's data: runs a sandboxed bash command with the `db` verbs (`db ls` / `db schema <table>` / `db find` / `db agg` / `db get` / `db insert` / `db set` / `db del`) plus jq/grep/sort/head pipes. `find` and `agg` take `--since`/`--until` time ranges (epoch ms, ISO, or relative like 7d) on every table; `agg` aggregates server-side (--fn count|sum:f|avg:f|min:f|max:f, --group-by, --bucket hour|day|week|month) — the same engine behind the MCP `run_data_command` tool and the in-app agent. Start with `db ls` (tables your credential may touch) and `db schema <table>`. `find` prints NDJSON on stdout; counts and the next-page cursor arrive on stderr. Tables are permission-scoped per credential; writes are policy-gated, and a refusal names the endpoint that owns the operation. A failed COMMAND is still HTTP 200 with `exitCode != 0` and the message in `output` — read the output, adjust, retry.
+         */
+        post: operations["runDataCommand"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/integrations": {
         parameters: {
             query?: never;
@@ -2830,6 +2850,7 @@ export interface components {
                 impact: "block" | "confirm" | "advisory";
                 message: string;
                 remediation: string;
+                /** @description Total occurrences of this RULE across the email, stamped on every representative finding of the rule so the total survives representative truncation. Reconcile by max per rule — summing across findings overcounts. */
                 occurrenceCount?: number;
                 sources: string[];
                 standards?: {
@@ -5858,6 +5879,14 @@ export interface components {
                 end: string | null;
             };
         };
+        DataCommandResponse: {
+            /** @description 0 = success; non-zero = the command failed (see output) */
+            exitCode: number;
+            /** @description stdout, then stderr under a `[stderr]` marker when present. Row contents are customer data. */
+            output: string;
+            /** @description true when the output was cut at the size budget */
+            truncated: boolean;
+        };
         IntegrationsListResponse: {
             data: {
                 /** @enum {string} */
@@ -8176,7 +8205,7 @@ export interface operations {
                     /**
                      * @example {
                      *       "schemaVersion": 1,
-                     *       "rulesetVersion": "2026-08-24.3",
+                     *       "rulesetVersion": "2026-08-27.1",
                      *       "auditId": "00000000-0000-4000-8000-000000000001",
                      *       "contentHash": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
                      *       "auditedAt": "2026-08-23T00:00:00.000Z",
@@ -23395,6 +23424,134 @@ export interface operations {
                      *         "suggestion": "Use an API key or session with the required permission.",
                      *         "docs": "https://docs.brew.new/api-reference/api/authentication",
                      *         "param": "emails"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description The request hit the rolling rate limit window. */
+            429: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    "X-RateLimit-Reset": number;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "RATE_LIMITED",
+                     *         "type": "rate_limit",
+                     *         "message": "Too many requests.",
+                     *         "suggestion": "Wait for the retry window before sending another request.",
+                     *         "docs": "https://docs.brew.new/api-reference/api/rate-limits",
+                     *         "retryAfter": 42
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected internal error. */
+            500: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "INTERNAL_ERROR",
+                     *         "type": "internal_error",
+                     *         "message": "An unexpected error occurred.",
+                     *         "suggestion": "Retry the request. If it keeps failing, contact support.",
+                     *         "docs": "https://docs.brew.new/api-reference/api/errors"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+        };
+    };
+    runDataCommand: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+                 * @example kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+                 */
+                "X-Brand-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "command": "db find audiences --fields name,cachedCount --limit 10 | jq -r '.name'"
+                 *     }
+                 */
+                "application/json": {
+                    /** @description Bash command line, e.g.: db find audiences name=vip --fields name | jq -r '.name' */
+                    command: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Command result. `exitCode` 0 = success; non-zero = the command failed (message in `output`). */
+            200: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    "X-RateLimit-Reset": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "exitCode": 0,
+                     *       "output": "Newsletter VIPs\nChurn risks\n\n[stderr]\n# 2 row(s)",
+                     *       "truncated": false
+                     *     }
+                     */
+                    "application/json": components["schemas"]["DataCommandResponse"];
+                };
+            };
+            /** @description The API key was missing, invalid, or revoked. */
+            401: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "INVALID_API_KEY",
+                     *         "type": "authentication_error",
+                     *         "message": "The provided API key is invalid.",
+                     *         "suggestion": "Check the API key format and retry with a valid active key.",
+                     *         "docs": "https://docs.brew.new/api-reference/api/authentication"
                      *       }
                      *     }
                      */

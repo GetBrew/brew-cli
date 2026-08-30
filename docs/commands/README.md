@@ -2,7 +2,7 @@
 
 <!-- GENERATED FILE — do not edit. Regenerate with `bun run docs:commands`. -->
 
-109 commands. Classes: read (always safe), write
+110 commands. Classes: read (always safe), write
 (mutating, retry-safe), destructive (irreversible — the confirmation
 protocol applies: interactive y/N on a TTY, exit 4 + JSON envelope with
 a `confirmCommand` otherwise, `--yes` to proceed).
@@ -85,6 +85,7 @@ a `confirmCommand` otherwise, `--yes` to proceed).
 | `brew-cli automations triggers contract put` | write | `PUT /v1/automations/triggers/{triggerEventId}/contract` | Declare (or replace) the stored payload contract for a trigger — tree-validated before any write; omitting --enforcement leaves the stored setting unchanged |
 | `brew-cli automations triggers contract validate` | read | `POST /v1/automations/triggers/{triggerEventId}/contract/validate` | Dry-run a payload against a trigger's contract (the fire path's validator) — never fires; invalid payloads still exit 0 |
 | `brew-cli contracts infer` | read | `POST /v1/payload-contracts/infer` | Draft a payload contract from a real example payload — nothing is saved; PUT the draft on a trigger |
+| `brew-cli data run` | read | `POST /v1/data` | Run a `db …` command over the brand's data |
 | `brew-cli automations triggers create` | write | `POST /v1/automations/triggers` | Create a trigger event (title + typed payload schema) |
 | `brew-cli automations triggers update` | write | `PATCH /v1/automations/triggers/{triggerEventId}` | Update a trigger event (title, description, payload schema) |
 | `brew-cli automations triggers delete` | destructive | `DELETE /v1/automations/triggers/{triggerEventId}` | Delete a trigger event (rejected while automations depend on it) |
@@ -1159,6 +1160,20 @@ Draft a payload contract from a real example payload — nothing is saved; PUT t
 
 ```bash
 brew-cli contracts infer --input '{"email":"jane@example.com","order":{"total":9.5}}'
+```
+
+### brew-cli data run
+
+Run a `db …` command over the brand's data
+
+- Route: `POST /v1/data`
+- Class: read
+- Argument `command` — The db command line, e.g. 'db find audiences --fields name'
+
+```bash
+brew-cli data run 'db ls'
+brew-cli data run 'db find contacts --since 30d --fields email --limit 20'
+brew-cli data run 'db agg analyticsEvents --since 7d --group-by eventType --bucket day'
 ```
 
 ### brew-cli automations triggers create
