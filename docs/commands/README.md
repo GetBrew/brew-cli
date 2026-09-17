@@ -1819,7 +1819,7 @@ List public email flows (real multi-step sequences by brand), or fetch one by --
 
 - Route: `GET /v1/flows`
 - Class: read
-- `--slug <domain>` — Fetch ONE flow by brand domain (e.g. notion.com) with its anchor + steps
+- `--slug <domain>` — Fetch ONE flow by brand domain (e.g. brew.new) with its anchor + steps
 - `--include <keys>` — Detail-only expansions, comma-separated: html (each step’s rendered HTML)
 - `--brand-domain <domain>` — Filter the list by brand domain
 - `--category <category>` — Filter by dominant step category (welcome, newsletter, …)
@@ -1833,7 +1833,7 @@ List public email flows (real multi-step sequences by brand), or fetch one by --
 
 ```bash
 brew-cli flows list --type signup --sort emails
-brew-cli flows list --slug notion.com --include html --json
+brew-cli flows list --slug brew.new --include html --json
 brew-cli flows list --semantic "developer onboarding drip"
 ```
 

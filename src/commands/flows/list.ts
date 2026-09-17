@@ -43,7 +43,7 @@ export const flowsListCommand = defineCommand({
     {
       flag: '--slug <domain>',
       summary:
-        'Fetch ONE flow by brand domain (e.g. notion.com) with its anchor + steps',
+        'Fetch ONE flow by brand domain (e.g. brew.new) with its anchor + steps',
     },
     {
       flag: '--include <keys>',
@@ -78,7 +78,7 @@ export const flowsListCommand = defineCommand({
   ],
   examples: [
     'brew-cli flows list --type signup --sort emails',
-    'brew-cli flows list --slug notion.com --include html --json',
+    'brew-cli flows list --slug brew.new --include html --json',
     'brew-cli flows list --semantic "developer onboarding drip"',
   ],
   run: async ({ ctx, flags }) => {
