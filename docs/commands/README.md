@@ -1273,6 +1273,7 @@ Cancel one in-flight automation run (event execution or test run) — nothing fu
 
 - Route: `PATCH /v1/automations/runs`
 - Class: destructive
+- SDK: `brew.automations.runs.cancel(...)`
 - Argument `automationRunId` — Run id to cancel (from `automations runs list`, a test start, or a fire response)
 - `--reason <text>` — Operator note stored on the run
 
@@ -1819,6 +1820,7 @@ List public email flows (real multi-step sequences by brand), or fetch one by --
 
 - Route: `GET /v1/flows`
 - Class: read
+- SDK: `brew.flows.list(...)`
 - `--slug <domain>` — Fetch ONE flow by brand domain (e.g. brew.new) with its anchor + steps
 - `--include <keys>` — Detail-only expansions, comma-separated: html (each step’s rendered HTML)
 - `--brand-domain <domain>` — Filter the list by brand domain
