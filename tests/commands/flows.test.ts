@@ -32,7 +32,7 @@ function cli(
 
 const CARD = {
   slug: 'notion.com',
-  brand: { domain: 'notion.com', name: 'Notion' },
+  brand: { name: 'Notion' },
   title: 'Notion onboarding flow',
   type: 'signup',
   category: 'welcome',
