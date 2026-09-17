@@ -1202,7 +1202,7 @@ export interface paths {
         };
         /**
          * List flows
-         * @description Public email flows — one brand’s real onboarding or newsletter sequence, with the day each email landed — under `{ data, pagination }`. Omit `slug` to LIST cards (filter `?brand=`, `?category=`, `?type=`; order with `?sort=newest|emails|span|remixes`; or `?semantic=` for relevance-ranked search). Pass `?slug=<brand domain>` to fetch ONE flow → `data: [flow]` with every step’s `subject`, `previewText`, `dayOffset`, `delayDays`, `category`, `previewImage` and `emailId`; add `?include=html` for each step’s rendered HTML. A step’s `emailId` is a template reference: use it as `referenceEmailId` on `POST /v1/emails`, or look it up on `GET /v1/templates`. Organization-wide. The list is the gallery’s own set — the same bounded corpus the site shows (a few hundred flows today) — paged with `limit`/`cursor`.
+         * @description Public email flows — one brand’s real onboarding or newsletter sequence, with the day each email landed — under `{ data, pagination }`. Omit `slug` to LIST cards (filter `?brand=`, `?category=`, `?type=`; order with `?sort=newest|emails|span|remixes`; or `?semantic=` for relevance-ranked search). Pass `?slug=<brand domain>` to fetch ONE flow → `data: [flow]` with every step’s `subject`, `previewText`, `dayOffset`, `delayDays`, `category`, `previewImage` and `emailId`; add `?include=html` for each step’s rendered HTML (best-effort per step: a step whose body is no longer servable comes back without `html`). `anchor` and `steps` are detail-only — a LIST card never carries them. A step’s `emailId` is a template reference: use it as `referenceEmailId` on `POST /v1/emails`, or look it up on `GET /v1/templates`. Organization-wide. The list is the gallery’s own set — the same bounded corpus the site shows (a few hundred flows today) — paged with `limit`/`cursor`.
          */
         get: operations["listFlows"];
         put?: never;
@@ -2575,7 +2575,6 @@ export interface components {
                 logo?: string;
             };
             title: string;
-            summary?: string;
             /** @enum {string} */
             type: "newsletter" | "signup";
             category: string;
@@ -5707,7 +5706,6 @@ export interface components {
                     logo?: string;
                 };
                 title: string;
-                summary?: string;
                 /** @enum {string} */
                 type: "newsletter" | "signup";
                 category: string;
@@ -21402,7 +21400,7 @@ export interface operations {
             query?: {
                 /** @description Fetch ONE flow by its brand domain (e.g. `notion.com`) → `data: [flow]` with every `steps[]` entry. Omit to LIST. */
                 slug?: string;
-                /** @description Detail-only expansions, comma-separated. `html` adds each step’s rendered HTML — up to 12 emails, so ask for it only when you will read them. */
+                /** @description Detail-only expansions, comma-separated. `html` adds each step’s rendered HTML — up to 12 emails, so ask for it only when you will read them. Best-effort per step: a step whose body is no longer servable comes back without `html` instead of failing the flow. */
                 include?: string;
                 /** @description Exact brand domain filter for LIST, e.g. `vercel.com`. */
                 brand?: string;
