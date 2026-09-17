@@ -25,6 +25,7 @@ const ORG_LEVEL_PATH_PREFIXES = [
   '/v1/brands',
   '/v1/usage',
   '/v1/templates',
+  '/v1/flows',
   '/v1/health',
   '/v1/help',
   '/v1/llms.txt',

@@ -2,7 +2,7 @@
 
 <!-- GENERATED FILE — do not edit. Regenerate with `bun run docs:commands`. -->
 
-110 commands. Classes: read (always safe), write
+111 commands. Classes: read (always safe), write
 (mutating, retry-safe), destructive (irreversible — the confirmation
 protocol applies: interactive y/N on a TTY, exit 4 + JSON envelope with
 a `confirmCommand` otherwise, `--yes` to proceed).
@@ -122,6 +122,7 @@ a `confirmCommand` otherwise, `--yes` to proceed).
 | `brew-cli content html-to-png` | write ($) | `POST /v1/content/html-to-png` | Render HTML to a hosted PNG |
 | `brew-cli content add-image` | write ($) | `POST /v1/content/add-image` | Mirror an external image onto Brew-hosted storage |
 | `brew-cli templates list` | read | `GET /v1/templates` | List public templates (each row carries the rendered html) |
+| `brew-cli flows list` | read | `GET /v1/flows` | List public email flows (real multi-step sequences by brand), or fetch one by --slug with every step |
 | `brew-cli integrations list` | read | `GET /v1/integrations` | List the integration catalog with per-provider connected state (connect via Settings, not this CLI) |
 | `brew-cli chats get` | read | `GET /v1/chats/{chatId}` | Brand-scoped digest of a Brew chat (artifacts + transcript tail) |
 | `brew-cli health` | read | `GET /v1/health` | Check Brew API liveness (no auth required) |
@@ -1798,6 +1799,30 @@ brew-cli templates list --category welcome
 brew-cli templates list --semantic "minimal product launch" --json
 ```
 
+### brew-cli flows list
+
+List public email flows (real multi-step sequences by brand), or fetch one by --slug with every step
+
+- Route: `GET /v1/flows`
+- Class: read
+- `--slug <domain>` — Fetch ONE flow by brand domain (e.g. notion.com) with its anchor + steps
+- `--include <keys>` — Detail-only expansions, comma-separated: html (each step’s rendered HTML)
+- `--brand-domain <domain>` — Filter the list by brand domain
+- `--category <category>` — Filter by dominant step category (welcome, newsletter, …)
+- `--type <type>` — Filter by how the sequence starts: signup | newsletter
+- `--semantic <text>` — Semantic search over the sequences (relevance order)
+- `--sort <order>` — List order: newest (default) | emails | span | remixes
+- `--limit <n>` — Page size, 1-100 (default 100)
+- `--cursor <cursor>` — Opaque pagination cursor from a previous page
+- `--all` — Follow the cursor and return every page as one result
+- `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
+
+```bash
+brew-cli flows list --type signup --sort emails
+brew-cli flows list --slug notion.com --include html --json
+brew-cli flows list --semantic "developer onboarding drip"
+```
+
 ### brew-cli integrations list
 
 List the integration catalog with per-provider connected state (connect via Settings, not this CLI)
@@ -1918,3 +1943,4 @@ SDK methods intentionally without a dedicated command:
 
 Public API operations not yet available (tracked by the spec parity test):
 
+- `PATCH /v1/automations/runs` — cancel a run (MCP `cancel_execution`) landed on the platform after SDK 9.1.0 — no SDK method yet; bind via the raw transport as `automations runs cancel` next

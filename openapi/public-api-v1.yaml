@@ -29,7 +29,7 @@ info:
 
     ## Idempotency
 
-    Send an `Idempotency-Key` header (≤ 100 chars) on any POST your code might retry. Same key + same body within 24h returns the original response; same key + different body returns `409 IDEMPOTENCY_CONFLICT`.
+    Send an `Idempotency-Key` header (≤ 100 chars) on replay-safe POST operations your code might retry. Same key + same body within 24h returns the original response; same key + different body returns `409 IDEMPOTENCY_CONFLICT`. `POST /v1/api-keys` is intentionally excluded because its response reveals a credential exactly once.
   contact:
     name: Brew Support
     url: https://docs.brew.new
@@ -68,7 +68,7 @@ tags:
   - name: Integrations
     description: Brand-scoped catalog of connectable providers plus which ones are already connected. Connect itself stays in Settings (`/integrations/{provider}`).
   - name: API Keys
-    description: Mint, list, and revoke API keys. `POST` body `brandId` is the new key's binding (the only v1 body field named `brandId`). Organization-wide keys need an org-admin session or an organization-scoped credential.
+    description: Mint, list, and revoke API keys through a signed-in Clerk session whose active organization role is exactly `org:admin`. API-key and OAuth actors receive `403`. `POST` body `brandId` is the new key's binding (the only v1 body field named `brandId`).
   - name: Meta
     description: "Public discovery surface (no auth): the machine-readable API catalog (`/v1/help`)."
 components:
@@ -85,6 +85,11 @@ components:
       name: X-API-Key
       description: "Send your Brew API key as `X-API-Key: brew_xxx`."
       x-default: brew_your_api_key
+    sessionAuth:
+      type: apiKey
+      in: cookie
+      name: __session
+      description: A signed-in Clerk browser session whose active organization role is exactly `org:admin`. API-key and OAuth actors are rejected.
   schemas:
     EmailSummary:
       type: object
@@ -110,6 +115,7 @@ components:
         updatedAt:
           type: string
           format: date-time
+          description: Last stable design update. While status is `streaming`, collection reads hold this at `createdAt` so body chunks do not reorder or invalidate the whole list; the completion transition publishes the final source timestamp.
         subjectLine:
           type: string
           description: The design's default inbox subject, persisted on the latest version. Distinct from `title` (canvas name). Detail-only; absent on rows where it has never been set (via the write surfaces' `subjectLine` field, or in-app). `POST /v1/sends` still requires an explicit `subject`.
@@ -683,7 +689,7 @@ components:
                               field:
                                 type: string
                                 minLength: 1
-                                description: Trigger payload field name or dot path, for example trackingNumber or order.total.
+                                description: "Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku."
                               type:
                                 type: string
                                 enum:
@@ -711,7 +717,7 @@ components:
                               field:
                                 type: string
                                 minLength: 1
-                                description: Trigger payload field name or dot path, for example trackingNumber or order.total.
+                                description: "Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku."
                               type:
                                 type: string
                                 enum:
@@ -739,7 +745,7 @@ components:
                               field:
                                 type: string
                                 minLength: 1
-                                description: Trigger payload field name or dot path, for example trackingNumber or order.total.
+                                description: "Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku."
                               type:
                                 type: string
                                 enum:
@@ -770,7 +776,7 @@ components:
                               field:
                                 type: string
                                 minLength: 1
-                                description: Trigger payload field name or dot path, for example trackingNumber or order.total.
+                                description: "Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku."
                               type:
                                 type: string
                                 enum:
@@ -800,7 +806,7 @@ components:
                               field:
                                 type: string
                                 minLength: 1
-                                description: Trigger payload field name or dot path, for example trackingNumber or order.total.
+                                description: "Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku."
                               type:
                                 type: string
                                 enum:
@@ -827,7 +833,7 @@ components:
                               field:
                                 type: string
                                 minLength: 1
-                                description: Trigger payload field name or dot path, for example trackingNumber or order.total.
+                                description: "Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku."
                               type:
                                 type: string
                                 enum:
@@ -853,7 +859,7 @@ components:
                               field:
                                 type: string
                                 minLength: 1
-                                description: Trigger payload field name or dot path, for example trackingNumber or order.total.
+                                description: "Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku."
                               type:
                                 type: string
                                 enum:
@@ -885,7 +891,7 @@ components:
                               field:
                                 type: string
                                 minLength: 1
-                                description: Trigger payload field name or dot path, for example trackingNumber or order.total.
+                                description: "Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku."
                               type:
                                 type: string
                                 enum:
@@ -906,7 +912,7 @@ components:
                               field:
                                 type: string
                                 minLength: 1
-                                description: Trigger payload field name or dot path, for example trackingNumber or order.total.
+                                description: "Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku."
                               type:
                                 type: string
                                 enum:
@@ -927,7 +933,7 @@ components:
                               field:
                                 type: string
                                 minLength: 1
-                                description: Trigger payload field name or dot path, for example trackingNumber or order.total.
+                                description: "Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku."
                               type:
                                 type: string
                                 enum:
@@ -948,7 +954,7 @@ components:
                               field:
                                 type: string
                                 minLength: 1
-                                description: Trigger payload field name or dot path, for example trackingNumber or order.total.
+                                description: "Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku."
                               type:
                                 type: string
                                 enum:
@@ -1116,7 +1122,7 @@ components:
                               field:
                                 type: string
                                 minLength: 1
-                                description: Trigger payload field name or dot path, for example trackingNumber or order.total.
+                                description: "Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku."
                               type:
                                 type: string
                                 enum:
@@ -1144,7 +1150,7 @@ components:
                               field:
                                 type: string
                                 minLength: 1
-                                description: Trigger payload field name or dot path, for example trackingNumber or order.total.
+                                description: "Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku."
                               type:
                                 type: string
                                 enum:
@@ -1172,7 +1178,7 @@ components:
                               field:
                                 type: string
                                 minLength: 1
-                                description: Trigger payload field name or dot path, for example trackingNumber or order.total.
+                                description: "Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku."
                               type:
                                 type: string
                                 enum:
@@ -1203,7 +1209,7 @@ components:
                               field:
                                 type: string
                                 minLength: 1
-                                description: Trigger payload field name or dot path, for example trackingNumber or order.total.
+                                description: "Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku."
                               type:
                                 type: string
                                 enum:
@@ -1233,7 +1239,7 @@ components:
                               field:
                                 type: string
                                 minLength: 1
-                                description: Trigger payload field name or dot path, for example trackingNumber or order.total.
+                                description: "Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku."
                               type:
                                 type: string
                                 enum:
@@ -1260,7 +1266,7 @@ components:
                               field:
                                 type: string
                                 minLength: 1
-                                description: Trigger payload field name or dot path, for example trackingNumber or order.total.
+                                description: "Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku."
                               type:
                                 type: string
                                 enum:
@@ -1286,7 +1292,7 @@ components:
                               field:
                                 type: string
                                 minLength: 1
-                                description: Trigger payload field name or dot path, for example trackingNumber or order.total.
+                                description: "Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku."
                               type:
                                 type: string
                                 enum:
@@ -1318,7 +1324,7 @@ components:
                               field:
                                 type: string
                                 minLength: 1
-                                description: Trigger payload field name or dot path, for example trackingNumber or order.total.
+                                description: "Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku."
                               type:
                                 type: string
                                 enum:
@@ -1339,7 +1345,7 @@ components:
                               field:
                                 type: string
                                 minLength: 1
-                                description: Trigger payload field name or dot path, for example trackingNumber or order.total.
+                                description: "Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku."
                               type:
                                 type: string
                                 enum:
@@ -1360,7 +1366,7 @@ components:
                               field:
                                 type: string
                                 minLength: 1
-                                description: Trigger payload field name or dot path, for example trackingNumber or order.total.
+                                description: "Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku."
                               type:
                                 type: string
                                 enum:
@@ -1381,7 +1387,7 @@ components:
                               field:
                                 type: string
                                 minLength: 1
-                                description: Trigger payload field name or dot path, for example trackingNumber or order.total.
+                                description: "Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku."
                               type:
                                 type: string
                                 enum:
@@ -2169,6 +2175,7 @@ components:
             - stytch
             - supabase
             - workos
+            - framer
             - revenuecat
             - custom
         providerEventKey:
@@ -2220,19 +2227,20 @@ components:
             - array
         required:
           type: boolean
+          description: True when the inbound payload must carry this key for the trigger to fire.
         fallbackValue:
           anyOf:
             - type: string
             - type: number
             - type: boolean
-          description: Substitution value when the inbound payload is missing this SCALAR field. Also used as the email agent's `e.g. {{ key | fallback }}` example. Scalar leaves only.
+          description: Substitution value when the inbound payload is missing this field. Also used as the email agent's `e.g. {{ key | fallback }}` example. Scalar leaves only.
         pii:
           type: string
           enum:
             - none
             - low
             - high
-          description: PII classification for redaction. "high" auto-redacts the value (a container redacts its whole subtree) in execution logs and the inbound log. "low" (default when omitted) preserves the value. "none" is an explicit marker that the field is non-personal.
+          description: PII classification for redaction. "high" auto-redacts the value in execution logs and the inbound log. "low" (default when omitted) preserves the value. "none" is an explicit marker that the field is non-personal. On a container, "high" redacts the whole subtree.
         children:
           type: array
           items:
@@ -2901,6 +2909,172 @@ components:
         - previewImage
         - updatedAt
       additionalProperties: false
+    Flow:
+      type: object
+      properties:
+        slug:
+          type: string
+          minLength: 1
+        brand:
+          type: object
+          properties:
+            domain:
+              type: string
+              minLength: 1
+            name:
+              type: string
+              minLength: 1
+            logo:
+              type: string
+              format: uri
+          required:
+            - domain
+            - name
+          additionalProperties: false
+        title:
+          type: string
+          minLength: 1
+        summary:
+          type: string
+          minLength: 1
+        type:
+          type: string
+          enum:
+            - newsletter
+            - signup
+        category:
+          type: string
+          minLength: 1
+        categoryLabel:
+          type: string
+          minLength: 1
+        emailCount:
+          type: integer
+          minimum: 1
+        spanDays:
+          type: number
+          minimum: 0
+        remixCount:
+          type: integer
+          minimum: 0
+        previewImages:
+          type: array
+          items:
+            type: string
+            format: uri
+        publishedAt:
+          type: string
+          minLength: 1
+        updatedAt:
+          type: string
+          minLength: 1
+        anchor:
+          type: string
+          enum:
+            - submittedAt
+            - signedUpAt
+            - verifiedAt
+            - firstEmail
+        steps:
+          type: array
+          items:
+            type: object
+            properties:
+              order:
+                type: integer
+                minimum: 1
+              dayOffset:
+                type: number
+                minimum: 0
+              delayDays:
+                type: number
+                minimum: 0
+              subject:
+                type: string
+                minLength: 1
+              previewText:
+                type: string
+                minLength: 1
+              category:
+                type: string
+                minLength: 1
+              categoryLabel:
+                type: string
+                minLength: 1
+              emailId:
+                type: string
+                minLength: 1
+              previewImage:
+                type: string
+                format: uri
+              html:
+                type: string
+                minLength: 1
+            required:
+              - order
+              - dayOffset
+              - delayDays
+              - subject
+              - category
+              - categoryLabel
+              - emailId
+            additionalProperties: false
+      required:
+        - slug
+        - brand
+        - title
+        - type
+        - category
+        - categoryLabel
+        - emailCount
+        - spanDays
+        - remixCount
+        - previewImages
+        - publishedAt
+        - updatedAt
+      additionalProperties: false
+    FlowStep:
+      type: object
+      properties:
+        order:
+          type: integer
+          minimum: 1
+        dayOffset:
+          type: number
+          minimum: 0
+        delayDays:
+          type: number
+          minimum: 0
+        subject:
+          type: string
+          minLength: 1
+        previewText:
+          type: string
+          minLength: 1
+        category:
+          type: string
+          minLength: 1
+        categoryLabel:
+          type: string
+          minLength: 1
+        emailId:
+          type: string
+          minLength: 1
+        previewImage:
+          type: string
+          format: uri
+        html:
+          type: string
+          minLength: 1
+      required:
+        - order
+        - dayOffset
+        - delayDays
+        - subject
+        - category
+        - categoryLabel
+        - emailId
+      additionalProperties: false
     EmailsListResponse:
       type: object
       properties:
@@ -2930,6 +3104,7 @@ components:
               updatedAt:
                 type: string
                 format: date-time
+                description: Last stable design update. While status is `streaming`, collection reads hold this at `createdAt` so body chunks do not reorder or invalidate the whole list; the completion transition publishes the final source timestamp.
               subjectLine:
                 type: string
                 description: The design's default inbox subject, persisted on the latest version. Distinct from `title` (canvas name). Detail-only; absent on rows where it has never been set (via the write surfaces' `subjectLine` field, or in-app). `POST /v1/sends` still requires an explicit `subject`.
@@ -3114,7 +3289,7 @@ components:
           description: Up to 8 source URLs to build the email FROM — each is crawled and synthesized into one email (newsletters, recaps, product roundups).
         referenceEmailId:
           type: string
-          description: An existing design (`emailId` from `list_email_designs`) to use as the style/layout reference for the new email.
+          description: An existing design (`emailId` from `run_data_command` (`db find emails`) or GET /v1/emails) to use as the style/layout reference for the new email.
         category:
           type: string
           enum:
@@ -3209,6 +3384,10 @@ components:
             stripped:
               type: integer
               minimum: 0
+            dropped:
+              type: integer
+              minimum: 0
+              default: 0
             warnings:
               type: array
               items:
@@ -3220,9 +3399,16 @@ components:
                       - fetch_failed_retained
                       - non_image_resource_retained
                       - social_icon_substituted
+                      - tracking_pixel_dropped
                       - unsafe_url_stripped
                       - unsupported_resource_retained
                       - upload_failed_retained
+                      - inline_asset_retained
+                      - attachment_dropped
+                      - embedded_reference_unresolved
+                      - tailwind_config_unresolved
+                      - tailwind_class_dropped
+                      - foreign_component_dropped
                   location:
                     type: string
                     enum:
@@ -3230,6 +3416,7 @@ components:
                       - css-url
                       - data-src
                       - data-srcset
+                      - module
                       - preload
                       - src
                       - srcset
@@ -3264,6 +3451,8 @@ components:
             - html
             - mjml
             - jsx
+            - eml
+          description: "`html`: an HTML email document or fragment · `mjml`: MJML markup · `jsx`: React Email — a module with a default-exported component, or a bare `<Html>` element · `eml`: a saved RFC 822 message"
         content:
           type: string
           minLength: 1
@@ -3449,7 +3638,7 @@ components:
           type: string
           minLength: 1
           maxLength: 64
-          description: 'Pin the edit to a specific source version (from `list_email_designs` `include: ["versions"]`). Omit to edit the current latest.'
+          description: Pin the edit to a specific source version (from `run_data_command` (`db find emails emailId=<id>`) or GET /v1/emails). Omit to edit the current latest.
         contentUrls:
           type: array
           items:
@@ -3491,7 +3680,7 @@ components:
           type: string
           minLength: 1
           maxLength: 64
-          description: 'Exact source version to clone (from `list_email_designs` with `include: ["versions"]`). Omit to clone the current latest version.'
+          description: Exact source version to clone (from `run_data_command` (`db find emails emailId=<id>`) or GET /v1/emails). Omit to clone the current latest version.
         targetGroupId:
           type: string
           minLength: 1
@@ -3521,9 +3710,11 @@ components:
           type: string
           enum:
             - braze
+            - brevo
             - hubspot
             - klaviyo
             - mailchimp
+            - mailjet
             - iterable
             - postmark
             - onesignal
@@ -3550,9 +3741,11 @@ components:
           type: string
           enum:
             - braze
+            - brevo
             - hubspot
             - klaviyo
             - mailchimp
+            - mailjet
             - iterable
             - postmark
             - onesignal
@@ -3564,6 +3757,11 @@ components:
           minLength: 1
           maxLength: 100
           description: Template name in the ESP. Defaults to the email title.
+        senderEmail:
+          type: string
+          maxLength: 320
+          format: email
+          description: Active sender email for Brevo or Mailjet. Omit when the account has exactly one active sender; Brew selects it automatically.
         dryRun:
           type: boolean
           description: Validate the design, brand ownership, and ESP connection without creating a template.
@@ -6036,7 +6234,7 @@ components:
                                     field:
                                       type: string
                                       minLength: 1
-                                      description: Trigger payload field name or dot path, for example trackingNumber or order.total.
+                                      description: "Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku."
                                     type:
                                       type: string
                                       enum:
@@ -6064,7 +6262,7 @@ components:
                                     field:
                                       type: string
                                       minLength: 1
-                                      description: Trigger payload field name or dot path, for example trackingNumber or order.total.
+                                      description: "Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku."
                                     type:
                                       type: string
                                       enum:
@@ -6092,7 +6290,7 @@ components:
                                     field:
                                       type: string
                                       minLength: 1
-                                      description: Trigger payload field name or dot path, for example trackingNumber or order.total.
+                                      description: "Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku."
                                     type:
                                       type: string
                                       enum:
@@ -6123,7 +6321,7 @@ components:
                                     field:
                                       type: string
                                       minLength: 1
-                                      description: Trigger payload field name or dot path, for example trackingNumber or order.total.
+                                      description: "Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku."
                                     type:
                                       type: string
                                       enum:
@@ -6153,7 +6351,7 @@ components:
                                     field:
                                       type: string
                                       minLength: 1
-                                      description: Trigger payload field name or dot path, for example trackingNumber or order.total.
+                                      description: "Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku."
                                     type:
                                       type: string
                                       enum:
@@ -6180,7 +6378,7 @@ components:
                                     field:
                                       type: string
                                       minLength: 1
-                                      description: Trigger payload field name or dot path, for example trackingNumber or order.total.
+                                      description: "Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku."
                                     type:
                                       type: string
                                       enum:
@@ -6206,7 +6404,7 @@ components:
                                     field:
                                       type: string
                                       minLength: 1
-                                      description: Trigger payload field name or dot path, for example trackingNumber or order.total.
+                                      description: "Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku."
                                     type:
                                       type: string
                                       enum:
@@ -6238,7 +6436,7 @@ components:
                                     field:
                                       type: string
                                       minLength: 1
-                                      description: Trigger payload field name or dot path, for example trackingNumber or order.total.
+                                      description: "Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku."
                                     type:
                                       type: string
                                       enum:
@@ -6259,7 +6457,7 @@ components:
                                     field:
                                       type: string
                                       minLength: 1
-                                      description: Trigger payload field name or dot path, for example trackingNumber or order.total.
+                                      description: "Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku."
                                     type:
                                       type: string
                                       enum:
@@ -6280,7 +6478,7 @@ components:
                                     field:
                                       type: string
                                       minLength: 1
-                                      description: Trigger payload field name or dot path, for example trackingNumber or order.total.
+                                      description: "Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku."
                                     type:
                                       type: string
                                       enum:
@@ -6301,7 +6499,7 @@ components:
                                     field:
                                       type: string
                                       minLength: 1
-                                      description: Trigger payload field name or dot path, for example trackingNumber or order.total.
+                                      description: "Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku."
                                     type:
                                       type: string
                                       enum:
@@ -6469,7 +6667,7 @@ components:
                                     field:
                                       type: string
                                       minLength: 1
-                                      description: Trigger payload field name or dot path, for example trackingNumber or order.total.
+                                      description: "Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku."
                                     type:
                                       type: string
                                       enum:
@@ -6497,7 +6695,7 @@ components:
                                     field:
                                       type: string
                                       minLength: 1
-                                      description: Trigger payload field name or dot path, for example trackingNumber or order.total.
+                                      description: "Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku."
                                     type:
                                       type: string
                                       enum:
@@ -6525,7 +6723,7 @@ components:
                                     field:
                                       type: string
                                       minLength: 1
-                                      description: Trigger payload field name or dot path, for example trackingNumber or order.total.
+                                      description: "Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku."
                                     type:
                                       type: string
                                       enum:
@@ -6556,7 +6754,7 @@ components:
                                     field:
                                       type: string
                                       minLength: 1
-                                      description: Trigger payload field name or dot path, for example trackingNumber or order.total.
+                                      description: "Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku."
                                     type:
                                       type: string
                                       enum:
@@ -6586,7 +6784,7 @@ components:
                                     field:
                                       type: string
                                       minLength: 1
-                                      description: Trigger payload field name or dot path, for example trackingNumber or order.total.
+                                      description: "Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku."
                                     type:
                                       type: string
                                       enum:
@@ -6613,7 +6811,7 @@ components:
                                     field:
                                       type: string
                                       minLength: 1
-                                      description: Trigger payload field name or dot path, for example trackingNumber or order.total.
+                                      description: "Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku."
                                     type:
                                       type: string
                                       enum:
@@ -6639,7 +6837,7 @@ components:
                                     field:
                                       type: string
                                       minLength: 1
-                                      description: Trigger payload field name or dot path, for example trackingNumber or order.total.
+                                      description: "Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku."
                                     type:
                                       type: string
                                       enum:
@@ -6671,7 +6869,7 @@ components:
                                     field:
                                       type: string
                                       minLength: 1
-                                      description: Trigger payload field name or dot path, for example trackingNumber or order.total.
+                                      description: "Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku."
                                     type:
                                       type: string
                                       enum:
@@ -6692,7 +6890,7 @@ components:
                                     field:
                                       type: string
                                       minLength: 1
-                                      description: Trigger payload field name or dot path, for example trackingNumber or order.total.
+                                      description: "Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku."
                                     type:
                                       type: string
                                       enum:
@@ -6713,7 +6911,7 @@ components:
                                     field:
                                       type: string
                                       minLength: 1
-                                      description: Trigger payload field name or dot path, for example trackingNumber or order.total.
+                                      description: "Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku."
                                     type:
                                       type: string
                                       enum:
@@ -6734,7 +6932,7 @@ components:
                                     field:
                                       type: string
                                       minLength: 1
-                                      description: Trigger payload field name or dot path, for example trackingNumber or order.total.
+                                      description: "Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku."
                                     type:
                                       type: string
                                       enum:
@@ -7518,7 +7716,7 @@ components:
                                     field:
                                       type: string
                                       minLength: 1
-                                      description: Trigger payload field name or dot path, for example trackingNumber or order.total.
+                                      description: "Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku."
                                     type:
                                       type: string
                                       enum:
@@ -7546,7 +7744,7 @@ components:
                                     field:
                                       type: string
                                       minLength: 1
-                                      description: Trigger payload field name or dot path, for example trackingNumber or order.total.
+                                      description: "Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku."
                                     type:
                                       type: string
                                       enum:
@@ -7574,7 +7772,7 @@ components:
                                     field:
                                       type: string
                                       minLength: 1
-                                      description: Trigger payload field name or dot path, for example trackingNumber or order.total.
+                                      description: "Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku."
                                     type:
                                       type: string
                                       enum:
@@ -7605,7 +7803,7 @@ components:
                                     field:
                                       type: string
                                       minLength: 1
-                                      description: Trigger payload field name or dot path, for example trackingNumber or order.total.
+                                      description: "Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku."
                                     type:
                                       type: string
                                       enum:
@@ -7635,7 +7833,7 @@ components:
                                     field:
                                       type: string
                                       minLength: 1
-                                      description: Trigger payload field name or dot path, for example trackingNumber or order.total.
+                                      description: "Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku."
                                     type:
                                       type: string
                                       enum:
@@ -7662,7 +7860,7 @@ components:
                                     field:
                                       type: string
                                       minLength: 1
-                                      description: Trigger payload field name or dot path, for example trackingNumber or order.total.
+                                      description: "Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku."
                                     type:
                                       type: string
                                       enum:
@@ -7688,7 +7886,7 @@ components:
                                     field:
                                       type: string
                                       minLength: 1
-                                      description: Trigger payload field name or dot path, for example trackingNumber or order.total.
+                                      description: "Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku."
                                     type:
                                       type: string
                                       enum:
@@ -7720,7 +7918,7 @@ components:
                                     field:
                                       type: string
                                       minLength: 1
-                                      description: Trigger payload field name or dot path, for example trackingNumber or order.total.
+                                      description: "Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku."
                                     type:
                                       type: string
                                       enum:
@@ -7741,7 +7939,7 @@ components:
                                     field:
                                       type: string
                                       minLength: 1
-                                      description: Trigger payload field name or dot path, for example trackingNumber or order.total.
+                                      description: "Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku."
                                     type:
                                       type: string
                                       enum:
@@ -7762,7 +7960,7 @@ components:
                                     field:
                                       type: string
                                       minLength: 1
-                                      description: Trigger payload field name or dot path, for example trackingNumber or order.total.
+                                      description: "Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku."
                                     type:
                                       type: string
                                       enum:
@@ -7783,7 +7981,7 @@ components:
                                     field:
                                       type: string
                                       minLength: 1
-                                      description: Trigger payload field name or dot path, for example trackingNumber or order.total.
+                                      description: "Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku."
                                     type:
                                       type: string
                                       enum:
@@ -7951,7 +8149,7 @@ components:
                                     field:
                                       type: string
                                       minLength: 1
-                                      description: Trigger payload field name or dot path, for example trackingNumber or order.total.
+                                      description: "Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku."
                                     type:
                                       type: string
                                       enum:
@@ -7979,7 +8177,7 @@ components:
                                     field:
                                       type: string
                                       minLength: 1
-                                      description: Trigger payload field name or dot path, for example trackingNumber or order.total.
+                                      description: "Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku."
                                     type:
                                       type: string
                                       enum:
@@ -8007,7 +8205,7 @@ components:
                                     field:
                                       type: string
                                       minLength: 1
-                                      description: Trigger payload field name or dot path, for example trackingNumber or order.total.
+                                      description: "Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku."
                                     type:
                                       type: string
                                       enum:
@@ -8038,7 +8236,7 @@ components:
                                     field:
                                       type: string
                                       minLength: 1
-                                      description: Trigger payload field name or dot path, for example trackingNumber or order.total.
+                                      description: "Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku."
                                     type:
                                       type: string
                                       enum:
@@ -8068,7 +8266,7 @@ components:
                                     field:
                                       type: string
                                       minLength: 1
-                                      description: Trigger payload field name or dot path, for example trackingNumber or order.total.
+                                      description: "Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku."
                                     type:
                                       type: string
                                       enum:
@@ -8095,7 +8293,7 @@ components:
                                     field:
                                       type: string
                                       minLength: 1
-                                      description: Trigger payload field name or dot path, for example trackingNumber or order.total.
+                                      description: "Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku."
                                     type:
                                       type: string
                                       enum:
@@ -8121,7 +8319,7 @@ components:
                                     field:
                                       type: string
                                       minLength: 1
-                                      description: Trigger payload field name or dot path, for example trackingNumber or order.total.
+                                      description: "Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku."
                                     type:
                                       type: string
                                       enum:
@@ -8153,7 +8351,7 @@ components:
                                     field:
                                       type: string
                                       minLength: 1
-                                      description: Trigger payload field name or dot path, for example trackingNumber or order.total.
+                                      description: "Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku."
                                     type:
                                       type: string
                                       enum:
@@ -8174,7 +8372,7 @@ components:
                                     field:
                                       type: string
                                       minLength: 1
-                                      description: Trigger payload field name or dot path, for example trackingNumber or order.total.
+                                      description: "Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku."
                                     type:
                                       type: string
                                       enum:
@@ -8195,7 +8393,7 @@ components:
                                     field:
                                       type: string
                                       minLength: 1
-                                      description: Trigger payload field name or dot path, for example trackingNumber or order.total.
+                                      description: "Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku."
                                     type:
                                       type: string
                                       enum:
@@ -8216,7 +8414,7 @@ components:
                                     field:
                                       type: string
                                       minLength: 1
-                                      description: Trigger payload field name or dot path, for example trackingNumber or order.total.
+                                      description: "Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku."
                                     type:
                                       type: string
                                       enum:
@@ -8565,6 +8763,10 @@ components:
                       type: number
                     skipped:
                       type: number
+                    startedAt:
+                      type: string
+                    completedAt:
+                      type: string
                   required:
                     - nodeId
                     - nodeType
@@ -8640,6 +8842,12 @@ components:
                 additionalProperties: false
               error:
                 type: string
+              stalledAt:
+                type: string
+              resumeGeneration:
+                type: number
+              resumedAt:
+                type: string
               startedAt:
                 type: string
               completedAt:
@@ -8680,6 +8888,7 @@ components:
             - pause
             - resume
             - cancel
+            - resume_failed
       required:
         - action
       additionalProperties: false
@@ -8786,6 +8995,8 @@ components:
                     - orderIndex
                     - startedAt
                   additionalProperties: false
+              logsTruncated:
+                type: boolean
             required:
               - automationRunId
               - automationId
@@ -8812,6 +9023,51 @@ components:
           additionalProperties: false
       required:
         - data
+      additionalProperties: false
+    AutomationRunCancelResponse:
+      type: object
+      properties:
+        automationRunId:
+          type: string
+          minLength: 1
+          maxLength: 64
+        status:
+          type: string
+          enum:
+            - canceled
+        previousStatus:
+          type: string
+          enum:
+            - pending
+            - running
+            - completed
+            - failed
+            - canceled
+      required:
+        - automationRunId
+        - status
+        - previousStatus
+      additionalProperties: false
+    AutomationRunCancelRequest:
+      type: object
+      properties:
+        automationRunId:
+          type: string
+          minLength: 1
+          maxLength: 64
+          description: The run to cancel (from `GET /v1/automations/runs`, a test start, or a fire response).
+        status:
+          type: string
+          enum:
+            - canceled
+          description: The only PATCH action today — always `canceled`.
+        reason:
+          type: string
+          maxLength: 500
+          description: Optional operator note stored on the run.
+      required:
+        - automationRunId
+        - status
       additionalProperties: false
     TriggersPostRequest:
       type: object
@@ -8870,6 +9126,7 @@ components:
                   - stytch
                   - supabase
                   - workos
+                  - framer
                   - revenuecat
                   - custom
               providerEventKey:
@@ -9970,7 +10227,7 @@ components:
               field:
                 type: string
                 minLength: 1
-                description: The contact column or custom-field name to filter on (e.g. `email`, `firstName`, or a key from `list_custom_fields`).
+                description: The contact column or custom-field name to filter on (e.g. `email`, `firstName`, or a key from `run_data_command` (`db find fieldDefinitions`) or GET /v1/fields).
               operator:
                 type: string
                 minLength: 1
@@ -11403,7 +11660,7 @@ components:
           maxLength: 120
         defaultFromEmail:
           type: string
-          format: email
+          maxLength: 320
         defaultReplyToEmail:
           type: string
           format: email
@@ -11467,6 +11724,8 @@ components:
         score:
           type: object
           properties:
+            placementMeasured:
+              type: boolean
             value:
               type: integer
               minimum: 0
@@ -11838,6 +12097,7 @@ components:
                   - domain_not_verified
                   - dns_record_failed
                   - dmarc_missing
+                  - dmarc_invalid
                   - sending_disabled
                   - tracking_links_broken
                   - high_bounce_rate
@@ -11850,6 +12110,7 @@ components:
                   - content_promotional_penalty
                   - content_promotions_tab_shift
                   - warmup_paused
+                  - org_reputation_restricted
               severity:
                 type: string
                 enum:
@@ -11954,6 +12215,156 @@ components:
       required:
         - data
         - pagination
+      additionalProperties: false
+    FlowsListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              slug:
+                type: string
+                minLength: 1
+              brand:
+                type: object
+                properties:
+                  domain:
+                    type: string
+                    minLength: 1
+                  name:
+                    type: string
+                    minLength: 1
+                  logo:
+                    type: string
+                    format: uri
+                required:
+                  - domain
+                  - name
+                additionalProperties: false
+              title:
+                type: string
+                minLength: 1
+              summary:
+                type: string
+                minLength: 1
+              type:
+                type: string
+                enum:
+                  - newsletter
+                  - signup
+              category:
+                type: string
+                minLength: 1
+              categoryLabel:
+                type: string
+                minLength: 1
+              emailCount:
+                type: integer
+                minimum: 1
+              spanDays:
+                type: number
+                minimum: 0
+              remixCount:
+                type: integer
+                minimum: 0
+              previewImages:
+                type: array
+                items:
+                  type: string
+                  format: uri
+              publishedAt:
+                type: string
+                minLength: 1
+              updatedAt:
+                type: string
+                minLength: 1
+              anchor:
+                type: string
+                enum:
+                  - submittedAt
+                  - signedUpAt
+                  - verifiedAt
+                  - firstEmail
+              steps:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    order:
+                      type: integer
+                      minimum: 1
+                    dayOffset:
+                      type: number
+                      minimum: 0
+                    delayDays:
+                      type: number
+                      minimum: 0
+                    subject:
+                      type: string
+                      minLength: 1
+                    previewText:
+                      type: string
+                      minLength: 1
+                    category:
+                      type: string
+                      minLength: 1
+                    categoryLabel:
+                      type: string
+                      minLength: 1
+                    emailId:
+                      type: string
+                      minLength: 1
+                    previewImage:
+                      type: string
+                      format: uri
+                    html:
+                      type: string
+                      minLength: 1
+                  required:
+                    - order
+                    - dayOffset
+                    - delayDays
+                    - subject
+                    - category
+                    - categoryLabel
+                    - emailId
+                  additionalProperties: false
+            required:
+              - slug
+              - brand
+              - title
+              - type
+              - category
+              - categoryLabel
+              - emailCount
+              - spanDays
+              - remixCount
+              - previewImages
+              - publishedAt
+              - updatedAt
+            additionalProperties: false
+        pagination:
+          type: object
+          properties:
+            limit:
+              type: integer
+              minimum: 1
+              maximum: 100
+            cursor:
+              type:
+                - string
+                - "null"
+            hasMore:
+              type: boolean
+          required:
+            - limit
+            - cursor
+            - hasMore
+          additionalProperties: false
+      required:
+        - data
       additionalProperties: false
     BrandGetResponse:
       type: object
@@ -12428,6 +12839,20 @@ components:
               type: string
               minLength: 1
               maxLength: 40
+            typeface:
+              type: object
+              properties:
+                family:
+                  type: string
+                  minLength: 1
+                  maxLength: 60
+                register:
+                  type: string
+                  minLength: 1
+                  maxLength: 60
+              required:
+                - family
+              additionalProperties: false
             palette:
               type: object
               properties:
@@ -12859,6 +13284,7 @@ components:
                   - clerk
                   - customerio
                   - figma
+                  - framer
                   - slack
                   - hubspot
                   - typeform
@@ -12943,8 +13369,27 @@ components:
               - status
               - permissions
             additionalProperties: false
+        pagination:
+          type: object
+          properties:
+            limit:
+              type: integer
+              minimum: 1
+              maximum: 100
+            cursor:
+              type:
+                - string
+                - "null"
+            hasMore:
+              type: boolean
+          required:
+            - limit
+            - cursor
+            - hasMore
+          additionalProperties: false
       required:
         - data
+        - pagination
       additionalProperties: false
     ApiKeysCreateResponse:
       type: object
@@ -12986,6 +13431,10 @@ components:
               - brands
           minItems: 1
         brandId:
+          type: string
+          minLength: 1
+          maxLength: 64
+        replacesKeyId:
           type: string
           minLength: 1
           maxLength: 64
@@ -13206,7 +13655,7 @@ paths:
                   suggestion: Check the API key format and retry with a valid active key.
                   docs: https://docs.brew.new/api-reference/api/authentication
         "403":
-          description: The caller does not have the required `emails` permission.
+          description: The caller does not have the required `emails` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`).
           headers:
             x-request-id:
               schema:
@@ -13515,7 +13964,7 @@ paths:
                     remaining: 0
                     planKey: free
         "403":
-          description: The caller does not have the required `emails` permission.
+          description: The caller does not have the required `emails` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`).
           headers:
             x-request-id:
               schema:
@@ -13708,7 +14157,7 @@ paths:
       description: |-
         Converts existing markup into a NEW, fully EDITABLE Brew email design on the brand canvas. Brew preserves source structure and attempts to rehost every discoverable safe public resource. If rehosting fails, a validated public URL may be retained with a warning; private, malformed, and blocked references are stripped.
 
-        `content` is the raw markup as a STRING; `format` describes what you supply: `html` (an HTML email document or fragment), `mjml` (MJML markup), or `jsx` (React-Email JSX) — all converted into a clean, editable design. Pass `baseUrl` to resolve relative image paths. Optional `title` and `subjectLine` (the design-default inbox subject).
+        `content` is the raw source as a STRING; `format` describes what you supply: `html` (an HTML email document or fragment), `mjml` (MJML markup), `jsx` (React-Email JSX — a module with a default-exported component, or a bare `<Html>` element; static values, `PreviewProps` and local sub-components fold, anything executable is rejected with the offending line), or `eml` (a saved RFC 822 message — the HTML body is imported, inline `cid:` images are rehosted, other attachments are dropped, and the Subject becomes the title). HTML, MJML and EML land as source-preserved designs with an editable projection; JSX lands as a native React Email design. Pass `baseUrl` to resolve relative image paths. Optional `title` and `subjectLine` (the design-default inbox subject; an EML Subject is the default).
 
         FREE — no model and no credits. Conversion is a deterministic compiler, so there is no token spend to meter and no credit gate. Normal request limits still apply: 5,000,000 UTF-8 bytes, 256 remote resources, 8 concurrent fetches, 10 MB per resource, and 50 MB aggregate downloads. Optional `targetGroupId` (`grp_…` or `ungrouped`) or `targetGroupName` (resolve-or-create) — not both; omit to land Ungrouped. Unknown `targetGroupId` → `404 EMAIL_GROUP_NOT_FOUND`. Returns `201` with `{ emailId, emailVersionId, html, previewImage?, assetReport, group, subjectLine? }`.
       parameters:
@@ -13745,6 +14194,23 @@ paths:
                 value:
                   format: jsx
                   content: <Html><Body><Container><Heading>Welcome</Heading><Text>Thanks for joining.</Text></Container></Body></Html>
+              eml:
+                summary: Import a saved .eml message
+                value:
+                  format: eml
+                  content: "From: Brew <hello@brew.new>\r
+
+                    To: you@example.com\r
+
+                    Subject: Spring sale\r
+
+                    MIME-Version: 1.0\r
+
+                    Content-Type: text/html; charset=\"utf-8\"\r
+
+                    \r
+
+                    <html><body><h1>Spring sale</h1><p>20% off everything.</p></body></html>"
       responses:
         "201":
           description: The design was imported + persisted. Free — no model runs. `emailVersionId` pins the exact version for sends + automation nodes.
@@ -13837,7 +14303,7 @@ paths:
                   suggestion: Check the API key format and retry with a valid active key.
                   docs: https://docs.brew.new/api-reference/api/authentication
         "403":
-          description: The caller does not have the required `emails` permission.
+          description: The caller does not have the required `emails` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`).
           headers:
             x-request-id:
               schema:
@@ -14532,7 +14998,7 @@ paths:
                     remaining: 0
                     planKey: free
         "403":
-          description: The caller does not have the required `emails` permission.
+          description: The caller does not have the required `emails` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`).
           headers:
             x-request-id:
               schema:
@@ -14818,7 +15284,7 @@ paths:
                   suggestion: Check the API key format and retry with a valid active key.
                   docs: https://docs.brew.new/api-reference/api/authentication
         "403":
-          description: The caller does not have the required `emails` permission.
+          description: The caller does not have the required `emails` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`).
           headers:
             x-request-id:
               schema:
@@ -15037,7 +15503,7 @@ paths:
                   suggestion: Check the API key format and retry with a valid active key.
                   docs: https://docs.brew.new/api-reference/api/authentication
         "403":
-          description: The caller does not have the required `emails` permission.
+          description: The caller does not have the required `emails` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`).
           headers:
             x-request-id:
               schema:
@@ -15324,7 +15790,7 @@ paths:
                   suggestion: Check the API key format and retry with a valid active key.
                   docs: https://docs.brew.new/api-reference/api/authentication
         "403":
-          description: The caller does not have the required `emails` permission.
+          description: The caller does not have the required `emails` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`).
           headers:
             x-request-id:
               schema:
@@ -15624,7 +16090,7 @@ paths:
                   suggestion: Check the API key format and retry with a valid active key.
                   docs: https://docs.brew.new/api-reference/api/authentication
         "403":
-          description: The caller does not have the required `emails` permission.
+          description: The caller does not have the required `emails` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`).
           headers:
             x-request-id:
               schema:
@@ -15856,7 +16322,7 @@ paths:
                 $ref: "#/components/schemas/EmailAuditResponse"
               example:
                 schemaVersion: 1
-                rulesetVersion: 2026-08-27.1
+                rulesetVersion: 2026-08-28.1
                 auditId: 00000000-0000-4000-8000-000000000001
                 contentHash: sha256:0000000000000000000000000000000000000000000000000000000000000000
                 auditedAt: 2026-08-23T00:00:00.000Z
@@ -15974,7 +16440,7 @@ paths:
                     remaining: 0
                     planKey: free
         "403":
-          description: The caller does not have the required `emails` permission.
+          description: The caller does not have the required `emails` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`).
           headers:
             x-request-id:
               schema:
@@ -16290,7 +16756,7 @@ paths:
                     remaining: 0
                     planKey: free
         "403":
-          description: The caller does not have the required `emails` permission.
+          description: The caller does not have the required `emails` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`).
           headers:
             x-request-id:
               schema:
@@ -16611,7 +17077,7 @@ paths:
                     remaining: 0
                     planKey: free
         "403":
-          description: The caller does not have the required `emails` permission.
+          description: The caller does not have the required `emails` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`).
           headers:
             x-request-id:
               schema:
@@ -16910,7 +17376,7 @@ paths:
                   suggestion: Check the API key format and retry with a valid active key.
                   docs: https://docs.brew.new/api-reference/api/authentication
         "403":
-          description: The caller does not have the required `emails` permission.
+          description: The caller does not have the required `emails` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`).
           headers:
             x-request-id:
               schema:
@@ -17155,7 +17621,7 @@ paths:
                   suggestion: Check the API key format and retry with a valid active key.
                   docs: https://docs.brew.new/api-reference/api/authentication
         "403":
-          description: The caller does not have the required `emails` permission.
+          description: The caller does not have the required `emails` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`).
           headers:
             x-request-id:
               schema:
@@ -17378,7 +17844,7 @@ paths:
                   suggestion: Check the API key format and retry with a valid active key.
                   docs: https://docs.brew.new/api-reference/api/authentication
         "403":
-          description: The caller does not have the required `emails` permission.
+          description: The caller does not have the required `emails` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`).
           headers:
             x-request-id:
               schema:
@@ -17611,7 +18077,7 @@ paths:
                   suggestion: Check the API key format and retry with a valid active key.
                   docs: https://docs.brew.new/api-reference/api/authentication
         "403":
-          description: The caller does not have the required `emails` permission.
+          description: The caller does not have the required `emails` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`).
           headers:
             x-request-id:
               schema:
@@ -17849,7 +18315,7 @@ paths:
                   suggestion: Check the API key format and retry with a valid active key.
                   docs: https://docs.brew.new/api-reference/api/authentication
         "403":
-          description: The caller does not have the required `emails` permission.
+          description: The caller does not have the required `emails` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`).
           headers:
             x-request-id:
               schema:
@@ -18143,7 +18609,7 @@ paths:
                   suggestion: Check the API key format and retry with a valid active key.
                   docs: https://docs.brew.new/api-reference/api/authentication
         "403":
-          description: The caller does not have the required `emails` permission.
+          description: The caller does not have the required `emails` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`).
           headers:
             x-request-id:
               schema:
@@ -18456,7 +18922,7 @@ paths:
                   suggestion: Check the API key format and retry with a valid active key.
                   docs: https://docs.brew.new/api-reference/api/authentication
         "403":
-          description: The caller does not have the required `sends` permission.
+          description: The caller does not have the required `sends` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`).
           headers:
             x-request-id:
               schema:
@@ -18718,7 +19184,7 @@ paths:
                   suggestion: Check the API key format and retry with a valid active key.
                   docs: https://docs.brew.new/api-reference/api/authentication
         "403":
-          description: The caller does not have the required `sends` permission.
+          description: The caller does not have the required `sends` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`).
           headers:
             x-request-id:
               schema:
@@ -18936,7 +19402,7 @@ paths:
                   suggestion: Check the API key format and retry with a valid active key.
                   docs: https://docs.brew.new/api-reference/api/authentication
         "403":
-          description: The caller does not have the required `sends` permission.
+          description: The caller does not have the required `sends` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`).
           headers:
             x-request-id:
               schema:
@@ -19154,7 +19620,7 @@ paths:
                   suggestion: Check the API key format and retry with a valid active key.
                   docs: https://docs.brew.new/api-reference/api/authentication
         "403":
-          description: The caller does not have the required `sends` permission.
+          description: The caller does not have the required `sends` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`).
           headers:
             x-request-id:
               schema:
@@ -19485,7 +19951,7 @@ paths:
                   suggestion: Check the API key format and retry with a valid active key.
                   docs: https://docs.brew.new/api-reference/api/authentication
         "403":
-          description: The caller does not have the required `emails` permission.
+          description: The caller does not have the required `emails` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`).
           headers:
             x-request-id:
               schema:
@@ -19696,7 +20162,7 @@ paths:
                   suggestion: Check the API key format and retry with a valid active key.
                   docs: https://docs.brew.new/api-reference/api/authentication
         "403":
-          description: The caller does not have the required `emails` permission.
+          description: The caller does not have the required `emails` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`).
           headers:
             x-request-id:
               schema:
@@ -19943,7 +20409,7 @@ paths:
                   suggestion: Check the API key format and retry with a valid active key.
                   docs: https://docs.brew.new/api-reference/api/authentication
         "403":
-          description: The caller does not have the required `automations` permission.
+          description: The caller does not have the required `automations` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`).
           headers:
             x-request-id:
               schema:
@@ -20271,7 +20737,7 @@ paths:
                   suggestion: Check the API key format and retry with a valid active key.
                   docs: https://docs.brew.new/api-reference/api/authentication
         "403":
-          description: The caller does not have the required `emails` permission.
+          description: The caller does not have the required `emails` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`).
           headers:
             x-request-id:
               schema:
@@ -20602,7 +21068,7 @@ paths:
                   suggestion: Check the API key format and retry with a valid active key.
                   docs: https://docs.brew.new/api-reference/api/authentication
         "403":
-          description: The caller does not have the required `automations` permission.
+          description: The caller does not have the required `automations` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`).
           headers:
             x-request-id:
               schema:
@@ -20865,7 +21331,7 @@ paths:
                   suggestion: Check the API key format and retry with a valid active key.
                   docs: https://docs.brew.new/api-reference/api/authentication
         "403":
-          description: The caller does not have the required `automations` permission.
+          description: The caller does not have the required `automations` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`).
           headers:
             x-request-id:
               schema:
@@ -21180,7 +21646,7 @@ paths:
                   suggestion: Check the API key format and retry with a valid active key.
                   docs: https://docs.brew.new/api-reference/api/authentication
         "403":
-          description: The caller does not have the required `automations` permission.
+          description: The caller does not have the required `automations` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`).
           headers:
             x-request-id:
               schema:
@@ -21430,7 +21896,7 @@ paths:
                   suggestion: Check the API key format and retry with a valid active key.
                   docs: https://docs.brew.new/api-reference/api/authentication
         "403":
-          description: The caller does not have the required `automations` permission.
+          description: The caller does not have the required `automations` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`).
           headers:
             x-request-id:
               schema:
@@ -21646,7 +22112,7 @@ paths:
                   suggestion: Check the API key format and retry with a valid active key.
                   docs: https://docs.brew.new/api-reference/api/authentication
         "403":
-          description: The caller does not have the required `automations` permission.
+          description: The caller does not have the required `automations` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`).
           headers:
             x-request-id:
               schema:
@@ -21916,7 +22382,7 @@ paths:
                   suggestion: Check the API key format and retry with a valid active key.
                   docs: https://docs.brew.new/api-reference/api/authentication
         "403":
-          description: The caller does not have the required `automations` permission.
+          description: The caller does not have the required `automations` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`).
           headers:
             x-request-id:
               schema:
@@ -22156,7 +22622,7 @@ paths:
                   suggestion: Check the API key format and retry with a valid active key.
                   docs: https://docs.brew.new/api-reference/api/authentication
         "403":
-          description: The caller does not have the required `automations` permission.
+          description: The caller does not have the required `automations` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`).
           headers:
             x-request-id:
               schema:
@@ -22253,8 +22719,8 @@ paths:
       operationId: controlAudienceRun
       tags:
         - Automations
-      summary: Pause, resume, or cancel a manual-audience run
-      description: Controls an in-flight manual-audience run. `pause` holds delivery at the next step boundary (resumable); `resume` continues a paused run; `cancel` stops it for good — emails already sent are NOT recalled and a canceled run can't be resumed. `409` if the run is not in a state that allows the action (e.g. resuming a run that isn't paused); `404` for an unknown `audienceRunId`.
+      summary: Pause, resume, cancel, or continue a manual-audience run
+      description: "Controls a manual-audience run. `pause` holds delivery at the next step boundary (resumable); `resume` continues a paused run; `cancel` stops it for good — emails already sent are NOT recalled and a canceled run can't be resumed. `resume_failed` continues a FAILED run under a fresh workflow run: it picks up at the first send step that never delivered and skips every step the failed run finished, so nothing is resent; it is refused (`409`) when a send step delivered to only part of its segment. `409` if the run is not in a state that allows the action (e.g. resuming a run that isn't paused); `402` when resuming would exceed the monthly email-send limit; `404` for an unknown `audienceRunId`."
       parameters:
         - schema:
             type: string
@@ -22344,7 +22810,7 @@ paths:
                   suggestion: Check the API key format and retry with a valid active key.
                   docs: https://docs.brew.new/api-reference/api/authentication
         "403":
-          description: The caller does not have the required `automations` permission.
+          description: The caller does not have the required `automations` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`).
           headers:
             x-request-id:
               schema:
@@ -22485,7 +22951,7 @@ paths:
       tags:
         - Automations
       summary: Get automation runs
-      description: "Unified automation-run read. Omit `automationRunId` to LIST recent runs (newest first) under `{ data, pagination }`. Filters: `automationId`, `triggerEventId`, `triggerInstanceId`, `recipientEmail`, `status` (pending | running | completed | failed | canceled), `mode` (live | test), and the `from`/`to` ISO-8601 window. Pass `?automationRunId=` to fetch ONE run — returns `{ data: [row] }` (no `pagination`), `404 AUTOMATION_RUN_NOT_FOUND` on an unknown / cross-brand id. List + detail rows are lean by default; add `?include=logs` (detail only) for the per-node execution `logs[]`."
+      description: "Unified automation-run read. Omit `automationRunId` to LIST recent runs (newest first) under `{ data, pagination }`. Filters: `automationId`, `triggerEventId`, `triggerInstanceId`, `recipientEmail`, `status` (pending | running | completed | failed | canceled), `mode` (live | test), and the `from`/`to` ISO-8601 window. Pass `?automationRunId=` to fetch ONE run — returns `{ data: [row] }` (no `pagination`), `404 AUTOMATION_RUN_NOT_FOUND` on an unknown / cross-brand id. List + detail rows are lean by default; add `?include=logs` (detail only) for the newest 100 per-node execution logs. The row sets `logsTruncated: true` when older logs exist."
       parameters:
         - name: automationRunId
           in: query
@@ -22498,7 +22964,7 @@ paths:
         - name: include
           in: query
           required: false
-          description: "Detail-only expansion: `logs` inlines the per-node execution logs. Rejected without `automationRunId`."
+          description: "Detail-only expansion: `logs` inlines the newest 100 per-node execution logs and reports `logsTruncated`. Rejected without `automationRunId`."
           schema:
             type: string
             enum:
@@ -22679,7 +23145,7 @@ paths:
                   suggestion: Check the API key format and retry with a valid active key.
                   docs: https://docs.brew.new/api-reference/api/authentication
         "403":
-          description: The caller does not have the required `automations` permission.
+          description: The caller does not have the required `automations` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`).
           headers:
             x-request-id:
               schema:
@@ -22714,7 +23180,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelope"
-              example:
+              example: &a15
                 error:
                   code: AUTOMATION_RUN_NOT_FOUND
                   type: not_found
@@ -22793,6 +23259,244 @@ paths:
                   message: An unexpected error occurred.
                   suggestion: Retry the request. If it keeps failing, contact support.
                   docs: https://docs.brew.new/api-reference/api/errors
+    patch:
+      operationId: cancelAutomationRun
+      tags:
+        - Automations
+      summary: Cancel an automation run
+      description: "Operator cancel of ONE run (an event execution or a test run) by `automationRunId` in the body — the same flat identity the read uses. Marks the run `canceled` (first-terminal-wins: a late completion from the dying workflow can never overwrite it), wakes a run parked on a wait node so it observes the cancel now, and terminates the durable workflow run so a step stuck retrying is freed too. Nothing further is sent; emails already delivered are NOT recalled and a canceled run cannot be resumed. `409 RUN_NOT_CANCELLABLE` when the run already finished (`completed` / `failed` / `canceled`); `404 AUTOMATION_RUN_NOT_FOUND` for an unknown / cross-brand id. Manual-audience launches are controlled via `POST /v1/automations/audience-runs/{audienceRunId}/control` instead."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AutomationRunCancelRequest"
+            example:
+              automationRunId: run_01HZ
+              status: canceled
+              reason: Wrong segment — stopping before the second email.
+      responses:
+        "200":
+          description: The run's new status plus the status it held before the cancel.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+            X-RateLimit-Limit:
+              schema:
+                type: integer
+                description: Requests allowed in the current rolling rate limit window.
+                example: 100
+              required: true
+              description: Requests allowed in the current rolling rate limit window.
+            X-RateLimit-Remaining:
+              schema:
+                type: integer
+                description: Requests remaining in the current rolling rate limit window.
+                example: 99
+              required: true
+              description: Requests remaining in the current rolling rate limit window.
+            X-RateLimit-Reset:
+              schema:
+                type: integer
+                description: Unix timestamp in seconds for when the rolling window fully resets.
+                example: 1712592360
+              required: true
+              description: Unix timestamp in seconds for when the rolling window fully resets.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AutomationRunCancelResponse"
+              example:
+                automationRunId: run_01HZ
+                status: canceled
+                previousStatus: running
+        "400":
+          description: "The request body or query string was invalid (unknown key, wrong type, or missing required field). Strict schemas reject unknown keys — including `brandId`: a brand is named with the `X-Brand-Id` HEADER (organization-scoped credentials) or resolved from the credential itself (brand-scoped ones), never as a body or query field."
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              example:
+                error:
+                  code: INVALID_REQUEST
+                  type: invalid_request
+                  message: Request validation failed.
+                  suggestion: Fix the field reported in `param` and retry.
+                  docs: https://docs.brew.new/api-reference/api/errors
+                  param: status
+        "401":
+          description: The API key was missing, invalid, or revoked.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              example:
+                error:
+                  code: INVALID_API_KEY
+                  type: authentication_error
+                  message: The provided API key is invalid.
+                  suggestion: Check the API key format and retry with a valid active key.
+                  docs: https://docs.brew.new/api-reference/api/authentication
+        "403":
+          description: The caller does not have the required `automations` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`).
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              example:
+                error:
+                  code: INSUFFICIENT_PERMISSIONS
+                  type: authorization_error
+                  message: The caller does not have the required permission.
+                  suggestion: Use an API key or session with the required permission.
+                  docs: https://docs.brew.new/api-reference/api/authentication
+                  param: automations
+        "404":
+          description: Automation run not found in the API-key brand. Cross-brand ids intentionally surface as 404 (never 403) so the API does not leak cross-brand existence.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              example: *a15
+        "409":
+          description: The run already reached a terminal status (`completed`, `failed`, or `canceled`) and cannot be canceled.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              example:
+                error:
+                  code: RUN_NOT_CANCELLABLE
+                  type: conflict
+                  message: Automation run 'run_01HZ' is already completed and can no longer be canceled.
+                  suggestion: The run has already finished and can no longer be canceled.
+                  docs: https://docs.brew.new/api-reference/api/errors
+        "429":
+          description: The request hit the rolling rate limit window.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+            X-RateLimit-Limit:
+              schema:
+                type: integer
+                description: Requests allowed in the current rolling rate limit window.
+                example: 100
+              required: true
+              description: Requests allowed in the current rolling rate limit window.
+            X-RateLimit-Remaining:
+              schema:
+                type: integer
+                description: Requests remaining in the current rolling rate limit window.
+                example: 99
+              required: true
+              description: Requests remaining in the current rolling rate limit window.
+            X-RateLimit-Reset:
+              schema:
+                type: integer
+                description: Unix timestamp in seconds for when the rolling window fully resets.
+                example: 1712592360
+              required: true
+              description: Unix timestamp in seconds for when the rolling window fully resets.
+            Retry-After:
+              schema:
+                type: integer
+                description: Seconds to wait before retrying the request.
+                example: 42
+              required: true
+              description: Seconds to wait before retrying the request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              example:
+                error:
+                  code: RATE_LIMITED
+                  type: rate_limit
+                  message: Too many requests.
+                  suggestion: Wait for the retry window before sending another request.
+                  docs: https://docs.brew.new/api-reference/api/rate-limits
+                  retryAfter: 42
+        "500":
+          description: Unexpected internal error.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              example:
+                error:
+                  code: INTERNAL_ERROR
+                  type: internal_error
+                  message: An unexpected error occurred.
+                  suggestion: Retry the request. If it keeps failing, contact support.
+                  docs: https://docs.brew.new/api-reference/api/errors
+      parameters:
+        - name: X-Brand-Id
+          in: header
+          required: false
+          description: The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 64
+          example: kx7b3s7fapqz8mjm12ekz1kxdx87yceg
   /v1/automations/triggers:
     post:
       operationId: createTrigger
@@ -22868,7 +23572,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/TriggerRow"
-              example: &a15
+              example: &a16
                 triggerEventId: tri_signup
                 title: User Signed Up
                 description: Fires when a user completes signup.
@@ -22928,7 +23632,7 @@ paths:
                   suggestion: Check the API key format and retry with a valid active key.
                   docs: https://docs.brew.new/api-reference/api/authentication
         "403":
-          description: The caller does not have the required `automations` permission.
+          description: The caller does not have the required `automations` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`).
           headers:
             x-request-id:
               schema:
@@ -23113,7 +23817,7 @@ paths:
                 $ref: "#/components/schemas/TriggersListResponse"
               example:
                 data:
-                  - *a15
+                  - *a16
                 pagination:
                   limit: 100
                   cursor: null
@@ -23162,7 +23866,7 @@ paths:
                   suggestion: Check the API key format and retry with a valid active key.
                   docs: https://docs.brew.new/api-reference/api/authentication
         "403":
-          description: The caller does not have the required `automations` permission.
+          description: The caller does not have the required `automations` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`).
           headers:
             x-request-id:
               schema:
@@ -23197,7 +23901,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelope"
-              example: &a16
+              example: &a17
                 error:
                   code: TRIGGER_EVENT_NOT_FOUND
                   type: not_found
@@ -23347,7 +24051,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/TriggerRow"
-              example: *a15
+              example: *a16
         "400":
           description: Strict-body violation or no editable field supplied (a bare id with no updates is rejected).
           headers:
@@ -23392,7 +24096,7 @@ paths:
                   suggestion: Check the API key format and retry with a valid active key.
                   docs: https://docs.brew.new/api-reference/api/authentication
         "403":
-          description: The caller does not have the required `automations` permission.
+          description: The caller does not have the required `automations` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`).
           headers:
             x-request-id:
               schema:
@@ -23427,7 +24131,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelope"
-              example: *a16
+              example: *a17
         "422":
           description: Integration-provisioned trigger — manage it from the integration instead.
           headers:
@@ -23608,7 +24312,7 @@ paths:
                   suggestion: Check the API key format and retry with a valid active key.
                   docs: https://docs.brew.new/api-reference/api/authentication
         "403":
-          description: The caller does not have the required `automations` permission.
+          description: The caller does not have the required `automations` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`).
           headers:
             x-request-id:
               schema:
@@ -23869,7 +24573,7 @@ paths:
                   suggestion: Check the API key format and retry with a valid active key.
                   docs: https://docs.brew.new/api-reference/api/authentication
         "403":
-          description: The caller does not have the required `automations` permission.
+          description: The caller does not have the required `automations` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`).
           headers:
             x-request-id:
               schema:
@@ -24101,7 +24805,7 @@ paths:
                   suggestion: Check the API key format and retry with a valid active key.
                   docs: https://docs.brew.new/api-reference/api/authentication
         "403":
-          description: The caller does not have the required `automations` permission.
+          description: The caller does not have the required `automations` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`).
           headers:
             x-request-id:
               schema:
@@ -24314,7 +25018,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/PayloadContractGetResponse"
-              example: &a17
+              example: &a18
                 subjectKind: trigger
                 subjectId: tri_signup
                 source: stored
@@ -24384,7 +25088,7 @@ paths:
                   suggestion: Check the API key format and retry with a valid active key.
                   docs: https://docs.brew.new/api-reference/api/authentication
         "403":
-          description: The caller does not have the required `automations` permission.
+          description: The caller does not have the required `automations` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`).
           headers:
             x-request-id:
               schema:
@@ -24419,7 +25123,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelope"
-              example: &a18
+              example: &a19
                 error:
                   code: TRIGGER_EVENT_NOT_FOUND
                   type: not_found
@@ -24591,7 +25295,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/PayloadContractGetResponse"
-              example: *a17
+              example: *a18
         "400":
           description: Structurally invalid contract — duplicate keys, unknown-typed nodes, a missing required `email` string, or nested fields on a workspace without the Liquid engine.
           headers:
@@ -24636,7 +25340,7 @@ paths:
                   suggestion: Check the API key format and retry with a valid active key.
                   docs: https://docs.brew.new/api-reference/api/authentication
         "403":
-          description: The caller does not have the required `automations` permission.
+          description: The caller does not have the required `automations` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`).
           headers:
             x-request-id:
               schema:
@@ -24671,7 +25375,28 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelope"
-              example: *a18
+              example: *a19
+        "409":
+          description: The change is incompatible with a PUBLISHED automation that consumes this trigger — removing/retyping a referenced field, or tightening enforcement while published automations depend on the current acceptance.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              example:
+                error:
+                  code: CONTRACT_LOCKED_BY_PUBLISHED_AUTOMATIONS
+                  type: conflict
+                  message: Contract change removes field "order.total" referenced by published automation "Order follow-up".
+                  suggestion: Unpublish or detach the published automations that consume this trigger, or make a backward-compatible change (adding optional fields and loosening enforcement stay allowed).
+                  docs: https://docs.brew.new/api-reference/api/errors
         "429":
           description: The request hit the rolling rate limit window.
           headers:
@@ -24877,7 +25602,7 @@ paths:
                   suggestion: Check the API key format and retry with a valid active key.
                   docs: https://docs.brew.new/api-reference/api/authentication
         "403":
-          description: The caller does not have the required `automations` permission.
+          description: The caller does not have the required `automations` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`).
           headers:
             x-request-id:
               schema:
@@ -24912,7 +25637,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelope"
-              example: *a18
+              example: *a19
         "429":
           description: The request hit the rolling rate limit window.
           headers:
@@ -25102,7 +25827,7 @@ paths:
                   suggestion: Check the API key format and retry with a valid active key.
                   docs: https://docs.brew.new/api-reference/api/authentication
         "403":
-          description: The caller does not have the required `automations` permission.
+          description: The caller does not have the required `automations` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`).
           headers:
             x-request-id:
               schema:
@@ -25336,7 +26061,7 @@ paths:
                   suggestion: Check the API key format and retry with a valid active key.
                   docs: https://docs.brew.new/api-reference/api/authentication
         "403":
-          description: The caller does not have the required `automations` permission.
+          description: The caller does not have the required `automations` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`).
           headers:
             x-request-id:
               schema:
@@ -25573,7 +26298,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ContactsPostSingleResponse"
               example:
-                contact: &a20
+                contact: &a21
                   email: jane@example.com
                   firstName: Jane
                   lastName: Doe
@@ -25585,7 +26310,7 @@ paths:
                   createdAt: 2026-04-08T12:00:00.000Z
                   updatedAt: 2026-04-08T12:05:00.000Z
                   importId: null
-                  customFields: &a19
+                  customFields: &a20
                     plan: enterprise
                     revenue: 4200
                 created: true
@@ -25661,7 +26386,7 @@ paths:
                   suggestion: Check the API key format and retry with a valid active key.
                   docs: https://docs.brew.new/api-reference/api/authentication
         "403":
-          description: The caller does not have the required `contacts` permission.
+          description: The caller does not have the required `contacts` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`).
           headers:
             x-request-id:
               schema:
@@ -25881,7 +26606,7 @@ paths:
                   createdAt: 2026-04-08T12:00:00.000Z
                   updatedAt: 2026-04-08T12:05:00.000Z
                   importId: null
-                  customFields: *a19
+                  customFields: *a20
                 updated:
                   - firstName
                   - plan
@@ -25929,7 +26654,7 @@ paths:
                   suggestion: Check the API key format and retry with a valid active key.
                   docs: https://docs.brew.new/api-reference/api/authentication
         "403":
-          description: The caller does not have the required `contacts` permission.
+          description: The caller does not have the required `contacts` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`).
           headers:
             x-request-id:
               schema:
@@ -26151,7 +26876,7 @@ paths:
                   suggestion: Check the API key format and retry with a valid active key.
                   docs: https://docs.brew.new/api-reference/api/authentication
         "403":
-          description: The caller does not have the required `contacts` permission.
+          description: The caller does not have the required `contacts` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`).
           headers:
             x-request-id:
               schema:
@@ -26323,7 +27048,7 @@ paths:
                   summary: Result page
                   value:
                     data:
-                      - *a20
+                      - *a21
                       - email: john@example.com
                         firstName: John
                         lastName: Smith
@@ -26389,7 +27114,7 @@ paths:
                   suggestion: Check the API key format and retry with a valid active key.
                   docs: https://docs.brew.new/api-reference/api/authentication
         "403":
-          description: The caller does not have the required `contacts` permission.
+          description: The caller does not have the required `contacts` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`).
           headers:
             x-request-id:
               schema:
@@ -26632,7 +27357,7 @@ paths:
                     remaining: 0
                     planKey: free
         "403":
-          description: The caller does not have the required `contacts` permission.
+          description: The caller does not have the required `contacts` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`).
           headers:
             x-request-id:
               schema:
@@ -27022,7 +27747,7 @@ paths:
                   suggestion: Check the API key format and retry with a valid active key.
                   docs: https://docs.brew.new/api-reference/api/authentication
         "403":
-          description: The caller does not have the required `contacts` permission.
+          description: The caller does not have the required `contacts` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`).
           headers:
             x-request-id:
               schema:
@@ -27236,7 +27961,7 @@ paths:
                   suggestion: Check the API key format and retry with a valid active key.
                   docs: https://docs.brew.new/api-reference/api/authentication
         "403":
-          description: The caller does not have the required `contacts` permission.
+          description: The caller does not have the required `contacts` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`).
           headers:
             x-request-id:
               schema:
@@ -27495,7 +28220,7 @@ paths:
                   suggestion: Check the API key format and retry with a valid active key.
                   docs: https://docs.brew.new/api-reference/api/authentication
         "403":
-          description: The caller does not have the required `contacts` permission.
+          description: The caller does not have the required `contacts` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`).
           headers:
             x-request-id:
               schema:
@@ -27701,7 +28426,7 @@ paths:
                   suggestion: Check the API key format and retry with a valid active key.
                   docs: https://docs.brew.new/api-reference/api/authentication
         "403":
-          description: The caller does not have the required `contacts` permission.
+          description: The caller does not have the required `contacts` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`).
           headers:
             x-request-id:
               schema:
@@ -27924,7 +28649,7 @@ paths:
                   suggestion: Check the API key format and retry with a valid active key.
                   docs: https://docs.brew.new/api-reference/api/authentication
         "403":
-          description: The caller does not have the required `contacts` permission.
+          description: The caller does not have the required `contacts` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`).
           headers:
             x-request-id:
               schema:
@@ -28110,10 +28835,10 @@ paths:
                 $ref: "#/components/schemas/AudiencesListResponse"
               example:
                 data:
-                  - &a21
+                  - &a22
                     audienceId: jn7a8w4q8m9k2p1x7c3b5v6n9h7s2d4f
                     audienceName: Nordic Founders
-                    filters: &a23
+                    filters: &a24
                       filters:
                         - field: country
                           operator: equals
@@ -28170,7 +28895,7 @@ paths:
                   suggestion: Check the API key format and retry with a valid active key.
                   docs: https://docs.brew.new/api-reference/api/authentication
         "403":
-          description: The caller does not have the required `audiences` permission.
+          description: The caller does not have the required `audiences` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`).
           headers:
             x-request-id:
               schema:
@@ -28205,7 +28930,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelope"
-              example: &a22
+              example: &a23
                 error:
                   code: AUDIENCE_NOT_FOUND
                   type: not_found
@@ -28351,7 +29076,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AudienceWriteResponse"
-              example: *a21
+              example: *a22
         "400":
           description: "The request body or query string was invalid (unknown key, wrong type, or missing required field). Strict schemas reject unknown keys — including `brandId`: a brand is named with the `X-Brand-Id` HEADER (organization-scoped credentials) or resolved from the credential itself (brand-scoped ones), never as a body or query field."
           headers:
@@ -28396,7 +29121,7 @@ paths:
                   suggestion: Check the API key format and retry with a valid active key.
                   docs: https://docs.brew.new/api-reference/api/authentication
         "403":
-          description: The caller does not have the required `audiences` permission.
+          description: The caller does not have the required `audiences` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`).
           headers:
             x-request-id:
               schema:
@@ -28647,7 +29372,7 @@ paths:
                   suggestion: Check the API key format and retry with a valid active key.
                   docs: https://docs.brew.new/api-reference/api/authentication
         "403":
-          description: The caller does not have the required `contacts` permission.
+          description: The caller does not have the required `contacts` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`).
           headers:
             x-request-id:
               schema:
@@ -28831,7 +29556,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AudienceWriteResponse"
-              example: *a21
+              example: *a22
         "400":
           description: Strict-body violation or no editable field supplied (at least one of `name` / `filters` is required).
           headers:
@@ -28876,7 +29601,7 @@ paths:
                   suggestion: Check the API key format and retry with a valid active key.
                   docs: https://docs.brew.new/api-reference/api/authentication
         "403":
-          description: The caller does not have the required `audiences` permission.
+          description: The caller does not have the required `audiences` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`).
           headers:
             x-request-id:
               schema:
@@ -28911,7 +29636,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelope"
-              example: *a22
+              example: *a23
         "409":
           description: The `expectedUpdatedAt` precondition is stale; reload the audience before retrying.
           headers:
@@ -29091,7 +29816,7 @@ paths:
                   suggestion: Check the API key format and retry with a valid active key.
                   docs: https://docs.brew.new/api-reference/api/authentication
         "403":
-          description: The caller does not have the required `audiences` permission.
+          description: The caller does not have the required `audiences` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`).
           headers:
             x-request-id:
               schema:
@@ -29250,7 +29975,7 @@ paths:
               example:
                 audienceId: mh8b9x5r9n1k3p2y8c4d6w7q1j9t3f5g
                 audienceName: Nordic Founders (copy)
-                filters: *a23
+                filters: *a24
                 count: 1284
                 createdAt: 2026-04-08T12:34:56.789Z
                 updatedAt: 2026-04-08T12:34:56.789Z
@@ -29276,7 +30001,7 @@ paths:
                   suggestion: Check the API key format and retry with a valid active key.
                   docs: https://docs.brew.new/api-reference/api/authentication
         "403":
-          description: The caller does not have the required `audiences` permission.
+          description: The caller does not have the required `audiences` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`).
           headers:
             x-request-id:
               schema:
@@ -29311,7 +30036,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelope"
-              example: *a22
+              example: *a23
         "409":
           description: The same `Idempotency-Key` was reused with a different request body.
           headers:
@@ -29487,7 +30212,7 @@ paths:
                 $ref: "#/components/schemas/DomainsListResponse"
               example:
                 data:
-                  - &a24
+                  - &a25
                     domainId: kx7bkh53hasmfeh5kd7sqgykt187g8ww
                     domainUrl: https://send.example.com
                     name: send.example.com
@@ -29496,7 +30221,7 @@ paths:
                     sendingEnabled: true
                     sendable: false
                     sendingPurpose: marketing
-                    records: &a26
+                    records: &a27
                       - record: DKIM
                         name: resend._domainkey
                         type: TXT
@@ -29553,7 +30278,7 @@ paths:
                   suggestion: Check the API key format and retry with a valid active key.
                   docs: https://docs.brew.new/api-reference/api/authentication
         "403":
-          description: The caller does not have the required `domains` permission.
+          description: The caller does not have the required `domains` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`).
           headers:
             x-request-id:
               schema:
@@ -29588,7 +30313,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelope"
-              example: &a25
+              example: &a26
                 error:
                   code: DOMAIN_NOT_FOUND
                   type: not_found
@@ -29728,7 +30453,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Domain"
-              example: *a24
+              example: *a25
         "400":
           description: "The request body or query string was invalid (unknown key, wrong type, or missing required field). Strict schemas reject unknown keys — including `brandId`: a brand is named with the `X-Brand-Id` HEADER (organization-scoped credentials) or resolved from the credential itself (brand-scoped ones), never as a body or query field."
           headers:
@@ -29773,7 +30498,7 @@ paths:
                   suggestion: Check the API key format and retry with a valid active key.
                   docs: https://docs.brew.new/api-reference/api/authentication
         "403":
-          description: The caller does not have the required `domains` permission.
+          description: The caller does not have the required `domains` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`).
           headers:
             x-request-id:
               schema:
@@ -29892,7 +30617,7 @@ paths:
       tags:
         - Domains
       summary: Update domain settings
-      description: "Updates sender defaults (`defaultSenderName`, `defaultFromEmail`, `defaultReplyToEmail`) and/or `sendingPurpose` — at least one required. Live gates fail closed if a campaign still points at a transactional domain. Verification is its own action: `POST /v1/domains/{domainId}/verify`. Returns the bare updated row."
+      description: "Updates sender defaults (`defaultSenderName`, `defaultFromEmail`, `defaultReplyToEmail`) and/or `sendingPurpose` — at least one required. `defaultFromEmail` is the sender MAILBOX (the text before `@`) — the host is always this domain, so a full address is accepted and reduced to its local part; `defaultReplyToEmail`, by contrast, is a whole address. Live gates fail closed if a campaign still points at a transactional domain. Verification is its own action: `POST /v1/domains/{domainId}/verify`. Returns the bare updated row."
       parameters:
         - schema:
             type: string
@@ -29921,7 +30646,7 @@ paths:
               $ref: "#/components/schemas/DomainsPatchRequest"
             example:
               defaultSenderName: Brew
-              defaultFromEmail: hello@send.example.com
+              defaultFromEmail: hello
       responses:
         "200":
           description: Updated.
@@ -29958,7 +30683,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Domain"
-              example: *a24
+              example: *a25
         "400":
           description: Strict-body violation or no editable field supplied (at least one of `defaultSenderName` / `defaultFromEmail` / `defaultReplyToEmail` / `sendingPurpose`).
           headers:
@@ -30003,7 +30728,7 @@ paths:
                   suggestion: Check the API key format and retry with a valid active key.
                   docs: https://docs.brew.new/api-reference/api/authentication
         "403":
-          description: The caller does not have the required `domains` permission.
+          description: The caller does not have the required `domains` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`).
           headers:
             x-request-id:
               schema:
@@ -30038,7 +30763,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelope"
-              example: *a25
+              example: *a26
         "429":
           description: The request hit the rolling rate limit window.
           headers:
@@ -30197,7 +30922,7 @@ paths:
                   suggestion: Check the API key format and retry with a valid active key.
                   docs: https://docs.brew.new/api-reference/api/authentication
         "403":
-          description: The caller does not have the required `domains` permission.
+          description: The caller does not have the required `domains` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`).
           headers:
             x-request-id:
               schema:
@@ -30362,7 +31087,7 @@ paths:
                 sendingEnabled: true
                 sendable: true
                 sendingPurpose: marketing
-                records: *a26
+                records: *a27
                 createdAt: 2026-04-08T12:34:56.789Z
                 updatedAt: 2026-04-08T12:34:56.789Z
                 verifiedAt: 2026-04-08T13:00:00.000Z
@@ -30388,7 +31113,7 @@ paths:
                   suggestion: Check the API key format and retry with a valid active key.
                   docs: https://docs.brew.new/api-reference/api/authentication
         "403":
-          description: The caller does not have the required `domains` permission.
+          description: The caller does not have the required `domains` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`).
           headers:
             x-request-id:
               schema:
@@ -30423,7 +31148,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelope"
-              example: *a25
+              example: *a26
         "409":
           description: The same `Idempotency-Key` was reused with a different request body.
           headers:
@@ -30660,7 +31385,7 @@ paths:
                   suggestion: Check the API key format and retry with a valid active key.
                   docs: https://docs.brew.new/api-reference/api/authentication
         "403":
-          description: The caller does not have the required `domains` permission.
+          description: The caller does not have the required `domains` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`).
           headers:
             x-request-id:
               schema:
@@ -30695,7 +31420,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelope"
-              example: *a25
+              example: *a26
         "429":
           description: The request hit the rolling rate limit window.
           headers:
@@ -30900,7 +31625,7 @@ paths:
                   suggestion: Check the API key format and retry with a valid active key.
                   docs: https://docs.brew.new/api-reference/api/authentication
         "403":
-          description: The caller does not have the required `emails` permission.
+          description: The caller does not have the required `emails` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`).
           headers:
             x-request-id:
               schema:
@@ -30921,6 +31646,339 @@ paths:
                   suggestion: Use an API key or session with the required permission.
                   docs: https://docs.brew.new/api-reference/api/authentication
                   param: emails
+        "429":
+          description: The request hit the rolling rate limit window.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+            X-RateLimit-Limit:
+              schema:
+                type: integer
+                description: Requests allowed in the current rolling rate limit window.
+                example: 100
+              required: true
+              description: Requests allowed in the current rolling rate limit window.
+            X-RateLimit-Remaining:
+              schema:
+                type: integer
+                description: Requests remaining in the current rolling rate limit window.
+                example: 99
+              required: true
+              description: Requests remaining in the current rolling rate limit window.
+            X-RateLimit-Reset:
+              schema:
+                type: integer
+                description: Unix timestamp in seconds for when the rolling window fully resets.
+                example: 1712592360
+              required: true
+              description: Unix timestamp in seconds for when the rolling window fully resets.
+            Retry-After:
+              schema:
+                type: integer
+                description: Seconds to wait before retrying the request.
+                example: 42
+              required: true
+              description: Seconds to wait before retrying the request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              example:
+                error:
+                  code: RATE_LIMITED
+                  type: rate_limit
+                  message: Too many requests.
+                  suggestion: Wait for the retry window before sending another request.
+                  docs: https://docs.brew.new/api-reference/api/rate-limits
+                  retryAfter: 42
+        "500":
+          description: Unexpected internal error.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              example:
+                error:
+                  code: INTERNAL_ERROR
+                  type: internal_error
+                  message: An unexpected error occurred.
+                  suggestion: Retry the request. If it keeps failing, contact support.
+                  docs: https://docs.brew.new/api-reference/api/errors
+  /v1/flows:
+    get:
+      operationId: listFlows
+      tags:
+        - Templates
+      summary: List flows
+      description: "Public email flows — one brand’s real onboarding or newsletter sequence, with the day each email landed — under `{ data, pagination }`. Omit `slug` to LIST cards (filter `?brand=`, `?category=`, `?type=`; order with `?sort=newest|emails|span|remixes`; or `?semantic=` for relevance-ranked search). Pass `?slug=<brand domain>` to fetch ONE flow → `data: [flow]` with every step’s `subject`, `previewText`, `dayOffset`, `delayDays`, `category`, `previewImage` and `emailId`; add `?include=html` for each step’s rendered HTML. A step’s `emailId` is a template reference: use it as `referenceEmailId` on `POST /v1/emails`, or look it up on `GET /v1/templates`. Organization-wide. The list is the gallery’s own set — the same bounded corpus the site shows (a few hundred flows today) — paged with `limit`/`cursor`."
+      parameters:
+        - schema:
+            type: string
+            minLength: 1
+            maxLength: 253
+            pattern: ^[a-z0-9.-]+$
+            description: "Fetch ONE flow by its brand domain (e.g. `notion.com`) → `data: [flow]` with every `steps[]` entry. Omit to LIST."
+          required: false
+          description: "Fetch ONE flow by its brand domain (e.g. `notion.com`) → `data: [flow]` with every `steps[]` entry. Omit to LIST."
+          name: slug
+          in: query
+        - schema:
+            type: string
+            description: Detail-only expansions, comma-separated. `html` adds each step’s rendered HTML — up to 12 emails, so ask for it only when you will read them.
+          required: false
+          description: Detail-only expansions, comma-separated. `html` adds each step’s rendered HTML — up to 12 emails, so ask for it only when you will read them.
+          name: include
+          in: query
+        - schema:
+            type: string
+            minLength: 1
+            description: Exact brand domain filter for LIST, e.g. `vercel.com`.
+          required: false
+          description: Exact brand domain filter for LIST, e.g. `vercel.com`.
+          name: brand
+          in: query
+        - schema:
+            type: string
+            enum:
+              - verification
+              - transactional
+              - direct_sales
+              - welcome
+              - promotion
+              - newsletter
+              - education
+              - abandoned_cart
+              - winback
+              - other
+            description: Filter LIST by the flow’s dominant step category (`welcome`, `newsletter`, `promotion`, `education`, …).
+          required: false
+          description: Filter LIST by the flow’s dominant step category (`welcome`, `newsletter`, `promotion`, `education`, …).
+          name: category
+          in: query
+        - schema:
+            type: string
+            enum:
+              - newsletter
+              - signup
+            description: "Filter LIST by how the sequence starts: `signup` (after creating an account) or `newsletter` (after subscribing)."
+          required: false
+          description: "Filter LIST by how the sequence starts: `signup` (after creating an account) or `newsletter` (after subscribing)."
+          name: type
+          in: query
+        - schema:
+            type: string
+            minLength: 1
+            maxLength: 500
+            description: Semantic search over what the sequences are about — “developer onboarding drip”, “trial expiry win-back”. Results come back in relevance order and `sort` is ignored.
+          required: false
+          description: Semantic search over what the sequences are about — “developer onboarding drip”, “trial expiry win-back”. Results come back in relevance order and `sort` is ignored.
+          name: semantic
+          in: query
+        - schema:
+            type: string
+            enum:
+              - newest
+              - emails
+              - span
+              - remixes
+            description: "LIST order: `newest` (default), `emails` (longest sequences first), `span` (sequences that run the longest first), `remixes` (most remixed first)."
+          required: false
+          description: "LIST order: `newest` (default), `emails` (longest sequences first), `span` (sequences that run the longest first), `remixes` (most remixed first)."
+          name: sort
+          in: query
+        - schema:
+            anyOf:
+              - type: number
+              - type: string
+          required: false
+          name: limit
+          in: query
+        - schema:
+            type: string
+            minLength: 1
+            maxLength: 512
+          required: false
+          name: cursor
+          in: query
+      responses:
+        "200":
+          description: A page of flow cards, or — with `?slug=` — the one flow and its steps.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+            X-RateLimit-Limit:
+              schema:
+                type: integer
+                description: Requests allowed in the current rolling rate limit window.
+                example: 100
+              required: true
+              description: Requests allowed in the current rolling rate limit window.
+            X-RateLimit-Remaining:
+              schema:
+                type: integer
+                description: Requests remaining in the current rolling rate limit window.
+                example: 99
+              required: true
+              description: Requests remaining in the current rolling rate limit window.
+            X-RateLimit-Reset:
+              schema:
+                type: integer
+                description: Unix timestamp in seconds for when the rolling window fully resets.
+                example: 1712592360
+              required: true
+              description: Unix timestamp in seconds for when the rolling window fully resets.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FlowsListResponse"
+              example:
+                data:
+                  - slug: notion.com
+                    brand:
+                      domain: notion.com
+                      name: Notion
+                      logo: https://cdn.brew.new/brand/fetched-logo/notion.com/logo.png
+                    title: Notion onboarding flow
+                    type: signup
+                    category: welcome
+                    categoryLabel: Welcome
+                    emailCount: 6
+                    spanDays: 14
+                    remixCount: 12
+                    previewImages:
+                      - https://cdn.brew.new/email-preview-notion-1.png
+                      - https://cdn.brew.new/email-preview-notion-2.png
+                      - https://cdn.brew.new/email-preview-notion-3.png
+                    publishedAt: 2026-09-01T12:00:00.000Z
+                    updatedAt: 2026-09-01T12:00:00.000Z
+                    anchor: signedUpAt
+                    steps:
+                      - order: 1
+                        dayOffset: 0
+                        delayDays: 0
+                        subject: Welcome to Notion
+                        previewText: Here’s how to set up your first page.
+                        category: welcome
+                        categoryLabel: Welcome
+                        emailId: pt1_k97nvhqe6xgyj67g58ajwj1tj58egexx
+                        previewImage: https://cdn.brew.new/email-preview-notion-1.png
+                      - order: 2
+                        dayOffset: 2.1
+                        delayDays: 2.1
+                        subject: Three templates to try today
+                        category: education
+                        categoryLabel: Education
+                        emailId: pt1_k97s409kdrzbeajqffq6011wfn8egmdq
+                        previewImage: https://cdn.brew.new/email-preview-notion-2.png
+                pagination:
+                  limit: 100
+                  cursor: null
+                  hasMore: false
+        "400":
+          description: "The request body or query string was invalid (unknown key, wrong type, or missing required field). Strict schemas reject unknown keys — including `brandId`: a brand is named with the `X-Brand-Id` HEADER (organization-scoped credentials) or resolved from the credential itself (brand-scoped ones), never as a body or query field."
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              example:
+                error:
+                  code: INVALID_REQUEST
+                  type: invalid_request
+                  message: Request validation failed.
+                  suggestion: Fix the field reported in `param` and retry.
+                  docs: https://docs.brew.new/api-reference/api/errors
+                  param: sort
+        "401":
+          description: The API key was missing, invalid, or revoked.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              example:
+                error:
+                  code: INVALID_API_KEY
+                  type: authentication_error
+                  message: The provided API key is invalid.
+                  suggestion: Check the API key format and retry with a valid active key.
+                  docs: https://docs.brew.new/api-reference/api/authentication
+        "403":
+          description: The caller does not have the required `emails` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`).
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              example:
+                error:
+                  code: INSUFFICIENT_PERMISSIONS
+                  type: authorization_error
+                  message: The caller does not have the required permission.
+                  suggestion: Use an API key or session with the required permission.
+                  docs: https://docs.brew.new/api-reference/api/authentication
+                  param: emails
+        "404":
+          description: Flow not found in the API-key brand. Cross-brand ids intentionally surface as 404 (never 403) so the API does not leak cross-brand existence.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              example:
+                error:
+                  code: FLOW_NOT_FOUND
+                  type: not_found
+                  message: No public flow matches slug 'no-such-brand.example'.
+                  suggestion: List flows with GET /v1/flows and use a returned `slug` (the brand domain, e.g. `notion.com`).
+                  docs: https://docs.brew.new/api-reference/api/errors
+                  param: slug
         "429":
           description: The request hit the rolling rate limit window.
           headers:
@@ -31292,7 +32350,7 @@ paths:
                   suggestion: Check the API key format and retry with a valid active key.
                   docs: https://docs.brew.new/api-reference/api/authentication
         "403":
-          description: The caller does not have the required `emails` permission.
+          description: The caller does not have the required `emails` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`).
           headers:
             x-request-id:
               schema:
@@ -31539,7 +32597,7 @@ paths:
                     remaining: 0
                     planKey: free
         "403":
-          description: The caller does not have the required `emails` permission.
+          description: The caller does not have the required `emails` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`).
           headers:
             x-request-id:
               schema:
@@ -32438,7 +33496,7 @@ paths:
                     remaining: 0
                     planKey: free
         "403":
-          description: The caller does not have the required `emails` permission.
+          description: The caller does not have the required `emails` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`).
           headers:
             x-request-id:
               schema:
@@ -32494,7 +33552,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelope"
-              example: &a27
+              example: &a28
                 error:
                   code: CONTENT_OPERATION_FAILED
                   type: invalid_request
@@ -32733,7 +33791,7 @@ paths:
                     remaining: 0
                     planKey: free
         "403":
-          description: The caller does not have the required `emails` permission.
+          description: The caller does not have the required `emails` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`).
           headers:
             x-request-id:
               schema:
@@ -32789,7 +33847,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelope"
-              example: *a27
+              example: *a28
         "429":
           description: The request hit the rolling rate limit window.
           headers:
@@ -33019,7 +34077,7 @@ paths:
                     remaining: 0
                     planKey: free
         "403":
-          description: The caller does not have the required `emails` permission.
+          description: The caller does not have the required `emails` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`).
           headers:
             x-request-id:
               schema:
@@ -33075,7 +34133,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelope"
-              example: *a27
+              example: *a28
         "429":
           description: The request hit the rolling rate limit window.
           headers:
@@ -33305,7 +34363,7 @@ paths:
                     remaining: 0
                     planKey: free
         "403":
-          description: The caller does not have the required `emails` permission.
+          description: The caller does not have the required `emails` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`).
           headers:
             x-request-id:
               schema:
@@ -33361,7 +34419,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelope"
-              example: *a27
+              example: *a28
         "429":
           description: The request hit the rolling rate limit window.
           headers:
@@ -33610,7 +34668,7 @@ paths:
                   suggestion: Check the API key format and retry with a valid active key.
                   docs: https://docs.brew.new/api-reference/api/authentication
         "403":
-          description: The caller does not have the required `emails` permission.
+          description: The caller does not have the required `emails` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`).
           headers:
             x-request-id:
               schema:
@@ -33666,7 +34724,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelope"
-              example: *a27
+              example: *a28
         "429":
           description: The request hit the rolling rate limit window.
           headers:
@@ -33818,7 +34876,7 @@ paths:
                   suggestion: Check the API key format and retry with a valid active key.
                   docs: https://docs.brew.new/api-reference/api/authentication
         "403":
-          description: The caller does not have the required `emails` permission.
+          description: The caller does not have the required `emails` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`).
           headers:
             x-request-id:
               schema:
@@ -34243,10 +35301,31 @@ paths:
       tags:
         - API Keys
       summary: List API keys
-      description: Lists API keys in the organization. A brand-scoped credential only sees keys bound to its brand. Organization-level — takes no `X-Brand-Id`. `brandId` on a row is the key's binding, not the request actor. No permission scope.
+      security:
+        - sessionAuth: []
+      description: Lists one cursor page of API-key metadata for the active organization. Requires an exact `org:admin` Clerk session; API-key and OAuth actors receive `403`. Organization-level — takes no `X-Brand-Id`. `brandId` on a row is the key's binding, not the request actor. Stored secrets and hashes are never returned.
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          description: Page size (1–100). Defaults to 50.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+          example: 50
+        - name: cursor
+          in: query
+          required: false
+          description: Opaque Convex cursor from the previous response. Omit for the first page.
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 8192
       responses:
         "200":
-          description: API keys this credential may see.
+          description: API keys in the active Clerk session's organization.
           headers:
             x-request-id:
               schema:
@@ -34289,6 +35368,10 @@ paths:
                     status: active
                     permissions:
                       - all
+                pagination:
+                  limit: 50
+                  cursor: null
+                  hasMore: false
         "401":
           description: The API key was missing, invalid, or revoked.
           headers:
@@ -34386,9 +35469,9 @@ paths:
       tags:
         - API Keys
       summary: Create an API key
-      description: Mints a new API key. The plaintext `key` is returned once. `brandId` in the body is the NEW KEY's binding (omit for an organization-wide key) — the only v1 body field named `brandId`. Permissions default to `["all"]` and cannot exceed the caller's grant. Organization-wide keys require an org-admin dashboard session or an organization-scoped credential.
-      parameters:
-        - *a1
+      security:
+        - sessionAuth: []
+      description: Mints a new API key through an exact `org:admin` Clerk session; API-key and OAuth actors receive `403`. The plaintext `key` is returned once and only its hash plus final preview are stored. This operation intentionally does not support response replay or `Idempotency-Key`, because replay would disclose the credential again. `brandId` in the body is the NEW KEY's binding (omit for an organization-wide key) — the only v1 body field named `brandId`. Permissions default to `["all"]`. To rotate without downtime, send only `replacesKeyId`; Brew copies the active predecessor's name, scope, and permissions and leaves it active until you revoke it after switching consumers.
       requestBody:
         required: true
         content:
@@ -34539,7 +35622,9 @@ paths:
       tags:
         - API Keys
       summary: Revoke an API key
-      description: Revokes an API key. Organization-wide keys require an org-admin dashboard session or an organization-scoped credential. A brand credential cannot see or revoke another brand's keys (`404`).
+      security:
+        - sessionAuth: []
+      description: Revokes an API key in the active organization. Requires an exact `org:admin` Clerk session; API-key and OAuth actors receive `403`.
       parameters:
         - schema:
             type: string
@@ -34903,7 +35988,7 @@ paths:
                   suggestion: Check the API key format and retry with a valid active key.
                   docs: https://docs.brew.new/api-reference/api/authentication
         "403":
-          description: The caller does not have the required `emails` permission.
+          description: The caller does not have the required `emails` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`).
           headers:
             x-request-id:
               schema:

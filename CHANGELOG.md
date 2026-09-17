@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased
+
+- Added `flows list` for the public email flows gallery (`GET /v1/flows`):
+  real multi-step sequences by brand, with the day each email landed. List
+  cards with `--brand-domain`, `--category`, `--type signup|newsletter`,
+  `--semantic`, and `--sort newest|emails|span|remixes` (plus `--all`), or
+  fetch one flow with `--slug <brand domain>` for its `anchor` and every
+  step's `subject`, `dayOffset`, `delayDays`, `category`, `previewImage`,
+  and `emailId` (a template reference usable as `referenceEmailId` on
+  `emails generate`); `--include html` adds each step's rendered HTML. The
+  route is organization-wide, so the brand binding is never sent. Bound
+  through the raw transport until `@brew.new/sdk` ships `flows.list`.
+- Spec resync: `GET /v1/flows` (`Flow`, `FlowStep`, `FlowsListResponse`,
+  `FLOW_NOT_FOUND`).
+
 ## 0.5.0
 
 - **Breaking**: the `transactional` command group (`transactional get`,

@@ -89,7 +89,7 @@ The full generated reference lives in
 [`docs/commands/README.md`](./docs/commands/README.md). Resource groups:
 `contacts`, `fields`, `emails`, `sends`, `audiences`, `automations`
 (+ `triggers`, `runs`), `analytics`, `brand`, `content`, `templates`,
-plus `login`/`logout`/`whoami`/`config`/`usage`/`health`/`docs`/`api`.
+`flows`, plus `login`/`logout`/`whoami`/`config`/`usage`/`health`/`docs`/`api`.
 
 ## How this repo stays in sync with the API, MCP, and SDK
 

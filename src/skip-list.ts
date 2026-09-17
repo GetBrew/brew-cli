@@ -70,4 +70,11 @@ export const SDK_SKIP_LIST: readonly SdkSkip[] = [
  * Spec operations with no CLI command yet. Kept exact: the parity test
  * fails if one of these gains SDK support without gaining a command.
  */
-export const SPEC_SKIP_LIST: readonly SpecSkip[] = []
+export const SPEC_SKIP_LIST: readonly SpecSkip[] = [
+  {
+    method: 'PATCH',
+    path: '/v1/automations/runs',
+    reason:
+      'cancel a run (MCP `cancel_execution`) landed on the platform after SDK 9.1.0 — no SDK method yet; bind via the raw transport as `automations runs cancel` next',
+  },
+]

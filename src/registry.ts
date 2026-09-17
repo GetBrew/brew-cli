@@ -100,6 +100,7 @@ import { emailsSendCommand } from './commands/emails/send'
 import { fieldsCreateCommand } from './commands/fields/create'
 import { fieldsDeleteCommand } from './commands/fields/delete'
 import { fieldsListCommand } from './commands/fields/list'
+import { flowsListCommand } from './commands/flows/list'
 import { healthCommand } from './commands/health'
 import { integrationsListCommand } from './commands/integrations/list'
 import { loginCommand } from './commands/login'
@@ -221,6 +222,7 @@ export const ALL_COMMANDS: readonly CommandSpec[] = [
   contentHtmlToPngCommand,
   contentAddImageCommand,
   templatesListCommand,
+  flowsListCommand,
   integrationsListCommand,
   chatsGetCommand,
   healthCommand,
