@@ -2569,7 +2569,6 @@ export interface components {
         Flow: {
             slug: string;
             brand: {
-                domain: string;
                 name: string;
                 /** Format: uri */
                 logo?: string;
@@ -5700,7 +5699,6 @@ export interface components {
             data: {
                 slug: string;
                 brand: {
-                    domain: string;
                     name: string;
                     /** Format: uri */
                     logo?: string;
@@ -21441,7 +21439,6 @@ export interface operations {
                      *         {
                      *           "slug": "brew.new",
                      *           "brand": {
-                     *             "domain": "brew.new",
                      *             "name": "Brew",
                      *             "logo": "https://cdn.brew.new/brand/fetched-logo/brew.new/logo.png"
                      *           },
