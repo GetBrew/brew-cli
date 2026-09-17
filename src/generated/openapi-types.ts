@@ -1202,7 +1202,7 @@ export interface paths {
         };
         /**
          * List flows
-         * @description Public email flows — one brand’s real onboarding or newsletter sequence, with the day each email landed — under `{ data, pagination }`. Omit `slug` to LIST cards (filter `?brand=`, `?category=`, `?type=`; order with `?sort=newest|emails|span|remixes`; or `?semantic=` for relevance-ranked search). Pass `?slug=<brand domain>` to fetch ONE flow → `data: [flow]` with every step’s `subject`, `previewText`, `dayOffset`, `delayDays`, `category`, `previewImage` and `emailId`; add `?include=html` for each step’s rendered HTML (best-effort per step: a step whose body is no longer servable comes back without `html`). `anchor` and `steps` are detail-only — a LIST card never carries them. A step’s `emailId` is a template reference: use it as `referenceEmailId` on `POST /v1/emails`, or look it up on `GET /v1/templates`. Organization-wide. The list is the gallery’s own set — the same bounded corpus the site shows (a few hundred flows today) — paged with `limit`/`cursor`.
+         * @description Public email flows — one brand’s real onboarding or newsletter sequence, with the day each email landed — under `{ data, pagination }`. Omit `slug` to LIST cards (filter `?brand=`, `?category=`, `?type=`; order with `?sort=newest|emails|span|remixes`; or `?semantic=` for relevance-ranked search). Pass `?slug=<brand domain>` to fetch ONE flow → `data: [flow]` with every step’s `subject`, `previewText`, `dayOffset`, `delayDays`, `category`, `previewImage` and `emailId`; add `?include=html` for each step’s rendered HTML (best-effort per step: a step whose body is no longer servable comes back without `html`). `anchor` and `steps` are detail-only — a LIST card never carries them. A flow holds at most 12 steps: capture keeps the first 12 and cuts the tail, so `emailCount: 12` means twelve **or more** were sent. A step’s `emailId` is a template reference: use it as `referenceEmailId` on `POST /v1/emails`, or look it up on `GET /v1/templates`. Organization-wide. The list is the gallery’s own set — the same bounded corpus the site shows (a few hundred flows today) — paged with `limit`/`cursor`.
          */
         get: operations["listFlows"];
         put?: never;
@@ -21398,9 +21398,9 @@ export interface operations {
     listFlows: {
         parameters: {
             query?: {
-                /** @description Fetch ONE flow by its brand domain (e.g. `notion.com`) → `data: [flow]` with every `steps[]` entry. Omit to LIST. */
+                /** @description Fetch ONE flow by its brand domain (e.g. `brew.new`) → `data: [flow]` with every `steps[]` entry. Omit to LIST. */
                 slug?: string;
-                /** @description Detail-only expansions, comma-separated. `html` adds each step’s rendered HTML — up to 12 emails, so ask for it only when you will read them. Best-effort per step: a step whose body is no longer servable comes back without `html` instead of failing the flow. */
+                /** @description Detail-only expansions, comma-separated. `html` adds each step’s rendered HTML. Rendered email is bulky — over MCP only the first step or two fit one response; the rest simply arrive without `html` and the summary says how many were kept, so fetch those by `emailId`. The REST route has no such cap. Best-effort per step: a step whose body is no longer servable comes back without `html` rather than failing the flow. */
                 include?: string;
                 /** @description Exact brand domain filter for LIST, e.g. `vercel.com`. */
                 brand?: string;
@@ -21439,13 +21439,13 @@ export interface operations {
                      * @example {
                      *       "data": [
                      *         {
-                     *           "slug": "notion.com",
+                     *           "slug": "brew.new",
                      *           "brand": {
-                     *             "domain": "notion.com",
-                     *             "name": "Notion",
-                     *             "logo": "https://cdn.brew.new/brand/fetched-logo/notion.com/logo.png"
+                     *             "domain": "brew.new",
+                     *             "name": "Brew",
+                     *             "logo": "https://cdn.brew.new/brand/fetched-logo/brew.new/logo.png"
                      *           },
-                     *           "title": "Notion onboarding flow",
+                     *           "title": "Brew onboarding flow",
                      *           "type": "signup",
                      *           "category": "welcome",
                      *           "categoryLabel": "Welcome",
@@ -21453,9 +21453,9 @@ export interface operations {
                      *           "spanDays": 14,
                      *           "remixCount": 12,
                      *           "previewImages": [
-                     *             "https://cdn.brew.new/email-preview-notion-1.png",
-                     *             "https://cdn.brew.new/email-preview-notion-2.png",
-                     *             "https://cdn.brew.new/email-preview-notion-3.png"
+                     *             "https://cdn.brew.new/email-preview-brew-1.png",
+                     *             "https://cdn.brew.new/email-preview-brew-2.png",
+                     *             "https://cdn.brew.new/email-preview-brew-3.png"
                      *           ],
                      *           "publishedAt": "2026-09-01T12:00:00.000Z",
                      *           "updatedAt": "2026-09-01T12:00:00.000Z",
@@ -21465,12 +21465,12 @@ export interface operations {
                      *               "order": 1,
                      *               "dayOffset": 0,
                      *               "delayDays": 0,
-                     *               "subject": "Welcome to Notion",
-                     *               "previewText": "Here’s how to set up your first page.",
+                     *               "subject": "Welcome to Brew",
+                     *               "previewText": "Here’s how to set up your first brand.",
                      *               "category": "welcome",
                      *               "categoryLabel": "Welcome",
                      *               "emailId": "pt1_k97nvhqe6xgyj67g58ajwj1tj58egexx",
-                     *               "previewImage": "https://cdn.brew.new/email-preview-notion-1.png"
+                     *               "previewImage": "https://cdn.brew.new/email-preview-brew-1.png"
                      *             },
                      *             {
                      *               "order": 2,
@@ -21480,7 +21480,7 @@ export interface operations {
                      *               "category": "education",
                      *               "categoryLabel": "Education",
                      *               "emailId": "pt1_k97s409kdrzbeajqffq6011wfn8egmdq",
-                     *               "previewImage": "https://cdn.brew.new/email-preview-notion-2.png"
+                     *               "previewImage": "https://cdn.brew.new/email-preview-brew-2.png"
                      *             }
                      *           ]
                      *         }
@@ -21577,7 +21577,7 @@ export interface operations {
                      *         "code": "FLOW_NOT_FOUND",
                      *         "type": "not_found",
                      *         "message": "No public flow matches slug 'no-such-brand.example'.",
-                     *         "suggestion": "List flows with GET /v1/flows and use a returned `slug` (the brand domain, e.g. `notion.com`).",
+                     *         "suggestion": "List flows with GET /v1/flows and use a returned `slug` (the brand domain, e.g. `brew.new`).",
                      *         "docs": "https://docs.brew.new/api-reference/api/errors",
                      *         "param": "slug"
                      *       }
