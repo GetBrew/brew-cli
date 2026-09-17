@@ -1,7 +1,8 @@
-import type { components, operations } from '../../generated/openapi-types'
+import type { Flow, ListFlowsInput } from '@brew.new/sdk'
 import { defineCommand } from '../../lib/define-command'
 import { CliUsageError } from '../../lib/errors'
 import {
+  asSdkInput,
   flagInt,
   flagString,
   INPUT_FLAG,
@@ -15,28 +16,19 @@ import {
   collectAll,
   LIMIT_FLAG,
 } from '../../lib/paginate'
-import { rawRequest } from '../../lib/raw-request'
-
-type FlowsListResponse = components['schemas']['FlowsListResponse']
-type Flow = components['schemas']['Flow']
-type ListFlowsQuery = NonNullable<
-  operations['listFlows']['parameters']['query']
->
 
 /**
  * Public email flows: one brand's real onboarding or newsletter sequence,
  * with the day each email landed. Two modes on one route, as the API has
  * them — LIST cards, or `--slug` for ONE flow with every step.
  *
- * Raw transport until `@brew.new/sdk` ships `flows.list`; the parity-sdk
- * sentinel flags the swap the moment it does.
+ * The route is organization-wide, so the SDK never sends the brand binding.
  */
 export const flowsListCommand = defineCommand({
   path: ['flows', 'list'],
   summary:
     'List public email flows (real multi-step sequences by brand), or fetch one by --slug with every step',
-  sdkMethod: null,
-  isRawTransport: true,
+  sdkMethod: 'flows.list',
   route: { method: 'GET', path: '/v1/flows' },
   commandClass: 'read',
   flags: [
@@ -94,54 +86,30 @@ export const flowsListCommand = defineCommand({
       limit: flagInt(flags.limit, '--limit'),
       cursor: flagString(flags.cursor),
     })
-    const query = toQuery(input)
+    const flows = ctx.client().flows
     if (flags.all === true) {
-      if (query.slug !== undefined) {
+      if (input.slug !== undefined) {
         throw new CliUsageError(
           '--all pages the LIST; it cannot be combined with --slug.'
         )
       }
       const rows = await collectAll(ctx, (cursor) =>
-        rawRequest<FlowsListResponse>(ctx, {
-          method: 'GET',
-          path: '/v1/flows',
-          query: { ...query, ...(cursor === undefined ? {} : { cursor }) },
-        })
+        flows.list(
+          asSdkInput<ListFlowsInput>({
+            ...input,
+            ...(cursor === undefined ? {} : { cursor }),
+          })
+        )
       )
       return {
         data: { data: rows, pagination: { cursor: null, hasMore: false } },
         human: renderFlows(rows),
       }
     }
-    const result = await rawRequest<FlowsListResponse>(ctx, {
-      method: 'GET',
-      path: '/v1/flows',
-      query,
-    })
+    const result = await flows.list(asSdkInput<ListFlowsInput>(input))
     return { data: result, human: renderFlows(result.data) }
   },
 })
-
-/** Every merged value becomes a query string; the API parses the scalars. */
-function toQuery(
-  input: Record<string, unknown>
-): Record<keyof ListFlowsQuery, string | undefined> {
-  const read = (key: keyof ListFlowsQuery): string | undefined => {
-    const value = input[key]
-    return value === undefined || value === null ? undefined : String(value)
-  }
-  return {
-    slug: read('slug'),
-    include: read('include'),
-    brand: read('brand'),
-    category: read('category'),
-    type: read('type'),
-    semantic: read('semantic'),
-    sort: read('sort'),
-    limit: read('limit'),
-    cursor: read('cursor'),
-  }
-}
 
 function renderFlows(rows: ReadonlyArray<Flow>): string {
   if (rows.length === 0) {

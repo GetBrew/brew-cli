@@ -115,30 +115,42 @@ describe('contacts search', () => {
   })
 })
 
-describe('contacts get (derived)', () => {
-  it('returns the single contact', async () => {
+describe('contacts get', () => {
+  it('reads the detail route by URL-encoded email', async () => {
+    let requestedPath: string | undefined
     server.use(
-      http.post(SEARCH_URL, () =>
-        HttpResponse.json({
-          data: [{ email: 'jane@example.com', firstName: 'Jane' }],
-          pagination: { limit: 1, cursor: null, hasMore: false },
+      http.get('https://brew.new/api/v1/contacts/:email', ({ request }) => {
+        requestedPath = new URL(request.url).pathname
+        return HttpResponse.json({
+          email: 'jane@example.com',
+          firstName: 'Jane',
         })
-      )
+      })
     )
     const result = await runCli(['contacts', 'get', 'jane@example.com'], {
       env: env(),
     })
     expect(result.code).toBe(0)
+    expect(requestedPath).toBe('/api/v1/contacts/jane%40example.com')
     expect((result.json as { email: string }).email).toBe('jane@example.com')
   })
 
-  it('exits 1 with CONTACT_NOT_FOUND when missing', async () => {
+  it("surfaces the API's own 404 instead of a hand-built one", async () => {
     server.use(
-      http.post(SEARCH_URL, () =>
-        HttpResponse.json({
-          data: [],
-          pagination: { limit: 1, cursor: null, hasMore: false },
-        })
+      http.get('https://brew.new/api/v1/contacts/:email', () =>
+        HttpResponse.json(
+          {
+            error: {
+              code: 'CONTACT_NOT_FOUND',
+              type: 'not_found',
+              message: 'No such contact',
+              suggestion:
+                'Check the address, or create it with `brew-cli contacts upsert`.',
+              docs: 'https://docs.getbrew.io/api',
+            },
+          },
+          { status: 404 }
+        )
       )
     )
     const result = await runCli(['contacts', 'get', 'ghost@example.com'], {

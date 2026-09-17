@@ -18,37 +18,41 @@ import {
 
 export const emailsListCommand = defineCommand({
   path: ['emails', 'list'],
-  summary: 'List email designs (the single email read)',
+  summary: 'List email designs; one design is `emails get`',
   sdkMethod: 'emails.list',
   route: { method: 'GET', path: '/v1/emails' },
   commandClass: 'read',
   flags: [
     {
       flag: '--status <status>',
-      summary: 'Filter by status: streaming | complete | error',
+      summary: 'Filter by status: generating | ready | failed',
     },
     {
       flag: '--group-id <groupId>',
       summary: 'Filter by one group id; use ungrouped for no saved group',
     },
     {
-      flag: '--sort <field>',
-      summary: 'Sort by updatedAt | createdAt | title',
+      flag: '--sort-by <field>',
+      summary:
+        'Timestamp the page is ordered by and that --since/--until bound: updatedAt (default) | createdAt',
     },
-    { flag: '--order <order>', summary: 'Sort order: asc | desc' },
-    { flag: '--created-at-from <iso>', summary: 'Created at or after (ISO)' },
-    { flag: '--created-at-to <iso>', summary: 'Created at or before (ISO)' },
-    { flag: '--updated-at-from <iso>', summary: 'Updated at or after (ISO)' },
-    { flag: '--updated-at-to <iso>', summary: 'Updated at or before (ISO)' },
+    {
+      flag: '--since <iso>',
+      summary: 'Inclusive lower bound on the --sort-by timestamp (ISO-8601)',
+    },
+    {
+      flag: '--until <iso>',
+      summary: 'Inclusive upper bound on the --sort-by timestamp (ISO-8601)',
+    },
     LIMIT_FLAG,
     CURSOR_FLAG,
     ALL_FLAG,
     INPUT_FLAG,
   ],
   examples: [
-    'brew-cli emails list --status complete --limit 10',
-    'brew-cli emails list --group-id ungrouped --sort title --order asc',
-    'brew-cli emails list --updated-at-from 2026-08-01T00:00:00Z',
+    'brew-cli emails list --status ready --limit 10',
+    'brew-cli emails list --group-id ungrouped',
+    'brew-cli emails list --sort-by createdAt --since 2026-08-01T00:00:00Z',
     'brew-cli emails list --all --json',
   ],
   run: async ({ ctx, flags }) => {
@@ -56,12 +60,9 @@ export const emailsListCommand = defineCommand({
     const input = mergeInput(base, {
       status: flagString(flags.status),
       groupId: flagString(flags.groupId),
-      sort: flagString(flags.sort),
-      order: flagString(flags.order),
-      createdAtFrom: flagString(flags.createdAtFrom),
-      createdAtTo: flagString(flags.createdAtTo),
-      updatedAtFrom: flagString(flags.updatedAtFrom),
-      updatedAtTo: flagString(flags.updatedAtTo),
+      sortBy: flagString(flags.sortBy),
+      from: flagString(flags.since),
+      to: flagString(flags.until),
       limit: flagInt(flags.limit, '--limit'),
       cursor: flagString(flags.cursor),
     })

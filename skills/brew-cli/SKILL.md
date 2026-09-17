@@ -5,7 +5,7 @@ description: Drive the Brew email platform from the terminal with brew-cli — e
 
 # brew-cli for agents
 
-One typed command per public-API operation (95 commands, generated docs in
+One typed command per public-API operation (125 commands, generated docs in
 `docs/commands/README.md`). JSON output is automatic when stdout is piped.
 
 ## Start every session with the trust check
@@ -39,6 +39,10 @@ this build lacks (update the CLI); auth/reachability failures name the fix.
 - `--input '<json>'` (or `-` for stdin) carries full request bodies;
   positional ids always win over `--input`. `--all` drains pagination.
   `--idempotency-key` makes POST retries safe.
+- Every collection has a real detail read (`<group> get <id>`) returning the
+  BARE row; list routes reject id filters. Runs, sends, audience builds and
+  inbox-placement tests share ONE status vocabulary: `queued | scheduled |
+  running | paused | completed | partially_completed | failed | canceled`.
 
 ## Recipes
 
@@ -47,7 +51,8 @@ brew-cli docs --agent                  # machine-readable manifest of every comm
 brew-cli docs api                      # the live API catalog (/v1/help)
 brew-cli contacts search --filter email:contains:@acme.com --json
 brew-cli emails get <emailId> --include html,versions
-brew-cli api GET '/v1/analytics/sends?sendId=<id>'   # raw escape hatch for anything else
+brew-cli sends get <sendId> --include events
+brew-cli api GET '/v1/sends?kind=campaign'   # raw escape hatch for anything else
 ```
 
 To verify an API change you just made in the Brew repo: start the dev

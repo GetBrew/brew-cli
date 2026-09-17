@@ -18,28 +18,19 @@ import {
 
 export const automationsTriggersListCommand = defineCommand({
   path: ['automations', 'triggers', 'list'],
-  summary: 'List trigger events (their payload schemas drive fires)',
+  summary:
+    'List trigger events (their payload schemas drive fires); one trigger is `automations triggers get`',
   sdkMethod: 'automations.triggers.list',
   route: { method: 'GET', path: '/v1/automations/triggers' },
   commandClass: 'read',
-  flags: [
-    {
-      flag: '--trigger <triggerEventId>',
-      summary: 'Fetch one trigger event (single-row page)',
-    },
-    LIMIT_FLAG,
-    CURSOR_FLAG,
-    ALL_FLAG,
-    INPUT_FLAG,
-  ],
+  flags: [LIMIT_FLAG, CURSOR_FLAG, ALL_FLAG, INPUT_FLAG],
   examples: [
     'brew-cli automations triggers list',
-    'brew-cli automations triggers list --trigger tev_123',
+    'brew-cli automations triggers list --all --json',
   ],
   run: async ({ ctx, flags }) => {
     const base = await readJsonFlag(ctx, flags.input, '--input')
     const input = mergeInput(base, {
-      triggerEventId: flagString(flags.trigger),
       limit: flagInt(flags.limit, '--limit'),
       cursor: flagString(flags.cursor),
     })

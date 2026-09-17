@@ -78,14 +78,16 @@ describe('automations list', () => {
   })
 })
 
-describe('automations get (derived)', () => {
-  it('fetches one automation with --include', async () => {
-    let query: URLSearchParams | undefined
+describe('automations get', () => {
+  it('reads the detail route and returns the bare row', async () => {
+    let url: URL | undefined
     server.use(
-      http.get(`${API}/v1/automations`, ({ request }) => {
-        query = new URL(request.url).searchParams
+      http.get(`${API}/v1/automations/am_1`, ({ request }) => {
+        url = new URL(request.url)
         return HttpResponse.json({
-          data: [{ automationId: 'am_1', name: 'Welcome', nodes: [] }],
+          automationId: 'am_1',
+          name: 'Welcome',
+          nodes: [],
         })
       })
     )
@@ -97,14 +99,27 @@ describe('automations get (derived)', () => {
       'graph',
     ])
     expect(result.code).toBe(0)
-    expect(query?.get('automationId')).toBe('am_1')
-    expect(query?.get('include')).toBe('graph')
+    expect(url?.pathname).toBe('/api/v1/automations/am_1')
+    expect(url?.searchParams.get('include')).toBe('graph')
     expect((result.json as { automationId: string }).automationId).toBe('am_1')
   })
 
-  it('exits 1 with AUTOMATION_NOT_FOUND when missing', async () => {
+  it("surfaces the API's own 404 instead of a hand-built one", async () => {
     server.use(
-      http.get(`${API}/v1/automations`, () => HttpResponse.json({ data: [] }))
+      http.get(`${API}/v1/automations/am_ghost`, () =>
+        HttpResponse.json(
+          {
+            error: {
+              code: 'AUTOMATION_NOT_FOUND',
+              type: 'not_found',
+              message: 'No such automation',
+              suggestion: 'List automations with `brew-cli automations list`.',
+              docs: 'https://docs.getbrew.io/api',
+            },
+          },
+          { status: 404 }
+        )
+      )
     )
     const result = await cli(['automations', 'get', 'am_ghost'])
     expect(result.code).toBe(1)

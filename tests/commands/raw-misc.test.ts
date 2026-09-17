@@ -6,8 +6,9 @@ import { describe, expect, it } from 'vitest'
 import { analyticsOverviewCommand } from '../../src/commands/analytics/overview'
 import { audiencesDuplicateCommand } from '../../src/commands/audiences/duplicate'
 import { audiencesFromEventsCommand } from '../../src/commands/audiences/from-events'
-import { automationsAudienceRunsControlCommand } from '../../src/commands/automations/audience-runs/control'
+import { automationsAudienceRunsCancelCommand } from '../../src/commands/automations/audience-runs/cancel'
 import { automationsAudienceRunsListCommand } from '../../src/commands/automations/audience-runs/list'
+import { automationsAudienceRunsPauseCommand } from '../../src/commands/automations/audience-runs/pause'
 import { automationsRunCommand } from '../../src/commands/automations/run'
 import { brandsCreateCommand } from '../../src/commands/brands/create'
 import { brandsGetCommand } from '../../src/commands/brands/get'
@@ -29,7 +30,8 @@ const EXTRA = [
   audiencesFromEventsCommand,
   automationsRunCommand,
   automationsAudienceRunsListCommand,
-  automationsAudienceRunsControlCommand,
+  automationsAudienceRunsPauseCommand,
+  automationsAudienceRunsCancelCommand,
   domainsHealthCommand,
 ]
 
@@ -269,7 +271,7 @@ describe('automations run (confirmation protocol)', () => {
       http.post(`${API}/v1/automations/auto_1/run`, async ({ request }) => {
         body = await request.json()
         return HttpResponse.json({
-          dry_run: true,
+          dryRun: true,
           automationId: 'auto_1',
           recipientCount: 12_400,
         })
@@ -280,26 +282,26 @@ describe('automations run (confirmation protocol)', () => {
       extraCommands: EXTRA,
     })
     expect(result.code).toBe(0)
-    expect(body).toEqual({ dry_run: true })
+    expect(body).toEqual({ dryRun: true })
     expect((result.json as { recipientCount: number }).recipientCount).toBe(
       12_400
     )
   })
 
-  it('honors dry_run carried inside --input (no gate)', async () => {
+  it('honors dryRun carried inside --input (no gate)', async () => {
     let body: unknown
     server.use(
       http.post(`${API}/v1/automations/auto_1/run`, async ({ request }) => {
         body = await request.json()
-        return HttpResponse.json({ dry_run: true, automationId: 'auto_1' })
+        return HttpResponse.json({ dryRun: true, automationId: 'auto_1' })
       })
     )
     const result = await runCli(
-      ['automations', 'run', 'auto_1', '--input', '{"dry_run":true}'],
+      ['automations', 'run', 'auto_1', '--input', '{"dryRun":true}'],
       { env: env(), extraCommands: EXTRA }
     )
     expect(result.code).toBe(0)
-    expect(body).toEqual({ dry_run: true })
+    expect(body).toEqual({ dryRun: true })
   })
 
   it('gates a live run with exit 4 when unconfirmed', async () => {
@@ -323,7 +325,7 @@ describe('automations audience-runs', () => {
       http.get(`${API}/v1/automations/audience-runs`, ({ request }) => {
         url = new URL(request.url)
         return HttpResponse.json({
-          data: [{ audienceRunId: 'arun_1', status: 'sending' }],
+          data: [{ audienceRunId: 'arun_1', status: 'running' }],
         })
       })
     )
@@ -332,7 +334,7 @@ describe('automations audience-runs', () => {
         'automations',
         'audience-runs',
         'list',
-        '--automation-id',
+        '--automation',
         'auto_1',
         '--limit',
         '20',
@@ -346,16 +348,9 @@ describe('automations audience-runs', () => {
     expect(data.data[0]?.audienceRunId).toBe('arun_1')
   })
 
-  it('gates control --action cancel behind confirmation', async () => {
+  it('gates cancel behind confirmation', async () => {
     const result = await runCli(
-      [
-        'automations',
-        'audience-runs',
-        'control',
-        'arun_1',
-        '--action',
-        'cancel',
-      ],
+      ['automations', 'audience-runs', 'cancel', 'arun_1'],
       { env: env(), extraCommands: EXTRA }
     )
     expect(result.code).toBe(4)
@@ -363,13 +358,38 @@ describe('automations audience-runs', () => {
     expect(envelope.summary).toContain('arun_1')
   })
 
-  it('pauses without a gate', async () => {
-    let body: unknown
+  it('posts to the cancel action sub-path with --yes', async () => {
+    let requestedPath: string | undefined
     server.use(
       http.post(
-        `${API}/v1/automations/audience-runs/arun_1/control`,
-        async ({ request }) => {
-          body = await request.json()
+        `${API}/v1/automations/audience-runs/arun_1/cancel`,
+        ({ request }) => {
+          requestedPath = new URL(request.url).pathname
+          return HttpResponse.json({
+            audienceRunId: 'arun_1',
+            status: 'canceled',
+          })
+        }
+      )
+    )
+    const result = await runCli(
+      ['automations', 'audience-runs', 'cancel', 'arun_1', '--yes'],
+      { env: env(), extraCommands: EXTRA }
+    )
+    expect(result.code).toBe(0)
+    expect(requestedPath).toBe(
+      '/api/v1/automations/audience-runs/arun_1/cancel'
+    )
+    expect((result.json as { status: string }).status).toBe('canceled')
+  })
+
+  it('pauses without a gate, on its own action sub-path', async () => {
+    let requestedPath: string | undefined
+    server.use(
+      http.post(
+        `${API}/v1/automations/audience-runs/arun_1/pause`,
+        ({ request }) => {
+          requestedPath = new URL(request.url).pathname
           return HttpResponse.json({
             audienceRunId: 'arun_1',
             status: 'paused',
@@ -378,18 +398,11 @@ describe('automations audience-runs', () => {
       )
     )
     const result = await runCli(
-      [
-        'automations',
-        'audience-runs',
-        'control',
-        'arun_1',
-        '--action',
-        'pause',
-      ],
+      ['automations', 'audience-runs', 'pause', 'arun_1'],
       { env: env(), extraCommands: EXTRA }
     )
     expect(result.code).toBe(0)
-    expect(body).toEqual({ action: 'pause' })
+    expect(requestedPath).toBe('/api/v1/automations/audience-runs/arun_1/pause')
     expect((result.json as { status: string }).status).toBe('paused')
   })
 })

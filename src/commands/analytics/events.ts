@@ -25,7 +25,11 @@ export const analyticsEventsCommand = defineCommand({
   flags: [
     { flag: '--since <datetime>', summary: 'Window start (ISO-8601)' },
     { flag: '--until <datetime>', summary: 'Window end (ISO-8601)' },
-    { flag: '--recipient <email>', summary: 'Filter by recipient email' },
+    {
+      flag: '--recipient <rules>',
+      summary:
+        'CSV of recipient rules (max 10): an address, @domain, or substring; prefix ! to exclude',
+    },
     {
       flag: '--event-type <type>',
       summary: 'Filter by event type (e.g. opened, clicked)',
@@ -46,7 +50,7 @@ export const analyticsEventsCommand = defineCommand({
     const input = mergeInput(base, {
       from: flagString(flags.since),
       to: flagString(flags.until),
-      recipientEmail: flagString(flags.recipient),
+      recipient: flagString(flags.recipient),
       eventType: flagString(flags.eventType),
       automationId: flagString(flags.automation),
       sendId: flagString(flags.send),
@@ -83,6 +87,6 @@ function renderEvents(rows: ReadonlyArray<unknown>): string {
     { key: 'occurredAt', header: 'OCCURRED' },
     { key: 'domain', header: 'DOMAIN' },
     { key: 'eventType', header: 'EVENT' },
-    { key: 'recipientEmail', header: 'RECIPIENT' },
+    { key: 'recipient', header: 'RECIPIENT' },
   ])
 }

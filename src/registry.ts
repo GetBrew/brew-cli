@@ -16,8 +16,11 @@ import { audiencesFromEventsCommand } from './commands/audiences/from-events'
 import { audiencesGetCommand } from './commands/audiences/get'
 import { audiencesListCommand } from './commands/audiences/list'
 import { audiencesUpdateCommand } from './commands/audiences/update'
-import { automationsAudienceRunsControlCommand } from './commands/automations/audience-runs/control'
+import { automationsAudienceRunsCancelCommand } from './commands/automations/audience-runs/cancel'
+import { automationsAudienceRunsGetCommand } from './commands/automations/audience-runs/get'
 import { automationsAudienceRunsListCommand } from './commands/automations/audience-runs/list'
+import { automationsAudienceRunsPauseCommand } from './commands/automations/audience-runs/pause'
+import { automationsAudienceRunsResumeCommand } from './commands/automations/audience-runs/resume'
 import { automationsCreateCommand } from './commands/automations/create'
 import { automationsDeleteCommand } from './commands/automations/delete'
 import { automationsGetCommand } from './commands/automations/get'
@@ -25,8 +28,11 @@ import { automationsListCommand } from './commands/automations/list'
 import { automationsPublishCommand } from './commands/automations/publish'
 import { automationsRunCommand } from './commands/automations/run'
 import { automationsRunsCancelCommand } from './commands/automations/runs/cancel'
+import { automationsRunsGetCommand } from './commands/automations/runs/get'
 import { automationsRunsListCommand } from './commands/automations/runs/list'
 import { automationsTestCommand } from './commands/automations/test'
+import { automationsTriggerInstancesGetCommand } from './commands/automations/trigger-instances/get'
+import { automationsTriggerInstancesListCommand } from './commands/automations/trigger-instances/list'
 import {
   automationsTriggersContractGetCommand,
   automationsTriggersContractPutCommand,
@@ -35,6 +41,7 @@ import {
 import { automationsTriggersCreateCommand } from './commands/automations/triggers/create'
 import { automationsTriggersDeleteCommand } from './commands/automations/triggers/delete'
 import { automationsTriggersFireCommand } from './commands/automations/triggers/fire'
+import { automationsTriggersGetCommand } from './commands/automations/triggers/get'
 import { automationsTriggersListCommand } from './commands/automations/triggers/list'
 import { automationsTriggersReadyCommand } from './commands/automations/triggers/ready'
 import { automationsTriggersUpdateCommand } from './commands/automations/triggers/update'
@@ -58,6 +65,7 @@ import { contactsDeleteCommand } from './commands/contacts/delete'
 import { contactsDeleteManyCommand } from './commands/contacts/delete-many'
 import { contactsGetCommand } from './commands/contacts/get'
 import { contactsImportCsvCommand } from './commands/contacts/import-csv'
+import { contactsListCommand } from './commands/contacts/list'
 import { contactsSearchCommand } from './commands/contacts/search'
 import { contactsUpdateCommand } from './commands/contacts/update'
 import { contactsUpsertCommand } from './commands/contacts/upsert'
@@ -90,16 +98,19 @@ import { emailsGetCommand } from './commands/emails/get'
 import { emailsGetInboxPlacementResultsCommand } from './commands/emails/get-inbox-placement-results'
 import { emailsGroupsCreateCommand } from './commands/emails/groups/create'
 import { emailsGroupsDeleteCommand } from './commands/emails/groups/delete'
+import { emailsGroupsGetCommand } from './commands/emails/groups/get'
 import { emailsGroupsListCommand } from './commands/emails/groups/list'
 import { emailsGroupsUpdateCommand } from './commands/emails/groups/update'
 import { emailsImportCommand } from './commands/emails/import'
 import { emailsImportFigmaCommand } from './commands/emails/import-figma'
+import { emailsInboxPlacementTestsGetCommand } from './commands/emails/inbox-placement-tests/get'
 import { emailsListCommand } from './commands/emails/list'
 import { emailsPreviewClientsCommand } from './commands/emails/preview-clients'
 import { emailsRestoreCommand } from './commands/emails/restore'
 import { emailsSendCommand } from './commands/emails/send'
 import { fieldsCreateCommand } from './commands/fields/create'
 import { fieldsDeleteCommand } from './commands/fields/delete'
+import { fieldsGetCommand } from './commands/fields/get'
 import { fieldsListCommand } from './commands/fields/list'
 import { flowsListCommand } from './commands/flows/list'
 import { healthCommand } from './commands/health'
@@ -107,6 +118,8 @@ import { integrationsListCommand } from './commands/integrations/list'
 import { loginCommand } from './commands/login'
 import { logoutCommand } from './commands/logout'
 import { sendsCancelCommand } from './commands/sends/cancel'
+import { sendsGetCommand } from './commands/sends/get'
+import { sendsListCommand } from './commands/sends/list'
 import { sendsPauseCommand } from './commands/sends/pause'
 import { sendsResumeCommand } from './commands/sends/resume'
 import { templatesListCommand } from './commands/templates/list'
@@ -128,6 +141,7 @@ export const ALL_COMMANDS: readonly CommandSpec[] = [
   configGetCommand,
   configSetCommand,
   configUnsetCommand,
+  contactsListCommand,
   contactsSearchCommand,
   contactsGetCommand,
   contactsCountCommand,
@@ -139,10 +153,12 @@ export const ALL_COMMANDS: readonly CommandSpec[] = [
   contactsValidateCommand,
   contactsImportCsvCommand,
   fieldsListCommand,
+  fieldsGetCommand,
   fieldsCreateCommand,
   fieldsDeleteCommand,
   emailsListCommand,
   emailsGroupsListCommand,
+  emailsGroupsGetCommand,
   emailsGroupsCreateCommand,
   emailsGroupsUpdateCommand,
   emailsGroupsDeleteCommand,
@@ -159,7 +175,10 @@ export const ALL_COMMANDS: readonly CommandSpec[] = [
   emailsPreviewClientsCommand,
   emailsCreateInboxPlacementTestCommand,
   emailsGetInboxPlacementResultsCommand,
+  emailsInboxPlacementTestsGetCommand,
   emailsSendCommand,
+  sendsListCommand,
+  sendsGetCommand,
   sendsCancelCommand,
   sendsPauseCommand,
   sendsResumeCommand,
@@ -181,6 +200,7 @@ export const ALL_COMMANDS: readonly CommandSpec[] = [
   automationsTestCommand,
   automationsRunCommand,
   automationsTriggersListCommand,
+  automationsTriggersGetCommand,
   automationsTriggersReadyCommand,
   automationsTriggersContractGetCommand,
   automationsTriggersContractPutCommand,
@@ -192,9 +212,15 @@ export const ALL_COMMANDS: readonly CommandSpec[] = [
   automationsTriggersDeleteCommand,
   automationsTriggersFireCommand,
   automationsRunsListCommand,
+  automationsRunsGetCommand,
   automationsRunsCancelCommand,
   automationsAudienceRunsListCommand,
-  automationsAudienceRunsControlCommand,
+  automationsAudienceRunsGetCommand,
+  automationsAudienceRunsPauseCommand,
+  automationsAudienceRunsResumeCommand,
+  automationsAudienceRunsCancelCommand,
+  automationsTriggerInstancesListCommand,
+  automationsTriggerInstancesGetCommand,
   analyticsOverviewCommand,
   analyticsCampaignsCommand,
   analyticsAutomationsCommand,

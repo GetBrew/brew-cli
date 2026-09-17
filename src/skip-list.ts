@@ -21,6 +21,16 @@ export type SpecSkip = {
 /** SDK methods that intentionally have no dedicated CLI command. */
 export const SDK_SKIP_LIST: readonly SdkSkip[] = [
   {
+    sdkPath: 'sends.listAll',
+    reason:
+      'auto-pager over `sends.list`; the CLI pages explicitly with --cursor/--limit so a command would hide the page boundary a script needs',
+  },
+  {
+    sdkPath: 'automations.triggerInstances.listAll',
+    reason:
+      'auto-pager over `automations.triggerInstances.list`; same reason as `sends.listAll`',
+  },
+  {
     sdkPath: 'automations.triggers.getContract',
     reason:
       'covered by `automations triggers contract get` (raw route, bound pre-SDK-v9; SDK-method migration tracked separately)',
@@ -48,12 +58,12 @@ export const SDK_SKIP_LIST: readonly SdkSkip[] = [
     reason: 'auto-pager covered by `analytics events --all`',
   },
   {
-    sdkPath: 'analytics.sends.listAll',
-    reason: 'auto-pager covered by `analytics sends list --all`',
+    sdkPath: 'sends.listAll',
+    reason: 'auto-pager covered by `sends list --all`',
   },
   {
-    sdkPath: 'analytics.triggerInstances.listAll',
-    reason: 'auto-pager covered by `analytics trigger-instances list --all`',
+    sdkPath: 'automations.triggerInstances.listAll',
+    reason: 'auto-pager covered by `automations trigger-instances list --all`',
   },
   {
     sdkPath: 'brand.update',
@@ -69,5 +79,9 @@ export const SDK_SKIP_LIST: readonly SdkSkip[] = [
 /**
  * Spec operations with no CLI command yet. Kept exact: the parity test
  * fails if one of these gains SDK support without gaining a command.
+ *
+ * Empty as of 0.7.0: every v1 operation is bound, including the detail
+ * reads, the sends root, trigger instances, trigger readiness, and the
+ * run/audience-run lifecycle actions.
  */
 export const SPEC_SKIP_LIST: readonly SpecSkip[] = []

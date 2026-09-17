@@ -18,29 +18,19 @@ import {
 
 export const audiencesListCommand = defineCommand({
   path: ['audiences', 'list'],
-  summary: 'List audience segments',
+  summary: 'List audience segments; one segment is `audiences get`',
   sdkMethod: 'audiences.list',
   route: { method: 'GET', path: '/v1/audiences' },
   commandClass: 'read',
-  flags: [
-    {
-      flag: '--include <tokens>',
-      summary: 'Comma-separated expansions: count',
-    },
-    LIMIT_FLAG,
-    CURSOR_FLAG,
-    ALL_FLAG,
-    INPUT_FLAG,
-  ],
+  flags: [LIMIT_FLAG, CURSOR_FLAG, ALL_FLAG, INPUT_FLAG],
   examples: [
     'brew-cli audiences list',
-    'brew-cli audiences list --include count --limit 10',
+    'brew-cli audiences list --limit 10',
     'brew-cli audiences list --all --json',
   ],
   run: async ({ ctx, flags }) => {
     const base = await readJsonFlag(ctx, flags.input, '--input')
     const input = mergeInput(base, {
-      include: flagString(flags.include),
       limit: flagInt(flags.limit, '--limit'),
       cursor: flagString(flags.cursor),
     })

@@ -53,7 +53,7 @@ export const emailsExportCommand = defineCommand({
           provider,
           ...(templateName === undefined ? {} : { templateName }),
           // The spec field is snake_case, unlike the rest of the API surface.
-          ...(flags.dryRun === true ? { dry_run: true } : {}),
+          ...(flags.dryRun === true ? { dryRun: true } : {}),
         }),
         requestOptions(flags)
       ),

@@ -54,7 +54,7 @@ describe('sends pause / resume', () => {
   it('resumes a send with POST /v1/sends/{sendId}/resume', async () => {
     server.use(
       http.post(`${API}/v1/sends/snd_1/resume`, () =>
-        HttpResponse.json({ sendId: 'snd_1', status: 'sending' })
+        HttpResponse.json({ sendId: 'snd_1', status: 'running' })
       )
     )
     const result = await runCli(['sends', 'resume', 'snd_1'], {
@@ -62,7 +62,7 @@ describe('sends pause / resume', () => {
       extraCommands: EXTRA,
     })
     expect(result.code).toBe(0)
-    expect((result.json as { status: string }).status).toBe('sending')
+    expect((result.json as { status: string }).status).toBe('running')
   })
 })
 
@@ -105,7 +105,7 @@ describe('emails clone', () => {
 })
 
 describe('emails export', () => {
-  it('maps provider, template name, and dry_run onto the body', async () => {
+  it('maps provider, template name, and dryRun onto the body', async () => {
     let body: unknown
     server.use(
       http.post(`${API}/v1/emails/eml_1/export`, async ({ request }) => {
@@ -130,7 +130,7 @@ describe('emails export', () => {
     expect(body).toEqual({
       provider: 'klaviyo',
       templateName: 'Fall sale',
-      dry_run: true,
+      dryRun: true,
     })
   })
 
@@ -241,7 +241,7 @@ describe('emails create-inbox-placement-test', () => {
         async ({ request }) => {
           body = await request.json()
           return HttpResponse.json(
-            { testId: 'ibp_1', status: 'collecting' },
+            { testId: 'ibp_1', status: 'queued' },
             { status: 202 }
           )
         }
@@ -268,7 +268,7 @@ describe('emails create-inbox-placement-test', () => {
       subject: 'Variant B',
       providers: ['gmail.com', 'outlook.com'],
     })
-    expect((result.json as { status: string }).status).toBe('collecting')
+    expect((result.json as { status: string }).status).toBe('queued')
   })
 
   it('requires --domain', async () => {
@@ -281,13 +281,37 @@ describe('emails create-inbox-placement-test', () => {
 })
 
 describe('emails get-inbox-placement-results', () => {
-  it('passes --test-id as the testId query parameter', async () => {
-    let url: URL | undefined
+  it('lists the recent tests when --test-id is absent', async () => {
+    let requestedPath: string | undefined
     server.use(
       http.get(
         `${API}/v1/emails/eml_1/inbox-placement-tests`,
         ({ request }) => {
-          url = new URL(request.url)
+          requestedPath = new URL(request.url).pathname
+          return HttpResponse.json({
+            data: [{ testId: 'ibp_1', status: 'completed' }],
+            pagination: { limit: 100, cursor: null, hasMore: false },
+          })
+        }
+      )
+    )
+    const result = await runCli(
+      ['emails', 'get-inbox-placement-results', 'eml_1'],
+      { env: env(), extraCommands: EXTRA }
+    )
+    expect(result.code).toBe(0)
+    expect(requestedPath).toBe('/api/v1/emails/eml_1/inbox-placement-tests')
+    const data = result.json as { data: Array<{ testId: string }> }
+    expect(data.data[0]?.testId).toBe('ibp_1')
+  })
+
+  it('reads the real detail route for --test-id', async () => {
+    let requestedPath: string | undefined
+    server.use(
+      http.get(
+        `${API}/v1/emails/eml_1/inbox-placement-tests/ibp_1`,
+        ({ request }) => {
+          requestedPath = new URL(request.url).pathname
           return HttpResponse.json({ testId: 'ibp_1', status: 'completed' })
         }
       )
@@ -297,7 +321,31 @@ describe('emails get-inbox-placement-results', () => {
       { env: env(), extraCommands: EXTRA }
     )
     expect(result.code).toBe(0)
-    expect(url?.searchParams.get('testId')).toBe('ibp_1')
+    expect(requestedPath).toBe(
+      '/api/v1/emails/eml_1/inbox-placement-tests/ibp_1'
+    )
     expect((result.json as { status: string }).status).toBe('completed')
+  })
+
+  it('reads one test through the dedicated detail command', async () => {
+    let requestedPath: string | undefined
+    server.use(
+      http.get(
+        `${API}/v1/emails/eml_1/inbox-placement-tests/ibp_1`,
+        ({ request }) => {
+          requestedPath = new URL(request.url).pathname
+          return HttpResponse.json({ testId: 'ibp_1', status: 'completed' })
+        }
+      )
+    )
+    const result = await runCli(
+      ['emails', 'inbox-placement-tests', 'get', 'eml_1', 'ibp_1'],
+      { env: env(), extraCommands: EXTRA }
+    )
+    expect(result.code).toBe(0)
+    expect(requestedPath).toBe(
+      '/api/v1/emails/eml_1/inbox-placement-tests/ibp_1'
+    )
+    expect((result.json as { testId: string }).testId).toBe('ibp_1')
   })
 })

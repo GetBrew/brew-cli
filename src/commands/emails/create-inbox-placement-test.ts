@@ -1,4 +1,4 @@
-import type { BrewClient } from '@brew.new/sdk'
+import type { CreateInboxPlacementTestInput } from '@brew.new/sdk'
 import { defineCommand } from '../../lib/define-command'
 import { CliUsageError } from '../../lib/errors'
 import {
@@ -9,15 +9,11 @@ import {
   toStringArray,
 } from '../../lib/input'
 
-type CreateInboxPlacementTestInput = Parameters<
-  BrewClient['emails']['createInboxPlacementTest']
->[0]
-
 export const emailsCreateInboxPlacementTestCommand = defineCommand({
   path: ['emails', 'create-inbox-placement-test'],
   summary:
     'Seed-test where the design lands (inbox vs spam) via a real small send (10 credits)',
-  sdkMethod: 'emails.createInboxPlacementTest',
+  sdkMethod: 'emails.inboxPlacementTests.create',
   route: { method: 'POST', path: '/v1/emails/{emailId}/inbox-placement-tests' },
   commandClass: 'write',
   isCredited: true,
@@ -62,9 +58,9 @@ export const emailsCreateInboxPlacementTestCommand = defineCommand({
     const emailVersionId = flagString(flags.emailVersionId)
     const providers = toStringArray(flags.providers)
     return {
-      // The API answers 202 with a pending test (status: "collecting");
-      // poll `emails get-inbox-placement-results --test-id` for the outcome.
-      data: await ctx.client().emails.createInboxPlacementTest(
+      // The API answers 202 with a pending test (status: "queued"); poll
+      // `emails get-inbox-placement-results --test-id` for the outcome.
+      data: await ctx.client().emails.inboxPlacementTests.create(
         asSdkInput<CreateInboxPlacementTestInput>({
           emailId: args.emailId ?? '',
           domainId,

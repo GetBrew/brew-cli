@@ -16,7 +16,8 @@ import { ALL_COMMANDS } from './registry'
 import { CLI_NAME, CLI_VERSION } from './version'
 
 const GROUP_SUMMARIES: Readonly<Record<string, string>> = {
-  analytics: 'Read campaign, automation, send, and event analytics',
+  analytics: 'Reports: overview, events, and automation analytics',
+  'audience-runs': 'Manual-audience launches: read, pause, resume, cancel',
   'api-keys': 'Manage organization API keys',
   audiences: 'Manage audience segments',
   automations: 'Manage automation graphs, triggers, and runs',
@@ -33,13 +34,14 @@ const GROUP_SUMMARIES: Readonly<Record<string, string>> = {
   flows: 'Browse public email flows (real multi-step sequences by brand)',
   groups: 'Manage email folders (groups)',
   integrations: 'Read the connected-integration catalog',
-  sends: 'Control in-flight or scheduled sends',
+  'inbox-placement-tests': 'Inbox placement (seed) test results',
+  sends: 'Read sends, and control one in flight or scheduled',
   templates: 'Browse the template gallery',
   contract: 'Stored payload contracts (get, put, validate)',
   contracts: 'Payload-contract helpers',
   triggers: 'Manage trigger events',
   runs: 'Automation run history, and cancel one in-flight run',
-  'trigger-instances': 'Fired trigger instances',
+  'trigger-instances': 'Fired trigger instances (the inbound-fire audit log)',
 }
 
 const AGENT_HELP_FOOTER = `

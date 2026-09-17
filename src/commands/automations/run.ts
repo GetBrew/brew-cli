@@ -42,9 +42,9 @@ export const automationsRunCommand = defineCommand({
   ],
   confirmSummary: ({ args, flags }) => {
     // The gate must reflect the MERGED request — an inline --input body can
-    // carry dry_run/scheduledAt on its own. A dry run never gates.
+    // carry dryRun/scheduledAt on its own. A dry run never gates.
     const inline = parseInlineInput(flags.input)
-    if (flags.dryRun === true || inline?.dry_run === true) {
+    if (flags.dryRun === true || inline?.dryRun === true) {
       return
     }
     const scheduleAt =
@@ -55,8 +55,7 @@ export const automationsRunCommand = defineCommand({
   run: async ({ ctx, args, flags }) => {
     const base = await readJsonFlag(ctx, flags.input, '--input')
     const input = mergeInput(base, {
-      // The spec field is snake_case, unlike the rest of the API surface.
-      dry_run: flags.dryRun === true ? true : undefined,
+      dryRun: flags.dryRun === true ? true : undefined,
       scheduledAt: flagString(flags.scheduleAt),
     })
     return {

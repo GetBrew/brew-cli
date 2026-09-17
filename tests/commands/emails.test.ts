@@ -52,7 +52,7 @@ describe('emails list', () => {
             {
               emailId: 'eml_1',
               title: 'Fall sale',
-              status: 'complete',
+              status: 'ready',
               updatedAt: '2026-08-01T00:00:00Z',
             },
           ],
@@ -65,23 +65,26 @@ describe('emails list', () => {
         'emails',
         'list',
         '--status',
-        'complete',
+        'ready',
         '--group-id',
         'grp_lifecycle',
-        '--sort',
-        'title',
-        '--order',
-        'asc',
+        '--sort-by',
+        'createdAt',
+        '--since',
+        '2026-08-01T00:00:00Z',
+        '--until',
+        '2026-09-01T00:00:00Z',
         '--limit',
         '10',
       ],
       { env: env(), extraCommands: EXTRA }
     )
     expect(result.code).toBe(0)
-    expect(url?.searchParams.get('status')).toBe('complete')
+    expect(url?.searchParams.get('status')).toBe('ready')
     expect(url?.searchParams.get('groupId')).toBe('grp_lifecycle')
-    expect(url?.searchParams.get('sort')).toBe('title')
-    expect(url?.searchParams.get('order')).toBe('asc')
+    expect(url?.searchParams.get('sortBy')).toBe('createdAt')
+    expect(url?.searchParams.get('from')).toBe('2026-08-01T00:00:00Z')
+    expect(url?.searchParams.get('to')).toBe('2026-09-01T00:00:00Z')
     expect(url?.searchParams.get('limit')).toBe('10')
     const data = result.json as { data: Array<{ emailId: string }> }
     expect(data.data[0]?.emailId).toBe('eml_1')
@@ -158,22 +161,17 @@ describe('emails groups list', () => {
   })
 })
 
-describe('emails get (derived)', () => {
-  it('fetches one design as a single-row page', async () => {
+describe('emails get', () => {
+  it('reads the detail route and returns the bare row', async () => {
     let url: URL | undefined
     server.use(
-      http.get(EMAILS_URL, ({ request }) => {
+      http.get(`${EMAILS_URL}/eml_1`, ({ request }) => {
         url = new URL(request.url)
         return HttpResponse.json({
-          data: [
-            {
-              emailId: 'eml_1',
-              title: 'Fall sale',
-              status: 'complete',
-              html: '<html></html>',
-            },
-          ],
-          pagination: PAGE,
+          emailId: 'eml_1',
+          title: 'Fall sale',
+          status: 'ready',
+          html: '<html></html>',
         })
       })
     )
@@ -182,15 +180,26 @@ describe('emails get (derived)', () => {
       { env: env(), extraCommands: EXTRA }
     )
     expect(result.code).toBe(0)
-    expect(url?.searchParams.get('emailId')).toBe('eml_1')
+    expect(url?.pathname).toBe('/api/v1/emails/eml_1')
     expect(url?.searchParams.get('include')).toBe('html,versions')
     expect((result.json as { emailId: string }).emailId).toBe('eml_1')
   })
 
-  it('exits 1 with EMAIL_NOT_FOUND when missing', async () => {
+  it("surfaces the API's own 404 instead of a hand-built one", async () => {
     server.use(
-      http.get(EMAILS_URL, () =>
-        HttpResponse.json({ data: [], pagination: PAGE })
+      http.get(`${EMAILS_URL}/eml_ghost`, () =>
+        HttpResponse.json(
+          {
+            error: {
+              code: 'EMAIL_NOT_FOUND',
+              type: 'not_found',
+              message: 'No such design',
+              suggestion: 'List designs with `brew-cli emails list`.',
+              docs: 'https://docs.getbrew.io/api',
+            },
+          },
+          { status: 404 }
+        )
       )
     )
     const result = await runCli(['emails', 'get', 'eml_ghost'], {
@@ -210,7 +219,7 @@ describe('emails generate', () => {
       http.post(EMAILS_URL, async ({ request }) => {
         body = await request.json()
         return HttpResponse.json(
-          { emailId: 'eml_new', status: 'complete' },
+          { emailId: 'eml_new', status: 'ready' },
           { status: 201 }
         )
       })
@@ -240,7 +249,7 @@ describe('emails generate', () => {
       http.post(EMAILS_URL, async ({ request }) => {
         body = await request.json()
         return HttpResponse.json(
-          { emailId: 'eml_new', status: 'complete' },
+          { emailId: 'eml_new', status: 'ready' },
           { status: 201 }
         )
       })
@@ -340,7 +349,7 @@ describe('emails edit', () => {
     server.use(
       http.patch(`${EMAILS_URL}/eml_1`, async ({ request }) => {
         body = await request.json()
-        return HttpResponse.json({ emailId: 'eml_1', status: 'complete' })
+        return HttpResponse.json({ emailId: 'eml_1', status: 'ready' })
       })
     )
     const result = await runCli(
@@ -357,7 +366,7 @@ describe('emails edit', () => {
     server.use(
       http.patch(`${EMAILS_URL}/eml_1`, async ({ request }) => {
         body = await request.json()
-        return HttpResponse.json({ emailId: 'eml_1', status: 'complete' })
+        return HttpResponse.json({ emailId: 'eml_1', status: 'ready' })
       })
     )
     const result = await runCli(
@@ -377,7 +386,7 @@ describe('emails edit', () => {
     server.use(
       http.patch(`${EMAILS_URL}/eml_1`, async ({ request }) => {
         body = await request.json()
-        return HttpResponse.json({ emailId: 'eml_1', status: 'complete' })
+        return HttpResponse.json({ emailId: 'eml_1', status: 'ready' })
       })
     )
     const result = await runCli(
@@ -410,20 +419,23 @@ describe('emails edit', () => {
 })
 
 describe('emails restore', () => {
-  it('posts the version to restore', async () => {
+  it('posts the version id to restore', async () => {
     let body: unknown
     server.use(
       http.post(`${EMAILS_URL}/eml_1/restore`, async ({ request }) => {
         body = await request.json()
-        return HttpResponse.json({ emailId: 'eml_1', version: 4 })
+        return HttpResponse.json({
+          emailId: 'eml_1',
+          emailVersionId: 'emv_7Hq2',
+        })
       })
     )
     const result = await runCli(
-      ['emails', 'restore', 'eml_1', '--to-version', '2'],
+      ['emails', 'restore', 'eml_1', '--to-version', 'emv_7Hq2'],
       { env: env(), extraCommands: EXTRA }
     )
     expect(result.code).toBe(0)
-    expect(body).toEqual({ version: 2 })
+    expect(body).toEqual({ emailVersionId: 'emv_7Hq2' })
   })
 
   it('requires --to-version', async () => {

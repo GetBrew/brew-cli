@@ -3,7 +3,8 @@ import { IDEMPOTENCY_FLAG, requestOptions } from '../../lib/input'
 
 export const sendsResumeCommand = defineCommand({
   path: ['sends', 'resume'],
-  summary: 'Resume a paused gradual send (the unsent tail is re-spread)',
+  summary:
+    'Resume a paused gradual send (the unsent tail is re-spread); the send reports `running` again',
   sdkMethod: 'sends.resume',
   route: { method: 'POST', path: '/v1/sends/{sendId}/resume' },
   commandClass: 'write',

@@ -10,13 +10,16 @@ import { SDK_SKIP_LIST } from '../src/skip-list'
 const PENDING_BUILD: readonly string[] = []
 
 /**
- * SDK methods the CLI removed AHEAD of the SDK release that deletes them:
- * the platform retired the transactional-email object, so the CLI commands
- * are gone, but the installed published SDK still exposes the resource
- * until the next major ships. Keep this compatibility fact in the parity
- * test, not in production command metadata. Each entry becomes stale (and
- * the staleness test below fails) as soon as the CLI upgrades to an SDK
- * release without the method.
+ * SDK methods the CLI removed AHEAD of the SDK release that deletes them.
+ * The list exists for the window between the API dropping a route and the
+ * SDK publishing without the method, so a retargeted command does not have
+ * to wait on the SDK.
+ *
+ * Empty since 10.0.0: that window has closed. SDK 10 removed
+ * `analytics.campaigns`, `analytics.sends.*`, `analytics.triggerInstances.*`,
+ * `automations.triggers.ready` and `automations.audienceRuns.control`, the
+ * staleness test below fired on every sentinel, and each was retired — the
+ * ratchet working exactly as designed.
  */
 const REMOVED_SDK_LEAVES: readonly string[] = []
 

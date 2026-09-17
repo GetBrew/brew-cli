@@ -18,19 +18,12 @@ import {
 
 export const automationsRunsListCommand = defineCommand({
   path: ['automations', 'runs', 'list'],
-  summary: 'List automation runs (live + test history)',
+  summary:
+    'List automation runs (live + test history); one run is `automations runs get`',
   sdkMethod: 'automations.runs.list',
   route: { method: 'GET', path: '/v1/automations/runs' },
   commandClass: 'read',
   flags: [
-    {
-      flag: '--run <automationRunId>',
-      summary: 'Fetch one run (single-row page)',
-    },
-    {
-      flag: '--include <tokens>',
-      summary: 'Comma-separated expansions: logs',
-    },
     { flag: '--automation <automationId>', summary: 'Filter by automation' },
     {
       flag: '--trigger <triggerEventId>',
@@ -40,10 +33,9 @@ export const automationsRunsListCommand = defineCommand({
       flag: '--trigger-instance <triggerInstanceId>',
       summary: 'Filter by fired trigger instance',
     },
-    { flag: '--recipient <email>', summary: 'Filter by recipient email' },
     {
       flag: '--status <status>',
-      summary: 'pending | running | completed | failed | cancelled',
+      summary: 'queued | running | completed | failed | canceled',
     },
     { flag: '--mode <mode>', summary: 'live | test' },
     { flag: '--since <datetime>', summary: 'Runs started at/after (ISO-8601)' },
@@ -58,17 +50,14 @@ export const automationsRunsListCommand = defineCommand({
   ],
   examples: [
     'brew-cli automations runs list --automation am_123 --status failed',
-    'brew-cli automations runs list --run arun_123 --include logs',
+    'brew-cli automations runs list --trigger-instance tin_2f1c9d8a',
   ],
   run: async ({ ctx, flags }) => {
     const base = await readJsonFlag(ctx, flags.input, '--input')
     const input = mergeInput(base, {
-      automationRunId: flagString(flags.run),
-      include: flagString(flags.include),
       automationId: flagString(flags.automation),
       triggerEventId: flagString(flags.trigger),
       triggerInstanceId: flagString(flags.triggerInstance),
-      recipientEmail: flagString(flags.recipient),
       status: flagString(flags.status),
       mode: flagString(flags.mode),
       from: flagString(flags.since),
@@ -105,6 +94,6 @@ function renderRuns(rows: ReadonlyArray<unknown>): string {
     { key: 'automationId', header: 'AUTOMATION' },
     { key: 'status', header: 'STATUS' },
     { key: 'mode', header: 'MODE' },
-    { key: 'recipientEmail', header: 'RECIPIENT' },
+    { key: 'recipient', header: 'RECIPIENT' },
   ])
 }

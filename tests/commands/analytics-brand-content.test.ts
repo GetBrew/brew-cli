@@ -56,17 +56,20 @@ const PAGE_DONE = { limit: 100, cursor: null, hasMore: false }
 const RANGE = { from: '2026-07-01T00:00:00Z', to: '2026-08-01T00:00:00Z' }
 
 describe('analytics campaigns', () => {
-  it('lists lifetime campaign KPIs', async () => {
+  it('reads the sends root pinned to kind=campaign', async () => {
+    let query: URLSearchParams | undefined
     server.use(
-      http.get(`${API}/v1/analytics/campaigns`, () =>
-        HttpResponse.json({
-          data: [{ sendId: 'snd_1', title: 'Launch', status: 'sent' }],
+      http.get(`${API}/v1/sends`, ({ request }) => {
+        query = new URL(request.url).searchParams
+        return HttpResponse.json({
+          data: [{ sendId: 'snd_1', subject: 'Launch', status: 'completed' }],
           pagination: PAGE_DONE,
         })
-      )
+      })
     )
     const result = await cli(['analytics', 'campaigns'])
     expect(result.code).toBe(0)
+    expect(query?.get('kind')).toBe('campaign')
     const data = result.json as { data: Array<{ sendId: string }> }
     expect(data.data[0]?.sendId).toBe('snd_1')
   })
@@ -132,7 +135,7 @@ describe('analytics events', () => {
     expect(result.code).toBe(0)
     expect(query?.get('from')).toBe('2026-08-01')
     expect(query?.get('to')).toBe('2026-08-10')
-    expect(query?.get('recipientEmail')).toBe('jane@example.com')
+    expect(query?.get('recipient')).toBe('jane@example.com')
     expect(query?.get('eventType')).toBe('clicked')
     expect(query?.get('sendId')).toBe('snd_1')
   })
@@ -166,13 +169,13 @@ describe('analytics events', () => {
 })
 
 describe('analytics sends list', () => {
-  it('maps --send/--email/--include onto the query fields', async () => {
+  it('maps --email/--kind/--status onto the sends-root query', async () => {
     let query: URLSearchParams | undefined
     server.use(
-      http.get(`${API}/v1/analytics/sends`, ({ request }) => {
+      http.get(`${API}/v1/sends`, ({ request }) => {
         query = new URL(request.url).searchParams
         return HttpResponse.json({
-          data: [{ sendId: 'snd_1', kind: 'campaign', status: 'sent' }],
+          data: [{ sendId: 'snd_1', kind: 'campaign', status: 'completed' }],
           pagination: PAGE_DONE,
         })
       })
@@ -181,41 +184,65 @@ describe('analytics sends list', () => {
       'analytics',
       'sends',
       'list',
-      '--send',
-      'snd_1',
       '--email',
       'em_1',
-      '--include',
-      'events',
+      '--kind',
+      'campaign',
+      '--status',
+      'completed',
     ])
     expect(result.code).toBe(0)
-    expect(query?.get('sendId')).toBe('snd_1')
     expect(query?.get('emailId')).toBe('em_1')
-    expect(query?.get('include')).toBe('events')
+    expect(query?.get('kind')).toBe('campaign')
+    expect(query?.get('status')).toBe('completed')
   })
 })
 
 describe('analytics sends get (derived)', () => {
-  it('returns the single send', async () => {
+  it('reads the send detail route and returns the bare row', async () => {
+    let requestedPath: string | undefined
     let query: URLSearchParams | undefined
     server.use(
-      http.get(`${API}/v1/analytics/sends`, ({ request }) => {
-        query = new URL(request.url).searchParams
+      http.get(`${API}/v1/sends/snd_1`, ({ request }) => {
+        const url = new URL(request.url)
+        requestedPath = url.pathname
+        query = url.searchParams
         return HttpResponse.json({
-          data: [{ sendId: 'snd_1', kind: 'campaign', status: 'sent' }],
+          sendId: 'snd_1',
+          kind: 'campaign',
+          status: 'completed',
         })
       })
     )
-    const result = await cli(['analytics', 'sends', 'get', 'snd_1'])
+    const result = await cli([
+      'analytics',
+      'sends',
+      'get',
+      'snd_1',
+      '--include',
+      'events',
+    ])
     expect(result.code).toBe(0)
-    expect(query?.get('sendId')).toBe('snd_1')
+    expect(requestedPath).toBe('/api/v1/sends/snd_1')
+    expect(query?.get('include')).toBe('events')
     expect((result.json as { sendId: string }).sendId).toBe('snd_1')
   })
 
-  it('exits 1 with SEND_NOT_FOUND when missing', async () => {
+  it("surfaces the API's own 404 instead of a hand-built one", async () => {
     server.use(
-      http.get(`${API}/v1/analytics/sends`, () =>
-        HttpResponse.json({ data: [] })
+      http.get(`${API}/v1/sends/snd_ghost`, () =>
+        HttpResponse.json(
+          {
+            error: {
+              code: 'SEND_NOT_FOUND',
+              type: 'not_found',
+              message: 'No such send',
+              suggestion: 'List sends with `brew-cli sends list`.',
+              docs: 'https://docs.getbrew.io/api',
+            },
+          },
+          { status: 404 }
+        )
       )
     )
     const result = await cli(['analytics', 'sends', 'get', 'snd_ghost'])
@@ -226,10 +253,10 @@ describe('analytics sends get (derived)', () => {
 })
 
 describe('analytics trigger-instances list', () => {
-  it('filters by trigger event', async () => {
+  it('filters by trigger event on the automations route', async () => {
     let query: URLSearchParams | undefined
     server.use(
-      http.get(`${API}/v1/analytics/trigger-instances`, ({ request }) => {
+      http.get(`${API}/v1/automations/trigger-instances`, ({ request }) => {
         query = new URL(request.url).searchParams
         return HttpResponse.json({
           data: [{ triggerInstanceId: 'ti_1', source: 'api', state: 'done' }],
@@ -242,10 +269,10 @@ describe('analytics trigger-instances list', () => {
       'trigger-instances',
       'list',
       '--trigger',
-      'tev_1',
+      'tri_1',
     ])
     expect(result.code).toBe(0)
-    expect(query?.get('triggerEventId')).toBe('tev_1')
+    expect(query?.get('triggerEventId')).toBe('tri_1')
     const data = result.json as { data: Array<{ triggerInstanceId: string }> }
     expect(data.data[0]?.triggerInstanceId).toBe('ti_1')
   })
