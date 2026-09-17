@@ -2918,9 +2918,6 @@ components:
         brand:
           type: object
           properties:
-            domain:
-              type: string
-              minLength: 1
             name:
               type: string
               minLength: 1
@@ -2928,7 +2925,6 @@ components:
               type: string
               format: uri
           required:
-            - domain
             - name
           additionalProperties: false
         title:
@@ -12227,9 +12223,6 @@ components:
               brand:
                 type: object
                 properties:
-                  domain:
-                    type: string
-                    minLength: 1
                   name:
                     type: string
                     minLength: 1
@@ -12237,7 +12230,6 @@ components:
                     type: string
                     format: uri
                 required:
-                  - domain
                   - name
                 additionalProperties: false
               title:
@@ -31847,7 +31839,6 @@ paths:
                 data:
                   - slug: brew.new
                     brand:
-                      domain: brew.new
                       name: Brew
                       logo: https://cdn.brew.new/brand/fetched-logo/brew.new/logo.png
                     title: Brew onboarding flow
