@@ -111,10 +111,17 @@ describe('automations runs cancel', () => {
       http.patch(URL, () =>
         HttpResponse.json(
           {
+            // `suggestion` and `docs` are REQUIRED on the error object by the
+            // spec, and the SDK's envelope parser enforces that: an envelope
+            // missing either degrades to `code: 'unknown_error'`. Keep this
+            // fixture shaped like the real 409 the API sends.
             error: {
               code: 'RUN_NOT_CANCELLABLE',
               type: 'conflict',
               message: 'Run run_1 already completed.',
+              suggestion:
+                'The run has already finished and can no longer be canceled.',
+              docs: 'https://docs.brew.new/api-reference/api/errors',
             },
           },
           { status: 409 }
