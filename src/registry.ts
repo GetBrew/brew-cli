@@ -24,6 +24,7 @@ import { automationsGetCommand } from './commands/automations/get'
 import { automationsListCommand } from './commands/automations/list'
 import { automationsPublishCommand } from './commands/automations/publish'
 import { automationsRunCommand } from './commands/automations/run'
+import { automationsRunsCancelCommand } from './commands/automations/runs/cancel'
 import { automationsRunsListCommand } from './commands/automations/runs/list'
 import { automationsTestCommand } from './commands/automations/test'
 import {
@@ -191,6 +192,7 @@ export const ALL_COMMANDS: readonly CommandSpec[] = [
   automationsTriggersDeleteCommand,
   automationsTriggersFireCommand,
   automationsRunsListCommand,
+  automationsRunsCancelCommand,
   automationsAudienceRunsListCommand,
   automationsAudienceRunsControlCommand,
   analyticsOverviewCommand,

@@ -38,7 +38,7 @@ const GROUP_SUMMARIES: Readonly<Record<string, string>> = {
   contract: 'Stored payload contracts (get, put, validate)',
   contracts: 'Payload-contract helpers',
   triggers: 'Manage trigger events',
-  runs: 'Automation run history',
+  runs: 'Automation run history, and cancel one in-flight run',
   'trigger-instances': 'Fired trigger instances',
 }
 

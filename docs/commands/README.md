@@ -2,7 +2,7 @@
 
 <!-- GENERATED FILE — do not edit. Regenerate with `bun run docs:commands`. -->
 
-111 commands. Classes: read (always safe), write
+112 commands. Classes: read (always safe), write
 (mutating, retry-safe), destructive (irreversible — the confirmation
 protocol applies: interactive y/N on a TTY, exit 4 + JSON envelope with
 a `confirmCommand` otherwise, `--yes` to proceed).
@@ -91,6 +91,7 @@ a `confirmCommand` otherwise, `--yes` to proceed).
 | `brew-cli automations triggers delete` | destructive | `DELETE /v1/automations/triggers/{triggerEventId}` | Delete a trigger event (rejected while automations depend on it) |
 | `brew-cli automations triggers fire` | destructive | `POST /v1/automations/triggers/{triggerEventId}/fire` | Fire a trigger event with a payload (starts LIVE runs) |
 | `brew-cli automations runs list` | read | `GET /v1/automations/runs` | List automation runs (live + test history) |
+| `brew-cli automations runs cancel` | destructive | `PATCH /v1/automations/runs` | Cancel one in-flight automation run (event execution or test run) — nothing further is sent, and it can never be resumed |
 | `brew-cli automations audience-runs list` | read | `GET /v1/automations/audience-runs` | List manual-audience runs (newest first) |
 | `brew-cli automations audience-runs control` | destructive | `POST /v1/automations/audience-runs/{audienceRunId}/control` | Pause, resume, or cancel an in-flight manual-audience run |
 | `brew-cli analytics overview` | read | `GET /v1/analytics/overview` | Brand overview: totals, rates, timeseries (default last 7 days) |
@@ -1266,6 +1267,19 @@ brew-cli automations runs list --automation am_123 --status failed
 brew-cli automations runs list --run arun_123 --include logs
 ```
 
+### brew-cli automations runs cancel
+
+Cancel one in-flight automation run (event execution or test run) — nothing further is sent, and it can never be resumed
+
+- Route: `PATCH /v1/automations/runs`
+- Class: destructive
+- Argument `automationRunId` — Run id to cancel (from `automations runs list`, a test start, or a fire response)
+- `--reason <text>` — Operator note stored on the run
+
+```bash
+brew-cli automations runs cancel run_9f2kX --reason "wrong audience" --yes
+```
+
 ### brew-cli automations audience-runs list
 
 List manual-audience runs (newest first)
@@ -1943,4 +1957,3 @@ SDK methods intentionally without a dedicated command:
 
 Public API operations not yet available (tracked by the spec parity test):
 
-- `PATCH /v1/automations/runs` — cancel a run (MCP `cancel_execution`) landed on the platform after SDK 9.1.0 — no SDK method yet; bind via the raw transport as `automations runs cancel` next

@@ -12,8 +12,16 @@
   `emails generate`); `--include html` adds each step's rendered HTML. The
   route is organization-wide, so the brand binding is never sent. Bound
   through the raw transport until `@brew.new/sdk` ships `flows.list`.
+- Added `automations runs cancel <automationRunId>` (`PATCH
+  /v1/automations/runs`): the operator cancel for one in-flight run of an
+  event-triggered automation or a test run. Destructive — the confirmation
+  protocol applies; `--reason` stores an operator note. Nothing further is
+  sent, delivered emails are not recalled, and a canceled run can never be
+  resumed (`409 RUN_NOT_CANCELLABLE` once it finished). Raw transport until
+  `@brew.new/sdk` ships `automations.runs.cancel`.
 - Spec resync: `GET /v1/flows` (`Flow`, `FlowStep`, `FlowsListResponse`,
-  `FLOW_NOT_FOUND`).
+  `FLOW_NOT_FOUND`) and `PATCH /v1/automations/runs`
+  (`AutomationRunCancelRequest` / `AutomationRunCancelResponse`).
 
 ## 0.5.0
 
