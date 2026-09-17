@@ -21,16 +21,6 @@ export type SpecSkip = {
 /** SDK methods that intentionally have no dedicated CLI command. */
 export const SDK_SKIP_LIST: readonly SdkSkip[] = [
   {
-    sdkPath: 'sends.listAll',
-    reason:
-      'auto-pager over `sends.list`; the CLI pages explicitly with --cursor/--limit so a command would hide the page boundary a script needs',
-  },
-  {
-    sdkPath: 'automations.triggerInstances.listAll',
-    reason:
-      'auto-pager over `automations.triggerInstances.list`; same reason as `sends.listAll`',
-  },
-  {
     sdkPath: 'automations.triggers.getContract',
     reason:
       'covered by `automations triggers contract get` (raw route, bound pre-SDK-v9; SDK-method migration tracked separately)',

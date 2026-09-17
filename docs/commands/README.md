@@ -2162,8 +2162,6 @@ brew-cli api GET /v1/llms.txt
 
 SDK methods intentionally without a dedicated command:
 
-- `sends.listAll` — auto-pager over `sends.list`; the CLI pages explicitly with --cursor/--limit so a command would hide the page boundary a script needs
-- `automations.triggerInstances.listAll` — auto-pager over `automations.triggerInstances.list`; same reason as `sends.listAll`
 - `automations.triggers.getContract` — covered by `automations triggers contract get` (raw route, bound pre-SDK-v9; SDK-method migration tracked separately)
 - `automations.triggers.putContract` — covered by `automations triggers contract put` (raw route, bound pre-SDK-v9)
 - `automations.triggers.validatePayload` — covered by `automations triggers contract validate` (raw route, bound pre-SDK-v9)
