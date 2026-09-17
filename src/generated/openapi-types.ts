@@ -41,7 +41,7 @@ export interface paths {
          * Import an email
          * @description Converts existing markup into a NEW, fully EDITABLE Brew email design on the brand canvas. Brew preserves source structure and attempts to rehost every discoverable safe public resource. If rehosting fails, a validated public URL may be retained with a warning; private, malformed, and blocked references are stripped.
          *
-         *     `content` is the raw markup as a STRING; `format` describes what you supply: `html` (an HTML email document or fragment), `mjml` (MJML markup), or `jsx` (React-Email JSX) — all converted into a clean, editable design. Pass `baseUrl` to resolve relative image paths. Optional `title` and `subjectLine` (the design-default inbox subject).
+         *     `content` is the raw source as a STRING; `format` describes what you supply: `html` (an HTML email document or fragment), `mjml` (MJML markup), `jsx` (React-Email JSX — a module with a default-exported component, or a bare `<Html>` element; static values, `PreviewProps` and local sub-components fold, anything executable is rejected with the offending line), or `eml` (a saved RFC 822 message — the HTML body is imported, inline `cid:` images are rehosted, other attachments are dropped, and the Subject becomes the title). HTML, MJML and EML land as source-preserved designs with an editable projection; JSX lands as a native React Email design. Pass `baseUrl` to resolve relative image paths. Optional `title` and `subjectLine` (the design-default inbox subject; an EML Subject is the default).
          *
          *     FREE — no model and no credits. Conversion is a deterministic compiler, so there is no token spend to meter and no credit gate. Normal request limits still apply: 5,000,000 UTF-8 bytes, 256 remote resources, 8 concurrent fetches, 10 MB per resource, and 50 MB aggregate downloads. Optional `targetGroupId` (`grp_…` or `ungrouped`) or `targetGroupName` (resolve-or-create) — not both; omit to land Ungrouped. Unknown `targetGroupId` → `404 EMAIL_GROUP_NOT_FOUND`. Returns `201` with `{ emailId, emailVersionId, html, previewImage?, assetReport, group, subjectLine? }`.
          */
@@ -609,8 +609,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Pause, resume, or cancel a manual-audience run
-         * @description Controls an in-flight manual-audience run. `pause` holds delivery at the next step boundary (resumable); `resume` continues a paused run; `cancel` stops it for good — emails already sent are NOT recalled and a canceled run can't be resumed. `409` if the run is not in a state that allows the action (e.g. resuming a run that isn't paused); `404` for an unknown `audienceRunId`.
+         * Pause, resume, cancel, or continue a manual-audience run
+         * @description Controls a manual-audience run. `pause` holds delivery at the next step boundary (resumable); `resume` continues a paused run; `cancel` stops it for good — emails already sent are NOT recalled and a canceled run can't be resumed. `resume_failed` continues a FAILED run under a fresh workflow run: it picks up at the first send step that never delivered and skips every step the failed run finished, so nothing is resent; it is refused (`409`) when a send step delivered to only part of its segment. `409` if the run is not in a state that allows the action (e.g. resuming a run that isn't paused); `402` when resuming would exceed the monthly email-send limit; `404` for an unknown `audienceRunId`.
          */
         post: operations["controlAudienceRun"];
         delete?: never;
@@ -628,7 +628,7 @@ export interface paths {
         };
         /**
          * Get automation runs
-         * @description Unified automation-run read. Omit `automationRunId` to LIST recent runs (newest first) under `{ data, pagination }`. Filters: `automationId`, `triggerEventId`, `triggerInstanceId`, `recipientEmail`, `status` (pending | running | completed | failed | canceled), `mode` (live | test), and the `from`/`to` ISO-8601 window. Pass `?automationRunId=` to fetch ONE run — returns `{ data: [row] }` (no `pagination`), `404 AUTOMATION_RUN_NOT_FOUND` on an unknown / cross-brand id. List + detail rows are lean by default; add `?include=logs` (detail only) for the per-node execution `logs[]`.
+         * @description Unified automation-run read. Omit `automationRunId` to LIST recent runs (newest first) under `{ data, pagination }`. Filters: `automationId`, `triggerEventId`, `triggerInstanceId`, `recipientEmail`, `status` (pending | running | completed | failed | canceled), `mode` (live | test), and the `from`/`to` ISO-8601 window. Pass `?automationRunId=` to fetch ONE run — returns `{ data: [row] }` (no `pagination`), `404 AUTOMATION_RUN_NOT_FOUND` on an unknown / cross-brand id. List + detail rows are lean by default; add `?include=logs` (detail only) for the newest 100 per-node execution logs. The row sets `logsTruncated: true` when older logs exist.
          */
         get: operations["listAutomationRuns"];
         put?: never;
@@ -636,7 +636,11 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        patch?: never;
+        /**
+         * Cancel an automation run
+         * @description Operator cancel of ONE run (an event execution or a test run) by `automationRunId` in the body — the same flat identity the read uses. Marks the run `canceled` (first-terminal-wins: a late completion from the dying workflow can never overwrite it), wakes a run parked on a wait node so it observes the cancel now, and terminates the durable workflow run so a step stuck retrying is freed too. Nothing further is sent; emails already delivered are NOT recalled and a canceled run cannot be resumed. `409 RUN_NOT_CANCELLABLE` when the run already finished (`completed` / `failed` / `canceled`); `404 AUTOMATION_RUN_NOT_FOUND` for an unknown / cross-brand id. Manual-audience launches are controlled via `POST /v1/automations/audience-runs/{audienceRunId}/control` instead.
+         */
+        patch: operations["cancelAutomationRun"];
         trace?: never;
     };
     "/v1/automations/triggers": {
@@ -1124,7 +1128,7 @@ export interface paths {
         head?: never;
         /**
          * Update domain settings
-         * @description Updates sender defaults (`defaultSenderName`, `defaultFromEmail`, `defaultReplyToEmail`) and/or `sendingPurpose` — at least one required. Live gates fail closed if a campaign still points at a transactional domain. Verification is its own action: `POST /v1/domains/{domainId}/verify`. Returns the bare updated row.
+         * @description Updates sender defaults (`defaultSenderName`, `defaultFromEmail`, `defaultReplyToEmail`) and/or `sendingPurpose` — at least one required. `defaultFromEmail` is the sender MAILBOX (the text before `@`) — the host is always this domain, so a full address is accepted and reduced to its local part; `defaultReplyToEmail`, by contrast, is a whole address. Live gates fail closed if a campaign still points at a transactional domain. Verification is its own action: `POST /v1/domains/{domainId}/verify`. Returns the bare updated row.
          */
         patch: operations["updateDomain"];
         trace?: never;
@@ -1181,6 +1185,26 @@ export interface paths {
          * @description Lists public email templates under `{ data, pagination }`. Each row is FULL — it carries the rendered `html` + `previewImage` plus the display metadata (`title`, `category`, `brand`, `updatedAt`), so you never need a follow-up get-one round-trip. Supports exact `?brand=` and `?category=` filters and a lightweight `?semantic=` text filter. Templates are organization-wide references (use one as `referenceEmailId` on `POST /v1/emails`).
          */
         get: operations["listTemplates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/flows": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List flows
+         * @description Public email flows — one brand’s real onboarding or newsletter sequence, with the day each email landed — under `{ data, pagination }`. Omit `slug` to LIST cards (filter `?brand=`, `?category=`, `?type=`; order with `?sort=newest|emails|span|remixes`; or `?semantic=` for relevance-ranked search). Pass `?slug=<brand domain>` to fetch ONE flow → `data: [flow]` with every step’s `subject`, `previewText`, `dayOffset`, `delayDays`, `category`, `previewImage` and `emailId`; add `?include=html` for each step’s rendered HTML (best-effort per step: a step whose body is no longer servable comes back without `html`). `anchor` and `steps` are detail-only — a LIST card never carries them. A step’s `emailId` is a template reference: use it as `referenceEmailId` on `POST /v1/emails`, or look it up on `GET /v1/templates`. Organization-wide. The list is the gallery’s own set — the same bounded corpus the site shows (a few hundred flows today) — paged with `limit`/`cursor`.
+         */
+        get: operations["listFlows"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1456,13 +1480,13 @@ export interface paths {
         };
         /**
          * List API keys
-         * @description Lists API keys in the organization. A brand-scoped credential only sees keys bound to its brand. Organization-level — takes no `X-Brand-Id`. `brandId` on a row is the key's binding, not the request actor. No permission scope.
+         * @description Lists one cursor page of API-key metadata for the active organization. Requires an exact `org:admin` Clerk session; API-key and OAuth actors receive `403`. Organization-level — takes no `X-Brand-Id`. `brandId` on a row is the key's binding, not the request actor. Stored secrets and hashes are never returned.
          */
         get: operations["listApiKeys"];
         put?: never;
         /**
          * Create an API key
-         * @description Mints a new API key. The plaintext `key` is returned once. `brandId` in the body is the NEW KEY's binding (omit for an organization-wide key) — the only v1 body field named `brandId`. Permissions default to `["all"]` and cannot exceed the caller's grant. Organization-wide keys require an org-admin dashboard session or an organization-scoped credential.
+         * @description Mints a new API key through an exact `org:admin` Clerk session; API-key and OAuth actors receive `403`. The plaintext `key` is returned once and only its hash plus final preview are stored. This operation intentionally does not support response replay or `Idempotency-Key`, because replay would disclose the credential again. `brandId` in the body is the NEW KEY's binding (omit for an organization-wide key) — the only v1 body field named `brandId`. Permissions default to `["all"]`. To rotate without downtime, send only `replacesKeyId`; Brew copies the active predecessor's name, scope, and permissions and leaves it active until you revoke it after switching consumers.
          */
         post: operations["createApiKey"];
         delete?: never;
@@ -1483,7 +1507,7 @@ export interface paths {
         post?: never;
         /**
          * Revoke an API key
-         * @description Revokes an API key. Organization-wide keys require an org-admin dashboard session or an organization-scoped credential. A brand credential cannot see or revoke another brand's keys (`404`).
+         * @description Revokes an API key in the active organization. Requires an exact `org:admin` Clerk session; API-key and OAuth actors receive `403`.
          */
         delete: operations["revokeApiKey"];
         options?: never;
@@ -1563,7 +1587,10 @@ export interface components {
             status: "streaming" | "complete" | "error";
             /** Format: uri */
             previewImage?: string;
-            /** Format: date-time */
+            /**
+             * Format: date-time
+             * @description Last stable design update. While status is `streaming`, collection reads hold this at `createdAt` so body chunks do not reorder or invalidate the whole list; the completion transition publishes the final source timestamp.
+             */
             updatedAt: string;
             /** @description The design's default inbox subject, persisted on the latest version. Distinct from `title` (canvas name). Detail-only; absent on rows where it has never been set (via the write surfaces' `subjectLine` field, or in-app). `POST /v1/sends` still requires an explicit `subject`. */
             subjectLine?: string;
@@ -1762,7 +1789,7 @@ export interface components {
                 /** @enum {string} */
                 logicalOperator: "AND" | "OR";
                 conditions: ({
-                    /** @description Trigger payload field name or dot path, for example trackingNumber or order.total. */
+                    /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
                     field: string;
                     /** @enum {string} */
                     type: "string";
@@ -1771,7 +1798,7 @@ export interface components {
                     /** @description String value to compare against. */
                     value: string;
                 } | {
-                    /** @description Trigger payload field name or dot path, for example trackingNumber or order.total. */
+                    /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
                     field: string;
                     /** @enum {string} */
                     type: "number";
@@ -1780,7 +1807,7 @@ export interface components {
                     /** @description Finite numeric value to compare against. */
                     value: number;
                 } | {
-                    /** @description Trigger payload field name or dot path, for example trackingNumber or order.total. */
+                    /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
                     field: string;
                     /** @enum {string} */
                     type: "date";
@@ -1789,7 +1816,7 @@ export interface components {
                     /** @description ISO date string or Unix timestamp in milliseconds to compare against. */
                     value: string | number;
                 } | {
-                    /** @description Trigger payload field name or dot path, for example trackingNumber or order.total. */
+                    /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
                     field: string;
                     /** @enum {string} */
                     type: "string";
@@ -1798,7 +1825,7 @@ export interface components {
                     /** @description Non-empty array of string values to compare against. */
                     value: string[];
                 } | {
-                    /** @description Trigger payload field name or dot path, for example trackingNumber or order.total. */
+                    /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
                     field: string;
                     /** @enum {string} */
                     type: "number";
@@ -1807,7 +1834,7 @@ export interface components {
                     /** @description Non-empty array of finite numbers to compare against. */
                     value: number[];
                 } | {
-                    /** @description Trigger payload field name or dot path, for example trackingNumber or order.total. */
+                    /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
                     field: string;
                     /** @enum {string} */
                     type: "number";
@@ -1819,7 +1846,7 @@ export interface components {
                         number
                     ];
                 } | {
-                    /** @description Trigger payload field name or dot path, for example trackingNumber or order.total. */
+                    /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
                     field: string;
                     /** @enum {string} */
                     type: "date";
@@ -1831,7 +1858,7 @@ export interface components {
                         string | number
                     ];
                 } | {
-                    /** @description Trigger payload field name or dot path, for example trackingNumber or order.total. */
+                    /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
                     field: string;
                     /** @enum {string} */
                     type: "string";
@@ -1841,7 +1868,7 @@ export interface components {
                      */
                     operator: "is_empty" | "is_not_empty";
                 } | {
-                    /** @description Trigger payload field name or dot path, for example trackingNumber or order.total. */
+                    /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
                     field: string;
                     /** @enum {string} */
                     type: "number";
@@ -1851,7 +1878,7 @@ export interface components {
                      */
                     operator: "is_empty" | "is_not_empty";
                 } | {
-                    /** @description Trigger payload field name or dot path, for example trackingNumber or order.total. */
+                    /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
                     field: string;
                     /** @enum {string} */
                     type: "date";
@@ -1861,7 +1888,7 @@ export interface components {
                      */
                     operator: "is_empty" | "is_not_empty";
                 } | {
-                    /** @description Trigger payload field name or dot path, for example trackingNumber or order.total. */
+                    /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
                     field: string;
                     /** @enum {string} */
                     type: "bool";
@@ -1919,7 +1946,7 @@ export interface components {
                 /** @enum {string} */
                 logicalOperator: "AND" | "OR";
                 conditions: ({
-                    /** @description Trigger payload field name or dot path, for example trackingNumber or order.total. */
+                    /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
                     field: string;
                     /** @enum {string} */
                     type: "string";
@@ -1928,7 +1955,7 @@ export interface components {
                     /** @description String value to compare against. */
                     value: string;
                 } | {
-                    /** @description Trigger payload field name or dot path, for example trackingNumber or order.total. */
+                    /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
                     field: string;
                     /** @enum {string} */
                     type: "number";
@@ -1937,7 +1964,7 @@ export interface components {
                     /** @description Finite numeric value to compare against. */
                     value: number;
                 } | {
-                    /** @description Trigger payload field name or dot path, for example trackingNumber or order.total. */
+                    /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
                     field: string;
                     /** @enum {string} */
                     type: "date";
@@ -1946,7 +1973,7 @@ export interface components {
                     /** @description ISO date string or Unix timestamp in milliseconds to compare against. */
                     value: string | number;
                 } | {
-                    /** @description Trigger payload field name or dot path, for example trackingNumber or order.total. */
+                    /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
                     field: string;
                     /** @enum {string} */
                     type: "string";
@@ -1955,7 +1982,7 @@ export interface components {
                     /** @description Non-empty array of string values to compare against. */
                     value: string[];
                 } | {
-                    /** @description Trigger payload field name or dot path, for example trackingNumber or order.total. */
+                    /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
                     field: string;
                     /** @enum {string} */
                     type: "number";
@@ -1964,7 +1991,7 @@ export interface components {
                     /** @description Non-empty array of finite numbers to compare against. */
                     value: number[];
                 } | {
-                    /** @description Trigger payload field name or dot path, for example trackingNumber or order.total. */
+                    /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
                     field: string;
                     /** @enum {string} */
                     type: "number";
@@ -1976,7 +2003,7 @@ export interface components {
                         number
                     ];
                 } | {
-                    /** @description Trigger payload field name or dot path, for example trackingNumber or order.total. */
+                    /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
                     field: string;
                     /** @enum {string} */
                     type: "date";
@@ -1988,7 +2015,7 @@ export interface components {
                         string | number
                     ];
                 } | {
-                    /** @description Trigger payload field name or dot path, for example trackingNumber or order.total. */
+                    /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
                     field: string;
                     /** @enum {string} */
                     type: "string";
@@ -1998,7 +2025,7 @@ export interface components {
                      */
                     operator: "is_empty" | "is_not_empty";
                 } | {
-                    /** @description Trigger payload field name or dot path, for example trackingNumber or order.total. */
+                    /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
                     field: string;
                     /** @enum {string} */
                     type: "number";
@@ -2008,7 +2035,7 @@ export interface components {
                      */
                     operator: "is_empty" | "is_not_empty";
                 } | {
-                    /** @description Trigger payload field name or dot path, for example trackingNumber or order.total. */
+                    /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
                     field: string;
                     /** @enum {string} */
                     type: "date";
@@ -2018,7 +2045,7 @@ export interface components {
                      */
                     operator: "is_empty" | "is_not_empty";
                 } | {
-                    /** @description Trigger payload field name or dot path, for example trackingNumber or order.total. */
+                    /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
                     field: string;
                     /** @enum {string} */
                     type: "bool";
@@ -2287,7 +2314,7 @@ export interface components {
             title: string;
             description?: string;
             /** @enum {string} */
-            provider: "brew_api" | "clerk" | "stripe" | "shopify" | "stytch" | "supabase" | "workos" | "revenuecat" | "custom";
+            provider: "brew_api" | "clerk" | "stripe" | "shopify" | "stytch" | "supabase" | "workos" | "framer" | "revenuecat" | "custom";
             providerEventKey?: string;
             payloadSchema: {
                 /** @enum {string} */
@@ -2305,11 +2332,12 @@ export interface components {
             key: string;
             /** @enum {string} */
             type: "string" | "int" | "boolean" | "object" | "array";
+            /** @description True when the inbound payload must carry this key for the trigger to fire. */
             required: boolean;
-            /** @description Substitution value when the inbound payload is missing this SCALAR field. Also used as the email agent's `e.g. {{ key | fallback }}` example. Scalar leaves only. */
+            /** @description Substitution value when the inbound payload is missing this field. Also used as the email agent's `e.g. {{ key | fallback }}` example. Scalar leaves only. */
             fallbackValue?: string | number | boolean;
             /**
-             * @description PII classification for redaction. "high" auto-redacts the value (a container redacts its whole subtree) in execution logs and the inbound log. "low" (default when omitted) preserves the value. "none" is an explicit marker that the field is non-personal.
+             * @description PII classification for redaction. "high" auto-redacts the value in execution logs and the inbound log. "low" (default when omitted) preserves the value. "none" is an explicit marker that the field is non-personal. On a container, "high" redacts the whole subtree.
              * @enum {string}
              */
             pii?: "none" | "low" | "high";
@@ -2538,6 +2566,54 @@ export interface components {
             previewImage: string;
             updatedAt: string;
         };
+        Flow: {
+            slug: string;
+            brand: {
+                domain: string;
+                name: string;
+                /** Format: uri */
+                logo?: string;
+            };
+            title: string;
+            /** @enum {string} */
+            type: "newsletter" | "signup";
+            category: string;
+            categoryLabel: string;
+            emailCount: number;
+            spanDays: number;
+            remixCount: number;
+            previewImages: string[];
+            publishedAt: string;
+            updatedAt: string;
+            /** @enum {string} */
+            anchor?: "submittedAt" | "signedUpAt" | "verifiedAt" | "firstEmail";
+            steps?: {
+                order: number;
+                dayOffset: number;
+                delayDays: number;
+                subject: string;
+                previewText?: string;
+                category: string;
+                categoryLabel: string;
+                emailId: string;
+                /** Format: uri */
+                previewImage?: string;
+                html?: string;
+            }[];
+        };
+        FlowStep: {
+            order: number;
+            dayOffset: number;
+            delayDays: number;
+            subject: string;
+            previewText?: string;
+            category: string;
+            categoryLabel: string;
+            emailId: string;
+            /** Format: uri */
+            previewImage?: string;
+            html?: string;
+        };
         EmailsListResponse: {
             data: {
                 emailId: string;
@@ -2547,7 +2623,10 @@ export interface components {
                 status: "streaming" | "complete" | "error";
                 /** Format: uri */
                 previewImage?: string;
-                /** Format: date-time */
+                /**
+                 * Format: date-time
+                 * @description Last stable design update. While status is `streaming`, collection reads hold this at `createdAt` so body chunks do not reorder or invalidate the whole list; the completion transition publishes the final source timestamp.
+                 */
                 updatedAt: string;
                 /** @description The design's default inbox subject, persisted on the latest version. Distinct from `title` (canvas name). Detail-only; absent on rows where it has never been set (via the write surfaces' `subjectLine` field, or in-app). `POST /v1/sends` still requires an explicit `subject`. */
                 subjectLine?: string;
@@ -2605,7 +2684,7 @@ export interface components {
             prompt: string;
             /** @description Up to 8 source URLs to build the email FROM — each is crawled and synthesized into one email (newsletters, recaps, product roundups). */
             contentUrls?: string[];
-            /** @description An existing design (`emailId` from `list_email_designs`) to use as the style/layout reference for the new email. */
+            /** @description An existing design (`emailId` from `run_data_command` (`db find emails`) or GET /v1/emails) to use as the style/layout reference for the new email. */
             referenceEmailId?: string;
             /**
              * @description Email category that steers the design treatment (exemplars, hero recipe, personalization) — mirrors what the in-app agent infers per request. One of: welcome, newsletter, promotional, product-launch, product-update, order-confirmation, shipping-update, receipt, cart-abandonment, subscription, password-reset, verification, security-alert, account-update, event-invitation, event-reminder, feedback-request, re-engagement, referral, support, business, internal, notification, general. Omit for a general treatment. Transactional categories (receipt, password-reset, order-confirmation, …) steer receipt/reset design conventions; to DELIVER those emails, wire the design into an automation with a trigger and a transactional-purpose sending domain, then fire the trigger.
@@ -2635,18 +2714,23 @@ export interface components {
                 rehosted: number;
                 retained: number;
                 stripped: number;
+                /** @default 0 */
+                dropped?: number;
                 warnings: {
                     /** @enum {string} */
-                    code: "fetch_failed_retained" | "non_image_resource_retained" | "social_icon_substituted" | "unsafe_url_stripped" | "unsupported_resource_retained" | "upload_failed_retained";
+                    code: "fetch_failed_retained" | "non_image_resource_retained" | "social_icon_substituted" | "tracking_pixel_dropped" | "unsafe_url_stripped" | "unsupported_resource_retained" | "upload_failed_retained" | "inline_asset_retained" | "attachment_dropped" | "embedded_reference_unresolved" | "tailwind_config_unresolved" | "tailwind_class_dropped" | "foreign_component_dropped";
                     /** @enum {string} */
-                    location: "background" | "css-url" | "data-src" | "data-srcset" | "preload" | "src" | "srcset" | "stylesheet" | "vml-src";
+                    location: "background" | "css-url" | "data-src" | "data-srcset" | "module" | "preload" | "src" | "srcset" | "stylesheet" | "vml-src";
                     host?: string;
                 }[];
             };
         };
         EmailImportRequest: {
-            /** @enum {string} */
-            format: "html" | "mjml" | "jsx";
+            /**
+             * @description `html`: an HTML email document or fragment · `mjml`: MJML markup · `jsx`: React Email — a module with a default-exported component, or a bare `<Html>` element · `eml`: a saved RFC 822 message
+             * @enum {string}
+             */
+            format: "html" | "mjml" | "jsx" | "eml";
             content: string;
             title?: string;
             /** @description Inbox subject line to set on the design (`subjectLine` — distinct from `title`, the canvas name). Sends still take an explicit per-send `subject`; this is the design's default, seeded into the send dialog and returned by `GET /v1/emails?emailId=`. */
@@ -2713,7 +2797,7 @@ export interface components {
         EmailEditRequest: {
             /** @description The edit to make, in plain language — e.g. "swap the hero for the spring campaign image and tighten the CTA copy". Scoped edits beat full rewrites. Omit to only set `subjectLine` (at least one of the two is required). */
             prompt?: string;
-            /** @description Pin the edit to a specific source version (from `list_email_designs` `include: ["versions"]`). Omit to edit the current latest. */
+            /** @description Pin the edit to a specific source version (from `run_data_command` (`db find emails emailId=<id>`) or GET /v1/emails). Omit to edit the current latest. */
             emailVersionId?: string;
             /** @description Up to 8 URLs whose content grounds the edit (e.g. the product page the new section should describe). */
             contentUrls?: string[];
@@ -2732,7 +2816,7 @@ export interface components {
             deletedAt?: string;
         };
         EmailCloneRequest: {
-            /** @description Exact source version to clone (from `list_email_designs` with `include: ["versions"]`). Omit to clone the current latest version. */
+            /** @description Exact source version to clone (from `run_data_command` (`db find emails emailId=<id>`) or GET /v1/emails). Omit to clone the current latest version. */
             emailVersionId?: string;
             /** @description Existing canvas group id (`grp_…`), or `ungrouped`. Mutually exclusive with `targetGroupName`. */
             targetGroupId?: string;
@@ -2745,7 +2829,7 @@ export interface components {
         EmailExportResponse: {
             emailId: string;
             /** @enum {string} */
-            provider: "braze" | "hubspot" | "klaviyo" | "mailchimp" | "iterable" | "postmark" | "onesignal" | "mailgun" | "sendgrid";
+            provider: "braze" | "brevo" | "hubspot" | "klaviyo" | "mailchimp" | "mailjet" | "iterable" | "postmark" | "onesignal" | "mailgun" | "sendgrid";
             providerName: string;
             templateName: string;
             templateId?: string;
@@ -2756,9 +2840,14 @@ export interface components {
              * @description The connected ESP to export the design to as a template.
              * @enum {string}
              */
-            provider: "braze" | "hubspot" | "klaviyo" | "mailchimp" | "iterable" | "postmark" | "onesignal" | "mailgun" | "sendgrid";
+            provider: "braze" | "brevo" | "hubspot" | "klaviyo" | "mailchimp" | "mailjet" | "iterable" | "postmark" | "onesignal" | "mailgun" | "sendgrid";
             /** @description Template name in the ESP. Defaults to the email title. */
             templateName?: string;
+            /**
+             * Format: email
+             * @description Active sender email for Brevo or Mailjet. Omit when the account has exactly one active sender; Brew selects it automatically.
+             */
+            senderEmail?: string;
             /** @description Validate the design, brand ownership, and ESP connection without creating a template. */
             dryRun?: boolean;
             /** @description Accepted alias of `dryRun`. */
@@ -3555,7 +3644,7 @@ export interface components {
                     /** @enum {string} */
                     logicalOperator: "AND" | "OR";
                     conditions: ({
-                        /** @description Trigger payload field name or dot path, for example trackingNumber or order.total. */
+                        /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
                         field: string;
                         /** @enum {string} */
                         type: "string";
@@ -3564,7 +3653,7 @@ export interface components {
                         /** @description String value to compare against. */
                         value: string;
                     } | {
-                        /** @description Trigger payload field name or dot path, for example trackingNumber or order.total. */
+                        /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
                         field: string;
                         /** @enum {string} */
                         type: "number";
@@ -3573,7 +3662,7 @@ export interface components {
                         /** @description Finite numeric value to compare against. */
                         value: number;
                     } | {
-                        /** @description Trigger payload field name or dot path, for example trackingNumber or order.total. */
+                        /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
                         field: string;
                         /** @enum {string} */
                         type: "date";
@@ -3582,7 +3671,7 @@ export interface components {
                         /** @description ISO date string or Unix timestamp in milliseconds to compare against. */
                         value: string | number;
                     } | {
-                        /** @description Trigger payload field name or dot path, for example trackingNumber or order.total. */
+                        /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
                         field: string;
                         /** @enum {string} */
                         type: "string";
@@ -3591,7 +3680,7 @@ export interface components {
                         /** @description Non-empty array of string values to compare against. */
                         value: string[];
                     } | {
-                        /** @description Trigger payload field name or dot path, for example trackingNumber or order.total. */
+                        /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
                         field: string;
                         /** @enum {string} */
                         type: "number";
@@ -3600,7 +3689,7 @@ export interface components {
                         /** @description Non-empty array of finite numbers to compare against. */
                         value: number[];
                     } | {
-                        /** @description Trigger payload field name or dot path, for example trackingNumber or order.total. */
+                        /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
                         field: string;
                         /** @enum {string} */
                         type: "number";
@@ -3612,7 +3701,7 @@ export interface components {
                             number
                         ];
                     } | {
-                        /** @description Trigger payload field name or dot path, for example trackingNumber or order.total. */
+                        /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
                         field: string;
                         /** @enum {string} */
                         type: "date";
@@ -3624,7 +3713,7 @@ export interface components {
                             string | number
                         ];
                     } | {
-                        /** @description Trigger payload field name or dot path, for example trackingNumber or order.total. */
+                        /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
                         field: string;
                         /** @enum {string} */
                         type: "string";
@@ -3634,7 +3723,7 @@ export interface components {
                          */
                         operator: "is_empty" | "is_not_empty";
                     } | {
-                        /** @description Trigger payload field name or dot path, for example trackingNumber or order.total. */
+                        /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
                         field: string;
                         /** @enum {string} */
                         type: "number";
@@ -3644,7 +3733,7 @@ export interface components {
                          */
                         operator: "is_empty" | "is_not_empty";
                     } | {
-                        /** @description Trigger payload field name or dot path, for example trackingNumber or order.total. */
+                        /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
                         field: string;
                         /** @enum {string} */
                         type: "date";
@@ -3654,7 +3743,7 @@ export interface components {
                          */
                         operator: "is_empty" | "is_not_empty";
                     } | {
-                        /** @description Trigger payload field name or dot path, for example trackingNumber or order.total. */
+                        /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
                         field: string;
                         /** @enum {string} */
                         type: "bool";
@@ -3712,7 +3801,7 @@ export interface components {
                     /** @enum {string} */
                     logicalOperator: "AND" | "OR";
                     conditions: ({
-                        /** @description Trigger payload field name or dot path, for example trackingNumber or order.total. */
+                        /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
                         field: string;
                         /** @enum {string} */
                         type: "string";
@@ -3721,7 +3810,7 @@ export interface components {
                         /** @description String value to compare against. */
                         value: string;
                     } | {
-                        /** @description Trigger payload field name or dot path, for example trackingNumber or order.total. */
+                        /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
                         field: string;
                         /** @enum {string} */
                         type: "number";
@@ -3730,7 +3819,7 @@ export interface components {
                         /** @description Finite numeric value to compare against. */
                         value: number;
                     } | {
-                        /** @description Trigger payload field name or dot path, for example trackingNumber or order.total. */
+                        /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
                         field: string;
                         /** @enum {string} */
                         type: "date";
@@ -3739,7 +3828,7 @@ export interface components {
                         /** @description ISO date string or Unix timestamp in milliseconds to compare against. */
                         value: string | number;
                     } | {
-                        /** @description Trigger payload field name or dot path, for example trackingNumber or order.total. */
+                        /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
                         field: string;
                         /** @enum {string} */
                         type: "string";
@@ -3748,7 +3837,7 @@ export interface components {
                         /** @description Non-empty array of string values to compare against. */
                         value: string[];
                     } | {
-                        /** @description Trigger payload field name or dot path, for example trackingNumber or order.total. */
+                        /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
                         field: string;
                         /** @enum {string} */
                         type: "number";
@@ -3757,7 +3846,7 @@ export interface components {
                         /** @description Non-empty array of finite numbers to compare against. */
                         value: number[];
                     } | {
-                        /** @description Trigger payload field name or dot path, for example trackingNumber or order.total. */
+                        /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
                         field: string;
                         /** @enum {string} */
                         type: "number";
@@ -3769,7 +3858,7 @@ export interface components {
                             number
                         ];
                     } | {
-                        /** @description Trigger payload field name or dot path, for example trackingNumber or order.total. */
+                        /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
                         field: string;
                         /** @enum {string} */
                         type: "date";
@@ -3781,7 +3870,7 @@ export interface components {
                             string | number
                         ];
                     } | {
-                        /** @description Trigger payload field name or dot path, for example trackingNumber or order.total. */
+                        /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
                         field: string;
                         /** @enum {string} */
                         type: "string";
@@ -3791,7 +3880,7 @@ export interface components {
                          */
                         operator: "is_empty" | "is_not_empty";
                     } | {
-                        /** @description Trigger payload field name or dot path, for example trackingNumber or order.total. */
+                        /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
                         field: string;
                         /** @enum {string} */
                         type: "number";
@@ -3801,7 +3890,7 @@ export interface components {
                          */
                         operator: "is_empty" | "is_not_empty";
                     } | {
-                        /** @description Trigger payload field name or dot path, for example trackingNumber or order.total. */
+                        /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
                         field: string;
                         /** @enum {string} */
                         type: "date";
@@ -3811,7 +3900,7 @@ export interface components {
                          */
                         operator: "is_empty" | "is_not_empty";
                     } | {
-                        /** @description Trigger payload field name or dot path, for example trackingNumber or order.total. */
+                        /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
                         field: string;
                         /** @enum {string} */
                         type: "bool";
@@ -4082,7 +4171,7 @@ export interface components {
                     /** @enum {string} */
                     logicalOperator: "AND" | "OR";
                     conditions: ({
-                        /** @description Trigger payload field name or dot path, for example trackingNumber or order.total. */
+                        /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
                         field: string;
                         /** @enum {string} */
                         type: "string";
@@ -4091,7 +4180,7 @@ export interface components {
                         /** @description String value to compare against. */
                         value: string;
                     } | {
-                        /** @description Trigger payload field name or dot path, for example trackingNumber or order.total. */
+                        /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
                         field: string;
                         /** @enum {string} */
                         type: "number";
@@ -4100,7 +4189,7 @@ export interface components {
                         /** @description Finite numeric value to compare against. */
                         value: number;
                     } | {
-                        /** @description Trigger payload field name or dot path, for example trackingNumber or order.total. */
+                        /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
                         field: string;
                         /** @enum {string} */
                         type: "date";
@@ -4109,7 +4198,7 @@ export interface components {
                         /** @description ISO date string or Unix timestamp in milliseconds to compare against. */
                         value: string | number;
                     } | {
-                        /** @description Trigger payload field name or dot path, for example trackingNumber or order.total. */
+                        /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
                         field: string;
                         /** @enum {string} */
                         type: "string";
@@ -4118,7 +4207,7 @@ export interface components {
                         /** @description Non-empty array of string values to compare against. */
                         value: string[];
                     } | {
-                        /** @description Trigger payload field name or dot path, for example trackingNumber or order.total. */
+                        /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
                         field: string;
                         /** @enum {string} */
                         type: "number";
@@ -4127,7 +4216,7 @@ export interface components {
                         /** @description Non-empty array of finite numbers to compare against. */
                         value: number[];
                     } | {
-                        /** @description Trigger payload field name or dot path, for example trackingNumber or order.total. */
+                        /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
                         field: string;
                         /** @enum {string} */
                         type: "number";
@@ -4139,7 +4228,7 @@ export interface components {
                             number
                         ];
                     } | {
-                        /** @description Trigger payload field name or dot path, for example trackingNumber or order.total. */
+                        /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
                         field: string;
                         /** @enum {string} */
                         type: "date";
@@ -4151,7 +4240,7 @@ export interface components {
                             string | number
                         ];
                     } | {
-                        /** @description Trigger payload field name or dot path, for example trackingNumber or order.total. */
+                        /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
                         field: string;
                         /** @enum {string} */
                         type: "string";
@@ -4161,7 +4250,7 @@ export interface components {
                          */
                         operator: "is_empty" | "is_not_empty";
                     } | {
-                        /** @description Trigger payload field name or dot path, for example trackingNumber or order.total. */
+                        /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
                         field: string;
                         /** @enum {string} */
                         type: "number";
@@ -4171,7 +4260,7 @@ export interface components {
                          */
                         operator: "is_empty" | "is_not_empty";
                     } | {
-                        /** @description Trigger payload field name or dot path, for example trackingNumber or order.total. */
+                        /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
                         field: string;
                         /** @enum {string} */
                         type: "date";
@@ -4181,7 +4270,7 @@ export interface components {
                          */
                         operator: "is_empty" | "is_not_empty";
                     } | {
-                        /** @description Trigger payload field name or dot path, for example trackingNumber or order.total. */
+                        /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
                         field: string;
                         /** @enum {string} */
                         type: "bool";
@@ -4239,7 +4328,7 @@ export interface components {
                     /** @enum {string} */
                     logicalOperator: "AND" | "OR";
                     conditions: ({
-                        /** @description Trigger payload field name or dot path, for example trackingNumber or order.total. */
+                        /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
                         field: string;
                         /** @enum {string} */
                         type: "string";
@@ -4248,7 +4337,7 @@ export interface components {
                         /** @description String value to compare against. */
                         value: string;
                     } | {
-                        /** @description Trigger payload field name or dot path, for example trackingNumber or order.total. */
+                        /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
                         field: string;
                         /** @enum {string} */
                         type: "number";
@@ -4257,7 +4346,7 @@ export interface components {
                         /** @description Finite numeric value to compare against. */
                         value: number;
                     } | {
-                        /** @description Trigger payload field name or dot path, for example trackingNumber or order.total. */
+                        /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
                         field: string;
                         /** @enum {string} */
                         type: "date";
@@ -4266,7 +4355,7 @@ export interface components {
                         /** @description ISO date string or Unix timestamp in milliseconds to compare against. */
                         value: string | number;
                     } | {
-                        /** @description Trigger payload field name or dot path, for example trackingNumber or order.total. */
+                        /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
                         field: string;
                         /** @enum {string} */
                         type: "string";
@@ -4275,7 +4364,7 @@ export interface components {
                         /** @description Non-empty array of string values to compare against. */
                         value: string[];
                     } | {
-                        /** @description Trigger payload field name or dot path, for example trackingNumber or order.total. */
+                        /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
                         field: string;
                         /** @enum {string} */
                         type: "number";
@@ -4284,7 +4373,7 @@ export interface components {
                         /** @description Non-empty array of finite numbers to compare against. */
                         value: number[];
                     } | {
-                        /** @description Trigger payload field name or dot path, for example trackingNumber or order.total. */
+                        /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
                         field: string;
                         /** @enum {string} */
                         type: "number";
@@ -4296,7 +4385,7 @@ export interface components {
                             number
                         ];
                     } | {
-                        /** @description Trigger payload field name or dot path, for example trackingNumber or order.total. */
+                        /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
                         field: string;
                         /** @enum {string} */
                         type: "date";
@@ -4308,7 +4397,7 @@ export interface components {
                             string | number
                         ];
                     } | {
-                        /** @description Trigger payload field name or dot path, for example trackingNumber or order.total. */
+                        /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
                         field: string;
                         /** @enum {string} */
                         type: "string";
@@ -4318,7 +4407,7 @@ export interface components {
                          */
                         operator: "is_empty" | "is_not_empty";
                     } | {
-                        /** @description Trigger payload field name or dot path, for example trackingNumber or order.total. */
+                        /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
                         field: string;
                         /** @enum {string} */
                         type: "number";
@@ -4328,7 +4417,7 @@ export interface components {
                          */
                         operator: "is_empty" | "is_not_empty";
                     } | {
-                        /** @description Trigger payload field name or dot path, for example trackingNumber or order.total. */
+                        /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
                         field: string;
                         /** @enum {string} */
                         type: "date";
@@ -4338,7 +4427,7 @@ export interface components {
                          */
                         operator: "is_empty" | "is_not_empty";
                     } | {
-                        /** @description Trigger payload field name or dot path, for example trackingNumber or order.total. */
+                        /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
                         field: string;
                         /** @enum {string} */
                         type: "bool";
@@ -4476,6 +4565,8 @@ export interface components {
                     sent?: number;
                     failed?: number;
                     skipped?: number;
+                    startedAt?: string;
+                    completedAt?: string;
                 }[];
                 gradualSend?: {
                     startingPercentage: number;
@@ -4503,6 +4594,9 @@ export interface components {
                     resumedAt?: string;
                 };
                 error?: string;
+                stalledAt?: string;
+                resumeGeneration?: number;
+                resumedAt?: string;
                 startedAt?: string;
                 completedAt?: string;
                 createdAt: string;
@@ -4516,7 +4610,7 @@ export interface components {
         };
         AudienceRunControlRequest: {
             /** @enum {string} */
-            action: "pause" | "resume" | "cancel";
+            action: "pause" | "resume" | "cancel" | "resume_failed";
         };
         AutomationRunsListResponse: {
             data: {
@@ -4551,12 +4645,31 @@ export interface components {
                     completedAt?: string;
                     error?: string;
                 }[];
+                logsTruncated?: boolean;
             }[];
             pagination?: {
                 limit: number;
                 cursor: string | null;
                 hasMore: boolean;
             };
+        };
+        AutomationRunCancelResponse: {
+            automationRunId: string;
+            /** @enum {string} */
+            status: "canceled";
+            /** @enum {string} */
+            previousStatus: "pending" | "running" | "completed" | "failed" | "canceled";
+        };
+        AutomationRunCancelRequest: {
+            /** @description The run to cancel (from `GET /v1/automations/runs`, a test start, or a fire response). */
+            automationRunId: string;
+            /**
+             * @description The only PATCH action today — always `canceled`.
+             * @enum {string}
+             */
+            status: "canceled";
+            /** @description Optional operator note stored on the run. */
+            reason?: string;
         };
         TriggersPostRequest: {
             title: string;
@@ -4573,7 +4686,7 @@ export interface components {
                 title: string;
                 description?: string;
                 /** @enum {string} */
-                provider: "brew_api" | "clerk" | "stripe" | "shopify" | "stytch" | "supabase" | "workos" | "revenuecat" | "custom";
+                provider: "brew_api" | "clerk" | "stripe" | "shopify" | "stytch" | "supabase" | "workos" | "framer" | "revenuecat" | "custom";
                 providerEventKey?: string;
                 payloadSchema: {
                     /** @enum {string} */
@@ -4982,7 +5095,7 @@ export interface components {
             search?: string;
             /** @default [] */
             filters?: {
-                /** @description The contact column or custom-field name to filter on (e.g. `email`, `firstName`, or a key from `list_custom_fields`). */
+                /** @description The contact column or custom-field name to filter on (e.g. `email`, `firstName`, or a key from `run_data_command` (`db find fieldDefinitions`) or GET /v1/fields). */
                 field: string;
                 /** @description One of: equals, not_equals, contains, not_contains, contains_any, not_contains_any, starts_with, ends_with, gt, gte, lt, lte, between, is_true, is_false, in, not_in, is_empty, not_exists, is_not_empty, exists, is_set, before, after, on_date. Unrecognized operators are ignored (the clause is dropped), so stick to this list — e.g. use `equals`, not `eq`. */
                 operator: string;
@@ -5420,7 +5533,6 @@ export interface components {
         };
         DomainsPatchRequest: {
             defaultSenderName?: string;
-            /** Format: email */
             defaultFromEmail?: string;
             /** Format: email */
             defaultReplyToEmail?: string;
@@ -5445,6 +5557,7 @@ export interface components {
             /** @enum {string} */
             readiness: "ready" | "ready_with_warnings" | "not_ready" | "checking" | "unknown";
             score: {
+                placementMeasured?: boolean;
                 value: number;
                 /** @enum {string} */
                 grade: "excellent" | "good" | "fair" | "poor" | "critical";
@@ -5553,7 +5666,7 @@ export interface components {
             }[];
             signals: {
                 /** @enum {string} */
-                id: "domain_not_verified" | "dns_record_failed" | "dmarc_missing" | "sending_disabled" | "tracking_links_broken" | "high_bounce_rate" | "high_complaint_rate" | "placement_spam_heavy" | "content_spam_filter_flagged" | "auth_failing_in_tests" | "placement_baseline_spam" | "content_image_weight_penalty" | "content_promotional_penalty" | "content_promotions_tab_shift" | "warmup_paused";
+                id: "domain_not_verified" | "dns_record_failed" | "dmarc_missing" | "dmarc_invalid" | "sending_disabled" | "tracking_links_broken" | "high_bounce_rate" | "high_complaint_rate" | "placement_spam_heavy" | "content_spam_filter_flagged" | "auth_failing_in_tests" | "placement_baseline_spam" | "content_image_weight_penalty" | "content_promotional_penalty" | "content_promotions_tab_shift" | "warmup_paused" | "org_reputation_restricted";
                 /** @enum {string} */
                 severity: "critical" | "warning" | "info";
                 summary: string;
@@ -5578,6 +5691,48 @@ export interface components {
                 updatedAt: string;
             }[];
             pagination: {
+                limit: number;
+                cursor: string | null;
+                hasMore: boolean;
+            };
+        };
+        FlowsListResponse: {
+            data: {
+                slug: string;
+                brand: {
+                    domain: string;
+                    name: string;
+                    /** Format: uri */
+                    logo?: string;
+                };
+                title: string;
+                /** @enum {string} */
+                type: "newsletter" | "signup";
+                category: string;
+                categoryLabel: string;
+                emailCount: number;
+                spanDays: number;
+                remixCount: number;
+                previewImages: string[];
+                publishedAt: string;
+                updatedAt: string;
+                /** @enum {string} */
+                anchor?: "submittedAt" | "signedUpAt" | "verifiedAt" | "firstEmail";
+                steps?: {
+                    order: number;
+                    dayOffset: number;
+                    delayDays: number;
+                    subject: string;
+                    previewText?: string;
+                    category: string;
+                    categoryLabel: string;
+                    emailId: string;
+                    /** Format: uri */
+                    previewImage?: string;
+                    html?: string;
+                }[];
+            }[];
+            pagination?: {
                 limit: number;
                 cursor: string | null;
                 hasMore: boolean;
@@ -5747,6 +5902,10 @@ export interface components {
                 /** Format: uri */
                 subjectImageUrl?: string;
                 emailCanvasColor?: string;
+                typeface?: {
+                    family: string;
+                    register?: string;
+                };
                 palette: {
                     background: string;
                     accent: string;
@@ -5890,7 +6049,7 @@ export interface components {
         IntegrationsListResponse: {
             data: {
                 /** @enum {string} */
-                provider: "braze" | "brevo" | "clerk" | "customerio" | "figma" | "slack" | "hubspot" | "typeform" | "klaviyo" | "iterable" | "postmark" | "onesignal" | "mailgun" | "sendgrid" | "mailjet" | "mailchimp" | "stripe" | "stytch" | "supabase" | "workos" | "shopify" | "revenuecat";
+                provider: "braze" | "brevo" | "clerk" | "customerio" | "figma" | "framer" | "slack" | "hubspot" | "typeform" | "klaviyo" | "iterable" | "postmark" | "onesignal" | "mailgun" | "sendgrid" | "mailjet" | "mailchimp" | "stripe" | "stytch" | "supabase" | "workos" | "shopify" | "revenuecat";
                 name: string;
                 /** @enum {string} */
                 category: "data_in" | "data_out";
@@ -5913,6 +6072,11 @@ export interface components {
                 brandId?: string;
                 permissions: string[];
             }[];
+            pagination: {
+                limit: number;
+                cursor: string | null;
+                hasMore: boolean;
+            };
         };
         ApiKeysCreateResponse: {
             key: string;
@@ -5923,6 +6087,7 @@ export interface components {
             name?: string;
             permissions?: ("all" | "contacts" | "emails" | "automations" | "transactional" | "domains" | "sends" | "audiences" | "brands")[];
             brandId?: string;
+            replacesKeyId?: string;
         };
         ApiKeysDeleteResponse: {
             keyId: string;
@@ -6065,7 +6230,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description The caller does not have the required `emails` permission. */
+            /** @description The caller does not have the required `emails` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`). */
             403: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -6311,7 +6476,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description The caller does not have the required `emails` permission. */
+            /** @description The caller does not have the required `emails` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`). */
             403: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -6582,7 +6747,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description The caller does not have the required `emails` permission. */
+            /** @description The caller does not have the required `emails` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`). */
             403: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -7067,7 +7232,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description The caller does not have the required `emails` permission. */
+            /** @description The caller does not have the required `emails` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`). */
             403: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -7257,7 +7422,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description The caller does not have the required `emails` permission. */
+            /** @description The caller does not have the required `emails` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`). */
             403: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -7515,7 +7680,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description The caller does not have the required `emails` permission. */
+            /** @description The caller does not have the required `emails` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`). */
             403: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -7753,7 +7918,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description The caller does not have the required `emails` permission. */
+            /** @description The caller does not have the required `emails` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`). */
             403: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -8007,7 +8172,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description The caller does not have the required `emails` permission. */
+            /** @description The caller does not have the required `emails` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`). */
             403: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -8205,7 +8370,7 @@ export interface operations {
                     /**
                      * @example {
                      *       "schemaVersion": 1,
-                     *       "rulesetVersion": "2026-08-27.1",
+                     *       "rulesetVersion": "2026-08-28.1",
                      *       "auditId": "00000000-0000-4000-8000-000000000001",
                      *       "contentHash": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
                      *       "auditedAt": "2026-08-23T00:00:00.000Z",
@@ -8344,7 +8509,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description The caller does not have the required `emails` permission. */
+            /** @description The caller does not have the required `emails` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`). */
             403: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -8613,7 +8778,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description The caller does not have the required `emails` permission. */
+            /** @description The caller does not have the required `emails` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`). */
             403: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -8896,7 +9061,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description The caller does not have the required `emails` permission. */
+            /** @description The caller does not have the required `emails` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`). */
             403: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -9101,7 +9266,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description The caller does not have the required `emails` permission. */
+            /** @description The caller does not have the required `emails` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`). */
             403: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -9351,7 +9516,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description The caller does not have the required `emails` permission. */
+            /** @description The caller does not have the required `emails` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`). */
             403: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -9550,7 +9715,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description The caller does not have the required `emails` permission. */
+            /** @description The caller does not have the required `emails` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`). */
             403: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -9737,7 +9902,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description The caller does not have the required `emails` permission. */
+            /** @description The caller does not have the required `emails` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`). */
             403: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -9911,7 +10076,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description The caller does not have the required `emails` permission. */
+            /** @description The caller does not have the required `emails` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`). */
             403: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -10166,7 +10331,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description The caller does not have the required `emails` permission. */
+            /** @description The caller does not have the required `emails` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`). */
             403: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -10383,7 +10548,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description The caller does not have the required `sends` permission. */
+            /** @description The caller does not have the required `sends` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`). */
             403: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -10574,7 +10739,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description The caller does not have the required `sends` permission. */
+            /** @description The caller does not have the required `sends` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`). */
             403: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -10766,7 +10931,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description The caller does not have the required `sends` permission. */
+            /** @description The caller does not have the required `sends` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`). */
             403: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -10958,7 +11123,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description The caller does not have the required `sends` permission. */
+            /** @description The caller does not have the required `sends` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`). */
             403: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -11222,7 +11387,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description The caller does not have the required `emails` permission. */
+            /** @description The caller does not have the required `emails` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`). */
             403: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -11413,7 +11578,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description The caller does not have the required `emails` permission. */
+            /** @description The caller does not have the required `emails` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`). */
             403: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -11613,7 +11778,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description The caller does not have the required `automations` permission. */
+            /** @description The caller does not have the required `automations` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`). */
             403: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -11820,7 +11985,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description The caller does not have the required `emails` permission. */
+            /** @description The caller does not have the required `emails` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`). */
             403: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -12010,7 +12175,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description The caller does not have the required `automations` permission. */
+            /** @description The caller does not have the required `automations` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`). */
             403: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -12268,7 +12433,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description The caller does not have the required `automations` permission. */
+            /** @description The caller does not have the required `automations` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`). */
             403: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -12454,7 +12619,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description The caller does not have the required `automations` permission. */
+            /** @description The caller does not have the required `automations` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`). */
             403: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -12616,7 +12781,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description The caller does not have the required `automations` permission. */
+            /** @description The caller does not have the required `automations` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`). */
             403: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -12858,7 +13023,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description The caller does not have the required `automations` permission. */
+            /** @description The caller does not have the required `automations` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`). */
             403: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -13088,7 +13253,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description The caller does not have the required `automations` permission. */
+            /** @description The caller does not have the required `automations` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`). */
             403: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -13291,7 +13456,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description The caller does not have the required `automations` permission. */
+            /** @description The caller does not have the required `automations` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`). */
             403: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -13441,7 +13606,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description The caller does not have the required `automations` permission. */
+            /** @description The caller does not have the required `automations` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`). */
             403: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -13569,7 +13734,7 @@ export interface operations {
             query?: {
                 /** @description Fetch a single run by id (detail mode → `{ data: [row] }`). Omit to list. */
                 automationRunId?: string;
-                /** @description Detail-only expansion: `logs` inlines the per-node execution logs. Rejected without `automationRunId`. */
+                /** @description Detail-only expansion: `logs` inlines the newest 100 per-node execution logs and reports `logsTruncated`. Rejected without `automationRunId`. */
                 include?: "logs";
                 automationId?: string;
                 triggerEventId?: string;
@@ -13678,7 +13843,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description The caller does not have the required `automations` permission. */
+            /** @description The caller does not have the required `automations` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`). */
             403: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -13718,6 +13883,224 @@ export interface operations {
                      *         "suggestion": "List runs with GET /v1/automations/runs.",
                      *         "docs": "https://docs.brew.new/api-reference/api/errors",
                      *         "param": "automationRunId"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description The request hit the rolling rate limit window. */
+            429: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    "X-RateLimit-Reset": number;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "RATE_LIMITED",
+                     *         "type": "rate_limit",
+                     *         "message": "Too many requests.",
+                     *         "suggestion": "Wait for the retry window before sending another request.",
+                     *         "docs": "https://docs.brew.new/api-reference/api/rate-limits",
+                     *         "retryAfter": 42
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected internal error. */
+            500: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "INTERNAL_ERROR",
+                     *         "type": "internal_error",
+                     *         "message": "An unexpected error occurred.",
+                     *         "suggestion": "Retry the request. If it keeps failing, contact support.",
+                     *         "docs": "https://docs.brew.new/api-reference/api/errors"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+        };
+    };
+    cancelAutomationRun: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+                 * @example kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+                 */
+                "X-Brand-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "automationRunId": "run_01HZ",
+                 *       "status": "canceled",
+                 *       "reason": "Wrong segment — stopping before the second email."
+                 *     }
+                 */
+                "application/json": components["schemas"]["AutomationRunCancelRequest"];
+            };
+        };
+        responses: {
+            /** @description The run's new status plus the status it held before the cancel. */
+            200: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    "X-RateLimit-Reset": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "automationRunId": "run_01HZ",
+                     *       "status": "canceled",
+                     *       "previousStatus": "running"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["AutomationRunCancelResponse"];
+                };
+            };
+            /** @description The request body or query string was invalid (unknown key, wrong type, or missing required field). Strict schemas reject unknown keys — including `brandId`: a brand is named with the `X-Brand-Id` HEADER (organization-scoped credentials) or resolved from the credential itself (brand-scoped ones), never as a body or query field. */
+            400: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "INVALID_REQUEST",
+                     *         "type": "invalid_request",
+                     *         "message": "Request validation failed.",
+                     *         "suggestion": "Fix the field reported in `param` and retry.",
+                     *         "docs": "https://docs.brew.new/api-reference/api/errors",
+                     *         "param": "status"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description The API key was missing, invalid, or revoked. */
+            401: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "INVALID_API_KEY",
+                     *         "type": "authentication_error",
+                     *         "message": "The provided API key is invalid.",
+                     *         "suggestion": "Check the API key format and retry with a valid active key.",
+                     *         "docs": "https://docs.brew.new/api-reference/api/authentication"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description The caller does not have the required `automations` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`). */
+            403: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "INSUFFICIENT_PERMISSIONS",
+                     *         "type": "authorization_error",
+                     *         "message": "The caller does not have the required permission.",
+                     *         "suggestion": "Use an API key or session with the required permission.",
+                     *         "docs": "https://docs.brew.new/api-reference/api/authentication",
+                     *         "param": "automations"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description Automation run not found in the API-key brand. Cross-brand ids intentionally surface as 404 (never 403) so the API does not leak cross-brand existence. */
+            404: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "AUTOMATION_RUN_NOT_FOUND",
+                     *         "type": "not_found",
+                     *         "message": "Automation run 'run_xxx' was not found.",
+                     *         "suggestion": "List runs with GET /v1/automations/runs.",
+                     *         "docs": "https://docs.brew.new/api-reference/api/errors",
+                     *         "param": "automationRunId"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description The run already reached a terminal status (`completed`, `failed`, or `canceled`) and cannot be canceled. */
+            409: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "RUN_NOT_CANCELLABLE",
+                     *         "type": "conflict",
+                     *         "message": "Automation run 'run_01HZ' is already completed and can no longer be canceled.",
+                     *         "suggestion": "The run has already finished and can no longer be canceled.",
+                     *         "docs": "https://docs.brew.new/api-reference/api/errors"
                      *       }
                      *     }
                      */
@@ -13902,7 +14285,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description The caller does not have the required `automations` permission. */
+            /** @description The caller does not have the required `automations` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`). */
             403: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -14135,7 +14518,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description The caller does not have the required `automations` permission. */
+            /** @description The caller does not have the required `automations` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`). */
             403: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -14298,7 +14681,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description The caller does not have the required `automations` permission. */
+            /** @description The caller does not have the required `automations` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`). */
             403: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -14524,7 +14907,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description The caller does not have the required `automations` permission. */
+            /** @description The caller does not have the required `automations` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`). */
             403: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -14747,7 +15130,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description The caller does not have the required `automations` permission. */
+            /** @description The caller does not have the required `automations` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`). */
             403: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -14949,7 +15332,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description The caller does not have the required `automations` permission. */
+            /** @description The caller does not have the required `automations` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`). */
             403: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -15191,7 +15574,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description The caller does not have the required `automations` permission. */
+            /** @description The caller does not have the required `automations` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`). */
             403: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -15450,7 +15833,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description The caller does not have the required `automations` permission. */
+            /** @description The caller does not have the required `automations` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`). */
             403: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -15490,6 +15873,28 @@ export interface operations {
                      *         "suggestion": "List triggers with GET /v1/automations/triggers.",
                      *         "docs": "https://docs.brew.new/api-reference/api/errors",
                      *         "param": "triggerEventId"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description The change is incompatible with a PUBLISHED automation that consumes this trigger — removing/retyping a referenced field, or tightening enforcement while published automations depend on the current acceptance. */
+            409: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "CONTRACT_LOCKED_BY_PUBLISHED_AUTOMATIONS",
+                     *         "type": "conflict",
+                     *         "message": "Contract change removes field \"order.total\" referenced by published automation \"Order follow-up\".",
+                     *         "suggestion": "Unpublish or detach the published automations that consume this trigger, or make a backward-compatible change (adding optional fields and loosening enforcement stay allowed).",
+                     *         "docs": "https://docs.brew.new/api-reference/api/errors"
                      *       }
                      *     }
                      */
@@ -15665,7 +16070,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description The caller does not have the required `automations` permission. */
+            /** @description The caller does not have the required `automations` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`). */
             403: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -15887,7 +16292,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description The caller does not have the required `automations` permission. */
+            /** @description The caller does not have the required `automations` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`). */
             403: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -16080,7 +16485,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description The caller does not have the required `automations` permission. */
+            /** @description The caller does not have the required `automations` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`). */
             403: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -16351,7 +16756,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description The caller does not have the required `contacts` permission. */
+            /** @description The caller does not have the required `contacts` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`). */
             403: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -16537,7 +16942,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description The caller does not have the required `contacts` permission. */
+            /** @description The caller does not have the required `contacts` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`). */
             403: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -16732,7 +17137,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description The caller does not have the required `contacts` permission. */
+            /** @description The caller does not have the required `contacts` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`). */
             403: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -16937,7 +17342,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description The caller does not have the required `contacts` permission. */
+            /** @description The caller does not have the required `contacts` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`). */
             403: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -17162,7 +17567,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description The caller does not have the required `contacts` permission. */
+            /** @description The caller does not have the required `contacts` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`). */
             403: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -17434,7 +17839,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description The caller does not have the required `contacts` permission. */
+            /** @description The caller does not have the required `contacts` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`). */
             403: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -17614,7 +18019,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description The caller does not have the required `contacts` permission. */
+            /** @description The caller does not have the required `contacts` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`). */
             403: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -17849,7 +18254,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description The caller does not have the required `contacts` permission. */
+            /** @description The caller does not have the required `contacts` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`). */
             403: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -18030,7 +18435,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description The caller does not have the required `contacts` permission. */
+            /** @description The caller does not have the required `contacts` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`). */
             403: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -18217,7 +18622,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description The caller does not have the required `contacts` permission. */
+            /** @description The caller does not have the required `contacts` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`). */
             403: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -18435,7 +18840,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description The caller does not have the required `audiences` permission. */
+            /** @description The caller does not have the required `audiences` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`). */
             403: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -18656,7 +19061,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description The caller does not have the required `audiences` permission. */
+            /** @description The caller does not have the required `audiences` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`). */
             403: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -18893,7 +19298,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description The caller does not have the required `contacts` permission. */
+            /** @description The caller does not have the required `contacts` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`). */
             403: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -19056,7 +19461,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description The caller does not have the required `audiences` permission. */
+            /** @description The caller does not have the required `audiences` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`). */
             403: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -19242,7 +19647,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description The caller does not have the required `audiences` permission. */
+            /** @description The caller does not have the required `audiences` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`). */
             403: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -19446,7 +19851,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description The caller does not have the required `audiences` permission. */
+            /** @description The caller does not have the required `audiences` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`). */
             403: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -19693,7 +20098,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description The caller does not have the required `domains` permission. */
+            /** @description The caller does not have the required `domains` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`). */
             403: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -19909,7 +20314,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description The caller does not have the required `domains` permission. */
+            /** @description The caller does not have the required `domains` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`). */
             403: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -20072,7 +20477,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description The caller does not have the required `domains` permission. */
+            /** @description The caller does not have the required `domains` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`). */
             403: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -20171,7 +20576,7 @@ export interface operations {
                 /**
                  * @example {
                  *       "defaultSenderName": "Brew",
-                 *       "defaultFromEmail": "hello@send.example.com"
+                 *       "defaultFromEmail": "hello"
                  *     }
                  */
                 "application/json": components["schemas"]["DomainsPatchRequest"];
@@ -20264,7 +20669,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description The caller does not have the required `domains` permission. */
+            /** @description The caller does not have the required `domains` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`). */
             403: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -20452,7 +20857,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description The caller does not have the required `domains` permission. */
+            /** @description The caller does not have the required `domains` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`). */
             403: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -20714,7 +21119,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description The caller does not have the required `domains` permission. */
+            /** @description The caller does not have the required `domains` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`). */
             403: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -20912,7 +21317,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description The caller does not have the required `emails` permission. */
+            /** @description The caller does not have the required `emails` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`). */
             403: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -20929,6 +21334,252 @@ export interface operations {
                      *         "suggestion": "Use an API key or session with the required permission.",
                      *         "docs": "https://docs.brew.new/api-reference/api/authentication",
                      *         "param": "emails"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description The request hit the rolling rate limit window. */
+            429: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    "X-RateLimit-Reset": number;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "RATE_LIMITED",
+                     *         "type": "rate_limit",
+                     *         "message": "Too many requests.",
+                     *         "suggestion": "Wait for the retry window before sending another request.",
+                     *         "docs": "https://docs.brew.new/api-reference/api/rate-limits",
+                     *         "retryAfter": 42
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected internal error. */
+            500: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "INTERNAL_ERROR",
+                     *         "type": "internal_error",
+                     *         "message": "An unexpected error occurred.",
+                     *         "suggestion": "Retry the request. If it keeps failing, contact support.",
+                     *         "docs": "https://docs.brew.new/api-reference/api/errors"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listFlows: {
+        parameters: {
+            query?: {
+                /** @description Fetch ONE flow by its brand domain (e.g. `notion.com`) → `data: [flow]` with every `steps[]` entry. Omit to LIST. */
+                slug?: string;
+                /** @description Detail-only expansions, comma-separated. `html` adds each step’s rendered HTML — up to 12 emails, so ask for it only when you will read them. Best-effort per step: a step whose body is no longer servable comes back without `html` instead of failing the flow. */
+                include?: string;
+                /** @description Exact brand domain filter for LIST, e.g. `vercel.com`. */
+                brand?: string;
+                /** @description Filter LIST by the flow’s dominant step category (`welcome`, `newsletter`, `promotion`, `education`, …). */
+                category?: "verification" | "transactional" | "direct_sales" | "welcome" | "promotion" | "newsletter" | "education" | "abandoned_cart" | "winback" | "other";
+                /** @description Filter LIST by how the sequence starts: `signup` (after creating an account) or `newsletter` (after subscribing). */
+                type?: "newsletter" | "signup";
+                /** @description Semantic search over what the sequences are about — “developer onboarding drip”, “trial expiry win-back”. Results come back in relevance order and `sort` is ignored. */
+                semantic?: string;
+                /** @description LIST order: `newest` (default), `emails` (longest sequences first), `span` (sequences that run the longest first), `remixes` (most remixed first). */
+                sort?: "newest" | "emails" | "span" | "remixes";
+                limit?: number | string;
+                cursor?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page of flow cards, or — with `?slug=` — the one flow and its steps. */
+            200: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    "X-RateLimit-Reset": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": [
+                     *         {
+                     *           "slug": "notion.com",
+                     *           "brand": {
+                     *             "domain": "notion.com",
+                     *             "name": "Notion",
+                     *             "logo": "https://cdn.brew.new/brand/fetched-logo/notion.com/logo.png"
+                     *           },
+                     *           "title": "Notion onboarding flow",
+                     *           "type": "signup",
+                     *           "category": "welcome",
+                     *           "categoryLabel": "Welcome",
+                     *           "emailCount": 6,
+                     *           "spanDays": 14,
+                     *           "remixCount": 12,
+                     *           "previewImages": [
+                     *             "https://cdn.brew.new/email-preview-notion-1.png",
+                     *             "https://cdn.brew.new/email-preview-notion-2.png",
+                     *             "https://cdn.brew.new/email-preview-notion-3.png"
+                     *           ],
+                     *           "publishedAt": "2026-09-01T12:00:00.000Z",
+                     *           "updatedAt": "2026-09-01T12:00:00.000Z",
+                     *           "anchor": "signedUpAt",
+                     *           "steps": [
+                     *             {
+                     *               "order": 1,
+                     *               "dayOffset": 0,
+                     *               "delayDays": 0,
+                     *               "subject": "Welcome to Notion",
+                     *               "previewText": "Here’s how to set up your first page.",
+                     *               "category": "welcome",
+                     *               "categoryLabel": "Welcome",
+                     *               "emailId": "pt1_k97nvhqe6xgyj67g58ajwj1tj58egexx",
+                     *               "previewImage": "https://cdn.brew.new/email-preview-notion-1.png"
+                     *             },
+                     *             {
+                     *               "order": 2,
+                     *               "dayOffset": 2.1,
+                     *               "delayDays": 2.1,
+                     *               "subject": "Three templates to try today",
+                     *               "category": "education",
+                     *               "categoryLabel": "Education",
+                     *               "emailId": "pt1_k97s409kdrzbeajqffq6011wfn8egmdq",
+                     *               "previewImage": "https://cdn.brew.new/email-preview-notion-2.png"
+                     *             }
+                     *           ]
+                     *         }
+                     *       ],
+                     *       "pagination": {
+                     *         "limit": 100,
+                     *         "cursor": null,
+                     *         "hasMore": false
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["FlowsListResponse"];
+                };
+            };
+            /** @description The request body or query string was invalid (unknown key, wrong type, or missing required field). Strict schemas reject unknown keys — including `brandId`: a brand is named with the `X-Brand-Id` HEADER (organization-scoped credentials) or resolved from the credential itself (brand-scoped ones), never as a body or query field. */
+            400: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "INVALID_REQUEST",
+                     *         "type": "invalid_request",
+                     *         "message": "Request validation failed.",
+                     *         "suggestion": "Fix the field reported in `param` and retry.",
+                     *         "docs": "https://docs.brew.new/api-reference/api/errors",
+                     *         "param": "sort"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description The API key was missing, invalid, or revoked. */
+            401: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "INVALID_API_KEY",
+                     *         "type": "authentication_error",
+                     *         "message": "The provided API key is invalid.",
+                     *         "suggestion": "Check the API key format and retry with a valid active key.",
+                     *         "docs": "https://docs.brew.new/api-reference/api/authentication"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description The caller does not have the required `emails` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`). */
+            403: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "INSUFFICIENT_PERMISSIONS",
+                     *         "type": "authorization_error",
+                     *         "message": "The caller does not have the required permission.",
+                     *         "suggestion": "Use an API key or session with the required permission.",
+                     *         "docs": "https://docs.brew.new/api-reference/api/authentication",
+                     *         "param": "emails"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description Flow not found in the API-key brand. Cross-brand ids intentionally surface as 404 (never 403) so the API does not leak cross-brand existence. */
+            404: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "FLOW_NOT_FOUND",
+                     *         "type": "not_found",
+                     *         "message": "No public flow matches slug 'no-such-brand.example'.",
+                     *         "suggestion": "List flows with GET /v1/flows and use a returned `slug` (the brand domain, e.g. `notion.com`).",
+                     *         "docs": "https://docs.brew.new/api-reference/api/errors",
+                     *         "param": "slug"
                      *       }
                      *     }
                      */
@@ -21235,7 +21886,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description The caller does not have the required `emails` permission. */
+            /** @description The caller does not have the required `emails` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`). */
             403: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -21417,7 +22068,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description The caller does not have the required `emails` permission. */
+            /** @description The caller does not have the required `emails` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`). */
             403: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -22150,7 +22801,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description The caller does not have the required `emails` permission. */
+            /** @description The caller does not have the required `emails` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`). */
             403: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -22414,7 +23065,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description The caller does not have the required `emails` permission. */
+            /** @description The caller does not have the required `emails` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`). */
             403: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -22678,7 +23329,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description The caller does not have the required `emails` permission. */
+            /** @description The caller does not have the required `emails` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`). */
             403: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -22942,7 +23593,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description The caller does not have the required `emails` permission. */
+            /** @description The caller does not have the required `emails` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`). */
             403: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -23211,7 +23862,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description The caller does not have the required `emails` permission. */
+            /** @description The caller does not have the required `emails` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`). */
             403: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -23407,7 +24058,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description The caller does not have the required `emails` permission. */
+            /** @description The caller does not have the required `emails` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`). */
             403: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -23743,14 +24394,22 @@ export interface operations {
     };
     listApiKeys: {
         parameters: {
-            query?: never;
+            query?: {
+                /**
+                 * @description Page size (1–100). Defaults to 50.
+                 * @example 50
+                 */
+                limit?: number;
+                /** @description Opaque Convex cursor from the previous response. Omit for the first page. */
+                cursor?: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description API keys this credential may see. */
+            /** @description API keys in the active Clerk session's organization. */
             200: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -23777,7 +24436,12 @@ export interface operations {
                      *             "all"
                      *           ]
                      *         }
-                     *       ]
+                     *       ],
+                     *       "pagination": {
+                     *         "limit": 50,
+                     *         "cursor": null,
+                     *         "hasMore": false
+                     *       }
                      *     }
                      */
                     "application/json": components["schemas"]["ApiKeysListResponse"];
@@ -23863,13 +24527,7 @@ export interface operations {
     createApiKey: {
         parameters: {
             query?: never;
-            header?: {
-                /**
-                 * @description Optional idempotency key for safe retries. Reusing the same key with the same request body returns the original response for 24 hours.
-                 * @example api-request-2026-04-08-001
-                 */
-                "Idempotency-Key"?: string;
-            };
+            header?: never;
             path?: never;
             cookie?: never;
         };
@@ -24263,7 +24921,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description The caller does not have the required `emails` permission. */
+            /** @description The caller does not have the required `emails` permission (`INSUFFICIENT_PERMISSIONS`), or lacks access to the brand — organization operations require organization admin access (`INSUFFICIENT_ROLE`). */
             403: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */

@@ -1,0 +1,135 @@
+import { mkdtempSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { HttpResponse, http } from 'msw'
+import { describe, expect, it } from 'vitest'
+import { automationsRunsCancelCommand } from '../../src/commands/automations/runs/cancel'
+import { server } from '../helpers/msw-server'
+import { type RunCliResult, runCli } from '../helpers/run-cli'
+
+const KEY = 'brew_abcdefghijklmnopqrstuvwxyz012345'
+const URL = 'https://brew.new/api/v1/automations/runs'
+
+function cli(argv: readonly string[]): Promise<RunCliResult> {
+  return runCli(argv, {
+    env: {
+      BREW_CLI_CONFIG_DIR: mkdtempSync(join(tmpdir(), 'brew-cli-test-')),
+      BREW_API_KEY: KEY,
+    },
+    extraCommands: [automationsRunsCancelCommand],
+  })
+}
+
+describe('automations runs cancel', () => {
+  it('refuses without --yes: exit 4 and the confirmation envelope, no request', async () => {
+    let calls = 0
+    server.use(
+      http.patch(URL, () => {
+        calls += 1
+        return HttpResponse.json({})
+      })
+    )
+    const result = await cli(['automations', 'runs', 'cancel', 'run_1'])
+    expect(result.code).toBe(4)
+    expect(calls).toBe(0)
+    const envelope = result.json as {
+      confirmationRequired: boolean
+      summary: string
+      confirmCommand: string
+    }
+    expect(envelope.confirmationRequired).toBe(true)
+    expect(envelope.summary).toContain('run_1')
+    expect(envelope.summary).toContain('never be resumed')
+    expect(envelope.confirmCommand).toContain('--yes')
+  })
+
+  it('cancels with --yes: PATCH /v1/automations/runs with the id, status, and reason', async () => {
+    let capturedRequest: Request | undefined
+    let capturedBody: unknown
+    server.use(
+      http.patch(URL, async ({ request }) => {
+        capturedRequest = request
+        capturedBody = await request.json()
+        return HttpResponse.json({
+          automationRunId: 'run_1',
+          status: 'canceled',
+          previousStatus: 'running',
+        })
+      })
+    )
+    const result = await cli([
+      'automations',
+      'runs',
+      'cancel',
+      'run_1',
+      '--reason',
+      'wrong audience',
+      '--yes',
+    ])
+    expect(result.code).toBe(0)
+    expect(capturedRequest?.method).toBe('PATCH')
+    expect(capturedBody).toEqual({
+      automationRunId: 'run_1',
+      status: 'canceled',
+      reason: 'wrong audience',
+    })
+    expect(result.json).toEqual({
+      automationRunId: 'run_1',
+      status: 'canceled',
+      previousStatus: 'running',
+    })
+  })
+
+  it('omits reason from the body when the flag is absent', async () => {
+    let capturedBody: unknown
+    server.use(
+      http.patch(URL, async ({ request }) => {
+        capturedBody = await request.json()
+        return HttpResponse.json({
+          automationRunId: 'run_1',
+          status: 'canceled',
+          previousStatus: 'pending',
+        })
+      })
+    )
+    const result = await cli([
+      'automations',
+      'runs',
+      'cancel',
+      'run_1',
+      '--yes',
+    ])
+    expect(result.code).toBe(0)
+    expect(capturedBody).toEqual({
+      automationRunId: 'run_1',
+      status: 'canceled',
+    })
+  })
+
+  it('surfaces the typed 409 when the run already finished', async () => {
+    server.use(
+      http.patch(URL, () =>
+        HttpResponse.json(
+          {
+            error: {
+              code: 'RUN_NOT_CANCELLABLE',
+              type: 'conflict',
+              message: 'Run run_1 already completed.',
+            },
+          },
+          { status: 409 }
+        )
+      )
+    )
+    const result = await cli([
+      'automations',
+      'runs',
+      'cancel',
+      'run_1',
+      '--yes',
+    ])
+    expect(result.code).toBe(1)
+    const body = JSON.parse(result.stderr) as { error: { code: string } }
+    expect(body.error.code).toBe('RUN_NOT_CANCELLABLE')
+  })
+})

@@ -30,6 +30,7 @@ const GROUP_SUMMARIES: Readonly<Record<string, string>> = {
   domains: 'Manage sending domains',
   emails: 'Manage email designs and send campaigns',
   fields: 'Manage custom contact fields',
+  flows: 'Browse public email flows (real multi-step sequences by brand)',
   groups: 'Manage email folders (groups)',
   integrations: 'Read the connected-integration catalog',
   sends: 'Control in-flight or scheduled sends',
@@ -37,7 +38,7 @@ const GROUP_SUMMARIES: Readonly<Record<string, string>> = {
   contract: 'Stored payload contracts (get, put, validate)',
   contracts: 'Payload-contract helpers',
   triggers: 'Manage trigger events',
-  runs: 'Automation run history',
+  runs: 'Automation run history, and cancel one in-flight run',
   'trigger-instances': 'Fired trigger instances',
 }
 
