@@ -2,6 +2,25 @@
 
 ## Unreleased
 
+- **Fixed**: a trigger-fire refusal is reported as itself. `POST
+  /v1/automations/triggers/{id}/fire` answers with the legacy fire envelope
+  (top-level `code`/`message`/`details`, no `error` wrapper, no `type`).
+  The raw transport behind `api POST …/fire` kept `code` and `message` but
+  dropped `details` — so a `400 INVALID_PAYLOAD` never said which field
+  was wrong — and labelled the refusal `type: internal_error`. It now keeps
+  `details` and `body`, derives `type` from the HTTP status (`400`/`422`
+  → `invalid_request`, `404` → `not_found`, …), and gives a 4xx a
+  fix-the-request suggestion instead of retry advice. The typed
+  `automations triggers fire` goes through `@brew.new/sdk`, which maps the
+  same envelope from 9.3.0 on; the CLI reads `details` structurally, so
+  that path lights up on the SDK bump with no further change here.
+- Error envelopes carry `details` (additive): `--json` prints the API's
+  `details` object verbatim inside `{ error: { … } }`; human mode lists a
+  field-error array (`details.errors[]`: `field`, `message`, expected/got
+  types) one line per field under the message, and any other shape as a
+  single `Details:` JSON line.
+- `docs` points at https://docs.brew.new; `docs.getbrew.io` is retired.
+
 - Raised `@brew.new/sdk` to `^9.2.0`, which ships `flows.list` and
   `automations.runs.cancel`, and moved both commands off the raw transport
   onto the typed client. `Flow.brand` is `{ name, logo? }` in 9.2.0

@@ -24,8 +24,9 @@ export class CliAuthError extends Error {
 export class CommandAbortedError extends Error {}
 
 /**
- * Error raised by the `api` escape hatch, mirroring the public API error
- * envelope so it renders and exits exactly like a `BrewApiError`.
+ * Error raised by the `api` escape hatch and the raw transport, mirroring
+ * the public API error envelope so it renders and exits exactly like a
+ * `BrewApiError`.
  */
 export class CliApiError extends Error {
   readonly status: number
@@ -35,6 +36,14 @@ export class CliApiError extends Error {
   readonly suggestion: string | undefined
   readonly docs: string | undefined
   readonly requestId: string | undefined
+  /**
+   * The envelope's `details` object when the API sent one — for a
+   * trigger-fire `payload_mismatch` that is `{ errors[], warnings[],
+   * payloadSchema, … }`, naming every field the payload got wrong.
+   */
+  readonly details: Record<string, unknown> | undefined
+  /** The parsed response body exactly as received (`undefined` if not JSON). */
+  readonly body: unknown
 
   constructor(input: {
     readonly status: number
@@ -45,6 +54,8 @@ export class CliApiError extends Error {
     readonly suggestion?: string
     readonly docs?: string
     readonly requestId?: string
+    readonly details?: Record<string, unknown>
+    readonly body?: unknown
   }) {
     super(input.message)
     this.status = input.status
@@ -54,7 +65,51 @@ export class CliApiError extends Error {
     this.suggestion = input.suggestion
     this.docs = input.docs
     this.requestId = input.requestId
+    this.details = input.details
+    this.body = input.body
   }
+}
+
+/**
+ * The closest API error `type` for a response that did not carry one — the
+ * legacy fire envelope never does, and neither does a non-JSON body. A 4xx
+ * is never an `internal_error`.
+ */
+export function errorTypeForStatus(status: number): string {
+  switch (status) {
+    case 400:
+    case 422:
+      return 'invalid_request'
+    case 401:
+      return 'authentication_error'
+    case 402:
+      return 'payment_required'
+    case 403:
+      return 'authorization_error'
+    case 404:
+      return 'not_found'
+    case 409:
+      return 'conflict'
+    case 429:
+      return 'rate_limit'
+    case 501:
+      return 'not_implemented'
+    case 503:
+      return 'service_unavailable'
+    default:
+      return 'internal_error'
+  }
+}
+
+/**
+ * Retry advice is only honest for throttling and server faults. A 4xx
+ * fails the same way on every retry — say so, and point at the request.
+ */
+export function suggestionForStatus(status: number): string {
+  if (status === 429 || status >= 500) {
+    return 'Retry the request. If it keeps failing, contact support.'
+  }
+  return 'Fix the request before sending it again — the same request fails the same way. See `details` for the specifics when present.'
 }
 
 export type ConfirmationEnvelope = {
@@ -103,11 +158,14 @@ export type CliErrorEnvelope = {
   readonly suggestion?: string
   readonly docs?: string
   readonly requestId?: string
+  /** The API's `details` object, verbatim, when the refusal carried one. */
+  readonly details?: Record<string, unknown>
   readonly status?: number
 }
 
 export function toErrorEnvelope(error: unknown): CliErrorEnvelope {
   if (error instanceof BrewApiError || error instanceof CliApiError) {
+    const details = readErrorDetails(error)
     return {
       code: error.code,
       type: error.type,
@@ -116,6 +174,7 @@ export function toErrorEnvelope(error: unknown): CliErrorEnvelope {
       ...(error.suggestion ? { suggestion: error.suggestion } : {}),
       ...(error.docs ? { docs: error.docs } : {}),
       ...(error.requestId ? { requestId: error.requestId } : {}),
+      ...(details === undefined ? {} : { details }),
       status: error.status,
     }
   }
@@ -174,7 +233,10 @@ export function printError(ctx: CliContext, error: unknown): void {
     ctx.io.stderr.write(`${JSON.stringify({ error: envelope })}\n`)
     return
   }
-  const lines = [`brew-cli: ${envelope.message}`]
+  const lines = [
+    `brew-cli: ${envelope.message}`,
+    ...formatDetailLines(envelope.details),
+  ]
   if (envelope.suggestion) {
     lines.push(envelope.suggestion)
   }
@@ -185,6 +247,57 @@ export function printError(ctx: CliContext, error: unknown): void {
     lines.push(`Request id: ${envelope.requestId}`)
   }
   ctx.io.stderr.write(`${lines.join('\n')}\n`)
+}
+
+/**
+ * `details` read structurally off either error class. `BrewApiError`
+ * exposes it from `@brew.new/sdk` 9.3 on; older SDKs simply have none, so
+ * the typed commands light up on the SDK bump with no CLI change.
+ */
+function readErrorDetails(error: object): Record<string, unknown> | undefined {
+  const details = (error as { details?: unknown }).details
+  return isRecord(details) ? details : undefined
+}
+
+/**
+ * Human-mode rendering of `details`. A field-error list (the trigger-fire
+ * `payload_mismatch` shape, `errors: [{ field, message, expectedType?,
+ * actualType? }]`) becomes one line per field; any other shape is one JSON
+ * line, so nothing the API said is hidden.
+ */
+function formatDetailLines(
+  details: Record<string, unknown> | undefined
+): string[] {
+  if (details === undefined) {
+    return []
+  }
+  const issues = details.errors
+  if (Array.isArray(issues) && issues.length > 0 && issues.every(isIssue)) {
+    return issues.map((issue) => {
+      const types =
+        typeof issue.expectedType === 'string'
+          ? typeof issue.actualType === 'string'
+            ? ` (expected ${issue.expectedType}, got ${issue.actualType})`
+            : ` (expected ${issue.expectedType})`
+          : ''
+      return `  - ${issue.field}: ${issue.message}${types}`
+    })
+  }
+  return [`Details: ${JSON.stringify(details)}`]
+}
+
+function isIssue(
+  value: unknown
+): value is Record<string, unknown> & { field: string; message: string } {
+  return (
+    isRecord(value) &&
+    typeof value.field === 'string' &&
+    typeof value.message === 'string'
+  )
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
 function apiErrorStatus(error: unknown): number | undefined {
