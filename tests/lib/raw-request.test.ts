@@ -165,6 +165,10 @@ describe('responseToApiError', () => {
     [404, 'not_found'],
     [403, 'authorization_error'],
     [422, 'invalid_request'],
+    // Unlisted client errors are still the caller's problem, never a
+    // server fault.
+    [405, 'invalid_request'],
+    [415, 'invalid_request'],
     [429, 'rate_limit'],
     [500, 'internal_error'],
   ])('derives type %i → %s for a legacy body without one', (status, type) => {
@@ -179,6 +183,20 @@ describe('responseToApiError', () => {
     expect(error.type).toBe(type)
     expect(error.details).toBeUndefined()
   })
+
+  it.each([408, 425, 429, 503])(
+    'keeps retry advice for a transient %i without a suggestion of its own',
+    (status) => {
+      const error = responseToApiError(new Response(null, { status }), {
+        success: false,
+        status: 'failed',
+        code: 'TRANSIENT',
+        message: 'try again',
+      })
+
+      expect(error.suggestion).toMatch(/retry/i)
+    }
+  )
 
   it('a non-JSON body keeps the HTTP status and derives the type', () => {
     const error = responseToApiError(

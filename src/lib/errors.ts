@@ -72,14 +72,12 @@ export class CliApiError extends Error {
 
 /**
  * The closest API error `type` for a response that did not carry one — the
- * legacy fire envelope never does, and neither does a non-JSON body. A 4xx
- * is never an `internal_error`.
+ * legacy fire envelope never does, and neither does a non-JSON body. Every
+ * 4xx is a client-side problem (an unlisted one, `405` or `415` say, is
+ * still `invalid_request`); only a 5xx is an `internal_error`.
  */
 export function errorTypeForStatus(status: number): string {
   switch (status) {
-    case 400:
-    case 422:
-      return 'invalid_request'
     case 401:
       return 'authentication_error'
     case 402:
@@ -97,16 +95,19 @@ export function errorTypeForStatus(status: number): string {
     case 503:
       return 'service_unavailable'
     default:
-      return 'internal_error'
+      return status >= 400 && status < 500
+        ? 'invalid_request'
+        : 'internal_error'
   }
 }
 
 /**
- * Retry advice is only honest for throttling and server faults. A 4xx
- * fails the same way on every retry — say so, and point at the request.
+ * Retry advice is only honest for the transient statuses — `408`, `425`,
+ * `429` and server faults. Raw calls are single-attempt, so for those the
+ * retry IS the remedy; any other 4xx fails the same way on every retry.
  */
 export function suggestionForStatus(status: number): string {
-  if (status === 429 || status >= 500) {
+  if (status === 408 || status === 425 || status === 429 || status >= 500) {
     return 'Retry the request. If it keeps failing, contact support.'
   }
   return 'Fix the request before sending it again — the same request fails the same way. See `details` for the specifics when present.'
