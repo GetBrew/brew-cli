@@ -49184,7 +49184,7 @@ paths:
         - Templates
       summary: List flows
       description: |-
-        Lists public email flows — one brand’s real onboarding or newsletter sequence, with the day each email landed — as cards under `{ data, pagination }`. Organization-wide: the same bounded corpus the gallery shows (a few hundred flows), paged with `limit`/`cursor`.
+        Lists public email flows, one brand’s real onboarding or newsletter sequence with the day each email landed, as cards under `{ data, pagination }`. Organization-wide: the same bounded corpus the gallery shows (a few hundred flows), paged with `limit`/`cursor`.
 
         **Use when** studying how real brands sequence email to plan or remix an automation, or finding the `slug` to read one flow in full.
 
