@@ -64,7 +64,8 @@ Designed for AI agents as first-class users:
 
 - **Structured everything** — `--json` prints API envelopes verbatim;
   auto-enabled when stdout is not a TTY. Errors are JSON envelopes on
-  stderr with stable `code`s and the `x-request-id`.
+  stderr with stable `code`s, the `x-request-id`, and `details` when
+  the API names the offending fields (a trigger-fire `payload_mismatch`).
 - **Semantic exit codes** — `0` ok · `1` API/runtime · `2` usage ·
   `3` auth · `4` confirmation required.
 - **Confirmation protocol** — irreversible commands (sends, deletes,

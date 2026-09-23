@@ -2,7 +2,7 @@ import { defineCommand } from '../lib/define-command'
 import { buildManifest } from '../lib/manifest'
 
 const DOCS_POINTERS = {
-  documentation: 'https://docs.getbrew.io',
+  documentation: 'https://docs.brew.new',
   openapiSpec: 'https://brew.new/openapi/public-api-v1.yaml',
   agentGuide: 'https://brew.new/api/v1/llms.txt',
   apiCatalog: 'https://brew.new/api/v1/help',

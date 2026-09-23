@@ -186,7 +186,7 @@ describe('login / logout', () => {
               type: 'authentication_error',
               message: 'Invalid API key.',
               suggestion: 'Create a key at https://brew.new/settings/api',
-              docs: 'https://docs.getbrew.io',
+              docs: 'https://docs.brew.new',
             },
           },
           { status: 401 }
