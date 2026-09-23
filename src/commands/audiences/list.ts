@@ -1,5 +1,5 @@
 import type { ListAudiencesInput } from '@brew.new/sdk'
-import { includeRidesDetailRead } from '../../lib/compat'
+import { includeRidesDetailRead, inputField } from '../../lib/compat'
 import { defineCommand } from '../../lib/define-command'
 import {
   asSdkInput,
@@ -40,10 +40,12 @@ export const audiencesListCommand = defineCommand({
     'brew-cli audiences list --all --json',
   ],
   run: async ({ ctx, flags }) => {
-    if (flagString(flags.include) !== undefined) {
+    const base = await readJsonFlag(ctx, flags.input, '--input')
+    if (
+      (flagString(flags.include) ?? inputField(base, 'include')) !== undefined
+    ) {
       throw includeRidesDetailRead('audiences get')
     }
-    const base = await readJsonFlag(ctx, flags.input, '--input')
     const input = mergeInput(base, {
       limit: flagInt(flags.limit, '--limit'),
       cursor: flagString(flags.cursor),

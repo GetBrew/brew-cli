@@ -1,4 +1,4 @@
-import { singleRowPage } from '../../../lib/compat'
+import { inputField, singleRowPage } from '../../../lib/compat'
 import { defineCommand } from '../../../lib/define-command'
 import {
   flagInt,
@@ -45,14 +45,15 @@ export const analyticsTriggerInstancesListCommand = defineCommand({
     'brew-cli analytics trigger-instances list --all --json',
   ],
   run: async ({ ctx, flags }) => {
-    const triggerInstanceId = flagString(flags.triggerInstance)
+    const base = await readJsonFlag(ctx, flags.input, '--input')
+    const triggerInstanceId =
+      flagString(flags.triggerInstance) ?? inputField(base, 'triggerInstanceId')
     if (triggerInstanceId !== undefined) {
       const row = await ctx
         .client()
         .automations.triggerInstances.get(triggerInstanceId)
       return { data: singleRowPage(row), human: renderInstances([row]) }
     }
-    const base = await readJsonFlag(ctx, flags.input, '--input')
     const input = mergeInput(base, {
       triggerEventId: flagString(flags.trigger),
       limit: flagInt(flags.limit, '--limit'),

@@ -46,9 +46,14 @@ describe('parity: SDK surface ↔ CLI commands', () => {
   const bound = ALL_COMMANDS.flatMap((spec) =>
     spec.sdkMethod === null ? [] : [spec.sdkMethod]
   )
-  const derived = ALL_COMMANDS.flatMap((spec) =>
-    spec.derivedFrom === undefined ? [] : [spec.derivedFrom]
-  )
+  const derived = ALL_COMMANDS.flatMap((spec) => {
+    if (spec.derivedFrom === undefined) {
+      return []
+    }
+    return typeof spec.derivedFrom === 'string'
+      ? [spec.derivedFrom]
+      : [...spec.derivedFrom]
+  })
   const skipped = SDK_SKIP_LIST.map((entry) => entry.sdkPath)
   const covered = new Set([
     ...bound,

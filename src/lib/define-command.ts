@@ -50,10 +50,14 @@ export type CommandSpec = {
   /**
    * Dotted path of the SDK method this command binds (`contacts.upsert`),
    * or null for CLI-native commands. Derived sugar commands set null here
-   * and name their backing method in `derivedFrom`.
+   * and name their backing method in `derivedFrom` — or, for a verb-flag
+   * dispatcher that fans out to several methods (`audience-runs control
+   * --action`), every method it can call. A single backing method implies
+   * the command declares that method's `route`; a fan-out spans several and
+   * declares none.
    */
   readonly sdkMethod: string | null
-  readonly derivedFrom?: string
+  readonly derivedFrom?: string | readonly string[]
   /** The public API operation behind this command — the spec join key. */
   readonly route?: {
     readonly method: HttpMethod

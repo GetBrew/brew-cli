@@ -1,5 +1,9 @@
 import type { Flow, ListFlowsInput } from '@brew.new/sdk'
-import { includeRidesDetailRead, singleRowPage } from '../../lib/compat'
+import {
+  includeRidesDetailRead,
+  inputField,
+  singleRowPage,
+} from '../../lib/compat'
 import { defineCommand } from '../../lib/define-command'
 import {
   asSdkInput,
@@ -74,8 +78,9 @@ export const flowsListCommand = defineCommand({
   ],
   run: async ({ ctx, flags }) => {
     const flows = ctx.client().flows
-    const slug = flagString(flags.slug)
-    const include = flagString(flags.include)
+    const base = await readJsonFlag(ctx, flags.input, '--input')
+    const slug = flagString(flags.slug) ?? inputField(base, 'slug')
+    const include = flagString(flags.include) ?? inputField(base, 'include')
     if (slug !== undefined) {
       const flow = await flows.get(
         slug,
@@ -86,7 +91,6 @@ export const flowsListCommand = defineCommand({
     if (include !== undefined) {
       throw includeRidesDetailRead('flows get', '--slug')
     }
-    const base = await readJsonFlag(ctx, flags.input, '--input')
     const input = mergeInput(base, {
       brand: flagString(flags.brandDomain),
       category: flagString(flags.category),

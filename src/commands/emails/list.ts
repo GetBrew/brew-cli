@@ -78,7 +78,10 @@ export const emailsListCommand = defineCommand({
     'brew-cli emails list --all --json',
   ],
   run: async ({ ctx, flags }) => {
-    const legacy = legacyWindow(flags)
+    const legacy = legacyWindow(
+      flags,
+      flagString(flags.sortBy) ?? flagString(flags.sort)
+    )
     const base = await readJsonFlag(ctx, flags.input, '--input')
     const input = mergeInput(base, {
       status: flagString(flags.status),
@@ -115,7 +118,10 @@ export const emailsListCommand = defineCommand({
  * plus `--sort`/`--order`; the API now orders by ONE `sortBy` timestamp that
  * `from`/`to` bound, newest first. Fold the released flags onto that.
  */
-function legacyWindow(flags: Readonly<Record<string, unknown>>): {
+function legacyWindow(
+  flags: Readonly<Record<string, unknown>>,
+  explicitSortBy: string | undefined
+): {
   readonly sortBy: string | undefined
   readonly from: string | undefined
   readonly to: string | undefined
@@ -141,13 +147,20 @@ function legacyWindow(flags: Readonly<Record<string, unknown>>): {
       'The API bounds one timestamp per page: pass --created-at-* or --updated-at-*, not both (or --sort-by with --since/--until).'
     )
   }
-  if (hasCreated) {
-    return { sortBy: 'createdAt', ...created }
+  if (!(hasCreated || hasUpdated)) {
+    return { sortBy: undefined, from: undefined, to: undefined }
   }
-  if (hasUpdated) {
-    return { sortBy: 'updatedAt', ...updated }
+  // The bound rides the ordering timestamp, so a window on one column
+  // cannot be paired with an explicit sort on the other: silently moving
+  // the bound would include or drop rows the caller did not ask about.
+  const column = hasCreated ? 'createdAt' : 'updatedAt'
+  if (explicitSortBy !== undefined && explicitSortBy !== column) {
+    const prefix = hasCreated ? '--created-at-*' : '--updated-at-*'
+    throw new CliUsageError(
+      `${prefix} bounds ${column}, but the page is ordered by ${explicitSortBy}; the API bounds the --sort-by timestamp only.`
+    )
   }
-  return { sortBy: undefined, from: undefined, to: undefined }
+  return { sortBy: column, ...(hasCreated ? created : updated) }
 }
 
 function renderEmails(rows: ReadonlyArray<unknown>): string {

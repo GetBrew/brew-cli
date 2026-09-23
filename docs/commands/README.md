@@ -1521,6 +1521,7 @@ brew-cli automations audience-runs cancel arun_01HZ --yes
 Pause, resume, or cancel an in-flight manual-audience run (0.6 form of `audience-runs pause|resume|cancel`)
 
 - Class: destructive
+- Derived from `brew.automations.audienceRuns.pause(...)`, `brew.automations.audienceRuns.resume(...)`, `brew.automations.audienceRuns.cancel(...)`
 - Argument `audienceRunId` — Audience run id to control
 - `--action <action>` — pause (resumable) | resume | cancel (final)
 - `--idempotency-key <key>` — Idempotency-Key for safe retries (auto-generated otherwise)

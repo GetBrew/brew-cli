@@ -57,7 +57,13 @@ function generate(): string {
       lines.push(`- SDK: \`brew.${spec.sdkMethod}(...)\``)
     }
     if (spec.derivedFrom !== undefined) {
-      lines.push(`- Derived from \`brew.${spec.derivedFrom}(...)\``)
+      const methods =
+        typeof spec.derivedFrom === 'string'
+          ? [spec.derivedFrom]
+          : spec.derivedFrom
+      lines.push(
+        `- Derived from ${methods.map((method) => `\`brew.${method}(...)\``).join(', ')}`
+      )
     }
     for (const arg of spec.args ?? []) {
       lines.push(

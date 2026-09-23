@@ -57,8 +57,8 @@ Spec parity is back to zero uncovered operations and zero phantom routes.
   lists — `automations runs list --run`, `automations triggers list
   --trigger`, `automations audience-runs list --audience-run-id`, `analytics
   sends list --send`, `analytics trigger-instances list --trigger-instance`,
-  `flows list --slug` — perform it and answer as 0.6 did: that row as a
-  single-row page. `--include` on those lists is accepted only next to its id
+  `flows list --slug` — perform it (also when the id rides `--input`) and
+  answer as 0.6 did: that row as a single-row page. `--include` on those lists is accepted only next to its id
   flag; alone (and on `audiences list`) it exits 2 naming the `get` command
   that takes it. `automations audience-runs list --automation-id` is an alias
   of `--automation`, and the list gains `--status`, `--cursor` and `--all`.
@@ -67,7 +67,7 @@ Spec parity is back to zero uncovered operations and zero phantom routes.
   with an inclusive `--since` / `--until` window on it. `--sort` is an alias
   of `--sort-by`; `--created-at-from|to` and `--updated-at-from|to` fold onto
   `--sort-by <column>` plus `--since`/`--until` (one column per page, so
-  mixing them exits 2). Pages are newest first: `--order desc` is accepted,
+  mixing them, or windowing one column while sorting by the other, exits 2). Pages are newest first: `--order desc` is accepted,
   `--order asc` exits 2.
 
 ### Added

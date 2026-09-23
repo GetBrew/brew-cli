@@ -17,6 +17,19 @@ export function singleRowPage<T>(row: T): {
   return { data: [row], pagination: { cursor: null, hasMore: false } }
 }
 
+/**
+ * The 0.6 id and `include` keys could also ride the `--input` body
+ * (`--input '{"automationRunId":"run_1","include":"logs"}'`); an explicit
+ * flag still wins over the body, as everywhere else.
+ */
+export function inputField(base: unknown, key: string): string | undefined {
+  if (base === null || typeof base !== 'object') {
+    return undefined
+  }
+  const value = (base as Record<string, unknown>)[key]
+  return typeof value === 'string' && value !== '' ? value : undefined
+}
+
 /** `--include` used to ride list reads; detail reads carry it now. */
 export function includeRidesDetailRead(
   getCommand: string,

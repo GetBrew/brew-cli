@@ -1,5 +1,5 @@
 import type { ListTriggersInput } from '@brew.new/sdk'
-import { singleRowPage } from '../../../lib/compat'
+import { inputField, singleRowPage } from '../../../lib/compat'
 import { defineCommand } from '../../../lib/define-command'
 import {
   asSdkInput,
@@ -41,12 +41,13 @@ export const automationsTriggersListCommand = defineCommand({
   ],
   run: async ({ ctx, flags }) => {
     const triggers = ctx.client().automations.triggers
-    const triggerEventId = flagString(flags.trigger)
+    const base = await readJsonFlag(ctx, flags.input, '--input')
+    const triggerEventId =
+      flagString(flags.trigger) ?? inputField(base, 'triggerEventId')
     if (triggerEventId !== undefined) {
       const row = await triggers.get(triggerEventId)
       return { data: singleRowPage(row), human: renderTriggers([row]) }
     }
-    const base = await readJsonFlag(ctx, flags.input, '--input')
     const input = mergeInput(base, {
       limit: flagInt(flags.limit, '--limit'),
       cursor: flagString(flags.cursor),

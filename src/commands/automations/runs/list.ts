@@ -1,5 +1,9 @@
 import type { ListAutomationRunsInput } from '@brew.new/sdk'
-import { includeRidesDetailRead, singleRowPage } from '../../../lib/compat'
+import {
+  includeRidesDetailRead,
+  inputField,
+  singleRowPage,
+} from '../../../lib/compat'
 import { defineCommand } from '../../../lib/define-command'
 import {
   asSdkInput,
@@ -69,8 +73,9 @@ export const automationsRunsListCommand = defineCommand({
   ],
   run: async ({ ctx, flags }) => {
     const runs = ctx.client().automations.runs
-    const runId = flagString(flags.run)
-    const include = flagString(flags.include)
+    const base = await readJsonFlag(ctx, flags.input, '--input')
+    const runId = flagString(flags.run) ?? inputField(base, 'automationRunId')
+    const include = flagString(flags.include) ?? inputField(base, 'include')
     if (runId !== undefined) {
       const row = await runs.get(
         runId,
@@ -81,7 +86,6 @@ export const automationsRunsListCommand = defineCommand({
     if (include !== undefined) {
       throw includeRidesDetailRead('automations runs get', '--run')
     }
-    const base = await readJsonFlag(ctx, flags.input, '--input')
     const input = mergeInput(base, {
       automationId: flagString(flags.automation),
       triggerEventId: flagString(flags.trigger),

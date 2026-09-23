@@ -1,5 +1,5 @@
 import type { ListAudienceRunsInput } from '@brew.new/sdk'
-import { singleRowPage } from '../../../lib/compat'
+import { inputField, singleRowPage } from '../../../lib/compat'
 import { defineCommand } from '../../../lib/define-command'
 import {
   asSdkInput,
@@ -54,12 +54,13 @@ export const automationsAudienceRunsListCommand = defineCommand({
   ],
   run: async ({ ctx, flags }) => {
     const audienceRuns = ctx.client().automations.audienceRuns
-    const audienceRunId = flagString(flags.audienceRunId)
+    const base = await readJsonFlag(ctx, flags.input, '--input')
+    const audienceRunId =
+      flagString(flags.audienceRunId) ?? inputField(base, 'audienceRunId')
     if (audienceRunId !== undefined) {
       const row = await audienceRuns.get(audienceRunId)
       return { data: singleRowPage(row), human: renderAudienceRuns([row]) }
     }
-    const base = await readJsonFlag(ctx, flags.input, '--input')
     const input = mergeInput(base, {
       automationId:
         flagString(flags.automation) ?? flagString(flags.automationId),

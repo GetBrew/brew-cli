@@ -1,4 +1,8 @@
-import { includeRidesDetailRead, singleRowPage } from '../../../lib/compat'
+import {
+  includeRidesDetailRead,
+  inputField,
+  singleRowPage,
+} from '../../../lib/compat'
 import { defineCommand } from '../../../lib/define-command'
 import {
   flagInt,
@@ -47,8 +51,9 @@ export const analyticsSendsListCommand = defineCommand({
     'brew-cli analytics sends list --email eml_1 --all --json',
   ],
   run: async ({ ctx, flags }) => {
-    const sendId = flagString(flags.send)
-    const include = flagString(flags.include)
+    const base = await readJsonFlag(ctx, flags.input, '--input')
+    const sendId = flagString(flags.send) ?? inputField(base, 'sendId')
+    const include = flagString(flags.include) ?? inputField(base, 'include')
     if (sendId !== undefined) {
       const row = await ctx
         .client()
@@ -58,7 +63,6 @@ export const analyticsSendsListCommand = defineCommand({
     if (include !== undefined) {
       throw includeRidesDetailRead('sends get', '--send')
     }
-    const base = await readJsonFlag(ctx, flags.input, '--input')
     const input = mergeInput(base, {
       emailId: flagString(flags.email),
       kind: flagString(flags.kind),

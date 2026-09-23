@@ -10,14 +10,20 @@ import {
  * The 0.6 verb-flag form of `automations audience-runs pause|resume|cancel`.
  * `POST …/control { action }` left the API in the v1 cleanup, and command
  * names are additive-only after release (AGENTS.md), so this stays as CLI
- * sugar dispatching to the three action commands' SDK methods. No `route`:
- * the spec has none for it. No single `derivedFrom`: it backs onto three.
+ * sugar dispatching to the three action commands' SDK methods, which
+ * `derivedFrom` names. No `route`: the spec has none for it, and the three
+ * it fans out to belong to the three commands.
  */
 export const automationsAudienceRunsControlCommand = defineCommand({
   path: ['automations', 'audience-runs', 'control'],
   summary:
     'Pause, resume, or cancel an in-flight manual-audience run (0.6 form of `audience-runs pause|resume|cancel`)',
   sdkMethod: null,
+  derivedFrom: [
+    'automations.audienceRuns.pause',
+    'automations.audienceRuns.resume',
+    'automations.audienceRuns.cancel',
+  ],
   commandClass: 'destructive',
   args: [
     {

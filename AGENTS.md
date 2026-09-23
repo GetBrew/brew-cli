@@ -58,8 +58,10 @@ of leaving a hole:
    (`src/commands/contacts/search.ts` for reads, `upsert.ts` for writes,
    `delete.ts` for destructive).
 2. Required: `path`, `summary`, `sdkMethod` (dotted SDK path, or null +
-   `derivedFrom`), `route` (exact OpenAPI path with `{braces}`),
-   `commandClass`, ≥1 realistic example. `destructive` ⇔ `confirmSummary`.
+   `derivedFrom` — the backing method, or every method a verb-flag
+   dispatcher fans out to), `route` (exact OpenAPI path with `{braces}`; a
+   fan-out over several routes declares none), `commandClass`, ≥1 realistic
+   example. `destructive` ⇔ `confirmSummary`.
 3. Ergonomic flags for scalars; `INPUT_FLAG` for deep JSON;
    `IDEMPOTENCY_FLAG` on POST mutations; reuse
    `ALL_FLAG`/`LIMIT_FLAG`/`CURSOR_FLAG` for pagination.

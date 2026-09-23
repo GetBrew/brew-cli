@@ -71,6 +71,29 @@ describe('0.6 compatibility shims', () => {
     })
   })
 
+  it('`runs list --input` carrying the 0.6 id and include keys takes the detail branch too', async () => {
+    let url: URL | undefined
+    server.use(
+      http.get(`${API}/v1/automations/runs/run_1`, ({ request }) => {
+        url = new URL(request.url)
+        return HttpResponse.json({ automationRunId: 'run_1', logs: [] })
+      })
+    )
+    const result = await cli([
+      'automations',
+      'runs',
+      'list',
+      '--input',
+      '{"automationRunId":"run_1","include":"logs"}',
+    ])
+    expect(result.code).toBe(0)
+    expect(url?.searchParams.get('include')).toBe('logs')
+    expect(result.json).toEqual({
+      data: [{ automationRunId: 'run_1', logs: [] }],
+      pagination: ONE_ROW,
+    })
+  })
+
   it('`runs list --include` without --run exits 2 naming `runs get`', async () => {
     const result = await cli([
       'automations',
@@ -222,6 +245,19 @@ describe('0.6 compatibility shims', () => {
     expect(mixed.code).toBe(2)
     const asc = await cli(['emails', 'list', '--order', 'asc'])
     expect(asc.code).toBe(2)
+  })
+
+  it('`emails list` exits 2 when a 0.6 window column disagrees with an explicit sort', async () => {
+    const result = await cli([
+      'emails',
+      'list',
+      '--sort',
+      'updatedAt',
+      '--created-at-from',
+      '2026-08-01T00:00:00Z',
+    ])
+    expect(result.code).toBe(2)
+    expect(result.stderr).toContain('createdAt')
   })
 
   it('`audiences list --include` exits 2 naming `audiences get`', async () => {
