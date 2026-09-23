@@ -184,7 +184,7 @@ describe('responseToApiError', () => {
     expect(error.details).toBeUndefined()
   })
 
-  it.each([408, 425, 429, 503])(
+  it.each([408, 429, 503])(
     'keeps retry advice for a transient %i without a suggestion of its own',
     (status) => {
       const error = responseToApiError(new Response(null, { status }), {
@@ -197,6 +197,17 @@ describe('responseToApiError', () => {
       expect(error.suggestion).toMatch(/retry/i)
     }
   )
+
+  it('gives a 4xx outside the retry policy (425 included) fix-the-request advice', () => {
+    const error = responseToApiError(new Response(null, { status: 425 }), {
+      success: false,
+      status: 'failed',
+      code: 'TOO_EARLY',
+      message: 'not yet',
+    })
+
+    expect(error.suggestion).not.toMatch(/retry/i)
+  })
 
   it('a non-JSON body keeps the HTTP status and derives the type', () => {
     const error = responseToApiError(

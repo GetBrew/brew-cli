@@ -102,12 +102,13 @@ export function errorTypeForStatus(status: number): string {
 }
 
 /**
- * Retry advice is only honest for the transient statuses — `408`, `425`,
- * `429` and server faults. Raw calls are single-attempt, so for those the
- * retry IS the remedy; any other 4xx fails the same way on every retry.
+ * Retry advice is only honest for the statuses the SDK's retry policy
+ * retries — `408`, `429` and 5xx — so a raw call (single-attempt) and a
+ * typed call give the same guidance for the same status. Any other 4xx
+ * fails the same way on every retry.
  */
 export function suggestionForStatus(status: number): string {
-  if (status === 408 || status === 425 || status === 429 || status >= 500) {
+  if (status === 408 || status === 429 || status >= 500) {
     return 'Retry the request. If it keeps failing, contact support.'
   }
   return 'Fix the request before sending it again — the same request fails the same way. See `details` for the specifics when present.'
