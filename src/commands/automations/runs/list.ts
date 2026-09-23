@@ -43,7 +43,7 @@ export const automationsRunsListCommand = defineCommand({
     { flag: '--recipient <email>', summary: 'Filter by recipient email' },
     {
       flag: '--status <status>',
-      summary: 'pending | running | completed | failed | cancelled',
+      summary: 'pending | running | completed | failed | canceled',
     },
     { flag: '--mode <mode>', summary: 'live | test' },
     { flag: '--since <datetime>', summary: 'Runs started at/after (ISO-8601)' },

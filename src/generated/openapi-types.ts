@@ -832,7 +832,9 @@ export interface paths {
         put?: never;
         /**
          * Create or update contacts
-         * @description Upserts a single contact OR a batch (`{ contacts: [...] }`, up to 1000 rows). Unknown custom fields auto-create field definitions on the brand.
+         * @description Upserts a single contact OR a batch (`{ contacts: [...] }`, up to 1000 rows). Unknown custom fields auto-create field definitions on the brand, typed from the batch (native booleans/numbers, ISO-date strings → `date`, anything else `string`).
+         *
+         *     Custom-field values are coerced to the definition's type (dates → epoch ms, `"1,234"` → 1234, `yes`/`no` → booleans). A value that cannot be coerced (`"$49"` in a number field) is a `409 FIELD_TYPE_MISMATCH` on a single upsert and a per-row `errors[]` entry (`code: FIELD_TYPE_MISMATCH`, `field`) in a batch — the other rows still land.
          *
          *     Single: `201` with `{ contact, created, fieldsCreated, warnings }`. Batch: `200` with `{ summary, fieldsCreated, errors, warnings }` — or `207` when some rows failed (per-row errors in `errors[]`).
          */
@@ -878,11 +880,11 @@ export interface paths {
         put?: never;
         /**
          * Get contacts
-         * @description The single "Get Contacts" read. Structured search over the brand’s contacts: free-text `search`, typed `filters` (`{ field, operator, value }` combined with `logic: "and" | "or"`), `sort` + `order`, and cursor pagination. Returns `{ data, pagination }`.
+         * @description The single "Get Contacts" read. Structured search over the brand’s contacts: free-text `search`, `filters` (`{ field, operator, value }` combined with `logic: "and" | "or" | "none"`; the allowed operators depend on the field’s type — see the `operator` schema — and an unsupported pairing is a `400`, never a dropped clause), `sort` + `order`, and cursor pagination. Returns `{ data, pagination }`.
          *
          *     Folds the former `GET /v1/contacts` (omit all filters to list everything) and `GET /v1/contacts/{email}` (use `filters: [{ field: "email", operator: "equals", value: "…" }]`).
          *
-         *     Pass an optional `audienceId` to scope the search to a saved audience’s members — its stored filter is ANDed with `filters` (an unknown / cross-brand id → `400`).
+         *     Pass an optional `audienceId` to scope the search to a saved audience’s members — its stored filter set is evaluated as one unit with its own `logicalOperator` (an OR audience stays an OR) and then ANDed with `filters`, so the page is exactly who a send to that audience reaches (an unknown / cross-brand id, or an audience a send would refuse → `400`).
          *
          *     Set `count: true` to get `{ count }` instead of a page.
          */
@@ -924,7 +926,9 @@ export interface paths {
         put?: never;
         /**
          * Bulk-import contacts from CSV
-         * @description Parse a raw CSV string and upsert the rows as contacts (≤ 1000). By default each column header maps to a field of the same name (`email` is required); pass `mapping` to remap columns explicitly. Rows with a missing/invalid email are SKIPPED (counted in `summary.skipped`), not errored; disposable-domain rows are imported with `validationStatus: "risky"` (deliverable but flagged). Returns the same `{ summary, fieldsCreated, errors, warnings }` as batch-create — `207` when some rows fail validation.
+         * @description Parse a raw CSV string and upsert the rows as contacts (≤ 1000). By default each column header maps to a field of the same name (`email` is required); pass `mapping` to remap columns explicitly. Rows with a missing/invalid email are SKIPPED (counted in `summary.skipped`), not errored; disposable-domain rows are imported with `validationStatus: "risky"` (deliverable but flagged). Returns the same `{ summary, fieldsCreated, errors, warnings }` as batch-create — `207` when some rows fail.
+         *
+         *     CSV cells are text: a column mapped onto an EXISTING field is coerced to that field's type (dates → epoch ms, `1,234` → 1234, `yes`/`no` → booleans), and a cell that cannot be coerced (`$49` in a number column) fails ITS row with a per-row `errors[]` entry (`code: FIELD_TYPE_MISMATCH`, `field`) while the other rows still land. An undeclared column is created as a `string` field unless every value is an ISO date (→ `date`); predeclare `number` / `bool` columns with `POST /v1/fields`.
          */
         post: operations["importContactsCsv"];
         delete?: never;
@@ -1032,7 +1036,7 @@ export interface paths {
         put?: never;
         /**
          * Create an audience from analytics events
-         * @description Creates a frozen audience snapshot from the same membership filters as `/events`: 1–10 canonical event types, an absolute window up to 90 days, optional send/email ids, multi-select automation/audience ids, recipient include/exclude rules, and the machine-click policy. Every call generates a unique date field; each matching existing contact stores its latest matching-event timestamp. Returns `201` immediately with `materializationStatus: pending` plus build progress. The audience is unavailable for campaign, smart-send, and automation delivery until the status becomes `ready`. Failed/partial/stale builds remain non-sendable and partial values are cleaned. Poll `GET /v1/audiences?audienceId=…&include=build`.
+         * @description Creates a frozen audience snapshot from the same membership filters as `/events`: 1–10 canonical event types, an absolute window up to 90 days (`from` may be omitted when `sendId` is set — the window then derives from that send), optional send/email ids, multi-select automation/audience ids, recipient include/exclude rules, and the machine-click policy. `cohort.exclude` builds the COMPLEMENT instead: every member of a base audience (default: the send's audience; `"all"` = the whole brand) who did NOT match — the base's clauses are copied at build time AND the cohort field must be empty — which is how to re-send after a cancelled send (`eventTypes: ["sent"]`, the `sendId`, `exclude: {}`). Every call generates a unique date field; each matching existing contact stores its latest matching-event timestamp. Returns `201` immediately with `materializationStatus: pending` plus build progress. The audience is unavailable for campaign, smart-send, and automation delivery until the status becomes `ready`. Failed/partial/stale builds remain non-sendable and partial values are cleaned. Poll `GET /v1/audiences?audienceId=…&include=build`.
          */
         post: operations["createAudienceFromEvents"];
         delete?: never;
@@ -1182,7 +1186,7 @@ export interface paths {
         };
         /**
          * List templates
-         * @description Lists public email templates under `{ data, pagination }`. Each row is FULL — it carries the rendered `html` + `previewImage` plus the display metadata (`title`, `category`, `brand`, `updatedAt`), so you never need a follow-up get-one round-trip. Supports exact `?brand=` and `?category=` filters and a lightweight `?semantic=` text filter. Templates are organization-wide references (use one as `referenceEmailId` on `POST /v1/emails`).
+         * @description Lists public email templates under `{ data, pagination }`, newest first. Each row is FULL — it carries the rendered `html` + `previewImage` plus the display metadata (`title`, `category`, `brand`, `updatedAt`), so you never need a follow-up get-one round-trip. The gallery holds thousands of templates: page with `limit` (default 50, max 100) and `cursor` until `cursor` is `null`. `?brand=` (a domain) and `?category=` (a lowercase category, see the parameter) narrow it, case-insensitively; `?semantic=` ranks the gallery by relevance to a description instead of by recency. Templates are organization-wide references (use one as `referenceEmailId` on `POST /v1/emails`).
          */
         get: operations["listTemplates"];
         put?: never;
@@ -1202,7 +1206,7 @@ export interface paths {
         };
         /**
          * List flows
-         * @description Public email flows — one brand’s real onboarding or newsletter sequence, with the day each email landed — under `{ data, pagination }`. Omit `slug` to LIST cards (filter `?brand=`, `?category=`, `?type=`; order with `?sort=newest|emails|span|remixes`; or `?semantic=` for relevance-ranked search). Pass `?slug=<brand domain>` to fetch ONE flow → `data: [flow]` with every step’s `subject`, `previewText`, `dayOffset`, `delayDays`, `category`, `previewImage` and `emailId`; add `?include=html` for each step’s rendered HTML (best-effort per step: a step whose body is no longer servable comes back without `html`). `anchor` and `steps` are detail-only — a LIST card never carries them. A flow holds at most 12 steps: capture keeps the first 12 and cuts the tail, so `emailCount: 12` means twelve **or more** were sent. A step’s `emailId` is a template reference: use it as `referenceEmailId` on `POST /v1/emails`, or look it up on `GET /v1/templates`. Organization-wide. The list is the gallery’s own set — the same bounded corpus the site shows (a few hundred flows today) — paged with `limit`/`cursor`.
+         * @description Public email flows — one brand’s real onboarding or newsletter sequence, with the day each email landed — under `{ data, pagination }`. Omit `slug` to LIST cards (filter `?brand=`, `?category=`, `?type=`; order with `?sort=newest|emails|span|remixes`; or `?semantic=` for relevance-ranked search). Pass `?slug=<brand domain>` to fetch ONE flow → `data: [flow]` with every step’s `subject`, `previewText`, `dayOffset`, `delayDays`, `category`, `previewImage` and `emailId`; add `?include=html` for each step’s rendered HTML (best-effort per step: a step whose body is no longer servable comes back without `html`). `anchor` and `steps` are detail-only — a LIST card never carries them. A flow holds at most 12 steps: capture keeps the first 12 and cuts the tail, so `emailCount: 12` means twelve **or more** were sent. A step’s `emailId` is a template reference: pass it as `referenceEmailId` on `POST /v1/emails`. For the body itself add `?include=html` here — `GET /v1/templates` lists the gallery and takes no id. Organization-wide. The list is the gallery’s own set — the same bounded corpus the site shows (a few hundred flows today) — paged with `limit`/`cursor`.
          */
         get: operations["listFlows"];
         put?: never;
@@ -2452,13 +2456,17 @@ export interface components {
                 status: "pending" | "running" | "completed" | "partial" | "failed";
                 cohort: {
                     eventTypes: ("sent" | "delivered" | "delivery_delayed" | "opened" | "clicked" | "bounced" | "complained" | "failed" | "skipped" | "unsubscribed")[];
-                    /** Format: date-time */
+                    /**
+                     * Format: date-time
+                     * @description Window start. Required unless `sendId` is set — then it defaults to one hour before that send was dispatched (its scheduled time for a scheduled send; a completion pass's re-stamped start is never used), and `to` to now.
+                     */
                     from: string;
                     /**
                      * Format: date-time
                      * @description Defaults to now.
                      */
                     to: string;
+                    /** @description Scope to one send (the id in /analytics/sends/{sendId}). With `sendId` the window may be omitted. */
                     sendId?: string;
                     emailId?: string;
                     automationIds?: string[];
@@ -2467,6 +2475,9 @@ export interface components {
                     /** @description Recipient rule tokens using the Events-page grammar. */
                     recipient?: string[];
                     includeMachineClicks?: boolean;
+                    exclude?: {
+                        baseAudienceId: string;
+                    };
                 };
                 field: {
                     key: string;
@@ -2491,13 +2502,17 @@ export interface components {
             status: "pending" | "running" | "completed" | "partial" | "failed";
             cohort: {
                 eventTypes: ("sent" | "delivered" | "delivery_delayed" | "opened" | "clicked" | "bounced" | "complained" | "failed" | "skipped" | "unsubscribed")[];
-                /** Format: date-time */
+                /**
+                 * Format: date-time
+                 * @description Window start. Required unless `sendId` is set — then it defaults to one hour before that send was dispatched (its scheduled time for a scheduled send; a completion pass's re-stamped start is never used), and `to` to now.
+                 */
                 from: string;
                 /**
                  * Format: date-time
                  * @description Defaults to now.
                  */
                 to: string;
+                /** @description Scope to one send (the id in /analytics/sends/{sendId}). With `sendId` the window may be omitted. */
                 sendId?: string;
                 emailId?: string;
                 automationIds?: string[];
@@ -2506,6 +2521,9 @@ export interface components {
                 /** @description Recipient rule tokens using the Events-page grammar. */
                 recipient?: string[];
                 includeMachineClicks?: boolean;
+                exclude?: {
+                    baseAudienceId: string;
+                };
             };
             field: {
                 key: string;
@@ -4756,6 +4774,29 @@ export interface components {
                 counts?: {
                     automations: number;
                 };
+                /** @description Present on `status: "payload_mismatch"` — one entry per field that failed validation. */
+                errors?: ({
+                    code: string;
+                    field: string;
+                    message: string;
+                    expectedType?: string;
+                    actualType?: string;
+                } & {
+                    [key: string]: unknown;
+                })[];
+                /** @description Present on `status: "payload_mismatch"` — the trigger’s declared payload schema. */
+                payloadSchema?: {
+                    /** @enum {string} */
+                    type: "object";
+                    fields: components["schemas"]["TriggerPayloadField"][];
+                };
+                /** @description Present on `payload_mismatch` under an armed payload contract. */
+                contractHash?: string;
+                /**
+                 * @description Present on `payload_mismatch` under an armed payload contract.
+                 * @enum {string}
+                 */
+                enforcement?: "prune" | "strict";
             } & {
                 [key: string]: unknown;
             };
@@ -4886,6 +4927,7 @@ export interface components {
             errors: {
                 email: string;
                 code: string;
+                field?: string;
                 message: string;
             }[];
             warnings: {
@@ -5096,11 +5138,12 @@ export interface components {
             filters?: {
                 /** @description The contact column or custom-field name to filter on (e.g. `email`, `firstName`, or a key from `run_data_command` (`db find fieldDefinitions`) or GET /v1/fields). */
                 field: string;
-                /** @description One of: equals, not_equals, contains, not_contains, contains_any, not_contains_any, starts_with, ends_with, gt, gte, lt, lte, between, is_true, is_false, in, not_in, is_empty, not_exists, is_not_empty, exists, is_set, before, after, on_date. Unrecognized operators are ignored (the clause is dropped), so stick to this list — e.g. use `equals`, not `eq`. */
+                /** @description Allowed operators depend on the field's type — string: equals, not_equals, contains, not_contains, contains_any, not_contains_any, starts_with, ends_with, is_empty, is_not_empty, in, not_in, exists, not_exists; number: equals, not_equals, gt, gte, lt, lte, between, is_empty, is_not_empty; date: on_date, before, after, between, is_empty, is_not_empty; bool: is_true, is_false (`equals` with true/false/1/0 is accepted as an alias). Any other operator, or an operator on a field type that does not support it, is rejected with 400 INVALID_REQUEST (`param: "filter"`) — nothing is silently ignored. E.g. use `equals`, not `eq`. */
                 operator: string;
-                /** @description The comparison value, as a string. Unary operators (`is_set`, `is_empty`, `exists`, …) ignore it — pass "". */
+                /** @description The comparison value, as a string. `in`, `not_in`, `contains_any` and `not_contains_any` take a comma-separated list; `between` takes exactly two comma-separated bounds (e.g. "10,30"). Unary operators (`is_empty`, `is_not_empty`, `exists`, `not_exists`, `is_true`, `is_false`) ignore it — pass "". */
                 value: string;
             }[];
+            /** @description Scope to a saved audience's members. The audience's stored filter set is evaluated as one unit with its own `logicalOperator` (an OR audience stays an OR), then ANDed with `filters`. Unknown / cross-brand id, or an audience a send would refuse (unusable filters, a cohort still building) → 400. */
             audienceId?: string;
             /**
              * @default and
@@ -5147,6 +5190,7 @@ export interface components {
             errors: {
                 email: string;
                 code: string;
+                field?: string;
                 message: string;
             }[];
             warnings: {
@@ -5246,13 +5290,17 @@ export interface components {
                     status: "pending" | "running" | "completed" | "partial" | "failed";
                     cohort: {
                         eventTypes: ("sent" | "delivered" | "delivery_delayed" | "opened" | "clicked" | "bounced" | "complained" | "failed" | "skipped" | "unsubscribed")[];
-                        /** Format: date-time */
+                        /**
+                         * Format: date-time
+                         * @description Window start. Required unless `sendId` is set — then it defaults to one hour before that send was dispatched (its scheduled time for a scheduled send; a completion pass's re-stamped start is never used), and `to` to now.
+                         */
                         from: string;
                         /**
                          * Format: date-time
                          * @description Defaults to now.
                          */
                         to: string;
+                        /** @description Scope to one send (the id in /analytics/sends/{sendId}). With `sendId` the window may be omitted. */
                         sendId?: string;
                         emailId?: string;
                         automationIds?: string[];
@@ -5261,6 +5309,9 @@ export interface components {
                         /** @description Recipient rule tokens using the Events-page grammar. */
                         recipient?: string[];
                         includeMachineClicks?: boolean;
+                        exclude?: {
+                            baseAudienceId: string;
+                        };
                     };
                     field: {
                         key: string;
@@ -5313,13 +5364,17 @@ export interface components {
                 status: "pending" | "running" | "completed" | "partial" | "failed";
                 cohort: {
                     eventTypes: ("sent" | "delivered" | "delivery_delayed" | "opened" | "clicked" | "bounced" | "complained" | "failed" | "skipped" | "unsubscribed")[];
-                    /** Format: date-time */
+                    /**
+                     * Format: date-time
+                     * @description Window start. Required unless `sendId` is set — then it defaults to one hour before that send was dispatched (its scheduled time for a scheduled send; a completion pass's re-stamped start is never used), and `to` to now.
+                     */
                     from: string;
                     /**
                      * Format: date-time
                      * @description Defaults to now.
                      */
                     to: string;
+                    /** @description Scope to one send (the id in /analytics/sends/{sendId}). With `sendId` the window may be omitted. */
                     sendId?: string;
                     emailId?: string;
                     automationIds?: string[];
@@ -5328,6 +5383,9 @@ export interface components {
                     /** @description Recipient rule tokens using the Events-page grammar. */
                     recipient?: string[];
                     includeMachineClicks?: boolean;
+                    exclude?: {
+                        baseAudienceId: string;
+                    };
                 };
                 field: {
                     key: string;
@@ -5363,6 +5421,7 @@ export interface components {
                     field: string;
                     /** @enum {string} */
                     operator: "equals" | "not_equals" | "contains" | "not_contains" | "contains_any" | "not_contains_any" | "starts_with" | "ends_with" | "gt" | "gte" | "lt" | "lte" | "between" | "is_true" | "is_false" | "in" | "not_in" | "is_empty" | "not_exists" | "is_not_empty" | "exists" | "is_set" | "before" | "after" | "on_date";
+                    /** @description Operator-dependent: `between` takes `[min, max]` or `{min, max}`; `in`/`not_in`/`contains_any`/`not_contains_any` take a list; unary operators (`is_empty`, `is_not_empty`, `exists`, `is_true`, …) omit it. */
                     value?: unknown;
                     /** @description The field's value type — set `number`, `date`, or `boolean` for typed comparisons (dates are stored as epoch-ms, so a string `equals` on a date never matches). Omit for plain string fields. */
                     type?: string;
@@ -5399,13 +5458,17 @@ export interface components {
                 status: "pending" | "running" | "completed" | "partial" | "failed";
                 cohort: {
                     eventTypes: ("sent" | "delivered" | "delivery_delayed" | "opened" | "clicked" | "bounced" | "complained" | "failed" | "skipped" | "unsubscribed")[];
-                    /** Format: date-time */
+                    /**
+                     * Format: date-time
+                     * @description Window start. Required unless `sendId` is set — then it defaults to one hour before that send was dispatched (its scheduled time for a scheduled send; a completion pass's re-stamped start is never used), and `to` to now.
+                     */
                     from: string;
                     /**
                      * Format: date-time
                      * @description Defaults to now.
                      */
                     to: string;
+                    /** @description Scope to one send (the id in /analytics/sends/{sendId}). With `sendId` the window may be omitted. */
                     sendId?: string;
                     emailId?: string;
                     automationIds?: string[];
@@ -5414,6 +5477,9 @@ export interface components {
                     /** @description Recipient rule tokens using the Events-page grammar. */
                     recipient?: string[];
                     includeMachineClicks?: boolean;
+                    exclude?: {
+                        baseAudienceId: string;
+                    };
                 };
                 field: {
                     key: string;
@@ -5435,13 +5501,17 @@ export interface components {
         AudiencesFromEventsRequest: {
             cohort: {
                 eventTypes: ("sent" | "delivered" | "delivery_delayed" | "opened" | "clicked" | "bounced" | "complained" | "failed" | "skipped" | "unsubscribed")[];
-                /** Format: date-time */
-                from: string;
+                /**
+                 * Format: date-time
+                 * @description Window start. Required unless `sendId` is set — then it defaults to one hour before that send was dispatched (its scheduled time for a scheduled send; a completion pass's re-stamped start is never used), and `to` to now.
+                 */
+                from?: string;
                 /**
                  * Format: date-time
                  * @description Defaults to now.
                  */
                 to?: string;
+                /** @description Scope to one send (the id in /analytics/sends/{sendId}). With `sendId` the window may be omitted. */
                 sendId?: string;
                 emailId?: string;
                 automationIds?: string[];
@@ -5450,6 +5520,10 @@ export interface components {
                 /** @description Recipient rule tokens using the Events-page grammar. */
                 recipient?: string[];
                 includeMachineClicks?: boolean;
+                /** @description COMPLEMENT mode: the audience becomes every contact of `baseAudienceId` who did NOT match the cohort — a copy of the base audience's filters (taken when the build starts; later edits to the base do not propagate) AND the cohort field is empty. `baseAudienceId` defaults to the send's audience when `sendId` is set; `"all"` means the whole brand. The base must combine its filters with AND (or have one filter) and must not be an event snapshot that is still building. */
+                exclude?: {
+                    baseAudienceId?: string;
+                };
             };
             name?: string;
         };
@@ -5461,6 +5535,7 @@ export interface components {
                     field: string;
                     /** @enum {string} */
                     operator: "equals" | "not_equals" | "contains" | "not_contains" | "contains_any" | "not_contains_any" | "starts_with" | "ends_with" | "gt" | "gte" | "lt" | "lte" | "between" | "is_true" | "is_false" | "in" | "not_in" | "is_empty" | "not_exists" | "is_not_empty" | "exists" | "is_set" | "before" | "after" | "on_date";
+                    /** @description Operator-dependent: `between` takes `[min, max]` or `{min, max}`; `in`/`not_in`/`contains_any`/`not_contains_any` take a list; unary operators (`is_empty`, `is_not_empty`, `exists`, `is_true`, …) omit it. */
                     value?: unknown;
                     /** @description The field's value type — set `number`, `date`, or `boolean` for typed comparisons (dates are stored as epoch-ms, so a string `equals` on a date never matches). Omit for plain string fields. */
                     type?: string;
@@ -13737,6 +13812,7 @@ export interface operations {
                 automationId?: string;
                 triggerEventId?: string;
                 triggerInstanceId?: string;
+                /** @description Only runs for this recipient — matched case-insensitively against each run's `recipientEmail`. Combine with `automationId`, `status`, `mode` or the `from`/`to` window to narrow further. */
                 recipientEmail?: string;
                 status?: "pending" | "running" | "completed" | "failed" | "canceled";
                 mode?: "live" | "test";
@@ -15287,7 +15363,7 @@ export interface operations {
                     "application/json": components["schemas"]["TriggerFireResponse"];
                 };
             };
-            /** @description Invalid JSON, or the payload does not satisfy the trigger’s `payloadSchema` (`status: "payload_mismatch"`). Errors use the same fire envelope with `success: false`. */
+            /** @description Invalid JSON, or the payload does not satisfy the trigger’s `payloadSchema` (`status: "payload_mismatch"`, `code: "INVALID_PAYLOAD"`). Errors use the same fire envelope with `success: false`; a payload mismatch lists every offending field in `details.errors[]` and echoes the trigger’s `details.payloadSchema` — the same body fails the same way on retry, so repair the payload instead of retrying. */
             400: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -15299,10 +15375,37 @@ export interface operations {
                      * @example {
                      *       "success": false,
                      *       "status": "payload_mismatch",
-                     *       "code": "PAYLOAD_MISMATCH",
-                     *       "message": "Required field 'email' is missing from the payload.",
+                     *       "code": "INVALID_PAYLOAD",
+                     *       "message": "Payload validation failed.",
                      *       "triggerEventId": "tri_signup",
-                     *       "receivedAt": "2026-04-08T12:34:56.789Z"
+                     *       "receivedAt": "2026-04-08T12:34:56.789Z",
+                     *       "details": {
+                     *         "errors": [
+                     *           {
+                     *             "code": "invalid_type",
+                     *             "field": "code",
+                     *             "message": "Field \"code\" must be a string",
+                     *             "expectedType": "string",
+                     *             "actualType": "number"
+                     *           }
+                     *         ],
+                     *         "warnings": [],
+                     *         "payloadSchema": {
+                     *           "type": "object",
+                     *           "fields": [
+                     *             {
+                     *               "key": "email",
+                     *               "type": "string",
+                     *               "required": true
+                     *             },
+                     *             {
+                     *               "key": "code",
+                     *               "type": "string",
+                     *               "required": true
+                     *             }
+                     *           ]
+                     *         }
+                     *       }
                      *     }
                      */
                     "application/json": components["schemas"]["TriggerFireResponse"];
@@ -16693,7 +16796,7 @@ export interface operations {
                      *       "summary": {
                      *         "inserted": 1,
                      *         "updated": 0,
-                     *         "failed": 1
+                     *         "failed": 2
                      *       },
                      *       "fieldsCreated": [],
                      *       "errors": [
@@ -16701,6 +16804,12 @@ export interface operations {
                      *           "email": "not-an-email",
                      *           "code": "INVALID_EMAIL",
                      *           "message": "not-an-email is not a valid email address."
+                     *         },
+                     *         {
+                     *           "email": "john@example.com",
+                     *           "code": "FIELD_TYPE_MISMATCH",
+                     *           "field": "customFields.plan",
+                     *           "message": "Field 'customFields.plan' is type 'number' but received string '$49'."
                      *         }
                      *       ],
                      *       "warnings": []
@@ -16777,7 +16886,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description The same `Idempotency-Key` was reused with a different request body. */
+            /** @description A single upsert whose custom-field value cannot be coerced to the field definition's type (a batch reports this per row in `errors[]` instead), or an `Idempotency-Key` replay with a different body. */
             409: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -16785,17 +16894,6 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    /**
-                     * @example {
-                     *       "error": {
-                     *         "code": "IDEMPOTENCY_CONFLICT",
-                     *         "type": "conflict",
-                     *         "message": "The same idempotency key was reused with a different request payload.",
-                     *         "suggestion": "Reuse the original payload or send a new idempotency key.",
-                     *         "docs": "https://docs.brew.new/api-reference/api/idempotency"
-                     *       }
-                     *     }
-                     */
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
@@ -17175,6 +17273,29 @@ export interface operations {
                      *         "suggestion": "Upsert the contact first with POST /v1/contacts.",
                      *         "docs": "https://docs.brew.new/api-reference/api/errors",
                      *         "param": "email"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description The value cannot be coerced to the field definition's type (`"$49"` into a number field, `"maybe"` into a bool field). */
+            409: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "FIELD_TYPE_MISMATCH",
+                     *         "type": "conflict",
+                     *         "message": "Field 'customFields.plan' is type 'number' but received string '$49'.",
+                     *         "suggestion": "Send a value that matches the field definition, or update the field definition first.",
+                     *         "docs": "https://docs.brew.new/api-reference/api/errors",
+                     *         "param": "customFields.plan"
                      *       }
                      *     }
                      */
@@ -17752,9 +17873,10 @@ export interface operations {
                      *       "fieldsCreated": [],
                      *       "errors": [
                      *         {
-                     *           "email": "dupe@example.com",
-                     *           "code": "DUPLICATE_EMAILS_IN_BATCH",
-                     *           "message": "Email 'dupe@example.com' appears 2 times in batch."
+                     *           "email": "john@example.com",
+                     *           "code": "FIELD_TYPE_MISMATCH",
+                     *           "field": "customFields.plan",
+                     *           "message": "Field 'customFields.plan' is type 'number' but received string '$49'."
                      *         }
                      *       ],
                      *       "warnings": []
@@ -17771,6 +17893,7 @@ export interface operations {
                         errors: {
                             email: string;
                             code: string;
+                            field?: string;
                             message: string;
                         }[];
                         warnings: {
@@ -21221,9 +21344,13 @@ export interface operations {
     listTemplates: {
         parameters: {
             query?: {
+                /** @description Only this brand's templates, by domain (e.g. `vercel.com`); case-insensitive. */
                 brand?: string;
+                /** @description Email category, matched case-insensitively (unknown → empty page): welcome, newsletter, promotional, product-launch, product-update, order-confirmation, shipping-update, receipt, cart-abandonment, subscription, password-reset, verification, security-alert, account-update, event-invitation, event-reminder, feedback-request, re-engagement, referral, support, business, internal, notification, general. */
                 category?: string;
+                /** @description Rank by relevance to this text instead of newest first (top 200; `brand`/`category` still narrow). */
                 semantic?: string;
+                /** @description Page size, 1–100 (default 50: each row carries its full HTML). */
                 limit?: number | string;
                 cursor?: string;
             };
@@ -21261,9 +21388,9 @@ export interface operations {
                      *         }
                      *       ],
                      *       "pagination": {
-                     *         "limit": 100,
-                     *         "cursor": null,
-                     *         "hasMore": false
+                     *         "limit": 50,
+                     *         "cursor": "eyJ…",
+                     *         "hasMore": true
                      *       }
                      *     }
                      */
@@ -21398,7 +21525,7 @@ export interface operations {
             query?: {
                 /** @description Fetch ONE flow by its brand domain (e.g. `brew.new`) → `data: [flow]` with every `steps[]` entry. Omit to LIST. */
                 slug?: string;
-                /** @description Detail-only expansions, comma-separated. `html` adds each step’s rendered HTML. Rendered email is bulky — over MCP only the first step or two fit one response; the rest simply arrive without `html` and the summary says how many were kept, so fetch those by `emailId`. The REST route has no such cap. Best-effort per step: a step whose body is no longer servable comes back without `html` rather than failing the flow. */
+                /** @description Detail-only expansions, comma-separated. `html` adds each step’s rendered HTML. Rendered email is bulky — over MCP only the first step or two fit one response; the rest arrive without `html` and the summary says how many were kept. A step’s `emailId` is already a `create_email_design` reference, so reuse needs no body; for the bodies themselves call `GET /v1/flows?slug=<domain>&include=html` over REST, which has no cap. Best-effort per step: a step whose body is no longer servable comes back without `html` rather than failing the flow. */
                 include?: string;
                 /** @description Exact brand domain filter for LIST, e.g. `vercel.com`. */
                 brand?: string;
@@ -24843,7 +24970,7 @@ export interface operations {
                      * @example {
                      *       "chatId": "Hk2mZ8t9QbY3sW1vR0pLd",
                      *       "title": "Spring launch campaign",
-                     *       "modelId": "anthropic/claude-opus-5",
+                     *       "modelId": "anthropic/claude-opus-5.5",
                      *       "updatedAt": "2026-06-30T12:34:56.789Z",
                      *       "messageCount": 18,
                      *       "artifacts": [

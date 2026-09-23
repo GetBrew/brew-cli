@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- **Fixed**: `automations runs list --status canceled` — the help text and
+  the command reference spelled the terminal status `cancelled` (two L); the
+  API's enum is `canceled` (one L), so the advertised value was the one the
+  server refused with `400`. Both now say `canceled`, and a test pins that
+  `--recipient <email>` reaches the API as `recipientEmail` (the one-contact
+  run history the server honours since brew-v2 #1621).
+- Spec mirror resynced with brew-v2 `main`: the fire `400 payload_mismatch`
+  now declares `details.errors[]` / `payloadSchema` / `contractHash` /
+  `enforcement` and shows the code the API sends (`INVALID_PAYLOAD`), and the
+  runs list documents `recipientEmail`. Generated types follow.
 - **Fixed**: a trigger-fire refusal is reported as itself. `POST
   /v1/automations/triggers/{id}/fire` answers with the legacy fire envelope
   (top-level `code`/`message`/`details`, no `error` wrapper, no `type`).
