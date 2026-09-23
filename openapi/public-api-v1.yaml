@@ -2794,6 +2794,7 @@ components:
                 from:
                   type: string
                   format: date-time
+                  description: Window start. Required unless `sendId` is set — then it defaults to one hour before that send was dispatched (its scheduled time for a scheduled send; a completion pass's re-stamped start is never used), and `to` to now.
                 to:
                   type: string
                   format: date-time
@@ -2802,6 +2803,7 @@ components:
                   type: string
                   minLength: 1
                   maxLength: 64
+                  description: Scope to one send (the id in /analytics/sends/{sendId}). With `sendId` the window may be omitted.
                 emailId:
                   type: string
                   minLength: 1
@@ -2831,6 +2833,16 @@ components:
                   description: Recipient rule tokens using the Events-page grammar.
                 includeMachineClicks:
                   type: boolean
+                exclude:
+                  type: object
+                  properties:
+                    baseAudienceId:
+                      type: string
+                      minLength: 1
+                      maxLength: 64
+                  required:
+                    - baseAudienceId
+                  additionalProperties: false
               required:
                 - eventTypes
                 - from
@@ -2928,6 +2940,7 @@ components:
             from:
               type: string
               format: date-time
+              description: Window start. Required unless `sendId` is set — then it defaults to one hour before that send was dispatched (its scheduled time for a scheduled send; a completion pass's re-stamped start is never used), and `to` to now.
             to:
               type: string
               format: date-time
@@ -2936,6 +2949,7 @@ components:
               type: string
               minLength: 1
               maxLength: 64
+              description: Scope to one send (the id in /analytics/sends/{sendId}). With `sendId` the window may be omitted.
             emailId:
               type: string
               minLength: 1
@@ -2965,6 +2979,16 @@ components:
               description: Recipient rule tokens using the Events-page grammar.
             includeMachineClicks:
               type: boolean
+            exclude:
+              type: object
+              properties:
+                baseAudienceId:
+                  type: string
+                  minLength: 1
+                  maxLength: 64
+              required:
+                - baseAudienceId
+              additionalProperties: false
           required:
             - eventTypes
             - from
@@ -3478,6 +3502,7 @@ components:
         - CONTRACT_LOCKED_BY_PUBLISHED_AUTOMATIONS
         - CORE_FIELD_IMMUTABLE
         - DOMAIN_ALREADY_EXISTS
+        - DOMAIN_CLAIMED_ELSEWHERE
         - DOMAIN_NOT_FOUND
         - DOMAIN_NOT_READY
         - DOMAIN_OTHER_BRAND
@@ -10290,6 +10315,8 @@ components:
                 type: string
               code:
                 type: string
+              field:
+                type: string
               message:
                 type: string
             required:
@@ -10981,10 +11008,10 @@ components:
               operator:
                 type: string
                 minLength: 1
-                description: "One of: equals, not_equals, contains, not_contains, contains_any, not_contains_any, starts_with, ends_with, gt, gte, lt, lte, between, is_true, is_false, in, not_in, is_empty, not_exists, is_not_empty, exists, is_set, before, after, on_date. Unrecognized operators are ignored (the clause is dropped), so stick to this list — e.g. use `equals`, not `eq`."
+                description: "Allowed operators depend on the field's type — string: equals, not_equals, contains, not_contains, contains_any, not_contains_any, starts_with, ends_with, is_empty, is_not_empty, in, not_in, exists, not_exists; number: equals, not_equals, gt, gte, lt, lte, between, is_empty, is_not_empty; date: on_date, before, after, between, is_empty, is_not_empty; bool: is_true, is_false (`equals` with true/false/1/0 is accepted as an alias). Any other operator, or an operator on a field type that does not support it, is rejected with 400 INVALID_REQUEST (`param: \"filter\"`) — nothing is silently ignored. E.g. use `equals`, not `eq`."
               value:
                 type: string
-                description: The comparison value, as a string. Unary operators (`is_set`, `is_empty`, `exists`, …) ignore it — pass "".
+                description: The comparison value, as a string. `in`, `not_in`, `contains_any` and `not_contains_any` take a comma-separated list; `between` takes exactly two comma-separated bounds (e.g. "10,30"). Unary operators (`is_empty`, `is_not_empty`, `exists`, `not_exists`, `is_true`, `is_false`) ignore it — pass "".
             required:
               - field
               - operator
@@ -10994,6 +11021,7 @@ components:
         audienceId:
           type: string
           minLength: 1
+          description: Scope to a saved audience's members. The audience's stored filter set is evaluated as one unit with its own `logicalOperator` (an OR audience stays an OR), then ANDed with `filters`. Unknown / cross-brand id, or an audience a send would refuse (unusable filters, a cohort still building) → 400.
         logic:
           type: string
           enum:
@@ -11108,6 +11136,8 @@ components:
               email:
                 type: string
               code:
+                type: string
+              field:
                 type: string
               message:
                 type: string
@@ -11490,6 +11520,7 @@ components:
                       from:
                         type: string
                         format: date-time
+                        description: Window start. Required unless `sendId` is set — then it defaults to one hour before that send was dispatched (its scheduled time for a scheduled send; a completion pass's re-stamped start is never used), and `to` to now.
                       to:
                         type: string
                         format: date-time
@@ -11498,6 +11529,7 @@ components:
                         type: string
                         minLength: 1
                         maxLength: 64
+                        description: Scope to one send (the id in /analytics/sends/{sendId}). With `sendId` the window may be omitted.
                       emailId:
                         type: string
                         minLength: 1
@@ -11527,6 +11559,16 @@ components:
                         description: Recipient rule tokens using the Events-page grammar.
                       includeMachineClicks:
                         type: boolean
+                      exclude:
+                        type: object
+                        properties:
+                          baseAudienceId:
+                            type: string
+                            minLength: 1
+                            maxLength: 64
+                        required:
+                          - baseAudienceId
+                        additionalProperties: false
                     required:
                       - eventTypes
                       - from
@@ -11729,6 +11771,7 @@ components:
                 from:
                   type: string
                   format: date-time
+                  description: Window start. Required unless `sendId` is set — then it defaults to one hour before that send was dispatched (its scheduled time for a scheduled send; a completion pass's re-stamped start is never used), and `to` to now.
                 to:
                   type: string
                   format: date-time
@@ -11737,6 +11780,7 @@ components:
                   type: string
                   minLength: 1
                   maxLength: 64
+                  description: Scope to one send (the id in /analytics/sends/{sendId}). With `sendId` the window may be omitted.
                 emailId:
                   type: string
                   minLength: 1
@@ -11766,6 +11810,16 @@ components:
                   description: Recipient rule tokens using the Events-page grammar.
                 includeMachineClicks:
                   type: boolean
+                exclude:
+                  type: object
+                  properties:
+                    baseAudienceId:
+                      type: string
+                      minLength: 1
+                      maxLength: 64
+                  required:
+                    - baseAudienceId
+                  additionalProperties: false
               required:
                 - eventTypes
                 - from
@@ -11891,7 +11945,8 @@ components:
                       - before
                       - after
                       - on_date
-                  value: {}
+                  value:
+                    description: "Operator-dependent: `between` takes `[min, max]` or `{min, max}`; `in`/`not_in`/`contains_any`/`not_contains_any` take a list; unary operators (`is_empty`, `is_not_empty`, `exists`, `is_true`, …) omit it."
                   type:
                     type: string
                     description: The field's value type — set `number`, `date`, or `boolean` for typed comparisons (dates are stored as epoch-ms, so a string `equals` on a date never matches). Omit for plain string fields.
@@ -12035,6 +12090,7 @@ components:
                 from:
                   type: string
                   format: date-time
+                  description: Window start. Required unless `sendId` is set — then it defaults to one hour before that send was dispatched (its scheduled time for a scheduled send; a completion pass's re-stamped start is never used), and `to` to now.
                 to:
                   type: string
                   format: date-time
@@ -12043,6 +12099,7 @@ components:
                   type: string
                   minLength: 1
                   maxLength: 64
+                  description: Scope to one send (the id in /analytics/sends/{sendId}). With `sendId` the window may be omitted.
                 emailId:
                   type: string
                   minLength: 1
@@ -12072,6 +12129,16 @@ components:
                   description: Recipient rule tokens using the Events-page grammar.
                 includeMachineClicks:
                   type: boolean
+                exclude:
+                  type: object
+                  properties:
+                    baseAudienceId:
+                      type: string
+                      minLength: 1
+                      maxLength: 64
+                  required:
+                    - baseAudienceId
+                  additionalProperties: false
               required:
                 - eventTypes
                 - from
@@ -12159,6 +12226,7 @@ components:
             from:
               type: string
               format: date-time
+              description: Window start. Required unless `sendId` is set — then it defaults to one hour before that send was dispatched (its scheduled time for a scheduled send; a completion pass's re-stamped start is never used), and `to` to now.
             to:
               type: string
               format: date-time
@@ -12167,6 +12235,7 @@ components:
               type: string
               minLength: 1
               maxLength: 64
+              description: Scope to one send (the id in /analytics/sends/{sendId}). With `sendId` the window may be omitted.
             emailId:
               type: string
               minLength: 1
@@ -12196,9 +12265,17 @@ components:
               description: Recipient rule tokens using the Events-page grammar.
             includeMachineClicks:
               type: boolean
+            exclude:
+              type: object
+              properties:
+                baseAudienceId:
+                  type: string
+                  minLength: 1
+                  maxLength: 64
+              additionalProperties: false
+              description: "COMPLEMENT mode: the audience becomes every contact of `baseAudienceId` who did NOT match the cohort — a copy of the base audience's filters (taken when the build starts; later edits to the base do not propagate) AND the cohort field is empty. `baseAudienceId` defaults to the send's audience when `sendId` is set; `\"all\"` means the whole brand. The base must combine its filters with AND (or have one filter) and must not be an event snapshot that is still building."
           required:
             - eventTypes
-            - from
           additionalProperties: false
         name:
           type: string
@@ -12253,7 +12330,8 @@ components:
                       - before
                       - after
                       - on_date
-                  value: {}
+                  value:
+                    description: "Operator-dependent: `between` takes `[min, max]` or `{min, max}`; `in`/`not_in`/`contains_any`/`not_contains_any` take a list; unary operators (`is_empty`, `is_not_empty`, `exists`, `is_true`, …) omit it."
                   type:
                     type: string
                     description: The field's value type — set `number`, `date`, or `boolean` for typed comparisons (dates are stored as epoch-ms, so a string `equals` on a date never matches). Omit for plain string fields.
@@ -13140,6 +13218,7 @@ components:
           additionalProperties: false
       required:
         - data
+        - pagination
       additionalProperties: false
     BrandGetResponse:
       type: object
@@ -31718,7 +31797,7 @@ paths:
 
         **Use when** auditing what an automation did, following a fire (`triggerInstanceId`) to its runs, or watching a test run.
 
-        **Input** `automationId`, `triggerEventId`, `triggerInstanceId`, `status`, `mode` (`live` | `test`), an inclusive `from`/`to` window on `startedAt`, `limit` and `cursor` (an opaque native cursor).
+        **Input** `automationId`, `triggerEventId`, `triggerInstanceId`, `recipientEmail` (one contact's run history, matched case-insensitively), `status`, `mode` (`live` | `test`), an inclusive `from`/`to` window on `startedAt`, `limit` and `cursor` (an opaque native cursor).
 
         **Returns** `200` with a page of run rows.
 
@@ -31746,6 +31825,14 @@ paths:
             maxLength: 64
           required: false
           name: triggerInstanceId
+          in: query
+        - schema:
+            type: string
+            format: email
+            description: "Only runs for this recipient, matched case-insensitively against each run's stored `recipientEmail` column. A run written before that column existed carries the address only inside its trigger payload: the row still REPORTS `recipientEmail` (the projection reads the payload as a fallback), but the filter cannot reach it until `migration_mutations:backfillRecipientEmail` has run on the deployment."
+          required: false
+          description: "Only runs for this recipient, matched case-insensitively against each run's stored `recipientEmail` column. A run written before that column existed carries the address only inside its trigger payload: the row still REPORTS `recipientEmail` (the projection reads the payload as a fallback), but the filter cannot reach it until `migration_mutations:backfillRecipientEmail` has run on the deployment."
+          name: recipientEmail
           in: query
         - schema:
             type: string
@@ -37824,7 +37911,9 @@ paths:
         - Contacts
       summary: Create or update contacts
       description: |-
-        Upserts a single contact OR a batch (`{ contacts: [...] }`, up to 1000 rows). Unknown custom fields auto-create field definitions on the brand.
+        Upserts a single contact OR a batch (`{ contacts: [...] }`, up to 1000 rows). Unknown custom fields auto-create field definitions on the brand, typed from the batch (native booleans/numbers, ISO-date strings → `date`, anything else `string`).
+
+        Custom-field values are coerced to the definition's type (dates → epoch ms, `"1,234"` → 1234, `yes`/`no` → booleans). A value that cannot be coerced (`"$49"` in a number field) is a `409 FIELD_TYPE_MISMATCH` on a single upsert and a per-row `errors[]` entry (`code: FIELD_TYPE_MISMATCH`, `field`) in a batch — the other rows still land.
 
         Optional `consent: { source: "api" | "form" | "import", capturedAt?, policyVersion?, evidence? }` records marketing consent provenance on the contact (per row, or once at batch level as the default). It never changes `subscribed`. An inline marketing send later needs the contact to be subscribed, and warns when no record exists.
 
@@ -37999,12 +38088,16 @@ paths:
                 summary:
                   inserted: 1
                   updated: 0
-                  failed: 1
+                  failed: 2
                 fieldsCreated: []
                 errors:
                   - email: not-an-email
                     code: INVALID_EMAIL
                     message: not-an-email is not a valid email address.
+                  - email: john@example.com
+                    code: FIELD_TYPE_MISMATCH
+                    field: customFields.plan
+                    message: Field 'customFields.plan' is type 'number' but received string '$49'.
                 warnings: []
         "400":
           description: |-
@@ -39922,11 +40015,11 @@ paths:
         - Contacts
       summary: Get contacts
       description: |-
-        The single "Get Contacts" read. Structured search over the brand’s contacts: free-text `search`, typed `filters` (`{ field, operator, value }` combined with `logic: "and" | "or"`), `sort` + `order`, and cursor pagination. Returns `{ data, pagination }`.
+        The single "Get Contacts" read. Structured search over the brand’s contacts: free-text `search`, `filters` (`{ field, operator, value }` combined with `logic: "and" | "or" | "none"`; the allowed operators depend on the field’s type — see the `operator` schema — and an unsupported pairing is a `400`, never a dropped clause), `sort` + `order`, and cursor pagination. Returns `{ data, pagination }`.
 
         Folds the former `GET /v1/contacts` (omit all filters to list everything) and `GET /v1/contacts/{email}` (use `filters: [{ field: "email", operator: "equals", value: "…" }]`).
 
-        Pass an optional `audienceId` to scope the search to a saved audience’s members — its stored filter is ANDed with `filters` (an unknown / cross-brand id → `400`).
+        Pass an optional `audienceId` to scope the search to a saved audience’s members — its stored filter set is evaluated as one unit with its own `logicalOperator` (an OR audience stays an OR) and then ANDed with `filters`, so the page is exactly who a send to that audience reaches (an unknown / cross-brand id, or an audience a send would refuse → `400`).
 
         Set `count: true` to get `{ count }` instead of a page.
       requestBody:
@@ -40785,7 +40878,10 @@ paths:
       tags:
         - Contacts
       summary: Bulk-import contacts from CSV
-      description: 'Parse a raw CSV string and upsert the rows as contacts (≤ 1000). By default each column header maps to a field of the same name (`email` is required); pass `mapping` to remap columns explicitly. Rows with a missing/invalid email are SKIPPED (counted in `summary.skipped`), not errored; disposable-domain rows are imported with `validationStatus: "risky"` (deliverable but flagged). Optional `consent` (typically `{ "source": "import" }`) stamps a marketing consent record on every imported row. Returns the same `{ summary, fieldsCreated, errors, warnings }` as batch-create — `207` when some rows fail validation.'
+      description: |-
+        Parse a raw CSV string and upsert the rows as contacts (≤ 1000). By default each column header maps to a field of the same name (`email` is required); pass `mapping` to remap columns explicitly. Rows with a missing/invalid email are SKIPPED (counted in `summary.skipped`), not errored; disposable-domain rows are imported with `validationStatus: "risky"` (deliverable but flagged). Returns the same `{ summary, fieldsCreated, errors, warnings }` as batch-create — `207` when some rows fail.
+
+        CSV cells are text: a column mapped onto an EXISTING field is coerced to that field's type (dates → epoch ms, `1,234` → 1234, `yes`/`no` → booleans), and a cell that cannot be coerced (`$49` in a number column) fails ITS row with a per-row `errors[]` entry (`code: FIELD_TYPE_MISMATCH`, `field`) while the other rows still land. An undeclared column is created as a `string` field unless every value is an ISO date (→ `date`); predeclare `number` / `bool` columns with `POST /v1/fields`.
       requestBody:
         required: true
         content:
@@ -40916,6 +41012,8 @@ paths:
                           type: string
                         code:
                           type: string
+                        field:
+                          type: string
                         message:
                           type: string
                       required:
@@ -40990,9 +41088,10 @@ paths:
                   skipped: 2
                 fieldsCreated: []
                 errors:
-                  - email: dupe@example.com
-                    code: DUPLICATE_EMAILS_IN_BATCH
-                    message: Email 'dupe@example.com' appears 2 times in batch.
+                  - email: john@example.com
+                    code: FIELD_TYPE_MISMATCH
+                    field: customFields.plan
+                    message: Field 'customFields.plan' is type 'number' but received string '$49'.
                 warnings: []
         "400":
           description: |-
@@ -45053,7 +45152,7 @@ paths:
       tags:
         - Audiences
       summary: Create an audience from analytics events
-      description: "Creates a frozen audience snapshot from the same membership filters as `/events`: 1–10 canonical event types, an absolute window up to 90 days, optional send/email ids, multi-select automation/audience ids, recipient include/exclude rules, and the machine-click policy. Every call generates a unique date field; each matching existing contact stores its latest matching-event timestamp. Returns `201` immediately with `materializationStatus: pending` plus build progress. The audience is unavailable for campaign, smart-send, and automation delivery until the status becomes `ready`. Failed/partial/stale builds remain non-sendable and partial values are cleaned. Poll `GET /v1/audiences/{audienceId}…&include=build`."
+      description: "Creates a frozen audience snapshot from the same membership filters as `/events`: 1–10 canonical event types, an absolute window up to 90 days (`from` may be omitted when `sendId` is set — the window then derives from that send), optional send/email ids, multi-select automation/audience ids, recipient include/exclude rules, and the machine-click policy. `cohort.exclude` builds the COMPLEMENT instead: every member of a base audience (default: the send's audience; `\"all\"` = the whole brand) who did NOT match — the base's clauses are copied at build time AND the cohort field must be empty — which is how to re-send after a cancelled send (`eventTypes: [\"sent\"]`, the `sendId`, `exclude: {}`). Every call generates a unique date field; each matching existing contact stores its latest matching-event timestamp. Returns `201` immediately with `materializationStatus: pending` plus build progress. The audience is unavailable for campaign, smart-send, and automation delivery until the status becomes `ready`. Failed/partial/stale builds remain non-sendable and partial values are cleaned. Poll `GET /v1/audiences/{audienceId}?include=build`."
       parameters:
         - name: Idempotency-Key
           in: header
@@ -45708,6 +45807,8 @@ paths:
           description: |-
             `AUDIENCE_BUILD_ACTIVE`: The audience is being built, so it cannot be changed, copied, or deleted yet.
 
+            `AUDIENCE_EDIT_CONFLICT`: The audience changed since it was read; the update was not applied.
+
             `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
 
             `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
@@ -45732,6 +45833,15 @@ paths:
                       type: conflict
                       message: The audience is being built, so it cannot be changed, copied, or deleted yet.
                       suggestion: Wait for the build to finish (poll GET /v1/audiences/{audienceId}?include=build), then retry.
+                      docs: https://docs.brew.new/api-reference/api/errors
+                audienceEditConflict:
+                  summary: AUDIENCE_EDIT_CONFLICT
+                  value:
+                    error:
+                      code: AUDIENCE_EDIT_CONFLICT
+                      type: conflict
+                      message: The audience changed since it was read; the update was not applied.
+                      suggestion: Reload the latest audience filters and retry.
                       docs: https://docs.brew.new/api-reference/api/errors
                 idempotencyConflict:
                   summary: IDEMPOTENCY_CONFLICT
@@ -46473,6 +46583,8 @@ paths:
           description: |-
             `DOMAIN_ALREADY_EXISTS`: The brand already has this domain.
 
+            `DOMAIN_CLAIMED_ELSEWHERE`: The domain is registered in another Brew workspace.
+
             `DOMAIN_OTHER_BRAND`: The domain is attached to a different brand in this workspace.
 
             `DOMAIN_VERIFIED_ELSEWHERE`: Another workspace already verified this domain.
@@ -46501,6 +46613,15 @@ paths:
                       type: conflict
                       message: The brand already has this domain.
                       suggestion: Fetch the existing domain with GET /v1/domains.
+                      docs: https://docs.brew.new/api-reference/api/errors
+                domainClaimedElsewhere:
+                  summary: DOMAIN_CLAIMED_ELSEWHERE
+                  value:
+                    error:
+                      code: DOMAIN_CLAIMED_ELSEWHERE
+                      type: conflict
+                      message: The domain is registered in another Brew workspace.
+                      suggestion: Remove it from the other workspace first, or contact support to move it.
                       docs: https://docs.brew.new/api-reference/api/errors
                 domainOtherBrand:
                   summary: DOMAIN_OTHER_BRAND
@@ -47277,6 +47398,8 @@ paths:
           description: |-
             `DOMAIN_ALREADY_EXISTS`: The brand already has this domain.
 
+            `DOMAIN_CLAIMED_ELSEWHERE`: The domain is registered in another Brew workspace.
+
             `DOMAIN_OTHER_BRAND`: The domain is attached to a different brand in this workspace.
 
             `DOMAIN_VERIFIED_ELSEWHERE`: Another workspace already verified this domain.
@@ -47305,6 +47428,15 @@ paths:
                       type: conflict
                       message: The brand already has this domain.
                       suggestion: Fetch the existing domain with GET /v1/domains.
+                      docs: https://docs.brew.new/api-reference/api/errors
+                domainClaimedElsewhere:
+                  summary: DOMAIN_CLAIMED_ELSEWHERE
+                  value:
+                    error:
+                      code: DOMAIN_CLAIMED_ELSEWHERE
+                      type: conflict
+                      message: The domain is registered in another Brew workspace.
+                      suggestion: Remove it from the other workspace first, or contact support to move it.
                       docs: https://docs.brew.new/api-reference/api/errors
                 domainOtherBrand:
                   summary: DOMAIN_OTHER_BRAND
@@ -47706,6 +47838,8 @@ paths:
           description: |-
             `DOMAIN_ALREADY_EXISTS`: The brand already has this domain.
 
+            `DOMAIN_CLAIMED_ELSEWHERE`: The domain is registered in another Brew workspace.
+
             `DOMAIN_OTHER_BRAND`: The domain is attached to a different brand in this workspace.
 
             `DOMAIN_VERIFIED_ELSEWHERE`: Another workspace already verified this domain.
@@ -47730,6 +47864,15 @@ paths:
                       type: conflict
                       message: The brand already has this domain.
                       suggestion: Fetch the existing domain with GET /v1/domains.
+                      docs: https://docs.brew.new/api-reference/api/errors
+                domainClaimedElsewhere:
+                  summary: DOMAIN_CLAIMED_ELSEWHERE
+                  value:
+                    error:
+                      code: DOMAIN_CLAIMED_ELSEWHERE
+                      type: conflict
+                      message: The domain is registered in another Brew workspace.
+                      suggestion: Remove it from the other workspace first, or contact support to move it.
                       docs: https://docs.brew.new/api-reference/api/errors
                 domainOtherBrand:
                   summary: DOMAIN_OTHER_BRAND
@@ -48139,6 +48282,8 @@ paths:
           description: |-
             `DOMAIN_ALREADY_EXISTS`: The brand already has this domain.
 
+            `DOMAIN_CLAIMED_ELSEWHERE`: The domain is registered in another Brew workspace.
+
             `DOMAIN_OTHER_BRAND`: The domain is attached to a different brand in this workspace.
 
             `DOMAIN_VERIFIED_ELSEWHERE`: Another workspace already verified this domain.
@@ -48167,6 +48312,15 @@ paths:
                       type: conflict
                       message: The brand already has this domain.
                       suggestion: Fetch the existing domain with GET /v1/domains.
+                      docs: https://docs.brew.new/api-reference/api/errors
+                domainClaimedElsewhere:
+                  summary: DOMAIN_CLAIMED_ELSEWHERE
+                  value:
+                    error:
+                      code: DOMAIN_CLAIMED_ELSEWHERE
+                      type: conflict
+                      message: The domain is registered in another Brew workspace.
+                      suggestion: Remove it from the other workspace first, or contact support to move it.
                       docs: https://docs.brew.new/api-reference/api/errors
                 domainOtherBrand:
                   summary: DOMAIN_OTHER_BRAND
@@ -48740,41 +48894,48 @@ paths:
       tags:
         - Templates
       summary: List templates
-      description: Lists public email templates under `{ data, pagination }`. Each row is FULL — it carries the rendered `html` + `previewImage` plus the display metadata (`title`, `category`, `brand`, `updatedAt`), so you never need a follow-up get-one round-trip. Supports exact `?brand=` and `?category=` filters and a lightweight `?semantic=` text filter. Templates are organization-wide references (use one as `referenceEmailId` on `POST /v1/emails`).
+      description: "Lists public email templates under `{ data, pagination }`, newest first. Each row is FULL — it carries the rendered `html` + `previewImage` plus the display metadata (`title`, `category`, `brand`, `updatedAt`), so you never need a follow-up get-one round-trip. The gallery holds thousands of templates: page with `limit` (default 50, max 100) and `cursor` until `cursor` is `null`. `?brand=` (a domain) and `?category=` (a lowercase category, see the parameter) narrow it, case-insensitively; `?semantic=` ranks the gallery by relevance to a description instead of by recency. Templates are organization-wide references (use one as `referenceEmailId` on `POST /v1/emails`)."
       parameters:
         - schema:
             type: string
             minLength: 1
+            description: Only this brand's templates, by domain (e.g. `vercel.com`); case-insensitive.
           required: false
+          description: Only this brand's templates, by domain (e.g. `vercel.com`); case-insensitive.
           name: brand
           in: query
         - schema:
             type: string
             minLength: 1
+            description: "Email category, matched case-insensitively (unknown → empty page): welcome, newsletter, promotional, product-launch, product-update, order-confirmation, shipping-update, receipt, cart-abandonment, subscription, password-reset, verification, security-alert, account-update, event-invitation, event-reminder, feedback-request, re-engagement, referral, support, business, internal, notification, general."
           required: false
+          description: "Email category, matched case-insensitively (unknown → empty page): welcome, newsletter, promotional, product-launch, product-update, order-confirmation, shipping-update, receipt, cart-abandonment, subscription, password-reset, verification, security-alert, account-update, event-invitation, event-reminder, feedback-request, re-engagement, referral, support, business, internal, notification, general."
           name: category
           in: query
         - schema:
             type: string
             minLength: 1
+            maxLength: 500
+            description: Rank by relevance to this text instead of newest first (top 200; `brand`/`category` still narrow).
           required: false
+          description: Rank by relevance to this text instead of newest first (top 200; `brand`/`category` still narrow).
           name: semantic
           in: query
         - schema:
             type: integer
             minimum: 1
             maximum: 100
-            description: Page size (1-100). Defaults to 100.
+            description: "Page size, 1–100 (default 50: each row carries its full HTML)."
             example: 50
           required: false
-          description: Page size (1-100). Defaults to 100.
+          description: "Page size, 1–100 (default 50: each row carries its full HTML)."
           name: limit
           in: query
           example: 50
         - schema:
             type: string
             minLength: 1
-            maxLength: 512
+            maxLength: 8192
           required: false
           name: cursor
           in: query
@@ -48824,9 +48985,9 @@ paths:
                     previewImage: https://storage.example.com/templates/seed.png
                     updatedAt: 2026-04-08T00:00:00.000Z
                 pagination:
-                  limit: 100
-                  cursor: null
-                  hasMore: false
+                  limit: 50
+                  cursor: eyJ…
+                  hasMore: true
         "400":
           description: "`INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender."
           headers:
@@ -49010,25 +49171,19 @@ paths:
       tags:
         - Templates
       summary: List flows
-      description: "Public email flows — one brand’s real onboarding or newsletter sequence, with the day each email landed — under `{ data, pagination }`. Omit `slug` to LIST cards (filter `?brand=`, `?category=`, `?type=`; order with `?sort=newest|emails|span|remixes`; or `?semantic=` for relevance-ranked search). Pass `?slug=<brand domain>` to fetch ONE flow → `data: [flow]` with every step’s `subject`, `previewText`, `dayOffset`, `delayDays`, `category`, `previewImage` and `emailId`; add `?include=html` for each step’s rendered HTML (best-effort per step: a step whose body is no longer servable comes back without `html`). `anchor` and `steps` are detail-only — a LIST card never carries them. A flow holds at most 12 steps: capture keeps the first 12 and cuts the tail, so `emailCount: 12` means twelve **or more** were sent. A step’s `emailId` is a template reference: pass it as `referenceEmailId` on `POST /v1/emails`. For the body itself add `?include=html` here — `GET /v1/templates` lists the gallery and takes no id. Organization-wide. The list is the gallery’s own set — the same bounded corpus the site shows (a few hundred flows today) — paged with `limit`/`cursor`."
+      description: |-
+        Lists public email flows — one brand’s real onboarding or newsletter sequence, with the day each email landed — as cards under `{ data, pagination }`. Organization-wide: the same bounded corpus the gallery shows (a few hundred flows), paged with `limit`/`cursor`.
+
+        **Use when** studying how real brands sequence email to plan or remix an automation, or finding the `slug` to read one flow in full.
+
+        **Input** `brand` (exact domain), `category`, `type` (`signup` | `newsletter`), `sort` (`newest` | `emails` | `span` | `remixes`), or `semantic` for relevance-ranked search (then `sort` is ignored).
+
+        **Returns** `200` with flow cards. A card never carries `anchor` or `steps`; every card carries the `slug` that `getFlow` takes. A flow holds at most 12 steps: capture keeps the first 12 and cuts the tail, so `emailCount: 12` means twelve **or more** were sent.
+
+        **Errors** `400 INVALID_REQUEST` for an unknown query key or value.
+
+        **See also** `getFlow`, `listTemplates`.
       parameters:
-        - schema:
-            type: string
-            minLength: 1
-            maxLength: 253
-            pattern: ^[a-z0-9.-]+$
-            description: "Fetch ONE flow by its brand domain (e.g. `brew.new`) → `data: [flow]` with every `steps[]` entry. Omit to LIST."
-          required: false
-          description: "Fetch ONE flow by its brand domain (e.g. `brew.new`) → `data: [flow]` with every `steps[]` entry. Omit to LIST."
-          name: slug
-          in: query
-        - schema:
-            type: string
-            description: "Detail-only expansions, comma-separated. `html` adds each step’s rendered HTML. Rendered email is bulky — over MCP only the first step or two fit one response; the rest arrive without `html` and the summary says how many were kept. A step’s `emailId` is already a `create_email_design` reference, so reuse needs no body; for the bodies themselves call `GET /v1/flows?slug=<domain>&include=html` over REST, which has no cap. Best-effort per step: a step whose body is no longer servable comes back without `html` rather than failing the flow."
-          required: false
-          description: "Detail-only expansions, comma-separated. `html` adds each step’s rendered HTML. Rendered email is bulky — over MCP only the first step or two fit one response; the rest arrive without `html` and the summary says how many were kept. A step’s `emailId` is already a `create_email_design` reference, so reuse needs no body; for the bodies themselves call `GET /v1/flows?slug=<domain>&include=html` over REST, which has no cap. Best-effort per step: a step whose body is no longer servable comes back without `html` rather than failing the flow."
-          name: include
-          in: query
         - schema:
             type: string
             minLength: 1
@@ -49106,7 +49261,7 @@ paths:
           in: query
       responses:
         "200":
-          description: A page of flow cards, or — with `?slug=` — the one flow and its steps.
+          description: A page of flow cards.
           headers:
             x-request-id:
               schema:
@@ -49159,25 +49314,6 @@ paths:
                       - https://cdn.brew.new/email-preview-brew-3.png
                     publishedAt: 2026-09-01T12:00:00.000Z
                     updatedAt: 2026-09-01T12:00:00.000Z
-                    anchor: signedUpAt
-                    steps:
-                      - order: 1
-                        dayOffset: 0
-                        delayDays: 0
-                        subject: Welcome to Brew
-                        previewText: Here’s how to set up your first brand.
-                        category: welcome
-                        categoryLabel: Welcome
-                        emailId: pt1_k97nvhqe6xgyj67g58ajwj1tj58egexx
-                        previewImage: https://cdn.brew.new/email-preview-brew-1.png
-                      - order: 2
-                        dayOffset: 2.1
-                        delayDays: 2.1
-                        subject: Three templates to try today
-                        category: education
-                        categoryLabel: Education
-                        emailId: pt1_k97s409kdrzbeajqffq6011wfn8egmdq
-                        previewImage: https://cdn.brew.new/email-preview-brew-2.png
                 pagination:
                   limit: 100
                   cursor: null
@@ -49254,10 +49390,7 @@ paths:
                       suggestion: Check the API key format and retry with a valid active key.
                       docs: https://docs.brew.new/api-reference/api/authentication
         "403":
-          description: |-
-            `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
-
-            `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+          description: "`ACCOUNT_SUSPENDED`: The organization behind the credential is suspended."
           headers:
             x-request-id:
               schema:
@@ -49280,14 +49413,291 @@ paths:
                       message: The organization behind the credential is suspended.
                       suggestion: The organization behind this credential is suspended. Contact support@brew.new; do not retry.
                       docs: https://docs.brew.new/api-reference/api/authentication
-                insufficientPermissions:
-                  summary: INSUFFICIENT_PERMISSIONS
+        "429":
+          description: "`RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens."
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+            X-RateLimit-Limit:
+              schema:
+                type: integer
+                description: Requests allowed in the current rolling rate limit window.
+                example: 100
+              required: true
+              description: Requests allowed in the current rolling rate limit window.
+            X-RateLimit-Remaining:
+              schema:
+                type: integer
+                description: Requests remaining in the current rolling rate limit window.
+                example: 99
+              required: true
+              description: Requests remaining in the current rolling rate limit window.
+            X-RateLimit-Reset:
+              schema:
+                type: integer
+                description: Unix timestamp in seconds for when the rolling window fully resets.
+                example: 1712592360
+              required: true
+              description: Unix timestamp in seconds for when the rolling window fully resets.
+            Retry-After:
+              schema:
+                type: integer
+                description: Seconds to wait before retrying the request.
+                example: 42
+              required: true
+              description: Seconds to wait before retrying the request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                rateLimited:
+                  summary: RATE_LIMITED
                   value:
                     error:
-                      code: INSUFFICIENT_PERMISSIONS
+                      code: RATE_LIMITED
+                      type: rate_limit
+                      message: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens.
+                      suggestion: Wait for the retry window before sending another request.
+                      docs: https://docs.brew.new/api-reference/api/rate-limits
+                      retryAfter: 42
+        "500":
+          description: "`INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it."
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                internalError:
+                  summary: INTERNAL_ERROR
+                  value:
+                    error:
+                      code: INTERNAL_ERROR
+                      type: internal_error
+                      message: An unexpected failure; the x-request-id header identifies it.
+                      suggestion: Retry the request. If it keeps failing, contact support with the x-request-id header.
+                      docs: https://docs.brew.new/api-reference/api/errors
+      x-brew-scope: none
+      x-brew-brand-scope: org
+      x-brew-idempotency: none
+      x-brew-credited: false
+      x-brew-rate-policy: templates.read
+  /v1/flows/{slug}:
+    get:
+      operationId: getFlow
+      tags:
+        - Templates
+      summary: Get a flow
+      description: |-
+        One public flow as the bare row, with `anchor` (what day 0 means) and every step’s `subject`, `previewText`, `dayOffset`, `delayDays`, `category`, `previewImage` and `emailId`. Organization-wide.
+
+        **Use when** reading a sequence in full before remixing it, or fetching each step’s rendered body.
+
+        **Input** `slug` in the path: the brand domain from a `listFlows` card (case-insensitive). `include=html` adds each step’s rendered HTML, best-effort per step: a step whose body is no longer servable comes back without `html` rather than failing the flow.
+
+        **Returns** `200` with the flow. A step’s `emailId` is a template reference: pass it as `referenceEmailId` on `POST /v1/emails`; for the body itself use `include=html` here (`GET /v1/templates` lists the gallery and takes no id).
+
+        **Errors** `404 FLOW_NOT_FOUND` when the flow is unknown, private, or a step’s template was taken down (the anonymous read fails closed as a whole).
+
+        **See also** `listFlows`, `generateEmail`.
+      parameters:
+        - schema:
+            type: string
+            minLength: 1
+            maxLength: 253
+            description: The flow’s brand domain, as returned in every `GET /v1/flows` row. Case-insensitive.
+            example: brew.new
+          required: true
+          description: The flow’s brand domain, as returned in every `GET /v1/flows` row. Case-insensitive.
+          name: slug
+          in: path
+        - schema:
+            type: string
+            description: "Detail-only expansions, comma-separated. `html` adds each step’s rendered HTML. Rendered email is bulky — over MCP only the first step or two fit one response; the rest arrive without `html` and the summary says how many were kept. A step’s `emailId` is already a `create_email_design` reference, so reuse needs no body; for the bodies themselves call `GET /v1/flows/{slug}?include=html` over REST, which has no cap. Best-effort per step: a step whose body is no longer servable comes back without `html` rather than failing the flow."
+          required: false
+          description: "Detail-only expansions, comma-separated. `html` adds each step’s rendered HTML. Rendered email is bulky — over MCP only the first step or two fit one response; the rest arrive without `html` and the summary says how many were kept. A step’s `emailId` is already a `create_email_design` reference, so reuse needs no body; for the bodies themselves call `GET /v1/flows/{slug}?include=html` over REST, which has no cap. Best-effort per step: a step whose body is no longer servable comes back without `html` rather than failing the flow."
+          name: include
+          in: query
+      responses:
+        "200":
+          description: The flow, with `anchor` and every step.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+            X-RateLimit-Limit:
+              schema:
+                type: integer
+                description: Requests allowed in the current rolling rate limit window.
+                example: 100
+              required: true
+              description: Requests allowed in the current rolling rate limit window.
+            X-RateLimit-Remaining:
+              schema:
+                type: integer
+                description: Requests remaining in the current rolling rate limit window.
+                example: 99
+              required: true
+              description: Requests remaining in the current rolling rate limit window.
+            X-RateLimit-Reset:
+              schema:
+                type: integer
+                description: Unix timestamp in seconds for when the rolling window fully resets.
+                example: 1712592360
+              required: true
+              description: Unix timestamp in seconds for when the rolling window fully resets.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Flow"
+              example:
+                slug: brew.new
+                brand:
+                  name: Brew
+                  logo: https://cdn.brew.new/brand/fetched-logo/brew.new/logo.png
+                title: Brew onboarding flow
+                type: signup
+                category: welcome
+                categoryLabel: Welcome
+                emailCount: 6
+                spanDays: 14
+                remixCount: 12
+                previewImages:
+                  - https://cdn.brew.new/email-preview-brew-1.png
+                  - https://cdn.brew.new/email-preview-brew-2.png
+                  - https://cdn.brew.new/email-preview-brew-3.png
+                publishedAt: 2026-09-01T12:00:00.000Z
+                updatedAt: 2026-09-01T12:00:00.000Z
+                anchor: signedUpAt
+                steps:
+                  - order: 1
+                    dayOffset: 0
+                    delayDays: 0
+                    subject: Welcome to Brew
+                    previewText: Here’s how to set up your first brand.
+                    category: welcome
+                    categoryLabel: Welcome
+                    emailId: pt1_k97nvhqe6xgyj67g58ajwj1tj58egexx
+                    previewImage: https://cdn.brew.new/email-preview-brew-1.png
+                  - order: 2
+                    dayOffset: 2.1
+                    delayDays: 2.1
+                    subject: Three templates to try today
+                    category: education
+                    categoryLabel: Education
+                    emailId: pt1_k97s409kdrzbeajqffq6011wfn8egmdq
+                    previewImage: https://cdn.brew.new/email-preview-brew-2.png
+        "400":
+          description: "`INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender."
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                invalidRequest:
+                  summary: INVALID_REQUEST
+                  value:
+                    error:
+                      code: INVALID_REQUEST
+                      type: invalid_request
+                      message: "The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender."
+                      suggestion: Fix the field reported in `param` and retry.
+                      docs: https://docs.brew.new/api-reference/api/errors
+        "401":
+          description: |-
+            `API_KEY_REVOKED`: The API key was revoked.
+
+            `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+
+            `INVALID_API_KEY`: The API key is malformed or unknown.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                apiKeyRevoked:
+                  summary: API_KEY_REVOKED
+                  value:
+                    error:
+                      code: API_KEY_REVOKED
+                      type: authentication_error
+                      message: The API key was revoked.
+                      suggestion: Create a new active API key and retry.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                authenticationRequired:
+                  summary: AUTHENTICATION_REQUIRED
+                  value:
+                    error:
+                      code: AUTHENTICATION_REQUIRED
+                      type: authentication_error
+                      message: No API key or session accompanied the request.
+                      suggestion: Provide a valid API key or sign in with an organization session.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                invalidApiKey:
+                  summary: INVALID_API_KEY
+                  value:
+                    error:
+                      code: INVALID_API_KEY
+                      type: authentication_error
+                      message: The API key is malformed or unknown.
+                      suggestion: Check the API key format and retry with a valid active key.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+        "403":
+          description: "`ACCOUNT_SUSPENDED`: The organization behind the credential is suspended."
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                accountSuspended:
+                  summary: ACCOUNT_SUSPENDED
+                  value:
+                    error:
+                      code: ACCOUNT_SUSPENDED
                       type: authorization_error
-                      message: The credential lacks the permission scope the operation needs.
-                      suggestion: Use an API key or session with the required permission.
+                      message: The organization behind the credential is suspended.
+                      suggestion: The organization behind this credential is suspended. Contact support@brew.new; do not retry.
                       docs: https://docs.brew.new/api-reference/api/authentication
         "404":
           description: "`FLOW_NOT_FOUND`: No public flow matches that slug: it is unknown, private, or one of its steps is no longer public."
@@ -49390,7 +49800,7 @@ paths:
                       message: An unexpected failure; the x-request-id header identifies it.
                       suggestion: Retry the request. If it keeps failing, contact support with the x-request-id header.
                       docs: https://docs.brew.new/api-reference/api/errors
-      x-brew-scope: emails
+      x-brew-scope: none
       x-brew-brand-scope: org
       x-brew-idempotency: none
       x-brew-credited: false
@@ -51385,7 +51795,7 @@ paths:
       x-brew-rate-policy: brands.read
   /v1/content/generate-image:
     post:
-      operationId: generateContentImage
+      operationId: generateImage
       tags:
         - Content
       summary: Generate an image
@@ -51820,7 +52230,7 @@ paths:
       x-brew-rate-policy: content.generate
   /v1/content/gif:
     post:
-      operationId: contentGif
+      operationId: createGif
       tags:
         - Content
       summary: Generate a GIF
@@ -52255,7 +52665,7 @@ paths:
       x-brew-rate-policy: content.generate
   /v1/content/transform:
     post:
-      operationId: contentTransform
+      operationId: transformImage
       tags:
         - Content
       summary: Transform an image
@@ -52690,7 +53100,7 @@ paths:
       x-brew-rate-policy: content.transform
   /v1/content/html-to-png:
     post:
-      operationId: contentHtmlToPng
+      operationId: htmlToPng
       tags:
         - Content
       summary: Render HTML to a PNG
@@ -53125,7 +53535,7 @@ paths:
       x-brew-rate-policy: content.transform
   /v1/content/add-image:
     post:
-      operationId: contentAddImage
+      operationId: addImage
       tags:
         - Content
       summary: Add image
@@ -53673,12 +54083,7 @@ paths:
                       suggestion: Check the API key format and retry with a valid active key.
                       docs: https://docs.brew.new/api-reference/api/authentication
         "403":
-          description: |-
-            `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
-
-            `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
-
-            `ORG_SCOPE_REQUIRED`: The operation acts on the organization, so a brand-scoped credential cannot call it.
+          description: "`ACCOUNT_SUSPENDED`: The organization behind the credential is suspended."
           headers:
             x-request-id:
               schema:
@@ -53700,24 +54105,6 @@ paths:
                       type: authorization_error
                       message: The organization behind the credential is suspended.
                       suggestion: The organization behind this credential is suspended. Contact support@brew.new; do not retry.
-                      docs: https://docs.brew.new/api-reference/api/authentication
-                insufficientRole:
-                  summary: INSUFFICIENT_ROLE
-                  value:
-                    error:
-                      code: INSUFFICIENT_ROLE
-                      type: authorization_error
-                      message: "The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role)."
-                      suggestion: Ask an organization admin to run this, to add you to the brand, or to make you an admin.
-                      docs: https://docs.brew.new/api-reference/api/authentication
-                orgScopeRequired:
-                  summary: ORG_SCOPE_REQUIRED
-                  value:
-                    error:
-                      code: ORG_SCOPE_REQUIRED
-                      type: authorization_error
-                      message: The operation acts on the organization, so a brand-scoped credential cannot call it.
-                      suggestion: Create an organization-scoped API key in Settings, API, or reconnect MCP at the organization level.
                       docs: https://docs.brew.new/api-reference/api/authentication
         "429":
           description: "`RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens."
@@ -55603,7 +55990,7 @@ paths:
               example:
                 chatId: Hk2mZ8t9QbY3sW1vR0pLd
                 title: Spring launch campaign
-                modelId: anthropic/claude-opus-5
+                modelId: anthropic/claude-opus-5.5
                 updatedAt: 2026-06-30T12:34:56.789Z
                 messageCount: 18
                 artifacts:

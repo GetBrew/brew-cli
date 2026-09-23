@@ -1,6 +1,5 @@
 import type { Flow, ListFlowsInput } from '@brew.new/sdk'
 import { defineCommand } from '../../lib/define-command'
-import { CliUsageError } from '../../lib/errors'
 import {
   asSdkInput,
   flagInt,
@@ -19,29 +18,19 @@ import {
 
 /**
  * Public email flows: one brand's real onboarding or newsletter sequence,
- * with the day each email landed. Two modes on one route, as the API has
- * them — LIST cards, or `--slug` for ONE flow with every step.
+ * with the day each email landed, as LIST cards. One flow with every step is
+ * `flows get <slug>`.
  *
  * The route is organization-wide, so the SDK never sends the brand binding.
  */
 export const flowsListCommand = defineCommand({
   path: ['flows', 'list'],
   summary:
-    'List public email flows (real multi-step sequences by brand), or fetch one by --slug with every step',
+    'List public email flows (real multi-step sequences by brand) as cards; `flows get <slug>` reads one',
   sdkMethod: 'flows.list',
   route: { method: 'GET', path: '/v1/flows' },
   commandClass: 'read',
   flags: [
-    {
-      flag: '--slug <domain>',
-      summary:
-        'Fetch ONE flow by brand domain (e.g. brew.new) with its anchor + steps',
-    },
-    {
-      flag: '--include <keys>',
-      summary:
-        'Detail-only expansions, comma-separated: html (each step’s rendered HTML)',
-    },
     {
       // --brand is taken by the global brand-selection flag.
       flag: '--brand-domain <domain>',
@@ -70,14 +59,12 @@ export const flowsListCommand = defineCommand({
   ],
   examples: [
     'brew-cli flows list --type signup --sort emails',
-    'brew-cli flows list --slug brew.new --include html --json',
+    'brew-cli flows list --brand-domain brew.new --json',
     'brew-cli flows list --semantic "developer onboarding drip"',
   ],
   run: async ({ ctx, flags }) => {
     const base = await readJsonFlag(ctx, flags.input, '--input')
     const input = mergeInput(base, {
-      slug: flagString(flags.slug),
-      include: flagString(flags.include),
       brand: flagString(flags.brandDomain),
       category: flagString(flags.category),
       type: flagString(flags.type),
@@ -88,11 +75,6 @@ export const flowsListCommand = defineCommand({
     })
     const flows = ctx.client().flows
     if (flags.all === true) {
-      if (input.slug !== undefined) {
-        throw new CliUsageError(
-          '--all pages the LIST; it cannot be combined with --slug.'
-        )
-      }
       const rows = await collectAll(ctx, (cursor) =>
         flows.list(
           asSdkInput<ListFlowsInput>({
@@ -115,10 +97,6 @@ function renderFlows(rows: ReadonlyArray<Flow>): string {
   if (rows.length === 0) {
     return 'No flows found.'
   }
-  const [only] = rows
-  if (rows.length === 1 && only?.steps !== undefined) {
-    return renderSteps(only)
-  }
   return renderTable(
     rows.map((row) => ({
       slug: row.slug,
@@ -137,27 +115,4 @@ function renderFlows(rows: ReadonlyArray<Flow>): string {
       { key: 'spanDays', header: 'SPAN (DAYS)' },
     ]
   )
-}
-
-function renderSteps(flow: Flow): string {
-  const header = `${flow.title} — ${flow.brand.name} (${flow.slug}), ${flow.emailCount} emails over ${flow.spanDays} days${flow.anchor === undefined ? '' : `, day 0 = ${flow.anchor}`}`
-  const table = renderTable(
-    (flow.steps ?? []).map((step) => ({
-      order: step.order,
-      day: step.dayOffset,
-      wait: step.delayDays,
-      subject: step.subject,
-      category: step.category,
-      emailId: step.emailId,
-    })),
-    [
-      { key: 'order', header: '#' },
-      { key: 'day', header: 'DAY' },
-      { key: 'wait', header: 'WAIT' },
-      { key: 'subject', header: 'SUBJECT' },
-      { key: 'category', header: 'CATEGORY' },
-      { key: 'emailId', header: 'TEMPLATE' },
-    ]
-  )
-  return `${header}\n\n${table}`
 }

@@ -113,9 +113,9 @@ Spec parity is back to zero uncovered operations and zero phantom routes.
 - `flows list` for the public email flows gallery (`GET /v1/flows`): real
   multi-step sequences by brand, with the day each email landed. List cards
   with `--brand-domain`, `--category`, `--type signup|newsletter`,
-  `--semantic`, and `--sort newest|emails|span|remixes` (plus `--all`), or
-  fetch one flow with `--slug <brand domain>` for its `anchor` and every
-  step's `subject`, `dayOffset`, `delayDays`, `category`, `previewImage`,
+  `--semantic`, and `--sort newest|emails|span|remixes` (plus `--all`); in
+  0.7.0 one flow is `brew-cli flows get <brand domain>`, which returns its
+  `anchor` and every step's `subject`, `dayOffset`, `delayDays`, `category`, `previewImage`,
   and `emailId` (a template reference usable as `referenceEmailId` on
   `emails generate`); `--include html` adds each step's rendered HTML. The
   route is organization-wide, so the brand binding is never sent. Now bound

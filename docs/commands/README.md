@@ -2,7 +2,7 @@
 
 <!-- GENERATED FILE — do not edit. Regenerate with `bun run docs:commands`. -->
 
-125 commands. Classes: read (always safe), write
+126 commands. Classes: read (always safe), write
 (mutating, retry-safe), destructive (irreversible — the confirmation
 protocol applies: interactive y/N on a TTY, exit 4 + JSON envelope with
 a `confirmCommand` otherwise, `--yes` to proceed).
@@ -136,7 +136,8 @@ a `confirmCommand` otherwise, `--yes` to proceed).
 | `brew-cli content html-to-png` | write ($) | `POST /v1/content/html-to-png` | Render HTML to a hosted PNG |
 | `brew-cli content add-image` | write ($) | `POST /v1/content/add-image` | Mirror an external image onto Brew-hosted storage |
 | `brew-cli templates list` | read | `GET /v1/templates` | List public templates (each row carries the rendered html) |
-| `brew-cli flows list` | read | `GET /v1/flows` | List public email flows (real multi-step sequences by brand), or fetch one by --slug with every step |
+| `brew-cli flows list` | read | `GET /v1/flows` | List public email flows (real multi-step sequences by brand) as cards; `flows get <slug>` reads one |
+| `brew-cli flows get` | read | `GET /v1/flows/{slug}` | Fetch one public email flow by brand domain, with every step (day offset, wait, subject, template id) |
 | `brew-cli integrations list` | read | `GET /v1/integrations` | List the integration catalog with per-provider connected state (connect via Settings, not this CLI) |
 | `brew-cli chats get` | read | `GET /v1/chats/{chatId}` | Brand-scoped digest of a Brew chat (artifacts + transcript tail) |
 | `brew-cli health` | read | `GET /v1/health` | Check Brew API liveness (no auth required) |
@@ -2032,13 +2033,11 @@ brew-cli templates list --semantic "minimal product launch" --json
 
 ### brew-cli flows list
 
-List public email flows (real multi-step sequences by brand), or fetch one by --slug with every step
+List public email flows (real multi-step sequences by brand) as cards; `flows get <slug>` reads one
 
 - Route: `GET /v1/flows`
 - Class: read
 - SDK: `brew.flows.list(...)`
-- `--slug <domain>` — Fetch ONE flow by brand domain (e.g. brew.new) with its anchor + steps
-- `--include <keys>` — Detail-only expansions, comma-separated: html (each step’s rendered HTML)
 - `--brand-domain <domain>` — Filter the list by brand domain
 - `--category <category>` — Filter by dominant step category (welcome, newsletter, …)
 - `--type <type>` — Filter by how the sequence starts: signup | newsletter
@@ -2051,8 +2050,23 @@ List public email flows (real multi-step sequences by brand), or fetch one by --
 
 ```bash
 brew-cli flows list --type signup --sort emails
-brew-cli flows list --slug brew.new --include html --json
+brew-cli flows list --brand-domain brew.new --json
 brew-cli flows list --semantic "developer onboarding drip"
+```
+
+### brew-cli flows get
+
+Fetch one public email flow by brand domain, with every step (day offset, wait, subject, template id)
+
+- Route: `GET /v1/flows/{slug}`
+- Class: read
+- SDK: `brew.flows.get(...)`
+- Argument `slug` — The brand domain a `flows list` card carries (e.g. brew.new)
+- `--include <keys>` — Comma-separated expansions: html (each step’s rendered HTML, best-effort per step)
+
+```bash
+brew-cli flows get brew.new
+brew-cli flows get brew.new --include html --json
 ```
 
 ### brew-cli integrations list

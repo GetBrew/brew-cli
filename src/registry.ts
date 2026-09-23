@@ -112,6 +112,7 @@ import { fieldsCreateCommand } from './commands/fields/create'
 import { fieldsDeleteCommand } from './commands/fields/delete'
 import { fieldsGetCommand } from './commands/fields/get'
 import { fieldsListCommand } from './commands/fields/list'
+import { flowsGetCommand } from './commands/flows/get'
 import { flowsListCommand } from './commands/flows/list'
 import { healthCommand } from './commands/health'
 import { integrationsListCommand } from './commands/integrations/list'
@@ -251,6 +252,7 @@ export const ALL_COMMANDS: readonly CommandSpec[] = [
   contentAddImageCommand,
   templatesListCommand,
   flowsListCommand,
+  flowsGetCommand,
   integrationsListCommand,
   chatsGetCommand,
   healthCommand,
