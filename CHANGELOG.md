@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- `@brew.new/sdk` `^9.3.0`: the typed `automations triggers fire` now reports
+  a trigger-fire refusal as itself — `code INVALID_PAYLOAD`, `type
+  invalid_request`, the field errors under `details`, no retry advice — the
+  SDK maps the legacy fire envelope from 9.3.0 on (the CLI already read
+  `details` structurally). Pinned by an MSW test on the typed command.
 - **Fixed**: a trigger-fire refusal is reported as itself. `POST
   /v1/automations/triggers/{id}/fire` answers with the legacy fire envelope
   (top-level `code`/`message`/`details`, no `error` wrapper, no `type`).
