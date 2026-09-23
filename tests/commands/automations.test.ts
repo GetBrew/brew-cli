@@ -461,6 +461,71 @@ describe('automations triggers fire (confirmation protocol)', () => {
     expect(result.code).toBe(0)
     expect(body).toEqual({ payload: { userId: 'u_1' } })
   })
+
+  it('reports a payload refusal as itself, with the field errors (SDK legacy-envelope mapping)', async () => {
+    // The typed path goes through @brew.new/sdk. Before 9.3.0 the legacy
+    // fire envelope fell through to `unknown_error` / `internal_error` +
+    // retry advice, and `details.errors[]` was unreachable.
+    server.use(
+      http.post(`${API}/v1/automations/triggers/tri_signup/fire`, () =>
+        HttpResponse.json(
+          {
+            success: false,
+            status: 'payload_mismatch',
+            code: 'INVALID_PAYLOAD',
+            message: 'Payload validation failed.',
+            triggerEventId: 'tri_signup',
+            receivedAt: '2026-09-20T10:00:00.000Z',
+            details: {
+              errors: [
+                {
+                  code: 'invalid_type',
+                  field: 'code',
+                  message: 'Field "code" must be a string',
+                  expectedType: 'string',
+                  actualType: 'number',
+                },
+              ],
+              warnings: [],
+              payloadSchema: {
+                type: 'object',
+                fields: [{ key: 'code', type: 'string', required: true }],
+              },
+            },
+          },
+          {
+            status: 400,
+            headers: { 'x-request-id': 'req_0ee060a1c22345d49734cbea819620c3' },
+          }
+        )
+      )
+    )
+    const result = await cli([
+      'automations',
+      'triggers',
+      'fire',
+      'tri_signup',
+      '--input',
+      '{"payload":{"email":"jane@example.com","code":123}}',
+      '--yes',
+    ])
+    expect(result.code).toBe(1)
+    const parsed = JSON.parse(result.stderr) as {
+      error: Record<string, unknown> & {
+        details: { errors: Array<{ field: string }> }
+      }
+    }
+    expect(parsed.error.code).toBe('INVALID_PAYLOAD')
+    expect(parsed.error.type).toBe('invalid_request')
+    expect(parsed.error.requestId).toBe('req_0ee060a1c22345d49734cbea819620c3')
+    expect(parsed.error.details.errors.map((issue) => issue.field)).toEqual([
+      'code',
+    ])
+    expect(String(parsed.error.suggestion)).not.toMatch(/retry/i)
+    expect(parsed.error.docs).toBe(
+      'https://docs.brew.new/api-reference/public-v1/automations/fire-a-trigger'
+    )
+  })
 })
 
 describe('automations triggers contract put', () => {
@@ -568,5 +633,40 @@ describe('automations runs list', () => {
     expect(query?.get('mode')).toBe('test')
     expect(query?.get('from')).toBe('2026-08-01')
     expect(query?.get('to')).toBe('2026-08-10')
+  })
+
+  it('forwards --recipient as recipientEmail and --status canceled verbatim', async () => {
+    // `recipientEmail` is the one-contact run history the server honours
+    // since brew-v2 #1621 — a dropped flag would answer with everyone's
+    // runs. The API's status enum spells it `canceled` (one L); the help
+    // text used to say `cancelled`, the one value the server refuses.
+    let query: URLSearchParams | undefined
+    server.use(
+      http.get(`${API}/v1/automations/runs`, ({ request }) => {
+        query = new URL(request.url).searchParams
+        return HttpResponse.json({
+          data: [
+            {
+              automationRunId: 'arun_2',
+              status: 'canceled',
+              recipientEmail: 'jane@example.com',
+            },
+          ],
+          pagination: PAGE_DONE,
+        })
+      })
+    )
+    const result = await cli([
+      'automations',
+      'runs',
+      'list',
+      '--recipient',
+      'jane@example.com',
+      '--status',
+      'canceled',
+    ])
+    expect(result.code).toBe(0)
+    expect(query?.get('recipientEmail')).toBe('jane@example.com')
+    expect(query?.get('status')).toBe('canceled')
   })
 })

@@ -17,6 +17,7 @@ import { audiencesGetCommand } from './commands/audiences/get'
 import { audiencesListCommand } from './commands/audiences/list'
 import { audiencesUpdateCommand } from './commands/audiences/update'
 import { automationsAudienceRunsCancelCommand } from './commands/automations/audience-runs/cancel'
+import { automationsAudienceRunsControlCommand } from './commands/automations/audience-runs/control'
 import { automationsAudienceRunsGetCommand } from './commands/automations/audience-runs/get'
 import { automationsAudienceRunsListCommand } from './commands/automations/audience-runs/list'
 import { automationsAudienceRunsPauseCommand } from './commands/automations/audience-runs/pause'
@@ -220,6 +221,7 @@ export const ALL_COMMANDS: readonly CommandSpec[] = [
   automationsAudienceRunsPauseCommand,
   automationsAudienceRunsResumeCommand,
   automationsAudienceRunsCancelCommand,
+  automationsAudienceRunsControlCommand,
   automationsTriggerInstancesListCommand,
   automationsTriggerInstancesGetCommand,
   analyticsOverviewCommand,

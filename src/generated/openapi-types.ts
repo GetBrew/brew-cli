@@ -437,7 +437,7 @@ export interface paths {
          *
          *     **Returns** campaign `202 { status: 'queued' | 'scheduled', sendId, scheduledAt?, warnings? }` (poll `getSend`; `warnings[]` carries one `CONSENT_RECORD_MISSING` per inline recipient that is a subscribed contact with no consent record); test `200 { status: 'completed', recipient }`.
          *
-         *     **Errors** `404 EMAIL_NOT_FOUND`, `DOMAIN_NOT_FOUND`, `AUDIENCE_NOT_FOUND` (a resource in another brand also surfaces as `404`); `422 EMAIL_NOT_READY`, `DOMAIN_NOT_READY`, `DOMAIN_PURPOSE_NOT_ALLOWED`, `LIQUID_RENDER_ERROR`; `422 CONSENT_REQUIRED` when an inline marketing recipient has no contact record with marketing consent and no `consent` was supplied (`details.recipients`); `422 RECIPIENT_UNSUBSCRIBED` when an inline recipient is an existing contact who opted out (`details.recipients`, never re-subscribed); `429 SEND_QUOTA_EXCEEDED` when the plan's monthly volume would be exceeded (no `Retry-After`).
+         *     **Errors** `404 EMAIL_NOT_FOUND`, `DOMAIN_NOT_FOUND`, `AUDIENCE_NOT_FOUND` (a resource in another brand also surfaces as `404`); `422 EMAIL_NOT_READY`, `DOMAIN_NOT_READY`, `DOMAIN_PURPOSE_NOT_ALLOWED`, `LIQUID_RENDER_ERROR`; `422 CONSENT_REQUIRED` when an inline marketing recipient has no contact record with marketing consent and no `consent` was supplied (`details.recipients`); `422 RECIPIENT_UNSUBSCRIBED` when an inline recipient is an existing contact who opted out (`details.recipients`, never re-subscribed); `402 SEND_QUOTA_EXCEEDED` when the plan's monthly volume would be exceeded (no `Retry-After`).
          *
          *     **See also** `listSends`, `cancelSend`, `fireTrigger`.
          */
@@ -913,7 +913,7 @@ export interface paths {
          *
          *     **Use when** auditing what an automation did, following a fire (`triggerInstanceId`) to its runs, or watching a test run.
          *
-         *     **Input** `automationId`, `triggerEventId`, `triggerInstanceId`, `status`, `mode` (`live` | `test`), an inclusive `from`/`to` window on `startedAt`, `limit` and `cursor` (an opaque native cursor).
+         *     **Input** `automationId`, `triggerEventId`, `triggerInstanceId`, `recipientEmail` (one contact's run history, matched case-insensitively), `status`, `mode` (`live` | `test`), an inclusive `from`/`to` window on `startedAt`, `limit` and `cursor` (an opaque native cursor).
          *
          *     **Returns** `200` with a page of run rows.
          *
@@ -1291,7 +1291,9 @@ export interface paths {
         put?: never;
         /**
          * Create or update contacts
-         * @description Upserts a single contact OR a batch (`{ contacts: [...] }`, up to 1000 rows). Unknown custom fields auto-create field definitions on the brand.
+         * @description Upserts a single contact OR a batch (`{ contacts: [...] }`, up to 1000 rows). Unknown custom fields auto-create field definitions on the brand, typed from the batch (native booleans/numbers, ISO-date strings → `date`, anything else `string`).
+         *
+         *     Custom-field values are coerced to the definition's type (dates → epoch ms, `"1,234"` → 1234, `yes`/`no` → booleans). A value that cannot be coerced (`"$49"` in a number field) is a `409 FIELD_TYPE_MISMATCH` on a single upsert and a per-row `errors[]` entry (`code: FIELD_TYPE_MISMATCH`, `field`) in a batch — the other rows still land.
          *
          *     Optional `consent: { source: "api" | "form" | "import", capturedAt?, policyVersion?, evidence? }` records marketing consent provenance on the contact (per row, or once at batch level as the default). It never changes `subscribed`. An inline marketing send later needs the contact to be subscribed, and warns when no record exists.
          *
@@ -1353,11 +1355,11 @@ export interface paths {
         put?: never;
         /**
          * Get contacts
-         * @description The single "Get Contacts" read. Structured search over the brand’s contacts: free-text `search`, typed `filters` (`{ field, operator, value }` combined with `logic: "and" | "or"`), `sort` + `order`, and cursor pagination. Returns `{ data, pagination }`.
+         * @description The single "Get Contacts" read. Structured search over the brand’s contacts: free-text `search`, `filters` (`{ field, operator, value }` combined with `logic: "and" | "or" | "none"`; the allowed operators depend on the field’s type — see the `operator` schema — and an unsupported pairing is a `400`, never a dropped clause), `sort` + `order`, and cursor pagination. Returns `{ data, pagination }`.
          *
          *     Folds the former `GET /v1/contacts` (omit all filters to list everything) and `GET /v1/contacts/{email}` (use `filters: [{ field: "email", operator: "equals", value: "…" }]`).
          *
-         *     Pass an optional `audienceId` to scope the search to a saved audience’s members — its stored filter is ANDed with `filters` (an unknown / cross-brand id → `400`).
+         *     Pass an optional `audienceId` to scope the search to a saved audience’s members — its stored filter set is evaluated as one unit with its own `logicalOperator` (an OR audience stays an OR) and then ANDed with `filters`, so the page is exactly who a send to that audience reaches (an unknown / cross-brand id, or an audience a send would refuse → `400`).
          *
          *     Set `count: true` to get `{ count }` instead of a page.
          */
@@ -1399,7 +1401,9 @@ export interface paths {
         put?: never;
         /**
          * Bulk-import contacts from CSV
-         * @description Parse a raw CSV string and upsert the rows as contacts (≤ 1000). By default each column header maps to a field of the same name (`email` is required); pass `mapping` to remap columns explicitly. Rows with a missing/invalid email are SKIPPED (counted in `summary.skipped`), not errored; disposable-domain rows are imported with `validationStatus: "risky"` (deliverable but flagged). Optional `consent` (typically `{ "source": "import" }`) stamps a marketing consent record on every imported row. Returns the same `{ summary, fieldsCreated, errors, warnings }` as batch-create — `207` when some rows fail validation.
+         * @description Parse a raw CSV string and upsert the rows as contacts (≤ 1000). By default each column header maps to a field of the same name (`email` is required); pass `mapping` to remap columns explicitly. Rows with a missing/invalid email are SKIPPED (counted in `summary.skipped`), not errored; disposable-domain rows are imported with `validationStatus: "risky"` (deliverable but flagged). Returns the same `{ summary, fieldsCreated, errors, warnings }` as batch-create — `207` when some rows fail.
+         *
+         *     CSV cells are text: a column mapped onto an EXISTING field is coerced to that field's type (dates → epoch ms, `1,234` → 1234, `yes`/`no` → booleans), and a cell that cannot be coerced (`$49` in a number column) fails ITS row with a per-row `errors[]` entry (`code: FIELD_TYPE_MISMATCH`, `field`) while the other rows still land. An undeclared column is created as a `string` field unless every value is an ISO date (→ `date`); predeclare `number` / `bool` columns with `POST /v1/fields`.
          */
         post: operations["importContactsCsv"];
         delete?: never;
@@ -1569,7 +1573,7 @@ export interface paths {
         put?: never;
         /**
          * Create an audience from analytics events
-         * @description Creates a frozen audience snapshot from the same membership filters as `/events`: 1–10 canonical event types, an absolute window up to 90 days, optional send/email ids, multi-select automation/audience ids, recipient include/exclude rules, and the machine-click policy. Every call generates a unique date field; each matching existing contact stores its latest matching-event timestamp. Returns `201` immediately with `materializationStatus: pending` plus build progress. The audience is unavailable for campaign, smart-send, and automation delivery until the status becomes `ready`. Failed/partial/stale builds remain non-sendable and partial values are cleaned. Poll `GET /v1/audiences/{audienceId}…&include=build`.
+         * @description Creates a frozen audience snapshot from the same membership filters as `/events`: 1–10 canonical event types, an absolute window up to 90 days (`from` may be omitted when `sendId` is set — the window then derives from that send), optional send/email ids, multi-select automation/audience ids, recipient include/exclude rules, and the machine-click policy. `cohort.exclude` builds the COMPLEMENT instead: every member of a base audience (default: the send's audience; `"all"` = the whole brand) who did NOT match — the base's clauses are copied at build time AND the cohort field must be empty — which is how to re-send after a cancelled send (`eventTypes: ["sent"]`, the `sendId`, `exclude: {}`). Every call generates a unique date field; each matching existing contact stores its latest matching-event timestamp. Returns `201` immediately with `materializationStatus: pending` plus build progress. The audience is unavailable for campaign, smart-send, and automation delivery until the status becomes `ready`. Failed/partial/stale builds remain non-sendable and partial values are cleaned. Poll `GET /v1/audiences/{audienceId}?include=build`.
          */
         post: operations["createAudienceFromEvents"];
         delete?: never;
@@ -1719,7 +1723,7 @@ export interface paths {
         };
         /**
          * List templates
-         * @description Lists public email templates under `{ data, pagination }`. Each row is FULL — it carries the rendered `html` + `previewImage` plus the display metadata (`title`, `category`, `brand`, `updatedAt`), so you never need a follow-up get-one round-trip. Supports exact `?brand=` and `?category=` filters and a lightweight `?semantic=` text filter. Templates are organization-wide references (use one as `referenceEmailId` on `POST /v1/emails`).
+         * @description Lists public email templates under `{ data, pagination }`, newest first. Each row is FULL — it carries the rendered `html` + `previewImage` plus the display metadata (`title`, `category`, `brand`, `updatedAt`), so you never need a follow-up get-one round-trip. The gallery holds thousands of templates: page with `limit` (default 50, max 100) and `cursor` until `cursor` is `null`. `?brand=` (a domain) and `?category=` (a lowercase category, see the parameter) narrow it, case-insensitively; `?semantic=` ranks the gallery by relevance to a description instead of by recency. Templates are organization-wide references (use one as `referenceEmailId` on `POST /v1/emails`).
          */
         get: operations["listTemplates"];
         put?: never;
@@ -1739,9 +1743,49 @@ export interface paths {
         };
         /**
          * List flows
-         * @description Public email flows — one brand’s real onboarding or newsletter sequence, with the day each email landed — under `{ data, pagination }`. Omit `slug` to LIST cards (filter `?brand=`, `?category=`, `?type=`; order with `?sort=newest|emails|span|remixes`; or `?semantic=` for relevance-ranked search). Pass `?slug=<brand domain>` to fetch ONE flow → `data: [flow]` with every step’s `subject`, `previewText`, `dayOffset`, `delayDays`, `category`, `previewImage` and `emailId`; add `?include=html` for each step’s rendered HTML (best-effort per step: a step whose body is no longer servable comes back without `html`). `anchor` and `steps` are detail-only — a LIST card never carries them. A flow holds at most 12 steps: capture keeps the first 12 and cuts the tail, so `emailCount: 12` means twelve **or more** were sent. A step’s `emailId` is a template reference: use it as `referenceEmailId` on `POST /v1/emails`, or look it up on `GET /v1/templates`. Organization-wide. The list is the gallery’s own set — the same bounded corpus the site shows (a few hundred flows today) — paged with `limit`/`cursor`.
+         * @description Lists public email flows, one brand’s real onboarding or newsletter sequence with the day each email landed, as cards under `{ data, pagination }`. Organization-wide: the same bounded corpus the gallery shows (a few hundred flows), paged with `limit`/`cursor`.
+         *
+         *     **Use when** studying how real brands sequence email to plan or remix an automation, or finding the `slug` to read one flow in full.
+         *
+         *     **Input** `brand` (exact domain), `category`, `type` (`signup` | `newsletter`), `sort` (`newest` | `emails` | `span` | `remixes`), or `semantic` for relevance-ranked search (then `sort` is ignored).
+         *
+         *     **Returns** `200` with flow cards. A card never carries `anchor` or `steps`; every card carries the `slug` that `getFlow` takes. A flow holds at most 12 steps: capture keeps the first 12 and cuts the tail, so `emailCount: 12` means twelve **or more** were sent.
+         *
+         *     **Errors** `400 INVALID_REQUEST` for an unknown query key or value.
+         *
+         *     **See also** `getFlow`, `listTemplates`.
          */
         get: operations["listFlows"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/flows/{slug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get a flow
+         * @description One public flow as the bare row, with `anchor` (what day 0 means) and every step’s `subject`, `previewText`, `dayOffset`, `delayDays`, `category`, `previewImage` and `emailId`. Organization-wide.
+         *
+         *     **Use when** reading a sequence in full before remixing it, or fetching each step’s rendered body.
+         *
+         *     **Input** `slug` in the path: the brand domain from a `listFlows` card (case-insensitive). `include=html` adds each step’s rendered HTML, best-effort per step: a step whose body is no longer servable comes back without `html` rather than failing the flow.
+         *
+         *     **Returns** `200` with the flow. A step’s `emailId` is a template reference: pass it as `referenceEmailId` on `POST /v1/emails`; for the body itself use `include=html` here (`GET /v1/templates` lists the gallery and takes no id).
+         *
+         *     **Errors** `404 FLOW_NOT_FOUND` when the flow is unknown, private, or a step’s template was taken down (the anonymous read fails closed as a whole).
+         *
+         *     **See also** `listFlows`, `generateEmail`.
+         */
+        get: operations["getFlow"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1861,7 +1905,7 @@ export interface paths {
          * Generate an image
          * @description Generates an image via the Brew AI image pipeline. `text-to-image` (default) creates from a prompt; `image-editing` edits `image1` (required) guided by the prompt. Returns a CDN-hosted URL. Usage-metered: charges the actual image gateway cost (no fixed price).
          */
-        post: operations["generateContentImage"];
+        post: operations["generateImage"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1881,7 +1925,7 @@ export interface paths {
          * Generate a GIF
          * @description Produces a looping animated GIF (5-second source clip), routed by the `from` discriminator: `prompt` generates an on-brand still then animates it, `image` animates a source image (both via the AI gif workflow), and `video` converts a source MP4. Aspect ratio is one of `16:9`, `9:16`, `1:1`. Returns CDN-hosted `gifUrl` (plus `videoUrl` and motion metadata for the AI sources). Credit-metered (fixed cost: prompt 20, image 10, video 10).
          */
-        post: operations["contentGif"];
+        post: operations["createGif"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1901,7 +1945,7 @@ export interface paths {
          * Transform an image
          * @description Deterministic image transform routed by the `operation` discriminator: `optimize` rehosts a palette PNG (resize ≤1200px), `resize` produces exact dimensions via the vision-guided fal pipeline (Sharp cover-crop fallback), `remove_background` returns a transparent PNG cutout (Bria RMBG 2.0). Returns the CDN-hosted `url` + dimensions. Credit-metered (fixed cost: optimize 1, resize 2, remove_background 1).
          */
-        post: operations["contentTransform"];
+        post: operations["transformImage"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1921,7 +1965,7 @@ export interface paths {
          * Render HTML to a PNG
          * @description Renders an HTML document to a PNG screenshot hosted on the CDN. Credit-metered (fixed cost).
          */
-        post: operations["contentHtmlToPng"];
+        post: operations["htmlToPng"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1941,7 +1985,7 @@ export interface paths {
          * Add image
          * @description Adds image URLs to the brand image library: fetches them, optimizes them, stores them, and vector-indexes them so the email agent can find them. Pass `imageUrl` for one synchronous import or `imageUrls` for up to 100 images in a durable background import. Free; no credits are charged.
          */
-        post: operations["contentAddImage"];
+        post: operations["addImage"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3101,13 +3145,17 @@ export interface components {
                 status: "queued" | "running" | "completed" | "partially_completed" | "failed";
                 cohort: {
                     eventTypes: ("sent" | "delivered" | "delivery_delayed" | "opened" | "clicked" | "bounced" | "complained" | "failed" | "skipped" | "unsubscribed")[];
-                    /** Format: date-time */
+                    /**
+                     * Format: date-time
+                     * @description Window start. Required unless `sendId` is set — then it defaults to one hour before that send was dispatched (its scheduled time for a scheduled send; a completion pass's re-stamped start is never used), and `to` to now.
+                     */
                     from: string;
                     /**
                      * Format: date-time
                      * @description Defaults to now.
                      */
                     to: string;
+                    /** @description Scope to one send (the id in /analytics/sends/{sendId}). With `sendId` the window may be omitted. */
                     sendId?: string;
                     emailId?: string;
                     automationIds?: string[];
@@ -3116,6 +3164,9 @@ export interface components {
                     /** @description Recipient rule tokens using the Events-page grammar. */
                     recipient?: string[];
                     includeMachineClicks?: boolean;
+                    exclude?: {
+                        baseAudienceId: string;
+                    };
                 };
                 field: {
                     key: string;
@@ -3140,13 +3191,17 @@ export interface components {
             status: "queued" | "running" | "completed" | "partially_completed" | "failed";
             cohort: {
                 eventTypes: ("sent" | "delivered" | "delivery_delayed" | "opened" | "clicked" | "bounced" | "complained" | "failed" | "skipped" | "unsubscribed")[];
-                /** Format: date-time */
+                /**
+                 * Format: date-time
+                 * @description Window start. Required unless `sendId` is set — then it defaults to one hour before that send was dispatched (its scheduled time for a scheduled send; a completion pass's re-stamped start is never used), and `to` to now.
+                 */
                 from: string;
                 /**
                  * Format: date-time
                  * @description Defaults to now.
                  */
                 to: string;
+                /** @description Scope to one send (the id in /analytics/sends/{sendId}). With `sendId` the window may be omitted. */
                 sendId?: string;
                 emailId?: string;
                 automationIds?: string[];
@@ -3155,6 +3210,9 @@ export interface components {
                 /** @description Recipient rule tokens using the Events-page grammar. */
                 recipient?: string[];
                 includeMachineClicks?: boolean;
+                exclude?: {
+                    baseAudienceId: string;
+                };
             };
             field: {
                 key: string;
@@ -3219,7 +3277,6 @@ export interface components {
         Flow: {
             slug: string;
             brand: {
-                domain: string;
                 name: string;
                 /** Format: uri */
                 logo?: string;
@@ -3317,7 +3374,7 @@ export interface components {
             };
         };
         /** @enum {string} */
-        ApiErrorCode: "ACCOUNT_SUSPENDED" | "API_KEY_REVOKED" | "AUDIENCE_BUILD_ACTIVE" | "AUDIENCE_BUILD_ALREADY_ACTIVE" | "AUDIENCE_EDIT_CONFLICT" | "AUDIENCE_NOT_FOUND" | "AUDIENCE_RUN_NOT_FOUND" | "AUTHENTICATION_REQUIRED" | "AUTOMATION_GRAPH_INVALID" | "AUTOMATION_NOT_FOUND" | "AUTOMATION_NOT_PAUSABLE" | "AUTOMATION_NOT_PUBLISHED" | "AUTOMATION_RUN_NOT_FOUND" | "AUTOMATION_VERSION_CONFLICT" | "AUTOMATION_VERSION_NOT_FOUND" | "BATCH_TOO_LARGE" | "BRAND_DOMAIN_CONFLICT" | "BRAND_ID_REQUIRED" | "BRAND_LIMIT_REACHED" | "BRAND_NOT_FOUND" | "BRAND_NOT_READY" | "BRAND_SCOPE_MISMATCH" | "CHAT_NOT_FOUND" | "CONSENT_REQUIRED" | "CONTACT_NOT_FOUND" | "CONTENT_OPERATION_FAILED" | "CONTRACT_LOCKED_BY_PUBLISHED_AUTOMATIONS" | "CORE_FIELD_IMMUTABLE" | "DOMAIN_ALREADY_EXISTS" | "DOMAIN_NOT_FOUND" | "DOMAIN_NOT_READY" | "DOMAIN_OTHER_BRAND" | "DOMAIN_PROVIDER_ERROR" | "DOMAIN_PURPOSE_NOT_ALLOWED" | "DOMAIN_VERIFICATION_FAILED" | "DOMAIN_VERIFIED_ELSEWHERE" | "EMAIL_GENERATION_FAILED" | "EMAIL_GROUP_NAME_CONFLICT" | "EMAIL_GROUP_NOT_FOUND" | "EMAIL_IMPORT_FAILED" | "EMAIL_IN_PROGRESS" | "EMAIL_IN_USE_BY_AUTOMATION" | "EMAIL_NOT_FOUND" | "EMAIL_NOT_READY" | "EMAIL_TEMPLATE_INVALID" | "EMAIL_VERSION_NOT_FOUND" | "EXPORT_PROVIDER_ERROR" | "EXPORT_UNSUPPORTED" | "FIELD_NOT_FOUND" | "FIELD_TYPE_MISMATCH" | "FIGMA_ACCESS_DENIED" | "FIGMA_CONVERSION_FAILED" | "FIGMA_FRAME_NOT_FOUND" | "FIGMA_NOT_CONNECTED" | "FIGMA_UNAVAILABLE" | "FIGMA_URL_INVALID" | "FLOW_NOT_FOUND" | "IDEMPOTENCY_CONFLICT" | "IDEMPOTENCY_IN_PROGRESS" | "INSUFFICIENT_CREDITS" | "INSUFFICIENT_PERMISSIONS" | "INSUFFICIENT_ROLE" | "INTEGRATION_NOT_CONNECTED" | "INTERNAL_ERROR" | "INVALID_API_KEY" | "INVALID_EMAIL" | "INVALID_PAYLOAD" | "INVALID_REQUEST" | "LIQUID_RENDER_ERROR" | "METHOD_NOT_ALLOWED" | "MISSING_EMAIL" | "NO_PUBLISHED_AUTOMATION" | "NOT_FOUND" | "NOT_IMPLEMENTED" | "ORG_SCOPE_REQUIRED" | "PAYLOAD_SCHEMA_EMAIL_REQUIRED" | "PAYLOAD_TOO_LARGE" | "PUBLISH_VALIDATION_FAILED" | "RATE_LIMITED" | "RECIPIENT_UNSUBSCRIBED" | "REFERENCE_EMAIL_NOT_FOUND" | "RUN_IN_PROGRESS" | "RUN_NOT_CANCELLABLE" | "RUN_NOT_PAUSABLE" | "RUN_NOT_PAUSED" | "RUN_NOT_RESUMABLE" | "RUN_START_FAILED" | "RUN_STOP_FAILED" | "SEND_NOT_CANCELLABLE" | "SEND_NOT_FOUND" | "SEND_NOT_PAUSABLE" | "SEND_NOT_RESUMABLE" | "SEND_QUOTA_EXCEEDED" | "SERVICE_UNAVAILABLE" | "TRIGGER_ALREADY_EXISTS" | "TRIGGER_EVENT_NOT_FOUND" | "TRIGGER_HAS_DEPENDENT_AUTOMATIONS" | "TRIGGER_IMMUTABLE" | "TRIGGER_INSTANCE_NOT_FOUND";
+        ApiErrorCode: "ACCOUNT_SUSPENDED" | "API_KEY_REVOKED" | "AUDIENCE_BUILD_ACTIVE" | "AUDIENCE_BUILD_ALREADY_ACTIVE" | "AUDIENCE_EDIT_CONFLICT" | "AUDIENCE_NOT_FOUND" | "AUDIENCE_RUN_NOT_FOUND" | "AUTHENTICATION_REQUIRED" | "AUTOMATION_GRAPH_INVALID" | "AUTOMATION_NOT_FOUND" | "AUTOMATION_NOT_PAUSABLE" | "AUTOMATION_NOT_PUBLISHED" | "AUTOMATION_RUN_NOT_FOUND" | "AUTOMATION_VERSION_CONFLICT" | "AUTOMATION_VERSION_NOT_FOUND" | "BATCH_TOO_LARGE" | "BRAND_DOMAIN_CONFLICT" | "BRAND_ID_REQUIRED" | "BRAND_LIMIT_REACHED" | "BRAND_NOT_FOUND" | "BRAND_NOT_READY" | "BRAND_SCOPE_MISMATCH" | "CHAT_NOT_FOUND" | "CONSENT_REQUIRED" | "CONTACT_NOT_FOUND" | "CONTENT_OPERATION_FAILED" | "CONTRACT_LOCKED_BY_PUBLISHED_AUTOMATIONS" | "CORE_FIELD_IMMUTABLE" | "DOMAIN_ALREADY_EXISTS" | "DOMAIN_CLAIMED_ELSEWHERE" | "DOMAIN_NOT_FOUND" | "DOMAIN_NOT_READY" | "DOMAIN_OTHER_BRAND" | "DOMAIN_PROVIDER_ERROR" | "DOMAIN_PURPOSE_NOT_ALLOWED" | "DOMAIN_VERIFICATION_FAILED" | "DOMAIN_VERIFIED_ELSEWHERE" | "EMAIL_GENERATION_FAILED" | "EMAIL_GROUP_NAME_CONFLICT" | "EMAIL_GROUP_NOT_FOUND" | "EMAIL_IMPORT_FAILED" | "EMAIL_IN_PROGRESS" | "EMAIL_IN_USE_BY_AUTOMATION" | "EMAIL_NOT_FOUND" | "EMAIL_NOT_READY" | "EMAIL_TEMPLATE_INVALID" | "EMAIL_VERSION_NOT_FOUND" | "EXPORT_PROVIDER_ERROR" | "EXPORT_UNSUPPORTED" | "FIELD_NOT_FOUND" | "FIELD_TYPE_MISMATCH" | "FIGMA_ACCESS_DENIED" | "FIGMA_CONVERSION_FAILED" | "FIGMA_FRAME_NOT_FOUND" | "FIGMA_NOT_CONNECTED" | "FIGMA_UNAVAILABLE" | "FIGMA_URL_INVALID" | "FLOW_NOT_FOUND" | "IDEMPOTENCY_CONFLICT" | "IDEMPOTENCY_IN_PROGRESS" | "INSUFFICIENT_CREDITS" | "INSUFFICIENT_PERMISSIONS" | "INSUFFICIENT_ROLE" | "INTEGRATION_NOT_CONNECTED" | "INTERNAL_ERROR" | "INVALID_API_KEY" | "INVALID_EMAIL" | "INVALID_PAYLOAD" | "INVALID_REQUEST" | "LIQUID_RENDER_ERROR" | "METHOD_NOT_ALLOWED" | "MISSING_EMAIL" | "NO_PUBLISHED_AUTOMATION" | "NOT_FOUND" | "NOT_IMPLEMENTED" | "ORG_SCOPE_REQUIRED" | "PAYLOAD_SCHEMA_EMAIL_REQUIRED" | "PAYLOAD_TOO_LARGE" | "PUBLISH_VALIDATION_FAILED" | "RATE_LIMITED" | "RECIPIENT_UNSUBSCRIBED" | "REFERENCE_EMAIL_NOT_FOUND" | "RUN_IN_PROGRESS" | "RUN_NOT_CANCELLABLE" | "RUN_NOT_PAUSABLE" | "RUN_NOT_PAUSED" | "RUN_NOT_RESUMABLE" | "RUN_START_FAILED" | "RUN_STOP_FAILED" | "SEND_NOT_CANCELLABLE" | "SEND_NOT_FOUND" | "SEND_NOT_PAUSABLE" | "SEND_NOT_RESUMABLE" | "SEND_QUOTA_EXCEEDED" | "SERVICE_UNAVAILABLE" | "TRIGGER_ALREADY_EXISTS" | "TRIGGER_EVENT_NOT_FOUND" | "TRIGGER_HAS_DEPENDENT_AUTOMATIONS" | "TRIGGER_IMMUTABLE" | "TRIGGER_INSTANCE_NOT_FOUND" | "TRIGGER_LIMIT_REACHED";
         EmailGenerateTextResponse: {
             response: string;
         };
@@ -5647,6 +5704,7 @@ export interface components {
             errors: {
                 email: string;
                 code: string;
+                field?: string;
                 message: string;
             }[];
             warnings: {
@@ -5965,11 +6023,12 @@ export interface components {
             filters?: {
                 /** @description The contact column or custom-field name to filter on (e.g. `email`, `firstName`, or a key from `run_data_command` (`db find fieldDefinitions`) or GET /v1/fields). */
                 field: string;
-                /** @description One of: equals, not_equals, contains, not_contains, contains_any, not_contains_any, starts_with, ends_with, gt, gte, lt, lte, between, is_true, is_false, in, not_in, is_empty, not_exists, is_not_empty, exists, is_set, before, after, on_date. Unrecognized operators are ignored (the clause is dropped), so stick to this list — e.g. use `equals`, not `eq`. */
+                /** @description Allowed operators depend on the field's type — string: equals, not_equals, contains, not_contains, contains_any, not_contains_any, starts_with, ends_with, is_empty, is_not_empty, in, not_in, exists, not_exists; number: equals, not_equals, gt, gte, lt, lte, between, is_empty, is_not_empty; date: on_date, before, after, between, is_empty, is_not_empty; bool: is_true, is_false (`equals` with true/false/1/0 is accepted as an alias). Any other operator, or an operator on a field type that does not support it, is rejected with 400 INVALID_REQUEST (`param: "filter"`) — nothing is silently ignored. E.g. use `equals`, not `eq`. */
                 operator: string;
-                /** @description The comparison value, as a string. Unary operators (`is_set`, `is_empty`, `exists`, …) ignore it — pass "". */
+                /** @description The comparison value, as a string. `in`, `not_in`, `contains_any` and `not_contains_any` take a comma-separated list; `between` takes exactly two comma-separated bounds (e.g. "10,30"). Unary operators (`is_empty`, `is_not_empty`, `exists`, `not_exists`, `is_true`, `is_false`) ignore it — pass "". */
                 value: string;
             }[];
+            /** @description Scope to a saved audience's members. The audience's stored filter set is evaluated as one unit with its own `logicalOperator` (an OR audience stays an OR), then ANDed with `filters`. Unknown / cross-brand id, or an audience a send would refuse (unusable filters, a cohort still building) → 400. */
             audienceId?: string;
             /**
              * @default and
@@ -6016,6 +6075,7 @@ export interface components {
             errors: {
                 email: string;
                 code: string;
+                field?: string;
                 message: string;
             }[];
             warnings: {
@@ -6130,13 +6190,17 @@ export interface components {
                     status: "queued" | "running" | "completed" | "partially_completed" | "failed";
                     cohort: {
                         eventTypes: ("sent" | "delivered" | "delivery_delayed" | "opened" | "clicked" | "bounced" | "complained" | "failed" | "skipped" | "unsubscribed")[];
-                        /** Format: date-time */
+                        /**
+                         * Format: date-time
+                         * @description Window start. Required unless `sendId` is set — then it defaults to one hour before that send was dispatched (its scheduled time for a scheduled send; a completion pass's re-stamped start is never used), and `to` to now.
+                         */
                         from: string;
                         /**
                          * Format: date-time
                          * @description Defaults to now.
                          */
                         to: string;
+                        /** @description Scope to one send (the id in /analytics/sends/{sendId}). With `sendId` the window may be omitted. */
                         sendId?: string;
                         emailId?: string;
                         automationIds?: string[];
@@ -6145,6 +6209,9 @@ export interface components {
                         /** @description Recipient rule tokens using the Events-page grammar. */
                         recipient?: string[];
                         includeMachineClicks?: boolean;
+                        exclude?: {
+                            baseAudienceId: string;
+                        };
                     };
                     field: {
                         key: string;
@@ -6197,13 +6264,17 @@ export interface components {
                 status: "queued" | "running" | "completed" | "partially_completed" | "failed";
                 cohort: {
                     eventTypes: ("sent" | "delivered" | "delivery_delayed" | "opened" | "clicked" | "bounced" | "complained" | "failed" | "skipped" | "unsubscribed")[];
-                    /** Format: date-time */
+                    /**
+                     * Format: date-time
+                     * @description Window start. Required unless `sendId` is set — then it defaults to one hour before that send was dispatched (its scheduled time for a scheduled send; a completion pass's re-stamped start is never used), and `to` to now.
+                     */
                     from: string;
                     /**
                      * Format: date-time
                      * @description Defaults to now.
                      */
                     to: string;
+                    /** @description Scope to one send (the id in /analytics/sends/{sendId}). With `sendId` the window may be omitted. */
                     sendId?: string;
                     emailId?: string;
                     automationIds?: string[];
@@ -6212,6 +6283,9 @@ export interface components {
                     /** @description Recipient rule tokens using the Events-page grammar. */
                     recipient?: string[];
                     includeMachineClicks?: boolean;
+                    exclude?: {
+                        baseAudienceId: string;
+                    };
                 };
                 field: {
                     key: string;
@@ -6247,6 +6321,7 @@ export interface components {
                     field: string;
                     /** @enum {string} */
                     operator: "equals" | "not_equals" | "contains" | "not_contains" | "contains_any" | "not_contains_any" | "starts_with" | "ends_with" | "gt" | "gte" | "lt" | "lte" | "between" | "is_true" | "is_false" | "in" | "not_in" | "is_empty" | "not_exists" | "is_not_empty" | "exists" | "is_set" | "before" | "after" | "on_date";
+                    /** @description Operator-dependent: `between` takes `[min, max]` or `{min, max}`; `in`/`not_in`/`contains_any`/`not_contains_any` take a list; unary operators (`is_empty`, `is_not_empty`, `exists`, `is_true`, …) omit it. */
                     value?: unknown;
                     /** @description The field's value type — set `number`, `date`, or `boolean` for typed comparisons (dates are stored as epoch-ms, so a string `equals` on a date never matches). Omit for plain string fields. */
                     type?: string;
@@ -6283,13 +6358,17 @@ export interface components {
                 status: "queued" | "running" | "completed" | "partially_completed" | "failed";
                 cohort: {
                     eventTypes: ("sent" | "delivered" | "delivery_delayed" | "opened" | "clicked" | "bounced" | "complained" | "failed" | "skipped" | "unsubscribed")[];
-                    /** Format: date-time */
+                    /**
+                     * Format: date-time
+                     * @description Window start. Required unless `sendId` is set — then it defaults to one hour before that send was dispatched (its scheduled time for a scheduled send; a completion pass's re-stamped start is never used), and `to` to now.
+                     */
                     from: string;
                     /**
                      * Format: date-time
                      * @description Defaults to now.
                      */
                     to: string;
+                    /** @description Scope to one send (the id in /analytics/sends/{sendId}). With `sendId` the window may be omitted. */
                     sendId?: string;
                     emailId?: string;
                     automationIds?: string[];
@@ -6298,6 +6377,9 @@ export interface components {
                     /** @description Recipient rule tokens using the Events-page grammar. */
                     recipient?: string[];
                     includeMachineClicks?: boolean;
+                    exclude?: {
+                        baseAudienceId: string;
+                    };
                 };
                 field: {
                     key: string;
@@ -6319,13 +6401,17 @@ export interface components {
         AudiencesFromEventsRequest: {
             cohort: {
                 eventTypes: ("sent" | "delivered" | "delivery_delayed" | "opened" | "clicked" | "bounced" | "complained" | "failed" | "skipped" | "unsubscribed")[];
-                /** Format: date-time */
-                from: string;
+                /**
+                 * Format: date-time
+                 * @description Window start. Required unless `sendId` is set — then it defaults to one hour before that send was dispatched (its scheduled time for a scheduled send; a completion pass's re-stamped start is never used), and `to` to now.
+                 */
+                from?: string;
                 /**
                  * Format: date-time
                  * @description Defaults to now.
                  */
                 to?: string;
+                /** @description Scope to one send (the id in /analytics/sends/{sendId}). With `sendId` the window may be omitted. */
                 sendId?: string;
                 emailId?: string;
                 automationIds?: string[];
@@ -6334,6 +6420,10 @@ export interface components {
                 /** @description Recipient rule tokens using the Events-page grammar. */
                 recipient?: string[];
                 includeMachineClicks?: boolean;
+                /** @description COMPLEMENT mode: the audience becomes every contact of `baseAudienceId` who did NOT match the cohort — a copy of the base audience's filters (taken when the build starts; later edits to the base do not propagate) AND the cohort field is empty. `baseAudienceId` defaults to the send's audience when `sendId` is set; `"all"` means the whole brand. The base must combine its filters with AND (or have one filter) and must not be an event snapshot that is still building. */
+                exclude?: {
+                    baseAudienceId?: string;
+                };
             };
             name?: string;
         };
@@ -6345,6 +6435,7 @@ export interface components {
                     field: string;
                     /** @enum {string} */
                     operator: "equals" | "not_equals" | "contains" | "not_contains" | "contains_any" | "not_contains_any" | "starts_with" | "ends_with" | "gt" | "gte" | "lt" | "lte" | "between" | "is_true" | "is_false" | "in" | "not_in" | "is_empty" | "not_exists" | "is_not_empty" | "exists" | "is_set" | "before" | "after" | "on_date";
+                    /** @description Operator-dependent: `between` takes `[min, max]` or `{min, max}`; `in`/`not_in`/`contains_any`/`not_contains_any` take a list; unary operators (`is_empty`, `is_not_empty`, `exists`, `is_true`, …) omit it. */
                     value?: unknown;
                     /** @description The field's value type — set `number`, `date`, or `boolean` for typed comparisons (dates are stored as epoch-ms, so a string `equals` on a date never matches). Omit for plain string fields. */
                     type?: string;
@@ -6586,7 +6677,6 @@ export interface components {
             data: {
                 slug: string;
                 brand: {
-                    domain: string;
                     name: string;
                     /** Format: uri */
                     logo?: string;
@@ -6620,7 +6710,7 @@ export interface components {
                     html?: string;
                 }[];
             }[];
-            pagination?: {
+            pagination: {
                 limit: number;
                 cursor: string | null;
                 hasMore: boolean;
@@ -14481,6 +14571,8 @@ export interface operations {
                 automationId?: string;
                 triggerEventId?: string;
                 triggerInstanceId?: string;
+                /** @description Only runs for this recipient, matched case-insensitively against each run's stored `recipientEmail` column. A run written before that column existed carries the address only inside its trigger payload: the row still REPORTS `recipientEmail` (the projection reads the payload as a fallback), but the filter cannot reach it until `migration_mutations:backfillRecipientEmail` has run on the deployment. */
+                recipientEmail?: string;
                 status?: "queued" | "running" | "completed" | "failed" | "canceled";
                 mode?: "live" | "test";
                 from?: string;
@@ -15289,6 +15381,8 @@ export interface operations {
              *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
              *
              *     `TRIGGER_ALREADY_EXISTS`: A trigger with that id already exists in the brand.
+             *
+             *     `TRIGGER_LIMIT_REACHED`: The brand already holds the maximum number of trigger events.
              */
             409: {
                 headers: {
@@ -17647,7 +17741,7 @@ export interface operations {
                      *       "summary": {
                      *         "inserted": 1,
                      *         "updated": 0,
-                     *         "failed": 1
+                     *         "failed": 2
                      *       },
                      *       "fieldsCreated": [],
                      *       "errors": [
@@ -17655,6 +17749,12 @@ export interface operations {
                      *           "email": "not-an-email",
                      *           "code": "INVALID_EMAIL",
                      *           "message": "not-an-email is not a valid email address."
+                     *         },
+                     *         {
+                     *           "email": "john@example.com",
+                     *           "code": "FIELD_TYPE_MISMATCH",
+                     *           "field": "customFields.plan",
+                     *           "message": "Field 'customFields.plan' is type 'number' but received string '$49'."
                      *         }
                      *       ],
                      *       "warnings": []
@@ -18753,9 +18853,10 @@ export interface operations {
                      *       "fieldsCreated": [],
                      *       "errors": [
                      *         {
-                     *           "email": "dupe@example.com",
-                     *           "code": "DUPLICATE_EMAILS_IN_BATCH",
-                     *           "message": "Email 'dupe@example.com' appears 2 times in batch."
+                     *           "email": "john@example.com",
+                     *           "code": "FIELD_TYPE_MISMATCH",
+                     *           "field": "customFields.plan",
+                     *           "message": "Field 'customFields.plan' is type 'number' but received string '$49'."
                      *         }
                      *       ],
                      *       "warnings": []
@@ -18772,6 +18873,7 @@ export interface operations {
                         errors: {
                             email: string;
                             code: string;
+                            field?: string;
                             message: string;
                         }[];
                         warnings: {
@@ -20948,6 +21050,8 @@ export interface operations {
             /**
              * @description `AUDIENCE_BUILD_ACTIVE`: The audience is being built, so it cannot be changed, copied, or deleted yet.
              *
+             *     `AUDIENCE_EDIT_CONFLICT`: The audience changed since it was read; the update was not applied.
+             *
              *     `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
              *
              *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
@@ -21303,6 +21407,8 @@ export interface operations {
             /**
              * @description `DOMAIN_ALREADY_EXISTS`: The brand already has this domain.
              *
+             *     `DOMAIN_CLAIMED_ELSEWHERE`: The domain is registered in another Brew workspace.
+             *
              *     `DOMAIN_OTHER_BRAND`: The domain is attached to a different brand in this workspace.
              *
              *     `DOMAIN_VERIFIED_ELSEWHERE`: Another workspace already verified this domain.
@@ -21635,6 +21741,8 @@ export interface operations {
             /**
              * @description `DOMAIN_ALREADY_EXISTS`: The brand already has this domain.
              *
+             *     `DOMAIN_CLAIMED_ELSEWHERE`: The domain is registered in another Brew workspace.
+             *
              *     `DOMAIN_OTHER_BRAND`: The domain is attached to a different brand in this workspace.
              *
              *     `DOMAIN_VERIFIED_ELSEWHERE`: Another workspace already verified this domain.
@@ -21834,6 +21942,8 @@ export interface operations {
             /**
              * @description `DOMAIN_ALREADY_EXISTS`: The brand already has this domain.
              *
+             *     `DOMAIN_CLAIMED_ELSEWHERE`: The domain is registered in another Brew workspace.
+             *
              *     `DOMAIN_OTHER_BRAND`: The domain is attached to a different brand in this workspace.
              *
              *     `DOMAIN_VERIFIED_ELSEWHERE`: Another workspace already verified this domain.
@@ -22032,6 +22142,8 @@ export interface operations {
             };
             /**
              * @description `DOMAIN_ALREADY_EXISTS`: The brand already has this domain.
+             *
+             *     `DOMAIN_CLAIMED_ELSEWHERE`: The domain is registered in another Brew workspace.
              *
              *     `DOMAIN_OTHER_BRAND`: The domain is attached to a different brand in this workspace.
              *
@@ -22355,11 +22467,14 @@ export interface operations {
     listTemplates: {
         parameters: {
             query?: {
+                /** @description Only this brand's templates, by domain (e.g. `vercel.com`); case-insensitive. */
                 brand?: string;
+                /** @description Email category, matched case-insensitively (unknown → empty page): welcome, newsletter, promotional, product-launch, product-update, order-confirmation, shipping-update, receipt, cart-abandonment, subscription, password-reset, verification, security-alert, account-update, event-invitation, event-reminder, feedback-request, re-engagement, referral, support, business, internal, notification, general. */
                 category?: string;
+                /** @description Rank by relevance to this text instead of newest first (top 200; `brand`/`category` still narrow). */
                 semantic?: string;
                 /**
-                 * @description Page size (1-100). Defaults to 100.
+                 * @description Page size, 1–100 (default 50: each row carries its full HTML).
                  * @example 50
                  */
                 limit?: number;
@@ -22399,9 +22514,9 @@ export interface operations {
                      *         }
                      *       ],
                      *       "pagination": {
-                     *         "limit": 100,
-                     *         "cursor": null,
-                     *         "hasMore": false
+                     *         "limit": 50,
+                     *         "cursor": "eyJ…",
+                     *         "hasMore": true
                      *       }
                      *     }
                      */
@@ -22482,10 +22597,6 @@ export interface operations {
     listFlows: {
         parameters: {
             query?: {
-                /** @description Fetch ONE flow by its brand domain (e.g. `brew.new`) → `data: [flow]` with every `steps[]` entry. Omit to LIST. */
-                slug?: string;
-                /** @description Detail-only expansions, comma-separated. `html` adds each step’s rendered HTML. Rendered email is bulky — over MCP only the first step or two fit one response; the rest simply arrive without `html` and the summary says how many were kept, so fetch those by `emailId`. The REST route has no such cap. Best-effort per step: a step whose body is no longer servable comes back without `html` rather than failing the flow. */
-                include?: string;
                 /** @description Exact brand domain filter for LIST, e.g. `vercel.com`. */
                 brand?: string;
                 /** @description Filter LIST by the flow’s dominant step category (`welcome`, `newsletter`, `promotion`, `education`, …). */
@@ -22509,7 +22620,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description A page of flow cards, or — with `?slug=` — the one flow and its steps. */
+            /** @description A page of flow cards. */
             200: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -22529,7 +22640,6 @@ export interface operations {
                      *         {
                      *           "slug": "brew.new",
                      *           "brand": {
-                     *             "domain": "brew.new",
                      *             "name": "Brew",
                      *             "logo": "https://cdn.brew.new/brand/fetched-logo/brew.new/logo.png"
                      *           },
@@ -22546,31 +22656,7 @@ export interface operations {
                      *             "https://cdn.brew.new/email-preview-brew-3.png"
                      *           ],
                      *           "publishedAt": "2026-09-01T12:00:00.000Z",
-                     *           "updatedAt": "2026-09-01T12:00:00.000Z",
-                     *           "anchor": "signedUpAt",
-                     *           "steps": [
-                     *             {
-                     *               "order": 1,
-                     *               "dayOffset": 0,
-                     *               "delayDays": 0,
-                     *               "subject": "Welcome to Brew",
-                     *               "previewText": "Here’s how to set up your first brand.",
-                     *               "category": "welcome",
-                     *               "categoryLabel": "Welcome",
-                     *               "emailId": "pt1_k97nvhqe6xgyj67g58ajwj1tj58egexx",
-                     *               "previewImage": "https://cdn.brew.new/email-preview-brew-1.png"
-                     *             },
-                     *             {
-                     *               "order": 2,
-                     *               "dayOffset": 2.1,
-                     *               "delayDays": 2.1,
-                     *               "subject": "Three templates to try today",
-                     *               "category": "education",
-                     *               "categoryLabel": "Education",
-                     *               "emailId": "pt1_k97s409kdrzbeajqffq6011wfn8egmdq",
-                     *               "previewImage": "https://cdn.brew.new/email-preview-brew-2.png"
-                     *             }
-                     *           ]
+                     *           "updatedAt": "2026-09-01T12:00:00.000Z"
                      *         }
                      *       ],
                      *       "pagination": {
@@ -22611,11 +22697,157 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
+            /** @description `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended. */
+            403: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            429: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    "X-RateLimit-Reset": number;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it. */
+            500: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getFlow: {
+        parameters: {
+            query?: {
+                /** @description Detail-only expansions, comma-separated. `html` adds each step’s rendered HTML. Rendered email is bulky — over MCP only the first step or two fit one response; the rest arrive without `html` and the summary says how many were kept. A step’s `emailId` is already a `create_email_design` reference, so reuse needs no body; for the bodies themselves call `GET /v1/flows/{slug}?include=html` over REST, which has no cap. Best-effort per step: a step whose body is no longer servable comes back without `html` rather than failing the flow. */
+                include?: string;
+            };
+            header?: never;
+            path: {
+                /** @description The flow’s brand domain, as returned in every `GET /v1/flows` row. Case-insensitive. */
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The flow, with `anchor` and every step. */
+            200: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    "X-RateLimit-Reset": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "slug": "brew.new",
+                     *       "brand": {
+                     *         "name": "Brew",
+                     *         "logo": "https://cdn.brew.new/brand/fetched-logo/brew.new/logo.png"
+                     *       },
+                     *       "title": "Brew onboarding flow",
+                     *       "type": "signup",
+                     *       "category": "welcome",
+                     *       "categoryLabel": "Welcome",
+                     *       "emailCount": 6,
+                     *       "spanDays": 14,
+                     *       "remixCount": 12,
+                     *       "previewImages": [
+                     *         "https://cdn.brew.new/email-preview-brew-1.png",
+                     *         "https://cdn.brew.new/email-preview-brew-2.png",
+                     *         "https://cdn.brew.new/email-preview-brew-3.png"
+                     *       ],
+                     *       "publishedAt": "2026-09-01T12:00:00.000Z",
+                     *       "updatedAt": "2026-09-01T12:00:00.000Z",
+                     *       "anchor": "signedUpAt",
+                     *       "steps": [
+                     *         {
+                     *           "order": 1,
+                     *           "dayOffset": 0,
+                     *           "delayDays": 0,
+                     *           "subject": "Welcome to Brew",
+                     *           "previewText": "Here’s how to set up your first brand.",
+                     *           "category": "welcome",
+                     *           "categoryLabel": "Welcome",
+                     *           "emailId": "pt1_k97nvhqe6xgyj67g58ajwj1tj58egexx",
+                     *           "previewImage": "https://cdn.brew.new/email-preview-brew-1.png"
+                     *         },
+                     *         {
+                     *           "order": 2,
+                     *           "dayOffset": 2.1,
+                     *           "delayDays": 2.1,
+                     *           "subject": "Three templates to try today",
+                     *           "category": "education",
+                     *           "categoryLabel": "Education",
+                     *           "emailId": "pt1_k97s409kdrzbeajqffq6011wfn8egmdq",
+                     *           "previewImage": "https://cdn.brew.new/email-preview-brew-2.png"
+                     *         }
+                     *       ]
+                     *     }
+                     */
+                    "application/json": components["schemas"]["Flow"];
+                };
+            };
+            /** @description `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender. */
+            400: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
             /**
-             * @description `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+             * @description `API_KEY_REVOKED`: The API key was revoked.
              *
-             *     `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+             *     `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+             *
+             *     `INVALID_API_KEY`: The API key is malformed or unknown.
              */
+            401: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended. */
             403: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -23568,7 +23800,7 @@ export interface operations {
             };
         };
     };
-    generateContentImage: {
+    generateImage: {
         parameters: {
             query?: never;
             header?: {
@@ -23754,7 +23986,7 @@ export interface operations {
             };
         };
     };
-    contentGif: {
+    createGif: {
         parameters: {
             query?: never;
             header?: {
@@ -23940,7 +24172,7 @@ export interface operations {
             };
         };
     };
-    contentTransform: {
+    transformImage: {
         parameters: {
             query?: never;
             header?: {
@@ -24126,7 +24358,7 @@ export interface operations {
             };
         };
     };
-    contentHtmlToPng: {
+    htmlToPng: {
         parameters: {
             query?: never;
             header?: {
@@ -24312,7 +24544,7 @@ export interface operations {
             };
         };
     };
-    contentAddImage: {
+    addImage: {
         parameters: {
             query?: never;
             header?: {
@@ -24582,13 +24814,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /**
-             * @description `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
-             *
-             *     `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
-             *
-             *     `ORG_SCOPE_REQUIRED`: The operation acts on the organization, so a brand-scoped credential cannot call it.
-             */
+            /** @description `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended. */
             403: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -25453,7 +25679,7 @@ export interface operations {
                      * @example {
                      *       "chatId": "Hk2mZ8t9QbY3sW1vR0pLd",
                      *       "title": "Spring launch campaign",
-                     *       "modelId": "anthropic/claude-opus-5",
+                     *       "modelId": "anthropic/claude-opus-5.5",
                      *       "updatedAt": "2026-06-30T12:34:56.789Z",
                      *       "messageCount": 18,
                      *       "artifacts": [

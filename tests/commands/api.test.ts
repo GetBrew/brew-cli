@@ -144,6 +144,76 @@ describe('api escape hatch', () => {
     expect(parsed.error.requestId).toBe('req_9')
   })
 
+  it('keeps a legacy fire refusal intact: real code, field errors, no retry advice', async () => {
+    // `POST /v1/automations/triggers/{id}/fire` is the ONE endpoint outside
+    // the `{ error }` convention. Regression pin: `details.errors[]` (which
+    // field was wrong) used to be dropped and the refusal labelled
+    // `type: internal_error`.
+    server.use(
+      http.post(
+        'https://brew.new/api/v1/automations/triggers/tri_signup/fire',
+        () =>
+          HttpResponse.json(
+            {
+              success: false,
+              status: 'payload_mismatch',
+              code: 'INVALID_PAYLOAD',
+              message: 'Payload validation failed.',
+              triggerEventId: 'tri_signup',
+              receivedAt: '2026-09-20T10:00:00.000Z',
+              details: {
+                errors: [
+                  {
+                    code: 'invalid_type',
+                    field: 'code',
+                    message: 'Field "code" must be a string',
+                    expectedType: 'string',
+                    actualType: 'number',
+                  },
+                ],
+                warnings: [],
+                payloadSchema: {
+                  type: 'object',
+                  fields: [{ key: 'code', type: 'string', required: true }],
+                },
+              },
+            },
+            {
+              status: 400,
+              headers: {
+                'x-request-id': 'req_9495a63f50df425883d0624b8b8a610a',
+              },
+            }
+          )
+      )
+    )
+    const result = await runCli(
+      [
+        'api',
+        'POST',
+        '/v1/automations/triggers/tri_signup/fire',
+        '--data',
+        '{"payload":{"email":"jane@example.com","code":123}}',
+        '--yes',
+      ],
+      { env: env() }
+    )
+    expect(result.code).toBe(1)
+    const parsed = JSON.parse(result.stderr) as {
+      error: Record<string, unknown> & {
+        details: { errors: Array<{ field: string }> }
+      }
+    }
+    expect(parsed.error.code).toBe('INVALID_PAYLOAD')
+    expect(parsed.error.type).toBe('invalid_request')
+    expect(parsed.error.status).toBe(400)
+    expect(parsed.error.requestId).toBe('req_9495a63f50df425883d0624b8b8a610a')
+    expect(parsed.error.details.errors.map((issue) => issue.field)).toEqual([
+      'code',
+    ])
+    expect(String(parsed.error.suggestion)).not.toMatch(/retry/i)
+  })
+
   it('rejects --data on GET with a usage error', async () => {
     const result = await runCli(
       ['api', 'GET', '/v1/fields', '--data', '{"a":1}'],

@@ -1,4 +1,5 @@
 import type { ListAutomationRunsInput } from '@brew.new/sdk'
+import { includeRidesDetailRead, singleRowPage } from '../../../lib/compat'
 import { defineCommand } from '../../../lib/define-command'
 import {
   asSdkInput,
@@ -38,6 +39,20 @@ export const automationsRunsListCommand = defineCommand({
       summary: 'queued | running | completed | failed | canceled',
     },
     { flag: '--mode <mode>', summary: 'live | test' },
+    {
+      flag: '--recipient <email>',
+      summary:
+        "Only runs for this recipient (case-insensitive match on the run row's recipientEmail)",
+    },
+    {
+      flag: '--run <automationRunId>',
+      summary:
+        '0.6 shim: read ONE run as a single-row page (`automations runs get` is the real read)',
+    },
+    {
+      flag: '--include <tokens>',
+      summary: 'With --run only: detail includes (`logs`)',
+    },
     { flag: '--since <datetime>', summary: 'Runs started at/after (ISO-8601)' },
     {
       flag: '--until <datetime>',
@@ -53,11 +68,25 @@ export const automationsRunsListCommand = defineCommand({
     'brew-cli automations runs list --trigger-instance tin_2f1c9d8a',
   ],
   run: async ({ ctx, flags }) => {
+    const runs = ctx.client().automations.runs
+    const runId = flagString(flags.run)
+    const include = flagString(flags.include)
+    if (runId !== undefined) {
+      const row = await runs.get(
+        runId,
+        include === undefined ? undefined : { include }
+      )
+      return { data: singleRowPage(row), human: renderRuns([row]) }
+    }
+    if (include !== undefined) {
+      throw includeRidesDetailRead('automations runs get', '--run')
+    }
     const base = await readJsonFlag(ctx, flags.input, '--input')
     const input = mergeInput(base, {
       automationId: flagString(flags.automation),
       triggerEventId: flagString(flags.trigger),
       triggerInstanceId: flagString(flags.triggerInstance),
+      recipientEmail: flagString(flags.recipient),
       status: flagString(flags.status),
       mode: flagString(flags.mode),
       from: flagString(flags.since),
@@ -65,7 +94,6 @@ export const automationsRunsListCommand = defineCommand({
       limit: flagInt(flags.limit, '--limit'),
       cursor: flagString(flags.cursor),
     })
-    const runs = ctx.client().automations.runs
     if (flags.all === true) {
       const rows = await collectAll(ctx, (cursor) =>
         runs.list(
@@ -94,6 +122,6 @@ function renderRuns(rows: ReadonlyArray<unknown>): string {
     { key: 'automationId', header: 'AUTOMATION' },
     { key: 'status', header: 'STATUS' },
     { key: 'mode', header: 'MODE' },
-    { key: 'recipient', header: 'RECIPIENT' },
+    { key: 'recipientEmail', header: 'RECIPIENT' },
   ])
 }

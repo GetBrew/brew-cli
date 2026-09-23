@@ -2,7 +2,7 @@
 
 <!-- GENERATED FILE — do not edit. Regenerate with `bun run docs:commands`. -->
 
-126 commands. Classes: read (always safe), write
+127 commands. Classes: read (always safe), write
 (mutating, retry-safe), destructive (irreversible — the confirmation
 protocol applies: interactive y/N on a TTY, exit 4 + JSON envelope with
 a `confirmCommand` otherwise, `--yes` to proceed).
@@ -105,6 +105,7 @@ a `confirmCommand` otherwise, `--yes` to proceed).
 | `brew-cli automations audience-runs pause` | write | `POST /v1/automations/audience-runs/{audienceRunId}/pause` | Pause a running manual-audience run at its next step boundary (resumable) |
 | `brew-cli automations audience-runs resume` | write | `POST /v1/automations/audience-runs/{audienceRunId}/resume` | Resume a paused manual-audience run, or restart a failed one from its first undelivered send |
 | `brew-cli automations audience-runs cancel` | destructive | `POST /v1/automations/audience-runs/{audienceRunId}/cancel` | Cancel a manual-audience run for good — it can never be resumed |
+| `brew-cli automations audience-runs control` | destructive | — | Pause, resume, or cancel an in-flight manual-audience run (0.6 form of `audience-runs pause|resume|cancel`) |
 | `brew-cli automations trigger-instances list` | read | `GET /v1/automations/trigger-instances` | List fired-trigger instances (the inbound-fire audit log); each row carries a lifecycle `state` |
 | `brew-cli automations trigger-instances get` | read | `GET /v1/automations/trigger-instances/{triggerInstanceId}` | Fetch one fired-trigger instance by id — the bare row, with its lifecycle `state` and the runs it started |
 | `brew-cli analytics overview` | read | `GET /v1/analytics/overview` | Brand overview: totals, rates, timeseries (default last 7 days) |
@@ -483,6 +484,12 @@ List email designs; one design is `emails get`
 - `--sort-by <field>` — Timestamp the page is ordered by and that --since/--until bound: updatedAt (default) | createdAt
 - `--since <iso>` — Inclusive lower bound on the --sort-by timestamp (ISO-8601)
 - `--until <iso>` — Inclusive upper bound on the --sort-by timestamp (ISO-8601)
+- `--sort <field>` — 0.6 alias of --sort-by
+- `--order <order>` — 0.6 flag: pages are newest first; only desc is accepted
+- `--created-at-from <iso>` — 0.6 alias of --sort-by createdAt --since <iso>
+- `--created-at-to <iso>` — 0.6 alias of --sort-by createdAt --until <iso>
+- `--updated-at-from <iso>` — 0.6 alias of --sort-by updatedAt --since <iso>
+- `--updated-at-to <iso>` — 0.6 alias of --sort-by updatedAt --until <iso>
 - `--limit <n>` — Page size, 1-100 (default 100)
 - `--cursor <cursor>` — Opaque pagination cursor from a previous page
 - `--all` — Follow the cursor and return every page as one result
@@ -949,6 +956,7 @@ List audience segments; one segment is `audiences get`
 - Route: `GET /v1/audiences`
 - Class: read
 - SDK: `brew.audiences.list(...)`
+- `--include <tokens>` — 0.6 flag: includes ride the detail read now (`audiences get --include count,build`)
 - `--limit <n>` — Page size, 1-100 (default 100)
 - `--cursor <cursor>` — Opaque pagination cursor from a previous page
 - `--all` — Follow the cursor and return every page as one result
@@ -1204,6 +1212,7 @@ List trigger events (their payload schemas drive fires); one trigger is `automat
 - Route: `GET /v1/automations/triggers`
 - Class: read
 - SDK: `brew.automations.triggers.list(...)`
+- `--trigger <triggerEventId>` — 0.6 shim: read ONE trigger as a single-row page (`automations triggers get` is the real read)
 - `--limit <n>` — Page size, 1-100 (default 100)
 - `--cursor <cursor>` — Opaque pagination cursor from a previous page
 - `--all` — Follow the cursor and return every page as one result
@@ -1386,6 +1395,9 @@ List automation runs (live + test history); one run is `automations runs get`
 - `--trigger-instance <triggerInstanceId>` — Filter by fired trigger instance
 - `--status <status>` — queued | running | completed | failed | canceled
 - `--mode <mode>` — live | test
+- `--recipient <email>` — Only runs for this recipient (case-insensitive match on the run row's recipientEmail)
+- `--run <automationRunId>` — 0.6 shim: read ONE run as a single-row page (`automations runs get` is the real read)
+- `--include <tokens>` — With --run only: detail includes (`logs`)
 - `--since <datetime>` — Runs started at/after (ISO-8601)
 - `--until <datetime>` — Runs started at/before (ISO-8601)
 - `--limit <n>` — Page size, 1-100 (default 100)
@@ -1422,6 +1434,7 @@ Cancel one in-flight automation run (event execution or test run) — nothing fu
 - SDK: `brew.automations.runs.cancel(...)`
 - Argument `automationRunId` — Run id to cancel (from `automations runs list`, a test start, or a fire response)
 - `--reason <text>` — Operator note stored on the run
+- `--idempotency-key <key>` — Idempotency-Key for safe retries (auto-generated otherwise)
 
 ```bash
 brew-cli automations runs cancel run_9f2kX --reason "wrong audience" --yes
@@ -1435,6 +1448,8 @@ List manual-audience runs, newest first; one run is `automations audience-runs g
 - Class: read
 - SDK: `brew.automations.audienceRuns.list(...)`
 - `--automation <automationId>` — Only runs of this automation
+- `--automation-id <automationId>` — 0.6 alias of --automation
+- `--audience-run-id <audienceRunId>` — 0.6 shim: read ONE run as a single-row page (`automations audience-runs get` is the real read)
 - `--status <status>` — queued | scheduled | running | paused | completed | failed | canceled
 - `--limit <n>` — Page size, 1-100 (default 100)
 - `--cursor <cursor>` — Opaque pagination cursor from a previous page
@@ -1495,9 +1510,24 @@ Cancel a manual-audience run for good — it can never be resumed
 - Class: destructive
 - SDK: `brew.automations.audienceRuns.cancel(...)`
 - Argument `audienceRunId` — Audience run id to cancel
+- `--idempotency-key <key>` — Idempotency-Key for safe retries (auto-generated otherwise)
 
 ```bash
 brew-cli automations audience-runs cancel arun_01HZ --yes
+```
+
+### brew-cli automations audience-runs control
+
+Pause, resume, or cancel an in-flight manual-audience run (0.6 form of `audience-runs pause|resume|cancel`)
+
+- Class: destructive
+- Argument `audienceRunId` — Audience run id to control
+- `--action <action>` — pause (resumable) | resume | cancel (final)
+- `--idempotency-key <key>` — Idempotency-Key for safe retries (auto-generated otherwise)
+
+```bash
+brew-cli automations audience-runs control arun_01HZ --action pause
+brew-cli automations audience-runs control arun_01HZ --action cancel --yes
 ```
 
 ### brew-cli automations trigger-instances list
@@ -1618,6 +1648,8 @@ List campaign/automation sends with delivery stats (`sends list`)
 - Route: `GET /v1/sends`
 - Class: read
 - Derived from `brew.sends.list(...)`
+- `--send <sendId>` — 0.6 shim: read ONE send as a single-row page (`sends get` is the real read)
+- `--include <tokens>` — With --send only: detail includes (`events`)
 - `--email <emailId>` — Filter by email design
 - `--kind <kind>` — campaign | automation
 - `--status <status>` — scheduled | queued | running | paused | completed | partially_completed | failed | canceled
@@ -1656,6 +1688,7 @@ List fired-trigger instances with their lifecycle `state` (`automations trigger-
 - Class: read
 - Derived from `brew.automations.triggerInstances.list(...)`
 - `--trigger <triggerEventId>` — Filter by trigger event
+- `--trigger-instance <triggerInstanceId>` — 0.6 shim: read ONE instance as a single-row page (`automations trigger-instances get` is the real read)
 - `--limit <n>` — Page size, 1-100 (default 100)
 - `--cursor <cursor>` — Opaque pagination cursor from a previous page
 - `--all` — Follow the cursor and return every page as one result
@@ -2043,6 +2076,8 @@ List public email flows (real multi-step sequences by brand) as cards; `flows ge
 - `--type <type>` — Filter by how the sequence starts: signup | newsletter
 - `--semantic <text>` — Semantic search over the sequences (relevance order)
 - `--sort <order>` — List order: newest (default) | emails | span | remixes
+- `--slug <domain>` — 0.6 shim: read ONE flow with its steps as a single-row page (`flows get <slug>` is the real read)
+- `--include <keys>` — With --slug only: `html` adds each step's rendered HTML
 - `--limit <n>` — Page size, 1-100 (default 100)
 - `--cursor <cursor>` — Opaque pagination cursor from a previous page
 - `--all` — Follow the cursor and return every page as one result

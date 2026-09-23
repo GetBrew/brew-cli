@@ -1,3 +1,4 @@
+import type { ListContactsInput } from '@brew.new/sdk'
 import { defineCommand } from '../../lib/define-command'
 import {
   asSdkInput,
@@ -57,7 +58,7 @@ export const contactsListCommand = defineCommand({
     if (flags.all === true) {
       const rows = await collectAll(ctx, (cursor) =>
         contacts.list(
-          asSdkInput<Record<string, unknown>>({
+          asSdkInput<ListContactsInput>({
             ...input,
             ...(cursor === undefined ? {} : { cursor }),
           })
@@ -68,9 +69,7 @@ export const contactsListCommand = defineCommand({
         human: renderContacts(rows),
       }
     }
-    const result = await contacts.list(
-      asSdkInput<Record<string, unknown>>(input)
-    )
+    const result = await contacts.list(asSdkInput<ListContactsInput>(input))
     return { data: result, human: renderContacts(result.data) }
   },
 })

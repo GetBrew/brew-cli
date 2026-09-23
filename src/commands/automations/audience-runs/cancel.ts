@@ -1,4 +1,5 @@
 import { defineCommand } from '../../../lib/define-command'
+import { IDEMPOTENCY_FLAG, requestOptions } from '../../../lib/input'
 
 export const automationsAudienceRunsCancelCommand = defineCommand({
   path: ['automations', 'audience-runs', 'cancel'],
@@ -16,12 +17,16 @@ export const automationsAudienceRunsCancelCommand = defineCommand({
       isRequired: true,
     },
   ],
+  flags: [IDEMPOTENCY_FLAG],
   examples: ['brew-cli automations audience-runs cancel arun_01HZ --yes'],
   confirmSummary: ({ args }) =>
     `Cancel audience run ${args.audienceRunId ?? ''} for good. Emails already sent are not recalled, and a canceled run cannot be resumed.`,
-  run: async ({ ctx, args }) => ({
+  run: async ({ ctx, args, flags }) => ({
     data: await ctx
       .client()
-      .automations.audienceRuns.cancel(args.audienceRunId ?? ''),
+      .automations.audienceRuns.cancel(
+        args.audienceRunId ?? '',
+        requestOptions(flags)
+      ),
   }),
 })

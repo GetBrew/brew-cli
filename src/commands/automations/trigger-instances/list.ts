@@ -1,3 +1,4 @@
+import type { ListTriggerInstancesInput } from '@brew.new/sdk'
 import { defineCommand } from '../../../lib/define-command'
 import {
   asSdkInput,
@@ -68,7 +69,7 @@ export async function listTriggerInstances(
   if (followCursor) {
     const rows = await collectAll(ctx, (cursor) =>
       triggerInstances.list(
-        asSdkInput<Record<string, unknown>>({
+        asSdkInput<ListTriggerInstancesInput>({
           ...input,
           ...(cursor === undefined ? {} : { cursor }),
         })
@@ -80,7 +81,7 @@ export async function listTriggerInstances(
     }
   }
   const result = await triggerInstances.list(
-    asSdkInput<Record<string, unknown>>(input)
+    asSdkInput<ListTriggerInstancesInput>(input)
   )
   return { data: result, human: renderInstances(result.data) }
 }

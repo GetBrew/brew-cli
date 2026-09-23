@@ -1,5 +1,9 @@
 import { defineCommand } from '../../../lib/define-command'
-import { flagString } from '../../../lib/input'
+import {
+  flagString,
+  IDEMPOTENCY_FLAG,
+  requestOptions,
+} from '../../../lib/input'
 
 /**
  * Operator cancel of ONE run of an event-triggered automation (or a test
@@ -27,6 +31,7 @@ export const automationsRunsCancelCommand = defineCommand({
   ],
   flags: [
     { flag: '--reason <text>', summary: 'Operator note stored on the run' },
+    IDEMPOTENCY_FLAG,
   ],
   examples: [
     'brew-cli automations runs cancel run_9f2kX --reason "wrong audience" --yes',
@@ -35,12 +40,16 @@ export const automationsRunsCancelCommand = defineCommand({
     `Cancel automation run ${args.automationRunId ?? ''}. Nothing further is sent; emails already delivered are not recalled, and a canceled run can never be resumed.`,
   run: async ({ ctx, args, flags }) => {
     const reason = flagString(flags.reason)
+    const options = {
+      ...requestOptions(flags),
+      ...(reason === undefined ? {} : { reason }),
+    }
     return {
       data: await ctx
         .client()
         .automations.runs.cancel(
           args.automationRunId ?? '',
-          reason === undefined ? undefined : { reason }
+          Object.keys(options).length === 0 ? undefined : options
         ),
     }
   },

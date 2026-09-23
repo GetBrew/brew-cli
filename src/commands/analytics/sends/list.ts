@@ -1,3 +1,4 @@
+import { includeRidesDetailRead, singleRowPage } from '../../../lib/compat'
 import { defineCommand } from '../../../lib/define-command'
 import {
   flagInt,
@@ -7,7 +8,7 @@ import {
   readJsonFlag,
 } from '../../../lib/input'
 import { ALL_FLAG, CURSOR_FLAG, LIMIT_FLAG } from '../../../lib/paginate'
-import { listSends, SEND_STATUS_SUMMARY } from '../../sends/list'
+import { listSends, renderSends, SEND_STATUS_SUMMARY } from '../../sends/list'
 
 /**
  * The name agents already know, now reading the sends root. Analytics keeps
@@ -22,6 +23,15 @@ export const analyticsSendsListCommand = defineCommand({
   route: { method: 'GET', path: '/v1/sends' },
   commandClass: 'read',
   flags: [
+    {
+      flag: '--send <sendId>',
+      summary:
+        '0.6 shim: read ONE send as a single-row page (`sends get` is the real read)',
+    },
+    {
+      flag: '--include <tokens>',
+      summary: 'With --send only: detail includes (`events`)',
+    },
     { flag: '--email <emailId>', summary: 'Filter by email design' },
     { flag: '--kind <kind>', summary: 'campaign | automation' },
     { flag: '--status <status>', summary: SEND_STATUS_SUMMARY },
@@ -37,6 +47,17 @@ export const analyticsSendsListCommand = defineCommand({
     'brew-cli analytics sends list --email eml_1 --all --json',
   ],
   run: async ({ ctx, flags }) => {
+    const sendId = flagString(flags.send)
+    const include = flagString(flags.include)
+    if (sendId !== undefined) {
+      const row = await ctx
+        .client()
+        .sends.get(sendId, include === undefined ? undefined : { include })
+      return { data: singleRowPage(row), human: renderSends([row]) }
+    }
+    if (include !== undefined) {
+      throw includeRidesDetailRead('sends get', '--send')
+    }
     const base = await readJsonFlag(ctx, flags.input, '--input')
     const input = mergeInput(base, {
       emailId: flagString(flags.email),

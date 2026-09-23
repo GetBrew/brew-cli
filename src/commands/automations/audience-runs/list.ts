@@ -1,4 +1,5 @@
 import type { ListAudienceRunsInput } from '@brew.new/sdk'
+import { singleRowPage } from '../../../lib/compat'
 import { defineCommand } from '../../../lib/define-command'
 import {
   asSdkInput,
@@ -29,6 +30,15 @@ export const automationsAudienceRunsListCommand = defineCommand({
       summary: 'Only runs of this automation',
     },
     {
+      flag: '--automation-id <automationId>',
+      summary: '0.6 alias of --automation',
+    },
+    {
+      flag: '--audience-run-id <audienceRunId>',
+      summary:
+        '0.6 shim: read ONE run as a single-row page (`automations audience-runs get` is the real read)',
+    },
+    {
       flag: '--status <status>',
       summary:
         'queued | scheduled | running | paused | completed | failed | canceled',
@@ -43,14 +53,20 @@ export const automationsAudienceRunsListCommand = defineCommand({
     'brew-cli automations audience-runs list --automation am_123 --status running',
   ],
   run: async ({ ctx, flags }) => {
+    const audienceRuns = ctx.client().automations.audienceRuns
+    const audienceRunId = flagString(flags.audienceRunId)
+    if (audienceRunId !== undefined) {
+      const row = await audienceRuns.get(audienceRunId)
+      return { data: singleRowPage(row), human: renderAudienceRuns([row]) }
+    }
     const base = await readJsonFlag(ctx, flags.input, '--input')
     const input = mergeInput(base, {
-      automationId: flagString(flags.automation),
+      automationId:
+        flagString(flags.automation) ?? flagString(flags.automationId),
       status: flagString(flags.status),
       limit: flagInt(flags.limit, '--limit'),
       cursor: flagString(flags.cursor),
     })
-    const audienceRuns = ctx.client().automations.audienceRuns
     if (flags.all === true) {
       const rows = await collectAll(ctx, (cursor) =>
         audienceRuns.list(

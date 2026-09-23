@@ -1,5 +1,6 @@
 import type { ListEmailsInput } from '@brew.new/sdk'
 import { defineCommand } from '../../lib/define-command'
+import { CliUsageError } from '../../lib/errors'
 import {
   asSdkInput,
   flagInt,
@@ -44,6 +45,27 @@ export const emailsListCommand = defineCommand({
       flag: '--until <iso>',
       summary: 'Inclusive upper bound on the --sort-by timestamp (ISO-8601)',
     },
+    { flag: '--sort <field>', summary: '0.6 alias of --sort-by' },
+    {
+      flag: '--order <order>',
+      summary: '0.6 flag: pages are newest first; only desc is accepted',
+    },
+    {
+      flag: '--created-at-from <iso>',
+      summary: '0.6 alias of --sort-by createdAt --since <iso>',
+    },
+    {
+      flag: '--created-at-to <iso>',
+      summary: '0.6 alias of --sort-by createdAt --until <iso>',
+    },
+    {
+      flag: '--updated-at-from <iso>',
+      summary: '0.6 alias of --sort-by updatedAt --since <iso>',
+    },
+    {
+      flag: '--updated-at-to <iso>',
+      summary: '0.6 alias of --sort-by updatedAt --until <iso>',
+    },
     LIMIT_FLAG,
     CURSOR_FLAG,
     ALL_FLAG,
@@ -56,13 +78,15 @@ export const emailsListCommand = defineCommand({
     'brew-cli emails list --all --json',
   ],
   run: async ({ ctx, flags }) => {
+    const legacy = legacyWindow(flags)
     const base = await readJsonFlag(ctx, flags.input, '--input')
     const input = mergeInput(base, {
       status: flagString(flags.status),
       groupId: flagString(flags.groupId),
-      sortBy: flagString(flags.sortBy),
-      from: flagString(flags.since),
-      to: flagString(flags.until),
+      sortBy:
+        flagString(flags.sortBy) ?? flagString(flags.sort) ?? legacy.sortBy,
+      from: flagString(flags.since) ?? legacy.from,
+      to: flagString(flags.until) ?? legacy.to,
       limit: flagInt(flags.limit, '--limit'),
       cursor: flagString(flags.cursor),
     })
@@ -85,6 +109,46 @@ export const emailsListCommand = defineCommand({
     return { data: result, human: renderEmails(result.data) }
   },
 })
+
+/**
+ * 0.6 took a window per column (`--created-at-from`, `--updated-at-to`, …)
+ * plus `--sort`/`--order`; the API now orders by ONE `sortBy` timestamp that
+ * `from`/`to` bound, newest first. Fold the released flags onto that.
+ */
+function legacyWindow(flags: Readonly<Record<string, unknown>>): {
+  readonly sortBy: string | undefined
+  readonly from: string | undefined
+  readonly to: string | undefined
+} {
+  const order = flagString(flags.order)
+  if (order !== undefined && order !== 'desc') {
+    throw new CliUsageError(
+      'GET /v1/emails pages newest first only; --order asc has no equivalent.'
+    )
+  }
+  const created = {
+    from: flagString(flags.createdAtFrom),
+    to: flagString(flags.createdAtTo),
+  }
+  const updated = {
+    from: flagString(flags.updatedAtFrom),
+    to: flagString(flags.updatedAtTo),
+  }
+  const hasCreated = created.from !== undefined || created.to !== undefined
+  const hasUpdated = updated.from !== undefined || updated.to !== undefined
+  if (hasCreated && hasUpdated) {
+    throw new CliUsageError(
+      'The API bounds one timestamp per page: pass --created-at-* or --updated-at-*, not both (or --sort-by with --since/--until).'
+    )
+  }
+  if (hasCreated) {
+    return { sortBy: 'createdAt', ...created }
+  }
+  if (hasUpdated) {
+    return { sortBy: 'updatedAt', ...updated }
+  }
+  return { sortBy: undefined, from: undefined, to: undefined }
+}
 
 function renderEmails(rows: ReadonlyArray<unknown>): string {
   if (rows.length === 0) {

@@ -1,4 +1,5 @@
 import type { Flow, ListFlowsInput } from '@brew.new/sdk'
+import { includeRidesDetailRead, singleRowPage } from '../../lib/compat'
 import { defineCommand } from '../../lib/define-command'
 import {
   asSdkInput,
@@ -52,6 +53,15 @@ export const flowsListCommand = defineCommand({
       flag: '--sort <order>',
       summary: 'List order: newest (default) | emails | span | remixes',
     },
+    {
+      flag: '--slug <domain>',
+      summary:
+        '0.6 shim: read ONE flow with its steps as a single-row page (`flows get <slug>` is the real read)',
+    },
+    {
+      flag: '--include <keys>',
+      summary: "With --slug only: `html` adds each step's rendered HTML",
+    },
     LIMIT_FLAG,
     CURSOR_FLAG,
     ALL_FLAG,
@@ -63,6 +73,19 @@ export const flowsListCommand = defineCommand({
     'brew-cli flows list --semantic "developer onboarding drip"',
   ],
   run: async ({ ctx, flags }) => {
+    const flows = ctx.client().flows
+    const slug = flagString(flags.slug)
+    const include = flagString(flags.include)
+    if (slug !== undefined) {
+      const flow = await flows.get(
+        slug,
+        include === undefined ? undefined : { include }
+      )
+      return { data: singleRowPage(flow), human: renderFlows([flow]) }
+    }
+    if (include !== undefined) {
+      throw includeRidesDetailRead('flows get', '--slug')
+    }
     const base = await readJsonFlag(ctx, flags.input, '--input')
     const input = mergeInput(base, {
       brand: flagString(flags.brandDomain),
@@ -73,7 +96,6 @@ export const flowsListCommand = defineCommand({
       limit: flagInt(flags.limit, '--limit'),
       cursor: flagString(flags.cursor),
     })
-    const flows = ctx.client().flows
     if (flags.all === true) {
       const rows = await collectAll(ctx, (cursor) =>
         flows.list(

@@ -1,3 +1,4 @@
+import { singleRowPage } from '../../../lib/compat'
 import { defineCommand } from '../../../lib/define-command'
 import {
   flagInt,
@@ -7,7 +8,10 @@ import {
   readJsonFlag,
 } from '../../../lib/input'
 import { ALL_FLAG, CURSOR_FLAG, LIMIT_FLAG } from '../../../lib/paginate'
-import { listTriggerInstances } from '../../automations/trigger-instances/list'
+import {
+  listTriggerInstances,
+  renderInstances,
+} from '../../automations/trigger-instances/list'
 
 /**
  * The name agents already know. Trigger instances moved under automations;
@@ -26,6 +30,11 @@ export const analyticsTriggerInstancesListCommand = defineCommand({
       flag: '--trigger <triggerEventId>',
       summary: 'Filter by trigger event',
     },
+    {
+      flag: '--trigger-instance <triggerInstanceId>',
+      summary:
+        '0.6 shim: read ONE instance as a single-row page (`automations trigger-instances get` is the real read)',
+    },
     LIMIT_FLAG,
     CURSOR_FLAG,
     ALL_FLAG,
@@ -36,6 +45,13 @@ export const analyticsTriggerInstancesListCommand = defineCommand({
     'brew-cli analytics trigger-instances list --all --json',
   ],
   run: async ({ ctx, flags }) => {
+    const triggerInstanceId = flagString(flags.triggerInstance)
+    if (triggerInstanceId !== undefined) {
+      const row = await ctx
+        .client()
+        .automations.triggerInstances.get(triggerInstanceId)
+      return { data: singleRowPage(row), human: renderInstances([row]) }
+    }
     const base = await readJsonFlag(ctx, flags.input, '--input')
     const input = mergeInput(base, {
       triggerEventId: flagString(flags.trigger),

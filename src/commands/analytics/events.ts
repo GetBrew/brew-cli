@@ -87,6 +87,6 @@ function renderEvents(rows: ReadonlyArray<unknown>): string {
     { key: 'occurredAt', header: 'OCCURRED' },
     { key: 'domain', header: 'DOMAIN' },
     { key: 'eventType', header: 'EVENT' },
-    { key: 'recipient', header: 'RECIPIENT' },
+    { key: 'recipientEmail', header: 'RECIPIENT' },
   ])
 }

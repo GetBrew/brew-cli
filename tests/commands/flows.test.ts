@@ -33,6 +33,8 @@ function cli(
 
 const CARD = {
   slug: 'notion.com',
+  // `brand` is `{ name, logo? }` since SDK 9.2.0; `domain` duplicated `slug`
+  // and was dropped from the API row.
   brand: { name: 'Notion' },
   title: 'Notion onboarding flow',
   type: 'signup',
@@ -194,11 +196,18 @@ describe('flows list, paging', () => {
       http.get(`${API}/v1/flows/nobody.example`, () =>
         HttpResponse.json(
           {
+            // `suggestion` and `docs` are REQUIRED on the error object by the
+            // spec, and the SDK's envelope parser enforces that: an envelope
+            // missing either degrades to `code: 'unknown_error'`. Keep this
+            // fixture shaped like the real 404 the API sends.
             error: {
               code: 'FLOW_NOT_FOUND',
               type: 'not_found',
               message: "No public flow matches slug 'nobody.example'.",
               param: 'slug',
+              suggestion:
+                'List flows with GET /api/v1/flows and use a returned `slug` (the brand domain, e.g. `brew.new`).',
+              docs: 'https://docs.brew.new/api-reference/api/errors',
             },
           },
           { status: 404 }

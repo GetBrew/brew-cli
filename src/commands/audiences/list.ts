@@ -1,4 +1,5 @@
 import type { ListAudiencesInput } from '@brew.new/sdk'
+import { includeRidesDetailRead } from '../../lib/compat'
 import { defineCommand } from '../../lib/define-command'
 import {
   asSdkInput,
@@ -22,13 +23,26 @@ export const audiencesListCommand = defineCommand({
   sdkMethod: 'audiences.list',
   route: { method: 'GET', path: '/v1/audiences' },
   commandClass: 'read',
-  flags: [LIMIT_FLAG, CURSOR_FLAG, ALL_FLAG, INPUT_FLAG],
+  flags: [
+    {
+      flag: '--include <tokens>',
+      summary:
+        '0.6 flag: includes ride the detail read now (`audiences get --include count,build`)',
+    },
+    LIMIT_FLAG,
+    CURSOR_FLAG,
+    ALL_FLAG,
+    INPUT_FLAG,
+  ],
   examples: [
     'brew-cli audiences list',
     'brew-cli audiences list --limit 10',
     'brew-cli audiences list --all --json',
   ],
   run: async ({ ctx, flags }) => {
+    if (flagString(flags.include) !== undefined) {
+      throw includeRidesDetailRead('audiences get')
+    }
     const base = await readJsonFlag(ctx, flags.input, '--input')
     const input = mergeInput(base, {
       limit: flagInt(flags.limit, '--limit'),

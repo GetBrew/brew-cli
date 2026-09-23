@@ -1,7 +1,7 @@
 import { CLI_NAME, CLI_VERSION } from '../version'
 import type { ResolvedAuth } from './client'
 import { isOrgLevelPath, resolveAuth } from './client'
-import { CliApiError } from './errors'
+import { CliApiError, errorTypeForStatus, suggestionForStatus } from './errors'
 import type { CliContext } from './types'
 
 /**
@@ -108,37 +108,41 @@ export function responseToApiError(
   parsed: unknown
 ): CliApiError {
   const requestId = response.headers.get('x-request-id') ?? undefined
-  // Standard envelope: { error: {...} }. A few legacy endpoints (e.g.
-  // trigger fire) put code/message at the top level instead — fall back
-  // to those rather than discarding the body.
-  const record =
-    parsed !== null && typeof parsed === 'object'
-      ? (parsed as Record<string, unknown>)
-      : undefined
-  const envelope =
-    record !== undefined &&
-    record.error !== null &&
-    typeof record.error === 'object'
-      ? (record.error as Record<string, unknown>)
-      : record
+  // Standard envelope: { error: {...} }. The trigger-fire endpoints answer
+  // with the legacy fire envelope instead — `code`/`message`/`details` at
+  // the top level and no `type` — so read those rather than discarding the
+  // body, and derive the `type` (and a suggestion) from the HTTP status.
+  const record = isRecord(parsed) ? parsed : undefined
+  const standard =
+    record !== undefined && isRecord(record.error) ? record.error : undefined
+  const envelope = standard ?? record
   const readField = (key: string): string | undefined => {
     const value = envelope?.[key]
     return typeof value === 'string' ? value : undefined
   }
   const param = readField('param')
-  const suggestion = readField('suggestion')
+  const suggestion =
+    readField('suggestion') ??
+    (envelope === undefined ? undefined : suggestionForStatus(response.status))
   const docs = readField('docs')
+  const details = isRecord(envelope?.details) ? envelope.details : undefined
   return new CliApiError({
     status: response.status,
     code: readField('code') ?? 'HTTP_ERROR',
-    type: readField('type') ?? 'internal_error',
+    type: readField('type') ?? errorTypeForStatus(response.status),
     message:
       readField('message') ?? `Request failed with status ${response.status}`,
     ...(param === undefined ? {} : { param }),
     ...(suggestion === undefined ? {} : { suggestion }),
     ...(docs === undefined ? {} : { docs }),
     ...(requestId === undefined ? {} : { requestId }),
+    ...(details === undefined ? {} : { details }),
+    ...(parsed === undefined ? {} : { body: parsed }),
   })
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
 export function tryParseJson(text: string): unknown {
