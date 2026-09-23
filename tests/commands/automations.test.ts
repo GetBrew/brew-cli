@@ -619,4 +619,39 @@ describe('automations runs list', () => {
     expect(query?.get('from')).toBe('2026-08-01')
     expect(query?.get('to')).toBe('2026-08-10')
   })
+
+  it('forwards --recipient as recipientEmail and --status canceled verbatim', async () => {
+    // `recipientEmail` is the one-contact run history the server honours
+    // since brew-v2 #1621 — a dropped flag would answer with everyone's
+    // runs. The API's status enum spells it `canceled` (one L); the help
+    // text used to say `cancelled`, the one value the server refuses.
+    let query: URLSearchParams | undefined
+    server.use(
+      http.get(`${API}/v1/automations/runs`, ({ request }) => {
+        query = new URL(request.url).searchParams
+        return HttpResponse.json({
+          data: [
+            {
+              automationRunId: 'arun_2',
+              status: 'canceled',
+              recipientEmail: 'jane@example.com',
+            },
+          ],
+          pagination: PAGE_DONE,
+        })
+      })
+    )
+    const result = await cli([
+      'automations',
+      'runs',
+      'list',
+      '--recipient',
+      'jane@example.com',
+      '--status',
+      'canceled',
+    ])
+    expect(result.code).toBe(0)
+    expect(query?.get('recipientEmail')).toBe('jane@example.com')
+    expect(query?.get('status')).toBe('canceled')
+  })
 })

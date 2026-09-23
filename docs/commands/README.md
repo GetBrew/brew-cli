@@ -1253,7 +1253,7 @@ List automation runs (live + test history)
 - `--trigger <triggerEventId>` — Filter by trigger event
 - `--trigger-instance <triggerInstanceId>` — Filter by fired trigger instance
 - `--recipient <email>` — Filter by recipient email
-- `--status <status>` — pending | running | completed | failed | cancelled
+- `--status <status>` — pending | running | completed | failed | canceled
 - `--mode <mode>` — live | test
 - `--since <datetime>` — Runs started at/after (ISO-8601)
 - `--until <datetime>` — Runs started at/before (ISO-8601)
