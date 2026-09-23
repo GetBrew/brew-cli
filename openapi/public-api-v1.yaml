@@ -3573,6 +3573,7 @@ components:
         - TRIGGER_HAS_DEPENDENT_AUTOMATIONS
         - TRIGGER_IMMUTABLE
         - TRIGGER_INSTANCE_NOT_FOUND
+        - TRIGGER_LIMIT_REACHED
     EmailGenerateTextResponse:
       type: object
       properties:
@@ -33221,6 +33222,8 @@ paths:
             `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
 
             `TRIGGER_ALREADY_EXISTS`: A trigger with that id already exists in the brand.
+
+            `TRIGGER_LIMIT_REACHED`: The brand already holds the maximum number of trigger events.
           headers:
             x-request-id:
               schema:
@@ -33260,6 +33263,15 @@ paths:
                       type: conflict
                       message: A trigger with that id already exists in the brand.
                       suggestion: Reuse the existing trigger, or choose a different triggerEventId.
+                      docs: https://docs.brew.new/api-reference/api/errors
+                triggerLimitReached:
+                  summary: TRIGGER_LIMIT_REACHED
+                  value:
+                    error:
+                      code: TRIGGER_LIMIT_REACHED
+                      type: conflict
+                      message: The brand already holds the maximum number of trigger events.
+                      suggestion: Delete an unused trigger with `DELETE /v1/automations/triggers/{triggerEventId}`, then retry. Each brand holds at most 100.
                       docs: https://docs.brew.new/api-reference/api/errors
         "422":
           description: "`PAYLOAD_SCHEMA_EMAIL_REQUIRED`: A trigger payload schema must declare a required string `email` field."
