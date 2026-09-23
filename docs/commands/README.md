@@ -2,7 +2,7 @@
 
 <!-- GENERATED FILE — do not edit. Regenerate with `bun run docs:commands`. -->
 
-112 commands. Classes: read (always safe), write
+127 commands. Classes: read (always safe), write
 (mutating, retry-safe), destructive (irreversible — the confirmation
 protocol applies: interactive y/N on a TTY, exit 4 + JSON envelope with
 a `confirmCommand` otherwise, `--yes` to proceed).
@@ -27,8 +27,9 @@ a `confirmCommand` otherwise, `--yes` to proceed).
 | `brew-cli config get` | read | — | Read one stored configuration value |
 | `brew-cli config set` | write | — | Store a configuration value (brandId or apiUrl) |
 | `brew-cli config unset` | write | — | Remove a stored configuration value (brandId or apiUrl) |
+| `brew-cli contacts list` | read | `GET /v1/contacts` | List contacts, newest first — free-text search and one audience; typed clauses are `contacts search` |
 | `brew-cli contacts search` | read | `POST /v1/contacts/search` | Search contacts with structured filters (the contacts read) |
-| `brew-cli contacts get` | read | `POST /v1/contacts/search` | Fetch one contact by email |
+| `brew-cli contacts get` | read | `GET /v1/contacts/{email}` | Fetch one contact by email — the bare row |
 | `brew-cli contacts count` | read | `POST /v1/contacts/search` | Count contacts matching a filter |
 | `brew-cli contacts upsert` | write | `POST /v1/contacts` | Create or update one contact by email |
 | `brew-cli contacts upsert-many` | write | `POST /v1/contacts` | Create or update a batch of contacts (up to 100 per call) |
@@ -38,14 +39,16 @@ a `confirmCommand` otherwise, `--yes` to proceed).
 | `brew-cli contacts validate` | write ($) | `POST /v1/contacts/validate` | Batch-validate email deliverability (no contacts created) |
 | `brew-cli contacts import-csv` | write | `POST /v1/contacts/import-csv` | Bulk-import contacts from a CSV file or stdin |
 | `brew-cli fields list` | read | `GET /v1/fields` | List custom contact fields |
+| `brew-cli fields get` | read | `GET /v1/fields/{fieldName}` | Fetch one contact field definition by name — the bare row |
 | `brew-cli fields create` | write | `POST /v1/fields` | Create a custom contact field |
 | `brew-cli fields delete` | destructive | `DELETE /v1/fields/{fieldName}` | Delete a custom field definition |
-| `brew-cli emails list` | read | `GET /v1/emails` | List email designs (the single email read) |
+| `brew-cli emails list` | read | `GET /v1/emails` | List email designs; one design is `emails get` |
 | `brew-cli emails groups list` | read | `GET /v1/email-groups` | List email groups in display order, including Ungrouped |
+| `brew-cli emails groups get` | read | `GET /v1/email-groups/{groupId}` | Fetch one email group by id — the bare row |
 | `brew-cli emails groups create` | write | `POST /v1/email-groups` | Create a named email folder (group) |
 | `brew-cli emails groups update` | write | `PATCH /v1/email-groups/{groupId}` | Rename an email folder (group) |
 | `brew-cli emails groups delete` | destructive | `DELETE /v1/email-groups/{groupId}` | Delete an email folder (group); its emails move to Ungrouped |
-| `brew-cli emails get` | read | `GET /v1/emails` | Fetch one email design by id |
+| `brew-cli emails get` | read | `GET /v1/emails/{emailId}` | Fetch one email design by id — the bare row |
 | `brew-cli emails generate` | write ($) | `POST /v1/emails` | Generate a new on-brand email design from a prompt |
 | `brew-cli emails import` | write | `POST /v1/emails/import` | Import existing HTML, MJML, or JSX as a new editable design |
 | `brew-cli emails import-figma` | write | `POST /v1/emails/figma` | Convert one Figma frame into an editable design (deterministic, free) |
@@ -57,21 +60,24 @@ a `confirmCommand` otherwise, `--yes` to proceed).
 | `brew-cli emails audit` | write ($) | `POST /v1/emails/audit` | Audit raw email content for production readiness (5 credits when complete) |
 | `brew-cli emails preview-clients` | write ($) | `POST /v1/emails/{emailId}/client-previews` | Render the design across real email clients (10 credits) |
 | `brew-cli emails create-inbox-placement-test` | write ($) | `POST /v1/emails/{emailId}/inbox-placement-tests` | Seed-test where the design lands (inbox vs spam) via a real small send (10 credits) |
-| `brew-cli emails get-inbox-placement-results` | read | `GET /v1/emails/{emailId}/inbox-placement-tests` | Inbox placement results: one test with --test-id, else the recent tests |
+| `brew-cli emails get-inbox-placement-results` | read | `GET /v1/emails/{emailId}/inbox-placement-tests` | Inbox placement results: the recent tests, or one test with --test-id |
+| `brew-cli emails inbox-placement-tests get` | read | `GET /v1/emails/{emailId}/inbox-placement-tests/{testId}` | Fetch one inbox-placement (seed) test — the bare row, re-poll ~30s until completed |
 | `brew-cli emails send` | destructive | `POST /v1/sends` | Send an email: a real campaign, or a safe test with --test |
+| `brew-cli sends list` | read | `GET /v1/sends` | List sends (the unit of delivery and analytics) with lifetime stats |
+| `brew-cli sends get` | read | `GET /v1/sends/{sendId}` | Fetch one send by id — the bare row with its lifetime stats |
 | `brew-cli sends cancel` | destructive | `POST /v1/sends/{sendId}/cancel` | Cancel a scheduled or queued send before it goes out |
 | `brew-cli sends pause` | write | `POST /v1/sends/{sendId}/pause` | Pause an in-flight or scheduled send (resumable) |
-| `brew-cli sends resume` | write | `POST /v1/sends/{sendId}/resume` | Resume a paused gradual send (the unsent tail is re-spread) |
+| `brew-cli sends resume` | write | `POST /v1/sends/{sendId}/resume` | Resume a paused gradual send (the unsent tail is re-spread); the send reports `running` again |
 | `brew-cli types` | read | `GET /v1/automations/triggers` | Generate TypeScript payload contracts for this workspace's triggers into your codebase; --check is the CI drift gate (exit 1 on drift). Needs the automations scope |
-| `brew-cli audiences list` | read | `GET /v1/audiences` | List audience segments |
-| `brew-cli audiences get` | read | `GET /v1/audiences` | Fetch one audience segment by id |
+| `brew-cli audiences list` | read | `GET /v1/audiences` | List audience segments; one segment is `audiences get` |
+| `brew-cli audiences get` | read | `GET /v1/audiences/{audienceId}` | Fetch one audience segment by id — the bare row |
 | `brew-cli audiences create` | write | `POST /v1/audiences` | Create an audience segment from a filter definition |
 | `brew-cli audiences update` | write | `PATCH /v1/audiences/{audienceId}` | Update an audience segment (name and/or filters) |
 | `brew-cli audiences duplicate` | write | `POST /v1/audiences/{audienceId}/duplicate` | Copy an audience segment (the copy gets a "(copy)" name) |
 | `brew-cli audiences from-events` | write | `POST /v1/audiences/from-events` | Create a frozen audience snapshot from analytics events (async build) |
 | `brew-cli audiences delete` | destructive | `DELETE /v1/audiences/{audienceId}` | Delete an audience segment (contacts are kept) |
 | `brew-cli automations list` | read | `GET /v1/automations` | List automations (lean rows; `automations get` for the graph) |
-| `brew-cli automations get` | read | `GET /v1/automations` | Fetch one automation by id |
+| `brew-cli automations get` | read | `GET /v1/automations/{automationId}` | Fetch one automation by id — the bare row, lean by default |
 | `brew-cli automations create` | write | `POST /v1/automations` | Create an automation from a graph JSON (starts unpublished) |
 | `brew-cli automations update` | write | `PATCH /v1/automations/{automationId}` | Update automation metadata and/or its graph (PATCH) |
 | `brew-cli automations publish` | write | `PATCH /v1/automations/{automationId}` | Publish an automation — arms it for live fires; does not itself send |
@@ -79,8 +85,9 @@ a `confirmCommand` otherwise, `--yes` to proceed).
 | `brew-cli automations delete` | destructive | `DELETE /v1/automations/{automationId}` | Delete an automation and its version history (cascade) |
 | `brew-cli automations test` | write | `POST /v1/automations/{automationId}/test` | Start a suppression-aware TEST run (no real mail is sent) |
 | `brew-cli automations run` | destructive | `POST /v1/automations/{automationId}/run` | Run a manual-audience automation (live send; --dry-run previews) |
-| `brew-cli automations triggers list` | read | `GET /v1/automations/triggers` | List trigger events (their payload schemas drive fires) |
-| `brew-cli automations triggers ready` | read | `GET /v1/automations/triggers/{triggerEventId}/fire` | Preflight a trigger without firing: key + scope + permissions pass/fail, the payload contract, and what a fire would start |
+| `brew-cli automations triggers list` | read | `GET /v1/automations/triggers` | List trigger events (their payload schemas drive fires); one trigger is `automations triggers get` |
+| `brew-cli automations triggers get` | read | `GET /v1/automations/triggers/{triggerEventId}` | Fetch one trigger by id — the bare row with its payload schema |
+| `brew-cli automations triggers ready` | read | `GET /v1/automations/triggers/{triggerEventId}/readiness` | Preflight a trigger without firing: key + scope + permissions pass/fail, the payload contract, and what a fire would start |
 | `brew-cli automations triggers contract get` | read | `GET /v1/automations/triggers/{triggerEventId}/contract` | Read a trigger payload contract: stored when declared, derived otherwise; --format renders ts/zod/jsonschema/skill |
 | `brew-cli automations triggers contract put` | write | `PUT /v1/automations/triggers/{triggerEventId}/contract` | Declare (or replace) the stored payload contract for a trigger — tree-validated before any write; omitting --enforcement leaves the stored setting unchanged |
 | `brew-cli automations triggers contract validate` | read | `POST /v1/automations/triggers/{triggerEventId}/contract/validate` | Dry-run a payload against a trigger's contract (the fire path's validator) — never fires; invalid payloads still exit 0 |
@@ -90,17 +97,24 @@ a `confirmCommand` otherwise, `--yes` to proceed).
 | `brew-cli automations triggers update` | write | `PATCH /v1/automations/triggers/{triggerEventId}` | Update a trigger event (title, description, payload schema) |
 | `brew-cli automations triggers delete` | destructive | `DELETE /v1/automations/triggers/{triggerEventId}` | Delete a trigger event (rejected while automations depend on it) |
 | `brew-cli automations triggers fire` | destructive | `POST /v1/automations/triggers/{triggerEventId}/fire` | Fire a trigger event with a payload (starts LIVE runs) |
-| `brew-cli automations runs list` | read | `GET /v1/automations/runs` | List automation runs (live + test history) |
-| `brew-cli automations runs cancel` | destructive | `PATCH /v1/automations/runs` | Cancel one in-flight automation run (event execution or test run) — nothing further is sent, and it can never be resumed |
-| `brew-cli automations audience-runs list` | read | `GET /v1/automations/audience-runs` | List manual-audience runs (newest first) |
-| `brew-cli automations audience-runs control` | destructive | `POST /v1/automations/audience-runs/{audienceRunId}/control` | Pause, resume, or cancel an in-flight manual-audience run |
+| `brew-cli automations runs list` | read | `GET /v1/automations/runs` | List automation runs (live + test history); one run is `automations runs get` |
+| `brew-cli automations runs get` | read | `GET /v1/automations/runs/{automationRunId}` | Fetch one automation run by id — the bare row |
+| `brew-cli automations runs cancel` | destructive | `POST /v1/automations/runs/{automationRunId}/cancel` | Cancel one in-flight automation run (event execution or test run) — nothing further is sent, and it can never be resumed |
+| `brew-cli automations audience-runs list` | read | `GET /v1/automations/audience-runs` | List manual-audience runs, newest first; one run is `automations audience-runs get` |
+| `brew-cli automations audience-runs get` | read | `GET /v1/automations/audience-runs/{audienceRunId}` | Fetch one manual-audience run by id — the bare row |
+| `brew-cli automations audience-runs pause` | write | `POST /v1/automations/audience-runs/{audienceRunId}/pause` | Pause a running manual-audience run at its next step boundary (resumable) |
+| `brew-cli automations audience-runs resume` | write | `POST /v1/automations/audience-runs/{audienceRunId}/resume` | Resume a paused manual-audience run, or restart a failed one from its first undelivered send |
+| `brew-cli automations audience-runs cancel` | destructive | `POST /v1/automations/audience-runs/{audienceRunId}/cancel` | Cancel a manual-audience run for good — it can never be resumed |
+| `brew-cli automations audience-runs control` | destructive | — | Pause, resume, or cancel an in-flight manual-audience run (0.6 form of `audience-runs pause|resume|cancel`) |
+| `brew-cli automations trigger-instances list` | read | `GET /v1/automations/trigger-instances` | List fired-trigger instances (the inbound-fire audit log); each row carries a lifecycle `state` |
+| `brew-cli automations trigger-instances get` | read | `GET /v1/automations/trigger-instances/{triggerInstanceId}` | Fetch one fired-trigger instance by id — the bare row, with its lifecycle `state` and the runs it started |
 | `brew-cli analytics overview` | read | `GET /v1/analytics/overview` | Brand overview: totals, rates, timeseries (default last 7 days) |
-| `brew-cli analytics campaigns` | read | `GET /v1/analytics/campaigns` | Lifetime per-campaign KPIs (sent, opened, clicked, bounced) |
+| `brew-cli analytics campaigns` | read | `GET /v1/sends` | Lifetime per-campaign KPIs (`sends list --kind campaign`; stats ride each row) |
 | `brew-cli analytics automations` | read | `GET /v1/analytics/automations` | Windowed per-automation performance + totals |
 | `brew-cli analytics events` | read | `GET /v1/analytics/events` | Unified event explorer (email, automation, trigger, inbound) |
-| `brew-cli analytics sends list` | read | `GET /v1/analytics/sends` | List campaign/automation sends with delivery stats |
-| `brew-cli analytics sends get` | read | `GET /v1/analytics/sends` | Fetch one send by id |
-| `brew-cli analytics trigger-instances list` | read | `GET /v1/analytics/trigger-instances` | List fired-trigger instances (ingest + match history) |
+| `brew-cli analytics sends list` | read | `GET /v1/sends` | List campaign/automation sends with delivery stats (`sends list`) |
+| `brew-cli analytics sends get` | read | `GET /v1/sends/{sendId}` | Fetch one send by id — the bare row (`sends get`) |
+| `brew-cli analytics trigger-instances list` | read | `GET /v1/automations/trigger-instances` | List fired-trigger instances with their lifecycle `state` (`automations trigger-instances list`) |
 | `brew-cli brand get` | read | `GET /v1/brand` | Fetch the key's brand + extraction readiness (`ready` flag) |
 | `brew-cli brand update` | write | `PATCH /v1/brand` | Update brand identity and/or design-system markdown (PATCH) |
 | `brew-cli brand get-images` | read | `GET /v1/brand/images` | Browse or semantically search the brand's image library |
@@ -111,7 +125,7 @@ a `confirmCommand` otherwise, `--yes` to proceed).
 | `brew-cli api-keys create` | write | `POST /v1/api-keys` | Mint an API key; the plaintext `key` is returned ONCE — this output is the only copy |
 | `brew-cli api-keys delete` | destructive | `DELETE /v1/api-keys/{keyId}` | Revoke an API key |
 | `brew-cli domains list` | read | `GET /v1/domains` | List sending domains with verification state and DNS records |
-| `brew-cli domains get` | read | `GET /v1/domains` | Fetch one sending domain by id |
+| `brew-cli domains get` | read | `GET /v1/domains/{domainId}` | Fetch one sending domain by id — the bare row |
 | `brew-cli domains add` | write | `POST /v1/domains` | Add a sending domain (response lists the DNS records to set) |
 | `brew-cli domains verify` | write | `POST /v1/domains/{domainId}/verify` | Re-check DNS records and refresh domain verification |
 | `brew-cli domains health` | read | `GET /v1/domains/{domainId}/health` | Deliverability health: verdict, signals, DNS/auth, reputation |
@@ -123,7 +137,8 @@ a `confirmCommand` otherwise, `--yes` to proceed).
 | `brew-cli content html-to-png` | write ($) | `POST /v1/content/html-to-png` | Render HTML to a hosted PNG |
 | `brew-cli content add-image` | write ($) | `POST /v1/content/add-image` | Mirror an external image onto Brew-hosted storage |
 | `brew-cli templates list` | read | `GET /v1/templates` | List public templates (each row carries the rendered html) |
-| `brew-cli flows list` | read | `GET /v1/flows` | List public email flows (real multi-step sequences by brand), or fetch one by --slug with every step |
+| `brew-cli flows list` | read | `GET /v1/flows` | List public email flows (real multi-step sequences by brand) as cards; `flows get <slug>` reads one |
+| `brew-cli flows get` | read | `GET /v1/flows/{slug}` | Fetch one public email flow by brand domain, with every step (day offset, wait, subject, template id) |
 | `brew-cli integrations list` | read | `GET /v1/integrations` | List the integration catalog with per-provider connected state (connect via Settings, not this CLI) |
 | `brew-cli chats get` | read | `GET /v1/chats/{chatId}` | Brand-scoped digest of a Brew chat (artifacts + transcript tail) |
 | `brew-cli health` | read | `GET /v1/health` | Check Brew API liveness (no auth required) |
@@ -212,6 +227,28 @@ Remove a stored configuration value (brandId or apiUrl)
 brew-cli config unset brandId
 ```
 
+### brew-cli contacts list
+
+List contacts, newest first — free-text search and one audience; typed clauses are `contacts search`
+
+- Route: `GET /v1/contacts`
+- Class: read
+- SDK: `brew.contacts.list(...)`
+- `--search <text>` — Free-text search
+- `--audience <audienceId>` — Only members of this saved audience
+- `--sort <field>` — Any core column or custom field (default createdAt)
+- `--order <order>` — Sort order: asc | desc
+- `--limit <n>` — Page size, 1-100 (default 100)
+- `--cursor <cursor>` — Opaque pagination cursor from a previous page
+- `--all` — Follow the cursor and return every page as one result
+- `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
+
+```bash
+brew-cli contacts list --limit 20
+brew-cli contacts list --audience aud_3k9sQ --all --json
+brew-cli contacts list --search acme --sort email --order asc
+```
+
 ### brew-cli contacts search
 
 Search contacts with structured filters (the contacts read)
@@ -238,12 +275,12 @@ brew-cli contacts search --all --json
 
 ### brew-cli contacts get
 
-Fetch one contact by email
+Fetch one contact by email — the bare row
 
-- Route: `POST /v1/contacts/search`
+- Route: `GET /v1/contacts/{email}`
 - Class: read
-- Derived from `brew.contacts.search(...)`
-- Argument `email` — Email address of the contact
+- SDK: `brew.contacts.get(...)`
+- Argument `email` — Email address of the contact (the contact primary key)
 
 ```bash
 brew-cli contacts get jane@example.com
@@ -394,6 +431,19 @@ List custom contact fields
 brew-cli fields list
 ```
 
+### brew-cli fields get
+
+Fetch one contact field definition by name — the bare row
+
+- Route: `GET /v1/fields/{fieldName}`
+- Class: read
+- SDK: `brew.fields.get(...)`
+- Argument `fieldName` — Field name (a core column or a custom field)
+
+```bash
+brew-cli fields get loyalty_tier
+```
+
 ### brew-cli fields create
 
 Create a custom contact field
@@ -424,28 +474,31 @@ brew-cli fields delete plan --yes
 
 ### brew-cli emails list
 
-List email designs (the single email read)
+List email designs; one design is `emails get`
 
 - Route: `GET /v1/emails`
 - Class: read
 - SDK: `brew.emails.list(...)`
-- `--status <status>` — Filter by status: streaming | complete | error
+- `--status <status>` — Filter by status: generating | ready | failed
 - `--group-id <groupId>` — Filter by one group id; use ungrouped for no saved group
-- `--sort <field>` — Sort by updatedAt | createdAt | title
-- `--order <order>` — Sort order: asc | desc
-- `--created-at-from <iso>` — Created at or after (ISO)
-- `--created-at-to <iso>` — Created at or before (ISO)
-- `--updated-at-from <iso>` — Updated at or after (ISO)
-- `--updated-at-to <iso>` — Updated at or before (ISO)
+- `--sort-by <field>` — Timestamp the page is ordered by and that --since/--until bound: updatedAt (default) | createdAt
+- `--since <iso>` — Inclusive lower bound on the --sort-by timestamp (ISO-8601)
+- `--until <iso>` — Inclusive upper bound on the --sort-by timestamp (ISO-8601)
+- `--sort <field>` — 0.6 alias of --sort-by
+- `--order <order>` — 0.6 flag: pages are newest first; only desc is accepted
+- `--created-at-from <iso>` — 0.6 alias of --sort-by createdAt --since <iso>
+- `--created-at-to <iso>` — 0.6 alias of --sort-by createdAt --until <iso>
+- `--updated-at-from <iso>` — 0.6 alias of --sort-by updatedAt --since <iso>
+- `--updated-at-to <iso>` — 0.6 alias of --sort-by updatedAt --until <iso>
 - `--limit <n>` — Page size, 1-100 (default 100)
 - `--cursor <cursor>` — Opaque pagination cursor from a previous page
 - `--all` — Follow the cursor and return every page as one result
 - `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
 
 ```bash
-brew-cli emails list --status complete --limit 10
-brew-cli emails list --group-id ungrouped --sort title --order asc
-brew-cli emails list --updated-at-from 2026-08-01T00:00:00Z
+brew-cli emails list --status ready --limit 10
+brew-cli emails list --group-id ungrouped
+brew-cli emails list --sort-by createdAt --since 2026-08-01T00:00:00Z
 brew-cli emails list --all --json
 ```
 
@@ -464,6 +517,20 @@ List email groups in display order, including Ungrouped
 ```bash
 brew-cli emails groups list
 brew-cli emails groups list --all --json
+```
+
+### brew-cli emails groups get
+
+Fetch one email group by id — the bare row
+
+- Route: `GET /v1/email-groups/{groupId}`
+- Class: read
+- SDK: `brew.emailGroups.get(...)`
+- Argument `groupId` — Group id (`grp_…`, or the literal `ungrouped`)
+
+```bash
+brew-cli emails groups get grp_2f1c9d8a
+brew-cli emails groups get ungrouped
 ```
 
 ### brew-cli emails groups create
@@ -511,13 +578,13 @@ brew-cli emails groups delete grp_welcome --yes
 
 ### brew-cli emails get
 
-Fetch one email design by id
+Fetch one email design by id — the bare row
 
-- Route: `GET /v1/emails`
+- Route: `GET /v1/emails/{emailId}`
 - Class: read
-- Derived from `brew.emails.list(...)`
+- SDK: `brew.emails.get(...)`
 - Argument `emailId` — Design id returned by emails generate/import
-- `--include <tokens>` — Comma-separated expansions: html,versions
+- `--include <tokens>` — Comma-separated expansions: html, versions
 
 ```bash
 brew-cli emails get eml_2SmZOWV3ZQ7W5x6g3m4p
@@ -630,11 +697,11 @@ Restore a previous version as the new latest (non-destructive)
 - Class: write
 - SDK: `brew.emails.restore(...)`
 - Argument `emailId` — Design id to restore
-- `--to-version <n>` — Version number to restore
+- `--to-version <emailVersionId>` — Version id to restore (from `emails get <emailId> --include versions`)
 - `--idempotency-key <key>` — Idempotency-Key for safe retries (auto-generated otherwise)
 
 ```bash
-brew-cli emails restore eml_2SmZOWV3ZQ7W5x6g3m4p --to-version 2
+brew-cli emails restore eml_2SmZOWV3ZQ7W5x6g3m4p --to-version emv_7Hq2
 ```
 
 ### brew-cli emails delete
@@ -713,7 +780,7 @@ Seed-test where the design lands (inbox vs spam) via a real small send (10 credi
 - Route: `POST /v1/emails/{emailId}/inbox-placement-tests`
 - Class: write
 - Consumes Brew credits
-- SDK: `brew.emails.createInboxPlacementTest(...)`
+- SDK: `brew.emails.inboxPlacementTests.create(...)`
 - Argument `emailId` — Design id to test
 - `--domain <domainId>` — Verified sending domain id the seed send goes out on
 - `--subject <text>` — Seed-send subject (default: the email title)
@@ -729,17 +796,34 @@ brew-cli emails create-inbox-placement-test eml_2SmZOWV3ZQ7W5x6g3m4p --domain kx
 
 ### brew-cli emails get-inbox-placement-results
 
-Inbox placement results: one test with --test-id, else the recent tests
+Inbox placement results: the recent tests, or one test with --test-id
 
 - Route: `GET /v1/emails/{emailId}/inbox-placement-tests`
 - Class: read
-- SDK: `brew.emails.getInboxPlacementResults(...)`
+- SDK: `brew.emails.inboxPlacementTests.list(...)`
 - Argument `emailId` — Design id the tests ran on
 - `--test-id <id>` — One test: live status + per-provider placement (re-poll ~30s until completed)
+- `--limit <n>` — Page size, 1-100 (default 100)
+- `--cursor <cursor>` — Opaque pagination cursor from a previous page
+- `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
 
 ```bash
 brew-cli emails get-inbox-placement-results eml_2SmZOWV3ZQ7W5x6g3m4p
 brew-cli emails get-inbox-placement-results eml_2SmZOWV3ZQ7W5x6g3m4p --test-id ibp_2f1c9d8a
+```
+
+### brew-cli emails inbox-placement-tests get
+
+Fetch one inbox-placement (seed) test — the bare row, re-poll ~30s until completed
+
+- Route: `GET /v1/emails/{emailId}/inbox-placement-tests/{testId}`
+- Class: read
+- SDK: `brew.emails.inboxPlacementTests.get(...)`
+- Argument `emailId` — Design id the test ran on
+- Argument `testId` — Test id returned by `emails create-inbox-placement-test`
+
+```bash
+brew-cli emails inbox-placement-tests get eml_2SmZOWV3ZQ7W5x6g3m4p ibp_2f1c9d8a
 ```
 
 ### brew-cli emails send
@@ -763,6 +847,49 @@ Send an email: a real campaign, or a safe test with --test
 brew-cli emails send eml_1 --test --to qa@example.com --subject "Preview"
 brew-cli emails send eml_1 --subject "Fall sale" --domain dom_1 --audience aud_1 --yes
 brew-cli emails send eml_1 --subject "Fall sale" --domain dom_1 --audience aud_1 --schedule-at 2026-09-01T09:00:00Z --yes
+```
+
+### brew-cli sends list
+
+List sends (the unit of delivery and analytics) with lifetime stats
+
+- Route: `GET /v1/sends`
+- Class: read
+- SDK: `brew.sends.list(...)`
+- `--email <emailId>` — Only sends of this design
+- `--kind <kind>` — campaign | automation
+- `--automation <automationId>` — Filter by automation
+- `--automation-run <automationRunId>` — Deliveries of one automation run
+- `--audience-run <audienceRunId>` — Deliveries of one manual-audience run
+- `--trigger-instance <triggerInstanceId>` — Deliveries started by one fired trigger instance
+- `--status <status>` — scheduled | queued | running | paused | completed | partially_completed | failed | canceled
+- `--message-class <class>` — marketing | transactional
+- `--since <datetime>` — Inclusive lower bound on updatedAt (ISO-8601)
+- `--until <datetime>` — Inclusive upper bound on updatedAt (ISO-8601)
+- `--limit <n>` — Page size, 1-100 (default 100)
+- `--cursor <cursor>` — Opaque pagination cursor from a previous page
+- `--all` — Follow the cursor and return every page as one result
+- `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
+
+```bash
+brew-cli sends list --status completed
+brew-cli sends list --email eml_1 --all --json
+brew-cli sends list --automation-run arun_9f2kX
+```
+
+### brew-cli sends get
+
+Fetch one send by id — the bare row with its lifetime stats
+
+- Route: `GET /v1/sends/{sendId}`
+- Class: read
+- SDK: `brew.sends.get(...)`
+- Argument `sendId` — Send id to fetch
+- `--include <tokens>` — Comma-separated expansions: events
+
+```bash
+brew-cli sends get snd_9f2kX
+brew-cli sends get snd_9f2kX --include events
 ```
 
 ### brew-cli sends cancel
@@ -794,7 +921,7 @@ brew-cli sends pause snd_123
 
 ### brew-cli sends resume
 
-Resume a paused gradual send (the unsent tail is re-spread)
+Resume a paused gradual send (the unsent tail is re-spread); the send reports `running` again
 
 - Route: `POST /v1/sends/{sendId}/resume`
 - Class: write
@@ -824,12 +951,12 @@ brew-cli types --check
 
 ### brew-cli audiences list
 
-List audience segments
+List audience segments; one segment is `audiences get`
 
 - Route: `GET /v1/audiences`
 - Class: read
 - SDK: `brew.audiences.list(...)`
-- `--include <tokens>` — Comma-separated expansions: count
+- `--include <tokens>` — 0.6 flag: includes ride the detail read now (`audiences get --include count,build`)
 - `--limit <n>` — Page size, 1-100 (default 100)
 - `--cursor <cursor>` — Opaque pagination cursor from a previous page
 - `--all` — Follow the cursor and return every page as one result
@@ -837,22 +964,23 @@ List audience segments
 
 ```bash
 brew-cli audiences list
-brew-cli audiences list --include count --limit 10
+brew-cli audiences list --limit 10
 brew-cli audiences list --all --json
 ```
 
 ### brew-cli audiences get
 
-Fetch one audience segment by id
+Fetch one audience segment by id — the bare row
 
-- Route: `GET /v1/audiences`
+- Route: `GET /v1/audiences/{audienceId}`
 - Class: read
-- Derived from `brew.audiences.list(...)`
+- SDK: `brew.audiences.get(...)`
 - Argument `audienceId` — Audience id to fetch
-- `--include <tokens>` — Comma-separated expansions: count
+- `--include <tokens>` — Comma-separated expansions: count, build
 
 ```bash
 brew-cli audiences get aud_3k9sQ
+brew-cli audiences get aud_3k9sQ --include count,build
 ```
 
 ### brew-cli audiences create
@@ -953,13 +1081,13 @@ brew-cli automations list --all --json
 
 ### brew-cli automations get
 
-Fetch one automation by id
+Fetch one automation by id — the bare row, lean by default
 
-- Route: `GET /v1/automations`
+- Route: `GET /v1/automations/{automationId}`
 - Class: read
-- Derived from `brew.automations.list(...)`
+- SDK: `brew.automations.get(...)`
 - Argument `automationId` — Id of the automation
-- `--include <tokens>` — Comma-separated expansions: graph | versions
+- `--include <tokens>` — Comma-separated expansions: graph, versions
 
 ```bash
 brew-cli automations get am_123
@@ -1079,12 +1207,12 @@ brew-cli automations run auto_abc --schedule-at 2026-09-01T09:00:00Z --input '{"
 
 ### brew-cli automations triggers list
 
-List trigger events (their payload schemas drive fires)
+List trigger events (their payload schemas drive fires); one trigger is `automations triggers get`
 
 - Route: `GET /v1/automations/triggers`
 - Class: read
 - SDK: `brew.automations.triggers.list(...)`
-- `--trigger <triggerEventId>` — Fetch one trigger event (single-row page)
+- `--trigger <triggerEventId>` — 0.6 shim: read ONE trigger as a single-row page (`automations triggers get` is the real read)
 - `--limit <n>` — Page size, 1-100 (default 100)
 - `--cursor <cursor>` — Opaque pagination cursor from a previous page
 - `--all` — Follow the cursor and return every page as one result
@@ -1092,16 +1220,31 @@ List trigger events (their payload schemas drive fires)
 
 ```bash
 brew-cli automations triggers list
-brew-cli automations triggers list --trigger tev_123
+brew-cli automations triggers list --all --json
+```
+
+### brew-cli automations triggers get
+
+Fetch one trigger by id — the bare row with its payload schema
+
+- Route: `GET /v1/automations/triggers/{triggerEventId}`
+- Class: read
+- SDK: `brew.automations.triggers.get(...)`
+- Argument `triggerEventId` — Trigger id (tri_…, or an integration composite id)
+- `--include <tokens>` — Expansions: skill (a SKILL.md-shaped wiring brief)
+
+```bash
+brew-cli automations triggers get tri_signup
+brew-cli automations triggers get tri_signup --include skill
 ```
 
 ### brew-cli automations triggers ready
 
 Preflight a trigger without firing: key + scope + permissions pass/fail, the payload contract, and what a fire would start
 
-- Route: `GET /v1/automations/triggers/{triggerEventId}/fire`
+- Route: `GET /v1/automations/triggers/{triggerEventId}/readiness`
 - Class: read
-- SDK: `brew.automations.triggers.ready(...)`
+- SDK: `brew.automations.triggers.readiness(...)`
 - Argument `triggerEventId` — Trigger id (tri_…, or an integration composite id)
 
 ```bash
@@ -1242,19 +1385,19 @@ brew-cli automations triggers fire tri_signup --input '{"payload":{"email":"jane
 
 ### brew-cli automations runs list
 
-List automation runs (live + test history)
+List automation runs (live + test history); one run is `automations runs get`
 
 - Route: `GET /v1/automations/runs`
 - Class: read
 - SDK: `brew.automations.runs.list(...)`
-- `--run <automationRunId>` — Fetch one run (single-row page)
-- `--include <tokens>` — Comma-separated expansions: logs
 - `--automation <automationId>` — Filter by automation
 - `--trigger <triggerEventId>` — Filter by trigger event
 - `--trigger-instance <triggerInstanceId>` — Filter by fired trigger instance
-- `--recipient <email>` — Filter by recipient email
-- `--status <status>` — pending | running | completed | failed | canceled
+- `--status <status>` — queued | running | completed | failed | canceled
 - `--mode <mode>` — live | test
+- `--recipient <email>` — Only runs for this recipient (case-insensitive match on the run row's recipientEmail)
+- `--run <automationRunId>` — 0.6 shim: read ONE run as a single-row page (`automations runs get` is the real read)
+- `--include <tokens>` — With --run only: detail includes (`logs`)
 - `--since <datetime>` — Runs started at/after (ISO-8601)
 - `--until <datetime>` — Runs started at/before (ISO-8601)
 - `--limit <n>` — Page size, 1-100 (default 100)
@@ -1264,18 +1407,34 @@ List automation runs (live + test history)
 
 ```bash
 brew-cli automations runs list --automation am_123 --status failed
-brew-cli automations runs list --run arun_123 --include logs
+brew-cli automations runs list --trigger-instance tin_2f1c9d8a
+```
+
+### brew-cli automations runs get
+
+Fetch one automation run by id — the bare row
+
+- Route: `GET /v1/automations/runs/{automationRunId}`
+- Class: read
+- SDK: `brew.automations.runs.get(...)`
+- Argument `automationRunId` — Run id (from `automations runs list`, a test start, or a fire)
+- `--include <tokens>` — Expansions: logs (newest 100 per-node execution logs)
+
+```bash
+brew-cli automations runs get run_9f2kX
+brew-cli automations runs get run_9f2kX --include logs
 ```
 
 ### brew-cli automations runs cancel
 
 Cancel one in-flight automation run (event execution or test run) — nothing further is sent, and it can never be resumed
 
-- Route: `PATCH /v1/automations/runs`
+- Route: `POST /v1/automations/runs/{automationRunId}/cancel`
 - Class: destructive
 - SDK: `brew.automations.runs.cancel(...)`
 - Argument `automationRunId` — Run id to cancel (from `automations runs list`, a test start, or a fire response)
 - `--reason <text>` — Operator note stored on the run
+- `--idempotency-key <key>` — Idempotency-Key for safe retries (auto-generated otherwise)
 
 ```bash
 brew-cli automations runs cancel run_9f2kX --reason "wrong audience" --yes
@@ -1283,33 +1442,124 @@ brew-cli automations runs cancel run_9f2kX --reason "wrong audience" --yes
 
 ### brew-cli automations audience-runs list
 
-List manual-audience runs (newest first)
+List manual-audience runs, newest first; one run is `automations audience-runs get`
 
 - Route: `GET /v1/automations/audience-runs`
 - Class: read
 - SDK: `brew.automations.audienceRuns.list(...)`
-- `--audience-run-id <id>` — Fetch a single audience run by id
-- `--automation-id <id>` — Filter runs to a single automation
-- `--limit <n>` — Max rows, 1-200 (default 50)
+- `--automation <automationId>` — Only runs of this automation
+- `--automation-id <automationId>` — 0.6 alias of --automation
+- `--audience-run-id <audienceRunId>` — 0.6 shim: read ONE run as a single-row page (`automations audience-runs get` is the real read)
+- `--status <status>` — queued | scheduled | running | paused | completed | failed | canceled
+- `--limit <n>` — Page size, 1-100 (default 100)
+- `--cursor <cursor>` — Opaque pagination cursor from a previous page
+- `--all` — Follow the cursor and return every page as one result
+- `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
 
 ```bash
 brew-cli automations audience-runs list
-brew-cli automations audience-runs list --automation-id auto_abc --limit 20
+brew-cli automations audience-runs list --automation am_123 --status running
+```
+
+### brew-cli automations audience-runs get
+
+Fetch one manual-audience run by id — the bare row
+
+- Route: `GET /v1/automations/audience-runs/{audienceRunId}`
+- Class: read
+- SDK: `brew.automations.audienceRuns.get(...)`
+- Argument `audienceRunId` — Audience run id to fetch
+
+```bash
+brew-cli automations audience-runs get arun_01HZ
+```
+
+### brew-cli automations audience-runs pause
+
+Pause a running manual-audience run at its next step boundary (resumable)
+
+- Route: `POST /v1/automations/audience-runs/{audienceRunId}/pause`
+- Class: write
+- SDK: `brew.automations.audienceRuns.pause(...)`
+- Argument `audienceRunId` — Audience run id to pause
+- `--idempotency-key <key>` — Idempotency-Key for safe retries (auto-generated otherwise)
+
+```bash
+brew-cli automations audience-runs pause arun_01HZ
+```
+
+### brew-cli automations audience-runs resume
+
+Resume a paused manual-audience run, or restart a failed one from its first undelivered send
+
+- Route: `POST /v1/automations/audience-runs/{audienceRunId}/resume`
+- Class: write
+- SDK: `brew.automations.audienceRuns.resume(...)`
+- Argument `audienceRunId` — Audience run id to resume
+- `--idempotency-key <key>` — Idempotency-Key for safe retries (auto-generated otherwise)
+
+```bash
+brew-cli automations audience-runs resume arun_01HZ
+```
+
+### brew-cli automations audience-runs cancel
+
+Cancel a manual-audience run for good — it can never be resumed
+
+- Route: `POST /v1/automations/audience-runs/{audienceRunId}/cancel`
+- Class: destructive
+- SDK: `brew.automations.audienceRuns.cancel(...)`
+- Argument `audienceRunId` — Audience run id to cancel
+- `--idempotency-key <key>` — Idempotency-Key for safe retries (auto-generated otherwise)
+
+```bash
+brew-cli automations audience-runs cancel arun_01HZ --yes
 ```
 
 ### brew-cli automations audience-runs control
 
-Pause, resume, or cancel an in-flight manual-audience run
+Pause, resume, or cancel an in-flight manual-audience run (0.6 form of `audience-runs pause|resume|cancel`)
 
-- Route: `POST /v1/automations/audience-runs/{audienceRunId}/control`
 - Class: destructive
-- SDK: `brew.automations.audienceRuns.control(...)`
+- Derived from `brew.automations.audienceRuns.pause(...)`, `brew.automations.audienceRuns.resume(...)`, `brew.automations.audienceRuns.cancel(...)`
 - Argument `audienceRunId` — Audience run id to control
 - `--action <action>` — pause (resumable) | resume | cancel (final)
+- `--idempotency-key <key>` — Idempotency-Key for safe retries (auto-generated otherwise)
 
 ```bash
 brew-cli automations audience-runs control arun_01HZ --action pause
 brew-cli automations audience-runs control arun_01HZ --action cancel --yes
+```
+
+### brew-cli automations trigger-instances list
+
+List fired-trigger instances (the inbound-fire audit log); each row carries a lifecycle `state`
+
+- Route: `GET /v1/automations/trigger-instances`
+- Class: read
+- SDK: `brew.automations.triggerInstances.list(...)`
+- `--trigger <triggerEventId>` — Filter by trigger event
+- `--limit <n>` — Page size, 1-100 (default 100)
+- `--cursor <cursor>` — Opaque pagination cursor from a previous page
+- `--all` — Follow the cursor and return every page as one result
+- `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
+
+```bash
+brew-cli automations trigger-instances list --trigger tri_signup
+brew-cli automations trigger-instances list --all --json
+```
+
+### brew-cli automations trigger-instances get
+
+Fetch one fired-trigger instance by id — the bare row, with its lifecycle `state` and the runs it started
+
+- Route: `GET /v1/automations/trigger-instances/{triggerInstanceId}`
+- Class: read
+- SDK: `brew.automations.triggerInstances.get(...)`
+- Argument `triggerInstanceId` — Instance id returned by a fire, or by the instances list
+
+```bash
+brew-cli automations trigger-instances get tin_2f1c9d8a
 ```
 
 ### brew-cli analytics overview
@@ -1336,11 +1586,11 @@ brew-cli analytics overview --since 2026-08-01T00:00:00Z --source audience --jso
 
 ### brew-cli analytics campaigns
 
-Lifetime per-campaign KPIs (sent, opened, clicked, bounced)
+Lifetime per-campaign KPIs (`sends list --kind campaign`; stats ride each row)
 
-- Route: `GET /v1/analytics/campaigns`
+- Route: `GET /v1/sends`
 - Class: read
-- SDK: `brew.analytics.campaigns(...)`
+- Derived from `brew.sends.list(...)`
 - `--limit <n>` — Page size, 1-100 (default 100)
 - `--cursor <cursor>` — Opaque pagination cursor from a previous page
 - `--all` — Follow the cursor and return every page as one result
@@ -1378,7 +1628,7 @@ Unified event explorer (email, automation, trigger, inbound)
 - SDK: `brew.analytics.events(...)`
 - `--since <datetime>` — Window start (ISO-8601)
 - `--until <datetime>` — Window end (ISO-8601)
-- `--recipient <email>` — Filter by recipient email
+- `--recipient <rules>` — CSV of recipient rules (max 10): an address, @domain, or substring; prefix ! to exclude
 - `--event-type <type>` — Filter by event type (e.g. opened, clicked)
 - `--automation <automationId>` — Filter by automation
 - `--send <sendId>` — Filter by campaign send
@@ -1394,15 +1644,16 @@ brew-cli analytics events --recipient jane@example.com --all --json
 
 ### brew-cli analytics sends list
 
-List campaign/automation sends with delivery stats
+List campaign/automation sends with delivery stats (`sends list`)
 
-- Route: `GET /v1/analytics/sends`
+- Route: `GET /v1/sends`
 - Class: read
-- SDK: `brew.analytics.sends.list(...)`
-- `--send <sendId>` — Fetch one send (single-row page)
+- Derived from `brew.sends.list(...)`
+- `--send <sendId>` — 0.6 shim: read ONE send as a single-row page (`sends get` is the real read)
+- `--include <tokens>` — With --send only: detail includes (`events`)
 - `--email <emailId>` — Filter by email design
-- `--include <tokens>` — Comma-separated expansions: events
-- `--status <status>` — scheduled | queued | sending | sent | failed | canceled
+- `--kind <kind>` — campaign | automation
+- `--status <status>` — scheduled | queued | running | paused | completed | partially_completed | failed | canceled
 - `--since <datetime>` — Window start (ISO-8601)
 - `--until <datetime>` — Window end (ISO-8601)
 - `--limit <n>` — Page size, 1-100 (default 100)
@@ -1411,17 +1662,17 @@ List campaign/automation sends with delivery stats
 - `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
 
 ```bash
-brew-cli analytics sends list --status sent
-brew-cli analytics sends list --email em_123 --all --json
+brew-cli analytics sends list --status completed
+brew-cli analytics sends list --email eml_1 --all --json
 ```
 
 ### brew-cli analytics sends get
 
-Fetch one send by id
+Fetch one send by id — the bare row (`sends get`)
 
-- Route: `GET /v1/analytics/sends`
+- Route: `GET /v1/sends/{sendId}`
 - Class: read
-- Derived from `brew.analytics.sends.list(...)`
+- Derived from `brew.sends.get(...)`
 - Argument `sendId` — Id of the send
 - `--include <tokens>` — Comma-separated expansions: events
 
@@ -1432,20 +1683,20 @@ brew-cli analytics sends get snd_123 --include events
 
 ### brew-cli analytics trigger-instances list
 
-List fired-trigger instances (ingest + match history)
+List fired-trigger instances with their lifecycle `state` (`automations trigger-instances list`)
 
-- Route: `GET /v1/analytics/trigger-instances`
+- Route: `GET /v1/automations/trigger-instances`
 - Class: read
-- SDK: `brew.analytics.triggerInstances.list(...)`
+- Derived from `brew.automations.triggerInstances.list(...)`
 - `--trigger <triggerEventId>` — Filter by trigger event
-- `--trigger-instance <triggerInstanceId>` — Fetch one instance (single-row page)
+- `--trigger-instance <triggerInstanceId>` — 0.6 shim: read ONE instance as a single-row page (`automations trigger-instances get` is the real read)
 - `--limit <n>` — Page size, 1-100 (default 100)
 - `--cursor <cursor>` — Opaque pagination cursor from a previous page
 - `--all` — Follow the cursor and return every page as one result
 - `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
 
 ```bash
-brew-cli analytics trigger-instances list --trigger tev_123
+brew-cli analytics trigger-instances list --trigger tri_signup
 brew-cli analytics trigger-instances list --all --json
 ```
 
@@ -1606,11 +1857,11 @@ brew-cli domains list --sendable-only --json
 
 ### brew-cli domains get
 
-Fetch one sending domain by id
+Fetch one sending domain by id — the bare row
 
-- Route: `GET /v1/domains`
+- Route: `GET /v1/domains/{domainId}`
 - Class: read
-- Derived from `brew.domains.list(...)`
+- SDK: `brew.domains.get(...)`
 - Argument `domainId` — Domain id to fetch
 
 ```bash
@@ -1816,18 +2067,18 @@ brew-cli templates list --semantic "minimal product launch" --json
 
 ### brew-cli flows list
 
-List public email flows (real multi-step sequences by brand), or fetch one by --slug with every step
+List public email flows (real multi-step sequences by brand) as cards; `flows get <slug>` reads one
 
 - Route: `GET /v1/flows`
 - Class: read
 - SDK: `brew.flows.list(...)`
-- `--slug <domain>` — Fetch ONE flow by brand domain (e.g. brew.new) with its anchor + steps
-- `--include <keys>` — Detail-only expansions, comma-separated: html (each step’s rendered HTML)
 - `--brand-domain <domain>` — Filter the list by brand domain
 - `--category <category>` — Filter by dominant step category (welcome, newsletter, …)
 - `--type <type>` — Filter by how the sequence starts: signup | newsletter
 - `--semantic <text>` — Semantic search over the sequences (relevance order)
 - `--sort <order>` — List order: newest (default) | emails | span | remixes
+- `--slug <domain>` — 0.6 shim: read ONE flow with its steps as a single-row page (`flows get <slug>` is the real read)
+- `--include <keys>` — With --slug only: `html` adds each step's rendered HTML
 - `--limit <n>` — Page size, 1-100 (default 100)
 - `--cursor <cursor>` — Opaque pagination cursor from a previous page
 - `--all` — Follow the cursor and return every page as one result
@@ -1835,8 +2086,23 @@ List public email flows (real multi-step sequences by brand), or fetch one by --
 
 ```bash
 brew-cli flows list --type signup --sort emails
-brew-cli flows list --slug brew.new --include html --json
+brew-cli flows list --brand-domain brew.new --json
 brew-cli flows list --semantic "developer onboarding drip"
+```
+
+### brew-cli flows get
+
+Fetch one public email flow by brand domain, with every step (day offset, wait, subject, template id)
+
+- Route: `GET /v1/flows/{slug}`
+- Class: read
+- SDK: `brew.flows.get(...)`
+- Argument `slug` — The brand domain a `flows list` card carries (e.g. brew.new)
+- `--include <keys>` — Comma-separated expansions: html (each step’s rendered HTML, best-effort per step)
+
+```bash
+brew-cli flows get brew.new
+brew-cli flows get brew.new --include html --json
 ```
 
 ### brew-cli integrations list
@@ -1952,8 +2218,8 @@ SDK methods intentionally without a dedicated command:
 - `payloadContracts.infer` — covered by `contracts infer` (raw route, bound pre-SDK-v9)
 - `contacts.searchAll` — auto-pager covered by `contacts search --all`
 - `analytics.eventsAll` — auto-pager covered by `analytics events --all`
-- `analytics.sends.listAll` — auto-pager covered by `analytics sends list --all`
-- `analytics.triggerInstances.listAll` — auto-pager covered by `analytics trigger-instances list --all`
+- `sends.listAll` — auto-pager covered by `sends list --all`
+- `automations.triggerInstances.listAll` — auto-pager covered by `automations trigger-instances list --all`
 - `brand.update` — SDK alias of brand.patch, exposed as `brand update`
 - `withBrand` — client scoping helper activated by the global `--brand`; not an API command
 

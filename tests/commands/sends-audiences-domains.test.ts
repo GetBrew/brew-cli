@@ -90,43 +90,55 @@ describe('audiences list', () => {
         })
       })
     )
-    const result = await runCli(
-      ['audiences', 'list', '--include', 'count', '--limit', '5'],
-      { env: env(), extraCommands: EXTRA }
-    )
+    const result = await runCli(['audiences', 'list', '--limit', '5'], {
+      env: env(),
+      extraCommands: EXTRA,
+    })
     expect(result.code).toBe(0)
-    expect(url?.searchParams.get('include')).toBe('count')
     expect(url?.searchParams.get('limit')).toBe('5')
     const data = result.json as { data: Array<{ audienceId: string }> }
     expect(data.data[0]?.audienceId).toBe('aud_1')
   })
 })
 
-describe('audiences get (derived)', () => {
-  it('fetches one audience as a single-row page', async () => {
+describe('audiences get', () => {
+  it('reads the detail route and returns the bare row', async () => {
     let url: URL | undefined
     server.use(
-      http.get(AUDIENCES_URL, ({ request }) => {
+      http.get(`${AUDIENCES_URL}/aud_1`, ({ request }) => {
         url = new URL(request.url)
         return HttpResponse.json({
-          data: [{ audienceId: 'aud_1', audienceName: 'VIP', count: 42 }],
-          pagination: PAGE,
+          audienceId: 'aud_1',
+          audienceName: 'VIP',
+          count: 42,
         })
       })
     )
-    const result = await runCli(['audiences', 'get', 'aud_1'], {
-      env: env(),
-      extraCommands: EXTRA,
-    })
+    const result = await runCli(
+      ['audiences', 'get', 'aud_1', '--include', 'count'],
+      { env: env(), extraCommands: EXTRA }
+    )
     expect(result.code).toBe(0)
-    expect(url?.searchParams.get('audienceId')).toBe('aud_1')
+    expect(url?.pathname).toBe('/api/v1/audiences/aud_1')
+    expect(url?.searchParams.get('include')).toBe('count')
     expect((result.json as { audienceId: string }).audienceId).toBe('aud_1')
   })
 
-  it('exits 1 with AUDIENCE_NOT_FOUND when missing', async () => {
+  it("surfaces the API's own 404 instead of a hand-built one", async () => {
     server.use(
-      http.get(AUDIENCES_URL, () =>
-        HttpResponse.json({ data: [], pagination: PAGE })
+      http.get(`${AUDIENCES_URL}/aud_ghost`, () =>
+        HttpResponse.json(
+          {
+            error: {
+              code: 'AUDIENCE_NOT_FOUND',
+              type: 'not_found',
+              message: 'No such audience',
+              suggestion: 'List audiences with `brew-cli audiences list`.',
+              docs: 'https://docs.getbrew.io/api',
+            },
+          },
+          { status: 404 }
+        )
       )
     )
     const result = await runCli(['audiences', 'get', 'aud_ghost'], {
@@ -409,15 +421,15 @@ describe('audiences create validation', () => {
   })
 })
 
-describe('domains get (derived)', () => {
-  it('returns the single domain by id', async () => {
-    let query = ''
+describe('domains get', () => {
+  it('reads the detail route and returns the bare row', async () => {
+    let requestedPath = ''
     server.use(
-      http.get(DOMAINS_URL, ({ request }) => {
-        query = new URL(request.url).search
+      http.get(`${DOMAINS_URL}/dom_A`, ({ request }) => {
+        requestedPath = new URL(request.url).pathname
         return HttpResponse.json({
-          data: [{ domainId: 'dom_A', name: 'mail.example.com' }],
-          pagination: PAGE,
+          domainId: 'dom_A',
+          name: 'mail.example.com',
         })
       })
     )
@@ -426,14 +438,25 @@ describe('domains get (derived)', () => {
       extraCommands: EXTRA,
     })
     expect(result.code).toBe(0)
-    expect(query).toContain('domainId=dom_A')
+    expect(requestedPath).toBe('/api/v1/domains/dom_A')
     expect((result.json as { name: string }).name).toBe('mail.example.com')
   })
 
-  it('exits 1 with DOMAIN_NOT_FOUND when missing', async () => {
+  it("surfaces the API's own 404 instead of a hand-built one", async () => {
     server.use(
-      http.get(DOMAINS_URL, () =>
-        HttpResponse.json({ data: [], pagination: PAGE })
+      http.get(`${DOMAINS_URL}/dom_missing`, () =>
+        HttpResponse.json(
+          {
+            error: {
+              code: 'DOMAIN_NOT_FOUND',
+              type: 'not_found',
+              message: 'No such domain',
+              suggestion: 'List domains with `brew-cli domains list`.',
+              docs: 'https://docs.getbrew.io/api',
+            },
+          },
+          { status: 404 }
+        )
       )
     )
     const result = await runCli(['domains', 'get', 'dom_missing'], {

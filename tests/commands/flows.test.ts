@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { HttpResponse, http } from 'msw'
 import { describe, expect, it } from 'vitest'
+import { flowsGetCommand } from '../../src/commands/flows/get'
 import { flowsListCommand } from '../../src/commands/flows/list'
 import { server } from '../helpers/msw-server'
 import {
@@ -26,7 +27,7 @@ function cli(
       BREW_API_KEY: KEY,
       BREW_BRAND_ID: 'kx7b3s7fapqz8mjm12ekz1kxdx87yceg',
     },
-    extraCommands: [flowsListCommand],
+    extraCommands: [flowsListCommand, flowsGetCommand],
   })
 }
 
@@ -114,52 +115,55 @@ describe('flows list', () => {
     const data = result.json as { data: Array<{ slug: string }> }
     expect(data.data[0]?.slug).toBe('notion.com')
   })
+})
 
-  it('fetches one flow by --slug with --include html', async () => {
+describe('flows get', () => {
+  it('fetches one flow by slug on the path, with --include html, as the bare row', async () => {
     let url: URL | undefined
     server.use(
-      http.get(`${API}/v1/flows`, ({ request }) => {
+      http.get(`${API}/v1/flows/notion.com`, ({ request }) => {
         url = new URL(request.url)
-        return HttpResponse.json({ data: [DETAIL] })
+        return HttpResponse.json(DETAIL)
       })
     )
     const result = await cli([
       'flows',
-      'list',
-      '--slug',
+      'get',
       'notion.com',
       '--include',
       'html',
     ])
     expect(result.code).toBe(0)
-    expect(url?.searchParams.get('slug')).toBe('notion.com')
+    expect(url?.pathname).toBe('/api/v1/flows/notion.com')
     expect(url?.searchParams.get('include')).toBe('html')
-    const data = result.json as {
-      data: Array<{ steps: Array<{ emailId: string; html?: string }> }>
-      pagination?: unknown
+    const flow = result.json as {
+      slug: string
+      steps: Array<{ emailId: string; html?: string }>
+      data?: unknown
     }
-    expect(data.pagination).toBeUndefined()
-    expect(data.data[0]?.steps.map((step) => step.emailId)).toEqual([
+    expect(flow.data).toBeUndefined()
+    expect(flow.slug).toBe('notion.com')
+    expect(flow.steps.map((step) => step.emailId)).toEqual([
       'pt1_aaa',
       'pt1_bbb',
     ])
-    expect(data.data[0]?.steps[1]?.html).toBe('<html>two</html>')
+    expect(flow.steps[1]?.html).toBe('<html>two</html>')
   })
 
   it('renders the steps as a table on a TTY', async () => {
     server.use(
-      http.get(`${API}/v1/flows`, () => HttpResponse.json({ data: [DETAIL] }))
+      http.get(`${API}/v1/flows/notion.com`, () => HttpResponse.json(DETAIL))
     )
-    const result = await cli(['flows', 'list', '--slug', 'notion.com'], {
-      ttyOut: true,
-    })
+    const result = await cli(['flows', 'get', 'notion.com'], { ttyOut: true })
     expect(result.code).toBe(0)
     expect(result.stdout).toContain('Notion onboarding flow')
     expect(result.stdout).toContain('day 0 = signedUpAt')
     expect(result.stdout).toContain('Three templates to try')
     expect(result.stdout).toContain('pt1_bbb')
   })
+})
 
+describe('flows list, paging', () => {
   it('--all follows the cursor across pages', async () => {
     const cursors: Array<string | null> = []
     server.use(
@@ -187,14 +191,9 @@ describe('flows list', () => {
     ])
   })
 
-  it('refuses --all with --slug as a usage error', async () => {
-    const result = await cli(['flows', 'list', '--all', '--slug', 'notion.com'])
-    expect(result.code).toBe(2)
-  })
-
   it('surfaces the typed 404 envelope for an unknown slug', async () => {
     server.use(
-      http.get(`${API}/v1/flows`, () =>
+      http.get(`${API}/v1/flows/nobody.example`, () =>
         HttpResponse.json(
           {
             // `suggestion` and `docs` are REQUIRED on the error object by the
@@ -215,7 +214,7 @@ describe('flows list', () => {
         )
       )
     )
-    const result = await cli(['flows', 'list', '--slug', 'nobody.example'])
+    const result = await cli(['flows', 'get', 'nobody.example'])
     expect(result.code).toBe(1)
     const body = JSON.parse(result.stderr) as {
       error: { code: string; param?: string }

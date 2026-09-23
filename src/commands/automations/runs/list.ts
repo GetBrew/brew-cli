@@ -1,4 +1,9 @@
 import type { ListAutomationRunsInput } from '@brew.new/sdk'
+import {
+  includeRidesDetailRead,
+  inputField,
+  singleRowPage,
+} from '../../../lib/compat'
 import { defineCommand } from '../../../lib/define-command'
 import {
   asSdkInput,
@@ -18,19 +23,12 @@ import {
 
 export const automationsRunsListCommand = defineCommand({
   path: ['automations', 'runs', 'list'],
-  summary: 'List automation runs (live + test history)',
+  summary:
+    'List automation runs (live + test history); one run is `automations runs get`',
   sdkMethod: 'automations.runs.list',
   route: { method: 'GET', path: '/v1/automations/runs' },
   commandClass: 'read',
   flags: [
-    {
-      flag: '--run <automationRunId>',
-      summary: 'Fetch one run (single-row page)',
-    },
-    {
-      flag: '--include <tokens>',
-      summary: 'Comma-separated expansions: logs',
-    },
     { flag: '--automation <automationId>', summary: 'Filter by automation' },
     {
       flag: '--trigger <triggerEventId>',
@@ -40,12 +38,25 @@ export const automationsRunsListCommand = defineCommand({
       flag: '--trigger-instance <triggerInstanceId>',
       summary: 'Filter by fired trigger instance',
     },
-    { flag: '--recipient <email>', summary: 'Filter by recipient email' },
     {
       flag: '--status <status>',
-      summary: 'pending | running | completed | failed | canceled',
+      summary: 'queued | running | completed | failed | canceled',
     },
     { flag: '--mode <mode>', summary: 'live | test' },
+    {
+      flag: '--recipient <email>',
+      summary:
+        "Only runs for this recipient (case-insensitive match on the run row's recipientEmail)",
+    },
+    {
+      flag: '--run <automationRunId>',
+      summary:
+        '0.6 shim: read ONE run as a single-row page (`automations runs get` is the real read)',
+    },
+    {
+      flag: '--include <tokens>',
+      summary: 'With --run only: detail includes (`logs`)',
+    },
     { flag: '--since <datetime>', summary: 'Runs started at/after (ISO-8601)' },
     {
       flag: '--until <datetime>',
@@ -58,13 +69,24 @@ export const automationsRunsListCommand = defineCommand({
   ],
   examples: [
     'brew-cli automations runs list --automation am_123 --status failed',
-    'brew-cli automations runs list --run arun_123 --include logs',
+    'brew-cli automations runs list --trigger-instance tin_2f1c9d8a',
   ],
   run: async ({ ctx, flags }) => {
+    const runs = ctx.client().automations.runs
     const base = await readJsonFlag(ctx, flags.input, '--input')
+    const runId = flagString(flags.run) ?? inputField(base, 'automationRunId')
+    const include = flagString(flags.include) ?? inputField(base, 'include')
+    if (runId !== undefined) {
+      const row = await runs.get(
+        runId,
+        include === undefined ? undefined : { include }
+      )
+      return { data: singleRowPage(row), human: renderRuns([row]) }
+    }
+    if (include !== undefined) {
+      throw includeRidesDetailRead('automations runs get', '--run')
+    }
     const input = mergeInput(base, {
-      automationRunId: flagString(flags.run),
-      include: flagString(flags.include),
       automationId: flagString(flags.automation),
       triggerEventId: flagString(flags.trigger),
       triggerInstanceId: flagString(flags.triggerInstance),
@@ -76,7 +98,6 @@ export const automationsRunsListCommand = defineCommand({
       limit: flagInt(flags.limit, '--limit'),
       cursor: flagString(flags.cursor),
     })
-    const runs = ctx.client().automations.runs
     if (flags.all === true) {
       const rows = await collectAll(ctx, (cursor) =>
         runs.list(

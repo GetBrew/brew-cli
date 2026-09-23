@@ -1,6 +1,6 @@
 import { defineCommand } from '../../lib/define-command'
 import { CliUsageError } from '../../lib/errors'
-import { flagInt, IDEMPOTENCY_FLAG, requestOptions } from '../../lib/input'
+import { flagString, IDEMPOTENCY_FLAG, requestOptions } from '../../lib/input'
 
 export const emailsRestoreCommand = defineCommand({
   path: ['emails', 'restore'],
@@ -13,21 +13,27 @@ export const emailsRestoreCommand = defineCommand({
   ],
   // --version is taken by the CLI itself, hence --to-version.
   flags: [
-    { flag: '--to-version <n>', summary: 'Version number to restore' },
+    {
+      flag: '--to-version <emailVersionId>',
+      summary:
+        'Version id to restore (from `emails get <emailId> --include versions`)',
+    },
     IDEMPOTENCY_FLAG,
   ],
-  examples: ['brew-cli emails restore eml_2SmZOWV3ZQ7W5x6g3m4p --to-version 2'],
+  examples: [
+    'brew-cli emails restore eml_2SmZOWV3ZQ7W5x6g3m4p --to-version emv_7Hq2',
+  ],
   run: async ({ ctx, args, flags }) => {
-    const version = flagInt(flags.toVersion, '--to-version')
-    if (version === undefined) {
+    const emailVersionId = flagString(flags.toVersion)
+    if (emailVersionId === undefined) {
       throw new CliUsageError(
-        '--to-version is required (see `brew-cli emails get <emailId> --include versions`).'
+        '--to-version is required (a version id; see `brew-cli emails get <emailId> --include versions`).'
       )
     }
     const result = await ctx
       .client()
       .emails.restore(
-        { emailId: args.emailId ?? '', version },
+        { emailId: args.emailId ?? '', emailVersionId },
         requestOptions(flags)
       )
     return { data: result }

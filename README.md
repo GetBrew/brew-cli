@@ -89,8 +89,12 @@ Designed for AI agents as first-class users:
 The full generated reference lives in
 [`docs/commands/README.md`](./docs/commands/README.md). Resource groups:
 `contacts`, `fields`, `emails`, `sends`, `audiences`, `automations`
-(+ `triggers`, `runs`), `analytics`, `brand`, `content`, `templates`,
-`flows`, plus `login`/`logout`/`whoami`/`config`/`usage`/`health`/`docs`/`api`.
+(+ `triggers`, `runs`, `audience-runs`, `trigger-instances`), `analytics`,
+`brand`, `content`, `templates`, `flows`, plus
+`login`/`logout`/`whoami`/`config`/`usage`/`health`/`docs`/`api`.
+
+Every collection has a real detail read — `<group> get <id>` returns the
+bare row, and an unknown id surfaces the API's own typed `404`.
 
 ## How this repo stays in sync with the API, MCP, and SDK
 

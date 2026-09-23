@@ -30,11 +30,20 @@ describe('registry invariants', () => {
     }
   })
 
-  it('marks derived commands correctly (null sdkMethod + declared route)', () => {
+  it('marks derived commands correctly (null sdkMethod; one backing method declares its route, a fan-out declares none)', () => {
     for (const spec of ALL_COMMANDS) {
-      if (spec.derivedFrom !== undefined) {
-        expect(spec.sdkMethod, spec.path.join(' ')).toBeNull()
-        expect(spec.route, spec.path.join(' ')).toBeDefined()
+      if (spec.derivedFrom === undefined) {
+        continue
+      }
+      const name = spec.path.join(' ')
+      expect(spec.sdkMethod, name).toBeNull()
+      if (typeof spec.derivedFrom === 'string') {
+        expect(spec.route, name).toBeDefined()
+      } else {
+        // A verb-flag dispatcher spans several routes; declaring one would
+        // misfile it in the spec parity, so it declares none.
+        expect(spec.derivedFrom.length, name).toBeGreaterThan(1)
+        expect(spec.route, name).toBeUndefined()
       }
     }
   })

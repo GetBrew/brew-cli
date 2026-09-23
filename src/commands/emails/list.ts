@@ -1,5 +1,6 @@
 import type { ListEmailsInput } from '@brew.new/sdk'
 import { defineCommand } from '../../lib/define-command'
+import { CliUsageError } from '../../lib/errors'
 import {
   asSdkInput,
   flagInt,
@@ -18,50 +19,77 @@ import {
 
 export const emailsListCommand = defineCommand({
   path: ['emails', 'list'],
-  summary: 'List email designs (the single email read)',
+  summary: 'List email designs; one design is `emails get`',
   sdkMethod: 'emails.list',
   route: { method: 'GET', path: '/v1/emails' },
   commandClass: 'read',
   flags: [
     {
       flag: '--status <status>',
-      summary: 'Filter by status: streaming | complete | error',
+      summary: 'Filter by status: generating | ready | failed',
     },
     {
       flag: '--group-id <groupId>',
       summary: 'Filter by one group id; use ungrouped for no saved group',
     },
     {
-      flag: '--sort <field>',
-      summary: 'Sort by updatedAt | createdAt | title',
+      flag: '--sort-by <field>',
+      summary:
+        'Timestamp the page is ordered by and that --since/--until bound: updatedAt (default) | createdAt',
     },
-    { flag: '--order <order>', summary: 'Sort order: asc | desc' },
-    { flag: '--created-at-from <iso>', summary: 'Created at or after (ISO)' },
-    { flag: '--created-at-to <iso>', summary: 'Created at or before (ISO)' },
-    { flag: '--updated-at-from <iso>', summary: 'Updated at or after (ISO)' },
-    { flag: '--updated-at-to <iso>', summary: 'Updated at or before (ISO)' },
+    {
+      flag: '--since <iso>',
+      summary: 'Inclusive lower bound on the --sort-by timestamp (ISO-8601)',
+    },
+    {
+      flag: '--until <iso>',
+      summary: 'Inclusive upper bound on the --sort-by timestamp (ISO-8601)',
+    },
+    { flag: '--sort <field>', summary: '0.6 alias of --sort-by' },
+    {
+      flag: '--order <order>',
+      summary: '0.6 flag: pages are newest first; only desc is accepted',
+    },
+    {
+      flag: '--created-at-from <iso>',
+      summary: '0.6 alias of --sort-by createdAt --since <iso>',
+    },
+    {
+      flag: '--created-at-to <iso>',
+      summary: '0.6 alias of --sort-by createdAt --until <iso>',
+    },
+    {
+      flag: '--updated-at-from <iso>',
+      summary: '0.6 alias of --sort-by updatedAt --since <iso>',
+    },
+    {
+      flag: '--updated-at-to <iso>',
+      summary: '0.6 alias of --sort-by updatedAt --until <iso>',
+    },
     LIMIT_FLAG,
     CURSOR_FLAG,
     ALL_FLAG,
     INPUT_FLAG,
   ],
   examples: [
-    'brew-cli emails list --status complete --limit 10',
-    'brew-cli emails list --group-id ungrouped --sort title --order asc',
-    'brew-cli emails list --updated-at-from 2026-08-01T00:00:00Z',
+    'brew-cli emails list --status ready --limit 10',
+    'brew-cli emails list --group-id ungrouped',
+    'brew-cli emails list --sort-by createdAt --since 2026-08-01T00:00:00Z',
     'brew-cli emails list --all --json',
   ],
   run: async ({ ctx, flags }) => {
+    const legacy = legacyWindow(
+      flags,
+      flagString(flags.sortBy) ?? flagString(flags.sort)
+    )
     const base = await readJsonFlag(ctx, flags.input, '--input')
     const input = mergeInput(base, {
       status: flagString(flags.status),
       groupId: flagString(flags.groupId),
-      sort: flagString(flags.sort),
-      order: flagString(flags.order),
-      createdAtFrom: flagString(flags.createdAtFrom),
-      createdAtTo: flagString(flags.createdAtTo),
-      updatedAtFrom: flagString(flags.updatedAtFrom),
-      updatedAtTo: flagString(flags.updatedAtTo),
+      sortBy:
+        flagString(flags.sortBy) ?? flagString(flags.sort) ?? legacy.sortBy,
+      from: flagString(flags.since) ?? legacy.from,
+      to: flagString(flags.until) ?? legacy.to,
       limit: flagInt(flags.limit, '--limit'),
       cursor: flagString(flags.cursor),
     })
@@ -84,6 +112,56 @@ export const emailsListCommand = defineCommand({
     return { data: result, human: renderEmails(result.data) }
   },
 })
+
+/**
+ * 0.6 took a window per column (`--created-at-from`, `--updated-at-to`, …)
+ * plus `--sort`/`--order`; the API now orders by ONE `sortBy` timestamp that
+ * `from`/`to` bound, newest first. Fold the released flags onto that.
+ */
+function legacyWindow(
+  flags: Readonly<Record<string, unknown>>,
+  explicitSortBy: string | undefined
+): {
+  readonly sortBy: string | undefined
+  readonly from: string | undefined
+  readonly to: string | undefined
+} {
+  const order = flagString(flags.order)
+  if (order !== undefined && order !== 'desc') {
+    throw new CliUsageError(
+      'GET /v1/emails pages newest first only; --order asc has no equivalent.'
+    )
+  }
+  const created = {
+    from: flagString(flags.createdAtFrom),
+    to: flagString(flags.createdAtTo),
+  }
+  const updated = {
+    from: flagString(flags.updatedAtFrom),
+    to: flagString(flags.updatedAtTo),
+  }
+  const hasCreated = created.from !== undefined || created.to !== undefined
+  const hasUpdated = updated.from !== undefined || updated.to !== undefined
+  if (hasCreated && hasUpdated) {
+    throw new CliUsageError(
+      'The API bounds one timestamp per page: pass --created-at-* or --updated-at-*, not both (or --sort-by with --since/--until).'
+    )
+  }
+  if (!(hasCreated || hasUpdated)) {
+    return { sortBy: undefined, from: undefined, to: undefined }
+  }
+  // The bound rides the ordering timestamp, so a window on one column
+  // cannot be paired with an explicit sort on the other: silently moving
+  // the bound would include or drop rows the caller did not ask about.
+  const column = hasCreated ? 'createdAt' : 'updatedAt'
+  if (explicitSortBy !== undefined && explicitSortBy !== column) {
+    const prefix = hasCreated ? '--created-at-*' : '--updated-at-*'
+    throw new CliUsageError(
+      `${prefix} bounds ${column}, but the page is ordered by ${explicitSortBy}; the API bounds the --sort-by timestamp only.`
+    )
+  }
+  return { sortBy: column, ...(hasCreated ? created : updated) }
+}
 
 function renderEmails(rows: ReadonlyArray<unknown>): string {
   if (rows.length === 0) {

@@ -8,7 +8,7 @@ import { server } from '../helpers/msw-server'
 import { type RunCliResult, runCli } from '../helpers/run-cli'
 
 const KEY = 'brew_abcdefghijklmnopqrstuvwxyz012345'
-const URL = 'https://brew.new/api/v1/automations/runs'
+const URL = 'https://brew.new/api/v1/automations/runs/run_1/cancel'
 
 function cli(argv: readonly string[]): Promise<RunCliResult> {
   return runCli(argv, {
@@ -24,7 +24,7 @@ describe('automations runs cancel', () => {
   it('refuses without --yes: exit 4 and the confirmation envelope, no request', async () => {
     let calls = 0
     server.use(
-      http.patch(URL, () => {
+      http.post(URL, () => {
         calls += 1
         return HttpResponse.json({})
       })
@@ -43,11 +43,11 @@ describe('automations runs cancel', () => {
     expect(envelope.confirmCommand).toContain('--yes')
   })
 
-  it('cancels with --yes: PATCH /v1/automations/runs with the id, status, and reason', async () => {
+  it('cancels with --yes: POST the action sub-path, reason in the body', async () => {
     let capturedRequest: Request | undefined
     let capturedBody: unknown
     server.use(
-      http.patch(URL, async ({ request }) => {
+      http.post(URL, async ({ request }) => {
         capturedRequest = request
         capturedBody = await request.json()
         return HttpResponse.json({
@@ -67,12 +67,8 @@ describe('automations runs cancel', () => {
       '--yes',
     ])
     expect(result.code).toBe(0)
-    expect(capturedRequest?.method).toBe('PATCH')
-    expect(capturedBody).toEqual({
-      automationRunId: 'run_1',
-      status: 'canceled',
-      reason: 'wrong audience',
-    })
+    expect(capturedRequest?.method).toBe('POST')
+    expect(capturedBody).toEqual({ reason: 'wrong audience' })
     expect(result.json).toEqual({
       automationRunId: 'run_1',
       status: 'canceled',
@@ -83,12 +79,12 @@ describe('automations runs cancel', () => {
   it('omits reason from the body when the flag is absent', async () => {
     let capturedBody: unknown
     server.use(
-      http.patch(URL, async ({ request }) => {
-        capturedBody = await request.json()
+      http.post(URL, async ({ request }) => {
+        capturedBody = await request.text()
         return HttpResponse.json({
           automationRunId: 'run_1',
           status: 'canceled',
-          previousStatus: 'pending',
+          previousStatus: 'queued',
         })
       })
     )
@@ -100,15 +96,12 @@ describe('automations runs cancel', () => {
       '--yes',
     ])
     expect(result.code).toBe(0)
-    expect(capturedBody).toEqual({
-      automationRunId: 'run_1',
-      status: 'canceled',
-    })
+    expect(capturedBody === '' || capturedBody === '{}').toBe(true)
   })
 
   it('surfaces the typed 409 when the run already finished', async () => {
     server.use(
-      http.patch(URL, () =>
+      http.post(URL, () =>
         HttpResponse.json(
           {
             // `suggestion` and `docs` are REQUIRED on the error object by the

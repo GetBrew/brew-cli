@@ -1,20 +1,25 @@
 import { defineCommand } from '../../../lib/define-command'
-import { flagString } from '../../../lib/input'
+import {
+  flagString,
+  IDEMPOTENCY_FLAG,
+  requestOptions,
+} from '../../../lib/input'
 
 /**
  * Operator cancel of ONE run of an event-triggered automation (or a test
  * run), by `automationRunId` — the same flat identity `runs list` uses.
- * `status: 'canceled'` is the only PATCH action the API has, and the SDK
- * method fills it in, so the command passes just the run and an optional
- * note. Manual-audience launches are controlled with
- * `automations audience-runs control` instead.
+ * Manual-audience launches are controlled with
+ * `automations audience-runs pause|resume|cancel` instead.
  */
 export const automationsRunsCancelCommand = defineCommand({
   path: ['automations', 'runs', 'cancel'],
   summary:
     'Cancel one in-flight automation run (event execution or test run) — nothing further is sent, and it can never be resumed',
   sdkMethod: 'automations.runs.cancel',
-  route: { method: 'PATCH', path: '/v1/automations/runs' },
+  route: {
+    method: 'POST',
+    path: '/v1/automations/runs/{automationRunId}/cancel',
+  },
   commandClass: 'destructive',
   args: [
     {
@@ -26,6 +31,7 @@ export const automationsRunsCancelCommand = defineCommand({
   ],
   flags: [
     { flag: '--reason <text>', summary: 'Operator note stored on the run' },
+    IDEMPOTENCY_FLAG,
   ],
   examples: [
     'brew-cli automations runs cancel run_9f2kX --reason "wrong audience" --yes',
@@ -34,10 +40,17 @@ export const automationsRunsCancelCommand = defineCommand({
     `Cancel automation run ${args.automationRunId ?? ''}. Nothing further is sent; emails already delivered are not recalled, and a canceled run can never be resumed.`,
   run: async ({ ctx, args, flags }) => {
     const reason = flagString(flags.reason)
-    const data = await ctx.client().automations.runs.cancel({
-      automationRunId: args.automationRunId ?? '',
+    const options = {
+      ...requestOptions(flags),
       ...(reason === undefined ? {} : { reason }),
-    })
-    return { data }
+    }
+    return {
+      data: await ctx
+        .client()
+        .automations.runs.cancel(
+          args.automationRunId ?? '',
+          Object.keys(options).length === 0 ? undefined : options
+        ),
+    }
   },
 })

@@ -1,4 +1,5 @@
 import type { ListTriggersInput } from '@brew.new/sdk'
+import { inputField, singleRowPage } from '../../../lib/compat'
 import { defineCommand } from '../../../lib/define-command'
 import {
   asSdkInput,
@@ -18,14 +19,16 @@ import {
 
 export const automationsTriggersListCommand = defineCommand({
   path: ['automations', 'triggers', 'list'],
-  summary: 'List trigger events (their payload schemas drive fires)',
+  summary:
+    'List trigger events (their payload schemas drive fires); one trigger is `automations triggers get`',
   sdkMethod: 'automations.triggers.list',
   route: { method: 'GET', path: '/v1/automations/triggers' },
   commandClass: 'read',
   flags: [
     {
       flag: '--trigger <triggerEventId>',
-      summary: 'Fetch one trigger event (single-row page)',
+      summary:
+        '0.6 shim: read ONE trigger as a single-row page (`automations triggers get` is the real read)',
     },
     LIMIT_FLAG,
     CURSOR_FLAG,
@@ -34,16 +37,21 @@ export const automationsTriggersListCommand = defineCommand({
   ],
   examples: [
     'brew-cli automations triggers list',
-    'brew-cli automations triggers list --trigger tev_123',
+    'brew-cli automations triggers list --all --json',
   ],
   run: async ({ ctx, flags }) => {
+    const triggers = ctx.client().automations.triggers
     const base = await readJsonFlag(ctx, flags.input, '--input')
+    const triggerEventId =
+      flagString(flags.trigger) ?? inputField(base, 'triggerEventId')
+    if (triggerEventId !== undefined) {
+      const row = await triggers.get(triggerEventId)
+      return { data: singleRowPage(row), human: renderTriggers([row]) }
+    }
     const input = mergeInput(base, {
-      triggerEventId: flagString(flags.trigger),
       limit: flagInt(flags.limit, '--limit'),
       cursor: flagString(flags.cursor),
     })
-    const triggers = ctx.client().automations.triggers
     if (flags.all === true) {
       const rows = await collectAll(ctx, (cursor) =>
         triggers.list(

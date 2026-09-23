@@ -317,17 +317,16 @@ describe('types — audit hardening', () => {
 })
 
 describe('automations triggers ready', () => {
-  it('hits the GET fire preflight for the exact trigger', async () => {
+  it('hits the GET readiness probe for the exact trigger', async () => {
     let requestedPath: string | undefined
     server.use(
       http.get(
-        `${API}/v1/automations/triggers/tri_signup/fire`,
+        `${API}/v1/automations/triggers/tri_signup/readiness`,
         ({ request }) => {
           requestedPath = new URL(request.url).pathname
           return HttpResponse.json({
-            success: true,
-            status: 'ready',
-            code: 'TRIGGER_EVENT_READY',
+            ready: true,
+            blockers: [],
             triggerEventId: 'tri_signup',
           })
         }
@@ -341,7 +340,9 @@ describe('automations triggers ready', () => {
       }
     )
     expect(result.code).toBe(0)
-    expect(requestedPath).toBe('/api/v1/automations/triggers/tri_signup/fire')
+    expect(requestedPath).toBe(
+      '/api/v1/automations/triggers/tri_signup/readiness'
+    )
     expect(result.stdout).toContain('ready')
   })
 })

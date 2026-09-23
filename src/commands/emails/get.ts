@@ -1,13 +1,11 @@
 import { defineCommand } from '../../lib/define-command'
-import { CliApiError } from '../../lib/errors'
 import { flagString } from '../../lib/input'
 
 export const emailsGetCommand = defineCommand({
   path: ['emails', 'get'],
-  summary: 'Fetch one email design by id',
-  sdkMethod: null,
-  derivedFrom: 'emails.list',
-  route: { method: 'GET', path: '/v1/emails' },
+  summary: 'Fetch one email design by id — the bare row',
+  sdkMethod: 'emails.get',
+  route: { method: 'GET', path: '/v1/emails/{emailId}' },
   commandClass: 'read',
   args: [
     {
@@ -19,7 +17,7 @@ export const emailsGetCommand = defineCommand({
   flags: [
     {
       flag: '--include <tokens>',
-      summary: 'Comma-separated expansions: html,versions',
+      summary: 'Comma-separated expansions: html, versions',
     },
   ],
   examples: [
@@ -27,22 +25,14 @@ export const emailsGetCommand = defineCommand({
     'brew-cli emails get eml_2SmZOWV3ZQ7W5x6g3m4p --include html,versions',
   ],
   run: async ({ ctx, args, flags }) => {
-    const emailId = args.emailId ?? ''
     const include = flagString(flags.include)
-    const result = await ctx.client().emails.list({
-      emailId,
-      ...(include === undefined ? {} : { include }),
-    })
-    const email = result.data[0]
-    if (email === undefined) {
-      throw new CliApiError({
-        status: 404,
-        code: 'EMAIL_NOT_FOUND',
-        type: 'not_found',
-        message: `No email design found for ${emailId}`,
-        suggestion: 'List designs with `brew-cli emails list`.',
-      })
+    return {
+      data: await ctx
+        .client()
+        .emails.get(
+          args.emailId ?? '',
+          include === undefined ? undefined : { include }
+        ),
     }
-    return { data: email }
   },
 })

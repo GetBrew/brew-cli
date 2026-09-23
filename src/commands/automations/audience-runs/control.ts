@@ -1,16 +1,29 @@
-import type { ControlAudienceRunInput } from '@brew.new/sdk'
 import { defineCommand } from '../../../lib/define-command'
 import { CliUsageError } from '../../../lib/errors'
-import { asSdkInput, flagString } from '../../../lib/input'
+import {
+  flagString,
+  IDEMPOTENCY_FLAG,
+  requestOptions,
+} from '../../../lib/input'
 
+/**
+ * The 0.6 verb-flag form of `automations audience-runs pause|resume|cancel`.
+ * `POST …/control { action }` left the API in the v1 cleanup, and command
+ * names are additive-only after release (AGENTS.md), so this stays as CLI
+ * sugar dispatching to the three action commands' SDK methods, which
+ * `derivedFrom` names. No `route`: the spec has none for it, and the three
+ * it fans out to belong to the three commands.
+ */
 export const automationsAudienceRunsControlCommand = defineCommand({
   path: ['automations', 'audience-runs', 'control'],
-  summary: 'Pause, resume, or cancel an in-flight manual-audience run',
-  sdkMethod: 'automations.audienceRuns.control',
-  route: {
-    method: 'POST',
-    path: '/v1/automations/audience-runs/{audienceRunId}/control',
-  },
+  summary:
+    'Pause, resume, or cancel an in-flight manual-audience run (0.6 form of `audience-runs pause|resume|cancel`)',
+  sdkMethod: null,
+  derivedFrom: [
+    'automations.audienceRuns.pause',
+    'automations.audienceRuns.resume',
+    'automations.audienceRuns.cancel',
+  ],
   commandClass: 'destructive',
   args: [
     {
@@ -24,6 +37,7 @@ export const automationsAudienceRunsControlCommand = defineCommand({
       flag: '--action <action>',
       summary: 'pause (resumable) | resume | cancel (final)',
     },
+    IDEMPOTENCY_FLAG,
   ],
   examples: [
     'brew-cli automations audience-runs control arun_01HZ --action pause',
@@ -35,17 +49,20 @@ export const automationsAudienceRunsControlCommand = defineCommand({
       ? `Cancel audience run ${args.audienceRunId ?? ''} for good. Emails already sent are not recalled, and a canceled run cannot be resumed.`
       : undefined,
   run: async ({ ctx, args, flags }) => {
-    const action = flagString(flags.action)
-    if (action === undefined) {
-      throw new CliUsageError('--action is required: pause, resume, or cancel.')
-    }
-    return {
-      data: await ctx.client().automations.audienceRuns.control(
-        asSdkInput<ControlAudienceRunInput>({
-          audienceRunId: args.audienceRunId ?? '',
-          action,
-        })
-      ),
+    const audienceRuns = ctx.client().automations.audienceRuns
+    const audienceRunId = args.audienceRunId ?? ''
+    const options = requestOptions(flags)
+    switch (flagString(flags.action)) {
+      case 'pause':
+        return { data: await audienceRuns.pause(audienceRunId, options) }
+      case 'resume':
+        return { data: await audienceRuns.resume(audienceRunId, options) }
+      case 'cancel':
+        return { data: await audienceRuns.cancel(audienceRunId, options) }
+      default:
+        throw new CliUsageError(
+          '--action is required: pause, resume, or cancel.'
+        )
     }
   },
 })

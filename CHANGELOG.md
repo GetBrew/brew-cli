@@ -1,7 +1,144 @@
 # Changelog
 
-## Unreleased
+## 0.7.0
 
+Aligns the CLI with the cleaned-up public API v1 and `@brew.new/sdk ^10`.
+Spec parity is back to zero uncovered operations and zero phantom routes.
+
+### Breaking
+
+- **Every `get` is a real detail read.** `audiences get`, `automations get`,
+  `contacts get`, `domains get` and `emails get` used to fake a detail read
+  by calling the list with an id filter, taking `data[0]`, and constructing
+  a 404 by hand. Those list filters now `400`. Each command calls
+  `GET /{collection}/{id}` and returns the BARE row, and an unknown id
+  surfaces the API's own typed `404` (`AUDIENCE_NOT_FOUND`,
+  `AUTOMATION_NOT_FOUND`, `CONTACT_NOT_FOUND`, `DOMAIN_NOT_FOUND`,
+  `EMAIL_NOT_FOUND`) instead of a CLI-built one. Output shape is unchanged —
+  it was already the bare row.
+- **The analytics campaign/send/trigger-instance reports are gone.** The
+  command names agents know keep working, retargeted:
+  `analytics campaigns` → `GET /v1/sends?kind=campaign` (lifetime `stats`
+  ride each send row), `analytics sends list|get` → `GET /v1/sends` and
+  `GET /v1/sends/{sendId}`, `analytics trigger-instances list` →
+  `GET /v1/automations/trigger-instances`. `analytics` itself now carries
+  only the reports: `overview`, `events`, `automations`.
+- **Lifecycle changes are action sub-paths, not a body verb.**
+  `automations runs cancel <id>` posts to
+  `POST /v1/automations/runs/{automationRunId}/cancel` (was
+  `PATCH /v1/automations/runs` with `{ automationRunId, status }`) and is an
+  SDK call again rather than raw transport. The three audience-run actions
+  are `automations audience-runs pause|resume|cancel <audienceRunId>`, one
+  command per route; only `cancel` is confirm-gated. `automations
+  audience-runs control --action <verb>` stays as sugar over them (command
+  names are additive-only after release).
+- **Trigger readiness has its own route.** `automations triggers ready` calls
+  `GET /v1/automations/triggers/{triggerEventId}/readiness` (was
+  `GET …/fire`) and returns the bare
+  `{ ready, blockers[], payloadSchema, endpoint, publishedAutomations,
+  counts }` body.
+- **One status vocabulary** across runs, sends, audience builds and
+  inbox-placement tests: `queued | scheduled | running | paused | completed |
+  partially_completed | failed | canceled`. A step or node reports
+  `running | completed | failed | skipped`; an email design reports
+  `generating | ready | failed`. Status FILTERS accept only these, so
+  `emails list --status complete` becomes `--status ready`, and
+  `--status sent` on sends becomes `--status completed`.
+- **Renamed request fields.** `emails export --dry-run` and
+  `automations run --dry-run` send `dryRun` — the `dry_run` alias is gone
+  from the contract and the runtime always rejected it, and the dry-run
+  preview answers `dryRun: true`;
+  `emails restore --to-version` now takes an `emailVersionId`, not a version
+  NUMBER, and sends `{ emailVersionId }`; `analytics events --recipient`
+  maps to `recipient` (was `recipientEmail`) and accepts the CSV rule form
+  (an address, `@domain`, or a substring, `!` to exclude).
+- **List filters that faked a detail read are shims now, not `400`s.** Every
+  resource has a real detail read (`… get <id>`). The 0.6 id flags on the
+  lists — `automations runs list --run`, `automations triggers list
+  --trigger`, `automations audience-runs list --audience-run-id`, `analytics
+  sends list --send`, `analytics trigger-instances list --trigger-instance`,
+  `flows list --slug` — perform it (also when the id rides `--input`) and
+  answer as 0.6 did: that row as a single-row page. `--include` on those lists is accepted only next to its id
+  flag; alone (and on `audiences list`) it exits 2 naming the `get` command
+  that takes it. `automations audience-runs list --automation-id` is an alias
+  of `--automation`, and the list gains `--status`, `--cursor` and `--all`.
+  `automations runs list --recipient` is the API's `recipientEmail` filter.
+- **`emails list` orders by one timestamp**: `--sort-by updatedAt|createdAt`
+  with an inclusive `--since` / `--until` window on it. `--sort` is an alias
+  of `--sort-by`; `--created-at-from|to` and `--updated-at-from|to` fold onto
+  `--sort-by <column>` plus `--since`/`--until` (one column per page, so
+  mixing them, or windowing one column while sorting by the other, exits 2). Pages are newest first: `--order desc` is accepted,
+  `--order asc` exits 2.
+
+### Added
+
+- `sends list` and `sends get <sendId>` — the sends root beside the existing
+  `sends cancel|pause|resume`. `sends list` filters by `--email`, `--kind`,
+  `--automation`, `--automation-run`, `--audience-run`,
+  `--trigger-instance`, `--status`, `--message-class` and an updatedAt
+  `--since`/`--until` window, with `--all`; `sends get --include events`
+  attaches a bounded first page of the send's events.
+- `contacts list` — the contact list read (`GET /v1/contacts`) with
+  `--search`, `--audience`, `--sort`, `--order` and `--all`. Typed filter
+  clauses and counts stay on `contacts search`.
+- Detail reads for every collection that gained one: `fields get
+  <fieldName>`, `emails groups get <groupId>`, `automations runs get
+  <automationRunId> [--include logs]`, `automations audience-runs get
+  <audienceRunId>`, `automations triggers get <triggerEventId>
+  [--include skill]`, and `emails inbox-placement-tests get <emailId>
+  <testId>`.
+- `automations trigger-instances list` and `automations trigger-instances
+  get <triggerInstanceId>` — trigger instances moved under automations.
+- `emails get-inbox-placement-results --test-id` reads the real detail route
+  instead of filtering the list, and the list side gains `--limit` /
+  `--cursor`. All three inbox-placement commands bind the nested
+  `emails.inboxPlacementTests` resource (`create`, `list`, `get`) — SDK 10
+  deleted the flat `emails.createInboxPlacementTest` and
+  `emails.getInboxPlacementResults`, and the route was always nested.
+- `audiences get --include build` alongside `count`, and `emails groups get`
+  accepts the literal `ungrouped`.
+
+### Changed
+
+- `@brew.new/sdk` dependency is `^10.0.0`. Every command binds an SDK
+  method or a reviewed skip: no CLI command constructs a fake 404 from an
+  empty list page any more, and `SPEC_SKIP_LIST` is empty.
+- `sends resume` reports the send back as `running` — `sending` was a ninth
+  spelling outside the run vocabulary and is gone. An inbox-placement test
+  now starts `queued` and joins the same vocabulary; `collecting` is gone.
+- Trigger-instance rows carry a lifecycle `state` enum rather than a bare
+  string: `received | verified | matched | partially_fired | fired |
+  rejected | dead_letter`. `fired` means every matched automation started,
+  `partially_fired` that some starts are still being retried, and `rejected`
+  carries a `rejectionReason`. The `automations trigger-instances` commands
+  document it so agents can branch on it.
+- `automations run` surfaces the API's `AUTOMATION_NOT_FOUND` or
+  `AUDIENCE_NOT_FOUND` instead of a generic `NOT_FOUND`; the CLI passes API
+  error codes through verbatim, so no mapping special-cases them.
+
+### Also in this release
+
+- `flows list` for the public email flows gallery (`GET /v1/flows`): real
+  multi-step sequences by brand, with the day each email landed. List cards
+  with `--brand-domain`, `--category`, `--type signup|newsletter`,
+  `--semantic`, and `--sort newest|emails|span|remixes` (plus `--all`); in
+  0.7.0 one flow is `brew-cli flows get <brand domain>`, which returns its
+  `anchor` and every step's `subject`, `dayOffset`, `delayDays`, `category`, `previewImage`,
+  and `emailId` (a template reference usable as `referenceEmailId` on
+  `emails generate`); `--include html` adds each step's rendered HTML. The
+  route is organization-wide, so the brand binding is never sent. Now bound
+  to `flows.list` — SDK 10 ships it, so the raw-transport stopgap is gone.
+- `automations runs cancel <automationRunId>`: the operator cancel for one
+  in-flight run of an event-triggered automation or a test run. Destructive
+  — the confirmation protocol applies; `--reason` stores an operator note.
+  Nothing further is sent, delivered emails are not recalled, and a canceled
+  run can never be resumed (`409 RUN_NOT_CANCELLABLE` once it finished).
+- Spec resync to the v1 cleanup: 106 operations, including the per-collection
+  detail reads, the sends root, `/v1/contacts`,
+  `/v1/automations/trigger-instances`, the trigger readiness probe, and the
+  run / audience-run action sub-paths.
+
+## Unreleased
 - **Fixed**: `automations runs list --status canceled` — the help text and
   the command reference spelled the terminal status `cancelled` (two L); the
   API's enum is `canceled` (one L), so the advertised value was the one the
