@@ -446,6 +446,71 @@ describe('automations triggers fire (confirmation protocol)', () => {
     expect(result.code).toBe(0)
     expect(body).toEqual({ payload: { userId: 'u_1' } })
   })
+
+  it('reports a payload refusal as itself, with the field errors (SDK legacy-envelope mapping)', async () => {
+    // The typed path goes through @brew.new/sdk. Before 9.3.0 the legacy
+    // fire envelope fell through to `unknown_error` / `internal_error` +
+    // retry advice, and `details.errors[]` was unreachable.
+    server.use(
+      http.post(`${API}/v1/automations/triggers/tri_signup/fire`, () =>
+        HttpResponse.json(
+          {
+            success: false,
+            status: 'payload_mismatch',
+            code: 'INVALID_PAYLOAD',
+            message: 'Payload validation failed.',
+            triggerEventId: 'tri_signup',
+            receivedAt: '2026-09-20T10:00:00.000Z',
+            details: {
+              errors: [
+                {
+                  code: 'invalid_type',
+                  field: 'code',
+                  message: 'Field "code" must be a string',
+                  expectedType: 'string',
+                  actualType: 'number',
+                },
+              ],
+              warnings: [],
+              payloadSchema: {
+                type: 'object',
+                fields: [{ key: 'code', type: 'string', required: true }],
+              },
+            },
+          },
+          {
+            status: 400,
+            headers: { 'x-request-id': 'req_0ee060a1c22345d49734cbea819620c3' },
+          }
+        )
+      )
+    )
+    const result = await cli([
+      'automations',
+      'triggers',
+      'fire',
+      'tri_signup',
+      '--input',
+      '{"payload":{"email":"jane@example.com","code":123}}',
+      '--yes',
+    ])
+    expect(result.code).toBe(1)
+    const parsed = JSON.parse(result.stderr) as {
+      error: Record<string, unknown> & {
+        details: { errors: Array<{ field: string }> }
+      }
+    }
+    expect(parsed.error.code).toBe('INVALID_PAYLOAD')
+    expect(parsed.error.type).toBe('invalid_request')
+    expect(parsed.error.requestId).toBe('req_0ee060a1c22345d49734cbea819620c3')
+    expect(parsed.error.details.errors.map((issue) => issue.field)).toEqual([
+      'code',
+    ])
+    expect(String(parsed.error.suggestion)).not.toMatch(/retry/i)
+    expect(parsed.error.docs).toBe(
+      'https://docs.brew.new/api-reference/public-v1/automations/fire-a-trigger'
+    )
+  })
 })
 
 describe('automations triggers contract put', () => {

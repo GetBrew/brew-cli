@@ -11,9 +11,9 @@
   `details` and `body`, derives `type` from the HTTP status (`400`/`422`
   → `invalid_request`, `404` → `not_found`, …), and gives a 4xx a
   fix-the-request suggestion instead of retry advice. The typed
-  `automations triggers fire` goes through `@brew.new/sdk`, which maps the
-  same envelope from 9.3.0 on; the CLI reads `details` structurally, so
-  that path lights up on the SDK bump with no further change here.
+  `automations triggers fire` goes through `@brew.new/sdk`; this release
+  pins `^9.3.0`, which maps the same envelope, so the typed path prints the
+  same `code` and field errors (pinned by an MSW test on the typed command).
 - Error envelopes carry `details` (additive): `--json` prints the API's
   `details` object verbatim inside `{ error: { … } }`; human mode lists a
   field-error array (`details.errors[]`: `field`, `message`, expected/got
