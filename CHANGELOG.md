@@ -2,11 +2,6 @@
 
 ## Unreleased
 
-- `@brew.new/sdk` `^9.3.0`: the typed `automations triggers fire` now reports
-  a trigger-fire refusal as itself — `code INVALID_PAYLOAD`, `type
-  invalid_request`, the field errors under `details`, no retry advice — the
-  SDK maps the legacy fire envelope from 9.3.0 on (the CLI already read
-  `details` structurally). Pinned by an MSW test on the typed command.
 - **Fixed**: a trigger-fire refusal is reported as itself. `POST
   /v1/automations/triggers/{id}/fire` answers with the legacy fire envelope
   (top-level `code`/`message`/`details`, no `error` wrapper, no `type`).
@@ -16,9 +11,9 @@
   `details` and `body`, derives `type` from the HTTP status (`400`/`422`
   → `invalid_request`, `404` → `not_found`, …), and gives a 4xx a
   fix-the-request suggestion instead of retry advice. The typed
-  `automations triggers fire` goes through `@brew.new/sdk`, which maps the
-  same envelope from 9.3.0 on; the CLI reads `details` structurally, so
-  that path lights up on the SDK bump with no further change here.
+  `automations triggers fire` goes through `@brew.new/sdk`; this release
+  pins `^9.3.0`, which maps the same envelope, so the typed path prints the
+  same `code` and field errors (pinned by an MSW test on the typed command).
 - Error envelopes carry `details` (additive): `--json` prints the API's
   `details` object verbatim inside `{ error: { … } }`; human mode lists a
   field-error array (`details.errors[]`: `field`, `message`, expected/got
