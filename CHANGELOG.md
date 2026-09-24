@@ -116,6 +116,29 @@ Spec parity is back to zero uncovered operations and zero phantom routes.
   `AUDIENCE_NOT_FOUND` instead of a generic `NOT_FOUND`; the CLI passes API
   error codes through verbatim, so no mapping special-cases them.
 
+### Fixed
+
+- **A trigger-fire refusal is reported as itself.** In 0.6.0 a documented
+  `400 INVALID_PAYLOAD` from `automations triggers fire` printed as
+  `unknown_error` / `internal_error` with retry advice and a dead
+  `docs.getbrew.io` link, and `api POST …/fire` dropped `details`, so neither
+  said which field was wrong. Both now print the API's own `code` and
+  `type`, fix-the-request advice for a 4xx (retry advice stays on
+  408/429/5xx), and the API's `details` — for a payload refusal,
+  `details.errors[]` names every offending field. The API answers the fire
+  in the standard `{ error: { … } }` envelope; the raw transport also still
+  reads the old top-level fire envelope.
+- **Error envelopes carry `details`** (additive): `--json` prints the API's
+  `details` object verbatim inside `{ error: { … } }`; human mode lists a
+  field-error array (`details.errors[]`: `field`, `message`, expected/got
+  types) one line per field under the message, and any other shape as a
+  single `Details:` JSON line.
+- `automations runs list --status` advertised `cancelled` (two L); the API's
+  value is `canceled`, so the advertised spelling was the one the server
+  refused with `400`. A test pins that `--recipient <email>` reaches the API
+  as `recipientEmail`, the one-contact run history.
+- `docs` links point at https://docs.brew.new; `docs.getbrew.io` is retired.
+
 ### Also in this release
 
 - `flows list` for the public email flows gallery (`GET /v1/flows`): real
@@ -137,64 +160,6 @@ Spec parity is back to zero uncovered operations and zero phantom routes.
   detail reads, the sends root, `/v1/contacts`,
   `/v1/automations/trigger-instances`, the trigger readiness probe, and the
   run / audience-run action sub-paths.
-
-## Unreleased
-- **Fixed**: `automations runs list --status canceled` — the help text and
-  the command reference spelled the terminal status `cancelled` (two L); the
-  API's enum is `canceled` (one L), so the advertised value was the one the
-  server refused with `400`. Both now say `canceled`, and a test pins that
-  `--recipient <email>` reaches the API as `recipientEmail` (the one-contact
-  run history the server honours since brew-v2 #1621).
-- Spec mirror resynced with brew-v2 `main`: the fire `400 payload_mismatch`
-  now declares `details.errors[]` / `payloadSchema` / `contractHash` /
-  `enforcement` and shows the code the API sends (`INVALID_PAYLOAD`), and the
-  runs list documents `recipientEmail`. Generated types follow.
-- **Fixed**: a trigger-fire refusal is reported as itself. `POST
-  /v1/automations/triggers/{id}/fire` answers with the legacy fire envelope
-  (top-level `code`/`message`/`details`, no `error` wrapper, no `type`).
-  The raw transport behind `api POST …/fire` kept `code` and `message` but
-  dropped `details` — so a `400 INVALID_PAYLOAD` never said which field
-  was wrong — and labelled the refusal `type: internal_error`. It now keeps
-  `details` and `body`, derives `type` from the HTTP status (`400`/`422`
-  → `invalid_request`, `404` → `not_found`, …), and gives a 4xx a
-  fix-the-request suggestion instead of retry advice. The typed
-  `automations triggers fire` goes through `@brew.new/sdk`; this release
-  pins `^9.3.0`, which maps the same envelope, so the typed path prints the
-  same `code` and field errors (pinned by an MSW test on the typed command).
-- Error envelopes carry `details` (additive): `--json` prints the API's
-  `details` object verbatim inside `{ error: { … } }`; human mode lists a
-  field-error array (`details.errors[]`: `field`, `message`, expected/got
-  types) one line per field under the message, and any other shape as a
-  single `Details:` JSON line.
-- `docs` points at https://docs.brew.new; `docs.getbrew.io` is retired.
-
-- Raised `@brew.new/sdk` to `^9.2.0`, which ships `flows.list` and
-  `automations.runs.cancel`, and moved both commands off the raw transport
-  onto the typed client. `Flow.brand` is `{ name, logo? }` in 9.2.0
-  (`domain` duplicated `slug` and was dropped); the BRAND column already
-  read `brand.name`, so the rendered table is unchanged. The payload
-  contract commands still use the raw transport.
-- Added `flows list` for the public email flows gallery (`GET /v1/flows`):
-  real multi-step sequences by brand, with the day each email landed. List
-  cards with `--brand-domain`, `--category`, `--type signup|newsletter`,
-  `--semantic`, and `--sort newest|emails|span|remixes` (plus `--all`), or
-  fetch one flow with `--slug <brand domain>` for its `anchor` and every
-  step's `subject`, `dayOffset`, `delayDays`, `category`, `previewImage`,
-  and `emailId` (a template reference usable as `referenceEmailId` on
-  `emails generate`); `--include html` adds each step's rendered HTML. The
-  route is organization-wide, so the brand binding is never sent. Bound
-  through `brew.flows.list(...)`.
-- Added `automations runs cancel <automationRunId>` (`PATCH
-  /v1/automations/runs`): the operator cancel for one in-flight run of an
-  event-triggered automation or a test run. Destructive — the confirmation
-  protocol applies; `--reason` stores an operator note. Nothing further is
-  sent, delivered emails are not recalled, and a canceled run can never be
-  resumed (`409 RUN_NOT_CANCELLABLE` once it finished). Bound through
-  `brew.automations.runs.cancel(...)`, which fills in `status: 'canceled'`
-  so the command sends only the run id and an optional note.
-- Spec resync: `GET /v1/flows` (`Flow`, `FlowStep`, `FlowsListResponse`,
-  `FLOW_NOT_FOUND`) and `PATCH /v1/automations/runs`
-  (`AutomationRunCancelRequest` / `AutomationRunCancelResponse`).
 
 ## 0.5.0
 
