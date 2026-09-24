@@ -589,7 +589,11 @@ describe('automations triggers fire (confirmation protocol)', () => {
     expect(parsed.error.details.errors.map((issue) => issue.field)).toEqual([
       'code',
     ])
-    expect(String(parsed.error.suggestion)).not.toMatch(/retry/i)
+    // The server's own suggestion passes through verbatim — never a
+    // client-generated one, and never retry advice.
+    expect(parsed.error.suggestion).toBe(
+      'Send fields and types matching the trigger’s payloadSchema (see GET /v1/automations/triggers/{triggerEventId}).'
+    )
     expect(parsed.error.docs).toBe(
       'https://docs.brew.new/api-reference/api/errors'
     )
