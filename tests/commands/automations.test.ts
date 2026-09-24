@@ -526,6 +526,74 @@ describe('automations triggers fire (confirmation protocol)', () => {
       'https://docs.brew.new/api-reference/public-v1/automations/fire-a-trigger'
     )
   })
+
+  it('reports a payload refusal in the standard envelope the API sends today, with the field errors', async () => {
+    // Since the v1 cleanup the fire refuses in `{ error: { … } }` like every
+    // other endpoint, with the field errors under `error.details`. This is
+    // the reporter's case against the live shape: which field was wrong,
+    // no retry advice, the server's own suggestion.
+    server.use(
+      http.post(`${API}/v1/automations/triggers/tri_signup/fire`, () =>
+        HttpResponse.json(
+          {
+            error: {
+              code: 'INVALID_PAYLOAD',
+              type: 'invalid_request',
+              message: 'Payload validation failed.',
+              suggestion:
+                'Send fields and types matching the trigger’s payloadSchema (see GET /v1/automations/triggers/{triggerEventId}).',
+              docs: 'https://docs.brew.new/api-reference/api/errors',
+              details: {
+                errors: [
+                  {
+                    code: 'invalid_type',
+                    field: 'code',
+                    message: 'Field "code" must be a string',
+                    expectedType: 'string',
+                    actualType: 'number',
+                  },
+                ],
+                warnings: [],
+                payloadSchema: {
+                  type: 'object',
+                  fields: [{ key: 'code', type: 'string', required: true }],
+                },
+              },
+            },
+          },
+          {
+            status: 400,
+            headers: { 'x-request-id': 'req_5d1c0e3a9b2f4e6d8a7c1b0f9e8d7c6b' },
+          }
+        )
+      )
+    )
+    const result = await cli([
+      'automations',
+      'triggers',
+      'fire',
+      'tri_signup',
+      '--input',
+      '{"payload":{"email":"jane@example.com","code":123}}',
+      '--yes',
+    ])
+    expect(result.code).toBe(1)
+    const parsed = JSON.parse(result.stderr) as {
+      error: Record<string, unknown> & {
+        details: { errors: Array<{ field: string }> }
+      }
+    }
+    expect(parsed.error.code).toBe('INVALID_PAYLOAD')
+    expect(parsed.error.type).toBe('invalid_request')
+    expect(parsed.error.requestId).toBe('req_5d1c0e3a9b2f4e6d8a7c1b0f9e8d7c6b')
+    expect(parsed.error.details.errors.map((issue) => issue.field)).toEqual([
+      'code',
+    ])
+    expect(String(parsed.error.suggestion)).not.toMatch(/retry/i)
+    expect(parsed.error.docs).toBe(
+      'https://docs.brew.new/api-reference/api/errors'
+    )
+  })
 })
 
 describe('automations triggers contract put', () => {
