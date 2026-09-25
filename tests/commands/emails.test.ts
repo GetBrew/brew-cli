@@ -409,12 +409,96 @@ describe('emails edit', () => {
     expect(result.stderr).toContain('Editing email')
   })
 
-  it('requires a prompt or a subject line (or --input)', async () => {
+  // The API takes any of prompt, title, subjectLine and groupId; without a
+  // prompt it is one free in-place patch of the design's envelope.
+  it('renames through --input without a prompt (no AI run)', async () => {
+    let body: unknown
+    server.use(
+      http.patch(`${EMAILS_URL}/eml_1`, async ({ request }) => {
+        body = await request.json()
+        return HttpResponse.json({ emailId: 'eml_1', status: 'ready' })
+      })
+    )
+    const result = await runCli(
+      ['emails', 'edit', 'eml_1', '--input', '{"title":"Fall sale v2"}'],
+      { env: env(), extraCommands: EXTRA }
+    )
+    expect(result.code).toBe(0)
+    expect(body).toEqual({ title: 'Fall sale v2' })
+    expect(result.stderr).toContain('no AI run')
+    expect(result.stderr).not.toContain('Editing email')
+  })
+
+  it('moves the design between groups through --input, null meaning Ungrouped', async () => {
+    const bodies: unknown[] = []
+    server.use(
+      http.patch(`${EMAILS_URL}/eml_1`, async ({ request }) => {
+        bodies.push(await request.json())
+        return HttpResponse.json({ emailId: 'eml_1', status: 'ready' })
+      })
+    )
+    const moved = await runCli(
+      ['emails', 'edit', 'eml_1', '--input', '{"groupId":"grp_7Hq2"}'],
+      { env: env(), extraCommands: EXTRA }
+    )
+    const ungrouped = await runCli(
+      ['emails', 'edit', 'eml_1', '--input', '{"groupId":null}'],
+      { env: env(), extraCommands: EXTRA }
+    )
+    expect(moved.code).toBe(0)
+    expect(ungrouped.code).toBe(0)
+    expect(bodies).toEqual([{ groupId: 'grp_7Hq2' }, { groupId: null }])
+  })
+
+  it('renames and moves with flags, no --input needed', async () => {
+    const bodies: unknown[] = []
+    server.use(
+      http.patch(`${EMAILS_URL}/eml_1`, async ({ request }) => {
+        bodies.push(await request.json())
+        return HttpResponse.json({ emailId: 'eml_1', status: 'ready' })
+      })
+    )
+    const moved = await runCli(
+      [
+        'emails',
+        'edit',
+        'eml_1',
+        '--title',
+        'Fall sale v2',
+        '--group-id',
+        'grp_7Hq2',
+      ],
+      { env: env(), extraCommands: EXTRA }
+    )
+    const ungrouped = await runCli(['emails', 'edit', 'eml_1', '--ungroup'], {
+      env: env(),
+      extraCommands: EXTRA,
+    })
+    expect(moved.code).toBe(0)
+    expect(ungrouped.code).toBe(0)
+    expect(bodies).toEqual([
+      { title: 'Fall sale v2', groupId: 'grp_7Hq2' },
+      { groupId: null },
+    ])
+    expect(moved.stderr).toContain('no AI run')
+  })
+
+  it('refuses --group-id with --ungroup before any request', async () => {
+    const result = await runCli(
+      ['emails', 'edit', 'eml_1', '--group-id', 'grp_7Hq2', '--ungroup'],
+      { env: env(), extraCommands: EXTRA }
+    )
+    expect(result.code).toBe(2)
+    expect(result.stderr).toContain('conflict')
+  })
+
+  it('requires a prompt or one envelope field (or --input)', async () => {
     const result = await runCli(['emails', 'edit', 'eml_1'], {
       env: env(),
       extraCommands: EXTRA,
     })
     expect(result.code).toBe(2)
+    expect(result.stderr).toContain('--group-id')
   })
 })
 

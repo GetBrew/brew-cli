@@ -5,7 +5,7 @@ description: Drive the Brew email platform from the terminal with brew-cli — e
 
 # brew-cli for agents
 
-One typed command per public-API operation (125 commands, generated docs in
+One typed command per public-API operation (130 commands, generated docs in
 `docs/commands/README.md`). JSON output is automatic when stdout is piped.
 
 ## Start every session with the trust check
@@ -51,6 +51,8 @@ brew-cli docs --agent                  # machine-readable manifest of every comm
 brew-cli docs api                      # the live API catalog (/v1/help)
 brew-cli contacts search --filter email:contains:@acme.com --json
 brew-cli emails get <emailId> --include html,versions
+brew-cli emails preview-clients <emailId>        # starts a rendering job (10 credits)
+brew-cli emails get-client-preview <previewId>   # poll it; screenshots are previews[].imageUrl
 brew-cli sends get <sendId> --include events
 brew-cli api GET '/v1/sends?kind=campaign'   # raw escape hatch for anything else
 ```

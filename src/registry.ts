@@ -96,6 +96,8 @@ import { emailsEditCommand } from './commands/emails/edit'
 import { emailsExportCommand } from './commands/emails/export'
 import { emailsGenerateCommand } from './commands/emails/generate'
 import { emailsGetCommand } from './commands/emails/get'
+import { emailsGetAuditCommand } from './commands/emails/get-audit'
+import { emailsGetClientPreviewCommand } from './commands/emails/get-client-preview'
 import { emailsGetInboxPlacementResultsCommand } from './commands/emails/get-inbox-placement-results'
 import { emailsGroupsCreateCommand } from './commands/emails/groups/create'
 import { emailsGroupsDeleteCommand } from './commands/emails/groups/delete'
@@ -124,6 +126,7 @@ import { sendsGetCommand } from './commands/sends/get'
 import { sendsListCommand } from './commands/sends/list'
 import { sendsPauseCommand } from './commands/sends/pause'
 import { sendsResumeCommand } from './commands/sends/resume'
+import { templatesGetCommand } from './commands/templates/get'
 import { templatesListCommand } from './commands/templates/list'
 import { typesCommand } from './commands/types'
 import { usageCommand } from './commands/usage'
@@ -174,7 +177,9 @@ export const ALL_COMMANDS: readonly CommandSpec[] = [
   emailsDeleteCommand,
   emailsExportCommand,
   emailsAuditCommand,
+  emailsGetAuditCommand,
   emailsPreviewClientsCommand,
+  emailsGetClientPreviewCommand,
   emailsCreateInboxPlacementTestCommand,
   emailsGetInboxPlacementResultsCommand,
   emailsInboxPlacementTestsGetCommand,
@@ -253,6 +258,7 @@ export const ALL_COMMANDS: readonly CommandSpec[] = [
   contentHtmlToPngCommand,
   contentAddImageCommand,
   templatesListCommand,
+  templatesGetCommand,
   flowsListCommand,
   flowsGetCommand,
   integrationsListCommand,

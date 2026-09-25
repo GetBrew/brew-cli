@@ -72,6 +72,8 @@ export const SDK_SKIP_LIST: readonly SdkSkip[] = [
  *
  * Empty as of 0.7.0: every v1 operation is bound, including the detail
  * reads, the sends root, trigger instances, trigger readiness, and the
- * run/audience-run lifecycle actions.
+ * run/audience-run lifecycle actions. 0.8.0 keeps it empty by binding the
+ * saved-audit, rendering-job and template reads as raw routes ahead of
+ * SDK 11.
  */
 export const SPEC_SKIP_LIST: readonly SpecSkip[] = []
