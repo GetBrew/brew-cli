@@ -52,7 +52,7 @@ a `confirmCommand` otherwise, `--yes` to proceed).
 | `brew-cli emails generate` | write ($) | `POST /v1/emails` | Generate a new on-brand email design from a prompt |
 | `brew-cli emails import` | write | `POST /v1/emails/import` | Import existing HTML, MJML, or JSX as a new editable design |
 | `brew-cli emails import-figma` | write | `POST /v1/emails/figma` | Convert one Figma frame into an editable design (deterministic, free) |
-| `brew-cli emails edit` | write ($) | `PATCH /v1/emails/{emailId}` | AI-edit an email design, and/or set its subject line (subject-only is free) |
+| `brew-cli emails edit` | write ($) | `PATCH /v1/emails/{emailId}` | AI-edit an email design, and/or set its subject line, title or group (free without a prompt) |
 | `brew-cli emails clone` | write | `POST /v1/emails/{emailId}/clone` | Clone a design into a new one (exact snapshot copy, no AI) |
 | `brew-cli emails restore` | write | `POST /v1/emails/{emailId}/restore` | Restore a previous version as the new latest (non-destructive) |
 | `brew-cli emails delete` | destructive | `DELETE /v1/emails/{emailId}` | Hard-delete an email design and all its versions (idempotent) |
@@ -658,7 +658,7 @@ brew-cli emails import-figma --url "https://www.figma.com/design/abc123/Launch?n
 
 ### brew-cli emails edit
 
-AI-edit an email design, and/or set its subject line (subject-only is free)
+AI-edit an email design, and/or set its subject line, title or group (free without a prompt)
 
 - Route: `PATCH /v1/emails/{emailId}`
 - Class: write
@@ -674,6 +674,7 @@ AI-edit an email design, and/or set its subject line (subject-only is free)
 ```bash
 brew-cli emails edit eml_2SmZOWV3ZQ7W5x6g3m4p --prompt "Tighten the hero copy"
 brew-cli emails edit eml_2SmZOWV3ZQ7W5x6g3m4p --subject-line "Your September roundup"
+brew-cli emails edit eml_2SmZOWV3ZQ7W5x6g3m4p --input '{"title":"Fall sale v2","groupId":"grp_7Hq2"}'
 ```
 
 ### brew-cli emails clone

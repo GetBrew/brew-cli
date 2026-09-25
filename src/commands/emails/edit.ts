@@ -11,10 +11,20 @@ import {
 } from '../../lib/input'
 import { progress } from '../../lib/output'
 
+/**
+ * What a PATCH without a prompt changes in place: no AI run, no new version,
+ * no credits. The API needs a prompt or at least one of these.
+ */
+const ENVELOPE_FIELDS = ['title', 'subjectLine', 'groupId'] as const
+
+function isText(value: unknown): boolean {
+  return typeof value === 'string' && value !== ''
+}
+
 export const emailsEditCommand = defineCommand({
   path: ['emails', 'edit'],
   summary:
-    'AI-edit an email design, and/or set its subject line (subject-only is free)',
+    'AI-edit an email design, and/or set its subject line, title or group (free without a prompt)',
   sdkMethod: 'emails.edit',
   route: { method: 'PATCH', path: '/v1/emails/{emailId}' },
   commandClass: 'write',
@@ -40,6 +50,7 @@ export const emailsEditCommand = defineCommand({
   examples: [
     'brew-cli emails edit eml_2SmZOWV3ZQ7W5x6g3m4p --prompt "Tighten the hero copy"',
     'brew-cli emails edit eml_2SmZOWV3ZQ7W5x6g3m4p --subject-line "Your September roundup"',
+    `brew-cli emails edit eml_2SmZOWV3ZQ7W5x6g3m4p --input '{"title":"Fall sale v2","groupId":"grp_7Hq2"}'`,
   ],
   run: async ({ ctx, args, flags }) => {
     const base = await readJsonFlag(ctx, flags.input, '--input')
@@ -49,21 +60,26 @@ export const emailsEditCommand = defineCommand({
       contentUrls: toStringArray(flags.contentUrls),
       subjectLine: flagString(flags.subjectLine),
     })
-    const isPromptEdit = typeof input.prompt === 'string' && input.prompt !== ''
-    const hasSubjectLine =
-      typeof input.subjectLine === 'string' && input.subjectLine !== ''
-    if (!(isPromptEdit || hasSubjectLine)) {
+    const isPromptEdit = isText(input.prompt)
+    // `groupId: null` is a real value: it moves the design to Ungrouped.
+    const envelope = ENVELOPE_FIELDS.filter(
+      (field) =>
+        isText(input[field]) || (field === 'groupId' && input[field] === null)
+    )
+    if (!isPromptEdit && envelope.length === 0) {
       throw new CliUsageError(
-        '--prompt or --subject-line is required (or provide either via --input).'
+        '--prompt or --subject-line is required (or prompt, title, subjectLine or groupId via --input).'
       )
     }
-    // Subject-only is a deterministic in-place patch server-side: no AI run,
-    // no new version, and no credits — so it returns immediately.
+    // Without a prompt the patch is deterministic server-side: no AI run, no
+    // new version, and no credits, so it returns immediately.
     progress(
       ctx,
       isPromptEdit
         ? 'Editing email… (typically 30-90s)'
-        : 'Setting the subject line…'
+        : envelope.length === 1 && envelope[0] === 'subjectLine'
+          ? 'Setting the subject line…'
+          : 'Updating the design (no AI run)…'
     )
     const result = await ctx
       .client()
