@@ -1,10 +1,21 @@
 # Changelog
 
+## 0.8.1
+
+Not tagged or published: `package.json` says 0.8.1, but there is no
+`v0.8.1` tag. Pushing the tag publishes it (see `RELEASING.md`).
+
+### Fixed
+
+- `emails get-audit --limit` is 1-50 findings per page (default 10). The
+  0.8.0 notes and `--help` said 1-100 / default 100, copied from a spec
+  that published the shared list limit; the server refuses a `--limit`
+  over 50 with a `400`. The vendored spec and generated types are
+  resynced with the live spec after brew-v2#1641.
+
 ## 0.8.0
 
-Not tagged or published: `package.json` says 0.8.0, but there is no
-`v0.8.0` tag and npm does not serve it. Pushing the tag publishes it (see
-`RELEASING.md`).
+Released 2026-09-25 (tag `v0.8.0`, npm `@brew.new/cli@0.8.0`).
 
 Syncs the CLI with the live public API v1 spec after the MCP task refactor
 (brew-v2#1588): 110 operations, and spec parity is back to zero uncovered.

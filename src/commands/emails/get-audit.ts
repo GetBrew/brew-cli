@@ -1,7 +1,7 @@
 import type { operations } from '../../generated/openapi-types'
 import { defineCommand } from '../../lib/define-command'
 import { flagInt, flagString } from '../../lib/input'
-import { CURSOR_FLAG, LIMIT_FLAG } from '../../lib/paginate'
+import { CURSOR_FLAG } from '../../lib/paginate'
 import { rawRequest } from '../../lib/raw-request'
 
 type EmailAuditPage =
@@ -28,7 +28,12 @@ export const emailsGetAuditCommand = defineCommand({
       isRequired: true,
     },
   ],
-  flags: [LIMIT_FLAG, CURSOR_FLAG],
+  // Its own page size: a saved audit pages 1-50 findings (default 10), not
+  // the shared list's 1-100.
+  flags: [
+    { flag: '--limit <n>', summary: 'Findings per page, 1-50 (default 10)' },
+    CURSOR_FLAG,
+  ],
   examples: [
     'brew-cli emails get-audit 6f1e2d3c-4b5a-4c7d-8e9f-0a1b2c3d4e5f',
     'brew-cli emails get-audit 6f1e2d3c-4b5a-4c7d-8e9f-0a1b2c3d4e5f --limit 20',

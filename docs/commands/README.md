@@ -771,7 +771,7 @@ Read a saved email audit: one page of its findings (free; never reruns the audit
 - Route: `GET /v1/emails/audits/{auditId}`
 - Class: read
 - Argument `auditId` — The auditId `emails audit` returned (reports are kept 7 days)
-- `--limit <n>` — Page size, 1-100 (default 100)
+- `--limit <n>` — Findings per page, 1-50 (default 10)
 - `--cursor <cursor>` — Opaque pagination cursor from a previous page
 
 ```bash
