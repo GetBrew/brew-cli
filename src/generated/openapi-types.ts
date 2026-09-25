@@ -291,7 +291,7 @@ export interface paths {
          * Run an inbox placement test
          * @description Test where the design’s latest version LANDS — inbox vs spam vs missing — across real mailbox providers (Gmail, Outlook, Yahoo, Apple, …). Brew provisions a Mailgun seed list and sends the email to the seed addresses through your REAL send pipeline on a VERIFIED sending `domainId`, so the result reflects that domain’s true deliverability plus SPF/DKIM/DMARC.
          *
-         *     Returns immediately with a `testId` and `status: "collecting"`. Results accrue over a few minutes — poll `GET /v1/emails/{emailId}/inbox-placement-tests?testId=` until `status` is `completed`.
+         *     Returns immediately with a `testId`, `status: "running"` and `phase: "sending"`. Results accrue over a few minutes — poll `GET /v1/emails/{emailId}/inbox-placement-tests/{testId}` until `status` is `completed`, `partially_completed` or `failed`.
          *
          *     This performs a real (small) send to the seeds IN ADDITION to the FIXED 10-credit test fee (`X-Credit-Cost: 10`), charged only on a 2xx. Requires a verified sending domain.
          */
@@ -315,7 +315,7 @@ export interface paths {
          *
          *     **Use when** polling a test started with `createInboxPlacementTest`.
          *
-         *     **Input** `emailId` and `testId` in the path. While `status` is `collecting` the read refreshes from the provider (re-poll about every 30 seconds until `completed`).
+         *     **Input** `emailId` and `testId` in the path. While `status` is `running` (`phase` `sending`, then `collecting`) the read refreshes from the provider (re-poll about every 30 seconds until `status` is `completed`, `partially_completed` or `failed`).
          *
          *     **Returns** `200` with, per provider, inbox, spam and missing tallies with folder or tab `categories` and actual `folders` (Gmail Promotions, Yahoo bulk, gmx spamverdacht), each provider's own SPF, DKIM and DMARC verdicts (`byProvider[].authentication`), Microsoft filter telemetry (`microsoftFilter`; an SCL of 5 or higher lands in Junk), `spoofingDetected`, `headers` (one-click unsubscribe, plain-text part), a `spamFilter` content verdict with the triggered rules, and `diagnosis[]` per-provider findings with concrete remediation.
          *
@@ -9994,7 +9994,8 @@ export interface operations {
                      * @example {
                      *       "testId": "ibp_2f1c9d8a-4e77-4b0e-9a1c-6d5e2f0b7c31",
                      *       "emailId": "V1StGXR8_Z5jdHi6B-myT",
-                     *       "status": "collecting",
+                     *       "status": "running",
+                     *       "phase": "sending",
                      *       "domainId": "k57e9m3q1w8r",
                      *       "seedCount": 42,
                      *       "results": null,
