@@ -7,6 +7,12 @@ Not tagged or published: `package.json` says 0.8.1, but there is no
 
 ### Fixed
 
+- `api-keys create` no longer offers `--idempotency-key`. The route never
+  replays a request (a replay would disclose the one-time plaintext key
+  again), so the flag promised a safe retry the API does not give; a retry
+  mints a second key. `tests/idempotency-flags.test.ts` now fails when a
+  command offers the flag on a route whose `x-brew-idempotency` is not
+  `replay` or `fail_closed`.
 - `emails get-audit --limit` is 1-50 findings per page (default 10). The
   0.8.0 notes and `--help` said 1-100 / default 100, copied from a spec
   that published the shared list limit; the server refuses a `--limit`

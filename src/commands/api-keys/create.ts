@@ -3,11 +3,9 @@ import { defineCommand } from '../../lib/define-command'
 import {
   asSdkInput,
   flagString,
-  IDEMPOTENCY_FLAG,
   INPUT_FLAG,
   mergeInput,
   readJsonFlag,
-  requestOptions,
   toStringArray,
 } from '../../lib/input'
 
@@ -30,8 +28,9 @@ export const apiKeysCreateCommand = defineCommand({
       summary:
         'Bind the NEW key to this brand id (omit for an organization-wide key); not the acting --brand',
     },
+    // No `--idempotency-key`: the route never replays (a replay would
+    // disclose the plaintext key again), so a retry mints a second key.
     INPUT_FLAG,
-    IDEMPOTENCY_FLAG,
   ],
   examples: [
     'brew-cli api-keys create --name CI --permissions emails domains',
@@ -50,10 +49,7 @@ export const apiKeysCreateCommand = defineCommand({
     return {
       data: await ctx
         .client()
-        .apiKeys.create(
-          asSdkInput<CreateApiKeyInput>(input),
-          requestOptions(flags)
-        ),
+        .apiKeys.create(asSdkInput<CreateApiKeyInput>(input)),
     }
   },
 })
