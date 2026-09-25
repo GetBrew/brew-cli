@@ -1,5 +1,83 @@
 # Changelog
 
+## 0.8.0
+
+Not tagged or published: `package.json` says 0.8.0, but there is no
+`v0.8.0` tag and npm does not serve it. Pushing the tag publishes it (see
+`RELEASING.md`).
+
+Syncs the CLI with the live public API v1 spec after the MCP task refactor
+(brew-v2#1588): 110 operations, and spec parity is back to zero uncovered.
+The SDK dependency stays `^10.0.0` because SDK 11 is not on npm yet, so the
+three new reads call the API through the raw transport until the CLI adopts
+it.
+
+### Breaking
+
+- **`emails preview-clients` starts a rendering job.** The API no longer
+  blocks for screenshots. It answers `202` with the admitted job, or `200`
+  with the existing job for the same version and clients, and the command
+  prints that job: `previewId`, `status` (`queued | running | completed |
+  partially_completed | failed`), per-client `status`, `reason` and
+  `retryable`, `pending`, `nextPollAfterMs`, `expiresAt` and `credits`. The
+  `ready`, `partial` and `processing` values are gone. Poll the job with
+  `emails get-client-preview` for the screenshots; while it is `queued` or
+  `running`, stderr names that command. The 10 credits are reserved at
+  admission and released if nothing renders.
+- **Contacts drop `verificationStatus`**, the deprecated mirror of
+  `validationStatus`, from contact rows and contact write responses. The CLI
+  prints what the API sends, so read `validationStatus`.
+
+### Added
+
+- `emails get-client-preview <previewId>` polls a rendering job
+  (`GET /v1/emails/client-previews/{previewId}`). Poll again after
+  `nextPollAfterMs` while it is `queued` or `running`. Once it settles, each
+  client has its `imageUrl`, or a `reason` and whether it is `retryable`.
+  Polling is free and never renders again. An expired or unknown id is
+  `404 PREVIEW_NOT_FOUND`.
+- `emails get-audit <auditId>` reads a saved audit
+  (`GET /v1/emails/audits/{auditId}`): one page of findings with the
+  report's summary, checks, metrics and `pagination` (`cursor`, `hasMore`,
+  `returned`, `storedFindings`). `--limit` (1-100, default 100) and
+  `--cursor` page through the stored findings. Reading is free and never
+  reruns the audit. `emails audit` returns the `auditId`; reports are kept
+  seven days, then `404 AUDIT_NOT_FOUND`.
+- `templates get <templateId>` reads one gallery template
+  (`GET /v1/templates/{templateId}`): metadata, `previewImage`, `viewUrl`
+  and the `referenceEmailId` that `emails generate --reference-email-id`
+  remixes. `--include html` adds the rendered HTML, or a `content.url`
+  download link when the page is large. The id is the TEMPLATE column of
+  `templates list`. The route is organization-wide, so no brand binding is
+  sent. An unknown id is `404 TEMPLATE_NOT_FOUND`.
+- Fields the API added, printed as it sends them: `emails get` returns the
+  detail row, with `previewStatus` (`available | unavailable | not_ready`)
+  and, after a failed generation, `errorMessage` and `errorCause`;
+  `automations test` answers with `testMode`, and a test run read through
+  `automations runs get` or `list` carries `testCoverage`; `data run` adds
+  `stdout`, `stderr`, `pagination` and `retryCommand`; contact write
+  warnings name the contact (`email`); send, automation and trigger-contract
+  warnings gain `RESUBSCRIBE_SKIPPED` and `RECIPIENTS_EXCLUDED`.
+
+### Fixed
+
+- `emails edit` sends a `title`- or `groupId`-only patch given through
+  `--input` (`groupId: null` moves the design to Ungrouped). The API takes
+  any of `prompt`, `title`, `subjectLine` and `groupId`, but the CLI exited
+  2 unless `--prompt` or `--subject-line` was set.
+
+### Not yet
+
+- `emails get` cannot select a saved version or a generation run. The API's
+  new `emailVersionId` and `runId` params need SDK 11, whose `emails.get`
+  forwards them; SDK 10 sends only `include`. Meanwhile:
+  `brew-cli api GET '/v1/emails/<emailId>?emailVersionId=<id>'`.
+- Other new request fields have no dedicated flag yet. `emailVersionId` on
+  `emails preview-clients` is reachable only through `brew-cli api`.
+  `templates list` takes `query` and `representation`, and `automations
+  test` takes `scenario`, through `--input`; the test's `--input` must also
+  carry `payload`, or the whole object is sent as the payload.
+
 ## 0.7.0
 
 Aligns the CLI with the cleaned-up public API v1 and `@brew.new/sdk ^10`.
