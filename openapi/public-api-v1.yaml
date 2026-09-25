@@ -14069,14 +14069,14 @@ components:
         aspectRatio:
           type: string
           enum:
-            - 16:9
-            - 3:2
-            - 4:3
-            - 1:1
-            - 4:5
-            - 2:3
-            - 3:4
-            - 9:16
+            - '16:9'
+            - '3:2'
+            - '4:3'
+            - '1:1'
+            - '4:5'
+            - '2:3'
+            - '3:4'
+            - '9:16'
         image1:
           type: string
           format: uri
@@ -14101,10 +14101,10 @@ components:
             format:
               type: string
               enum:
-                - 1:1
-                - 4:5
-                - 9:16
-                - 16:9
+                - '1:1'
+                - '4:5'
+                - '9:16'
+                - '16:9'
             archetype:
               type: string
               enum:
@@ -14234,9 +14234,9 @@ components:
             aspectRatio:
               type: string
               enum:
-                - 16:9
-                - 9:16
-                - 1:1
+                - '16:9'
+                - '9:16'
+                - '1:1'
             loop:
               type: boolean
           required:
@@ -14263,9 +14263,9 @@ components:
             aspectRatio:
               type: string
               enum:
-                - 16:9
-                - 9:16
-                - 1:1
+                - '16:9'
+                - '9:16'
+                - '1:1'
             loop:
               type: boolean
           required:
@@ -14951,7 +14951,7 @@ paths:
                     title: Welcome Email
                     status: ready
                     previewImage: https://cdn.brew.new/p/V1StGXR8_Z5jdHi6B-myT.png
-                    updatedAt: 2026-04-08T12:34:56.789Z
+                    updatedAt: '2026-04-08T12:34:56.789Z'
                     group:
                       groupId: grp_welcome
                       groupName: Welcome
@@ -14959,7 +14959,7 @@ paths:
                     emailVersionId: Lw9Rn1Vc5KzSGm2Tq7Xp4
                     title: May product digest
                     status: ready
-                    updatedAt: 2026-04-07T09:00:00.000Z
+                    updatedAt: '2026-04-07T09:00:00.000Z'
                     group: null
                 pagination:
                   limit: 100
@@ -15789,6 +15789,9 @@ paths:
         - schema:
             type: string
             description: "Comma-separated expansions: `html` (rendered HTML of the selected version, once it is `ready`), `versions` (lean `{ version, emailVersionId }` history)."
+            x-brew-include-tokens:
+              - html
+              - versions
           required: false
           description: "Comma-separated expansions: `html` (rendered HTML of the selected version, once it is `ready`), `versions` (lean `{ version, emailVersionId }` history)."
           name: include
@@ -15866,7 +15869,7 @@ paths:
                 subjectLine: Welcome to Acme
                 previewText: Your first week, planned.
                 previewImage: https://cdn.brew.new/p/V1StGXR8_Z5jdHi6B-myT.png
-                updatedAt: 2026-04-08T12:34:56.789Z
+                updatedAt: '2026-04-08T12:34:56.789Z'
                 group:
                   groupId: grp_welcome
                   groupName: Welcome
@@ -19506,8 +19509,8 @@ paths:
                 rulesetVersion: 2026-08-28.1
                 auditId: 00000000-0000-4000-8000-000000000001
                 contentHash: sha256:0000000000000000000000000000000000000000000000000000000000000000
-                auditedAt: 2026-08-23T00:00:00.000Z
-                expiresAt: 2026-08-23T00:15:00.000Z
+                auditedAt: '2026-08-23T00:00:00.000Z'
+                expiresAt: '2026-08-23T00:15:00.000Z'
                 policy:
                   purpose: marketing
                   source: provided
@@ -20689,8 +20692,8 @@ paths:
                 domainId: k57e9m3q1w8r
                 seedCount: 42
                 results: null
-                createdAt: 2026-07-13T17:00:06.675Z
-                updatedAt: 2026-07-13T17:00:06.675Z
+                createdAt: '2026-07-13T17:00:06.675Z'
+                updatedAt: '2026-07-13T17:00:06.675Z'
         "400":
           description: |-
             `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
@@ -21224,8 +21227,8 @@ paths:
                         inbox: 34
                         promotions: 4
                         spam: 3
-                    createdAt: 2026-04-08T12:34:56.789Z
-                    updatedAt: 2026-04-08T12:41:10.000Z
+                    createdAt: '2026-04-08T12:34:56.789Z'
+                    updatedAt: '2026-04-08T12:41:10.000Z'
                 pagination:
                   limit: 100
                   cursor: null
@@ -21598,8 +21601,8 @@ paths:
                       - name: DKIM_SIGNED
                         score: 0.1
                         description: Message has a DKIM signature
-                createdAt: 2026-07-13T17:00:06.675Z
-                updatedAt: 2026-07-13T17:00:06.675Z
+                createdAt: '2026-07-13T17:00:06.675Z'
+                updatedAt: '2026-07-13T17:00:06.675Z'
         "400":
           description: |-
             `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
@@ -25092,8 +25095,8 @@ paths:
                     status: completed
                     audienceId: jn79k2x4apqz8mjm12ekz1kxdx87yceg
                     audienceName: Subscribers
-                    startedAt: 2026-04-08T12:00:05.000Z
-                    completedAt: 2026-04-08T12:34:56.000Z
+                    startedAt: '2026-04-08T12:00:05.000Z'
+                    completedAt: '2026-04-08T12:34:56.000Z'
                     stats:
                       sent: 1200
                       delivered: 1180
@@ -25102,8 +25105,8 @@ paths:
                       bounced: 20
                       complained: 1
                       unsubscribed: 4
-                    createdAt: 2026-04-08T12:00:00.000Z
-                    updatedAt: 2026-04-08T12:34:56.000Z
+                    createdAt: '2026-04-08T12:00:00.000Z'
+                    updatedAt: '2026-04-08T12:34:56.000Z'
                 pagination:
                   limit: 100
                   cursor: null
@@ -25457,7 +25460,7 @@ paths:
                   subject: Welcome to Brew
                   previewText: Get started in 2 minutes.
                   audienceId: jn79k2x4apqz8mjm12ekz1kxdx87yceg
-                  scheduledAt: 2099-01-01T00:00:00.000Z
+                  scheduledAt: '2099-01-01T00:00:00.000Z'
               inline:
                 summary: Send to inline recipients
                 value:
@@ -26063,6 +26066,8 @@ paths:
         - schema:
             type: string
             description: "Expansions: `events` attaches a bounded first page of the send’s analytics events."
+            x-brew-include-tokens:
+              - events
           required: false
           description: "Expansions: `events` attaches a bounded first page of the send’s analytics events."
           name: include
@@ -26121,8 +26126,8 @@ paths:
                 status: completed
                 audienceId: jn79k2x4apqz8mjm12ekz1kxdx87yceg
                 audienceName: Subscribers
-                startedAt: 2026-04-08T12:00:05.000Z
-                completedAt: 2026-04-08T12:34:56.000Z
+                startedAt: '2026-04-08T12:00:05.000Z'
+                completedAt: '2026-04-08T12:34:56.000Z'
                 stats:
                   sent: 1200
                   delivered: 1180
@@ -26131,8 +26136,8 @@ paths:
                   bounced: 20
                   complained: 1
                   unsubscribed: 4
-                createdAt: 2026-04-08T12:00:00.000Z
-                updatedAt: 2026-04-08T12:34:56.000Z
+                createdAt: '2026-04-08T12:00:00.000Z'
+                updatedAt: '2026-04-08T12:34:56.000Z'
         "400":
           description: |-
             `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
@@ -27687,7 +27692,7 @@ paths:
                   complaintRate: 0.0006
                   unsubscribeRate: 0.0024
                 buckets:
-                  - at: 2026-04-08T00:00:00.000Z
+                  - at: '2026-04-08T00:00:00.000Z'
                     sent: 5000
                     delivered: 4920
                     deliveryDelayed: 2
@@ -27701,8 +27706,8 @@ paths:
                 granularity: 1d
                 timeZone: America/New_York
                 range:
-                  from: 2026-04-01T12:34:56.789Z
-                  to: 2026-04-08T12:34:56.789Z
+                  from: '2026-04-01T12:34:56.789Z'
+                  to: '2026-04-08T12:34:56.789Z'
                 truncated: false
         "400":
           description: |-
@@ -28049,7 +28054,7 @@ paths:
                     openRate: 0.6
                     clickRate: 0.182
                     clickThroughRate: 0.304
-                    lastRunAt: 2026-04-08T12:34:56.789Z
+                    lastRunAt: '2026-04-08T12:34:56.789Z'
                     lastRunStatus: completed
                 totals:
                   runs: 1200
@@ -28061,8 +28066,8 @@ paths:
                   clicked: 210
                   bounced: 18
                 range:
-                  from: 2026-03-09T12:34:56.789Z
-                  to: 2026-04-08T12:34:56.789Z
+                  from: '2026-03-09T12:34:56.789Z'
+                  to: '2026-04-08T12:34:56.789Z'
                 truncated: false
         "400":
           description: |-
@@ -28534,7 +28539,7 @@ paths:
               example:
                 data:
                   - id: evt_abc
-                    occurredAt: 2026-04-08T12:34:56.789Z
+                    occurredAt: '2026-04-08T12:34:56.789Z'
                     domain: email
                     eventType: opened
                     recipientEmail: jane@example.com
@@ -28546,8 +28551,8 @@ paths:
                   cursor: null
                   hasMore: false
                 range:
-                  from: 2026-04-01T12:34:56.789Z
-                  to: 2026-04-08T12:34:56.789Z
+                  from: '2026-04-01T12:34:56.789Z'
+                  to: '2026-04-08T12:34:56.789Z'
         "400":
           description: |-
             `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
@@ -28992,8 +28997,8 @@ paths:
                     to: send_welcome
                 emailIds:
                   - V1StGXR8_Z5jdHi6B-myT
-                createdAt: 2026-04-08T12:00:00.000Z
-                updatedAt: 2026-04-08T12:00:00.000Z
+                createdAt: '2026-04-08T12:00:00.000Z'
+                updatedAt: '2026-04-08T12:00:00.000Z'
         "400":
           description: |-
             `AUTOMATION_GRAPH_INVALID`: The nodes and connections do not form a valid graph; `details.issues[]` lists each problem with its `nodeId` and `kind`.
@@ -29395,7 +29400,7 @@ paths:
                     published: true
                     emailIds:
                       - V1StGXR8_Z5jdHi6B-myT
-                    updatedAt: 2026-04-08T12:00:00.000Z
+                    updatedAt: '2026-04-08T12:00:00.000Z'
                 pagination:
                   limit: 100
                   cursor: null
@@ -29679,6 +29684,9 @@ paths:
         - schema:
             type: string
             description: "Comma-separated expansions: `graph` inlines `nodes`/`connections`; `versions` inlines the lean version history."
+            x-brew-include-tokens:
+              - versions
+              - graph
           required: false
           description: "Comma-separated expansions: `graph` inlines `nodes`/`connections`; `versions` inlines the lean version history."
           name: include
@@ -29737,7 +29745,7 @@ paths:
                 published: true
                 emailIds:
                   - V1StGXR8_Z5jdHi6B-myT
-                updatedAt: 2026-04-08T12:00:00.000Z
+                updatedAt: '2026-04-08T12:00:00.000Z'
         "400":
           description: |-
             `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
@@ -30181,8 +30189,8 @@ paths:
                         to: send_welcome
                     emailIds:
                       - V1StGXR8_Z5jdHi6B-myT
-                    createdAt: 2026-04-08T12:00:00.000Z
-                    updatedAt: 2026-04-08T12:00:00.000Z
+                    createdAt: '2026-04-08T12:00:00.000Z'
+                    updatedAt: '2026-04-08T12:00:00.000Z'
                 dryRun:
                   summary: "Dry-run validation report (`dryRun: true`)"
                   value:
@@ -30987,7 +30995,7 @@ paths:
                 automationRunIds:
                   - jh7acthhe99pq4448xh83gn54x8eennb
                 status: test_started
-                receivedAt: 2026-04-08T12:34:56.789Z
+                receivedAt: '2026-04-08T12:34:56.789Z'
         "400":
           description: |-
             `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
@@ -31337,7 +31345,7 @@ paths:
             schema:
               $ref: "#/components/schemas/AutomationRunRequest"
             example:
-              scheduledAt: 2026-07-01T15:00:00.000Z
+              scheduledAt: '2026-07-01T15:00:00.000Z'
       responses:
         "200":
           description: Dry-run preview (no run started).
@@ -31421,7 +31429,7 @@ paths:
                 automationId: M3nRk8LqW2xT5vBp9YcZd
                 status: queued
                 totalRecipients: 12400
-                receivedAt: 2026-04-08T12:34:56.789Z
+                receivedAt: '2026-04-08T12:34:56.789Z'
         "400":
           description: |-
             `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
@@ -31923,8 +31931,8 @@ paths:
                     sentCount: 12180
                     failedCount: 0
                     skippedCount: 220
-                    createdAt: 2026-04-08T12:34:56.789Z
-                    updatedAt: 2026-04-08T12:41:10.000Z
+                    createdAt: '2026-04-08T12:34:56.789Z'
+                    updatedAt: '2026-04-08T12:41:10.000Z'
                 pagination:
                   limit: 100
                   cursor: null
@@ -32260,8 +32268,8 @@ paths:
                 sentCount: 12180
                 failedCount: 0
                 skippedCount: 220
-                createdAt: 2026-04-08T12:34:56.789Z
-                updatedAt: 2026-04-08T12:41:10.000Z
+                createdAt: '2026-04-08T12:34:56.789Z'
+                updatedAt: '2026-04-08T12:41:10.000Z'
         "400":
           description: |-
             `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
@@ -33931,8 +33939,8 @@ paths:
                     mode: live
                     status: completed
                     recipientEmail: jane@example.com
-                    startedAt: 2026-04-08T12:34:56.789Z
-                    completedAt: 2026-04-08T12:35:10.120Z
+                    startedAt: '2026-04-08T12:34:56.789Z'
+                    completedAt: '2026-04-08T12:35:10.120Z'
                 pagination:
                   limit: 100
                   cursor: null
@@ -34213,6 +34221,8 @@ paths:
         - schema:
             type: string
             description: "Expansions: `logs` inlines the newest 100 per-node execution logs and reports `logsTruncated`."
+            x-brew-include-tokens:
+              - logs
           required: false
           description: "Expansions: `logs` inlines the newest 100 per-node execution logs and reports `logsTruncated`."
           name: include
@@ -34271,8 +34281,8 @@ paths:
                 mode: live
                 status: completed
                 recipientEmail: jane@example.com
-                startedAt: 2026-04-08T12:34:56.789Z
-                completedAt: 2026-04-08T12:35:10.120Z
+                startedAt: '2026-04-08T12:34:56.789Z'
+                completedAt: '2026-04-08T12:35:10.120Z'
                 logs:
                   - automationRunId: jh7acthhe99pq4448xh83gn54x8eennb
                     nodeId: node_send_welcome
@@ -34280,8 +34290,8 @@ paths:
                     nodeType: sendEmail
                     status: completed
                     orderIndex: 0
-                    startedAt: 2026-04-08T12:34:57.000Z
-                    completedAt: 2026-04-08T12:35:10.000Z
+                    startedAt: '2026-04-08T12:34:57.000Z'
+                    completedAt: '2026-04-08T12:35:10.000Z'
                 logsTruncated: false
         "400":
           description: |-
@@ -35028,8 +35038,8 @@ paths:
                     - key: firstName
                       type: string
                       required: false
-                createdAt: 2026-04-08T12:00:00.000Z
-                updatedAt: 2026-04-08T12:00:00.000Z
+                createdAt: '2026-04-08T12:00:00.000Z'
+                updatedAt: '2026-04-08T12:00:00.000Z'
         "400":
           description: |-
             `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
@@ -35465,8 +35475,8 @@ paths:
                         - key: firstName
                           type: string
                           required: false
-                    createdAt: 2026-04-08T12:00:00.000Z
-                    updatedAt: 2026-04-08T12:00:00.000Z
+                    createdAt: '2026-04-08T12:00:00.000Z'
+                    updatedAt: '2026-04-08T12:00:00.000Z'
                 pagination:
                   limit: 100
                   cursor: null
@@ -35750,6 +35760,8 @@ paths:
         - schema:
             type: string
             description: "Expansions: `skill` adds a SKILL.md-shaped wiring brief for the fire endpoint."
+            x-brew-include-tokens:
+              - skill
           required: false
           description: "Expansions: `skill` adds a SKILL.md-shaped wiring brief for the fire endpoint."
           name: include
@@ -35813,8 +35825,8 @@ paths:
                     - key: firstName
                       type: string
                       required: false
-                createdAt: 2026-04-08T12:00:00.000Z
-                updatedAt: 2026-04-08T12:00:00.000Z
+                createdAt: '2026-04-08T12:00:00.000Z'
+                updatedAt: '2026-04-08T12:00:00.000Z'
         "400":
           description: |-
             `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
@@ -36158,8 +36170,8 @@ paths:
                     - key: firstName
                       type: string
                       required: false
-                createdAt: 2026-04-08T12:00:00.000Z
-                updatedAt: 2026-04-08T12:00:00.000Z
+                createdAt: '2026-04-08T12:00:00.000Z'
+                updatedAt: '2026-04-08T12:00:00.000Z'
         "400":
           description: |-
             `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
@@ -37257,7 +37269,7 @@ paths:
                   automations: 1
                   skipped: 0
                 warnings: []
-                receivedAt: 2026-04-08T12:34:56.789Z
+                receivedAt: '2026-04-08T12:34:56.789Z'
         "202":
           description: "Accepted: one run started per matched published automation."
           headers:
@@ -37306,7 +37318,7 @@ paths:
                   automations: 1
                   skipped: 0
                 warnings: []
-                receivedAt: 2026-04-08T12:34:56.789Z
+                receivedAt: '2026-04-08T12:34:56.789Z'
         "400":
           description: |-
             `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
@@ -38875,7 +38887,7 @@ paths:
                 email: jane@example.com
                 order:
                   total: 9.5
-                  placedAt: 2026-04-08T12:00:00.000Z
+                  placedAt: '2026-04-08T12:00:00.000Z'
       responses:
         "200":
           description: The unsaved contract draft.
@@ -39311,8 +39323,8 @@ paths:
                     automationRunIds:
                       - jh7acthhe99pq4448xh83gn54x8eennb
                     attempts: 1
-                    receivedAt: 2026-04-08T12:34:56.789Z
-                    processedAt: 2026-04-08T12:34:57.100Z
+                    receivedAt: '2026-04-08T12:34:56.789Z'
+                    processedAt: '2026-04-08T12:34:57.100Z'
                 pagination:
                   limit: 100
                   cursor: null
@@ -39646,8 +39658,8 @@ paths:
                 automationRunIds:
                   - jh7acthhe99pq4448xh83gn54x8eennb
                 attempts: 1
-                receivedAt: 2026-04-08T12:34:56.789Z
-                processedAt: 2026-04-08T12:34:57.100Z
+                receivedAt: '2026-04-08T12:34:56.789Z'
+                processedAt: '2026-04-08T12:34:57.100Z'
         "400":
           description: |-
             `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
@@ -39958,7 +39970,7 @@ paths:
                     plan: enterprise
                   consent:
                     source: form
-                    capturedAt: 2026-04-08T12:00:00.000Z
+                    capturedAt: '2026-04-08T12:00:00.000Z'
                     policyVersion: 2026-03
                     evidence: newsletter checkbox on /signup
               batch:
@@ -40058,15 +40070,15 @@ paths:
                   lastName: Doe
                   subscribed: true
                   validationStatus: valid
-                  lastValidatedAt: 2026-04-08T12:01:00.000Z
+                  lastValidatedAt: '2026-04-08T12:01:00.000Z'
                   suppressed: false
                   suppressedReason: null
                   consent:
                     source: form
-                    capturedAt: 2026-04-08T12:00:00.000Z
+                    capturedAt: '2026-04-08T12:00:00.000Z'
                     policyVersion: 2026-03
-                  createdAt: 2026-04-08T12:00:00.000Z
-                  updatedAt: 2026-04-08T12:05:00.000Z
+                  createdAt: '2026-04-08T12:00:00.000Z'
+                  updatedAt: '2026-04-08T12:05:00.000Z'
                   importId: null
                   customFields:
                     plan: enterprise
@@ -40646,15 +40658,15 @@ paths:
                     lastName: Doe
                     subscribed: true
                     validationStatus: valid
-                    lastValidatedAt: 2026-04-08T12:01:00.000Z
+                    lastValidatedAt: '2026-04-08T12:01:00.000Z'
                     suppressed: false
                     suppressedReason: null
                     consent:
                       source: form
-                      capturedAt: 2026-04-08T12:00:00.000Z
+                      capturedAt: '2026-04-08T12:00:00.000Z'
                       policyVersion: 2026-03
-                    createdAt: 2026-04-08T12:00:00.000Z
-                    updatedAt: 2026-04-08T12:05:00.000Z
+                    createdAt: '2026-04-08T12:00:00.000Z'
+                    updatedAt: '2026-04-08T12:05:00.000Z'
                     importId: null
                     customFields:
                       plan: enterprise
@@ -40664,15 +40676,15 @@ paths:
                     lastName: Smith
                     subscribed: true
                     validationStatus: valid
-                    lastValidatedAt: 2026-04-08T12:01:00.000Z
+                    lastValidatedAt: '2026-04-08T12:01:00.000Z'
                     suppressed: false
                     suppressedReason: null
                     consent:
                       source: form
-                      capturedAt: 2026-04-08T12:00:00.000Z
+                      capturedAt: '2026-04-08T12:00:00.000Z'
                       policyVersion: 2026-03
-                    createdAt: 2026-04-08T12:00:00.000Z
-                    updatedAt: 2026-04-08T12:05:00.000Z
+                    createdAt: '2026-04-08T12:00:00.000Z'
+                    updatedAt: '2026-04-08T12:05:00.000Z'
                     importId: null
                     customFields:
                       plan: starter
@@ -41017,15 +41029,15 @@ paths:
                   lastName: Doe
                   subscribed: true
                   validationStatus: valid
-                  lastValidatedAt: 2026-04-08T12:01:00.000Z
+                  lastValidatedAt: '2026-04-08T12:01:00.000Z'
                   suppressed: false
                   suppressedReason: null
                   consent:
                     source: form
-                    capturedAt: 2026-04-08T12:00:00.000Z
+                    capturedAt: '2026-04-08T12:00:00.000Z'
                     policyVersion: 2026-03
-                  createdAt: 2026-04-08T12:00:00.000Z
-                  updatedAt: 2026-04-08T12:05:00.000Z
+                  createdAt: '2026-04-08T12:00:00.000Z'
+                  updatedAt: '2026-04-08T12:05:00.000Z'
                   importId: null
                   customFields:
                     plan: enterprise
@@ -41766,15 +41778,15 @@ paths:
                 lastName: Doe
                 subscribed: true
                 validationStatus: valid
-                lastValidatedAt: 2026-04-08T12:01:00.000Z
+                lastValidatedAt: '2026-04-08T12:01:00.000Z'
                 suppressed: false
                 suppressedReason: null
                 consent:
                   source: form
-                  capturedAt: 2026-04-08T12:00:00.000Z
+                  capturedAt: '2026-04-08T12:00:00.000Z'
                   policyVersion: 2026-03
-                createdAt: 2026-04-08T12:00:00.000Z
-                updatedAt: 2026-04-08T12:05:00.000Z
+                createdAt: '2026-04-08T12:00:00.000Z'
+                updatedAt: '2026-04-08T12:05:00.000Z'
                 importId: null
                 customFields:
                   plan: enterprise
@@ -42123,15 +42135,15 @@ paths:
                         lastName: Doe
                         subscribed: true
                         validationStatus: valid
-                        lastValidatedAt: 2026-04-08T12:01:00.000Z
+                        lastValidatedAt: '2026-04-08T12:01:00.000Z'
                         suppressed: false
                         suppressedReason: null
                         consent:
                           source: form
-                          capturedAt: 2026-04-08T12:00:00.000Z
+                          capturedAt: '2026-04-08T12:00:00.000Z'
                           policyVersion: 2026-03
-                        createdAt: 2026-04-08T12:00:00.000Z
-                        updatedAt: 2026-04-08T12:05:00.000Z
+                        createdAt: '2026-04-08T12:00:00.000Z'
+                        updatedAt: '2026-04-08T12:05:00.000Z'
                         importId: null
                         customFields:
                           plan: enterprise
@@ -42141,15 +42153,15 @@ paths:
                         lastName: Smith
                         subscribed: true
                         validationStatus: valid
-                        lastValidatedAt: 2026-04-08T12:01:00.000Z
+                        lastValidatedAt: '2026-04-08T12:01:00.000Z'
                         suppressed: false
                         suppressedReason: null
                         consent:
                           source: form
-                          capturedAt: 2026-04-08T12:00:00.000Z
+                          capturedAt: '2026-04-08T12:00:00.000Z'
                           policyVersion: 2026-03
-                        createdAt: 2026-04-08T12:00:00.000Z
-                        updatedAt: 2026-04-08T12:05:00.000Z
+                        createdAt: '2026-04-08T12:00:00.000Z'
+                        updatedAt: '2026-04-08T12:05:00.000Z'
                         importId: null
                         customFields:
                           plan: starter
@@ -43879,6 +43891,8 @@ paths:
             type: string
             enum:
               - coverage
+            x-brew-include-tokens:
+              - coverage
         - name: audienceId
           in: query
           required: false
@@ -45423,8 +45437,8 @@ paths:
                           value: 'NO'
                       logicalOperator: and
                     count: 1284
-                    createdAt: 2026-04-08T12:34:56.789Z
-                    updatedAt: 2026-04-08T12:34:56.789Z
+                    createdAt: '2026-04-08T12:34:56.789Z'
+                    updatedAt: '2026-04-08T12:34:56.789Z'
                 pagination:
                   limit: 100
                   cursor: null
@@ -45761,8 +45775,8 @@ paths:
                       value: 'NO'
                   logicalOperator: and
                 count: 1284
-                createdAt: 2026-04-08T12:34:56.789Z
-                updatedAt: 2026-04-08T12:34:56.789Z
+                createdAt: '2026-04-08T12:34:56.789Z'
+                updatedAt: '2026-04-08T12:34:56.789Z'
         "400":
           description: |-
             `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
@@ -46113,6 +46127,9 @@ paths:
         - schema:
             type: string
             description: "Comma-separated expansions: `count` recomputes the live member total; `build` attaches the latest event-cohort build status."
+            x-brew-include-tokens:
+              - count
+              - build
           required: false
           description: "Comma-separated expansions: `count` recomputes the live member total; `build` attaches the latest event-cohort build status."
           name: include
@@ -46172,8 +46189,8 @@ paths:
                       value: 'NO'
                   logicalOperator: and
                 count: 1284
-                createdAt: 2026-04-08T12:34:56.789Z
-                updatedAt: 2026-04-08T12:34:56.789Z
+                createdAt: '2026-04-08T12:34:56.789Z'
+                updatedAt: '2026-04-08T12:34:56.789Z'
         "400":
           description: |-
             `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
@@ -46513,8 +46530,8 @@ paths:
                       value: 'NO'
                   logicalOperator: and
                 count: 1284
-                createdAt: 2026-04-08T12:34:56.789Z
-                updatedAt: 2026-04-08T12:34:56.789Z
+                createdAt: '2026-04-08T12:34:56.789Z'
+                updatedAt: '2026-04-08T12:34:56.789Z'
         "400":
           description: |-
             `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
@@ -47217,8 +47234,8 @@ paths:
               cohort:
                 eventTypes:
                   - opened
-                from: 2026-07-04T00:00:00.000Z
-                to: 2026-08-03T00:00:00.000Z
+                from: '2026-07-04T00:00:00.000Z'
+                to: '2026-08-03T00:00:00.000Z'
       responses:
         "201":
           description: Created. The audience exists immediately; `build` tracks the background stamping run.
@@ -47265,8 +47282,8 @@ paths:
                       type: date
                   logicalOperator: and
                 count: 0
-                createdAt: 2026-04-08T12:34:56.789Z
-                updatedAt: 2026-04-08T12:34:56.789Z
+                createdAt: '2026-04-08T12:34:56.789Z'
+                updatedAt: '2026-04-08T12:34:56.789Z'
                 materializationStatus: pending
                 build:
                   jobId: kh7c2m4q8n9w2p1x7c3b5v6n9h7s2d4f
@@ -47274,15 +47291,15 @@ paths:
                   cohort:
                     eventTypes:
                       - opened
-                    from: 2026-07-04T00:00:00.000Z
-                    to: 2026-08-03T00:00:00.000Z
+                    from: '2026-07-04T00:00:00.000Z'
+                    to: '2026-08-03T00:00:00.000Z'
                   field:
                     key: openedJul4Aug3
                     label: Opened Jul 4 – Aug 3
                     type: date
                   counts:
                     eventsScanned: 0
-                  enqueuedAt: 2026-08-03T12:00:00.000Z
+                  enqueuedAt: '2026-08-03T12:00:00.000Z'
         "400":
           description: |-
             `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
@@ -47659,8 +47676,8 @@ paths:
                       value: 'NO'
                   logicalOperator: and
                 count: 1284
-                createdAt: 2026-04-08T12:34:56.789Z
-                updatedAt: 2026-04-08T12:34:56.789Z
+                createdAt: '2026-04-08T12:34:56.789Z'
+                updatedAt: '2026-04-08T12:34:56.789Z'
         "400":
           description: |-
             `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
@@ -48097,8 +48114,8 @@ paths:
                         ttl: Auto
                         status: pending
                         value: p=MIGfMA0...
-                    createdAt: 2026-04-08T12:34:56.789Z
-                    updatedAt: 2026-04-08T12:34:56.789Z
+                    createdAt: '2026-04-08T12:34:56.789Z'
+                    updatedAt: '2026-04-08T12:34:56.789Z'
                 pagination:
                   limit: 100
                   cursor: null
@@ -48435,8 +48452,8 @@ paths:
                     ttl: Auto
                     status: pending
                     value: p=MIGfMA0...
-                createdAt: 2026-04-08T12:34:56.789Z
-                updatedAt: 2026-04-08T12:34:56.789Z
+                createdAt: '2026-04-08T12:34:56.789Z'
+                updatedAt: '2026-04-08T12:34:56.789Z'
         "400":
           description: |-
             `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
@@ -48902,8 +48919,8 @@ paths:
                     ttl: Auto
                     status: pending
                     value: p=MIGfMA0...
-                createdAt: 2026-04-08T12:34:56.789Z
-                updatedAt: 2026-04-08T12:34:56.789Z
+                createdAt: '2026-04-08T12:34:56.789Z'
+                updatedAt: '2026-04-08T12:34:56.789Z'
         "400":
           description: |-
             `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
@@ -49250,8 +49267,8 @@ paths:
                     ttl: Auto
                     status: pending
                     value: p=MIGfMA0...
-                createdAt: 2026-04-08T12:34:56.789Z
-                updatedAt: 2026-04-08T12:34:56.789Z
+                createdAt: '2026-04-08T12:34:56.789Z'
+                updatedAt: '2026-04-08T12:34:56.789Z'
         "400":
           description: |-
             `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
@@ -50133,9 +50150,9 @@ paths:
                     ttl: Auto
                     status: pending
                     value: p=MIGfMA0...
-                createdAt: 2026-04-08T12:34:56.789Z
-                updatedAt: 2026-04-08T12:34:56.789Z
-                verifiedAt: 2026-04-08T13:00:00.000Z
+                createdAt: '2026-04-08T12:34:56.789Z'
+                updatedAt: '2026-04-08T12:34:56.789Z'
+                verifiedAt: '2026-04-08T13:00:00.000Z'
         "400":
           description: |-
             `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
@@ -50610,7 +50627,7 @@ paths:
                   trend:
                     direction: up
                     previousScore: 64
-                    previousComputedAt: 2026-06-21T09:00:00.000Z
+                    previousComputedAt: '2026-06-21T09:00:00.000Z'
                 authentication:
                   spf: verified
                   dkim: verified
@@ -50623,11 +50640,11 @@ paths:
                   - sendId: W7nT1vPb9Ycr4Kq8ZxL2m
                     currentTranche: 3
                     sentSoFar: 175
-                    rampEndsAt: 2026-07-15T00:00:00.000Z
+                    rampEndsAt: '2026-07-15T00:00:00.000Z'
                 dailyVolume:
-                  - day: 2026-07-11
+                  - day: '2026-07-11'
                     sent: 50
-                  - day: 2026-07-12
+                  - day: '2026-07-12'
                     sent: 63
                 domainActivity:
                   sampled: true
@@ -50657,13 +50674,13 @@ paths:
                       dkim: pass
                       dmarc: pass
                     spamFilterFlagged: false
-                    createdAt: 2026-07-13T17:00:00.000Z
+                    createdAt: '2026-07-13T17:00:00.000Z'
                 signals:
                   - id: dmarc_missing
                     severity: warning
                     summary: No DMARC record is configured for this domain.
                     suggestion: 'Add a TXT record: _dmarc TXT "v=DMARC1; p=reject; rua=mailto:dmarc@send.example.com" — Gmail/Yahoo bulk-sender rules require DMARC, and it blocks spoofing.'
-                checkedAt: 2026-07-13T18:00:00.000Z
+                checkedAt: '2026-07-13T18:00:00.000Z'
         "400":
           description: |-
             `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
@@ -51100,7 +51117,7 @@ paths:
                     brand: vercel.com
                     html: <!DOCTYPE html><html><body>…</body></html>
                     previewImage: https://storage.example.com/templates/seed.png
-                    updatedAt: 2026-04-08T00:00:00.000Z
+                    updatedAt: '2026-04-08T00:00:00.000Z'
                 pagination:
                   limit: 50
                   cursor: eyJ…
@@ -51301,7 +51318,11 @@ paths:
             type: string
             enum:
               - html
+            description: "Expansions: `html` adds the rendered HTML; a large page arrives as a `content.url` download link instead."
+            x-brew-include-tokens:
+              - html
           required: false
+          description: "Expansions: `html` adds the rendered HTML; a large page arrives as a `content.url` download link instead."
           name: include
           in: query
       responses:
@@ -51746,8 +51767,8 @@ paths:
                       - https://cdn.brew.new/email-preview-brew-1.png
                       - https://cdn.brew.new/email-preview-brew-2.png
                       - https://cdn.brew.new/email-preview-brew-3.png
-                    publishedAt: 2026-09-01T12:00:00.000Z
-                    updatedAt: 2026-09-01T12:00:00.000Z
+                    publishedAt: '2026-09-01T12:00:00.000Z'
+                    updatedAt: '2026-09-01T12:00:00.000Z'
                 pagination:
                   limit: 100
                   cursor: null
@@ -51960,9 +51981,11 @@ paths:
           in: path
         - schema:
             type: string
-            description: "Detail-only expansions, comma-separated. `html` adds each step’s rendered HTML. Rendered email is bulky — over MCP only the first step or two fit one response; the rest arrive without `html` and the summary says how many were kept. A step’s `emailId` is already a `create_email_design` reference, so reuse needs no body; for the bodies themselves call `GET /v1/flows/{slug}?include=html` over REST, which has no cap. Best-effort per step: a step whose body is no longer servable comes back without `html` rather than failing the flow."
+            description: "Detail-only expansions, comma-separated. `html` adds each step’s rendered HTML. Rendered email is bulky — over MCP only the first step or two fit one response; the rest arrive without `html` and the summary says how many were kept. A step’s `emailId` is already a valid `referenceEmailId`, so reuse needs no body; for the bodies themselves call `GET /v1/flows/{slug}?include=html` over REST, which has no cap. Best-effort per step: a step whose body is no longer servable comes back without `html` rather than failing the flow."
+            x-brew-include-tokens:
+              - html
           required: false
-          description: "Detail-only expansions, comma-separated. `html` adds each step’s rendered HTML. Rendered email is bulky — over MCP only the first step or two fit one response; the rest arrive without `html` and the summary says how many were kept. A step’s `emailId` is already a `create_email_design` reference, so reuse needs no body; for the bodies themselves call `GET /v1/flows/{slug}?include=html` over REST, which has no cap. Best-effort per step: a step whose body is no longer servable comes back without `html` rather than failing the flow."
+          description: "Detail-only expansions, comma-separated. `html` adds each step’s rendered HTML. Rendered email is bulky — over MCP only the first step or two fit one response; the rest arrive without `html` and the summary says how many were kept. A step’s `emailId` is already a valid `referenceEmailId`, so reuse needs no body; for the bodies themselves call `GET /v1/flows/{slug}?include=html` over REST, which has no cap. Best-effort per step: a step whose body is no longer servable comes back without `html` rather than failing the flow."
           name: include
           in: query
       responses:
@@ -52017,8 +52040,8 @@ paths:
                   - https://cdn.brew.new/email-preview-brew-1.png
                   - https://cdn.brew.new/email-preview-brew-2.png
                   - https://cdn.brew.new/email-preview-brew-3.png
-                publishedAt: 2026-09-01T12:00:00.000Z
-                updatedAt: 2026-09-01T12:00:00.000Z
+                publishedAt: '2026-09-01T12:00:00.000Z'
+                updatedAt: '2026-09-01T12:00:00.000Z'
                 anchor: signedUpAt
                 steps:
                   - order: 1
@@ -52253,6 +52276,11 @@ paths:
         - schema:
             type: string
             description: "Comma-separated sub-resources to embed: `identity`, `emailDesign`, `imageStyle`, `logos`."
+            x-brew-include-tokens:
+              - identity
+              - emailDesign
+              - imageStyle
+              - logos
           required: false
           description: "Comma-separated sub-resources to embed: `identity`, `emailDesign`, `imageStyle`, `logos`."
           name: include
@@ -52307,8 +52335,8 @@ paths:
                 domain: vercel.com
                 status: completed
                 ready: true
-                createdAt: 2026-04-08T12:00:00.000Z
-                updatedAt: 2026-04-08T12:05:00.000Z
+                createdAt: '2026-04-08T12:00:00.000Z'
+                updatedAt: '2026-04-08T12:05:00.000Z'
                 identity:
                   brandName: Vercel
                   tagline: Develop. Preview. Ship.
@@ -53362,16 +53390,16 @@ paths:
                     domain: vercel.com
                     status: completed
                     ready: true
-                    createdAt: 2026-04-08T12:00:00.000Z
-                    updatedAt: 2026-04-08T12:05:00.000Z
+                    createdAt: '2026-04-08T12:00:00.000Z'
+                    updatedAt: '2026-04-08T12:05:00.000Z'
                   - brandId: kx9d1p2qbrxy4nkm55ftz3lmvn21abcd
                     domain: acme.com
                     status: extracting
                     ready: false
                     progress: 0
                     phase: analyzing
-                    createdAt: 2026-04-08T12:00:00.000Z
-                    updatedAt: 2026-04-08T12:00:00.000Z
+                    createdAt: '2026-04-08T12:00:00.000Z'
+                    updatedAt: '2026-04-08T12:00:00.000Z'
                 pagination:
                   limit: 100
                   cursor: null
@@ -53626,8 +53654,8 @@ paths:
                 ready: false
                 progress: 0
                 phase: analyzing
-                createdAt: 2026-04-08T12:00:00.000Z
-                updatedAt: 2026-04-08T12:00:00.000Z
+                createdAt: '2026-04-08T12:00:00.000Z'
+                updatedAt: '2026-04-08T12:00:00.000Z'
                 extraction:
                   chatId: 6f1c2b9e-6c2a-4a2e-9f5f-2b7d9a3e4c11
                   statusUrl: /v1/brands/kx9d1p2qbrxy4nkm55ftz3lmvn21abcd
@@ -54024,8 +54052,8 @@ paths:
                 ready: false
                 progress: 0
                 phase: analyzing
-                createdAt: 2026-04-08T12:00:00.000Z
-                updatedAt: 2026-04-08T12:00:00.000Z
+                createdAt: '2026-04-08T12:00:00.000Z'
+                updatedAt: '2026-04-08T12:00:00.000Z'
         "400":
           description: "`INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender."
           headers:
@@ -56443,8 +56471,8 @@ paths:
                   used: 0
                   remaining: 200000
                 period:
-                  start: 2026-05-28T18:10:35.000Z
-                  end: 2026-06-28T18:10:35.000Z
+                  start: '2026-05-28T18:10:35.000Z'
+                  end: '2026-06-28T18:10:35.000Z'
         "400":
           description: "`INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender."
           headers:
@@ -56629,7 +56657,7 @@ paths:
         - Data
       summary: Run a data command
       description: |-
-        One surface over the brand's data: runs a sandboxed bash command with the `db` verbs (`db ls`, `db schema <table>`, `db find`, `db agg`, `db get`, `db insert`, `db set`, `db del`) plus `jq`, `grep`, `sort` and `head` pipes. The same engine serves the MCP `run_data_command` tool and the in-app agent.
+        One surface over the brand's data: runs a sandboxed bash command with the `db` verbs (`db ls`, `db schema <table>`, `db find`, `db agg`, `db get`, `db insert`, `db set`, `db del`) plus `jq`, `grep`, `sort` and `head` pipes. The same engine serves the in-app agent and, read-only, the MCP `query_brew_data` tool.
 
         **Use when** a question spans tables or needs a filter the REST reads do not offer. Start with `db ls` (the tables your credential may touch) and `db schema <table>`.
 
@@ -57398,7 +57426,7 @@ paths:
                   - keyId: kd7b3s7fapqz8mjm12ekz1kxdx87yceg
                     name: CI
                     keyPreview: brew_abc...wxyz
-                    createdAt: 2026-04-08T12:00:00.000Z
+                    createdAt: '2026-04-08T12:00:00.000Z'
                     status: active
                     permissions:
                       - all
@@ -57973,7 +58001,7 @@ paths:
               example:
                 keyId: kd7b3s7fapqz8mjm12ekz1kxdx87yceg
                 deleted: true
-                revokedAt: 2026-06-28T18:10:35.000Z
+                revokedAt: '2026-06-28T18:10:35.000Z'
         "400":
           description: "`INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender."
           headers:
@@ -58425,7 +58453,7 @@ paths:
                 chatId: Hk2mZ8t9QbY3sW1vR0pLd
                 title: Spring launch campaign
                 modelId: anthropic/claude-opus-5.5
-                updatedAt: 2026-06-30T12:34:56.789Z
+                updatedAt: '2026-06-30T12:34:56.789Z'
                 messageCount: 18
                 artifacts:
                   - type: email

@@ -10,8 +10,15 @@ Not tagged or published: `package.json` says 0.8.1, but there is no
 - `emails get-audit --limit` is 1-50 findings per page (default 10). The
   0.8.0 notes and `--help` said 1-100 / default 100, copied from a spec
   that published the shared list limit; the server refuses a `--limit`
-  over 50 with a `400`. The vendored spec and generated types are
-  resynced with the live spec after brew-v2#1641.
+  over 50 with a `400`.
+
+### Changed
+
+- The vendored spec and generated types are resynced with the live spec
+  after brew-v2#1641, #1645 and #1648. The spec now lists each `--include`
+  flag's tokens as `x-brew-include-tokens`; the CLI's help text already
+  names the same tokens, and `tests/include-tokens.test.ts` now fails if a
+  re-vendored spec and a `--include` help line disagree.
 
 ## 0.8.0
 

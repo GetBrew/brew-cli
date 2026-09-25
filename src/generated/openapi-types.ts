@@ -2087,7 +2087,7 @@ export interface paths {
         put?: never;
         /**
          * Run a data command
-         * @description One surface over the brand's data: runs a sandboxed bash command with the `db` verbs (`db ls`, `db schema <table>`, `db find`, `db agg`, `db get`, `db insert`, `db set`, `db del`) plus `jq`, `grep`, `sort` and `head` pipes. The same engine serves the MCP `run_data_command` tool and the in-app agent.
+         * @description One surface over the brand's data: runs a sandboxed bash command with the `db` verbs (`db ls`, `db schema <table>`, `db find`, `db agg`, `db get`, `db insert`, `db set`, `db del`) plus `jq`, `grep`, `sort` and `head` pipes. The same engine serves the in-app agent and, read-only, the MCP `query_brew_data` tool.
          *
          *     **Use when** a question spans tables or needs a filter the REST reads do not offer. Start with `db ls` (the tables your credential may touch) and `db schema <table>`.
          *
@@ -23360,6 +23360,7 @@ export interface operations {
     getTemplate: {
         parameters: {
             query?: {
+                /** @description Expansions: `html` adds the rendered HTML; a large page arrives as a `content.url` download link instead. */
                 include?: "html";
             };
             header?: never;
@@ -23639,7 +23640,7 @@ export interface operations {
     getFlow: {
         parameters: {
             query?: {
-                /** @description Detail-only expansions, comma-separated. `html` adds each step’s rendered HTML. Rendered email is bulky — over MCP only the first step or two fit one response; the rest arrive without `html` and the summary says how many were kept. A step’s `emailId` is already a `create_email_design` reference, so reuse needs no body; for the bodies themselves call `GET /v1/flows/{slug}?include=html` over REST, which has no cap. Best-effort per step: a step whose body is no longer servable comes back without `html` rather than failing the flow. */
+                /** @description Detail-only expansions, comma-separated. `html` adds each step’s rendered HTML. Rendered email is bulky — over MCP only the first step or two fit one response; the rest arrive without `html` and the summary says how many were kept. A step’s `emailId` is already a valid `referenceEmailId`, so reuse needs no body; for the bodies themselves call `GET /v1/flows/{slug}?include=html` over REST, which has no cap. Best-effort per step: a step whose body is no longer servable comes back without `html` rather than failing the flow. */
                 include?: string;
             };
             header?: never;
