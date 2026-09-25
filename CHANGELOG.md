@@ -19,6 +19,12 @@ Not tagged or published: `package.json` says 0.8.1, but there is no
   flag's tokens as `x-brew-include-tokens`; the CLI's help text already
   names the same tokens, and `tests/include-tokens.test.ts` now fails if a
   re-vendored spec and a `--include` help line disagree.
+- Resynced again with the live spec after brew-v2#1649, #1650, #1651, #1655,
+  #1656, #1658 and #1660. `emails get --include` names the new `text` and
+  `links` expansions: the visible body text, and each link destination once
+  with its visible text and count. The new list `search`, the audience
+  `addEmails` / `removeEmails` edit and contact group counts need SDK 11.1,
+  which is not on npm yet, so their flags come when the CLI adopts it.
 
 ## 0.8.0
 

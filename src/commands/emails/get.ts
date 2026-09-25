@@ -17,12 +17,13 @@ export const emailsGetCommand = defineCommand({
   flags: [
     {
       flag: '--include <tokens>',
-      summary: 'Comma-separated expansions: html, versions',
+      summary: 'Comma-separated expansions: html, versions, text, links',
     },
   ],
   examples: [
     'brew-cli emails get eml_2SmZOWV3ZQ7W5x6g3m4p',
     'brew-cli emails get eml_2SmZOWV3ZQ7W5x6g3m4p --include html,versions',
+    'brew-cli emails get eml_2SmZOWV3ZQ7W5x6g3m4p --include text,links',
   ],
   run: async ({ ctx, args, flags }) => {
     const include = flagString(flags.include)

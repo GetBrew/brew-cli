@@ -587,11 +587,12 @@ Fetch one email design by id — the bare row
 - Class: read
 - SDK: `brew.emails.get(...)`
 - Argument `emailId` — Design id returned by emails generate/import
-- `--include <tokens>` — Comma-separated expansions: html, versions
+- `--include <tokens>` — Comma-separated expansions: html, versions, text, links
 
 ```bash
 brew-cli emails get eml_2SmZOWV3ZQ7W5x6g3m4p
 brew-cli emails get eml_2SmZOWV3ZQ7W5x6g3m4p --include html,versions
+brew-cli emails get eml_2SmZOWV3ZQ7W5x6g3m4p --include text,links
 ```
 
 ### brew-cli emails generate

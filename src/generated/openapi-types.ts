@@ -529,7 +529,7 @@ export interface paths {
         put?: never;
         /**
          * Cancel a send
-         * @description Cancels a scheduled or queued send before it goes out, or STOPS any in-flight campaign send. A campaign in `sending` or `paused` is canceled the same way the in-app Stop button does it: the remaining recipients are never delivered while already-sent ones stay sent (every shape re-checks liveness at regular points mid-flight — smart per time bucket, gradual and plain blast at bounded chunk intervals — so a small tail may still deliver after the cancel lands). Idempotent — a send already `canceled` returns `200`. A send already `sent` or `failed`, or a non-campaign (automation) send, returns `409 SEND_NOT_CANCELLABLE`. Brand-scoped: an unknown / cross-brand `sendId` is `404`.
+         * @description Cancels a scheduled or queued send before it goes out, or STOPS any in-flight campaign send. A campaign that is `running` or `paused` is canceled the same way the in-app Stop button does it: the remaining recipients are never delivered while already-sent ones stay sent (every shape re-checks liveness at regular points mid-flight — smart per time bucket, gradual and plain blast at bounded chunk intervals — so a small tail may still deliver after the cancel lands). Idempotent — a send already `canceled` returns `200`. A send already `completed`, `partially_completed` or `failed`, or a non-campaign (automation) send, returns `409 SEND_NOT_CANCELLABLE`. Brand-scoped: an unknown / cross-brand `sendId` is `404`.
          */
         post: operations["cancelSend"];
         delete?: never;
@@ -549,7 +549,7 @@ export interface paths {
         put?: never;
         /**
          * Pause a gradual send
-         * @description Manually pauses an in-flight GRADUAL (domain-warmup) send. The delivering workflow parks the current day’s remaining tranche at its next gate poll (≤120s) and holds until `POST /v1/sends/{sendId}/resume` (or a cancel). A send that is not a `sending` gradual send returns `409 SEND_NOT_PAUSABLE`. Brand-scoped: an unknown / cross-brand `sendId` is `404`.
+         * @description Manually pauses an in-flight GRADUAL (domain-warmup) send. The delivering workflow parks the current day’s remaining tranche at its next gate poll (≤120s) and holds until `POST /v1/sends/{sendId}/resume` (or a cancel). A send that is not a `running` gradual send returns `409 SEND_NOT_PAUSABLE`. Brand-scoped: an unknown / cross-brand `sendId` is `404`.
          */
         post: operations["pauseSend"];
         delete?: never;
@@ -2306,6 +2306,16 @@ export interface components {
                 /** Format: date-time */
                 expiresAt: string;
             };
+            /** @description `include=text`: visible body text, merge tags kept (max 20,000 chars). */
+            text?: string;
+            textTruncated?: boolean;
+            /** @description `include=links`: each destination once (`href`, first visible `text`, `count`); max 200. */
+            links?: {
+                href: string | null;
+                text: string;
+                count: number;
+            }[];
+            linksTruncated?: boolean;
             /** @description Why the generation failed. Present when `status` is `failed`. */
             errorMessage?: string;
             /** @description A stable failure category, when one was recorded. */
@@ -3485,7 +3495,7 @@ export interface components {
             };
         };
         /** @enum {string} */
-        ApiErrorCode: "ACCOUNT_SUSPENDED" | "API_KEY_REVOKED" | "AUDIENCE_BUILD_ACTIVE" | "AUDIENCE_BUILD_ALREADY_ACTIVE" | "AUDIENCE_EDIT_CONFLICT" | "AUDIENCE_NOT_FOUND" | "AUDIENCE_RUN_NOT_FOUND" | "AUDIT_NOT_FOUND" | "AUTHENTICATION_REQUIRED" | "AUTOMATION_GRAPH_INVALID" | "AUTOMATION_NOT_FOUND" | "AUTOMATION_NOT_PAUSABLE" | "AUTOMATION_NOT_PUBLISHED" | "AUTOMATION_RUN_NOT_FOUND" | "AUTOMATION_VERSION_CONFLICT" | "AUTOMATION_VERSION_NOT_FOUND" | "BATCH_TOO_LARGE" | "BRAND_DOMAIN_CONFLICT" | "BRAND_ID_REQUIRED" | "BRAND_LIMIT_REACHED" | "BRAND_NOT_FOUND" | "BRAND_NOT_READY" | "BRAND_SCOPE_MISMATCH" | "CHAT_NOT_FOUND" | "CONSENT_REQUIRED" | "CONTACT_NOT_FOUND" | "CONTENT_OPERATION_FAILED" | "CONTRACT_LOCKED_BY_PUBLISHED_AUTOMATIONS" | "CORE_FIELD_IMMUTABLE" | "DOMAIN_ALREADY_EXISTS" | "DOMAIN_CLAIMED_ELSEWHERE" | "DOMAIN_NOT_FOUND" | "DOMAIN_NOT_READY" | "DOMAIN_OTHER_BRAND" | "DOMAIN_PROVIDER_ERROR" | "DOMAIN_PURPOSE_NOT_ALLOWED" | "DOMAIN_VERIFICATION_FAILED" | "DOMAIN_VERIFIED_ELSEWHERE" | "EMAIL_GENERATION_FAILED" | "EMAIL_GROUP_NAME_CONFLICT" | "EMAIL_GROUP_NOT_FOUND" | "EMAIL_IMPORT_FAILED" | "EMAIL_IN_PROGRESS" | "EMAIL_IN_USE_BY_AUTOMATION" | "EMAIL_NOT_FOUND" | "EMAIL_NOT_READY" | "EMAIL_RUN_AMBIGUOUS" | "EMAIL_TEMPLATE_INVALID" | "EMAIL_VERSION_NOT_FOUND" | "EXPORT_PROVIDER_ERROR" | "EXPORT_UNSUPPORTED" | "FIELD_NOT_FOUND" | "FIELD_TYPE_MISMATCH" | "FIGMA_ACCESS_DENIED" | "FIGMA_CONVERSION_FAILED" | "FIGMA_FRAME_NOT_FOUND" | "FIGMA_NOT_CONNECTED" | "FIGMA_UNAVAILABLE" | "FIGMA_URL_INVALID" | "FLOW_NOT_FOUND" | "IDEMPOTENCY_CONFLICT" | "IDEMPOTENCY_IN_PROGRESS" | "INSUFFICIENT_CREDITS" | "INSUFFICIENT_PERMISSIONS" | "INSUFFICIENT_ROLE" | "INTEGRATION_NOT_CONNECTED" | "INTERNAL_ERROR" | "INVALID_API_KEY" | "INVALID_EMAIL" | "INVALID_PAYLOAD" | "INVALID_REQUEST" | "LIQUID_RENDER_ERROR" | "METHOD_NOT_ALLOWED" | "MISSING_EMAIL" | "NO_ELIGIBLE_RECIPIENTS" | "NO_PUBLISHED_AUTOMATION" | "NOT_FOUND" | "NOT_IMPLEMENTED" | "ORG_SCOPE_REQUIRED" | "PAYLOAD_SCHEMA_EMAIL_REQUIRED" | "PAYLOAD_TOO_LARGE" | "PREVIEW_NOT_FOUND" | "PUBLISH_VALIDATION_FAILED" | "RATE_LIMITED" | "RECIPIENT_UNSUBSCRIBED" | "REFERENCE_EMAIL_NOT_FOUND" | "RESUBSCRIBE_NOT_ALLOWED" | "RUN_IN_PROGRESS" | "RUN_NOT_CANCELLABLE" | "RUN_NOT_PAUSABLE" | "RUN_NOT_PAUSED" | "RUN_NOT_RESUMABLE" | "RUN_START_FAILED" | "RUN_STOP_FAILED" | "SEND_NOT_CANCELLABLE" | "SEND_NOT_FOUND" | "SEND_NOT_PAUSABLE" | "SEND_NOT_RESUMABLE" | "SEND_QUOTA_EXCEEDED" | "SERVICE_UNAVAILABLE" | "TEMPLATE_NOT_FOUND" | "TRIGGER_ALREADY_EXISTS" | "TRIGGER_EVENT_NOT_FOUND" | "TRIGGER_HAS_DEPENDENT_AUTOMATIONS" | "TRIGGER_IMMUTABLE" | "TRIGGER_INSTANCE_NOT_FOUND" | "TRIGGER_LIMIT_REACHED";
+        ApiErrorCode: "ACCOUNT_SUSPENDED" | "API_KEY_REVOKED" | "AUDIENCE_BUILD_ACTIVE" | "AUDIENCE_BUILD_ALREADY_ACTIVE" | "AUDIENCE_EDIT_CONFLICT" | "AUDIENCE_MEMBERSHIP_NOT_EXPRESSIBLE" | "AUDIENCE_NOT_FOUND" | "AUDIENCE_RUN_NOT_FOUND" | "AUDIT_NOT_FOUND" | "AUTHENTICATION_REQUIRED" | "AUTOMATION_GRAPH_INVALID" | "AUTOMATION_NOT_FOUND" | "AUTOMATION_NOT_PAUSABLE" | "AUTOMATION_NOT_PUBLISHED" | "AUTOMATION_RUN_NOT_FOUND" | "AUTOMATION_VERSION_CONFLICT" | "AUTOMATION_VERSION_NOT_FOUND" | "BATCH_TOO_LARGE" | "BRAND_DOMAIN_CONFLICT" | "BRAND_ID_REQUIRED" | "BRAND_LIMIT_REACHED" | "BRAND_NOT_FOUND" | "BRAND_NOT_READY" | "BRAND_SCOPE_MISMATCH" | "CHAT_NOT_FOUND" | "CONSENT_REQUIRED" | "CONTACT_NOT_FOUND" | "CONTENT_OPERATION_FAILED" | "CONTRACT_LOCKED_BY_PUBLISHED_AUTOMATIONS" | "CORE_FIELD_IMMUTABLE" | "DOMAIN_ALREADY_EXISTS" | "DOMAIN_CLAIMED_ELSEWHERE" | "DOMAIN_NOT_FOUND" | "DOMAIN_NOT_READY" | "DOMAIN_OTHER_BRAND" | "DOMAIN_PROVIDER_ERROR" | "DOMAIN_PURPOSE_NOT_ALLOWED" | "DOMAIN_VERIFICATION_FAILED" | "DOMAIN_VERIFIED_ELSEWHERE" | "EMAIL_GENERATION_FAILED" | "EMAIL_GROUP_NAME_CONFLICT" | "EMAIL_GROUP_NOT_FOUND" | "EMAIL_IMPORT_FAILED" | "EMAIL_IN_PROGRESS" | "EMAIL_IN_USE_BY_AUTOMATION" | "EMAIL_NOT_FOUND" | "EMAIL_NOT_READY" | "EMAIL_RUN_AMBIGUOUS" | "EMAIL_TEMPLATE_INVALID" | "EMAIL_VERSION_NOT_FOUND" | "EXPORT_PROVIDER_ERROR" | "EXPORT_UNSUPPORTED" | "FIELD_NOT_FOUND" | "FIELD_TYPE_MISMATCH" | "FIGMA_ACCESS_DENIED" | "FIGMA_CONVERSION_FAILED" | "FIGMA_FRAME_NOT_FOUND" | "FIGMA_NOT_CONNECTED" | "FIGMA_UNAVAILABLE" | "FIGMA_URL_INVALID" | "FLOW_NOT_FOUND" | "IDEMPOTENCY_CONFLICT" | "IDEMPOTENCY_IN_PROGRESS" | "INSUFFICIENT_CREDITS" | "INSUFFICIENT_PERMISSIONS" | "INSUFFICIENT_ROLE" | "INTEGRATION_NOT_CONNECTED" | "INTERNAL_ERROR" | "INVALID_API_KEY" | "INVALID_EMAIL" | "INVALID_PAYLOAD" | "INVALID_REQUEST" | "LIQUID_RENDER_ERROR" | "METHOD_NOT_ALLOWED" | "MISSING_EMAIL" | "NO_ELIGIBLE_RECIPIENTS" | "NO_PUBLISHED_AUTOMATION" | "NOT_FOUND" | "NOT_IMPLEMENTED" | "ORG_SCOPE_REQUIRED" | "PAYLOAD_SCHEMA_EMAIL_REQUIRED" | "PAYLOAD_TOO_LARGE" | "PREVIEW_NOT_FOUND" | "PUBLISH_VALIDATION_FAILED" | "RATE_LIMITED" | "RECIPIENT_UNSUBSCRIBED" | "REFERENCE_EMAIL_NOT_FOUND" | "RESUBSCRIBE_NOT_ALLOWED" | "RUN_IN_PROGRESS" | "RUN_NOT_CANCELLABLE" | "RUN_NOT_PAUSABLE" | "RUN_NOT_PAUSED" | "RUN_NOT_RESUMABLE" | "RUN_START_FAILED" | "RUN_STOP_FAILED" | "SEND_NOT_CANCELLABLE" | "SEND_NOT_FOUND" | "SEND_NOT_PAUSABLE" | "SEND_NOT_RESUMABLE" | "SEND_QUOTA_EXCEEDED" | "SERVICE_UNAVAILABLE" | "TEMPLATE_NOT_FOUND" | "TRIGGER_ALREADY_EXISTS" | "TRIGGER_EVENT_NOT_FOUND" | "TRIGGER_HAS_DEPENDENT_AUTOMATIONS" | "TRIGGER_IMMUTABLE" | "TRIGGER_INSTANCE_NOT_FOUND" | "TRIGGER_LIMIT_REACHED";
         EmailGenerateTextResponse: {
             response: string;
         };
@@ -6236,6 +6246,16 @@ export interface components {
         ContactsSearchSuccessResponse: components["schemas"]["ContactsListResponse"] | components["schemas"]["ContactsCountResponse"];
         ContactsCountResponse: {
             count: number;
+            /** @description With `groupBy` or `bucket`: the largest 200 groups; `key` maps each grouped field to its value, `bucket` is the ISO period start. */
+            groups?: {
+                key: {
+                    [key: string]: string | number | boolean | null;
+                };
+                bucket?: string | null;
+                count: number;
+            }[];
+            /** @description Contacts in the groups past the first 200. */
+            otherCount?: number;
         };
         ContactsSearchRequest: {
             search?: string;
@@ -6264,6 +6284,13 @@ export interface components {
             order?: "asc" | "desc";
             /** @default false */
             count?: boolean;
+            /** @description With `count: true`: also count per value of up to two fields (a contact field, a custom field, or `emailDomain`), largest group first. */
+            groupBy?: string[];
+            /**
+             * @description With `count: true`: also count per UTC `createdAt` day, week (Monday start) or month.
+             * @enum {string}
+             */
+            bucket?: "day" | "week" | "month";
             /** @default 50 */
             limit?: number;
             cursor?: string;
@@ -6533,6 +6560,19 @@ export interface components {
                 /** @description Addresses that matched an EXISTING contact and were stamped — a gap vs `providedEmails` means those addresses have no contact record (import them first). */
                 matchedContacts: number;
             }[];
+            /** @description With `addEmails`/`removeEmails`: what happened to each address. */
+            membership?: {
+                added: string[];
+                alreadyPresent: string[];
+                /** @description Were excluded by an `email not_in` clause, now lifted. */
+                unExcluded: string[];
+                removedFromList: string[];
+                /** @description Removed through an `email not_in` exclusion. */
+                excludedByFilter: string[];
+                notAMember: string[];
+                /** @description Added addresses with no contact: they match nobody until the contact exists. */
+                noContactYet: string[];
+            };
         };
         AudiencesPostRequest: {
             name: string;
@@ -6664,6 +6704,10 @@ export interface components {
                 /** @enum {string} */
                 logicalOperator: "and" | "or";
             };
+            /** @description Add these contacts to the audience by email, instead of rewriting `filters`. Refused with 409 AUDIENCE_MEMBERSHIP_NOT_EXPRESSIBLE when the filters cannot express the edit exactly, or when the email list would pass 100 addresses (stored as a snapshot of existing contacts) while a listed address has no contact. */
+            addEmails?: string[];
+            /** @description Remove these contacts from the audience by email (same rule as `addEmails`). */
+            removeEmails?: string[];
             /**
              * Format: date-time
              * @description Optional optimistic-concurrency precondition from the latest audience read. The update returns 409 if the row changed meanwhile.
@@ -7320,6 +7364,8 @@ export interface operations {
     listEmails: {
         parameters: {
             query?: {
+                /** @description Only designs whose title contains this text (case-insensitive), or whose title, subject line, preview or visible text matches its words (full-text over each design’s first 16,384 characters; the other filters apply to the 1,024 best matches). */
+                search?: string;
                 /** @description Only designs in this status (`generating`, `ready`, `failed`). */
                 status?: "generating" | "ready" | "failed";
                 /** @description Only designs in one group (`grp_…`, or `ungrouped`). */
@@ -7728,7 +7774,7 @@ export interface operations {
     getEmail: {
         parameters: {
             query?: {
-                /** @description Comma-separated expansions: `html` (rendered HTML of the selected version, once it is `ready`), `versions` (lean `{ version, emailVersionId }` history). */
+                /** @description Comma-separated expansions: `html` (rendered HTML of the selected version, once it is `ready`), `versions` (lean `{ version, emailVersionId }` history), `text` (the visible body text a reader sees), `links` (each link destination once, with its visible text and count). */
                 include?: string;
                 /** @description Read this saved version instead of the current head. Mutually exclusive with `runId`. */
                 emailVersionId?: string;
@@ -13222,6 +13268,8 @@ export interface operations {
     listAutomations: {
         parameters: {
             query?: {
+                /** @description Only automations whose name matches these words (full-text, best match first instead of newest first). */
+                search?: string;
                 /**
                  * @description Page size (1-100). Defaults to 100.
                  * @example 50
@@ -17444,13 +17492,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /**
-             * @description `CONTRACT_LOCKED_BY_PUBLISHED_AUTOMATIONS`: A published automation consumes this trigger, so the contract change must stay backward compatible: enforcement cannot tighten, and a referenced field cannot be removed, retyped, or made required without a fallback.
-             *
-             *     `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
-             *
-             *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
-             */
+            /** @description `CONTRACT_LOCKED_BY_PUBLISHED_AUTOMATIONS`: A published automation consumes this trigger, so the contract change must stay backward compatible: enforcement cannot tighten, and a referenced field cannot be removed, retyped, or made required without a fallback. */
             409: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -17628,21 +17670,6 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /**
-             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
-             *
-             *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
-             */
-            409: {
-                headers: {
-                    /** @description Unique request identifier. Share this with support when debugging a request. */
-                    "x-request-id": string;
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiErrorEnvelope"];
-                };
-            };
             /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
             429: {
                 headers: {
@@ -17802,21 +17829,6 @@ export interface operations {
             };
             /** @description `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization). */
             404: {
-                headers: {
-                    /** @description Unique request identifier. Share this with support when debugging a request. */
-                    "x-request-id": string;
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiErrorEnvelope"];
-                };
-            };
-            /**
-             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
-             *
-             *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
-             */
-            409: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
                     "x-request-id": string;
@@ -20553,21 +20565,6 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /**
-             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
-             *
-             *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
-             */
-            409: {
-                headers: {
-                    /** @description Unique request identifier. Share this with support when debugging a request. */
-                    "x-request-id": string;
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiErrorEnvelope"];
-                };
-            };
             /** @description `CORE_FIELD_IMMUTABLE`: The field is a core contact column and cannot be created, changed, or deleted as a custom field. */
             422: {
                 headers: {
@@ -20614,6 +20611,8 @@ export interface operations {
     listAudiences: {
         parameters: {
             query?: {
+                /** @description Only audiences whose name contains this text (case-insensitive). */
+                search?: string;
                 /**
                  * @description Page size (1-100). Defaults to 100.
                  * @example 50
@@ -21403,6 +21402,8 @@ export interface operations {
              * @description `AUDIENCE_BUILD_ACTIVE`: The audience is being built, so it cannot be changed, copied, or deleted yet.
              *
              *     `AUDIENCE_EDIT_CONFLICT`: The audience changed since it was read; the update was not applied.
+             *
+             *     `AUDIENCE_MEMBERSHIP_NOT_EXPRESSIBLE`: The audience’s filters cannot add or remove these contacts exactly (for example, AND-combined conditions, or an OR branch that would still match).
              *
              *     `FIELD_TYPE_MISMATCH`: A value does not match the declared type of its custom field.
              */
@@ -22687,10 +22688,6 @@ export interface operations {
              *     `DOMAIN_OTHER_BRAND`: The domain is attached to a different brand in this workspace.
              *
              *     `DOMAIN_VERIFIED_ELSEWHERE`: Another workspace already verified this domain.
-             *
-             *     `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
-             *
-             *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
              */
             409: {
                 headers: {
@@ -26434,21 +26431,6 @@ export interface operations {
             };
             /** @description `NOT_FOUND`: No v1 resource lives at this path. */
             404: {
-                headers: {
-                    /** @description Unique request identifier. Share this with support when debugging a request. */
-                    "x-request-id": string;
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiErrorEnvelope"];
-                };
-            };
-            /**
-             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
-             *
-             *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
-             */
-            409: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
                     "x-request-id": string;
