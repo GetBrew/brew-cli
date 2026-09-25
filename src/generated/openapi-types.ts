@@ -59,7 +59,7 @@ export interface paths {
          *
          *     **Use when** inspecting a design before sending it, pinning a version, polling a generation you started, or pulling rendered HTML or version history.
          *
-         *     **Input** `emailId` in the path. By default the row is the current head; `emailVersionId` reads a saved version and `runId` (returned by a create or edit) reads the version that run produced; pass one or neither, never both. `include=html` adds the selected version’s rendered HTML once it is `ready`, and `include=versions` the lean `{ version, emailVersionId }` history (comma-separate both).
+         *     **Input** `emailId` in the path. By default the row is the current head; `emailVersionId` reads a saved version and `runId` (returned by a create or edit) reads the version that run produced; pass one or neither, never both. `include=html` adds the selected version’s rendered HTML once it is `ready`, `include=versions` the lean `{ version, emailVersionId }` history, `include=text` the visible body text a reader sees (merge tags kept; `textTruncated` past 20,000 characters), and `include=links` each link destination once with its first visible text and `count` (`linksTruncated` past 200); comma-separate any of them.
          *
          *     **Returns** `200` with the row; the `include` fields are present only when requested. A run that never saved a version reads as `failed` with the reason, and the design keeps its last saved version.
          *
@@ -529,7 +529,7 @@ export interface paths {
         put?: never;
         /**
          * Cancel a send
-         * @description Cancels a scheduled or queued send before it goes out, or STOPS any in-flight campaign send. A campaign in `sending` or `paused` is canceled the same way the in-app Stop button does it: the remaining recipients are never delivered while already-sent ones stay sent (every shape re-checks liveness at regular points mid-flight — smart per time bucket, gradual and plain blast at bounded chunk intervals — so a small tail may still deliver after the cancel lands). Idempotent — a send already `canceled` returns `200`. A send already `sent` or `failed`, or a non-campaign (automation) send, returns `409 SEND_NOT_CANCELLABLE`. Brand-scoped: an unknown / cross-brand `sendId` is `404`.
+         * @description Cancels a scheduled or queued send before it goes out, or STOPS any in-flight campaign send. A campaign that is `running` or `paused` is canceled the same way the in-app Stop button does it: the remaining recipients are never delivered while already-sent ones stay sent (every shape re-checks liveness at regular points mid-flight — smart per time bucket, gradual and plain blast at bounded chunk intervals — so a small tail may still deliver after the cancel lands). Idempotent — a send already `canceled` returns `200`. A send already `completed`, `partially_completed` or `failed`, or a non-campaign (automation) send, returns `409 SEND_NOT_CANCELLABLE`. Brand-scoped: an unknown / cross-brand `sendId` is `404`.
          */
         post: operations["cancelSend"];
         delete?: never;
@@ -549,7 +549,7 @@ export interface paths {
         put?: never;
         /**
          * Pause a gradual send
-         * @description Manually pauses an in-flight GRADUAL (domain-warmup) send. The delivering workflow parks the current day’s remaining tranche at its next gate poll (≤120s) and holds until `POST /v1/sends/{sendId}/resume` (or a cancel). A send that is not a `sending` gradual send returns `409 SEND_NOT_PAUSABLE`. Brand-scoped: an unknown / cross-brand `sendId` is `404`.
+         * @description Manually pauses an in-flight GRADUAL (domain-warmup) send. The ramp stops before its next chunk and holds its current batch until `POST /v1/sends/{sendId}/resume` (or a cancel). A send that is not a `running` gradual send returns `409 SEND_NOT_PAUSABLE`. Brand-scoped: an unknown / cross-brand `sendId` is `404`.
          */
         post: operations["pauseSend"];
         delete?: never;
@@ -569,7 +569,7 @@ export interface paths {
         put?: never;
         /**
          * Resume a paused gradual send
-         * @description Resumes a manually paused GRADUAL send. The unsent tail is re-spread and later batches shift so missed intervals do not compress into a burst. A send that is not a `paused` gradual send returns `409 SEND_NOT_RESUMABLE`. Brand-scoped: an unknown / cross-brand `sendId` is `404`.
+         * @description Resumes a manually paused GRADUAL send. The ramp picks the resume up at its next hold check (seconds after a short pause, up to an hour after a long one); the unsent tail is re-spread and later batches shift so missed intervals do not compress into a burst. A send held at the plan limit resumes on its own once the plan allowance is available; any other send returns `409 SEND_NOT_RESUMABLE`. Brand-scoped: an unknown / cross-brand `sendId` is `404`.
          */
         post: operations["resumeSend"];
         delete?: never;
@@ -781,7 +781,7 @@ export interface paths {
         put?: never;
         /**
          * Run a manual-audience automation
-         * @description Launches a MANUAL-AUDIENCE automation against the audience bound to its trigger node. `dryRun: true` previews without sending; `scheduledAt` launches later. Percentage-based `gradualSend` delivers each send step in custom hour or calendar-day batches and supports manual pause/resume/cancel. `400` when a `gradualSend` plan exceeds 50,000 recipients, 30 batches, or 30 elapsed days. Returns `202` with the `audienceRunId`.
+         * @description Launches a MANUAL-AUDIENCE automation against the audience bound to its trigger node. `dryRun: true` previews without sending; `scheduledAt` launches later, at most 1 year ahead. Percentage-based `gradualSend` delivers each send step in custom hour or calendar-day batches and supports manual pause/resume/cancel. `400` when `scheduledAt` is more than 1 year ahead, or a `gradualSend` plan exceeds 50,000 recipients, 30 batches, or 30 elapsed days. Returns `202` with the `audienceRunId`.
          */
         post: operations["runAutomation"];
         delete?: never;
@@ -829,7 +829,7 @@ export interface paths {
         };
         /**
          * Get a manual-audience run
-         * @description Reads one manual-audience launch as the bare `AudienceRun` row: `status`, `approvalState`, recipient totals, per-node `nodeStats` and gradual-send progress.
+         * @description Reads one manual-audience launch as the bare `AudienceRun` row: `status`, `approvalState`, `pauseReason` while paused, recipient totals, per-node `nodeStats`. A gradual run carries its authored ramp; the batch progress of each send step is on its own send (`nodeStats[].sendId`).
          *
          *     **Use when** polling a launch to completion or reading its funnel.
          *
@@ -891,7 +891,7 @@ export interface paths {
         put?: never;
         /**
          * Resume a manual-audience run
-         * @description Continues a paused launch, or restarts a FAILED one under a fresh workflow run: it picks up at the first send step that never delivered and skips every step the failed run finished, so nothing is resent. `resumedFrom` reports which case ran.
+         * @description Continues a paused launch, or restarts a FAILED one under a fresh workflow run: it picks up at the first send step that never delivered and skips every step the failed run finished, so nothing is resent. `resumedFrom` reports which case ran. A launch held at the plan limit (`pauseReason: plan_limit`) resumes on its own once the monthly send allowance has room.
          *
          *     **Use when** a paused launch may continue, or a failed launch should finish its remaining steps.
          *
@@ -899,7 +899,7 @@ export interface paths {
          *
          *     **Returns** `200` with the run’s new `status` and `resumedFrom` (`paused` or `failed`).
          *
-         *     **Errors** `409 RUN_NOT_PAUSED` when a running run is resumed; `409 RUN_NOT_RESUMABLE` when a failed run has no undelivered send step or a send step delivered to only part of its segment; `409 RUN_IN_PROGRESS` when another run of the automation is active; `402 SEND_QUOTA_EXCEEDED` when resuming would exceed the monthly send limit; `422 INVALID_REQUEST` when a send step is no longer valid; `503 RUN_STOP_FAILED` / `RUN_START_FAILED` when the workflow engine could not stop the previous run or start the new one (retry); `404 AUDIENCE_RUN_NOT_FOUND` for an unknown or cross-brand id.
+         *     **Errors** `409 RUN_NOT_PAUSED` when a running run is resumed; `409 RUN_NOT_RESUMABLE` when the run is held at the plan limit, or a failed run has no undelivered send step or a send step delivered to only part of its segment; `409 RUN_IN_PROGRESS` when another run of the automation is active; `402 SEND_QUOTA_EXCEEDED` when resuming would exceed the monthly send limit; `422 INVALID_REQUEST` when a send step is no longer valid; `503 RUN_STOP_FAILED` / `RUN_START_FAILED` when the workflow engine could not stop the previous run or start the new one (retry); `404 AUDIENCE_RUN_NOT_FOUND` for an unknown or cross-brand id.
          *
          *     **See also** `pauseAudienceRun`, `cancelAudienceRun`, `getAudienceRun`.
          */
@@ -1689,7 +1689,7 @@ export interface paths {
         };
         /**
          * Get a domain
-         * @description Reads one sending domain as the bare `Domain` row: verification `status`, DNS `records`, `sendable`, `sendingPurpose` and sender defaults.
+         * @description Reads one sending domain as the bare `Domain` row: verification `status`, DNS `records`, `sendable`, `sendingPurpose` and the `openTracking`/`clickTracking` flags. Sender defaults are write-only here: the row does not echo them.
          *
          *     **Use when** polling verification after `verifyDomain`, or confirming a domain before a send.
          *
@@ -1747,7 +1747,7 @@ export interface paths {
         };
         /**
          * Get domain health
-         * @description The domain's deliverability health in one FREE read: a `verdict` (`healthy` / `at_risk` / `critical`) with actionable `signals`, DNS/auth state incl. DMARC, active percentage-based gradual sends + recent UTC-day volume, general bounce/complaint reporting, workspace reputation, and inbox-placement history. No bounce or complaint threshold is attached to a gradual-send configuration.
+         * @description The domain's deliverability health in one FREE read: a `verdict` (`healthy` / `at_risk` / `critical`) with actionable `signals`, DNS/auth state incl. DMARC, active percentage-based gradual sends, general bounce/complaint reporting, workspace reputation, and inbox-placement history. No bounce or complaint threshold is attached to a gradual-send configuration.
          */
         get: operations["getDomainHealth"];
         put?: never;
@@ -2306,6 +2306,16 @@ export interface components {
                 /** Format: date-time */
                 expiresAt: string;
             };
+            /** @description `include=text`: visible body text, merge tags kept (max 20,000 chars). */
+            text?: string;
+            textTruncated?: boolean;
+            /** @description `include=links`: each destination once (`href`, first visible `text`, `count`); max 200. */
+            links?: {
+                href: string | null;
+                text: string;
+                count: number;
+            }[];
+            linksTruncated?: boolean;
             /** @description Why the generation failed. Present when `status` is `failed`. */
             errorMessage?: string;
             /** @description A stable failure category, when one was recorded. */
@@ -2333,6 +2343,11 @@ export interface components {
             status: "scheduled" | "queued" | "running" | "paused" | "completed" | "partially_completed" | "failed" | "canceled";
             /** @enum {string} */
             approvalState?: "pending" | "approved" | "rejected";
+            /**
+             * @description Why a paused send is held. `plan_limit` means the organization ran out of monthly email sends; the send resumes on its own once the allowance has room, or you can cancel it. `manual` means its operator paused the gradual ramp; resume it to continue.
+             * @enum {string}
+             */
+            pauseReason?: "manual" | "plan_limit";
             subject?: string;
             previewText?: string;
             from?: {
@@ -2394,7 +2409,10 @@ export interface components {
                 };
                 /** @description IANA timezone used to preserve local wall-clock time for day intervals. */
                 timeZone: string;
-                /** Format: date-time */
+                /**
+                 * Format: date-time
+                 * @description Rolling stuck-send deadline, re-stamped at every batch. Not when the ramp ends.
+                 */
                 rampEndsAt?: string;
                 currentTranche?: number;
                 sentSoFar?: number;
@@ -3005,6 +3023,11 @@ export interface components {
             status: "queued" | "scheduled" | "running" | "paused" | "completed" | "failed" | "canceled";
             /** @enum {string} */
             approvalState?: "pending" | "approved" | "rejected";
+            /**
+             * @description Why a paused run is held. `plan_limit` means the organization ran out of monthly email sends; the run resumes on its own once the allowance has room (`resumeAudienceRun` refuses it), or you can cancel it. `manual` means an operator paused it; resume it to continue.
+             * @enum {string}
+             */
+            pauseReason?: "manual" | "plan_limit";
             /** Format: date-time */
             scheduledAt?: string;
             totalRecipients?: number;
@@ -3024,7 +3047,10 @@ export interface components {
                 startedAt?: string;
                 /** Format: date-time */
                 completedAt?: string;
+                /** @description A send step's own send (`arn_…`). Its delivery and, on a gradual run, its batch progress are at GET /v1/sends/{sendId}. */
+                sendId?: string;
             }[];
+            /** @description The run's authored ramp. Each send step ramps its own segment, so batch progress is per step: follow `nodeStats[].sendId`. */
             gradualSend?: {
                 startingPercentage: number;
                 incrementPercentage: number;
@@ -3039,7 +3065,10 @@ export interface components {
                 };
                 /** @description IANA timezone used to preserve local wall-clock time for day intervals. */
                 timeZone: string;
-                /** Format: date-time */
+                /**
+                 * Format: date-time
+                 * @description Rolling stuck-send deadline, re-stamped at every batch. Not when the ramp ends.
+                 */
                 rampEndsAt?: string;
                 currentTranche?: number;
                 sentSoFar?: number;
@@ -3485,7 +3514,7 @@ export interface components {
             };
         };
         /** @enum {string} */
-        ApiErrorCode: "ACCOUNT_SUSPENDED" | "API_KEY_REVOKED" | "AUDIENCE_BUILD_ACTIVE" | "AUDIENCE_BUILD_ALREADY_ACTIVE" | "AUDIENCE_EDIT_CONFLICT" | "AUDIENCE_NOT_FOUND" | "AUDIENCE_RUN_NOT_FOUND" | "AUDIT_NOT_FOUND" | "AUTHENTICATION_REQUIRED" | "AUTOMATION_GRAPH_INVALID" | "AUTOMATION_NOT_FOUND" | "AUTOMATION_NOT_PAUSABLE" | "AUTOMATION_NOT_PUBLISHED" | "AUTOMATION_RUN_NOT_FOUND" | "AUTOMATION_VERSION_CONFLICT" | "AUTOMATION_VERSION_NOT_FOUND" | "BATCH_TOO_LARGE" | "BRAND_DOMAIN_CONFLICT" | "BRAND_ID_REQUIRED" | "BRAND_LIMIT_REACHED" | "BRAND_NOT_FOUND" | "BRAND_NOT_READY" | "BRAND_SCOPE_MISMATCH" | "CHAT_NOT_FOUND" | "CONSENT_REQUIRED" | "CONTACT_NOT_FOUND" | "CONTENT_OPERATION_FAILED" | "CONTRACT_LOCKED_BY_PUBLISHED_AUTOMATIONS" | "CORE_FIELD_IMMUTABLE" | "DOMAIN_ALREADY_EXISTS" | "DOMAIN_CLAIMED_ELSEWHERE" | "DOMAIN_NOT_FOUND" | "DOMAIN_NOT_READY" | "DOMAIN_OTHER_BRAND" | "DOMAIN_PROVIDER_ERROR" | "DOMAIN_PURPOSE_NOT_ALLOWED" | "DOMAIN_VERIFICATION_FAILED" | "DOMAIN_VERIFIED_ELSEWHERE" | "EMAIL_GENERATION_FAILED" | "EMAIL_GROUP_NAME_CONFLICT" | "EMAIL_GROUP_NOT_FOUND" | "EMAIL_IMPORT_FAILED" | "EMAIL_IN_PROGRESS" | "EMAIL_IN_USE_BY_AUTOMATION" | "EMAIL_NOT_FOUND" | "EMAIL_NOT_READY" | "EMAIL_RUN_AMBIGUOUS" | "EMAIL_TEMPLATE_INVALID" | "EMAIL_VERSION_NOT_FOUND" | "EXPORT_PROVIDER_ERROR" | "EXPORT_UNSUPPORTED" | "FIELD_NOT_FOUND" | "FIELD_TYPE_MISMATCH" | "FIGMA_ACCESS_DENIED" | "FIGMA_CONVERSION_FAILED" | "FIGMA_FRAME_NOT_FOUND" | "FIGMA_NOT_CONNECTED" | "FIGMA_UNAVAILABLE" | "FIGMA_URL_INVALID" | "FLOW_NOT_FOUND" | "IDEMPOTENCY_CONFLICT" | "IDEMPOTENCY_IN_PROGRESS" | "INSUFFICIENT_CREDITS" | "INSUFFICIENT_PERMISSIONS" | "INSUFFICIENT_ROLE" | "INTEGRATION_NOT_CONNECTED" | "INTERNAL_ERROR" | "INVALID_API_KEY" | "INVALID_EMAIL" | "INVALID_PAYLOAD" | "INVALID_REQUEST" | "LIQUID_RENDER_ERROR" | "METHOD_NOT_ALLOWED" | "MISSING_EMAIL" | "NO_ELIGIBLE_RECIPIENTS" | "NO_PUBLISHED_AUTOMATION" | "NOT_FOUND" | "NOT_IMPLEMENTED" | "ORG_SCOPE_REQUIRED" | "PAYLOAD_SCHEMA_EMAIL_REQUIRED" | "PAYLOAD_TOO_LARGE" | "PREVIEW_NOT_FOUND" | "PUBLISH_VALIDATION_FAILED" | "RATE_LIMITED" | "RECIPIENT_UNSUBSCRIBED" | "REFERENCE_EMAIL_NOT_FOUND" | "RESUBSCRIBE_NOT_ALLOWED" | "RUN_IN_PROGRESS" | "RUN_NOT_CANCELLABLE" | "RUN_NOT_PAUSABLE" | "RUN_NOT_PAUSED" | "RUN_NOT_RESUMABLE" | "RUN_START_FAILED" | "RUN_STOP_FAILED" | "SEND_NOT_CANCELLABLE" | "SEND_NOT_FOUND" | "SEND_NOT_PAUSABLE" | "SEND_NOT_RESUMABLE" | "SEND_QUOTA_EXCEEDED" | "SERVICE_UNAVAILABLE" | "TEMPLATE_NOT_FOUND" | "TRIGGER_ALREADY_EXISTS" | "TRIGGER_EVENT_NOT_FOUND" | "TRIGGER_HAS_DEPENDENT_AUTOMATIONS" | "TRIGGER_IMMUTABLE" | "TRIGGER_INSTANCE_NOT_FOUND" | "TRIGGER_LIMIT_REACHED";
+        ApiErrorCode: "ACCOUNT_SUSPENDED" | "API_KEY_REVOKED" | "AUDIENCE_BUILD_ACTIVE" | "AUDIENCE_BUILD_ALREADY_ACTIVE" | "AUDIENCE_EDIT_CONFLICT" | "AUDIENCE_MEMBERSHIP_NOT_EXPRESSIBLE" | "AUDIENCE_NOT_FOUND" | "AUDIENCE_RUN_NOT_FOUND" | "AUDIT_NOT_FOUND" | "AUTHENTICATION_REQUIRED" | "AUTOMATION_GRAPH_INVALID" | "AUTOMATION_NOT_FOUND" | "AUTOMATION_NOT_PAUSABLE" | "AUTOMATION_NOT_PUBLISHED" | "AUTOMATION_RUN_NOT_FOUND" | "AUTOMATION_VERSION_CONFLICT" | "AUTOMATION_VERSION_NOT_FOUND" | "BATCH_TOO_LARGE" | "BRAND_DOMAIN_CONFLICT" | "BRAND_ID_REQUIRED" | "BRAND_LIMIT_REACHED" | "BRAND_NOT_FOUND" | "BRAND_NOT_READY" | "BRAND_SCOPE_MISMATCH" | "CHAT_NOT_FOUND" | "CONSENT_REQUIRED" | "CONTACT_NOT_FOUND" | "CONTENT_OPERATION_FAILED" | "CONTRACT_LOCKED_BY_PUBLISHED_AUTOMATIONS" | "CORE_FIELD_IMMUTABLE" | "DOMAIN_ALREADY_EXISTS" | "DOMAIN_CLAIMED_ELSEWHERE" | "DOMAIN_NOT_FOUND" | "DOMAIN_NOT_READY" | "DOMAIN_OTHER_BRAND" | "DOMAIN_PROVIDER_ERROR" | "DOMAIN_PURPOSE_NOT_ALLOWED" | "DOMAIN_VERIFICATION_FAILED" | "DOMAIN_VERIFIED_ELSEWHERE" | "EMAIL_GENERATION_FAILED" | "EMAIL_GROUP_NAME_CONFLICT" | "EMAIL_GROUP_NOT_FOUND" | "EMAIL_IMPORT_FAILED" | "EMAIL_IN_PROGRESS" | "EMAIL_IN_USE_BY_AUTOMATION" | "EMAIL_NOT_FOUND" | "EMAIL_NOT_READY" | "EMAIL_RUN_AMBIGUOUS" | "EMAIL_TEMPLATE_INVALID" | "EMAIL_VERSION_NOT_FOUND" | "EXPORT_PROVIDER_ERROR" | "EXPORT_UNSUPPORTED" | "FIELD_NOT_FOUND" | "FIELD_TYPE_MISMATCH" | "FIGMA_ACCESS_DENIED" | "FIGMA_CONVERSION_FAILED" | "FIGMA_FRAME_NOT_FOUND" | "FIGMA_NOT_CONNECTED" | "FIGMA_UNAVAILABLE" | "FIGMA_URL_INVALID" | "FLOW_NOT_FOUND" | "IDEMPOTENCY_CONFLICT" | "IDEMPOTENCY_IN_PROGRESS" | "INSUFFICIENT_CREDITS" | "INSUFFICIENT_PERMISSIONS" | "INSUFFICIENT_ROLE" | "INTEGRATION_NOT_CONNECTED" | "INTERNAL_ERROR" | "INVALID_API_KEY" | "INVALID_EMAIL" | "INVALID_PAYLOAD" | "INVALID_REQUEST" | "LIQUID_RENDER_ERROR" | "METHOD_NOT_ALLOWED" | "MISSING_EMAIL" | "NO_ELIGIBLE_RECIPIENTS" | "NO_PUBLISHED_AUTOMATION" | "NOT_FOUND" | "NOT_IMPLEMENTED" | "ORG_SCOPE_REQUIRED" | "PAYLOAD_SCHEMA_EMAIL_REQUIRED" | "PAYLOAD_TOO_LARGE" | "PREVIEW_NOT_FOUND" | "PUBLISH_VALIDATION_FAILED" | "RATE_LIMITED" | "RECIPIENT_UNSUBSCRIBED" | "REFERENCE_EMAIL_NOT_FOUND" | "RESUBSCRIBE_NOT_ALLOWED" | "RUN_IN_PROGRESS" | "RUN_NOT_CANCELLABLE" | "RUN_NOT_PAUSABLE" | "RUN_NOT_PAUSED" | "RUN_NOT_RESUMABLE" | "RUN_START_FAILED" | "RUN_STOP_FAILED" | "SEND_NOT_CANCELLABLE" | "SEND_NOT_FOUND" | "SEND_NOT_PAUSABLE" | "SEND_NOT_RESUMABLE" | "SEND_QUOTA_EXCEEDED" | "SERVICE_UNAVAILABLE" | "TEMPLATE_NOT_FOUND" | "TRIGGER_ALREADY_EXISTS" | "TRIGGER_EVENT_NOT_FOUND" | "TRIGGER_HAS_DEPENDENT_AUTOMATIONS" | "TRIGGER_IMMUTABLE" | "TRIGGER_INSTANCE_NOT_FOUND" | "TRIGGER_LIMIT_REACHED";
         EmailGenerateTextResponse: {
             response: string;
         };
@@ -4070,6 +4099,11 @@ export interface components {
                 status: "scheduled" | "queued" | "running" | "paused" | "completed" | "partially_completed" | "failed" | "canceled";
                 /** @enum {string} */
                 approvalState?: "pending" | "approved" | "rejected";
+                /**
+                 * @description Why a paused send is held. `plan_limit` means the organization ran out of monthly email sends; the send resumes on its own once the allowance has room, or you can cancel it. `manual` means its operator paused the gradual ramp; resume it to continue.
+                 * @enum {string}
+                 */
+                pauseReason?: "manual" | "plan_limit";
                 subject?: string;
                 previewText?: string;
                 from?: {
@@ -4131,7 +4165,10 @@ export interface components {
                     };
                     /** @description IANA timezone used to preserve local wall-clock time for day intervals. */
                     timeZone: string;
-                    /** Format: date-time */
+                    /**
+                     * Format: date-time
+                     * @description Rolling stuck-send deadline, re-stamped at every batch. Not when the ramp ends.
+                     */
                     rampEndsAt?: string;
                     currentTranche?: number;
                     sentSoFar?: number;
@@ -5456,6 +5493,11 @@ export interface components {
                 status: "queued" | "scheduled" | "running" | "paused" | "completed" | "failed" | "canceled";
                 /** @enum {string} */
                 approvalState?: "pending" | "approved" | "rejected";
+                /**
+                 * @description Why a paused run is held. `plan_limit` means the organization ran out of monthly email sends; the run resumes on its own once the allowance has room (`resumeAudienceRun` refuses it), or you can cancel it. `manual` means an operator paused it; resume it to continue.
+                 * @enum {string}
+                 */
+                pauseReason?: "manual" | "plan_limit";
                 /** Format: date-time */
                 scheduledAt?: string;
                 totalRecipients?: number;
@@ -5475,7 +5517,10 @@ export interface components {
                     startedAt?: string;
                     /** Format: date-time */
                     completedAt?: string;
+                    /** @description A send step's own send (`arn_…`). Its delivery and, on a gradual run, its batch progress are at GET /v1/sends/{sendId}. */
+                    sendId?: string;
                 }[];
+                /** @description The run's authored ramp. Each send step ramps its own segment, so batch progress is per step: follow `nodeStats[].sendId`. */
                 gradualSend?: {
                     startingPercentage: number;
                     incrementPercentage: number;
@@ -5490,7 +5535,10 @@ export interface components {
                     };
                     /** @description IANA timezone used to preserve local wall-clock time for day intervals. */
                     timeZone: string;
-                    /** Format: date-time */
+                    /**
+                     * Format: date-time
+                     * @description Rolling stuck-send deadline, re-stamped at every batch. Not when the ramp ends.
+                     */
                     rampEndsAt?: string;
                     currentTranche?: number;
                     sentSoFar?: number;
@@ -6236,6 +6284,16 @@ export interface components {
         ContactsSearchSuccessResponse: components["schemas"]["ContactsListResponse"] | components["schemas"]["ContactsCountResponse"];
         ContactsCountResponse: {
             count: number;
+            /** @description With `groupBy` or `bucket`: the largest 200 groups; `key` maps each grouped field to its value, `bucket` is the ISO period start. */
+            groups?: {
+                key: {
+                    [key: string]: string | number | boolean | null;
+                };
+                bucket?: string | null;
+                count: number;
+            }[];
+            /** @description Contacts in the groups past the first 200. */
+            otherCount?: number;
         };
         ContactsSearchRequest: {
             search?: string;
@@ -6264,6 +6322,13 @@ export interface components {
             order?: "asc" | "desc";
             /** @default false */
             count?: boolean;
+            /** @description With `count: true`: also count per value of up to two fields (a contact field, a custom field, or `emailDomain`), largest group first. */
+            groupBy?: string[];
+            /**
+             * @description With `count: true`: also count per UTC `createdAt` day, week (Monday start) or month.
+             * @enum {string}
+             */
+            bucket?: "day" | "week" | "month";
             /** @default 50 */
             limit?: number;
             cursor?: string;
@@ -6533,6 +6598,19 @@ export interface components {
                 /** @description Addresses that matched an EXISTING contact and were stamped — a gap vs `providedEmails` means those addresses have no contact record (import them first). */
                 matchedContacts: number;
             }[];
+            /** @description With `addEmails`/`removeEmails`: what happened to each address. */
+            membership?: {
+                added: string[];
+                alreadyPresent: string[];
+                /** @description Were excluded by an `email not_in` clause, now lifted. */
+                unExcluded: string[];
+                removedFromList: string[];
+                /** @description Removed through an `email not_in` exclusion. */
+                excludedByFilter: string[];
+                notAMember: string[];
+                /** @description Added addresses with no contact: they match nobody until the contact exists. */
+                noContactYet: string[];
+            };
         };
         AudiencesPostRequest: {
             name: string;
@@ -6664,6 +6742,10 @@ export interface components {
                 /** @enum {string} */
                 logicalOperator: "and" | "or";
             };
+            /** @description Add these contacts to the audience by email, instead of rewriting `filters`. Refused with 409 AUDIENCE_MEMBERSHIP_NOT_EXPRESSIBLE when the filters cannot express the edit exactly, or when the email list would pass 100 addresses (stored as a snapshot of existing contacts) while a listed address has no contact. */
+            addEmails?: string[];
+            /** @description Remove these contacts from the audience by email (same rule as `addEmails`). */
+            removeEmails?: string[];
             /**
              * Format: date-time
              * @description Optional optimistic-concurrency precondition from the latest audience read. The update returns 409 if the row changed meanwhile.
@@ -6817,6 +6899,7 @@ export interface components {
                 /** Format: date-time */
                 rampEndsAt?: string;
             }[];
+            /** @description Deprecated — always empty. Gradual sends no longer share a per-domain daily budget. */
             dailyVolume: {
                 day: string;
                 sent: number;
@@ -6842,7 +6925,10 @@ export interface components {
             recentPlacementTests: {
                 testId: string;
                 emailId: string;
-                status: string;
+                /** @enum {string} */
+                status: "queued" | "running" | "completed" | "partially_completed" | "failed";
+                /** @enum {string} */
+                phase?: "sending" | "collecting";
                 overall: {
                     total: number;
                     inbox: number;
@@ -7320,6 +7406,8 @@ export interface operations {
     listEmails: {
         parameters: {
             query?: {
+                /** @description Only designs whose title contains this text (case-insensitive), or whose title, subject line, preview or visible text matches its words (full-text over each design’s first 16,384 characters; the other filters apply to the 1,024 best matches). */
+                search?: string;
                 /** @description Only designs in this status (`generating`, `ready`, `failed`). */
                 status?: "generating" | "ready" | "failed";
                 /** @description Only designs in one group (`grp_…`, or `ungrouped`). */
@@ -7728,7 +7816,7 @@ export interface operations {
     getEmail: {
         parameters: {
             query?: {
-                /** @description Comma-separated expansions: `html` (rendered HTML of the selected version, once it is `ready`), `versions` (lean `{ version, emailVersionId }` history). */
+                /** @description Comma-separated expansions: `html` (rendered HTML of the selected version, once it is `ready`), `versions` (lean `{ version, emailVersionId }` history), `text` (the visible body text a reader sees), `links` (each link destination once, with its visible text and count). */
                 include?: string;
                 /** @description Read this saved version instead of the current head. Mutually exclusive with `runId`. */
                 emailVersionId?: string;
@@ -8883,7 +8971,7 @@ export interface operations {
             content: {
                 /**
                  * @example {
-                 *       "version": 2
+                 *       "emailVersionId": "Tv1WbYzKdP4xLm9Nq2Rs7"
                  *     }
                  */
                 "application/json": components["schemas"]["EmailRestoreRequest"];
@@ -8913,7 +9001,7 @@ export interface operations {
                      *       "group": null
                      *     }
                      */
-                    "application/json": components["schemas"]["EmailGenerateResponse"];
+                    "application/json": components["schemas"]["EmailGenerateGeneratedResponse"];
                 };
             };
             /**
@@ -12614,7 +12702,7 @@ export interface operations {
              *
              *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
              *
-             *     `SEND_NOT_RESUMABLE`: Only a paused gradual send can be resumed.
+             *     `SEND_NOT_RESUMABLE`: Only a manually paused gradual send can be resumed.
              */
             409: {
                 headers: {
@@ -13222,6 +13310,8 @@ export interface operations {
     listAutomations: {
         parameters: {
             query?: {
+                /** @description Only automations whose name matches these words (full-text, best match first instead of newest first). */
+                search?: string;
                 /**
                  * @description Page size (1-100). Defaults to 100.
                  * @example 50
@@ -15074,7 +15164,7 @@ export interface operations {
              *
              *     `RUN_NOT_PAUSED`: Only a paused manual-audience run can be resumed.
              *
-             *     `RUN_NOT_RESUMABLE`: Only a failed run with undelivered send steps can be resumed.
+             *     `RUN_NOT_RESUMABLE`: The run cannot be resumed: a failed run needs an undelivered send step, and a run held at the plan limit resumes on its own.
              */
             409: {
                 headers: {
@@ -17444,13 +17534,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /**
-             * @description `CONTRACT_LOCKED_BY_PUBLISHED_AUTOMATIONS`: A published automation consumes this trigger, so the contract change must stay backward compatible: enforcement cannot tighten, and a referenced field cannot be removed, retyped, or made required without a fallback.
-             *
-             *     `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
-             *
-             *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
-             */
+            /** @description `CONTRACT_LOCKED_BY_PUBLISHED_AUTOMATIONS`: A published automation consumes this trigger, so the contract change must stay backward compatible: enforcement cannot tighten, and a referenced field cannot be removed, retyped, or made required without a fallback. */
             409: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -17628,21 +17712,6 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /**
-             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
-             *
-             *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
-             */
-            409: {
-                headers: {
-                    /** @description Unique request identifier. Share this with support when debugging a request. */
-                    "x-request-id": string;
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiErrorEnvelope"];
-                };
-            };
             /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
             429: {
                 headers: {
@@ -17802,21 +17871,6 @@ export interface operations {
             };
             /** @description `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization). */
             404: {
-                headers: {
-                    /** @description Unique request identifier. Share this with support when debugging a request. */
-                    "x-request-id": string;
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiErrorEnvelope"];
-                };
-            };
-            /**
-             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
-             *
-             *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
-             */
-            409: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
                     "x-request-id": string;
@@ -20553,21 +20607,6 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /**
-             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
-             *
-             *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
-             */
-            409: {
-                headers: {
-                    /** @description Unique request identifier. Share this with support when debugging a request. */
-                    "x-request-id": string;
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiErrorEnvelope"];
-                };
-            };
             /** @description `CORE_FIELD_IMMUTABLE`: The field is a core contact column and cannot be created, changed, or deleted as a custom field. */
             422: {
                 headers: {
@@ -20614,6 +20653,8 @@ export interface operations {
     listAudiences: {
         parameters: {
             query?: {
+                /** @description Only audiences whose name contains this text (case-insensitive). */
+                search?: string;
                 /**
                  * @description Page size (1-100). Defaults to 100.
                  * @example 50
@@ -21403,6 +21444,8 @@ export interface operations {
              * @description `AUDIENCE_BUILD_ACTIVE`: The audience is being built, so it cannot be changed, copied, or deleted yet.
              *
              *     `AUDIENCE_EDIT_CONFLICT`: The audience changed since it was read; the update was not applied.
+             *
+             *     `AUDIENCE_MEMBERSHIP_NOT_EXPRESSIBLE`: The audience’s filters cannot add or remove these contacts exactly (for example, AND-combined conditions, or an OR branch that would still match).
              *
              *     `FIELD_TYPE_MISMATCH`: A value does not match the declared type of its custom field.
              */
@@ -22687,10 +22730,6 @@ export interface operations {
              *     `DOMAIN_OTHER_BRAND`: The domain is attached to a different brand in this workspace.
              *
              *     `DOMAIN_VERIFIED_ELSEWHERE`: Another workspace already verified this domain.
-             *
-             *     `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
-             *
-             *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
              */
             409: {
                 headers: {
@@ -23046,16 +23085,7 @@ export interface operations {
                      *           "rampEndsAt": "2026-07-15T00:00:00.000Z"
                      *         }
                      *       ],
-                     *       "dailyVolume": [
-                     *         {
-                     *           "day": "2026-07-11",
-                     *           "sent": 50
-                     *         },
-                     *         {
-                     *           "day": "2026-07-12",
-                     *           "sent": 63
-                     *         }
-                     *       ],
+                     *       "dailyVolume": [],
                      *       "domainActivity": {
                      *         "sampled": true,
                      *         "sampleSendCount": 12,
@@ -26077,7 +26107,7 @@ export interface operations {
         parameters: {
             query?: {
                 /**
-                 * @description Page size (1–100). Defaults to 50.
+                 * @description Page size (1–100). Defaults to 100.
                  * @example 100
                  */
                 limit?: number;
@@ -26434,21 +26464,6 @@ export interface operations {
             };
             /** @description `NOT_FOUND`: No v1 resource lives at this path. */
             404: {
-                headers: {
-                    /** @description Unique request identifier. Share this with support when debugging a request. */
-                    "x-request-id": string;
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiErrorEnvelope"];
-                };
-            };
-            /**
-             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
-             *
-             *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
-             */
-            409: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
                     "x-request-id": string;

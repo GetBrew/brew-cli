@@ -38,7 +38,8 @@ this build lacks (update the CLI); auth/reachability failures name the fix.
   human instruction; `emails send --test --to you@x.com` is the safe lane.
 - `--input '<json>'` (or `-` for stdin) carries full request bodies;
   positional ids always win over `--input`. `--all` drains pagination.
-  `--idempotency-key` makes POST retries safe.
+  `--idempotency-key` makes POST retries safe (except `api-keys create`,
+  whose route never replays).
 - Every collection has a real detail read (`<group> get <id>`) returning the
   BARE row; list routes reject id filters. Runs, sends, audience builds and
   inbox-placement tests share ONE status vocabulary: `queued | scheduled |
@@ -51,6 +52,7 @@ brew-cli docs --agent                  # machine-readable manifest of every comm
 brew-cli docs api                      # the live API catalog (/v1/help)
 brew-cli contacts search --filter email:contains:@acme.com --json
 brew-cli emails get <emailId> --include html,versions
+brew-cli emails get <emailId> --email-version-id <id>   # a saved version (ids from --include versions)
 brew-cli emails preview-clients <emailId>        # starts a rendering job (10 credits)
 brew-cli emails get-client-preview <previewId>   # poll it; screenshots are previews[].imageUrl
 brew-cli sends get <sendId> --include events
