@@ -2,14 +2,20 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { parse } from 'yaml'
+import {
+  IDEMPOTENCY_FLAG,
+  NON_REPLAYING_IDEMPOTENCY_FLAG,
+} from '../src/lib/input'
 import { ALL_COMMANDS } from '../src/registry'
 
 /**
- * `--idempotency-key` promises a safe retry, so a command offers it only when
- * its route replays a keyed request (`x-brew-idempotency`: `replay`, or
- * `fail_closed`, which also refuses while the key store is down). A route
- * that never replays (`none`, `disabled`: `createApiKey` would disclose the
- * one-time plaintext key again) would silently run a retry twice.
+ * The shared `--idempotency-key` help promises a safe retry, so a command
+ * carries it only when its route replays a keyed request
+ * (`x-brew-idempotency`: `replay`, or `fail_closed`, which also refuses while
+ * the key store is down). A route that never replays (`none`, `disabled`:
+ * `createApiKey` would disclose the one-time plaintext key again) runs a
+ * retry twice; flags are additive-only, so such a command keeps the flag
+ * with the help that says so (`NON_REPLAYING_IDEMPOTENCY_FLAG`).
  */
 function publishedIdempotency(): Map<string, string> {
   const doc = parse(
@@ -58,13 +64,12 @@ function routesOf(command: Command): Array<string> {
 }
 
 describe('--idempotency-key flags', () => {
-  it('appear only on commands whose route replays a keyed request', () => {
+  it('promise a safe retry only on commands whose route replays a keyed request', () => {
     const policies = publishedIdempotency()
     const offered = ALL_COMMANDS.filter(
       (command) =>
-        command.flags?.some((flag) =>
-          flag.flag.startsWith('--idempotency-key ')
-        ) && !RAW_REQUEST_COMMANDS.has(command.path.join(' '))
+        command.flags?.some((flag) => flag === IDEMPOTENCY_FLAG) &&
+        !RAW_REQUEST_COMMANDS.has(command.path.join(' '))
     )
     expect(offered.length).toBeGreaterThan(10)
     const misleading = offered.flatMap((command) => {
@@ -83,5 +88,27 @@ describe('--idempotency-key flags', () => {
           ]
     })
     expect(misleading).toEqual([])
+  })
+
+  it('say a retry runs again on commands whose route never replays', () => {
+    const policies = publishedIdempotency()
+    const unsafe = ALL_COMMANDS.filter((command) => {
+      const routes = routesOf(command)
+      return (
+        routes.length > 0 &&
+        routes.some(
+          (route) => !REPLAYING.has(policies.get(route) ?? 'unpublished')
+        ) &&
+        command.flags?.some((flag) =>
+          flag.flag.startsWith('--idempotency-key ')
+        )
+      )
+    })
+    expect(unsafe.map((command) => command.path.join(' '))).toEqual([
+      'api-keys create',
+    ])
+    for (const command of unsafe) {
+      expect(command.flags).toContain(NON_REPLAYING_IDEMPOTENCY_FLAG)
+    }
   })
 })

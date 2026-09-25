@@ -1856,6 +1856,7 @@ Mint an API key; the plaintext `key` is returned ONCE — this output is the onl
 - `--permissions <scopes...>` — all | contacts | emails | automations | transactional | domains | sends | audiences | brands (default: all)
 - `--brand-id <brandId>` — Bind the NEW key to this brand id (omit for an organization-wide key); not the acting --brand
 - `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
+- `--idempotency-key <key>` — Accepted for compatibility only: this route never replays, so a retry runs again
 
 ```bash
 brew-cli api-keys create --name CI --permissions emails domains
