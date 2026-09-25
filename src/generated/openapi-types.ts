@@ -55,15 +55,15 @@ export interface paths {
         };
         /**
          * Get an email design
-         * @description Reads one design as the bare `EmailSummary` row: `emailId`, the latest `emailVersionId` (the pin for `POST /v1/sends` and sendEmail nodes), `title`, `status`, `subjectLine`, `previewText`, `previewImage`, `updatedAt` and `group`.
+         * @description Reads one design as the bare `EmailDetail` row: `emailId`, the `emailVersionId` (the pin for `POST /v1/sends` and sendEmail nodes), `title`, `status`, `previewStatus`, `subjectLine`, `previewText`, `previewImage`, `updatedAt` and `group`, plus `errorMessage` when a generation failed.
          *
-         *     **Use when** inspecting a design before sending it, pinning its latest version, or pulling its rendered HTML or version history.
+         *     **Use when** inspecting a design before sending it, pinning a version, polling a generation you started, or pulling rendered HTML or version history.
          *
-         *     **Input** `emailId` in the path; `include=html` adds the rendered HTML of the latest version and `include=versions` the lean `{ version, emailVersionId }` history (comma-separate both).
+         *     **Input** `emailId` in the path. By default the row is the current head; `emailVersionId` reads a saved version and `runId` (returned by a create or edit) reads the version that run produced; pass one or neither, never both. `include=html` adds the selected version’s rendered HTML once it is `ready`, and `include=versions` the lean `{ version, emailVersionId }` history (comma-separate both).
          *
-         *     **Returns** `200` with the row; the `include` fields are present only when requested.
+         *     **Returns** `200` with the row; the `include` fields are present only when requested. A run that never saved a version reads as `failed` with the reason, and the design keeps its last saved version.
          *
-         *     **Errors** `404 EMAIL_NOT_FOUND` for an unknown or cross-brand id; `400 INVALID_REQUEST` for an unknown `include` token.
+         *     **Errors** `404 EMAIL_NOT_FOUND` for an unknown or cross-brand id; `404 EMAIL_VERSION_NOT_FOUND` for a version or run this design does not have; `409 EMAIL_RUN_AMBIGUOUS` when a legacy run matches more than one version (read it by `emailVersionId`); `503 SERVICE_UNAVAILABLE` when storage is briefly unreachable (retry the same read); `400 INVALID_REQUEST` for an unknown `include` token or both selectors.
          *
          *     **See also** `listEmails`, `editEmail`, `createSend`, `restoreEmailVersion`.
          */
@@ -79,15 +79,15 @@ export interface paths {
         head?: never;
         /**
          * Edit an email design
-         * @description Updates a design: an AI edit (`prompt`), its envelope (`title`, `subjectLine`), or both in one call. At least one of the three is required. A design renames here exactly like an audience, trigger, automation or group renames through its own PATCH.
+         * @description Updates a design: an AI edit (`prompt`), its envelope (`title`, `subjectLine`, `groupId`), or both in one call. At least one of the four is required. A design renames and moves between groups here exactly like an audience, trigger, automation or group renames through its own PATCH.
          *
-         *     **Use when** changing an existing design: rewording or restyling it with a prompt, renaming it (a clone starts as `Copy of …`), or setting the inbox subject the design carries by default.
+         *     **Use when** changing an existing design: rewording or restyling it with a prompt, renaming it (a clone starts as `Copy of …`), setting the inbox subject the design carries by default, or filing it in another group.
          *
-         *     **Input** `prompt` runs the Brew email agent against the current latest version (or the `emailVersionId` pin, optionally grounded by `contentUrls`) and writes a new `version: "latest"` row on the same `emailId` (the previous head becomes a numeric historical version); usage-metered by actual token spend. `title` renames the design (its canvas name, 1 to 200 characters) and `subjectLine` sets the default inbox subject; either or both without `prompt` is a deterministic in-place patch (no AI run, no new version, free). With `prompt`, the rename lands first so the new version inherits it and the subject is applied to the new head. `emailVersionId` requires `prompt`.
+         *     **Input** `prompt` runs the Brew email agent against the current latest version (or the `emailVersionId` pin, optionally grounded by `contentUrls`) and writes a new `version: "latest"` row on the same `emailId` (the previous head becomes a numeric historical version); usage-metered by actual token spend. `title` renames the design (its canvas name, 1 to 200 characters), `subjectLine` sets the default inbox subject and `groupId` moves it into an existing group (`null` = Ungrouped); any of them without `prompt` is ONE atomic in-place patch (no AI run, no new version, free). With `prompt`, the rename and move land first so the new version inherits them and the subject is applied to the new head. `emailVersionId` requires `prompt`.
          *
-         *     **Returns** `200` with the generated-email shape: the NEW head after a prompt edit, or the CURRENT head after an envelope patch (`title` and `subjectLine` echo the values set); a text response when the agent answered in prose.
+         *     **Returns** `200` with the generated-email shape: the NEW head after a prompt edit, or the CURRENT head after an envelope patch (with its `title`, `subjectLine` and `group` after the patch); a text response when the agent answered in prose.
          *
-         *     **Errors** `404 EMAIL_NOT_FOUND`, `EMAIL_VERSION_NOT_FOUND` (a pin that is not one of this design's versions); `409 EMAIL_IN_PROGRESS` while the design is still generating (or a concurrent edit moved the head between read and patch); `422 BRAND_NOT_READY` until the brand has finished extracting; `502 EMAIL_GENERATION_FAILED` when the agent run fails (retry later); `400 INVALID_REQUEST` for a body with none of the three fields, or `emailVersionId` without `prompt`.
+         *     **Errors** `404 EMAIL_NOT_FOUND`, `EMAIL_VERSION_NOT_FOUND` (a pin that is not one of this design's versions), `EMAIL_GROUP_NOT_FOUND` (a `groupId` that is not one of this brand's groups); `409 EMAIL_IN_PROGRESS` while the design is still generating (or a concurrent edit moved the head between read and patch); `422 BRAND_NOT_READY` until the brand has finished extracting; `502 EMAIL_GENERATION_FAILED` when the agent run fails (retry later); `400 INVALID_REQUEST` for a body with none of the four fields, or `emailVersionId` without `prompt`.
          *
          *     **See also** `cloneEmail` (name the copy with `title`), `restoreEmailVersion`, `listEmails`.
          */
@@ -251,11 +251,11 @@ export interface paths {
         put?: never;
         /**
          * Preview across clients & devices
-         * @description Render the design’s latest version across REAL email clients & devices — Gmail, Outlook, Apple Mail, iOS (with dark-mode variants), plus Yahoo — and return a screenshot per client rehosted on the Brew CDN. See exactly how the email looks in a specific inbox before sending.
+         * @description Starts a durable rendering job for the selected email version across real email clients, including Gmail, Outlook, Apple Mail, iOS, and dark-mode variants. Omit emailVersionId to pin the current version at admission.
          *
-         *     Pass `clients` (ids from the supported catalogue) to target specific inboxes/devices, or send `{}` for a popular default spread. Rendering is async: this is a single bounded call, so any clients still rendering when the window elapses come back in `pending` (`status: "partial"`) — call again to retry them.
+         *     Pass supported client IDs or send {} for the default spread. Returns previewId and per-client progress immediately. Read GET /v1/emails/client-previews/{previewId} to resume; polling never creates another provider test.
          *
-         *     FIXED cost: 10 credits, charged (`X-Credit-Cost: 10`) ONLY when at least one client renders. If ZERO clients finish in time (or the preview service is temporarily unavailable), the call returns a retryable `503` and is NOT billed.
+         *     Reserves 10 credits at admission and settles once when useful output exists. If the job produces no usable image, the reservation is released. Failed clients include individual reasons and retryability; a partial result retains all successful full-size links.
          */
         post: operations["previewEmailAcrossClients"];
         delete?: never;
@@ -324,6 +324,46 @@ export interface paths {
          *     **See also** `listInboxPlacementTests`, `createInboxPlacementTest`, `getDomainHealth`.
          */
         get: operations["getInboxPlacementTest"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/emails/audits/{auditId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read a saved email audit
+         * @description Returns a bounded page of the normalized audit findings, including finding IDs, rule IDs, targets, remediation, and the audited content hash. Reading pages is free and never reruns the audit. Continue using pagination.cursor. Reports are retained for seven days; the report’s expiresAt is the separate audit-attestation expiry. Completion and coverage fields identify incomplete analysis or representative-only findings.
+         */
+        get: operations["getEmailAudit"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/emails/client-previews/{previewId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read email rendering progress
+         * @description Reads the existing rendering job and per-client results without submitting another provider test or charging again. Returns successful full-size image links, pending or failed clients with reasons and retryability, expiry, and credit reservation status. Poll the same previewId after nextPollAfterMs while the job is `queued` or `running`.
+         */
+        get: operations["getEmailRendering"];
         put?: never;
         post?: never;
         delete?: never;
@@ -435,9 +475,9 @@ export interface paths {
          *
          *     **Input** Campaign (`test` omitted or `false`): `emailId` (optionally pinned to `emailVersionId`), a verified `domainId`, `subject`, and exactly one of `audienceId` (a saved audience, or `"all"` for every contact in the brand) or `to` (one address or an array of up to 50). Optional `from` (`{ email, name? }`, an address on the send domain), `previewText`, `replyTo`, `scheduledAt`, `gradualSend`, and `consent` provenance (`source`, optional `capturedAt`, `policyVersion`, `evidence`) for inline recipients that are not yet contacts: each is created as a subscribed contact carrying that record. An existing opt-out is never re-subscribed. Inline recipients face the same unsubscribe and suppression gate and per-recipient quota as audience sends. Test (`test: true`): `emailId`, `subject`, one `to` address, optional `emailVersionId`, `previewText`, `replyTo`, `domainId` (a verified org-owned domain; otherwise the Brew default sender, and an unverified or foreign domain is rejected, never downgraded), `from` (`{ email, name? }`, an address on that domain), `variables` (example values for `{{ var | fallback }}` merge tags; a value wins over the fallback) and `payload` (template data; nested JSON renders via Liquid as `trigger.*`); the subject carries a `[TEST]` prefix. The same design can be sent unlimited times; every campaign call mints a new send.
          *
-         *     **Returns** campaign `202 { status: 'queued' | 'scheduled', sendId, scheduledAt?, warnings? }` (poll `getSend`; `warnings[]` carries one `CONSENT_RECORD_MISSING` per inline recipient that is a subscribed contact with no consent record); test `200 { status: 'completed', recipient }`.
+         *     **Returns** campaign `202 { status: 'queued' | 'scheduled', sendId, scheduledAt?, warnings? }` (poll `getSend`; `warnings[]` carries one `CONSENT_RECORD_MISSING` per inline recipient that is a subscribed contact with no consent record, and one `RECIPIENTS_EXCLUDED` with the counts when unsubscribed, suppressed or undeliverable contacts will be skipped); test `200 { status: 'completed', recipient }`.
          *
-         *     **Errors** `404 EMAIL_NOT_FOUND`, `DOMAIN_NOT_FOUND`, `AUDIENCE_NOT_FOUND` (a resource in another brand also surfaces as `404`); `422 EMAIL_NOT_READY`, `DOMAIN_NOT_READY`, `DOMAIN_PURPOSE_NOT_ALLOWED`, `LIQUID_RENDER_ERROR`; `422 CONSENT_REQUIRED` when an inline marketing recipient has no contact record with marketing consent and no `consent` was supplied (`details.recipients`); `422 RECIPIENT_UNSUBSCRIBED` when an inline recipient is an existing contact who opted out (`details.recipients`, never re-subscribed); `402 SEND_QUOTA_EXCEEDED` when the plan's monthly volume would be exceeded (no `Retry-After`).
+         *     **Errors** `404 EMAIL_NOT_FOUND`, `DOMAIN_NOT_FOUND`, `AUDIENCE_NOT_FOUND` (a resource in another brand also surfaces as `404`); `422 EMAIL_NOT_READY`, `DOMAIN_NOT_READY`, `DOMAIN_PURPOSE_NOT_ALLOWED`, `LIQUID_RENDER_ERROR`; `422 CONSENT_REQUIRED` when an inline marketing recipient has no contact record with marketing consent and no `consent` was supplied (`details.recipients`); `422 RECIPIENT_UNSUBSCRIBED` when an inline recipient is an existing contact who opted out (`details.recipients`, never re-subscribed); `422 NO_ELIGIBLE_RECIPIENTS` when an immediate send would reach nobody because every contact it targets is unsubscribed, suppressed or undeliverable (`details.eligibility` = `{ total, eligible, excluded: { unsubscribed, suppressed, invalidEmail } }`; no send is created, while a scheduled send is accepted instead); `402 SEND_QUOTA_EXCEEDED` when the plan's monthly volume would be exceeded (no `Retry-After`).
          *
          *     **See also** `listSends`, `cancelSend`, `fireTrigger`.
          */
@@ -721,7 +761,7 @@ export interface paths {
         put?: never;
         /**
          * Test an automation
-         * @description Runs the saved automation END-TO-END through the real workflow in TEST mode — works on drafts and for both event and manual-audience automations; every node executes (filters/splits evaluate against `payload`, wait nodes fast-forward). Pass `testRecipient` to DELIVER each send-email node’s email for real to that address (real subject/preview/sender name via the Brew test domain; customer addresses are never hit) — omit it for a silent dry-run with no mail. Test runs never count against analytics rollups or send quotas. Returns `202` with the started run id; follow per-node status via `GET /v1/automations/runs/{automationRunId}&include=logs`.
+         * @description Runs the saved automation END-TO-END through the real workflow in TEST mode — works on drafts and for both event and manual-audience automations; every node executes (filters/splits evaluate against `payload`, wait nodes fast-forward). Pass `testRecipient` to DELIVER each send-email node’s email for real to that address (real subject/preview/sender name via the Brew test domain; customer addresses are never hit) — omit it for a silent dry-run with no mail. Test runs never count against analytics rollups or send quotas. Returns `202` with the started run id; follow per-node status via `GET /v1/automations/runs/{automationRunId}&include=logs`. Optional `scenario` controls simulate timed opens/clicks at engagement-filter nodes and force left/right percentage-split choices (waits use a virtual clock; controls stay separate from `payload`, and simulated events never enter live analytics or send quotas); the run row’s `testCoverage` reports visited nodes, traversed connections, evaluated or forced decisions, uncovered paths and simulation limitations.
          */
         post: operations["testAutomation"];
         delete?: never;
@@ -1297,6 +1337,8 @@ export interface paths {
          *
          *     Optional `consent: { source: "api" | "form" | "import", capturedAt?, policyVersion?, evidence? }` records marketing consent provenance on the contact (per row, or once at batch level as the default). It never changes `subscribed`. An inline marketing send later needs the contact to be subscribed, and warns when no record exists.
          *
+         *     `subscribed: false` unsubscribes the contact, new or existing. `subscribed: true` only applies to a NEW contact: Brew never re-subscribes a contact who opted out, so a single upsert asking for it is a `422 RESUBSCRIBE_NOT_ALLOWED` (nothing written), and a batch row keeps its other fields and adds a `warnings[]` entry (`code: RESUBSCRIBE_SKIPPED`, `email`).
+         *
          *     Single: `201` with `{ contact, created, fieldsCreated, warnings }`. Batch: `200` with `{ summary, fieldsCreated, errors, warnings }` — or `207` when some rows failed (per-row errors in `errors[]`).
          */
         post: operations["upsertContacts"];
@@ -1339,7 +1381,7 @@ export interface paths {
         head?: never;
         /**
          * Update a contact
-         * @description Patches fields on the contact (`{ fields: { <name>: <value> } }` — core columns or custom fields) and/or records marketing consent provenance (`{ consent: { source, capturedAt?, policyVersion?, evidence? } }`, never re-subscribing an opt-out). Send one or both. Returns `{ contact, updated }` where `updated` lists the field names that changed (`consent` included).
+         * @description Patches fields on the contact (`{ fields: { <name>: <value> } }` — core columns or custom fields) and/or records marketing consent provenance (`{ consent: { source, capturedAt?, policyVersion?, evidence? } }`, never re-subscribing an opt-out). Send one or both. Returns `{ contact, updated }` where `updated` lists the field names that changed (`consent` included). `fields.subscribed: false` unsubscribes; `true` on a contact who opted out is a `422 RESUBSCRIBE_NOT_ALLOWED` (they re-subscribe through their own action, or from their contact page in the Brew app).
          */
         patch: operations["updateContact"];
         trace?: never;
@@ -1404,6 +1446,8 @@ export interface paths {
          * @description Parse a raw CSV string and upsert the rows as contacts (≤ 1000). By default each column header maps to a field of the same name (`email` is required); pass `mapping` to remap columns explicitly. Rows with a missing/invalid email are SKIPPED (counted in `summary.skipped`), not errored; disposable-domain rows are imported with `validationStatus: "risky"` (deliverable but flagged). Returns the same `{ summary, fieldsCreated, errors, warnings }` as batch-create — `207` when some rows fail.
          *
          *     CSV cells are text: a column mapped onto an EXISTING field is coerced to that field's type (dates → epoch ms, `1,234` → 1234, `yes`/`no` → booleans), and a cell that cannot be coerced (`$49` in a number column) fails ITS row with a per-row `errors[]` entry (`code: FIELD_TYPE_MISMATCH`, `field`) while the other rows still land. An undeclared column is created as a `string` field unless every value is an ISO date (→ `date`); predeclare `number` / `bool` columns with `POST /v1/fields`.
+         *
+         *     A `subscribed` column reads ESP status words (`unsubscribed`, `cleaned`, `active`, …). An opt-out unsubscribes the contact, new or existing. A subscribed value only applies to new contacts: a row that asks to re-subscribe a contact who opted out keeps its other fields and adds a `warnings[]` entry (`code: RESUBSCRIBE_SKIPPED`, `email`).
          */
         post: operations["importContactsCsv"];
         delete?: never;
@@ -1423,7 +1467,7 @@ export interface paths {
         put?: never;
         /**
          * Batch-delete contacts
-         * @description Deletes up to 1000 contacts by email. Returns the deleted count plus `notFound[]` for emails that had no contact.
+         * @description Deletes up to 1000 contacts by email. Returns the deleted count plus `notFound[]` for emails that had no contact. Addresses are lookup keys, not re-validated: any address a contact was stored under matches, and one that matches nothing lands in `notFound[]` instead of failing the batch.
          */
         post: operations["batchDeleteContacts"];
         delete?: never;
@@ -1723,9 +1767,29 @@ export interface paths {
         };
         /**
          * List templates
-         * @description Lists public email templates under `{ data, pagination }`, newest first. Each row is FULL — it carries the rendered `html` + `previewImage` plus the display metadata (`title`, `category`, `brand`, `updatedAt`), so you never need a follow-up get-one round-trip. The gallery holds thousands of templates: page with `limit` (default 50, max 100) and `cursor` until `cursor` is `null`. `?brand=` (a domain) and `?category=` (a lowercase category, see the parameter) narrow it, case-insensitively; `?semantic=` ranks the gallery by relevance to a description instead of by recency. Templates are organization-wide references (use one as `referenceEmailId` on `POST /v1/emails`).
+         * @description Lists public templates under { data, pagination }. The default full representation includes HTML. Set representation=summary for metadata, previewImage, viewUrl, and referenceEmailId without HTML. Supports exact brand and category filters; query matches title text or an exact template identifier. semantic ranks up to 200 matches using vector search; query additionally filters those matches when both are supplied. Browse defaults to 50 full rows or 20 summary rows. Brand and category match case-insensitively. Continue with pagination.cursor, including after an empty filtered page with hasMore=true. Templates are organization-wide references; pass referenceEmailId to POST /v1/emails to remix one.
          */
         get: operations["listTemplates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/templates/{templateId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get a public template
+         * @description Returns metadata, preview and canonical links, and referenceEmailId for one public template. Add include=html to inspect its rendered content. Large HTML is returned as a downloadable content.url instead of truncated JSON.
+         */
+        get: operations["getTemplate"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2197,6 +2261,56 @@ export interface components {
                 groupName: string;
             } | null;
         };
+        EmailDetail: {
+            emailId: string;
+            emailVersionId?: string;
+            title: string;
+            /** @enum {string} */
+            status: "generating" | "ready" | "failed";
+            /** Format: uri */
+            previewImage?: string;
+            /**
+             * Format: date-time
+             * @description Last stable design update. While status is `generating`, collection reads hold this at `createdAt` so body chunks do not reorder or invalidate the whole list; the completion transition publishes the final source timestamp.
+             */
+            updatedAt: string;
+            /** @description The design's default inbox subject, persisted on the latest version. Distinct from `title` (canvas name). Detail-only; absent on rows where it has never been set (via the write surfaces' `subjectLine` field, or in-app). `POST /v1/sends` still requires an explicit `subject`. */
+            subjectLine?: string;
+            /** @description The design's inbox preview line, read directly from the latest version's JSX <Preview> (its single source of truth) — what a send delivers when no explicit `previewText` override is passed to POST /v1/sends. Detail-only; absent when the design has no <Preview>. */
+            previewText?: string;
+            html?: string;
+            versions?: {
+                version: number | "latest";
+                emailVersionId: string;
+            }[];
+            group: {
+                groupId: string;
+                groupName: string;
+            } | null;
+            /** @description The version that was read: its number, or `latest` for the current head. */
+            version?: number | "latest";
+            /** @description Echoes the `runId` query parameter when one was passed. */
+            runId?: string;
+            /**
+             * @description `available` when `previewImage` is set; `unavailable` when a ready design has no saved screenshot; `not_ready` while generating or after a failure.
+             * @enum {string}
+             */
+            previewStatus: "available" | "unavailable" | "not_ready";
+            /** @description MCP only: a signed, expiring download of the selected version’s HTML, in place of an `html` too large to inline. */
+            content?: {
+                /** Format: uri */
+                url: string;
+                /** @enum {string} */
+                mimeType: "text/html";
+                bytes: number;
+                /** Format: date-time */
+                expiresAt: string;
+            };
+            /** @description Why the generation failed. Present when `status` is `failed`. */
+            errorMessage?: string;
+            /** @description A stable failure category, when one was recorded. */
+            errorCause?: string;
+        };
         EmailGroupSummary: {
             groupId: string;
             groupName: string;
@@ -2348,7 +2462,7 @@ export interface components {
                 emailId: string;
                 /** @description Exact email version id for deterministic delivery — required. */
                 emailVersionId: string;
-                /** @description Owned, verified sending-domain id — optional at authoring; required at publish / live run. */
+                /** @description Owned sending-domain id — optional at authoring; required, and verified (sendable: true), at publish and on every live run. A marketing domain enforces the unsubscribe link; a sendingPurpose "transactional" domain skips it and delivers even to unsubscribed contacts, so choose one only for genuinely transactional flows (receipts, password resets). */
                 domainId?: string;
                 /** @description Inbox subject — required. Supports {{var | fallback}} interpolation. */
                 subject: string;
@@ -2826,7 +2940,7 @@ export interface components {
         };
         ApiWarning: {
             /** @enum {string} */
-            code: "DRAFT_SAVED_NOT_LIVE" | "ENFORCEMENT_LOOSENED_WHILE_PUBLISHED" | "REQUIRED_FIELD_SATISFIED_BY_FALLBACK" | "CONSENT_RECORD_MISSING";
+            code: "DRAFT_SAVED_NOT_LIVE" | "ENFORCEMENT_LOOSENED_WHILE_PUBLISHED" | "REQUIRED_FIELD_SATISFIED_BY_FALLBACK" | "RESUBSCRIBE_SKIPPED" | "RECIPIENTS_EXCLUDED" | "CONSENT_RECORD_MISSING";
             message: string;
             field?: string;
         };
@@ -3043,7 +3157,6 @@ export interface components {
             processedAt?: string;
         };
         Contact: {
-            /** Format: email */
             email: string;
             firstName?: string;
             lastName?: string;
@@ -3065,13 +3178,11 @@ export interface components {
                 /** @description Free-text evidence: a form URL, a ticket, a checkbox label. */
                 evidence?: string;
             };
-            /** @enum {string} */
-            validationStatus?: "valid" | "risky" | "invalid";
             /**
-             * @description Deprecated: legacy mirror of validationStatus. Will be removed; read validationStatus.
+             * @description The latest verdict. `valid` only ever comes from a deliverability check (`validate: true` on ingest, or POST /v1/contacts/validate), which also sets `lastValidatedAt`. Without a check the free format check on ingest stores `risky` (disposable or role address) or `invalid`, and leaves the field unset otherwise: not validated.
              * @enum {string}
              */
-            verificationStatus?: "valid" | "risky" | "invalid";
+            validationStatus?: "valid" | "risky" | "invalid";
             /** @default false */
             suppressed?: boolean;
             suppressedReason?: string | null;
@@ -3374,7 +3485,7 @@ export interface components {
             };
         };
         /** @enum {string} */
-        ApiErrorCode: "ACCOUNT_SUSPENDED" | "API_KEY_REVOKED" | "AUDIENCE_BUILD_ACTIVE" | "AUDIENCE_BUILD_ALREADY_ACTIVE" | "AUDIENCE_EDIT_CONFLICT" | "AUDIENCE_NOT_FOUND" | "AUDIENCE_RUN_NOT_FOUND" | "AUTHENTICATION_REQUIRED" | "AUTOMATION_GRAPH_INVALID" | "AUTOMATION_NOT_FOUND" | "AUTOMATION_NOT_PAUSABLE" | "AUTOMATION_NOT_PUBLISHED" | "AUTOMATION_RUN_NOT_FOUND" | "AUTOMATION_VERSION_CONFLICT" | "AUTOMATION_VERSION_NOT_FOUND" | "BATCH_TOO_LARGE" | "BRAND_DOMAIN_CONFLICT" | "BRAND_ID_REQUIRED" | "BRAND_LIMIT_REACHED" | "BRAND_NOT_FOUND" | "BRAND_NOT_READY" | "BRAND_SCOPE_MISMATCH" | "CHAT_NOT_FOUND" | "CONSENT_REQUIRED" | "CONTACT_NOT_FOUND" | "CONTENT_OPERATION_FAILED" | "CONTRACT_LOCKED_BY_PUBLISHED_AUTOMATIONS" | "CORE_FIELD_IMMUTABLE" | "DOMAIN_ALREADY_EXISTS" | "DOMAIN_CLAIMED_ELSEWHERE" | "DOMAIN_NOT_FOUND" | "DOMAIN_NOT_READY" | "DOMAIN_OTHER_BRAND" | "DOMAIN_PROVIDER_ERROR" | "DOMAIN_PURPOSE_NOT_ALLOWED" | "DOMAIN_VERIFICATION_FAILED" | "DOMAIN_VERIFIED_ELSEWHERE" | "EMAIL_GENERATION_FAILED" | "EMAIL_GROUP_NAME_CONFLICT" | "EMAIL_GROUP_NOT_FOUND" | "EMAIL_IMPORT_FAILED" | "EMAIL_IN_PROGRESS" | "EMAIL_IN_USE_BY_AUTOMATION" | "EMAIL_NOT_FOUND" | "EMAIL_NOT_READY" | "EMAIL_TEMPLATE_INVALID" | "EMAIL_VERSION_NOT_FOUND" | "EXPORT_PROVIDER_ERROR" | "EXPORT_UNSUPPORTED" | "FIELD_NOT_FOUND" | "FIELD_TYPE_MISMATCH" | "FIGMA_ACCESS_DENIED" | "FIGMA_CONVERSION_FAILED" | "FIGMA_FRAME_NOT_FOUND" | "FIGMA_NOT_CONNECTED" | "FIGMA_UNAVAILABLE" | "FIGMA_URL_INVALID" | "FLOW_NOT_FOUND" | "IDEMPOTENCY_CONFLICT" | "IDEMPOTENCY_IN_PROGRESS" | "INSUFFICIENT_CREDITS" | "INSUFFICIENT_PERMISSIONS" | "INSUFFICIENT_ROLE" | "INTEGRATION_NOT_CONNECTED" | "INTERNAL_ERROR" | "INVALID_API_KEY" | "INVALID_EMAIL" | "INVALID_PAYLOAD" | "INVALID_REQUEST" | "LIQUID_RENDER_ERROR" | "METHOD_NOT_ALLOWED" | "MISSING_EMAIL" | "NO_PUBLISHED_AUTOMATION" | "NOT_FOUND" | "NOT_IMPLEMENTED" | "ORG_SCOPE_REQUIRED" | "PAYLOAD_SCHEMA_EMAIL_REQUIRED" | "PAYLOAD_TOO_LARGE" | "PUBLISH_VALIDATION_FAILED" | "RATE_LIMITED" | "RECIPIENT_UNSUBSCRIBED" | "REFERENCE_EMAIL_NOT_FOUND" | "RUN_IN_PROGRESS" | "RUN_NOT_CANCELLABLE" | "RUN_NOT_PAUSABLE" | "RUN_NOT_PAUSED" | "RUN_NOT_RESUMABLE" | "RUN_START_FAILED" | "RUN_STOP_FAILED" | "SEND_NOT_CANCELLABLE" | "SEND_NOT_FOUND" | "SEND_NOT_PAUSABLE" | "SEND_NOT_RESUMABLE" | "SEND_QUOTA_EXCEEDED" | "SERVICE_UNAVAILABLE" | "TRIGGER_ALREADY_EXISTS" | "TRIGGER_EVENT_NOT_FOUND" | "TRIGGER_HAS_DEPENDENT_AUTOMATIONS" | "TRIGGER_IMMUTABLE" | "TRIGGER_INSTANCE_NOT_FOUND" | "TRIGGER_LIMIT_REACHED";
+        ApiErrorCode: "ACCOUNT_SUSPENDED" | "API_KEY_REVOKED" | "AUDIENCE_BUILD_ACTIVE" | "AUDIENCE_BUILD_ALREADY_ACTIVE" | "AUDIENCE_EDIT_CONFLICT" | "AUDIENCE_NOT_FOUND" | "AUDIENCE_RUN_NOT_FOUND" | "AUDIT_NOT_FOUND" | "AUTHENTICATION_REQUIRED" | "AUTOMATION_GRAPH_INVALID" | "AUTOMATION_NOT_FOUND" | "AUTOMATION_NOT_PAUSABLE" | "AUTOMATION_NOT_PUBLISHED" | "AUTOMATION_RUN_NOT_FOUND" | "AUTOMATION_VERSION_CONFLICT" | "AUTOMATION_VERSION_NOT_FOUND" | "BATCH_TOO_LARGE" | "BRAND_DOMAIN_CONFLICT" | "BRAND_ID_REQUIRED" | "BRAND_LIMIT_REACHED" | "BRAND_NOT_FOUND" | "BRAND_NOT_READY" | "BRAND_SCOPE_MISMATCH" | "CHAT_NOT_FOUND" | "CONSENT_REQUIRED" | "CONTACT_NOT_FOUND" | "CONTENT_OPERATION_FAILED" | "CONTRACT_LOCKED_BY_PUBLISHED_AUTOMATIONS" | "CORE_FIELD_IMMUTABLE" | "DOMAIN_ALREADY_EXISTS" | "DOMAIN_CLAIMED_ELSEWHERE" | "DOMAIN_NOT_FOUND" | "DOMAIN_NOT_READY" | "DOMAIN_OTHER_BRAND" | "DOMAIN_PROVIDER_ERROR" | "DOMAIN_PURPOSE_NOT_ALLOWED" | "DOMAIN_VERIFICATION_FAILED" | "DOMAIN_VERIFIED_ELSEWHERE" | "EMAIL_GENERATION_FAILED" | "EMAIL_GROUP_NAME_CONFLICT" | "EMAIL_GROUP_NOT_FOUND" | "EMAIL_IMPORT_FAILED" | "EMAIL_IN_PROGRESS" | "EMAIL_IN_USE_BY_AUTOMATION" | "EMAIL_NOT_FOUND" | "EMAIL_NOT_READY" | "EMAIL_RUN_AMBIGUOUS" | "EMAIL_TEMPLATE_INVALID" | "EMAIL_VERSION_NOT_FOUND" | "EXPORT_PROVIDER_ERROR" | "EXPORT_UNSUPPORTED" | "FIELD_NOT_FOUND" | "FIELD_TYPE_MISMATCH" | "FIGMA_ACCESS_DENIED" | "FIGMA_CONVERSION_FAILED" | "FIGMA_FRAME_NOT_FOUND" | "FIGMA_NOT_CONNECTED" | "FIGMA_UNAVAILABLE" | "FIGMA_URL_INVALID" | "FLOW_NOT_FOUND" | "IDEMPOTENCY_CONFLICT" | "IDEMPOTENCY_IN_PROGRESS" | "INSUFFICIENT_CREDITS" | "INSUFFICIENT_PERMISSIONS" | "INSUFFICIENT_ROLE" | "INTEGRATION_NOT_CONNECTED" | "INTERNAL_ERROR" | "INVALID_API_KEY" | "INVALID_EMAIL" | "INVALID_PAYLOAD" | "INVALID_REQUEST" | "LIQUID_RENDER_ERROR" | "METHOD_NOT_ALLOWED" | "MISSING_EMAIL" | "NO_ELIGIBLE_RECIPIENTS" | "NO_PUBLISHED_AUTOMATION" | "NOT_FOUND" | "NOT_IMPLEMENTED" | "ORG_SCOPE_REQUIRED" | "PAYLOAD_SCHEMA_EMAIL_REQUIRED" | "PAYLOAD_TOO_LARGE" | "PREVIEW_NOT_FOUND" | "PUBLISH_VALIDATION_FAILED" | "RATE_LIMITED" | "RECIPIENT_UNSUBSCRIBED" | "REFERENCE_EMAIL_NOT_FOUND" | "RESUBSCRIBE_NOT_ALLOWED" | "RUN_IN_PROGRESS" | "RUN_NOT_CANCELLABLE" | "RUN_NOT_PAUSABLE" | "RUN_NOT_PAUSED" | "RUN_NOT_RESUMABLE" | "RUN_START_FAILED" | "RUN_STOP_FAILED" | "SEND_NOT_CANCELLABLE" | "SEND_NOT_FOUND" | "SEND_NOT_PAUSABLE" | "SEND_NOT_RESUMABLE" | "SEND_QUOTA_EXCEEDED" | "SERVICE_UNAVAILABLE" | "TEMPLATE_NOT_FOUND" | "TRIGGER_ALREADY_EXISTS" | "TRIGGER_EVENT_NOT_FOUND" | "TRIGGER_HAS_DEPENDENT_AUTOMATIONS" | "TRIGGER_IMMUTABLE" | "TRIGGER_INSTANCE_NOT_FOUND" | "TRIGGER_LIMIT_REACHED";
         EmailGenerateTextResponse: {
             response: string;
         };
@@ -3396,7 +3507,7 @@ export interface components {
             prompt: string;
             /** @description Up to 8 source URLs to build the email FROM — each is crawled and synthesized into one email (newsletters, recaps, product roundups). */
             contentUrls?: string[];
-            /** @description An existing design (`emailId` from `run_data_command` (`db find emails`) or GET /v1/emails) to use as the style/layout reference for the new email. */
+            /** @description The `emailId` of an existing design to redraw in this brand's voice — one of this brand's own designs (GET /v1/emails) or a public gallery template (GET /v1/templates). Its layout and structure are the reference; the copy, imagery and styling become this brand's. */
             referenceEmailId?: string;
             /**
              * @description Email category that steers the design treatment (exemplars, hero recipe, personalization) — mirrors what the in-app agent infers per request. One of: welcome, newsletter, promotional, product-launch, product-update, order-confirmation, shipping-update, receipt, cart-abandonment, subscription, password-reset, verification, security-alert, account-update, event-invitation, event-reminder, feedback-request, re-engagement, referral, support, business, internal, notification, general. Omit for a general treatment. Transactional categories (receipt, password-reset, order-confirmation, …) steer receipt/reset design conventions; to DELIVER those emails, wire the design into an automation with a trigger and a transactional-purpose sending domain, then fire the trigger.
@@ -3509,9 +3620,9 @@ export interface components {
             response: string;
         };
         EmailEditRequest: {
-            /** @description The edit to make, in plain language — e.g. "swap the hero for the spring campaign image and tighten the CTA copy". Scoped edits beat full rewrites. Omit to only set `subjectLine` (at least one of the two is required). */
+            /** @description The edit to make, in plain language — e.g. "swap the hero for the spring campaign image and tighten the CTA copy". Scoped edits beat full rewrites. Omit to only patch `title`, `subjectLine` or `groupId` (at least one of the four is required). */
             prompt?: string;
-            /** @description Pin the edit to a specific source version (from `run_data_command` (`db find emails emailId=<id>`) or GET /v1/emails). Omit to edit the current latest. */
+            /** @description Pin the edit to a specific source version (from `GET /v1/emails/{emailId}?include=versions`). Requires `prompt`. Omit to edit the current latest. */
             emailVersionId?: string;
             /** @description Up to 8 URLs whose content grounds the edit (e.g. the product page the new section should describe). */
             contentUrls?: string[];
@@ -3519,6 +3630,8 @@ export interface components {
             title?: string;
             /** @description Inbox subject line to set on the design (`subjectLine` — distinct from `title`, the canvas name). Sends still take an explicit per-send `subject`; this is the design's default, seeded into the send dialog and returned by `GET /v1/emails/{emailId}`. */
             subjectLine?: string;
+            /** @description Move the design into this existing group (`grp_…`); `null` moves it to Ungrouped; omit to leave its group alone. Part of the free envelope patch: no AI run, no new version. */
+            groupId?: string | null;
         };
         EmailsDeleteResponse: {
             emailId: string;
@@ -3535,9 +3648,9 @@ export interface components {
             deletedAt?: string;
         };
         EmailCloneRequest: {
-            /** @description Exact source version to clone (from `run_data_command` (`db find emails emailId=<id>`) or GET /v1/emails). Omit to clone the current latest version. */
+            /** @description Exact source version to clone (from GET /v1/emails/{emailId}?include=versions). Omit to clone the current latest version. */
             emailVersionId?: string;
-            /** @description Name for the clone. Omit for `Copy of <source title>`; rename later with `PATCH /v1/emails/{emailId} { title }`. */
+            /** @description Name for the clone. Omit for `Copy of <source title>`; rename later with `PATCH /v1/emails/{emailId} { title }` over HTTP, update_email_metadata over MCP. */
             title?: string;
             /** @description File the design under an existing group (`grp_…`), or `ungrouped`. Mutually exclusive with `groupName`. */
             groupId?: string;
@@ -3715,9 +3828,15 @@ export interface components {
             sendingPurpose?: "marketing" | "transactional";
         };
         EmailClientPreviewResponse: {
+            previewId: string;
             emailId: string;
-            /** @enum {string} */
-            status: "ready" | "partial";
+            /** @description Portable version ID when present. previewId pins the saved snapshot. */
+            emailVersionId?: string;
+            /**
+             * @description The job: `queued` or `running` until every client settles, then `completed`, `partially_completed` (some screenshots failed) or `failed`.
+             * @enum {string}
+             */
+            status: "queued" | "running" | "completed" | "partially_completed" | "failed";
             previews: {
                 id: string;
                 label: string;
@@ -3726,14 +3845,29 @@ export interface components {
                 os: string;
                 dark: boolean;
                 /** @enum {string} */
-                status: "ready" | "processing" | "failed";
+                status: "running" | "completed" | "failed";
                 /** Format: uri */
                 imageUrl: string | null;
+                /** @enum {string} */
+                reason?: "pending" | "upstream_unavailable" | "unsupported_client" | "render_failed" | "rehost_failed" | "expired" | "submission_unknown" | "authorization_changed" | "snapshot_unavailable";
+                retryable: boolean;
             }[];
             pending: string[];
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            expiresAt: string;
+            nextPollAfterMs: number;
+            credits: {
+                cost: number;
+                /** @enum {string} */
+                status: "reserved" | "settled" | "released";
+            };
         };
         EmailClientPreviewRequest: {
-            /** @description Client ids to render. Omit for a default popular spread of Gmail, Outlook, Apple Mail & iOS. Supported: gmailcom-lm_chrcurrent_win10 = Gmail (Web); gmailcom-dm_chrcurrent_win10 = Gmail (Web, Dark); android16_gmailapp_pixel10_lm = Gmail (Android); android16_gmailapp_pixel10_dm = Gmail (Android, Dark); iphone16gmail_18 = Gmail (iOS); outlook2021_win11_lm_dt = Outlook 2021 (Windows); outlook2021_win11_dm_dt = Outlook 2021 (Windows, Dark); o365_w10_lm_dt = Outlook 365 (Windows); outlookcom-lm_chrcurrent_win10 = Outlook.com (Web); applemail16 = Apple Mail (macOS); applemail16_dm = Apple Mail (macOS, Dark); iphone16_18 = Apple Mail (iOS); iphone16_18_dm = Apple Mail (iOS, Dark); yahoocom-lm_chrcurrent_win10 = Yahoo Mail (Web). */
+            /** @description Exact email version to render; omit for latest. */
+            emailVersionId?: string;
+            /** @description Client ids to render. Omit for popular Gmail, Outlook, Apple Mail and iOS clients. Supported: gmailcom-lm_chrcurrent_win10 = Gmail (Web); gmailcom-dm_chrcurrent_win10 = Gmail (Web, Dark); android16_gmailapp_pixel10_lm = Gmail (Android); android16_gmailapp_pixel10_dm = Gmail (Android, Dark); iphone16gmail_18 = Gmail (iOS); outlook2021_win11_lm_dt = Outlook 2021 (Windows); outlook2021_win11_dm_dt = Outlook 2021 (Windows, Dark); o365_w10_lm_dt = Outlook 365 (Windows); outlookcom-lm_chrcurrent_win10 = Outlook.com (Web); applemail16 = Apple Mail (macOS); applemail16_dm = Apple Mail (macOS, Dark); iphone16_18 = Apple Mail (iOS); iphone16_18_dm = Apple Mail (iOS, Dark); yahoocom-lm_chrcurrent_win10 = Yahoo Mail (Web). */
             clients?: string[];
         };
         EmailInboxPlacementTest: {
@@ -4032,7 +4166,6 @@ export interface components {
         SendEmailTestResponse: {
             /** @enum {string} */
             status: "completed";
-            /** Format: email */
             recipient: string;
         };
         SendsPostResponse: {
@@ -4048,6 +4181,7 @@ export interface components {
             sendId: string;
             /** Format: date-time */
             scheduledAt?: string;
+            warnings?: components["schemas"]["ApiWarning"][];
         };
         SendEmailRequest: {
             /** @enum {boolean} */
@@ -4057,9 +4191,7 @@ export interface components {
             subject: string;
             /** @description Inbox preheader for this test send — overrides the design's JSX <Preview>. Omit to deliver the design's own preview line. */
             previewText?: string;
-            /** Format: email */
             to: string;
-            /** Format: email */
             replyTo?: string;
             /** @description OPTIONAL verified sending domain for this test. Omit for the Brew default sender (hello@email.brew.new). Must be a verified domain owned by this org/brand — an unverified or foreign domain is rejected (404/422), never silently downgraded to the Brew default. */
             domainId?: string;
@@ -4343,7 +4475,7 @@ export interface components {
                     emailId: string;
                     /** @description Exact email version id for deterministic delivery — required. */
                     emailVersionId: string;
-                    /** @description Owned, verified sending-domain id — optional at authoring; required at publish / live run. */
+                    /** @description Owned sending-domain id — optional at authoring; required, and verified (sendable: true), at publish and on every live run. A marketing domain enforces the unsubscribe link; a sendingPurpose "transactional" domain skips it and delivers even to unsubscribed contacts, so choose one only for genuinely transactional flows (receipts, password resets). */
                     domainId?: string;
                     /** @description Inbox subject — required. Supports {{var | fallback}} interpolation. */
                     subject: string;
@@ -4865,7 +4997,7 @@ export interface components {
                     emailId: string;
                     /** @description Exact email version id for deterministic delivery — required. */
                     emailVersionId: string;
-                    /** @description Owned, verified sending-domain id — optional at authoring; required at publish / live run. */
+                    /** @description Owned sending-domain id — optional at authoring; required, and verified (sendable: true), at publish and on every live run. A marketing domain enforces the unsubscribe link; a sendingPurpose "transactional" domain skips it and delivers even to unsubscribed contacts, so choose one only for genuinely transactional flows (receipts, password resets). */
                     domainId?: string;
                     /** @description Inbox subject — required. Supports {{var | fallback}} interpolation. */
                     subject: string;
@@ -5205,6 +5337,8 @@ export interface components {
             triggerInstanceId?: string;
             automationRunIds: string[];
             /** @enum {string} */
+            testMode?: "smoke" | "scenario";
+            /** @enum {string} */
             status: "triggered" | "idempotent_replay" | "test_started" | "replay_started";
             counts?: {
                 automations: number;
@@ -5225,8 +5359,44 @@ export interface components {
             payload?: {
                 [key: string]: unknown;
             };
-            /** Format: email */
             testRecipient?: string;
+            /** @description Simulated engagement and forced split branches for this test run; omit for a plain dry run in which engagement filters take their else branch. */
+            scenario?: {
+                /**
+                 * @description Simulated opens/clicks per engagement-filter node; a node not listed here sees no engagement.
+                 * @default []
+                 */
+                engagement?: {
+                    /** @description The id of the automation node this control applies to. */
+                    nodeId: string;
+                    events: ({
+                        /** @enum {string} */
+                        type: "opened";
+                        /** @description Milliseconds after the node starts waiting at which the simulated event happens; must fall inside that node's window. */
+                        afterMs: number;
+                    } | {
+                        /** @enum {string} */
+                        type: "clicked";
+                        /** @description Milliseconds after the node starts waiting at which the simulated event happens; must fall inside that node's window. */
+                        afterMs: number;
+                        /**
+                         * Format: uri
+                         * @description The clicked http(s) link.
+                         */
+                        url: string;
+                    })[];
+                }[];
+                /**
+                 * @description Forced branch per percentage-split node; a node not listed here picks deterministically.
+                 * @default []
+                 */
+                splits?: {
+                    /** @description The id of the automation node this control applies to. */
+                    nodeId: string;
+                    /** @enum {string} */
+                    branch: "left" | "right";
+                }[];
+            };
         };
         AutomationRunDryRunResponse: {
             /** @enum {boolean} */
@@ -5376,6 +5546,35 @@ export interface components {
                 /** Format: date-time */
                 completedAt?: string;
                 error?: string;
+                testCoverage?: {
+                    /** @enum {string} */
+                    mode: "smoke" | "scenario";
+                    complete: boolean;
+                    visitedNodes: string[];
+                    unvisitedNodes: string[];
+                    traversedConnections: {
+                        /** @description The id of the automation node this control applies to. */
+                        from: string;
+                        /** @description The id of the automation node this control applies to. */
+                        to: string;
+                        branch?: string;
+                    }[];
+                    untraversedConnections: {
+                        /** @description The id of the automation node this control applies to. */
+                        from: string;
+                        /** @description The id of the automation node this control applies to. */
+                        to: string;
+                        branch?: string;
+                    }[];
+                    decisions: {
+                        /** @description The id of the automation node this control applies to. */
+                        nodeId: string;
+                        branch: string;
+                        /** @enum {string} */
+                        source: "simulated" | "forced" | "deterministic" | "payload" | "smoke" | "upstream_not_delivered";
+                    }[];
+                    limitations: string[];
+                };
                 logs?: {
                     automationRunId: string;
                     nodeId: string;
@@ -5417,6 +5616,35 @@ export interface components {
             /** Format: date-time */
             completedAt?: string;
             error?: string;
+            testCoverage?: {
+                /** @enum {string} */
+                mode: "smoke" | "scenario";
+                complete: boolean;
+                visitedNodes: string[];
+                unvisitedNodes: string[];
+                traversedConnections: {
+                    /** @description The id of the automation node this control applies to. */
+                    from: string;
+                    /** @description The id of the automation node this control applies to. */
+                    to: string;
+                    branch?: string;
+                }[];
+                untraversedConnections: {
+                    /** @description The id of the automation node this control applies to. */
+                    from: string;
+                    /** @description The id of the automation node this control applies to. */
+                    to: string;
+                    branch?: string;
+                }[];
+                decisions: {
+                    /** @description The id of the automation node this control applies to. */
+                    nodeId: string;
+                    branch: string;
+                    /** @enum {string} */
+                    source: "simulated" | "forced" | "deterministic" | "payload" | "smoke" | "upstream_not_delivered";
+                }[];
+                limitations: string[];
+            };
             logs?: {
                 automationRunId: string;
                 nodeId: string;
@@ -5709,6 +5937,7 @@ export interface components {
             }[];
             warnings: {
                 code: string;
+                email?: string;
                 field?: string;
                 message: string;
                 from?: string;
@@ -5726,7 +5955,6 @@ export interface components {
         };
         ContactsPostSingleResponse: {
             contact: {
-                /** Format: email */
                 email: string;
                 firstName?: string;
                 lastName?: string;
@@ -5748,13 +5976,11 @@ export interface components {
                     /** @description Free-text evidence: a form URL, a ticket, a checkbox label. */
                     evidence?: string;
                 };
-                /** @enum {string} */
-                validationStatus?: "valid" | "risky" | "invalid";
                 /**
-                 * @description Deprecated: legacy mirror of validationStatus. Will be removed; read validationStatus.
+                 * @description The latest verdict. `valid` only ever comes from a deliverability check (`validate: true` on ingest, or POST /v1/contacts/validate), which also sets `lastValidatedAt`. Without a check the free format check on ingest stores `risky` (disposable or role address) or `invalid`, and leaves the field unset otherwise: not validated.
                  * @enum {string}
                  */
-                verificationStatus?: "valid" | "risky" | "invalid";
+                validationStatus?: "valid" | "risky" | "invalid";
                 /** @default false */
                 suppressed?: boolean;
                 suppressedReason?: string | null;
@@ -5784,6 +6010,7 @@ export interface components {
             fieldsCreated: string[];
             warnings: {
                 code: string;
+                email?: string;
                 field?: string;
                 message: string;
                 from?: string;
@@ -5870,7 +6097,6 @@ export interface components {
         };
         ContactsPatchResponse: {
             contact: {
-                /** Format: email */
                 email: string;
                 firstName?: string;
                 lastName?: string;
@@ -5892,13 +6118,11 @@ export interface components {
                     /** @description Free-text evidence: a form URL, a ticket, a checkbox label. */
                     evidence?: string;
                 };
-                /** @enum {string} */
-                validationStatus?: "valid" | "risky" | "invalid";
                 /**
-                 * @description Deprecated: legacy mirror of validationStatus. Will be removed; read validationStatus.
+                 * @description The latest verdict. `valid` only ever comes from a deliverability check (`validate: true` on ingest, or POST /v1/contacts/validate), which also sets `lastValidatedAt`. Without a check the free format check on ingest stores `risky` (disposable or role address) or `invalid`, and leaves the field unset otherwise: not validated.
                  * @enum {string}
                  */
-                verificationStatus?: "valid" | "risky" | "invalid";
+                validationStatus?: "valid" | "risky" | "invalid";
                 /** @default false */
                 suppressed?: boolean;
                 suppressedReason?: string | null;
@@ -5947,13 +6171,11 @@ export interface components {
             };
         };
         ContactDeleteResponse: {
-            /** Format: email */
             email: string;
             deleted: boolean;
         };
         ContactsListResponse: {
             data: {
-                /** Format: email */
                 email: string;
                 firstName?: string;
                 lastName?: string;
@@ -5975,13 +6197,11 @@ export interface components {
                     /** @description Free-text evidence: a form URL, a ticket, a checkbox label. */
                     evidence?: string;
                 };
-                /** @enum {string} */
-                validationStatus?: "valid" | "risky" | "invalid";
                 /**
-                 * @description Deprecated: legacy mirror of validationStatus. Will be removed; read validationStatus.
+                 * @description The latest verdict. `valid` only ever comes from a deliverability check (`validate: true` on ingest, or POST /v1/contacts/validate), which also sets `lastValidatedAt`. Without a check the free format check on ingest stores `risky` (disposable or role address) or `invalid`, and leaves the field unset otherwise: not validated.
                  * @enum {string}
                  */
-                verificationStatus?: "valid" | "risky" | "invalid";
+                validationStatus?: "valid" | "risky" | "invalid";
                 /** @default false */
                 suppressed?: boolean;
                 suppressedReason?: string | null;
@@ -6021,7 +6241,7 @@ export interface components {
             search?: string;
             /** @default [] */
             filters?: {
-                /** @description The contact column or custom-field name to filter on (e.g. `email`, `firstName`, or a key from `run_data_command` (`db find fieldDefinitions`) or GET /v1/fields). */
+                /** @description The contact column or custom-field name to filter on (e.g. `email`, `firstName`, or a key from GET /v1/fields). */
                 field: string;
                 /** @description Allowed operators depend on the field's type — string: equals, not_equals, contains, not_contains, contains_any, not_contains_any, starts_with, ends_with, is_empty, is_not_empty, in, not_in, exists, not_exists; number: equals, not_equals, gt, gte, lt, lte, between, is_empty, is_not_empty; date: on_date, before, after, between, is_empty, is_not_empty; bool: is_true, is_false (`equals` with true/false/1/0 is accepted as an alias). Any other operator, or an operator on a field type that does not support it, is rejected with 400 INVALID_REQUEST (`param: "filter"`) — nothing is silently ignored. E.g. use `equals`, not `eq`. */
                 operator: string;
@@ -6080,6 +6300,7 @@ export interface components {
             }[];
             warnings: {
                 code: string;
+                email?: string;
                 field?: string;
                 message: string;
                 from?: string;
@@ -6511,7 +6732,7 @@ export interface components {
             /** Format: email */
             defaultReplyToEmail?: string;
             /**
-             * @description Change the domain purpose. Live gates fail closed if a campaign still points at a transactional domain; automation sends re-derive their class from the new purpose.
+             * @description Change the domain purpose. Live gates fail closed if a campaign still points at a transactional domain; automation sends re-derive their class from the new purpose, so after a flip to transactional, published automations send with no unsubscribe link and to unsubscribed contacts.
              * @enum {string}
              */
             sendingPurpose?: "marketing" | "transactional";
@@ -7017,6 +7238,13 @@ export interface components {
             output: string;
             /** @description true when the output was cut at the size budget */
             truncated: boolean;
+            stdout?: string;
+            stderr?: string;
+            pagination?: {
+                incomplete: boolean;
+                continuations: string[];
+            };
+            retryCommand?: string;
         };
         IntegrationsListResponse: {
             data: {
@@ -7500,8 +7728,12 @@ export interface operations {
     getEmail: {
         parameters: {
             query?: {
-                /** @description Comma-separated expansions: `html` (rendered HTML of the latest version), `versions` (lean `{ version, emailVersionId }` history). */
+                /** @description Comma-separated expansions: `html` (rendered HTML of the selected version, once it is `ready`), `versions` (lean `{ version, emailVersionId }` history). */
                 include?: string;
+                /** @description Read this saved version instead of the current head. Mutually exclusive with `runId`. */
+                emailVersionId?: string;
+                /** @description Read the version one generation run produced — the `runId` a create or edit returned. Mutually exclusive with `emailVersionId`. */
+                runId?: string;
             };
             header?: {
                 /**
@@ -7536,8 +7768,10 @@ export interface operations {
                      * @example {
                      *       "emailId": "V1StGXR8_Z5jdHi6B-myT",
                      *       "emailVersionId": "Yc5Kz8Sq2Wn7Lp4Tm1RvX",
+                     *       "version": "latest",
                      *       "title": "Welcome Email",
                      *       "status": "ready",
+                     *       "previewStatus": "available",
                      *       "subjectLine": "Welcome to Acme",
                      *       "previewText": "Your first week, planned.",
                      *       "previewImage": "https://cdn.brew.new/p/V1StGXR8_Z5jdHi6B-myT.png",
@@ -7558,7 +7792,7 @@ export interface operations {
                      *       ]
                      *     }
                      */
-                    "application/json": components["schemas"]["EmailSummary"];
+                    "application/json": components["schemas"]["EmailDetail"];
                 };
             };
             /**
@@ -7616,8 +7850,21 @@ export interface operations {
              * @description `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
              *
              *     `EMAIL_NOT_FOUND`: No email design with that id exists in the brand (cross-brand ids surface as 404).
+             *
+             *     `EMAIL_VERSION_NOT_FOUND`: The design has no version with that id.
              */
             404: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `EMAIL_RUN_AMBIGUOUS`: A legacy generation run matches more than one saved version of the design. */
+            409: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
                     "x-request-id": string;
@@ -7651,6 +7898,19 @@ export interface operations {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
                     "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `SERVICE_UNAVAILABLE`: A dependency the operation must consult (billing, the idempotency store) is temporarily unavailable, so the request was refused rather than run unmetered. */
+            503: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
                     [name: string]: unknown;
                 };
                 content: {
@@ -7821,7 +8081,7 @@ export interface operations {
             };
             cookie?: never;
         };
-        /** @description A natural-language `prompt` edit (optional `emailVersionId` source pin, optional `contentUrls`) and/or the envelope fields `title` and `subjectLine` — at least one of the three. Identity lives on the path. */
+        /** @description A natural-language `prompt` edit (optional `emailVersionId` source pin, optional `contentUrls`) and/or the envelope fields `title`, `subjectLine` and `groupId` — at least one of the four. Identity lives on the path. */
         requestBody: {
             content: {
                 "application/json": components["schemas"]["EmailEditRequest"];
@@ -7909,6 +8169,8 @@ export interface operations {
             };
             /**
              * @description `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+             *
+             *     `EMAIL_GROUP_NOT_FOUND`: No email group with that id exists in the brand.
              *
              *     `EMAIL_NOT_FOUND`: No email design with that id exists in the brand (cross-brand ids surface as 404).
              *
@@ -9300,7 +9562,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Per-client screenshots. `ready` clients carry a rehosted `imageUrl`; clients still rendering are listed in `pending` with `status: "processing"`. */
+            /** @description An existing matching rendering job, including terminal results when already complete. */
             200: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -9314,35 +9576,59 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    /**
-                     * @example {
-                     *       "emailId": "V1StGXR8_Z5jdHi6B-myT",
-                     *       "status": "partial",
-                     *       "previews": [
-                     *         {
-                     *           "id": "gmailcom-lm_chrcurrent_win10",
-                     *           "label": "Gmail (Web)",
-                     *           "category": "gmail",
-                     *           "os": "Web",
-                     *           "dark": false,
-                     *           "status": "ready",
-                     *           "imageUrl": "https://cdn.brew.new/email-preview/V1StGXR8_Z5jdHi6B-myT/gmailcom-lm_chrcurrent_win10-abc.png"
-                     *         },
-                     *         {
-                     *           "id": "outlook2021_win11_lm_dt",
-                     *           "label": "Outlook 2021 (Windows)",
-                     *           "category": "outlook",
-                     *           "os": "Windows",
-                     *           "dark": false,
-                     *           "status": "processing",
-                     *           "imageUrl": null
-                     *         }
-                     *       ],
-                     *       "pending": [
-                     *         "outlook2021_win11_lm_dt"
-                     *       ]
-                     *     }
-                     */
+                    "application/json": {
+                        previewId: string;
+                        emailId: string;
+                        /** @description Portable version ID when present. previewId pins the saved snapshot. */
+                        emailVersionId?: string;
+                        /**
+                         * @description The job: `queued` or `running` until every client settles, then `completed`, `partially_completed` (some screenshots failed) or `failed`.
+                         * @enum {string}
+                         */
+                        status: "queued" | "running" | "completed" | "partially_completed" | "failed";
+                        previews: {
+                            id: string;
+                            label: string;
+                            /** @enum {string} */
+                            category: "gmail" | "outlook" | "apple" | "yahoo" | "other";
+                            os: string;
+                            dark: boolean;
+                            /** @enum {string} */
+                            status: "running" | "completed" | "failed";
+                            /** Format: uri */
+                            imageUrl: string | null;
+                            /** @enum {string} */
+                            reason?: "pending" | "upstream_unavailable" | "unsupported_client" | "render_failed" | "rehost_failed" | "expired" | "submission_unknown" | "authorization_changed" | "snapshot_unavailable";
+                            retryable: boolean;
+                        }[];
+                        pending: string[];
+                        /** Format: date-time */
+                        createdAt: string;
+                        /** Format: date-time */
+                        expiresAt: string;
+                        nextPollAfterMs: number;
+                        credits: {
+                            cost: number;
+                            /** @enum {string} */
+                            status: "reserved" | "settled" | "released";
+                        };
+                    };
+                };
+            };
+            /** @description Accepted rendering job; poll the returned previewId after nextPollAfterMs. */
+            202: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    "X-RateLimit-Reset": number;
+                    [name: string]: unknown;
+                };
+                content: {
                     "application/json": components["schemas"]["EmailClientPreviewResponse"];
                 };
             };
@@ -10027,6 +10313,452 @@ export interface operations {
              * @description `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
              *
              *     `EMAIL_NOT_FOUND`: No email design with that id exists in the brand (cross-brand ids surface as 404).
+             */
+            404: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            429: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    "X-RateLimit-Reset": number;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it. */
+            500: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getEmailAudit: {
+        parameters: {
+            query?: {
+                cursor?: string;
+                /**
+                 * @description Page size (1-100). Defaults to 100.
+                 * @example 50
+                 */
+                limit?: number;
+            };
+            header?: {
+                /**
+                 * @description The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+                 * @example kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+                 */
+                "X-Brand-Id"?: string;
+            };
+            path: {
+                auditId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description One page of saved findings. */
+            200: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    "X-RateLimit-Reset": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {number} */
+                        schemaVersion: 1;
+                        rulesetVersion: string;
+                        /** Format: uuid */
+                        auditId: string;
+                        contentHash: string;
+                        /** Format: date-time */
+                        auditedAt: string;
+                        /** Format: date-time */
+                        expiresAt: string;
+                        policy: {
+                            /** @enum {string} */
+                            purpose: "marketing" | "transactional" | "unknown";
+                            /** @enum {string} */
+                            source: "provided" | "defaulted" | "trusted_adapter";
+                            /** @enum {string} */
+                            unsubscribe: "required" | "not_required" | "not_evaluated";
+                        };
+                        summary: {
+                            blockers: number;
+                            errors: number;
+                            warnings: number;
+                            info: number;
+                            total: number;
+                        };
+                        checks: ({
+                            id: string;
+                            /** @enum {string} */
+                            status: "passed";
+                            durationMs: number;
+                            /** @enum {number} */
+                            findingCount: 0;
+                        } | {
+                            id: string;
+                            /** @enum {string} */
+                            status: "issues";
+                            durationMs: number;
+                            findingCount: number;
+                        } | {
+                            id: string;
+                            /** @enum {string} */
+                            status: "not_applicable";
+                            /** @enum {string} */
+                            reason: "no_remote_links" | "no_remote_images" | "no_remote_assets" | "missing_copy" | "requires_sending_domain" | "send_transport_owned" | "requires_audience_context" | "separate_deliverability_test" | "transactional_purpose" | "unknown_purpose";
+                        } | {
+                            id: string;
+                            /** @enum {string} */
+                            status: "unavailable";
+                            /** @enum {string} */
+                            reason: "timeout" | "upstream" | "invalid_response";
+                            retryable: boolean;
+                            durationMs: number;
+                        })[];
+                        metrics: {
+                            htmlBytes: number;
+                            linkCount: number;
+                            imageCount: number;
+                            gifCount: number;
+                            loadedSize: {
+                                /** @enum {string} */
+                                status: "exact";
+                                htmlBytes: number;
+                                remoteAssetBytes: number;
+                                totalBytes: number;
+                                assetCount: number;
+                            } | {
+                                /** @enum {string} */
+                                status: "lower_bound";
+                                htmlBytes: number;
+                                knownRemoteAssetBytes: number;
+                                knownTotalBytes: number;
+                                unknownAssetCount: number;
+                            };
+                        };
+                        findings: {
+                            id: string;
+                            ruleId: string;
+                            /** @enum {string} */
+                            category: "compliance" | "links" | "images" | "accessibility" | "compatibility" | "copy" | "size" | "markup";
+                            /** @enum {string} */
+                            severity: "blocker" | "error" | "warning" | "info";
+                            /** @enum {string} */
+                            impact: "block" | "confirm" | "advisory";
+                            message: string;
+                            remediation: string;
+                            /** @description Total occurrences of this RULE across the email, stamped on every representative finding of the rule so the total survives representative truncation. Reconcile by max per rule — summing across findings overcounts. */
+                            occurrenceCount?: number;
+                            sources: string[];
+                            standards?: {
+                                id: string;
+                                url?: string;
+                            }[];
+                            target: {
+                                /** @enum {string} */
+                                kind: "email";
+                            } | {
+                                /** @enum {string} */
+                                kind: "subject";
+                            } | {
+                                /** @enum {string} */
+                                kind: "preview_text";
+                            } | {
+                                /** @enum {string} */
+                                kind: "link";
+                                index: number;
+                                displayUrl: string;
+                            } | {
+                                /** @enum {string} */
+                                kind: "image";
+                                index: number;
+                                displayUrl: string;
+                            } | {
+                                /** @enum {string} */
+                                kind: "element";
+                                selector: string;
+                            };
+                        }[];
+                        totalFindings: number;
+                        findingsTruncated: boolean;
+                        completion: {
+                            /** @enum {string} */
+                            status: "complete";
+                            /** @enum {string} */
+                            readiness: "ready" | "needs_review" | "not_ready";
+                            score: number;
+                        } | {
+                            /** @enum {string} */
+                            status: "partial";
+                            /** @enum {string} */
+                            readiness: "unknown" | "not_ready";
+                            score: null;
+                        };
+                        pagination: {
+                            cursor: string | null;
+                            hasMore: boolean;
+                            returned: number;
+                            storedFindings: number;
+                        };
+                    };
+                };
+            };
+            /**
+             * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+             *
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             */
+            400: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `API_KEY_REVOKED`: The API key was revoked.
+             *
+             *     `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+             *
+             *     `INVALID_API_KEY`: The API key is malformed or unknown.
+             */
+            401: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+             *
+             *     `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+             *
+             *     `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+             *
+             *     `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+             */
+            403: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `AUDIT_NOT_FOUND`: No saved audit matches that id in this brand, or its seven day retention has expired.
+             *
+             *     `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+             */
+            404: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            429: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    "X-RateLimit-Reset": number;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it. */
+            500: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getEmailRendering: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+                 * @example kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+                 */
+                "X-Brand-Id"?: string;
+            };
+            path: {
+                previewId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Rendering progress for the pinned email version and requested clients. */
+            200: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    "X-RateLimit-Reset": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        previewId: string;
+                        emailId: string;
+                        /** @description Portable version ID when present. previewId pins the saved snapshot. */
+                        emailVersionId?: string;
+                        /**
+                         * @description The job: `queued` or `running` until every client settles, then `completed`, `partially_completed` (some screenshots failed) or `failed`.
+                         * @enum {string}
+                         */
+                        status: "queued" | "running" | "completed" | "partially_completed" | "failed";
+                        previews: {
+                            id: string;
+                            label: string;
+                            /** @enum {string} */
+                            category: "gmail" | "outlook" | "apple" | "yahoo" | "other";
+                            os: string;
+                            dark: boolean;
+                            /** @enum {string} */
+                            status: "running" | "completed" | "failed";
+                            /** Format: uri */
+                            imageUrl: string | null;
+                            /** @enum {string} */
+                            reason?: "pending" | "upstream_unavailable" | "unsupported_client" | "render_failed" | "rehost_failed" | "expired" | "submission_unknown" | "authorization_changed" | "snapshot_unavailable";
+                            retryable: boolean;
+                        }[];
+                        pending: string[];
+                        /** Format: date-time */
+                        createdAt: string;
+                        /** Format: date-time */
+                        expiresAt: string;
+                        nextPollAfterMs: number;
+                        credits: {
+                            cost: number;
+                            /** @enum {string} */
+                            status: "reserved" | "settled" | "released";
+                        };
+                    };
+                };
+            };
+            /**
+             * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+             *
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             */
+            400: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `API_KEY_REVOKED`: The API key was revoked.
+             *
+             *     `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+             *
+             *     `INVALID_API_KEY`: The API key is malformed or unknown.
+             */
+            401: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+             *
+             *     `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+             *
+             *     `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+             *
+             *     `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+             */
+            403: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+             *
+             *     `PREVIEW_NOT_FOUND`: No rendering job matches that id in this brand, or its results have expired.
              */
             404: {
                 headers: {
@@ -11221,6 +11953,8 @@ export interface operations {
              *     `EMAIL_NOT_READY`: The design is still generating or failed to generate, so it cannot be sent or cloned.
              *
              *     `LIQUID_RENDER_ERROR`: A Liquid template failed to parse or render.
+             *
+             *     `NO_ELIGIBLE_RECIPIENTS`: Every contact the send targets is unsubscribed, suppressed or undeliverable (or there are none), so an immediate send would deliver nothing; `details.eligibility` carries the counts.
              *
              *     `RECIPIENT_UNSUBSCRIBED`: An inline recipient is an existing contact who unsubscribed from marketing email; details.recipients lists the addresses and Brew never re-subscribes an opt-out.
              */
@@ -17485,7 +18219,7 @@ export interface operations {
                      *           "lastName": "Doe",
                      *           "subscribed": true,
                      *           "validationStatus": "valid",
-                     *           "verificationStatus": "valid",
+                     *           "lastValidatedAt": "2026-04-08T12:01:00.000Z",
                      *           "suppressed": false,
                      *           "suppressedReason": null,
                      *           "consent": {
@@ -17507,7 +18241,7 @@ export interface operations {
                      *           "lastName": "Smith",
                      *           "subscribed": true,
                      *           "validationStatus": "valid",
-                     *           "verificationStatus": "valid",
+                     *           "lastValidatedAt": "2026-04-08T12:01:00.000Z",
                      *           "suppressed": false,
                      *           "suppressedReason": null,
                      *           "consent": {
@@ -17702,7 +18436,7 @@ export interface operations {
                      *         "lastName": "Doe",
                      *         "subscribed": true,
                      *         "validationStatus": "valid",
-                     *         "verificationStatus": "valid",
+                     *         "lastValidatedAt": "2026-04-08T12:01:00.000Z",
                      *         "suppressed": false,
                      *         "suppressedReason": null,
                      *         "consent": {
@@ -17861,6 +18595,8 @@ export interface operations {
              *     `INVALID_EMAIL`: A contact email is not a deliverable address shape.
              *
              *     `MISSING_EMAIL`: A contact row has no `email`, the primary key.
+             *
+             *     `RESUBSCRIBE_NOT_ALLOWED`: The write set `subscribed` to true on a contact who unsubscribed, and Brew never re-subscribes an opt-out through the API, MCP or an import; `details.email` names the contact.
              */
             422: {
                 headers: {
@@ -17956,7 +18692,7 @@ export interface operations {
                      *       "lastName": "Doe",
                      *       "subscribed": true,
                      *       "validationStatus": "valid",
-                     *       "verificationStatus": "valid",
+                     *       "lastValidatedAt": "2026-04-08T12:01:00.000Z",
                      *       "suppressed": false,
                      *       "suppressedReason": null,
                      *       "consent": {
@@ -18253,7 +18989,7 @@ export interface operations {
                      *         "lastName": "Doe",
                      *         "subscribed": true,
                      *         "validationStatus": "valid",
-                     *         "verificationStatus": "valid",
+                     *         "lastValidatedAt": "2026-04-08T12:01:00.000Z",
                      *         "suppressed": false,
                      *         "suppressedReason": null,
                      *         "consent": {
@@ -18362,6 +19098,8 @@ export interface operations {
              * @description `BATCH_TOO_LARGE`: A batch write exceeds the per-request row cap.
              *
              *     `CORE_FIELD_IMMUTABLE`: The field is a core contact column and cannot be created, changed, or deleted as a custom field.
+             *
+             *     `RESUBSCRIBE_NOT_ALLOWED`: The write set `subscribed` to true on a contact who unsubscribed, and Brew never re-subscribes an opt-out through the API, MCP or an import; `details.email` names the contact.
              */
             422: {
                 headers: {
@@ -18878,6 +19616,7 @@ export interface operations {
                         }[];
                         warnings: {
                             code: string;
+                            email?: string;
                             field?: string;
                             message: string;
                             from?: string;
@@ -22473,6 +23212,10 @@ export interface operations {
                 category?: string;
                 /** @description Rank by relevance to this text instead of newest first (top 200; `brand`/`category` still narrow). */
                 semantic?: string;
+                /** @description Case-insensitive title substring or exact public template identifier. Applied within semantic results when semantic is supplied. */
+                query?: string;
+                /** @description Full rows include HTML. Summary rows include selection metadata and links only. */
+                representation?: "full" | "summary";
                 /**
                  * @description Page size, 1–100 (default 50: each row carries its full HTML).
                  * @example 50
@@ -22520,7 +23263,26 @@ export interface operations {
                      *       }
                      *     }
                      */
-                    "application/json": components["schemas"]["TemplatesListResponse"];
+                    "application/json": components["schemas"]["TemplatesListResponse"] | {
+                        data: {
+                            emailId: string;
+                            title: string;
+                            category?: string;
+                            brand?: string;
+                            /** Format: uri */
+                            previewImage: string;
+                            /** Format: date-time */
+                            updatedAt: string;
+                            referenceEmailId: string;
+                            /** Format: uri */
+                            viewUrl: string;
+                        }[];
+                        pagination: {
+                            limit: number;
+                            cursor: string | null;
+                            hasMore: boolean;
+                        };
+                    };
                 };
             };
             /** @description `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender. */
@@ -22553,6 +23315,139 @@ export interface operations {
             };
             /** @description `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended. */
             403: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            429: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    "X-RateLimit-Reset": number;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it. */
+            500: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getTemplate: {
+        parameters: {
+            query?: {
+                include?: "html";
+            };
+            header?: never;
+            path: {
+                templateId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Template details and optional rendered content. */
+            200: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    "X-RateLimit-Reset": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        emailId: string;
+                        title: string;
+                        category?: string;
+                        brand?: string;
+                        /** Format: uri */
+                        previewImage: string;
+                        /** Format: date-time */
+                        updatedAt: string;
+                        referenceEmailId: string;
+                        /** Format: uri */
+                        viewUrl: string;
+                        templateId: string;
+                        html?: string;
+                        content?: {
+                            /** Format: uri */
+                            url: string;
+                            /** @enum {string} */
+                            mimeType: "text/html";
+                            bytes: number;
+                        };
+                    };
+                };
+            };
+            /** @description `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender. */
+            400: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `API_KEY_REVOKED`: The API key was revoked.
+             *
+             *     `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+             *
+             *     `INVALID_API_KEY`: The API key is malformed or unknown.
+             */
+            401: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended. */
+            403: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `TEMPLATE_NOT_FOUND`: No public template matches that id. */
+            404: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
                     "x-request-id": string;

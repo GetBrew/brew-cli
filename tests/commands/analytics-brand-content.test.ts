@@ -17,6 +17,7 @@ import { contentGenerateImageCommand } from '../../src/commands/content/generate
 import { contentGifCommand } from '../../src/commands/content/gif'
 import { contentHtmlToPngCommand } from '../../src/commands/content/html-to-png'
 import { contentTransformCommand } from '../../src/commands/content/transform'
+import { templatesGetCommand } from '../../src/commands/templates/get'
 import { templatesListCommand } from '../../src/commands/templates/list'
 import { server } from '../helpers/msw-server'
 import { type RunCliResult, runCli } from '../helpers/run-cli'
@@ -39,6 +40,7 @@ const EXTRA = [
   contentHtmlToPngCommand,
   contentAddImageCommand,
   templatesListCommand,
+  templatesGetCommand,
 ]
 
 function cli(argv: readonly string[]): Promise<RunCliResult> {
@@ -512,6 +514,88 @@ describe('templates list', () => {
     expect(query?.get('semantic')).toBe('minimal launch')
     const data = result.json as { data: Array<{ emailId: string }> }
     expect(data.data[0]?.emailId).toBe('em_1')
+  })
+})
+
+describe('templates get', () => {
+  const TEMPLATE = {
+    templateId: 'seed-vercel-newsletter',
+    emailId: 'seed-vercel-newsletter',
+    referenceEmailId: 'seed-vercel-newsletter',
+    title: 'Vercel Newsletter',
+    category: 'newsletter',
+    brand: 'vercel.com',
+    previewImage: 'https://storage.example.com/templates/seed.png',
+    viewUrl: 'https://brew.new/templates/email/seed-vercel-newsletter',
+    updatedAt: '2026-04-08T00:00:00.000Z',
+  }
+
+  it('reads one template org-wide and passes --include html', async () => {
+    let request: Request | undefined
+    server.use(
+      http.get(`${API}/v1/templates/seed-vercel-newsletter`, (info) => {
+        request = info.request
+        return HttpResponse.json({ ...TEMPLATE, html: '<html></html>' })
+      })
+    )
+    const result = await runCli(
+      ['templates', 'get', 'seed-vercel-newsletter', '--include', 'html'],
+      {
+        env: {
+          BREW_CLI_CONFIG_DIR: mkdtempSync(join(tmpdir(), 'brew-cli-test-')),
+          BREW_API_KEY: KEY,
+          BREW_BRAND_ID: 'kxbrand1',
+        },
+        extraCommands: EXTRA,
+      }
+    )
+    expect(result.code).toBe(0)
+    expect(request?.method).toBe('GET')
+    const url = new URL(request?.url ?? '')
+    expect(url.pathname).toBe('/api/v1/templates/seed-vercel-newsletter')
+    expect(url.searchParams.get('include')).toBe('html')
+    // The gallery is organization-wide: the brand binding never rides along.
+    expect(request?.headers.get('x-brand-id')).toBeNull()
+    const row = result.json as { referenceEmailId: string; html: string }
+    expect(row.referenceEmailId).toBe('seed-vercel-newsletter')
+    expect(row.html).toBe('<html></html>')
+  })
+
+  it('sends no include unless asked', async () => {
+    let url: URL | undefined
+    server.use(
+      http.get(`${API}/v1/templates/seed-vercel-newsletter`, ({ request }) => {
+        url = new URL(request.url)
+        return HttpResponse.json(TEMPLATE)
+      })
+    )
+    const result = await cli(['templates', 'get', 'seed-vercel-newsletter'])
+    expect(result.code).toBe(0)
+    expect(url?.search).toBe('')
+    expect((result.json as { templateId: string }).templateId).toBe(
+      'seed-vercel-newsletter'
+    )
+  })
+
+  it("surfaces the API's TEMPLATE_NOT_FOUND", async () => {
+    server.use(
+      http.get(`${API}/v1/templates/seed-ghost`, () =>
+        HttpResponse.json(
+          {
+            error: {
+              code: 'TEMPLATE_NOT_FOUND',
+              type: 'not_found',
+              message: 'This public template was not found.',
+            },
+          },
+          { status: 404 }
+        )
+      )
+    )
+    const result = await cli(['templates', 'get', 'seed-ghost'])
+    expect(result.code).toBe(1)
+    const parsed = JSON.parse(result.stderr) as { error: { code: string } }
+    expect(parsed.error.code).toBe('TEMPLATE_NOT_FOUND')
   })
 })
 

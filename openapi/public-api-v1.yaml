@@ -155,6 +155,130 @@ components:
         - updatedAt
         - group
       additionalProperties: false
+    EmailDetail:
+      type: object
+      properties:
+        emailId:
+          type: string
+          minLength: 1
+        emailVersionId:
+          type: string
+          minLength: 1
+        title:
+          type: string
+          minLength: 1
+        status:
+          type: string
+          enum:
+            - generating
+            - ready
+            - failed
+        previewImage:
+          type: string
+          format: uri
+        updatedAt:
+          type: string
+          format: date-time
+          description: Last stable design update. While status is `generating`, collection reads hold this at `createdAt` so body chunks do not reorder or invalidate the whole list; the completion transition publishes the final source timestamp.
+        subjectLine:
+          type: string
+          description: The design's default inbox subject, persisted on the latest version. Distinct from `title` (canvas name). Detail-only; absent on rows where it has never been set (via the write surfaces' `subjectLine` field, or in-app). `POST /v1/sends` still requires an explicit `subject`.
+        previewText:
+          type: string
+          description: The design's inbox preview line, read directly from the latest version's JSX <Preview> (its single source of truth) — what a send delivers when no explicit `previewText` override is passed to POST /v1/sends. Detail-only; absent when the design has no <Preview>.
+        html:
+          type: string
+        versions:
+          type: array
+          items:
+            type: object
+            properties:
+              version:
+                anyOf:
+                  - type: integer
+                    minimum: 0
+                  - type: string
+                    enum:
+                      - latest
+              emailVersionId:
+                type: string
+                minLength: 1
+            required:
+              - version
+              - emailVersionId
+            additionalProperties: false
+        group:
+          type:
+            - object
+            - "null"
+          properties:
+            groupId:
+              type: string
+              minLength: 1
+              maxLength: 64
+            groupName:
+              type: string
+              minLength: 1
+              maxLength: 60
+          required:
+            - groupId
+            - groupName
+          additionalProperties: false
+        version:
+          anyOf:
+            - type: integer
+              minimum: 0
+            - type: string
+              enum:
+                - latest
+          description: "The version that was read: its number, or `latest` for the current head."
+        runId:
+          type: string
+          description: Echoes the `runId` query parameter when one was passed.
+        previewStatus:
+          type: string
+          enum:
+            - available
+            - unavailable
+            - not_ready
+          description: "`available` when `previewImage` is set; `unavailable` when a ready design has no saved screenshot; `not_ready` while generating or after a failure."
+        content:
+          type: object
+          properties:
+            url:
+              type: string
+              format: uri
+            mimeType:
+              type: string
+              enum:
+                - text/html
+            bytes:
+              type: integer
+              minimum: 0
+            expiresAt:
+              type: string
+              format: date-time
+          required:
+            - url
+            - mimeType
+            - bytes
+            - expiresAt
+          additionalProperties: false
+          description: "MCP only: a signed, expiring download of the selected version’s HTML, in place of an `html` too large to inline."
+        errorMessage:
+          type: string
+          description: Why the generation failed. Present when `status` is `failed`.
+        errorCause:
+          type: string
+          description: A stable failure category, when one was recorded.
+      required:
+        - emailId
+        - title
+        - status
+        - updatedAt
+        - group
+        - previewStatus
+      additionalProperties: false
     EmailGroupSummary:
       type: object
       properties:
@@ -590,7 +714,7 @@ components:
                 domainId:
                   type: string
                   minLength: 1
-                  description: Owned, verified sending-domain id — optional at authoring; required at publish / live run.
+                  description: 'Owned sending-domain id — optional at authoring; required, and verified (sendable: true), at publish and on every live run. A marketing domain enforces the unsubscribe link; a sendingPurpose "transactional" domain skips it and delivers even to unsubscribed contacts, so choose one only for genuinely transactional flows (receipts, password resets).'
                 subject:
                   type: string
                   minLength: 1
@@ -1935,6 +2059,8 @@ components:
             - DRAFT_SAVED_NOT_LIVE
             - ENFORCEMENT_LOOSENED_WHILE_PUBLISHED
             - REQUIRED_FIELD_SATISFIED_BY_FALLBACK
+            - RESUBSCRIBE_SKIPPED
+            - RECIPIENTS_EXCLUDED
             - CONSENT_RECORD_MISSING
         message:
           type: string
@@ -2512,7 +2638,6 @@ components:
       properties:
         email:
           type: string
-          format: email
         firstName:
           type: string
         lastName:
@@ -2551,13 +2676,7 @@ components:
             - valid
             - risky
             - invalid
-        verificationStatus:
-          type: string
-          enum:
-            - valid
-            - risky
-            - invalid
-          description: "Deprecated: legacy mirror of validationStatus. Will be removed; read validationStatus."
+          description: "The latest verdict. `valid` only ever comes from a deliverability check (`validate: true` on ingest, or POST /v1/contacts/validate), which also sets `lastValidatedAt`. Without a check the free format check on ingest stores `risky` (disposable or role address) or `invalid`, and leaves the field unset otherwise: not validated."
         suppressed:
           type: boolean
           default: false
@@ -3480,6 +3599,7 @@ components:
         - AUDIENCE_EDIT_CONFLICT
         - AUDIENCE_NOT_FOUND
         - AUDIENCE_RUN_NOT_FOUND
+        - AUDIT_NOT_FOUND
         - AUTHENTICATION_REQUIRED
         - AUTOMATION_GRAPH_INVALID
         - AUTOMATION_NOT_FOUND
@@ -3518,6 +3638,7 @@ components:
         - EMAIL_IN_USE_BY_AUTOMATION
         - EMAIL_NOT_FOUND
         - EMAIL_NOT_READY
+        - EMAIL_RUN_AMBIGUOUS
         - EMAIL_TEMPLATE_INVALID
         - EMAIL_VERSION_NOT_FOUND
         - EXPORT_PROVIDER_ERROR
@@ -3545,16 +3666,19 @@ components:
         - LIQUID_RENDER_ERROR
         - METHOD_NOT_ALLOWED
         - MISSING_EMAIL
+        - NO_ELIGIBLE_RECIPIENTS
         - NO_PUBLISHED_AUTOMATION
         - NOT_FOUND
         - NOT_IMPLEMENTED
         - ORG_SCOPE_REQUIRED
         - PAYLOAD_SCHEMA_EMAIL_REQUIRED
         - PAYLOAD_TOO_LARGE
+        - PREVIEW_NOT_FOUND
         - PUBLISH_VALIDATION_FAILED
         - RATE_LIMITED
         - RECIPIENT_UNSUBSCRIBED
         - REFERENCE_EMAIL_NOT_FOUND
+        - RESUBSCRIBE_NOT_ALLOWED
         - RUN_IN_PROGRESS
         - RUN_NOT_CANCELLABLE
         - RUN_NOT_PAUSABLE
@@ -3568,6 +3692,7 @@ components:
         - SEND_NOT_RESUMABLE
         - SEND_QUOTA_EXCEEDED
         - SERVICE_UNAVAILABLE
+        - TEMPLATE_NOT_FOUND
         - TRIGGER_ALREADY_EXISTS
         - TRIGGER_EVENT_NOT_FOUND
         - TRIGGER_HAS_DEPENDENT_AUTOMATIONS
@@ -3640,7 +3765,7 @@ components:
           description: Up to 8 source URLs to build the email FROM — each is crawled and synthesized into one email (newsletters, recaps, product roundups).
         referenceEmailId:
           type: string
-          description: An existing design (`emailId` from `run_data_command` (`db find emails`) or GET /v1/emails) to use as the style/layout reference for the new email.
+          description: The `emailId` of an existing design to redraw in this brand's voice — one of this brand's own designs (GET /v1/emails) or a public gallery template (GET /v1/templates). Its layout and structure are the reference; the copy, imagery and styling become this brand's.
         category:
           type: string
           enum:
@@ -3988,12 +4113,12 @@ components:
         prompt:
           type: string
           minLength: 1
-          description: The edit to make, in plain language — e.g. "swap the hero for the spring campaign image and tighten the CTA copy". Scoped edits beat full rewrites. Omit to only set `subjectLine` (at least one of the two is required).
+          description: The edit to make, in plain language — e.g. "swap the hero for the spring campaign image and tighten the CTA copy". Scoped edits beat full rewrites. Omit to only patch `title`, `subjectLine` or `groupId` (at least one of the four is required).
         emailVersionId:
           type: string
           minLength: 1
           maxLength: 64
-          description: Pin the edit to a specific source version (from `run_data_command` (`db find emails emailId=<id>`) or GET /v1/emails). Omit to edit the current latest.
+          description: Pin the edit to a specific source version (from `GET /v1/emails/{emailId}?include=versions`). Requires `prompt`. Omit to edit the current latest.
         contentUrls:
           type: array
           items:
@@ -4011,6 +4136,13 @@ components:
           minLength: 1
           maxLength: 250
           description: Inbox subject line to set on the design (`subjectLine` — distinct from `title`, the canvas name). Sends still take an explicit per-send `subject`; this is the design's default, seeded into the send dialog and returned by `GET /v1/emails/{emailId}`.
+        groupId:
+          type:
+            - string
+            - "null"
+          minLength: 1
+          maxLength: 64
+          description: "Move the design into this existing group (`grp_…`); `null` moves it to Ungrouped; omit to leave its group alone. Part of the free envelope patch: no AI run, no new version."
       additionalProperties: false
     EmailsDeleteResponse:
       type: object
@@ -4041,12 +4173,12 @@ components:
           type: string
           minLength: 1
           maxLength: 64
-          description: Exact source version to clone (from `run_data_command` (`db find emails emailId=<id>`) or GET /v1/emails). Omit to clone the current latest version.
+          description: Exact source version to clone (from GET /v1/emails/{emailId}?include=versions). Omit to clone the current latest version.
         title:
           type: string
           minLength: 1
           maxLength: 200
-          description: Name for the clone. Omit for `Copy of <source title>`; rename later with `PATCH /v1/emails/{emailId} { title }`.
+          description: Name for the clone. Omit for `Copy of <source title>`; rename later with `PATCH /v1/emails/{emailId} { title }` over HTTP, update_email_metadata over MCP.
         groupId:
           type: string
           minLength: 1
@@ -4638,13 +4770,22 @@ components:
     EmailClientPreviewResponse:
       type: object
       properties:
+        previewId:
+          type: string
         emailId:
           type: string
+        emailVersionId:
+          type: string
+          description: Portable version ID when present. previewId pins the saved snapshot.
         status:
           type: string
           enum:
-            - ready
-            - partial
+            - queued
+            - running
+            - completed
+            - partially_completed
+            - failed
+          description: "The job: `queued` or `running` until every client settles, then `completed`, `partially_completed` (some screenshots failed) or `failed`."
         previews:
           type: array
           items:
@@ -4669,14 +4810,28 @@ components:
               status:
                 type: string
                 enum:
-                  - ready
-                  - processing
+                  - running
+                  - completed
                   - failed
               imageUrl:
                 type:
                   - string
                   - "null"
                 format: uri
+              reason:
+                type: string
+                enum:
+                  - pending
+                  - upstream_unavailable
+                  - unsupported_client
+                  - render_failed
+                  - rehost_failed
+                  - expired
+                  - submission_unknown
+                  - authorization_changed
+                  - snapshot_unavailable
+              retryable:
+                type: boolean
             required:
               - id
               - label
@@ -4685,20 +4840,55 @@ components:
               - dark
               - status
               - imageUrl
+              - retryable
             additionalProperties: false
         pending:
           type: array
           items:
             type: string
+        createdAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+        nextPollAfterMs:
+          type: integer
+          minimum: 0
+        credits:
+          type: object
+          properties:
+            cost:
+              type: number
+            status:
+              type: string
+              enum:
+                - reserved
+                - settled
+                - released
+          required:
+            - cost
+            - status
+          additionalProperties: false
       required:
+        - previewId
         - emailId
         - status
         - previews
         - pending
+        - createdAt
+        - expiresAt
+        - nextPollAfterMs
+        - credits
       additionalProperties: false
     EmailClientPreviewRequest:
       type: object
       properties:
+        emailVersionId:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: Exact email version to render; omit for latest.
         clients:
           type: array
           items:
@@ -4707,7 +4897,7 @@ components:
             maxLength: 80
           minItems: 1
           maxItems: 12
-          description: "Client ids to render. Omit for a default popular spread of Gmail, Outlook, Apple Mail & iOS. Supported: gmailcom-lm_chrcurrent_win10 = Gmail (Web); gmailcom-dm_chrcurrent_win10 = Gmail (Web, Dark); android16_gmailapp_pixel10_lm = Gmail (Android); android16_gmailapp_pixel10_dm = Gmail (Android, Dark); iphone16gmail_18 = Gmail (iOS); outlook2021_win11_lm_dt = Outlook 2021 (Windows); outlook2021_win11_dm_dt = Outlook 2021 (Windows, Dark); o365_w10_lm_dt = Outlook 365 (Windows); outlookcom-lm_chrcurrent_win10 = Outlook.com (Web); applemail16 = Apple Mail (macOS); applemail16_dm = Apple Mail (macOS, Dark); iphone16_18 = Apple Mail (iOS); iphone16_18_dm = Apple Mail (iOS, Dark); yahoocom-lm_chrcurrent_win10 = Yahoo Mail (Web)."
+          description: "Client ids to render. Omit for popular Gmail, Outlook, Apple Mail and iOS clients. Supported: gmailcom-lm_chrcurrent_win10 = Gmail (Web); gmailcom-dm_chrcurrent_win10 = Gmail (Web, Dark); android16_gmailapp_pixel10_lm = Gmail (Android); android16_gmailapp_pixel10_dm = Gmail (Android, Dark); iphone16gmail_18 = Gmail (iOS); outlook2021_win11_lm_dt = Outlook 2021 (Windows); outlook2021_win11_dm_dt = Outlook 2021 (Windows, Dark); o365_w10_lm_dt = Outlook 365 (Windows); outlookcom-lm_chrcurrent_win10 = Outlook.com (Web); applemail16 = Apple Mail (macOS); applemail16_dm = Apple Mail (macOS, Dark); iphone16_18 = Apple Mail (iOS); iphone16_18_dm = Apple Mail (iOS, Dark); yahoocom-lm_chrcurrent_win10 = Yahoo Mail (Web)."
       additionalProperties: false
     EmailInboxPlacementTest:
       type: object
@@ -5586,7 +5776,6 @@ components:
             - completed
         recipient:
           type: string
-          format: email
       required:
         - status
         - recipient
@@ -5626,6 +5815,10 @@ components:
             scheduledAt:
               type: string
               format: date-time
+            warnings:
+              type: array
+              items:
+                $ref: "#/components/schemas/ApiWarning"
           required:
             - status
             - sendId
@@ -5653,10 +5846,12 @@ components:
               description: Inbox preheader for this test send — overrides the design's JSX <Preview>. Omit to deliver the design's own preview line.
             to:
               type: string
-              format: email
+              maxLength: 254
+              pattern: ^[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+)*@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$
             replyTo:
               type: string
-              format: email
+              maxLength: 254
+              pattern: ^[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+)*@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$
             domainId:
               type: string
               minLength: 1
@@ -5768,11 +5963,13 @@ components:
             to:
               anyOf:
                 - type: string
-                  format: email
+                  maxLength: 254
+                  pattern: ^[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+)*@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$
                 - type: array
                   items:
                     type: string
-                    format: email
+                    maxLength: 254
+                    pattern: ^[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+)*@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$
                   minItems: 1
                   maxItems: 50
               description: Inline recipient addresses (max 50). Mutually exclusive with `audienceId`.
@@ -6470,7 +6667,7 @@ components:
                       domainId:
                         type: string
                         minLength: 1
-                        description: Owned, verified sending-domain id — optional at authoring; required at publish / live run.
+                        description: 'Owned sending-domain id — optional at authoring; required, and verified (sendable: true), at publish and on every live run. A marketing domain enforces the unsubscribe link; a sendingPurpose "transactional" domain skips it and delivers even to unsubscribed contacts, so choose one only for genuinely transactional flows (receipts, password resets).'
                       subject:
                         type: string
                         minLength: 1
@@ -7941,7 +8138,7 @@ components:
                       domainId:
                         type: string
                         minLength: 1
-                        description: Owned, verified sending-domain id — optional at authoring; required at publish / live run.
+                        description: 'Owned sending-domain id — optional at authoring; required, and verified (sendable: true), at publish and on every live run. A marketing domain enforces the unsubscribe link; a sendingPurpose "transactional" domain skips it and delivers even to unsubscribed contacts, so choose one only for genuinely transactional flows (receipts, password resets).'
                       subject:
                         type: string
                         minLength: 1
@@ -8856,6 +9053,11 @@ components:
             type: string
             minLength: 1
             maxLength: 64
+        testMode:
+          type: string
+          enum:
+            - smoke
+            - scenario
         status:
           type: string
           enum:
@@ -8908,7 +9110,93 @@ components:
           additionalProperties: {}
         testRecipient:
           type: string
-          format: email
+          maxLength: 254
+          pattern: ^[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+)*@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$
+        scenario:
+          type: object
+          properties:
+            engagement:
+              type: array
+              items:
+                type: object
+                properties:
+                  nodeId:
+                    type: string
+                    minLength: 1
+                    maxLength: 200
+                    description: The id of the automation node this control applies to.
+                  events:
+                    type: array
+                    items:
+                      oneOf:
+                        - type: object
+                          properties:
+                            type:
+                              type: string
+                              enum:
+                                - opened
+                            afterMs:
+                              type: integer
+                              minimum: 0
+                              maximum: 2592000000
+                              description: Milliseconds after the node starts waiting at which the simulated event happens; must fall inside that node's window.
+                          required:
+                            - type
+                            - afterMs
+                          additionalProperties: false
+                        - type: object
+                          properties:
+                            type:
+                              type: string
+                              enum:
+                                - clicked
+                            afterMs:
+                              type: integer
+                              minimum: 0
+                              maximum: 2592000000
+                              description: Milliseconds after the node starts waiting at which the simulated event happens; must fall inside that node's window.
+                            url:
+                              type: string
+                              maxLength: 2048
+                              format: uri
+                              description: The clicked http(s) link.
+                          required:
+                            - type
+                            - afterMs
+                            - url
+                          additionalProperties: false
+                    maxItems: 100
+                required:
+                  - nodeId
+                  - events
+                additionalProperties: false
+              maxItems: 1000
+              default: []
+              description: Simulated opens/clicks per engagement-filter node; a node not listed here sees no engagement.
+            splits:
+              type: array
+              items:
+                type: object
+                properties:
+                  nodeId:
+                    type: string
+                    minLength: 1
+                    maxLength: 200
+                    description: The id of the automation node this control applies to.
+                  branch:
+                    type: string
+                    enum:
+                      - left
+                      - right
+                required:
+                  - nodeId
+                  - branch
+                additionalProperties: false
+              maxItems: 1000
+              default: []
+              description: Forced branch per percentage-split node; a node not listed here picks deterministically.
+          additionalProperties: false
+          description: Simulated engagement and forced split branches for this test run; omit for a plain dry run in which engagement filters take their else branch.
       additionalProperties: false
     AutomationRunDryRunResponse:
       type: object
@@ -9296,6 +9584,102 @@ components:
                 format: date-time
               error:
                 type: string
+              testCoverage:
+                type: object
+                properties:
+                  mode:
+                    type: string
+                    enum:
+                      - smoke
+                      - scenario
+                  complete:
+                    type: boolean
+                  visitedNodes:
+                    type: array
+                    items:
+                      type: string
+                  unvisitedNodes:
+                    type: array
+                    items:
+                      type: string
+                  traversedConnections:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        from:
+                          type: string
+                          minLength: 1
+                          maxLength: 200
+                          description: The id of the automation node this control applies to.
+                        to:
+                          type: string
+                          minLength: 1
+                          maxLength: 200
+                          description: The id of the automation node this control applies to.
+                        branch:
+                          type: string
+                      required:
+                        - from
+                        - to
+                  untraversedConnections:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        from:
+                          type: string
+                          minLength: 1
+                          maxLength: 200
+                          description: The id of the automation node this control applies to.
+                        to:
+                          type: string
+                          minLength: 1
+                          maxLength: 200
+                          description: The id of the automation node this control applies to.
+                        branch:
+                          type: string
+                      required:
+                        - from
+                        - to
+                  decisions:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        nodeId:
+                          type: string
+                          minLength: 1
+                          maxLength: 200
+                          description: The id of the automation node this control applies to.
+                        branch:
+                          type: string
+                        source:
+                          type: string
+                          enum:
+                            - simulated
+                            - forced
+                            - deterministic
+                            - payload
+                            - smoke
+                            - upstream_not_delivered
+                      required:
+                        - nodeId
+                        - branch
+                        - source
+                  limitations:
+                    type: array
+                    items:
+                      type: string
+                required:
+                  - mode
+                  - complete
+                  - visitedNodes
+                  - unvisitedNodes
+                  - traversedConnections
+                  - untraversedConnections
+                  - decisions
+                  - limitations
               logs:
                 type: array
                 items:
@@ -9428,6 +9812,102 @@ components:
           format: date-time
         error:
           type: string
+        testCoverage:
+          type: object
+          properties:
+            mode:
+              type: string
+              enum:
+                - smoke
+                - scenario
+            complete:
+              type: boolean
+            visitedNodes:
+              type: array
+              items:
+                type: string
+            unvisitedNodes:
+              type: array
+              items:
+                type: string
+            traversedConnections:
+              type: array
+              items:
+                type: object
+                properties:
+                  from:
+                    type: string
+                    minLength: 1
+                    maxLength: 200
+                    description: The id of the automation node this control applies to.
+                  to:
+                    type: string
+                    minLength: 1
+                    maxLength: 200
+                    description: The id of the automation node this control applies to.
+                  branch:
+                    type: string
+                required:
+                  - from
+                  - to
+            untraversedConnections:
+              type: array
+              items:
+                type: object
+                properties:
+                  from:
+                    type: string
+                    minLength: 1
+                    maxLength: 200
+                    description: The id of the automation node this control applies to.
+                  to:
+                    type: string
+                    minLength: 1
+                    maxLength: 200
+                    description: The id of the automation node this control applies to.
+                  branch:
+                    type: string
+                required:
+                  - from
+                  - to
+            decisions:
+              type: array
+              items:
+                type: object
+                properties:
+                  nodeId:
+                    type: string
+                    minLength: 1
+                    maxLength: 200
+                    description: The id of the automation node this control applies to.
+                  branch:
+                    type: string
+                  source:
+                    type: string
+                    enum:
+                      - simulated
+                      - forced
+                      - deterministic
+                      - payload
+                      - smoke
+                      - upstream_not_delivered
+                required:
+                  - nodeId
+                  - branch
+                  - source
+            limitations:
+              type: array
+              items:
+                type: string
+          required:
+            - mode
+            - complete
+            - visitedNodes
+            - unvisitedNodes
+            - traversedConnections
+            - untraversedConnections
+            - decisions
+            - limitations
         logs:
           type: array
           items:
@@ -10333,6 +10813,9 @@ components:
               code:
                 type: string
                 minLength: 1
+              email:
+                type: string
+                minLength: 1
               field:
                 type: string
                 minLength: 1
@@ -10392,7 +10875,6 @@ components:
           properties:
             email:
               type: string
-              format: email
             firstName:
               type: string
             lastName:
@@ -10431,13 +10913,7 @@ components:
                 - valid
                 - risky
                 - invalid
-            verificationStatus:
-              type: string
-              enum:
-                - valid
-                - risky
-                - invalid
-              description: "Deprecated: legacy mirror of validationStatus. Will be removed; read validationStatus."
+              description: "The latest verdict. `valid` only ever comes from a deliverability check (`validate: true` on ingest, or POST /v1/contacts/validate), which also sets `lastValidatedAt`. Without a check the free format check on ingest stores `risky` (disposable or role address) or `invalid`, and leaves the field unset otherwise: not validated."
             suppressed:
               type: boolean
               default: false
@@ -10503,6 +10979,9 @@ components:
             type: object
             properties:
               code:
+                type: string
+                minLength: 1
+              email:
                 type: string
                 minLength: 1
               field:
@@ -10693,7 +11172,6 @@ components:
           properties:
             email:
               type: string
-              format: email
             firstName:
               type: string
             lastName:
@@ -10732,13 +11210,7 @@ components:
                 - valid
                 - risky
                 - invalid
-            verificationStatus:
-              type: string
-              enum:
-                - valid
-                - risky
-                - invalid
-              description: "Deprecated: legacy mirror of validationStatus. Will be removed; read validationStatus."
+              description: "The latest verdict. `valid` only ever comes from a deliverability check (`validate: true` on ingest, or POST /v1/contacts/validate), which also sets `lastValidatedAt`. Without a check the free format check on ingest stores `risky` (disposable or role address) or `invalid`, and leaves the field unset otherwise: not validated."
             suppressed:
               type: boolean
               default: false
@@ -10840,7 +11312,6 @@ components:
       properties:
         email:
           type: string
-          format: email
         deleted:
           type: boolean
       required:
@@ -10857,7 +11328,6 @@ components:
             properties:
               email:
                 type: string
-                format: email
               firstName:
                 type: string
               lastName:
@@ -10896,13 +11366,7 @@ components:
                   - valid
                   - risky
                   - invalid
-              verificationStatus:
-                type: string
-                enum:
-                  - valid
-                  - risky
-                  - invalid
-                description: "Deprecated: legacy mirror of validationStatus. Will be removed; read validationStatus."
+                description: "The latest verdict. `valid` only ever comes from a deliverability check (`validate: true` on ingest, or POST /v1/contacts/validate), which also sets `lastValidatedAt`. Without a check the free format check on ingest stores `risky` (disposable or role address) or `invalid`, and leaves the field unset otherwise: not validated."
               suppressed:
                 type: boolean
                 default: false
@@ -11005,7 +11469,7 @@ components:
               field:
                 type: string
                 minLength: 1
-                description: The contact column or custom-field name to filter on (e.g. `email`, `firstName`, or a key from `run_data_command` (`db find fieldDefinitions`) or GET /v1/fields).
+                description: The contact column or custom-field name to filter on (e.g. `email`, `firstName`, or a key from GET /v1/fields).
               operator:
                 type: string
                 minLength: 1
@@ -11155,6 +11619,9 @@ components:
               code:
                 type: string
                 minLength: 1
+              email:
+                type: string
+                minLength: 1
               field:
                 type: string
                 minLength: 1
@@ -11271,7 +11738,8 @@ components:
           type: array
           items:
             type: string
-            format: email
+            minLength: 1
+            maxLength: 320
           minItems: 1
           maxItems: 1000
       required:
@@ -12527,7 +12995,7 @@ components:
           enum:
             - marketing
             - transactional
-          description: Change the domain purpose. Live gates fail closed if a campaign still points at a transactional domain; automation sends re-derive their class from the new purpose.
+          description: Change the domain purpose. Live gates fail closed if a campaign still points at a transactional domain; automation sends re-derive their class from the new purpose, so after a flip to transactional, published automations send with no unsubscribe link and to unsubscribed contacts.
       additionalProperties: false
     DomainsDeleteResponse:
       type: object
@@ -14100,6 +14568,25 @@ components:
         truncated:
           type: boolean
           description: true when the output was cut at the size budget
+        stdout:
+          type: string
+        stderr:
+          type: string
+        pagination:
+          type: object
+          properties:
+            incomplete:
+              type: boolean
+            continuations:
+              type: array
+              items:
+                type: string
+          required:
+            - incomplete
+            - continuations
+          additionalProperties: false
+        retryCommand:
+          type: string
       required:
         - exitCode
         - output
@@ -15277,15 +15764,15 @@ paths:
         - Emails
       summary: Get an email design
       description: |-
-        Reads one design as the bare `EmailSummary` row: `emailId`, the latest `emailVersionId` (the pin for `POST /v1/sends` and sendEmail nodes), `title`, `status`, `subjectLine`, `previewText`, `previewImage`, `updatedAt` and `group`.
+        Reads one design as the bare `EmailDetail` row: `emailId`, the `emailVersionId` (the pin for `POST /v1/sends` and sendEmail nodes), `title`, `status`, `previewStatus`, `subjectLine`, `previewText`, `previewImage`, `updatedAt` and `group`, plus `errorMessage` when a generation failed.
 
-        **Use when** inspecting a design before sending it, pinning its latest version, or pulling its rendered HTML or version history.
+        **Use when** inspecting a design before sending it, pinning a version, polling a generation you started, or pulling rendered HTML or version history.
 
-        **Input** `emailId` in the path; `include=html` adds the rendered HTML of the latest version and `include=versions` the lean `{ version, emailVersionId }` history (comma-separate both).
+        **Input** `emailId` in the path. By default the row is the current head; `emailVersionId` reads a saved version and `runId` (returned by a create or edit) reads the version that run produced; pass one or neither, never both. `include=html` adds the selected version’s rendered HTML once it is `ready`, and `include=versions` the lean `{ version, emailVersionId }` history (comma-separate both).
 
-        **Returns** `200` with the row; the `include` fields are present only when requested.
+        **Returns** `200` with the row; the `include` fields are present only when requested. A run that never saved a version reads as `failed` with the reason, and the design keeps its last saved version.
 
-        **Errors** `404 EMAIL_NOT_FOUND` for an unknown or cross-brand id; `400 INVALID_REQUEST` for an unknown `include` token.
+        **Errors** `404 EMAIL_NOT_FOUND` for an unknown or cross-brand id; `404 EMAIL_VERSION_NOT_FOUND` for a version or run this design does not have; `409 EMAIL_RUN_AMBIGUOUS` when a legacy run matches more than one version (read it by `emailVersionId`); `503 SERVICE_UNAVAILABLE` when storage is briefly unreachable (retry the same read); `400 INVALID_REQUEST` for an unknown `include` token or both selectors.
 
         **See also** `listEmails`, `editEmail`, `createSend`, `restoreEmailVersion`.
       parameters:
@@ -15301,10 +15788,28 @@ paths:
           in: path
         - schema:
             type: string
-            description: "Comma-separated expansions: `html` (rendered HTML of the latest version), `versions` (lean `{ version, emailVersionId }` history)."
+            description: "Comma-separated expansions: `html` (rendered HTML of the selected version, once it is `ready`), `versions` (lean `{ version, emailVersionId }` history)."
           required: false
-          description: "Comma-separated expansions: `html` (rendered HTML of the latest version), `versions` (lean `{ version, emailVersionId }` history)."
+          description: "Comma-separated expansions: `html` (rendered HTML of the selected version, once it is `ready`), `versions` (lean `{ version, emailVersionId }` history)."
           name: include
+          in: query
+        - schema:
+            type: string
+            minLength: 1
+            maxLength: 64
+            description: Read this saved version instead of the current head. Mutually exclusive with `runId`.
+          required: false
+          description: Read this saved version instead of the current head. Mutually exclusive with `runId`.
+          name: emailVersionId
+          in: query
+        - schema:
+            type: string
+            minLength: 1
+            maxLength: 128
+            description: Read the version one generation run produced — the `runId` a create or edit returned. Mutually exclusive with `emailVersionId`.
+          required: false
+          description: Read the version one generation run produced — the `runId` a create or edit returned. Mutually exclusive with `emailVersionId`.
+          name: runId
           in: query
         - name: X-Brand-Id
           in: header
@@ -15350,12 +15855,14 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/EmailSummary"
+                $ref: "#/components/schemas/EmailDetail"
               example:
                 emailId: V1StGXR8_Z5jdHi6B-myT
                 emailVersionId: Yc5Kz8Sq2Wn7Lp4Tm1RvX
+                version: latest
                 title: Welcome Email
                 status: ready
+                previewStatus: available
                 subjectLine: Welcome to Acme
                 previewText: Your first week, planned.
                 previewImage: https://cdn.brew.new/p/V1StGXR8_Z5jdHi6B-myT.png
@@ -15514,6 +16021,8 @@ paths:
             `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
 
             `EMAIL_NOT_FOUND`: No email design with that id exists in the brand (cross-brand ids surface as 404).
+
+            `EMAIL_VERSION_NOT_FOUND`: The design has no version with that id.
           headers:
             x-request-id:
               schema:
@@ -15544,6 +16053,39 @@ paths:
                       type: not_found
                       message: No email design with that id exists in the brand (cross-brand ids surface as 404).
                       suggestion: List designs with GET /v1/emails.
+                      docs: https://docs.brew.new/api-reference/api/errors
+                emailVersionNotFound:
+                  summary: EMAIL_VERSION_NOT_FOUND
+                  value:
+                    error:
+                      code: EMAIL_VERSION_NOT_FOUND
+                      type: not_found
+                      message: The design has no version with that id.
+                      suggestion: List versions with GET /v1/emails/{emailId}?include=versions and retry with a valid emailVersionId.
+                      docs: https://docs.brew.new/api-reference/api/errors
+        "409":
+          description: "`EMAIL_RUN_AMBIGUOUS`: A legacy generation run matches more than one saved version of the design."
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                emailRunAmbiguous:
+                  summary: EMAIL_RUN_AMBIGUOUS
+                  value:
+                    error:
+                      code: EMAIL_RUN_AMBIGUOUS
+                      type: conflict
+                      message: A legacy generation run matches more than one saved version of the design.
+                      suggestion: List versions with GET /v1/emails/{emailId}?include=versions and read the one you want by emailVersionId.
                       docs: https://docs.brew.new/api-reference/api/errors
         "429":
           description: "`RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens."
@@ -15622,6 +16164,37 @@ paths:
                       message: An unexpected failure; the x-request-id header identifies it.
                       suggestion: Retry the request. If it keeps failing, contact support with the x-request-id header.
                       docs: https://docs.brew.new/api-reference/api/errors
+        "503":
+          description: "`SERVICE_UNAVAILABLE`: A dependency the operation must consult (billing, the idempotency store) is temporarily unavailable, so the request was refused rather than run unmetered."
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+            Retry-After:
+              schema:
+                type: integer
+                description: Seconds to wait before retrying the request.
+                example: 42
+              required: true
+              description: Seconds to wait before retrying the request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                serviceUnavailable:
+                  summary: SERVICE_UNAVAILABLE
+                  value:
+                    error:
+                      code: SERVICE_UNAVAILABLE
+                      type: service_unavailable
+                      message: A dependency the operation must consult (billing, the idempotency store) is temporarily unavailable, so the request was refused rather than run unmetered.
+                      suggestion: Retry the request after a short delay.
+                      docs: https://docs.brew.new/api-reference/api/errors
       x-brew-scope: emails
       x-brew-brand-scope: brand
       x-brew-idempotency: none
@@ -15633,15 +16206,15 @@ paths:
         - Emails
       summary: Edit an email design
       description: |-
-        Updates a design: an AI edit (`prompt`), its envelope (`title`, `subjectLine`), or both in one call. At least one of the three is required. A design renames here exactly like an audience, trigger, automation or group renames through its own PATCH.
+        Updates a design: an AI edit (`prompt`), its envelope (`title`, `subjectLine`, `groupId`), or both in one call. At least one of the four is required. A design renames and moves between groups here exactly like an audience, trigger, automation or group renames through its own PATCH.
 
-        **Use when** changing an existing design: rewording or restyling it with a prompt, renaming it (a clone starts as `Copy of …`), or setting the inbox subject the design carries by default.
+        **Use when** changing an existing design: rewording or restyling it with a prompt, renaming it (a clone starts as `Copy of …`), setting the inbox subject the design carries by default, or filing it in another group.
 
-        **Input** `prompt` runs the Brew email agent against the current latest version (or the `emailVersionId` pin, optionally grounded by `contentUrls`) and writes a new `version: "latest"` row on the same `emailId` (the previous head becomes a numeric historical version); usage-metered by actual token spend. `title` renames the design (its canvas name, 1 to 200 characters) and `subjectLine` sets the default inbox subject; either or both without `prompt` is a deterministic in-place patch (no AI run, no new version, free). With `prompt`, the rename lands first so the new version inherits it and the subject is applied to the new head. `emailVersionId` requires `prompt`.
+        **Input** `prompt` runs the Brew email agent against the current latest version (or the `emailVersionId` pin, optionally grounded by `contentUrls`) and writes a new `version: "latest"` row on the same `emailId` (the previous head becomes a numeric historical version); usage-metered by actual token spend. `title` renames the design (its canvas name, 1 to 200 characters), `subjectLine` sets the default inbox subject and `groupId` moves it into an existing group (`null` = Ungrouped); any of them without `prompt` is ONE atomic in-place patch (no AI run, no new version, free). With `prompt`, the rename and move land first so the new version inherits them and the subject is applied to the new head. `emailVersionId` requires `prompt`.
 
-        **Returns** `200` with the generated-email shape: the NEW head after a prompt edit, or the CURRENT head after an envelope patch (`title` and `subjectLine` echo the values set); a text response when the agent answered in prose.
+        **Returns** `200` with the generated-email shape: the NEW head after a prompt edit, or the CURRENT head after an envelope patch (with its `title`, `subjectLine` and `group` after the patch); a text response when the agent answered in prose.
 
-        **Errors** `404 EMAIL_NOT_FOUND`, `EMAIL_VERSION_NOT_FOUND` (a pin that is not one of this design's versions); `409 EMAIL_IN_PROGRESS` while the design is still generating (or a concurrent edit moved the head between read and patch); `422 BRAND_NOT_READY` until the brand has finished extracting; `502 EMAIL_GENERATION_FAILED` when the agent run fails (retry later); `400 INVALID_REQUEST` for a body with none of the three fields, or `emailVersionId` without `prompt`.
+        **Errors** `404 EMAIL_NOT_FOUND`, `EMAIL_VERSION_NOT_FOUND` (a pin that is not one of this design's versions), `EMAIL_GROUP_NOT_FOUND` (a `groupId` that is not one of this brand's groups); `409 EMAIL_IN_PROGRESS` while the design is still generating (or a concurrent edit moved the head between read and patch); `422 BRAND_NOT_READY` until the brand has finished extracting; `502 EMAIL_GENERATION_FAILED` when the agent run fails (retry later); `400 INVALID_REQUEST` for a body with none of the four fields, or `emailVersionId` without `prompt`.
 
         **See also** `cloneEmail` (name the copy with `title`), `restoreEmailVersion`, `listEmails`.
       parameters:
@@ -15666,7 +16239,7 @@ paths:
           example: kx7b3s7fapqz8mjm12ekz1kxdx87yceg
       requestBody:
         required: true
-        description: A natural-language `prompt` edit (optional `emailVersionId` source pin, optional `contentUrls`) and/or the envelope fields `title` and `subjectLine` — at least one of the three. Identity lives on the path.
+        description: A natural-language `prompt` edit (optional `emailVersionId` source pin, optional `contentUrls`) and/or the envelope fields `title`, `subjectLine` and `groupId` — at least one of the four. Identity lives on the path.
         content:
           application/json:
             schema:
@@ -15684,6 +16257,10 @@ paths:
                 summary: Rename the design (no AI run, free)
                 value:
                   title: September product roundup
+              move:
+                summary: Move the design to Ungrouped (no AI run, free)
+                value:
+                  groupId: null
               editWithSubject:
                 summary: AI edit + set the subject line
                 value:
@@ -15911,6 +16488,8 @@ paths:
           description: |-
             `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
 
+            `EMAIL_GROUP_NOT_FOUND`: No email group with that id exists in the brand.
+
             `EMAIL_NOT_FOUND`: No email design with that id exists in the brand (cross-brand ids surface as 404).
 
             `EMAIL_VERSION_NOT_FOUND`: The design has no version with that id.
@@ -15935,6 +16514,15 @@ paths:
                       type: not_found
                       message: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
                       suggestion: List the brands this credential can reach with GET /v1/brands.
+                      docs: https://docs.brew.new/api-reference/api/errors
+                emailGroupNotFound:
+                  summary: EMAIL_GROUP_NOT_FOUND
+                  value:
+                    error:
+                      code: EMAIL_GROUP_NOT_FOUND
+                      type: not_found
+                      message: No email group with that id exists in the brand.
+                      suggestion: List groups with GET /v1/email-groups.
                       docs: https://docs.brew.new/api-reference/api/errors
                 emailNotFound:
                   summary: EMAIL_NOT_FOUND
@@ -19384,11 +19972,11 @@ paths:
         - Emails
       summary: Preview across clients & devices
       description: |-
-        Render the design’s latest version across REAL email clients & devices — Gmail, Outlook, Apple Mail, iOS (with dark-mode variants), plus Yahoo — and return a screenshot per client rehosted on the Brew CDN. See exactly how the email looks in a specific inbox before sending.
+        Starts a durable rendering job for the selected email version across real email clients, including Gmail, Outlook, Apple Mail, iOS, and dark-mode variants. Omit emailVersionId to pin the current version at admission.
 
-        Pass `clients` (ids from the supported catalogue) to target specific inboxes/devices, or send `{}` for a popular default spread. Rendering is async: this is a single bounded call, so any clients still rendering when the window elapses come back in `pending` (`status: "partial"`) — call again to retry them.
+        Pass supported client IDs or send {} for the default spread. Returns previewId and per-client progress immediately. Read GET /v1/emails/client-previews/{previewId} to resume; polling never creates another provider test.
 
-        FIXED cost: 10 credits, charged (`X-Credit-Cost: 10`) ONLY when at least one client renders. If ZERO clients finish in time (or the preview service is temporarily unavailable), the call returns a retryable `503` and is NOT billed.
+        Reserves 10 credits at admission and settles once when useful output exists. If the job produces no usable image, the reservation is released. Failed clients include individual reasons and retryability; a partial result retains all successful full-size links.
       parameters:
         - name: Idempotency-Key
           in: header
@@ -19437,7 +20025,154 @@ paths:
                     - iphone16_18
       responses:
         "200":
-          description: 'Per-client screenshots. `ready` clients carry a rehosted `imageUrl`; clients still rendering are listed in `pending` with `status: "processing"`.'
+          description: An existing matching rendering job, including terminal results when already complete.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+            X-RateLimit-Limit:
+              schema:
+                type: integer
+                description: Requests allowed in the current rolling rate limit window.
+                example: 100
+              required: true
+              description: Requests allowed in the current rolling rate limit window.
+            X-RateLimit-Remaining:
+              schema:
+                type: integer
+                description: Requests remaining in the current rolling rate limit window.
+                example: 99
+              required: true
+              description: Requests remaining in the current rolling rate limit window.
+            X-RateLimit-Reset:
+              schema:
+                type: integer
+                description: Unix timestamp in seconds for when the rolling window fully resets.
+                example: 1712592360
+              required: true
+              description: Unix timestamp in seconds for when the rolling window fully resets.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  previewId:
+                    type: string
+                  emailId:
+                    type: string
+                  emailVersionId:
+                    type: string
+                    description: Portable version ID when present. previewId pins the saved snapshot.
+                  status:
+                    type: string
+                    enum:
+                      - queued
+                      - running
+                      - completed
+                      - partially_completed
+                      - failed
+                    description: "The job: `queued` or `running` until every client settles, then `completed`, `partially_completed` (some screenshots failed) or `failed`."
+                  previews:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        label:
+                          type: string
+                        category:
+                          type: string
+                          enum:
+                            - gmail
+                            - outlook
+                            - apple
+                            - yahoo
+                            - other
+                        os:
+                          type: string
+                        dark:
+                          type: boolean
+                        status:
+                          type: string
+                          enum:
+                            - running
+                            - completed
+                            - failed
+                        imageUrl:
+                          type:
+                            - string
+                            - "null"
+                          format: uri
+                        reason:
+                          type: string
+                          enum:
+                            - pending
+                            - upstream_unavailable
+                            - unsupported_client
+                            - render_failed
+                            - rehost_failed
+                            - expired
+                            - submission_unknown
+                            - authorization_changed
+                            - snapshot_unavailable
+                        retryable:
+                          type: boolean
+                      required:
+                        - id
+                        - label
+                        - category
+                        - os
+                        - dark
+                        - status
+                        - imageUrl
+                        - retryable
+                      additionalProperties: false
+                  pending:
+                    type: array
+                    items:
+                      type: string
+                  createdAt:
+                    type: string
+                    format: date-time
+                  expiresAt:
+                    type: string
+                    format: date-time
+                  nextPollAfterMs:
+                    type: integer
+                    minimum: 0
+                  credits:
+                    type: object
+                    properties:
+                      cost:
+                        type: number
+                      status:
+                        type: string
+                        enum:
+                          - reserved
+                          - settled
+                          - released
+                    required:
+                      - cost
+                      - status
+                    additionalProperties: false
+                required:
+                  - previewId
+                  - emailId
+                  - status
+                  - previews
+                  - pending
+                  - createdAt
+                  - expiresAt
+                  - nextPollAfterMs
+                  - credits
+                additionalProperties: false
+        "202":
+          description: Accepted rendering job; poll the returned previewId after nextPollAfterMs.
           headers:
             x-request-id:
               schema:
@@ -19471,26 +20206,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/EmailClientPreviewResponse"
-              example:
-                emailId: V1StGXR8_Z5jdHi6B-myT
-                status: partial
-                previews:
-                  - id: gmailcom-lm_chrcurrent_win10
-                    label: Gmail (Web)
-                    category: gmail
-                    os: Web
-                    dark: false
-                    status: ready
-                    imageUrl: https://cdn.brew.new/email-preview/V1StGXR8_Z5jdHi6B-myT/gmailcom-lm_chrcurrent_win10-abc.png
-                  - id: outlook2021_win11_lm_dt
-                    label: Outlook 2021 (Windows)
-                    category: outlook
-                    os: Windows
-                    dark: false
-                    status: processing
-                    imageUrl: null
-                pending:
-                  - outlook2021_win11_lm_dt
         "400":
           description: |-
             `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
@@ -21060,6 +21775,1269 @@ paths:
                       type: not_found
                       message: No email design with that id exists in the brand (cross-brand ids surface as 404).
                       suggestion: List designs with GET /v1/emails.
+                      docs: https://docs.brew.new/api-reference/api/errors
+        "429":
+          description: "`RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens."
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+            X-RateLimit-Limit:
+              schema:
+                type: integer
+                description: Requests allowed in the current rolling rate limit window.
+                example: 100
+              required: true
+              description: Requests allowed in the current rolling rate limit window.
+            X-RateLimit-Remaining:
+              schema:
+                type: integer
+                description: Requests remaining in the current rolling rate limit window.
+                example: 99
+              required: true
+              description: Requests remaining in the current rolling rate limit window.
+            X-RateLimit-Reset:
+              schema:
+                type: integer
+                description: Unix timestamp in seconds for when the rolling window fully resets.
+                example: 1712592360
+              required: true
+              description: Unix timestamp in seconds for when the rolling window fully resets.
+            Retry-After:
+              schema:
+                type: integer
+                description: Seconds to wait before retrying the request.
+                example: 42
+              required: true
+              description: Seconds to wait before retrying the request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                rateLimited:
+                  summary: RATE_LIMITED
+                  value:
+                    error:
+                      code: RATE_LIMITED
+                      type: rate_limit
+                      message: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens.
+                      suggestion: Wait for the retry window before sending another request.
+                      docs: https://docs.brew.new/api-reference/api/rate-limits
+                      retryAfter: 42
+        "500":
+          description: "`INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it."
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                internalError:
+                  summary: INTERNAL_ERROR
+                  value:
+                    error:
+                      code: INTERNAL_ERROR
+                      type: internal_error
+                      message: An unexpected failure; the x-request-id header identifies it.
+                      suggestion: Retry the request. If it keeps failing, contact support with the x-request-id header.
+                      docs: https://docs.brew.new/api-reference/api/errors
+      x-brew-scope: emails
+      x-brew-brand-scope: brand
+      x-brew-idempotency: none
+      x-brew-credited: false
+      x-brew-rate-policy: emails.read
+  /v1/emails/audits/{auditId}:
+    get:
+      operationId: getEmailAudit
+      tags:
+        - Emails
+      summary: Read a saved email audit
+      description: Returns a bounded page of the normalized audit findings, including finding IDs, rule IDs, targets, remediation, and the audited content hash. Reading pages is free and never reruns the audit. Continue using pagination.cursor. Reports are retained for seven days; the report’s expiresAt is the separate audit-attestation expiry. Completion and coverage fields identify incomplete analysis or representative-only findings.
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+          required: true
+          name: auditId
+          in: path
+        - schema:
+            type: string
+            maxLength: 100
+          required: false
+          name: cursor
+          in: query
+        - schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            description: Page size (1-100). Defaults to 100.
+            example: 50
+          required: false
+          description: Page size (1-100). Defaults to 100.
+          name: limit
+          in: query
+          example: 50
+        - name: X-Brand-Id
+          in: header
+          required: false
+          description: The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 64
+          example: kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+      responses:
+        "200":
+          description: One page of saved findings.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+            X-RateLimit-Limit:
+              schema:
+                type: integer
+                description: Requests allowed in the current rolling rate limit window.
+                example: 100
+              required: true
+              description: Requests allowed in the current rolling rate limit window.
+            X-RateLimit-Remaining:
+              schema:
+                type: integer
+                description: Requests remaining in the current rolling rate limit window.
+                example: 99
+              required: true
+              description: Requests remaining in the current rolling rate limit window.
+            X-RateLimit-Reset:
+              schema:
+                type: integer
+                description: Unix timestamp in seconds for when the rolling window fully resets.
+                example: 1712592360
+              required: true
+              description: Unix timestamp in seconds for when the rolling window fully resets.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  schemaVersion:
+                    type: number
+                    enum:
+                      - 1
+                  rulesetVersion:
+                    type: string
+                    minLength: 1
+                    maxLength: 100
+                  auditId:
+                    type: string
+                    format: uuid
+                  contentHash:
+                    type: string
+                    pattern: ^sha256:[0-9a-f]{64}$
+                  auditedAt:
+                    type: string
+                    format: date-time
+                  expiresAt:
+                    type: string
+                    format: date-time
+                  policy:
+                    type: object
+                    properties:
+                      purpose:
+                        type: string
+                        enum:
+                          - marketing
+                          - transactional
+                          - unknown
+                      source:
+                        type: string
+                        enum:
+                          - provided
+                          - defaulted
+                          - trusted_adapter
+                      unsubscribe:
+                        type: string
+                        enum:
+                          - required
+                          - not_required
+                          - not_evaluated
+                    required:
+                      - purpose
+                      - source
+                      - unsubscribe
+                    additionalProperties: false
+                  summary:
+                    type: object
+                    properties:
+                      blockers:
+                        type: integer
+                        minimum: 0
+                      errors:
+                        type: integer
+                        minimum: 0
+                      warnings:
+                        type: integer
+                        minimum: 0
+                      info:
+                        type: integer
+                        minimum: 0
+                      total:
+                        type: integer
+                        minimum: 0
+                    required:
+                      - blockers
+                      - errors
+                      - warnings
+                      - info
+                      - total
+                    additionalProperties: false
+                  checks:
+                    type: array
+                    items:
+                      oneOf:
+                        - type: object
+                          properties:
+                            id:
+                              type: string
+                              minLength: 1
+                              maxLength: 128
+                            status:
+                              type: string
+                              enum:
+                                - passed
+                            durationMs:
+                              type: integer
+                              minimum: 0
+                            findingCount:
+                              type: number
+                              enum:
+                                - 0
+                          required:
+                            - id
+                            - status
+                            - durationMs
+                            - findingCount
+                          additionalProperties: false
+                        - type: object
+                          properties:
+                            id:
+                              type: string
+                              minLength: 1
+                              maxLength: 128
+                            status:
+                              type: string
+                              enum:
+                                - issues
+                            durationMs:
+                              type: integer
+                              minimum: 0
+                            findingCount:
+                              type: integer
+                              exclusiveMinimum: 0
+                          required:
+                            - id
+                            - status
+                            - durationMs
+                            - findingCount
+                          additionalProperties: false
+                        - type: object
+                          properties:
+                            id:
+                              type: string
+                              minLength: 1
+                              maxLength: 128
+                            status:
+                              type: string
+                              enum:
+                                - not_applicable
+                            reason:
+                              type: string
+                              enum:
+                                - no_remote_links
+                                - no_remote_images
+                                - no_remote_assets
+                                - missing_copy
+                                - requires_sending_domain
+                                - send_transport_owned
+                                - requires_audience_context
+                                - separate_deliverability_test
+                                - transactional_purpose
+                                - unknown_purpose
+                          required:
+                            - id
+                            - status
+                            - reason
+                          additionalProperties: false
+                        - type: object
+                          properties:
+                            id:
+                              type: string
+                              minLength: 1
+                              maxLength: 128
+                            status:
+                              type: string
+                              enum:
+                                - unavailable
+                            reason:
+                              type: string
+                              enum:
+                                - timeout
+                                - upstream
+                                - invalid_response
+                            retryable:
+                              type: boolean
+                            durationMs:
+                              type: integer
+                              minimum: 0
+                          required:
+                            - id
+                            - status
+                            - reason
+                            - retryable
+                            - durationMs
+                          additionalProperties: false
+                    maxItems: 32
+                  metrics:
+                    type: object
+                    properties:
+                      htmlBytes:
+                        type: integer
+                        minimum: 0
+                      linkCount:
+                        type: integer
+                        minimum: 0
+                      imageCount:
+                        type: integer
+                        minimum: 0
+                      gifCount:
+                        type: integer
+                        minimum: 0
+                      loadedSize:
+                        oneOf:
+                          - type: object
+                            properties:
+                              status:
+                                type: string
+                                enum:
+                                  - exact
+                              htmlBytes:
+                                type: integer
+                                minimum: 0
+                              remoteAssetBytes:
+                                type: integer
+                                minimum: 0
+                              totalBytes:
+                                type: integer
+                                minimum: 0
+                              assetCount:
+                                type: integer
+                                minimum: 0
+                            required:
+                              - status
+                              - htmlBytes
+                              - remoteAssetBytes
+                              - totalBytes
+                              - assetCount
+                            additionalProperties: false
+                          - type: object
+                            properties:
+                              status:
+                                type: string
+                                enum:
+                                  - lower_bound
+                              htmlBytes:
+                                type: integer
+                                minimum: 0
+                              knownRemoteAssetBytes:
+                                type: integer
+                                minimum: 0
+                              knownTotalBytes:
+                                type: integer
+                                minimum: 0
+                              unknownAssetCount:
+                                type: integer
+                                exclusiveMinimum: 0
+                            required:
+                              - status
+                              - htmlBytes
+                              - knownRemoteAssetBytes
+                              - knownTotalBytes
+                              - unknownAssetCount
+                            additionalProperties: false
+                    required:
+                      - htmlBytes
+                      - linkCount
+                      - imageCount
+                      - gifCount
+                      - loadedSize
+                    additionalProperties: false
+                  findings:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          minLength: 1
+                          maxLength: 512
+                        ruleId:
+                          type: string
+                          minLength: 1
+                          maxLength: 128
+                        category:
+                          type: string
+                          enum:
+                            - compliance
+                            - links
+                            - images
+                            - accessibility
+                            - compatibility
+                            - copy
+                            - size
+                            - markup
+                        severity:
+                          type: string
+                          enum:
+                            - blocker
+                            - error
+                            - warning
+                            - info
+                        impact:
+                          type: string
+                          enum:
+                            - block
+                            - confirm
+                            - advisory
+                        message:
+                          type: string
+                          minLength: 1
+                          maxLength: 1000
+                        remediation:
+                          type: string
+                          minLength: 1
+                          maxLength: 1000
+                        occurrenceCount:
+                          type: integer
+                          exclusiveMinimum: 0
+                          description: Total occurrences of this RULE across the email, stamped on every representative finding of the rule so the total survives representative truncation. Reconcile by max per rule — summing across findings overcounts.
+                        sources:
+                          type: array
+                          items:
+                            type: string
+                            minLength: 1
+                            maxLength: 64
+                          minItems: 1
+                          maxItems: 16
+                        standards:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                                minLength: 1
+                                maxLength: 128
+                              url:
+                                type: string
+                                maxLength: 2048
+                                pattern: ^https?:\/\/
+                            required:
+                              - id
+                            additionalProperties: false
+                          maxItems: 8
+                        target:
+                          oneOf:
+                            - type: object
+                              properties:
+                                kind:
+                                  type: string
+                                  enum:
+                                    - email
+                              required:
+                                - kind
+                              additionalProperties: false
+                            - type: object
+                              properties:
+                                kind:
+                                  type: string
+                                  enum:
+                                    - subject
+                              required:
+                                - kind
+                              additionalProperties: false
+                            - type: object
+                              properties:
+                                kind:
+                                  type: string
+                                  enum:
+                                    - preview_text
+                              required:
+                                - kind
+                              additionalProperties: false
+                            - type: object
+                              properties:
+                                kind:
+                                  type: string
+                                  enum:
+                                    - link
+                                index:
+                                  type: integer
+                                  minimum: 0
+                                displayUrl:
+                                  type: string
+                                  maxLength: 300
+                              required:
+                                - kind
+                                - index
+                                - displayUrl
+                              additionalProperties: false
+                            - type: object
+                              properties:
+                                kind:
+                                  type: string
+                                  enum:
+                                    - image
+                                index:
+                                  type: integer
+                                  minimum: 0
+                                displayUrl:
+                                  type: string
+                                  maxLength: 300
+                              required:
+                                - kind
+                                - index
+                                - displayUrl
+                              additionalProperties: false
+                            - type: object
+                              properties:
+                                kind:
+                                  type: string
+                                  enum:
+                                    - element
+                                selector:
+                                  type: string
+                                  minLength: 1
+                                  maxLength: 300
+                              required:
+                                - kind
+                                - selector
+                              additionalProperties: false
+                      required:
+                        - id
+                        - ruleId
+                        - category
+                        - severity
+                        - impact
+                        - message
+                        - remediation
+                        - sources
+                        - target
+                      additionalProperties: false
+                    maxItems: 100
+                  totalFindings:
+                    type: integer
+                    minimum: 0
+                  findingsTruncated:
+                    type: boolean
+                  completion:
+                    oneOf:
+                      - type: object
+                        properties:
+                          status:
+                            type: string
+                            enum:
+                              - complete
+                          readiness:
+                            type: string
+                            enum:
+                              - ready
+                              - needs_review
+                              - not_ready
+                          score:
+                            type: integer
+                            minimum: 0
+                            maximum: 100
+                        required:
+                          - status
+                          - readiness
+                          - score
+                        additionalProperties: false
+                      - type: object
+                        properties:
+                          status:
+                            type: string
+                            enum:
+                              - partial
+                          readiness:
+                            type: string
+                            enum:
+                              - unknown
+                              - not_ready
+                          score:
+                            type: "null"
+                        required:
+                          - status
+                          - readiness
+                          - score
+                        additionalProperties: false
+                  pagination:
+                    type: object
+                    properties:
+                      cursor:
+                        type:
+                          - string
+                          - "null"
+                      hasMore:
+                        type: boolean
+                      returned:
+                        type: number
+                      storedFindings:
+                        type: number
+                    required:
+                      - cursor
+                      - hasMore
+                      - returned
+                      - storedFindings
+                    additionalProperties: false
+                required:
+                  - schemaVersion
+                  - rulesetVersion
+                  - auditId
+                  - contentHash
+                  - auditedAt
+                  - expiresAt
+                  - policy
+                  - summary
+                  - checks
+                  - metrics
+                  - findings
+                  - totalFindings
+                  - findingsTruncated
+                  - completion
+                  - pagination
+                additionalProperties: false
+        "400":
+          description: |-
+            `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+
+            `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                brandIdRequired:
+                  summary: BRAND_ID_REQUIRED
+                  value:
+                    error:
+                      code: BRAND_ID_REQUIRED
+                      type: invalid_request
+                      message: An organization-scoped credential called a brand-scoped operation without naming the brand.
+                      suggestion: List brands with GET /v1/brands, then name one with the X-Brand-Id header. There is no default brand.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                invalidRequest:
+                  summary: INVALID_REQUEST
+                  value:
+                    error:
+                      code: INVALID_REQUEST
+                      type: invalid_request
+                      message: "The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender."
+                      suggestion: Fix the field reported in `param` and retry.
+                      docs: https://docs.brew.new/api-reference/api/errors
+        "401":
+          description: |-
+            `API_KEY_REVOKED`: The API key was revoked.
+
+            `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+
+            `INVALID_API_KEY`: The API key is malformed or unknown.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                apiKeyRevoked:
+                  summary: API_KEY_REVOKED
+                  value:
+                    error:
+                      code: API_KEY_REVOKED
+                      type: authentication_error
+                      message: The API key was revoked.
+                      suggestion: Create a new active API key and retry.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                authenticationRequired:
+                  summary: AUTHENTICATION_REQUIRED
+                  value:
+                    error:
+                      code: AUTHENTICATION_REQUIRED
+                      type: authentication_error
+                      message: No API key or session accompanied the request.
+                      suggestion: Provide a valid API key or sign in with an organization session.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                invalidApiKey:
+                  summary: INVALID_API_KEY
+                  value:
+                    error:
+                      code: INVALID_API_KEY
+                      type: authentication_error
+                      message: The API key is malformed or unknown.
+                      suggestion: Check the API key format and retry with a valid active key.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+        "403":
+          description: |-
+            `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+
+            `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+
+            `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+
+            `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                accountSuspended:
+                  summary: ACCOUNT_SUSPENDED
+                  value:
+                    error:
+                      code: ACCOUNT_SUSPENDED
+                      type: authorization_error
+                      message: The organization behind the credential is suspended.
+                      suggestion: The organization behind this credential is suspended. Contact support@brew.new; do not retry.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                brandScopeMismatch:
+                  summary: BRAND_SCOPE_MISMATCH
+                  value:
+                    error:
+                      code: BRAND_SCOPE_MISMATCH
+                      type: authorization_error
+                      message: A brand-scoped credential named a brand other than the one it is bound to.
+                      suggestion: Omit the brand to use the one this credential is bound to, or use an organization-scoped credential to reach other brands.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                insufficientPermissions:
+                  summary: INSUFFICIENT_PERMISSIONS
+                  value:
+                    error:
+                      code: INSUFFICIENT_PERMISSIONS
+                      type: authorization_error
+                      message: The credential lacks the permission scope the operation needs.
+                      suggestion: Use an API key or session with the required permission.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                insufficientRole:
+                  summary: INSUFFICIENT_ROLE
+                  value:
+                    error:
+                      code: INSUFFICIENT_ROLE
+                      type: authorization_error
+                      message: "The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role)."
+                      suggestion: Ask an organization admin to run this, to add you to the brand, or to make you an admin.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+        "404":
+          description: |-
+            `AUDIT_NOT_FOUND`: No saved audit matches that id in this brand, or its seven day retention has expired.
+
+            `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                auditNotFound:
+                  summary: AUDIT_NOT_FOUND
+                  value:
+                    error:
+                      code: AUDIT_NOT_FOUND
+                      type: not_found
+                      message: No saved audit matches that id in this brand, or its seven day retention has expired.
+                      suggestion: Use an auditId returned by POST /v1/emails/audit for this brand, or run a new audit.
+                      docs: https://docs.brew.new/api-reference/api/errors
+                brandNotFound:
+                  summary: BRAND_NOT_FOUND
+                  value:
+                    error:
+                      code: BRAND_NOT_FOUND
+                      type: not_found
+                      message: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+                      suggestion: List the brands this credential can reach with GET /v1/brands.
+                      docs: https://docs.brew.new/api-reference/api/errors
+        "429":
+          description: "`RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens."
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+            X-RateLimit-Limit:
+              schema:
+                type: integer
+                description: Requests allowed in the current rolling rate limit window.
+                example: 100
+              required: true
+              description: Requests allowed in the current rolling rate limit window.
+            X-RateLimit-Remaining:
+              schema:
+                type: integer
+                description: Requests remaining in the current rolling rate limit window.
+                example: 99
+              required: true
+              description: Requests remaining in the current rolling rate limit window.
+            X-RateLimit-Reset:
+              schema:
+                type: integer
+                description: Unix timestamp in seconds for when the rolling window fully resets.
+                example: 1712592360
+              required: true
+              description: Unix timestamp in seconds for when the rolling window fully resets.
+            Retry-After:
+              schema:
+                type: integer
+                description: Seconds to wait before retrying the request.
+                example: 42
+              required: true
+              description: Seconds to wait before retrying the request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                rateLimited:
+                  summary: RATE_LIMITED
+                  value:
+                    error:
+                      code: RATE_LIMITED
+                      type: rate_limit
+                      message: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens.
+                      suggestion: Wait for the retry window before sending another request.
+                      docs: https://docs.brew.new/api-reference/api/rate-limits
+                      retryAfter: 42
+        "500":
+          description: "`INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it."
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                internalError:
+                  summary: INTERNAL_ERROR
+                  value:
+                    error:
+                      code: INTERNAL_ERROR
+                      type: internal_error
+                      message: An unexpected failure; the x-request-id header identifies it.
+                      suggestion: Retry the request. If it keeps failing, contact support with the x-request-id header.
+                      docs: https://docs.brew.new/api-reference/api/errors
+      x-brew-scope: emails
+      x-brew-brand-scope: brand
+      x-brew-idempotency: none
+      x-brew-credited: false
+      x-brew-rate-policy: emails.read
+  /v1/emails/client-previews/{previewId}:
+    get:
+      operationId: getEmailRendering
+      tags:
+        - Emails
+      summary: Read email rendering progress
+      description: Reads the existing rendering job and per-client results without submitting another provider test or charging again. Returns successful full-size image links, pending or failed clients with reasons and retryability, expiry, and credit reservation status. Poll the same previewId after nextPollAfterMs while the job is `queued` or `running`.
+      parameters:
+        - schema:
+            type: string
+            minLength: 1
+            maxLength: 100
+          required: true
+          name: previewId
+          in: path
+        - name: X-Brand-Id
+          in: header
+          required: false
+          description: The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 64
+          example: kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+      responses:
+        "200":
+          description: Rendering progress for the pinned email version and requested clients.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+            X-RateLimit-Limit:
+              schema:
+                type: integer
+                description: Requests allowed in the current rolling rate limit window.
+                example: 100
+              required: true
+              description: Requests allowed in the current rolling rate limit window.
+            X-RateLimit-Remaining:
+              schema:
+                type: integer
+                description: Requests remaining in the current rolling rate limit window.
+                example: 99
+              required: true
+              description: Requests remaining in the current rolling rate limit window.
+            X-RateLimit-Reset:
+              schema:
+                type: integer
+                description: Unix timestamp in seconds for when the rolling window fully resets.
+                example: 1712592360
+              required: true
+              description: Unix timestamp in seconds for when the rolling window fully resets.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  previewId:
+                    type: string
+                  emailId:
+                    type: string
+                  emailVersionId:
+                    type: string
+                    description: Portable version ID when present. previewId pins the saved snapshot.
+                  status:
+                    type: string
+                    enum:
+                      - queued
+                      - running
+                      - completed
+                      - partially_completed
+                      - failed
+                    description: "The job: `queued` or `running` until every client settles, then `completed`, `partially_completed` (some screenshots failed) or `failed`."
+                  previews:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        label:
+                          type: string
+                        category:
+                          type: string
+                          enum:
+                            - gmail
+                            - outlook
+                            - apple
+                            - yahoo
+                            - other
+                        os:
+                          type: string
+                        dark:
+                          type: boolean
+                        status:
+                          type: string
+                          enum:
+                            - running
+                            - completed
+                            - failed
+                        imageUrl:
+                          type:
+                            - string
+                            - "null"
+                          format: uri
+                        reason:
+                          type: string
+                          enum:
+                            - pending
+                            - upstream_unavailable
+                            - unsupported_client
+                            - render_failed
+                            - rehost_failed
+                            - expired
+                            - submission_unknown
+                            - authorization_changed
+                            - snapshot_unavailable
+                        retryable:
+                          type: boolean
+                      required:
+                        - id
+                        - label
+                        - category
+                        - os
+                        - dark
+                        - status
+                        - imageUrl
+                        - retryable
+                      additionalProperties: false
+                  pending:
+                    type: array
+                    items:
+                      type: string
+                  createdAt:
+                    type: string
+                    format: date-time
+                  expiresAt:
+                    type: string
+                    format: date-time
+                  nextPollAfterMs:
+                    type: integer
+                    minimum: 0
+                  credits:
+                    type: object
+                    properties:
+                      cost:
+                        type: number
+                      status:
+                        type: string
+                        enum:
+                          - reserved
+                          - settled
+                          - released
+                    required:
+                      - cost
+                      - status
+                    additionalProperties: false
+                required:
+                  - previewId
+                  - emailId
+                  - status
+                  - previews
+                  - pending
+                  - createdAt
+                  - expiresAt
+                  - nextPollAfterMs
+                  - credits
+                additionalProperties: false
+        "400":
+          description: |-
+            `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+
+            `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                brandIdRequired:
+                  summary: BRAND_ID_REQUIRED
+                  value:
+                    error:
+                      code: BRAND_ID_REQUIRED
+                      type: invalid_request
+                      message: An organization-scoped credential called a brand-scoped operation without naming the brand.
+                      suggestion: List brands with GET /v1/brands, then name one with the X-Brand-Id header. There is no default brand.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                invalidRequest:
+                  summary: INVALID_REQUEST
+                  value:
+                    error:
+                      code: INVALID_REQUEST
+                      type: invalid_request
+                      message: "The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender."
+                      suggestion: Fix the field reported in `param` and retry.
+                      docs: https://docs.brew.new/api-reference/api/errors
+        "401":
+          description: |-
+            `API_KEY_REVOKED`: The API key was revoked.
+
+            `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+
+            `INVALID_API_KEY`: The API key is malformed or unknown.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                apiKeyRevoked:
+                  summary: API_KEY_REVOKED
+                  value:
+                    error:
+                      code: API_KEY_REVOKED
+                      type: authentication_error
+                      message: The API key was revoked.
+                      suggestion: Create a new active API key and retry.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                authenticationRequired:
+                  summary: AUTHENTICATION_REQUIRED
+                  value:
+                    error:
+                      code: AUTHENTICATION_REQUIRED
+                      type: authentication_error
+                      message: No API key or session accompanied the request.
+                      suggestion: Provide a valid API key or sign in with an organization session.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                invalidApiKey:
+                  summary: INVALID_API_KEY
+                  value:
+                    error:
+                      code: INVALID_API_KEY
+                      type: authentication_error
+                      message: The API key is malformed or unknown.
+                      suggestion: Check the API key format and retry with a valid active key.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+        "403":
+          description: |-
+            `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+
+            `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+
+            `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+
+            `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                accountSuspended:
+                  summary: ACCOUNT_SUSPENDED
+                  value:
+                    error:
+                      code: ACCOUNT_SUSPENDED
+                      type: authorization_error
+                      message: The organization behind the credential is suspended.
+                      suggestion: The organization behind this credential is suspended. Contact support@brew.new; do not retry.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                brandScopeMismatch:
+                  summary: BRAND_SCOPE_MISMATCH
+                  value:
+                    error:
+                      code: BRAND_SCOPE_MISMATCH
+                      type: authorization_error
+                      message: A brand-scoped credential named a brand other than the one it is bound to.
+                      suggestion: Omit the brand to use the one this credential is bound to, or use an organization-scoped credential to reach other brands.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                insufficientPermissions:
+                  summary: INSUFFICIENT_PERMISSIONS
+                  value:
+                    error:
+                      code: INSUFFICIENT_PERMISSIONS
+                      type: authorization_error
+                      message: The credential lacks the permission scope the operation needs.
+                      suggestion: Use an API key or session with the required permission.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                insufficientRole:
+                  summary: INSUFFICIENT_ROLE
+                  value:
+                    error:
+                      code: INSUFFICIENT_ROLE
+                      type: authorization_error
+                      message: "The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role)."
+                      suggestion: Ask an organization admin to run this, to add you to the brand, or to make you an admin.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+        "404":
+          description: |-
+            `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+
+            `PREVIEW_NOT_FOUND`: No rendering job matches that id in this brand, or its results have expired.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                brandNotFound:
+                  summary: BRAND_NOT_FOUND
+                  value:
+                    error:
+                      code: BRAND_NOT_FOUND
+                      type: not_found
+                      message: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+                      suggestion: List the brands this credential can reach with GET /v1/brands.
+                      docs: https://docs.brew.new/api-reference/api/errors
+                previewNotFound:
+                  summary: PREVIEW_NOT_FOUND
+                  value:
+                    error:
+                      code: PREVIEW_NOT_FOUND
+                      type: not_found
+                      message: No rendering job matches that id in this brand, or its results have expired.
+                      suggestion: Use the previewId returned by POST /v1/emails/{emailId}/client-previews, or start a new job.
                       docs: https://docs.brew.new/api-reference/api/errors
         "429":
           description: "`RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens."
@@ -23411,9 +25389,9 @@ paths:
 
         **Input** Campaign (`test` omitted or `false`): `emailId` (optionally pinned to `emailVersionId`), a verified `domainId`, `subject`, and exactly one of `audienceId` (a saved audience, or `"all"` for every contact in the brand) or `to` (one address or an array of up to 50). Optional `from` (`{ email, name? }`, an address on the send domain), `previewText`, `replyTo`, `scheduledAt`, `gradualSend`, and `consent` provenance (`source`, optional `capturedAt`, `policyVersion`, `evidence`) for inline recipients that are not yet contacts: each is created as a subscribed contact carrying that record. An existing opt-out is never re-subscribed. Inline recipients face the same unsubscribe and suppression gate and per-recipient quota as audience sends. Test (`test: true`): `emailId`, `subject`, one `to` address, optional `emailVersionId`, `previewText`, `replyTo`, `domainId` (a verified org-owned domain; otherwise the Brew default sender, and an unverified or foreign domain is rejected, never downgraded), `from` (`{ email, name? }`, an address on that domain), `variables` (example values for `{{ var | fallback }}` merge tags; a value wins over the fallback) and `payload` (template data; nested JSON renders via Liquid as `trigger.*`); the subject carries a `[TEST]` prefix. The same design can be sent unlimited times; every campaign call mints a new send.
 
-        **Returns** campaign `202 { status: 'queued' | 'scheduled', sendId, scheduledAt?, warnings? }` (poll `getSend`; `warnings[]` carries one `CONSENT_RECORD_MISSING` per inline recipient that is a subscribed contact with no consent record); test `200 { status: 'completed', recipient }`.
+        **Returns** campaign `202 { status: 'queued' | 'scheduled', sendId, scheduledAt?, warnings? }` (poll `getSend`; `warnings[]` carries one `CONSENT_RECORD_MISSING` per inline recipient that is a subscribed contact with no consent record, and one `RECIPIENTS_EXCLUDED` with the counts when unsubscribed, suppressed or undeliverable contacts will be skipped); test `200 { status: 'completed', recipient }`.
 
-        **Errors** `404 EMAIL_NOT_FOUND`, `DOMAIN_NOT_FOUND`, `AUDIENCE_NOT_FOUND` (a resource in another brand also surfaces as `404`); `422 EMAIL_NOT_READY`, `DOMAIN_NOT_READY`, `DOMAIN_PURPOSE_NOT_ALLOWED`, `LIQUID_RENDER_ERROR`; `422 CONSENT_REQUIRED` when an inline marketing recipient has no contact record with marketing consent and no `consent` was supplied (`details.recipients`); `422 RECIPIENT_UNSUBSCRIBED` when an inline recipient is an existing contact who opted out (`details.recipients`, never re-subscribed); `402 SEND_QUOTA_EXCEEDED` when the plan's monthly volume would be exceeded (no `Retry-After`).
+        **Errors** `404 EMAIL_NOT_FOUND`, `DOMAIN_NOT_FOUND`, `AUDIENCE_NOT_FOUND` (a resource in another brand also surfaces as `404`); `422 EMAIL_NOT_READY`, `DOMAIN_NOT_READY`, `DOMAIN_PURPOSE_NOT_ALLOWED`, `LIQUID_RENDER_ERROR`; `422 CONSENT_REQUIRED` when an inline marketing recipient has no contact record with marketing consent and no `consent` was supplied (`details.recipients`); `422 RECIPIENT_UNSUBSCRIBED` when an inline recipient is an existing contact who opted out (`details.recipients`, never re-subscribed); `422 NO_ELIGIBLE_RECIPIENTS` when an immediate send would reach nobody because every contact it targets is unsubscribed, suppressed or undeliverable (`details.eligibility` = `{ total, eligible, excluded: { unsubscribed, suppressed, invalidEmail } }`; no send is created, while a scheduled send is accepted instead); `402 SEND_QUOTA_EXCEEDED` when the plan's monthly volume would be exceeded (no `Retry-After`).
 
         **See also** `listSends`, `cancelSend`, `fireTrigger`.
       parameters:
@@ -23860,6 +25838,8 @@ paths:
 
             `LIQUID_RENDER_ERROR`: A Liquid template failed to parse or render.
 
+            `NO_ELIGIBLE_RECIPIENTS`: Every contact the send targets is unsubscribed, suppressed or undeliverable (or there are none), so an immediate send would deliver nothing; `details.eligibility` carries the counts.
+
             `RECIPIENT_UNSUBSCRIBED`: An inline recipient is an existing contact who unsubscribed from marketing email; details.recipients lists the addresses and Brew never re-subscribes an opt-out.
           headers:
             x-request-id:
@@ -23918,6 +25898,15 @@ paths:
                       type: invalid_request
                       message: A Liquid template failed to parse or render.
                       suggestion: "Fix the template syntax, or supply the payload data the template references. Strict-mode fires fail on any unresolved variable; | default: is the sanctioned fallback."
+                      docs: https://docs.brew.new/api-reference/api/errors
+                noEligibleRecipients:
+                  summary: NO_ELIGIBLE_RECIPIENTS
+                  value:
+                    error:
+                      code: NO_ELIGIBLE_RECIPIENTS
+                      type: invalid_request
+                      message: Every contact the send targets is unsubscribed, suppressed or undeliverable (or there are none), so an immediate send would deliver nothing; `details.eligibility` carries the counts.
+                      suggestion: Target an audience with subscribed, deliverable contacts, or schedule the send for a time when the audience will have them.
                       docs: https://docs.brew.new/api-reference/api/errors
                 recipientUnsubscribed:
                   summary: RECIPIENT_UNSUBSCRIBED
@@ -28916,7 +30905,7 @@ paths:
       tags:
         - Automations
       summary: Test an automation
-      description: Runs the saved automation END-TO-END through the real workflow in TEST mode — works on drafts and for both event and manual-audience automations; every node executes (filters/splits evaluate against `payload`, wait nodes fast-forward). Pass `testRecipient` to DELIVER each send-email node’s email for real to that address (real subject/preview/sender name via the Brew test domain; customer addresses are never hit) — omit it for a silent dry-run with no mail. Test runs never count against analytics rollups or send quotas. Returns `202` with the started run id; follow per-node status via `GET /v1/automations/runs/{automationRunId}&include=logs`.
+      description: Runs the saved automation END-TO-END through the real workflow in TEST mode — works on drafts and for both event and manual-audience automations; every node executes (filters/splits evaluate against `payload`, wait nodes fast-forward). Pass `testRecipient` to DELIVER each send-email node’s email for real to that address (real subject/preview/sender name via the Brew test domain; customer addresses are never hit) — omit it for a silent dry-run with no mail. Test runs never count against analytics rollups or send quotas. Returns `202` with the started run id; follow per-node status via `GET /v1/automations/runs/{automationRunId}&include=logs`. Optional `scenario` controls simulate timed opens/clicks at engagement-filter nodes and force left/right percentage-split choices (waits use a virtual clock; controls stay separate from `payload`, and simulated events never enter live analytics or send quotas); the run row’s `testCoverage` reports visited nodes, traversed connections, evaluated or forced decisions, uncovered paths and simulation limitations.
       parameters:
         - name: Idempotency-Key
           in: header
@@ -31829,7 +33818,8 @@ paths:
           in: query
         - schema:
             type: string
-            format: email
+            maxLength: 254
+            pattern: ^[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+)*@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$
             description: "Only runs for this recipient, matched case-insensitively against each run's stored `recipientEmail` column. A run written before that column existed carries the address only inside its trigger payload: the row still REPORTS `recipientEmail` (the projection reads the payload as a fallback), but the filter cannot reach it until `migration_mutations:backfillRecipientEmail` has run on the deployment."
           required: false
           description: "Only runs for this recipient, matched case-insensitively against each run's stored `recipientEmail` column. A run written before that column existed carries the address only inside its trigger payload: the row still REPORTS `recipientEmail` (the projection reads the payload as a fallback), but the filter cannot reach it until `migration_mutations:backfillRecipientEmail` has run on the deployment."
@@ -37929,6 +39919,8 @@ paths:
 
         Optional `consent: { source: "api" | "form" | "import", capturedAt?, policyVersion?, evidence? }` records marketing consent provenance on the contact (per row, or once at batch level as the default). It never changes `subscribed`. An inline marketing send later needs the contact to be subscribed, and warns when no record exists.
 
+        `subscribed: false` unsubscribes the contact, new or existing. `subscribed: true` only applies to a NEW contact: Brew never re-subscribes a contact who opted out, so a single upsert asking for it is a `422 RESUBSCRIBE_NOT_ALLOWED` (nothing written), and a batch row keeps its other fields and adds a `warnings[]` entry (`code: RESUBSCRIBE_SKIPPED`, `email`).
+
         Single: `201` with `{ contact, created, fieldsCreated, warnings }`. Batch: `200` with `{ summary, fieldsCreated, errors, warnings }` — or `207` when some rows failed (per-row errors in `errors[]`).
       parameters:
         - name: Idempotency-Key
@@ -38065,7 +40057,7 @@ paths:
                   lastName: Doe
                   subscribed: true
                   validationStatus: valid
-                  verificationStatus: valid
+                  lastValidatedAt: 2026-04-08T12:01:00.000Z
                   suppressed: false
                   suppressedReason: null
                   consent:
@@ -38360,6 +40352,8 @@ paths:
             `INVALID_EMAIL`: A contact email is not a deliverable address shape.
 
             `MISSING_EMAIL`: A contact row has no `email`, the primary key.
+
+            `RESUBSCRIBE_NOT_ALLOWED`: The write set `subscribed` to true on a contact who unsubscribed, and Brew never re-subscribes an opt-out through the API, MCP or an import; `details.email` names the contact.
           headers:
             x-request-id:
               schema:
@@ -38408,6 +40402,15 @@ paths:
                       type: invalid_request
                       message: A contact row has no `email`, the primary key.
                       suggestion: Provide an email address for every contact in the request body.
+                      docs: https://docs.brew.new/api-reference/api/errors
+                resubscribeNotAllowed:
+                  summary: RESUBSCRIBE_NOT_ALLOWED
+                  value:
+                    error:
+                      code: RESUBSCRIBE_NOT_ALLOWED
+                      type: invalid_request
+                      message: The write set `subscribed` to true on a contact who unsubscribed, and Brew never re-subscribes an opt-out through the API, MCP or an import; `details.email` names the contact.
+                      suggestion: Drop `subscribed` from the write; a contact who opted out re-subscribes through their own action, or from their contact page in the Brew app once they ask.
                       docs: https://docs.brew.new/api-reference/api/errors
         "429":
           description: "`RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens."
@@ -38642,7 +40645,7 @@ paths:
                     lastName: Doe
                     subscribed: true
                     validationStatus: valid
-                    verificationStatus: valid
+                    lastValidatedAt: 2026-04-08T12:01:00.000Z
                     suppressed: false
                     suppressedReason: null
                     consent:
@@ -38660,7 +40663,7 @@ paths:
                     lastName: Smith
                     subscribed: true
                     validationStatus: valid
-                    verificationStatus: valid
+                    lastValidatedAt: 2026-04-08T12:01:00.000Z
                     suppressed: false
                     suppressedReason: null
                     consent:
@@ -38929,11 +40932,12 @@ paths:
       tags:
         - Contacts
       summary: Update a contact
-      description: "Patches fields on the contact (`{ fields: { <name>: <value> } }` — core columns or custom fields) and/or records marketing consent provenance (`{ consent: { source, capturedAt?, policyVersion?, evidence? } }`, never re-subscribing an opt-out). Send one or both. Returns `{ contact, updated }` where `updated` lists the field names that changed (`consent` included)."
+      description: "Patches fields on the contact (`{ fields: { <name>: <value> } }` — core columns or custom fields) and/or records marketing consent provenance (`{ consent: { source, capturedAt?, policyVersion?, evidence? } }`, never re-subscribing an opt-out). Send one or both. Returns `{ contact, updated }` where `updated` lists the field names that changed (`consent` included). `fields.subscribed: false` unsubscribes; `true` on a contact who opted out is a `422 RESUBSCRIBE_NOT_ALLOWED` (they re-subscribe through their own action, or from their contact page in the Brew app)."
       parameters:
         - schema:
             type: string
-            format: email
+            minLength: 1
+            maxLength: 320
             description: The contact’s email address (URL-encoded). Email is the contact primary key.
             example: jane%40example.com
           required: true
@@ -39012,7 +41016,7 @@ paths:
                   lastName: Doe
                   subscribed: true
                   validationStatus: valid
-                  verificationStatus: valid
+                  lastValidatedAt: 2026-04-08T12:01:00.000Z
                   suppressed: false
                   suppressedReason: null
                   consent:
@@ -39246,6 +41250,8 @@ paths:
             `BATCH_TOO_LARGE`: A batch write exceeds the per-request row cap.
 
             `CORE_FIELD_IMMUTABLE`: The field is a core contact column and cannot be created, changed, or deleted as a custom field.
+
+            `RESUBSCRIBE_NOT_ALLOWED`: The write set `subscribed` to true on a contact who unsubscribed, and Brew never re-subscribes an opt-out through the API, MCP or an import; `details.email` names the contact.
           headers:
             x-request-id:
               schema:
@@ -39276,6 +41282,15 @@ paths:
                       type: invalid_request
                       message: The field is a core contact column and cannot be created, changed, or deleted as a custom field.
                       suggestion: Use a custom field name instead.
+                      docs: https://docs.brew.new/api-reference/api/errors
+                resubscribeNotAllowed:
+                  summary: RESUBSCRIBE_NOT_ALLOWED
+                  value:
+                    error:
+                      code: RESUBSCRIBE_NOT_ALLOWED
+                      type: invalid_request
+                      message: The write set `subscribed` to true on a contact who unsubscribed, and Brew never re-subscribes an opt-out through the API, MCP or an import; `details.email` names the contact.
+                      suggestion: Drop `subscribed` from the write; a contact who opted out re-subscribes through their own action, or from their contact page in the Brew app once they ask.
                       docs: https://docs.brew.new/api-reference/api/errors
         "429":
           description: "`RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens."
@@ -39368,7 +41383,8 @@ paths:
       parameters:
         - schema:
             type: string
-            format: email
+            minLength: 1
+            maxLength: 320
             description: The contact’s email address (URL-encoded). Email is the contact primary key.
             example: jane%40example.com
           required: true
@@ -39690,7 +41706,8 @@ paths:
       parameters:
         - schema:
             type: string
-            format: email
+            minLength: 1
+            maxLength: 320
             description: The contact’s email address (URL-encoded). Email is the contact primary key.
             example: jane%40example.com
           required: true
@@ -39748,7 +41765,7 @@ paths:
                 lastName: Doe
                 subscribed: true
                 validationStatus: valid
-                verificationStatus: valid
+                lastValidatedAt: 2026-04-08T12:01:00.000Z
                 suppressed: false
                 suppressedReason: null
                 consent:
@@ -40105,7 +42122,7 @@ paths:
                         lastName: Doe
                         subscribed: true
                         validationStatus: valid
-                        verificationStatus: valid
+                        lastValidatedAt: 2026-04-08T12:01:00.000Z
                         suppressed: false
                         suppressedReason: null
                         consent:
@@ -40123,7 +42140,7 @@ paths:
                         lastName: Smith
                         subscribed: true
                         validationStatus: valid
-                        verificationStatus: valid
+                        lastValidatedAt: 2026-04-08T12:01:00.000Z
                         suppressed: false
                         suppressedReason: null
                         consent:
@@ -40894,6 +42911,8 @@ paths:
         Parse a raw CSV string and upsert the rows as contacts (≤ 1000). By default each column header maps to a field of the same name (`email` is required); pass `mapping` to remap columns explicitly. Rows with a missing/invalid email are SKIPPED (counted in `summary.skipped`), not errored; disposable-domain rows are imported with `validationStatus: "risky"` (deliverable but flagged). Returns the same `{ summary, fieldsCreated, errors, warnings }` as batch-create — `207` when some rows fail.
 
         CSV cells are text: a column mapped onto an EXISTING field is coerced to that field's type (dates → epoch ms, `1,234` → 1234, `yes`/`no` → booleans), and a cell that cannot be coerced (`$49` in a number column) fails ITS row with a per-row `errors[]` entry (`code: FIELD_TYPE_MISMATCH`, `field`) while the other rows still land. An undeclared column is created as a `string` field unless every value is an ISO date (→ `date`); predeclare `number` / `bool` columns with `POST /v1/fields`.
+
+        A `subscribed` column reads ESP status words (`unsubscribed`, `cleaned`, `active`, …). An opt-out unsubscribes the contact, new or existing. A subscribed value only applies to new contacts: a row that asks to re-subscribe a contact who opted out keeps its other fields and adds a `warnings[]` entry (`code: RESUBSCRIBE_SKIPPED`, `email`).
       requestBody:
         required: true
         content:
@@ -41039,6 +43058,9 @@ paths:
                       type: object
                       properties:
                         code:
+                          type: string
+                          minLength: 1
+                        email:
                           type: string
                           minLength: 1
                         field:
@@ -41463,7 +43485,7 @@ paths:
       tags:
         - Contacts
       summary: Batch-delete contacts
-      description: Deletes up to 1000 contacts by email. Returns the deleted count plus `notFound[]` for emails that had no contact.
+      description: "Deletes up to 1000 contacts by email. Returns the deleted count plus `notFound[]` for emails that had no contact. Addresses are lookup keys, not re-validated: any address a contact was stored under matches, and one that matches nothing lands in `notFound[]` instead of failing the batch."
       parameters:
         - name: Idempotency-Key
           in: header
@@ -48906,7 +50928,7 @@ paths:
       tags:
         - Templates
       summary: List templates
-      description: "Lists public email templates under `{ data, pagination }`, newest first. Each row is FULL — it carries the rendered `html` + `previewImage` plus the display metadata (`title`, `category`, `brand`, `updatedAt`), so you never need a follow-up get-one round-trip. The gallery holds thousands of templates: page with `limit` (default 50, max 100) and `cursor` until `cursor` is `null`. `?brand=` (a domain) and `?category=` (a lowercase category, see the parameter) narrow it, case-insensitively; `?semantic=` ranks the gallery by relevance to a description instead of by recency. Templates are organization-wide references (use one as `referenceEmailId` on `POST /v1/emails`)."
+      description: Lists public templates under { data, pagination }. The default full representation includes HTML. Set representation=summary for metadata, previewImage, viewUrl, and referenceEmailId without HTML. Supports exact brand and category filters; query matches title text or an exact template identifier. semantic ranks up to 200 matches using vector search; query additionally filters those matches when both are supplied. Browse defaults to 50 full rows or 20 summary rows. Brand and category match case-insensitively. Continue with pagination.cursor, including after an empty filtered page with hasMore=true. Templates are organization-wide references; pass referenceEmailId to POST /v1/emails to remix one.
       parameters:
         - schema:
             type: string
@@ -48932,6 +50954,25 @@ paths:
           required: false
           description: Rank by relevance to this text instead of newest first (top 200; `brand`/`category` still narrow).
           name: semantic
+          in: query
+        - schema:
+            type: string
+            minLength: 1
+            maxLength: 250
+            description: Case-insensitive title substring or exact public template identifier. Applied within semantic results when semantic is supplied.
+          required: false
+          description: Case-insensitive title substring or exact public template identifier. Applied within semantic results when semantic is supplied.
+          name: query
+          in: query
+        - schema:
+            type: string
+            enum:
+              - full
+              - summary
+            description: Full rows include HTML. Summary rows include selection metadata and links only.
+          required: false
+          description: Full rows include HTML. Summary rows include selection metadata and links only.
+          name: representation
           in: query
         - schema:
             type: integer
@@ -48986,7 +51027,70 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/TemplatesListResponse"
+                anyOf:
+                  - $ref: "#/components/schemas/TemplatesListResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            emailId:
+                              type: string
+                              minLength: 1
+                            title:
+                              type: string
+                              minLength: 1
+                            category:
+                              type: string
+                              minLength: 1
+                            brand:
+                              type: string
+                              minLength: 1
+                            previewImage:
+                              type: string
+                              format: uri
+                            updatedAt:
+                              type: string
+                              minLength: 1
+                              format: date-time
+                            referenceEmailId:
+                              type: string
+                              minLength: 1
+                            viewUrl:
+                              type: string
+                              format: uri
+                          required:
+                            - emailId
+                            - title
+                            - previewImage
+                            - updatedAt
+                            - referenceEmailId
+                            - viewUrl
+                          additionalProperties: false
+                      pagination:
+                        type: object
+                        properties:
+                          limit:
+                            type: integer
+                            minimum: 1
+                            maximum: 100
+                          cursor:
+                            type:
+                              - string
+                              - "null"
+                          hasMore:
+                            type: boolean
+                        required:
+                          - limit
+                          - cursor
+                          - hasMore
+                        additionalProperties: false
+                    required:
+                      - data
+                      - pagination
+                    additionalProperties: false
               example:
                 data:
                   - emailId: seed-vercel-newsletter
@@ -49095,6 +51199,323 @@ paths:
                       message: The organization behind the credential is suspended.
                       suggestion: The organization behind this credential is suspended. Contact support@brew.new; do not retry.
                       docs: https://docs.brew.new/api-reference/api/authentication
+        "429":
+          description: "`RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens."
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+            X-RateLimit-Limit:
+              schema:
+                type: integer
+                description: Requests allowed in the current rolling rate limit window.
+                example: 100
+              required: true
+              description: Requests allowed in the current rolling rate limit window.
+            X-RateLimit-Remaining:
+              schema:
+                type: integer
+                description: Requests remaining in the current rolling rate limit window.
+                example: 99
+              required: true
+              description: Requests remaining in the current rolling rate limit window.
+            X-RateLimit-Reset:
+              schema:
+                type: integer
+                description: Unix timestamp in seconds for when the rolling window fully resets.
+                example: 1712592360
+              required: true
+              description: Unix timestamp in seconds for when the rolling window fully resets.
+            Retry-After:
+              schema:
+                type: integer
+                description: Seconds to wait before retrying the request.
+                example: 42
+              required: true
+              description: Seconds to wait before retrying the request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                rateLimited:
+                  summary: RATE_LIMITED
+                  value:
+                    error:
+                      code: RATE_LIMITED
+                      type: rate_limit
+                      message: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens.
+                      suggestion: Wait for the retry window before sending another request.
+                      docs: https://docs.brew.new/api-reference/api/rate-limits
+                      retryAfter: 42
+        "500":
+          description: "`INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it."
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                internalError:
+                  summary: INTERNAL_ERROR
+                  value:
+                    error:
+                      code: INTERNAL_ERROR
+                      type: internal_error
+                      message: An unexpected failure; the x-request-id header identifies it.
+                      suggestion: Retry the request. If it keeps failing, contact support with the x-request-id header.
+                      docs: https://docs.brew.new/api-reference/api/errors
+      x-brew-scope: none
+      x-brew-brand-scope: org
+      x-brew-idempotency: none
+      x-brew-credited: false
+      x-brew-rate-policy: templates.read
+  /v1/templates/{templateId}:
+    get:
+      operationId: getTemplate
+      tags:
+        - Templates
+      summary: Get a public template
+      description: Returns metadata, preview and canonical links, and referenceEmailId for one public template. Add include=html to inspect its rendered content. Large HTML is returned as a downloadable content.url instead of truncated JSON.
+      parameters:
+        - schema:
+            type: string
+            minLength: 1
+            maxLength: 256
+          required: true
+          name: templateId
+          in: path
+        - schema:
+            type: string
+            enum:
+              - html
+          required: false
+          name: include
+          in: query
+      responses:
+        "200":
+          description: Template details and optional rendered content.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+            X-RateLimit-Limit:
+              schema:
+                type: integer
+                description: Requests allowed in the current rolling rate limit window.
+                example: 100
+              required: true
+              description: Requests allowed in the current rolling rate limit window.
+            X-RateLimit-Remaining:
+              schema:
+                type: integer
+                description: Requests remaining in the current rolling rate limit window.
+                example: 99
+              required: true
+              description: Requests remaining in the current rolling rate limit window.
+            X-RateLimit-Reset:
+              schema:
+                type: integer
+                description: Unix timestamp in seconds for when the rolling window fully resets.
+                example: 1712592360
+              required: true
+              description: Unix timestamp in seconds for when the rolling window fully resets.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  emailId:
+                    type: string
+                    minLength: 1
+                  title:
+                    type: string
+                    minLength: 1
+                  category:
+                    type: string
+                    minLength: 1
+                  brand:
+                    type: string
+                    minLength: 1
+                  previewImage:
+                    type: string
+                    format: uri
+                  updatedAt:
+                    type: string
+                    minLength: 1
+                    format: date-time
+                  referenceEmailId:
+                    type: string
+                    minLength: 1
+                  viewUrl:
+                    type: string
+                    format: uri
+                  templateId:
+                    type: string
+                    minLength: 1
+                  html:
+                    type: string
+                  content:
+                    type: object
+                    properties:
+                      url:
+                        type: string
+                        format: uri
+                      mimeType:
+                        type: string
+                        enum:
+                          - text/html
+                      bytes:
+                        type: integer
+                        minimum: 0
+                    required:
+                      - url
+                      - mimeType
+                      - bytes
+                    additionalProperties: false
+                required:
+                  - emailId
+                  - title
+                  - previewImage
+                  - updatedAt
+                  - referenceEmailId
+                  - viewUrl
+                  - templateId
+                additionalProperties: false
+        "400":
+          description: "`INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender."
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                invalidRequest:
+                  summary: INVALID_REQUEST
+                  value:
+                    error:
+                      code: INVALID_REQUEST
+                      type: invalid_request
+                      message: "The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender."
+                      suggestion: Fix the field reported in `param` and retry.
+                      docs: https://docs.brew.new/api-reference/api/errors
+        "401":
+          description: |-
+            `API_KEY_REVOKED`: The API key was revoked.
+
+            `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+
+            `INVALID_API_KEY`: The API key is malformed or unknown.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                apiKeyRevoked:
+                  summary: API_KEY_REVOKED
+                  value:
+                    error:
+                      code: API_KEY_REVOKED
+                      type: authentication_error
+                      message: The API key was revoked.
+                      suggestion: Create a new active API key and retry.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                authenticationRequired:
+                  summary: AUTHENTICATION_REQUIRED
+                  value:
+                    error:
+                      code: AUTHENTICATION_REQUIRED
+                      type: authentication_error
+                      message: No API key or session accompanied the request.
+                      suggestion: Provide a valid API key or sign in with an organization session.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                invalidApiKey:
+                  summary: INVALID_API_KEY
+                  value:
+                    error:
+                      code: INVALID_API_KEY
+                      type: authentication_error
+                      message: The API key is malformed or unknown.
+                      suggestion: Check the API key format and retry with a valid active key.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+        "403":
+          description: "`ACCOUNT_SUSPENDED`: The organization behind the credential is suspended."
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                accountSuspended:
+                  summary: ACCOUNT_SUSPENDED
+                  value:
+                    error:
+                      code: ACCOUNT_SUSPENDED
+                      type: authorization_error
+                      message: The organization behind the credential is suspended.
+                      suggestion: The organization behind this credential is suspended. Contact support@brew.new; do not retry.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+        "404":
+          description: "`TEMPLATE_NOT_FOUND`: No public template matches that id."
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                templateNotFound:
+                  summary: TEMPLATE_NOT_FOUND
+                  value:
+                    error:
+                      code: TEMPLATE_NOT_FOUND
+                      type: not_found
+                      message: No public template matches that id.
+                      suggestion: List templates with GET /v1/templates and use a returned emailId as the templateId.
+                      docs: https://docs.brew.new/api-reference/api/errors
         "429":
           description: "`RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens."
           headers:

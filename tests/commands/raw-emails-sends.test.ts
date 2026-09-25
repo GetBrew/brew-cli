@@ -6,6 +6,8 @@ import { describe, expect, it } from 'vitest'
 import { emailsCloneCommand } from '../../src/commands/emails/clone'
 import { emailsCreateInboxPlacementTestCommand } from '../../src/commands/emails/create-inbox-placement-test'
 import { emailsExportCommand } from '../../src/commands/emails/export'
+import { emailsGetAuditCommand } from '../../src/commands/emails/get-audit'
+import { emailsGetClientPreviewCommand } from '../../src/commands/emails/get-client-preview'
 import { emailsGetInboxPlacementResultsCommand } from '../../src/commands/emails/get-inbox-placement-results'
 import { emailsImportFigmaCommand } from '../../src/commands/emails/import-figma'
 import { emailsPreviewClientsCommand } from '../../src/commands/emails/preview-clients'
@@ -21,6 +23,8 @@ const EXTRA = [
   emailsExportCommand,
   emailsImportFigmaCommand,
   emailsPreviewClientsCommand,
+  emailsGetClientPreviewCommand,
+  emailsGetAuditCommand,
   emailsCreateInboxPlacementTestCommand,
   emailsGetInboxPlacementResultsCommand,
   sendsPauseCommand,
@@ -202,6 +206,47 @@ describe('emails import-figma', () => {
   })
 })
 
+/** A rendering job as `POST …/client-previews` and `GET …/client-previews/{previewId}` answer it. */
+function renderingJob(
+  status: 'queued' | 'completed',
+  previews: ReadonlyArray<Record<string, unknown>>
+): Record<string, unknown> {
+  return {
+    previewId: 'prv_1',
+    emailId: 'eml_1',
+    emailVersionId: 'emv_1',
+    status,
+    previews,
+    pending: previews
+      .filter((preview) => preview.status === 'running')
+      .map((preview) => preview.id),
+    createdAt: '2026-09-24T10:00:00.000Z',
+    expiresAt: '2026-10-01T10:00:00.000Z',
+    nextPollAfterMs: 5000,
+    credits: { cost: 10, status: status === 'queued' ? 'reserved' : 'settled' },
+  }
+}
+
+const APPLE_MAIL_RUNNING = {
+  id: 'applemail16',
+  label: 'Apple Mail (macOS)',
+  category: 'apple',
+  os: 'macOS',
+  dark: false,
+  status: 'running',
+  imageUrl: null,
+  reason: 'pending',
+  retryable: true,
+}
+
+const APPLE_MAIL_DONE = {
+  ...APPLE_MAIL_RUNNING,
+  status: 'completed',
+  imageUrl: 'https://cdn.brew.new/previews/prv_1/applemail16.png',
+  reason: undefined,
+  retryable: false,
+}
+
 describe('emails preview-clients', () => {
   it('sends the requested client ids in the body', async () => {
     let body: unknown
@@ -210,9 +255,10 @@ describe('emails preview-clients', () => {
         `${API}/v1/emails/eml_1/client-previews`,
         async ({ request }) => {
           body = await request.json()
-          return HttpResponse.json({
-            previews: [{ client: 'applemail16', status: 'completed' }],
-          })
+          return HttpResponse.json(
+            renderingJob('queued', [APPLE_MAIL_RUNNING]),
+            { status: 202 }
+          )
         }
       )
     )
@@ -229,6 +275,193 @@ describe('emails preview-clients', () => {
     )
     expect(result.code).toBe(0)
     expect(body).toEqual({ clients: ['applemail16', 'iphone16_18'] })
+  })
+
+  it('prints the admitted job and names the poll command on stderr', async () => {
+    server.use(
+      http.post(`${API}/v1/emails/eml_1/client-previews`, () =>
+        HttpResponse.json(renderingJob('queued', [APPLE_MAIL_RUNNING]), {
+          status: 202,
+        })
+      )
+    )
+    const result = await runCli(['emails', 'preview-clients', 'eml_1'], {
+      env: env(),
+      extraCommands: EXTRA,
+    })
+    expect(result.code).toBe(0)
+    const job = result.json as { previewId: string; status: string }
+    expect(job.previewId).toBe('prv_1')
+    expect(job.status).toBe('queued')
+    // stdout stays the bare job; the next step rides stderr.
+    expect(result.stderr).toContain('brew-cli emails get-client-preview prv_1')
+    expect(result.stdout).not.toContain('get-client-preview')
+  })
+
+  it('skips the poll hint when the existing job has already settled', async () => {
+    server.use(
+      http.post(`${API}/v1/emails/eml_1/client-previews`, () =>
+        HttpResponse.json(renderingJob('completed', [APPLE_MAIL_DONE]))
+      )
+    )
+    const result = await runCli(['emails', 'preview-clients', 'eml_1'], {
+      env: env(),
+      extraCommands: EXTRA,
+    })
+    expect(result.code).toBe(0)
+    expect((result.json as { status: string }).status).toBe('completed')
+    expect(result.stderr).not.toContain('get-client-preview')
+  })
+})
+
+describe('emails get-client-preview', () => {
+  it('polls the rendering job by previewId and prints it verbatim', async () => {
+    let request: Request | undefined
+    server.use(
+      http.get(`${API}/v1/emails/client-previews/prv_1`, (info) => {
+        request = info.request
+        return HttpResponse.json(renderingJob('completed', [APPLE_MAIL_DONE]))
+      })
+    )
+    const result = await runCli(['emails', 'get-client-preview', 'prv_1'], {
+      env: { ...env(), BREW_BRAND_ID: 'kxbrand1' },
+      extraCommands: EXTRA,
+    })
+    expect(result.code).toBe(0)
+    expect(request?.method).toBe('GET')
+    expect(new URL(request?.url ?? '').pathname).toBe(
+      '/api/v1/emails/client-previews/prv_1'
+    )
+    // A brand-scoped read: the brand binding rides along.
+    expect(request?.headers.get('x-brand-id')).toBe('kxbrand1')
+    const job = result.json as {
+      status: string
+      previews: Array<{ id: string; imageUrl: string | null }>
+    }
+    expect(job.status).toBe('completed')
+    expect(job.previews[0]?.imageUrl).toBe(
+      'https://cdn.brew.new/previews/prv_1/applemail16.png'
+    )
+  })
+
+  it("surfaces the API's PREVIEW_NOT_FOUND once the job has expired", async () => {
+    server.use(
+      http.get(`${API}/v1/emails/client-previews/prv_gone`, () =>
+        HttpResponse.json(
+          {
+            error: {
+              code: 'PREVIEW_NOT_FOUND',
+              type: 'not_found',
+              message: 'No rendering job matches that id.',
+            },
+          },
+          { status: 404 }
+        )
+      )
+    )
+    const result = await runCli(['emails', 'get-client-preview', 'prv_gone'], {
+      env: env(),
+      extraCommands: EXTRA,
+    })
+    expect(result.code).toBe(1)
+    const parsed = JSON.parse(result.stderr) as { error: { code: string } }
+    expect(parsed.error.code).toBe('PREVIEW_NOT_FOUND')
+  })
+})
+
+const AUDIT_ID = '6f1e2d3c-4b5a-4c7d-8e9f-0a1b2c3d4e5f'
+
+describe('emails get-audit', () => {
+  it('reads one page of a saved audit, mapping --limit and --cursor', async () => {
+    let request: Request | undefined
+    server.use(
+      http.get(`${API}/v1/emails/audits/${AUDIT_ID}`, (info) => {
+        request = info.request
+        return HttpResponse.json({
+          auditId: AUDIT_ID,
+          summary: { blockers: 0, errors: 0, warnings: 2, info: 0, total: 2 },
+          findings: [
+            { id: 'fnd_2', ruleId: 'links.https', severity: 'warning' },
+          ],
+          pagination: {
+            cursor: null,
+            hasMore: false,
+            returned: 1,
+            storedFindings: 2,
+          },
+        })
+      })
+    )
+    const result = await runCli(
+      [
+        'emails',
+        'get-audit',
+        AUDIT_ID,
+        '--limit',
+        '1',
+        '--cursor',
+        'cur_page2',
+      ],
+      { env: { ...env(), BREW_BRAND_ID: 'kxbrand1' }, extraCommands: EXTRA }
+    )
+    expect(result.code).toBe(0)
+    expect(request?.method).toBe('GET')
+    const url = new URL(request?.url ?? '')
+    expect(url.pathname).toBe(`/api/v1/emails/audits/${AUDIT_ID}`)
+    expect(url.searchParams.get('limit')).toBe('1')
+    expect(url.searchParams.get('cursor')).toBe('cur_page2')
+    expect(request?.headers.get('x-brand-id')).toBe('kxbrand1')
+    const page = result.json as { findings: Array<{ id: string }> }
+    expect(page.findings[0]?.id).toBe('fnd_2')
+  })
+
+  it('sends no paging params unless asked', async () => {
+    let url: URL | undefined
+    server.use(
+      http.get(`${API}/v1/emails/audits/${AUDIT_ID}`, ({ request }) => {
+        url = new URL(request.url)
+        return HttpResponse.json({ auditId: AUDIT_ID, findings: [] })
+      })
+    )
+    const result = await runCli(['emails', 'get-audit', AUDIT_ID], {
+      env: env(),
+      extraCommands: EXTRA,
+    })
+    expect(result.code).toBe(0)
+    expect(url?.search).toBe('')
+  })
+
+  it('rejects a non-integer --limit before calling the API (exit 2)', async () => {
+    const result = await runCli(
+      ['emails', 'get-audit', AUDIT_ID, '--limit', 'ten'],
+      { env: env(), extraCommands: EXTRA }
+    )
+    expect(result.code).toBe(2)
+    expect(result.stderr).toContain('--limit')
+  })
+
+  it("surfaces the API's AUDIT_NOT_FOUND after the seven-day retention", async () => {
+    server.use(
+      http.get(`${API}/v1/emails/audits/${AUDIT_ID}`, () =>
+        HttpResponse.json(
+          {
+            error: {
+              code: 'AUDIT_NOT_FOUND',
+              type: 'not_found',
+              message: 'No saved audit matches that id.',
+            },
+          },
+          { status: 404 }
+        )
+      )
+    )
+    const result = await runCli(['emails', 'get-audit', AUDIT_ID], {
+      env: env(),
+      extraCommands: EXTRA,
+    })
+    expect(result.code).toBe(1)
+    const parsed = JSON.parse(result.stderr) as { error: { code: string } }
+    expect(parsed.error.code).toBe('AUDIT_NOT_FOUND')
   })
 })
 

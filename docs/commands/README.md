@@ -2,7 +2,7 @@
 
 <!-- GENERATED FILE — do not edit. Regenerate with `bun run docs:commands`. -->
 
-127 commands. Classes: read (always safe), write
+130 commands. Classes: read (always safe), write
 (mutating, retry-safe), destructive (irreversible — the confirmation
 protocol applies: interactive y/N on a TTY, exit 4 + JSON envelope with
 a `confirmCommand` otherwise, `--yes` to proceed).
@@ -58,7 +58,9 @@ a `confirmCommand` otherwise, `--yes` to proceed).
 | `brew-cli emails delete` | destructive | `DELETE /v1/emails/{emailId}` | Hard-delete an email design and all its versions (idempotent) |
 | `brew-cli emails export` | write | `POST /v1/emails/{emailId}/export` | Export a design to a connected ESP as a template (not a send) |
 | `brew-cli emails audit` | write ($) | `POST /v1/emails/audit` | Audit raw email content for production readiness (5 credits when complete) |
-| `brew-cli emails preview-clients` | write ($) | `POST /v1/emails/{emailId}/client-previews` | Render the design across real email clients (10 credits) |
+| `brew-cli emails get-audit` | read | `GET /v1/emails/audits/{auditId}` | Read a saved email audit: one page of its findings (free; never reruns the audit) |
+| `brew-cli emails preview-clients` | write ($) | `POST /v1/emails/{emailId}/client-previews` | Start a rendering job across real email clients (10 credits); poll it with `emails get-client-preview` |
+| `brew-cli emails get-client-preview` | read | `GET /v1/emails/client-previews/{previewId}` | Poll a client-preview rendering job: per-client screenshot links once it settles (free; never re-renders) |
 | `brew-cli emails create-inbox-placement-test` | write ($) | `POST /v1/emails/{emailId}/inbox-placement-tests` | Seed-test where the design lands (inbox vs spam) via a real small send (10 credits) |
 | `brew-cli emails get-inbox-placement-results` | read | `GET /v1/emails/{emailId}/inbox-placement-tests` | Inbox placement results: the recent tests, or one test with --test-id |
 | `brew-cli emails inbox-placement-tests get` | read | `GET /v1/emails/{emailId}/inbox-placement-tests/{testId}` | Fetch one inbox-placement (seed) test — the bare row, re-poll ~30s until completed |
@@ -137,6 +139,7 @@ a `confirmCommand` otherwise, `--yes` to proceed).
 | `brew-cli content html-to-png` | write ($) | `POST /v1/content/html-to-png` | Render HTML to a hosted PNG |
 | `brew-cli content add-image` | write ($) | `POST /v1/content/add-image` | Mirror an external image onto Brew-hosted storage |
 | `brew-cli templates list` | read | `GET /v1/templates` | List public templates (each row carries the rendered html) |
+| `brew-cli templates get` | read | `GET /v1/templates/{templateId}` | Fetch one public template: its links and the referenceEmailId to remix; --include html adds its HTML |
 | `brew-cli flows list` | read | `GET /v1/flows` | List public email flows (real multi-step sequences by brand) as cards; `flows get <slug>` reads one |
 | `brew-cli flows get` | read | `GET /v1/flows/{slug}` | Fetch one public email flow by brand domain, with every step (day offset, wait, subject, template id) |
 | `brew-cli integrations list` | read | `GET /v1/integrations` | List the integration catalog with per-provider connected state (connect via Settings, not this CLI) |
@@ -756,9 +759,24 @@ cat email.html | brew-cli emails audit --file - --subject "Receipt" --sending-pu
 brew-cli emails audit --input '{"emailHtml":"<p>Hello</p>","subject":"Hello"}'
 ```
 
+### brew-cli emails get-audit
+
+Read a saved email audit: one page of its findings (free; never reruns the audit)
+
+- Route: `GET /v1/emails/audits/{auditId}`
+- Class: read
+- Argument `auditId` — The auditId `emails audit` returned (reports are kept 7 days)
+- `--limit <n>` — Page size, 1-100 (default 100)
+- `--cursor <cursor>` — Opaque pagination cursor from a previous page
+
+```bash
+brew-cli emails get-audit 6f1e2d3c-4b5a-4c7d-8e9f-0a1b2c3d4e5f
+brew-cli emails get-audit 6f1e2d3c-4b5a-4c7d-8e9f-0a1b2c3d4e5f --limit 20
+```
+
 ### brew-cli emails preview-clients
 
-Render the design across real email clients (10 credits)
+Start a rendering job across real email clients (10 credits); poll it with `emails get-client-preview`
 
 - Route: `POST /v1/emails/{emailId}/client-previews`
 - Class: write
@@ -771,6 +789,20 @@ Render the design across real email clients (10 credits)
 ```bash
 brew-cli emails preview-clients eml_2SmZOWV3ZQ7W5x6g3m4p
 brew-cli emails preview-clients eml_2SmZOWV3ZQ7W5x6g3m4p --clients applemail16 outlook2021_win11_lm_dt
+PREVIEW_ID=$(brew-cli emails preview-clients eml_2SmZOWV3ZQ7W5x6g3m4p --json | jq -r .previewId) && brew-cli emails get-client-preview "$PREVIEW_ID"
+```
+
+### brew-cli emails get-client-preview
+
+Poll a client-preview rendering job: per-client screenshot links once it settles (free; never re-renders)
+
+- Route: `GET /v1/emails/client-previews/{previewId}`
+- Class: read
+- Argument `previewId` — The previewId `emails preview-clients` returned
+
+```bash
+brew-cli emails get-client-preview prv_0b7f3c1e-9a2d-4e8b-b6c5-3d1f2a9e8c47
+brew-cli emails get-client-preview prv_0b7f3c1e-9a2d-4e8b-b6c5-3d1f2a9e8c47 --json | jq '.previews[] | {label, status, imageUrl}'
 ```
 
 ### brew-cli emails create-inbox-placement-test
@@ -2063,6 +2095,20 @@ List public templates (each row carries the rendered html)
 ```bash
 brew-cli templates list --category welcome
 brew-cli templates list --semantic "minimal product launch" --json
+```
+
+### brew-cli templates get
+
+Fetch one public template: its links and the referenceEmailId to remix; --include html adds its HTML
+
+- Route: `GET /v1/templates/{templateId}`
+- Class: read
+- Argument `templateId` — Template id: the TEMPLATE column (emailId) of `templates list`
+- `--include <tokens>` — Expansions: html (the rendered HTML; a large page arrives as a content.url download link instead)
+
+```bash
+brew-cli templates get seed-vercel-newsletter
+brew-cli templates get seed-vercel-newsletter --include html --json
 ```
 
 ### brew-cli flows list
