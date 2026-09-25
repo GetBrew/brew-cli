@@ -277,6 +277,28 @@ describe('emails preview-clients', () => {
     expect(body).toEqual({ clients: ['applemail16', 'iphone16_18'] })
   })
 
+  it('renders a saved version with --email-version-id', async () => {
+    let body: unknown
+    server.use(
+      http.post(
+        `${API}/v1/emails/eml_1/client-previews`,
+        async ({ request }) => {
+          body = await request.json()
+          return HttpResponse.json(
+            renderingJob('queued', [APPLE_MAIL_RUNNING]),
+            { status: 202 }
+          )
+        }
+      )
+    )
+    const result = await runCli(
+      ['emails', 'preview-clients', 'eml_1', '--email-version-id', 'ver_3'],
+      { env: env(), extraCommands: EXTRA }
+    )
+    expect(result.code).toBe(0)
+    expect(body).toEqual({ emailVersionId: 'ver_3' })
+  })
+
   it('prints the admitted job and names the poll command on stderr', async () => {
     server.use(
       http.post(`${API}/v1/emails/eml_1/client-previews`, () =>

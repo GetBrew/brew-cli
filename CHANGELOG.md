@@ -61,10 +61,14 @@ it.
 
 ### Fixed
 
-- `emails edit` sends a `title`- or `groupId`-only patch given through
-  `--input` (`groupId: null` moves the design to Ungrouped). The API takes
+- `emails edit` sends a `title`- or `groupId`-only patch. The API takes
   any of `prompt`, `title`, `subjectLine` and `groupId`, but the CLI exited
-  2 unless `--prompt` or `--subject-line` was set.
+  2 unless `--prompt` or `--subject-line` was set. New flags `--title`,
+  `--group-id` and `--ungroup` (moves the design to Ungrouped,
+  `groupId: null`) cover the free in-place patch without `--input`;
+  `--group-id` with `--ungroup` is a usage error.
+- `emails preview-clients --email-version-id <id>` renders a saved version
+  instead of the latest.
 
 ### Not yet
 

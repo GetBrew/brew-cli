@@ -45,20 +45,42 @@ export const emailsEditCommand = defineCommand({
       summary:
         "The design's default inbox subject line; alone it skips the AI run",
     },
+    {
+      flag: '--title <text>',
+      summary: 'Rename the design (its canvas name); alone it skips the AI run',
+    },
+    {
+      flag: '--group-id <groupId>',
+      summary:
+        'Move the design into this existing group; alone it skips the AI run',
+    },
+    {
+      flag: '--ungroup',
+      summary: 'Move the design to Ungrouped (groupId: null)',
+    },
     INPUT_FLAG,
   ],
   examples: [
     'brew-cli emails edit eml_2SmZOWV3ZQ7W5x6g3m4p --prompt "Tighten the hero copy"',
     'brew-cli emails edit eml_2SmZOWV3ZQ7W5x6g3m4p --subject-line "Your September roundup"',
-    `brew-cli emails edit eml_2SmZOWV3ZQ7W5x6g3m4p --input '{"title":"Fall sale v2","groupId":"grp_7Hq2"}'`,
+    'brew-cli emails edit eml_2SmZOWV3ZQ7W5x6g3m4p --title "Fall sale v2" --group-id grp_7Hq2',
+    'brew-cli emails edit eml_2SmZOWV3ZQ7W5x6g3m4p --ungroup',
   ],
   run: async ({ ctx, args, flags }) => {
+    const groupId = flagString(flags.groupId)
+    if (groupId !== undefined && flags.ungroup === true) {
+      throw new CliUsageError(
+        '--group-id and --ungroup conflict: pick one group move.'
+      )
+    }
     const base = await readJsonFlag(ctx, flags.input, '--input')
     const input = mergeInput(base, {
       prompt: flagString(flags.prompt),
       emailVersionId: flagString(flags.emailVersionId),
       contentUrls: toStringArray(flags.contentUrls),
       subjectLine: flagString(flags.subjectLine),
+      title: flagString(flags.title),
+      groupId: flags.ungroup === true ? null : groupId,
     })
     const isPromptEdit = isText(input.prompt)
     // `groupId: null` is a real value: it moves the design to Ungrouped.
@@ -68,7 +90,7 @@ export const emailsEditCommand = defineCommand({
     )
     if (!isPromptEdit && envelope.length === 0) {
       throw new CliUsageError(
-        '--prompt or --subject-line is required (or prompt, title, subjectLine or groupId via --input).'
+        'Pass --prompt, or at least one of --subject-line, --title, --group-id or --ungroup (or those fields via --input).'
       )
     }
     // Without a prompt the patch is deterministic server-side: no AI run, no

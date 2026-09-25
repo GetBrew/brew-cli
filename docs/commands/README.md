@@ -669,12 +669,16 @@ AI-edit an email design, and/or set its subject line, title or group (free witho
 - `--email-version-id <id>` — Edit from a specific version (default: latest); needs --prompt
 - `--content-urls <urls...>` — Page URL(s) to pull copy and imagery from, repeatable
 - `--subject-line <text>` — The design's default inbox subject line; alone it skips the AI run
+- `--title <text>` — Rename the design (its canvas name); alone it skips the AI run
+- `--group-id <groupId>` — Move the design into this existing group; alone it skips the AI run
+- `--ungroup` — Move the design to Ungrouped (groupId: null)
 - `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
 
 ```bash
 brew-cli emails edit eml_2SmZOWV3ZQ7W5x6g3m4p --prompt "Tighten the hero copy"
 brew-cli emails edit eml_2SmZOWV3ZQ7W5x6g3m4p --subject-line "Your September roundup"
-brew-cli emails edit eml_2SmZOWV3ZQ7W5x6g3m4p --input '{"title":"Fall sale v2","groupId":"grp_7Hq2"}'
+brew-cli emails edit eml_2SmZOWV3ZQ7W5x6g3m4p --title "Fall sale v2" --group-id grp_7Hq2
+brew-cli emails edit eml_2SmZOWV3ZQ7W5x6g3m4p --ungroup
 ```
 
 ### brew-cli emails clone
@@ -785,6 +789,7 @@ Start a rendering job across real email clients (10 credits); poll it with `emai
 - SDK: `brew.emails.previewClients(...)`
 - Argument `emailId` — Design id to preview
 - `--clients <ids...>` — Client id(s) to render, repeatable (e.g. applemail16 iphone16_18); default: a popular spread
+- `--email-version-id <id>` — Render this saved version (default: the latest)
 - `--idempotency-key <key>` — Idempotency-Key for safe retries (auto-generated otherwise)
 
 ```bash

@@ -450,13 +450,55 @@ describe('emails edit', () => {
     expect(bodies).toEqual([{ groupId: 'grp_7Hq2' }, { groupId: null }])
   })
 
-  it('requires a prompt or a subject line (or --input)', async () => {
+  it('renames and moves with flags, no --input needed', async () => {
+    const bodies: unknown[] = []
+    server.use(
+      http.patch(`${EMAILS_URL}/eml_1`, async ({ request }) => {
+        bodies.push(await request.json())
+        return HttpResponse.json({ emailId: 'eml_1', status: 'ready' })
+      })
+    )
+    const moved = await runCli(
+      [
+        'emails',
+        'edit',
+        'eml_1',
+        '--title',
+        'Fall sale v2',
+        '--group-id',
+        'grp_7Hq2',
+      ],
+      { env: env(), extraCommands: EXTRA }
+    )
+    const ungrouped = await runCli(['emails', 'edit', 'eml_1', '--ungroup'], {
+      env: env(),
+      extraCommands: EXTRA,
+    })
+    expect(moved.code).toBe(0)
+    expect(ungrouped.code).toBe(0)
+    expect(bodies).toEqual([
+      { title: 'Fall sale v2', groupId: 'grp_7Hq2' },
+      { groupId: null },
+    ])
+    expect(moved.stderr).toContain('no AI run')
+  })
+
+  it('refuses --group-id with --ungroup before any request', async () => {
+    const result = await runCli(
+      ['emails', 'edit', 'eml_1', '--group-id', 'grp_7Hq2', '--ungroup'],
+      { env: env(), extraCommands: EXTRA }
+    )
+    expect(result.code).toBe(2)
+    expect(result.stderr).toContain('conflict')
+  })
+
+  it('requires a prompt or one envelope field (or --input)', async () => {
     const result = await runCli(['emails', 'edit', 'eml_1'], {
       env: env(),
       extraCommands: EXTRA,
     })
     expect(result.code).toBe(2)
-    expect(result.stderr).toContain('groupId')
+    expect(result.stderr).toContain('--group-id')
   })
 })
 

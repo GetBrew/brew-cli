@@ -2,6 +2,7 @@ import type { PreviewEmailClientsInput } from '@brew.new/sdk'
 import { defineCommand } from '../../lib/define-command'
 import {
   asSdkInput,
+  flagString,
   IDEMPOTENCY_FLAG,
   requestOptions,
   toStringArray,
@@ -25,6 +26,10 @@ export const emailsPreviewClientsCommand = defineCommand({
       summary:
         'Client id(s) to render, repeatable (e.g. applemail16 iphone16_18); default: a popular spread',
     },
+    {
+      flag: '--email-version-id <id>',
+      summary: 'Render this saved version (default: the latest)',
+    },
     IDEMPOTENCY_FLAG,
   ],
   examples: [
@@ -38,10 +43,14 @@ export const emailsPreviewClientsCommand = defineCommand({
   // `emails get-client-preview <previewId>` is how they are read.
   run: async ({ ctx, args, flags }) => {
     const clients = toStringArray(flags.clients)
+    const emailVersionId = flagString(flags.emailVersionId)
+    // SDK 10 posts every field but `emailId` as the body, so the version
+    // reaches the API before the SDK 11 input type names it.
     const job = await ctx.client().emails.previewClients(
       asSdkInput<PreviewEmailClientsInput>({
         emailId: args.emailId ?? '',
         ...(clients === undefined ? {} : { clients }),
+        ...(emailVersionId === undefined ? {} : { emailVersionId }),
       }),
       requestOptions(flags)
     )
