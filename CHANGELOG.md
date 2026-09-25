@@ -76,11 +76,10 @@ it.
   new `emailVersionId` and `runId` params need SDK 11, whose `emails.get`
   forwards them; SDK 10 sends only `include`. Meanwhile:
   `brew-cli api GET '/v1/emails/<emailId>?emailVersionId=<id>'`.
-- Other new request fields have no dedicated flag yet. `emailVersionId` on
-  `emails preview-clients` is reachable only through `brew-cli api`.
-  `templates list` takes `query` and `representation`, and `automations
-  test` takes `scenario`, through `--input`; the test's `--input` must also
-  carry `payload`, or the whole object is sent as the payload.
+- Other new request fields have no dedicated flag yet: `templates list`
+  takes `query` and `representation`, and `automations test` takes
+  `scenario`, through `--input`; the test's `--input` must also carry
+  `payload`, or the whole object is sent as the payload.
 
 ## 0.7.0
 
