@@ -201,7 +201,7 @@ export interface paths {
         put?: never;
         /**
          * Export a design to an ESP
-         * @description Export a finished email DESIGN to a connected third-party ESP (Klaviyo, Mailchimp, HubSpot, Braze, Iterable, Postmark, OneSignal, SendGrid, Mailgun) as a reusable TEMPLATE. This is NOT a Brew send — it creates a template in the destination platform and does NOT deliver to recipients, and is unrelated to Brew sending domains or audiences. The `provider` must already be connected for the brand (connect ESPs in the Brew app). The exported HTML is automatically made ESP-portable. Pass `dryRun: true` to validate the design, brand ownership, and ESP connection without creating a template. Free (no credits).
+         * @description Export a finished email DESIGN to a connected third-party ESP (Braze, Brevo, HubSpot, Klaviyo, Mailchimp, Mailjet, Iterable, Postmark, OneSignal, Mailgun, SendGrid) as a reusable TEMPLATE. This is NOT a Brew send — it creates a template in the destination platform and does NOT deliver to recipients, and is unrelated to Brew sending domains or audiences. The `provider` must already be connected for the brand (connect ESPs in the Brew app). The exported HTML is automatically made ESP-portable. Brevo and Mailjet need `senderEmail` when the account has more than one active sender (with exactly one, it is selected automatically). Pass `dryRun: true` to validate the design, brand ownership, and ESP connection without creating a template. Free (no credits).
          */
         post: operations["exportEmailDesign"];
         delete?: never;
@@ -781,7 +781,7 @@ export interface paths {
         put?: never;
         /**
          * Run a manual-audience automation
-         * @description Launches a MANUAL-AUDIENCE automation against the audience bound to its trigger node. `dryRun: true` previews without sending; `scheduledAt` launches later. Percentage-based `gradualSend` delivers each send step in custom hour or calendar-day batches and supports manual pause/resume/cancel. `400` when the resolved plan exceeds 50,000 recipients, 30 batches, or 30 elapsed days. Returns `202` with the `audienceRunId`.
+         * @description Launches a MANUAL-AUDIENCE automation against the audience bound to its trigger node. `dryRun: true` previews without sending; `scheduledAt` launches later. Percentage-based `gradualSend` delivers each send step in custom hour or calendar-day batches and supports manual pause/resume/cancel. `400` when a `gradualSend` plan exceeds 50,000 recipients, 30 batches, or 30 elapsed days. Returns `202` with the `audienceRunId`.
          */
         post: operations["runAutomation"];
         delete?: never;
@@ -2087,7 +2087,7 @@ export interface paths {
         put?: never;
         /**
          * Run a data command
-         * @description One surface over the brand's data: runs a sandboxed bash command with the `db` verbs (`db ls`, `db schema <table>`, `db find`, `db agg`, `db get`, `db insert`, `db set`, `db del`) plus `jq`, `grep`, `sort` and `head` pipes. The same engine serves the MCP `run_data_command` tool and the in-app agent.
+         * @description One surface over the brand's data: runs a sandboxed bash command with the `db` verbs (`db ls`, `db schema <table>`, `db find`, `db agg`, `db get`, `db insert`, `db set`, `db del`) plus `jq`, `grep`, `sort` and `head` pipes. The same engine serves the in-app agent and, read-only, the MCP `query_brew_data` tool.
          *
          *     **Use when** a question spans tables or needs a filter the REST reads do not offer. Start with `db ls` (the tables your credential may touch) and `db schema <table>`.
          *
@@ -10362,8 +10362,8 @@ export interface operations {
             query?: {
                 cursor?: string;
                 /**
-                 * @description Page size (1-100). Defaults to 100.
-                 * @example 50
+                 * @description Findings per page (1-50). Defaults to 10.
+                 * @example 10
                  */
                 limit?: number;
             };
@@ -23360,6 +23360,7 @@ export interface operations {
     getTemplate: {
         parameters: {
             query?: {
+                /** @description Expansions: `html` adds the rendered HTML; a large page arrives as a `content.url` download link instead. */
                 include?: "html";
             };
             header?: never;
@@ -23639,7 +23640,7 @@ export interface operations {
     getFlow: {
         parameters: {
             query?: {
-                /** @description Detail-only expansions, comma-separated. `html` adds each step’s rendered HTML. Rendered email is bulky — over MCP only the first step or two fit one response; the rest arrive without `html` and the summary says how many were kept. A step’s `emailId` is already a `create_email_design` reference, so reuse needs no body; for the bodies themselves call `GET /v1/flows/{slug}?include=html` over REST, which has no cap. Best-effort per step: a step whose body is no longer servable comes back without `html` rather than failing the flow. */
+                /** @description Detail-only expansions, comma-separated. `html` adds each step’s rendered HTML. Rendered email is bulky — over MCP only the first step or two fit one response; the rest arrive without `html` and the summary says how many were kept. A step’s `emailId` is already a valid `referenceEmailId`, so reuse needs no body; for the bodies themselves call `GET /v1/flows/{slug}?include=html` over REST, which has no cap. Best-effort per step: a step whose body is no longer servable comes back without `html` rather than failing the flow. */
                 include?: string;
             };
             header?: never;
