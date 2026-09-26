@@ -3,9 +3,9 @@ import { defineCommand } from '../../lib/define-command'
 import {
   asSdkInput,
   flagString,
-  IDEMPOTENCY_FLAG,
   INPUT_FLAG,
   mergeInput,
+  NON_REPLAYING_IDEMPOTENCY_FLAG,
   readJsonFlag,
   requestOptions,
   toStringArray,
@@ -31,7 +31,9 @@ export const apiKeysCreateCommand = defineCommand({
         'Bind the NEW key to this brand id (omit for an organization-wide key); not the acting --brand',
     },
     INPUT_FLAG,
-    IDEMPOTENCY_FLAG,
+    // The route never replays (a replay would disclose the plaintext key
+    // again): a retry mints a second key, whatever the key says.
+    NON_REPLAYING_IDEMPOTENCY_FLAG,
   ],
   examples: [
     'brew-cli api-keys create --name CI --permissions emails domains',

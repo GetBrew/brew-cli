@@ -5,8 +5,37 @@
 Not tagged or published: `package.json` says 0.8.1, but there is no
 `v0.8.1` tag. Pushing the tag publishes it (see `RELEASING.md`).
 
+### Added
+
+- `fields list` sends every parameter its route takes. `--include coverage`
+  adds per-field fill stats, `--audience-id <id>` scopes them to one saved
+  audience, and `--limit` / `--cursor` / `--all` page. Before, it returned
+  the first 100 fields and could not ask for coverage.
+- `emails get --email-version-id <id>` reads a saved version (ids from
+  `--include versions`), and `--run-id <id>` reads the version a generate or
+  edit run produced; pass one or neither. SDK 10's `emails.get` cannot
+  select a version, so a selected read uses the raw transport until the CLI
+  adopts SDK 11.
+- `brands list --status extracting|completed|failed|deleting`, plus
+  `--limit` / `--cursor` / `--all`.
+- `api-keys list` and `integrations list` take `--limit` / `--cursor` /
+  `--all`. SDK 10's methods take no page input, so a paged read uses the raw
+  transport; without the flags the command calls the SDK as before.
+- `tests/parity-query-params.test.ts` fails when a command without `--input`
+  cannot send a query parameter its spec operation takes, as a flag named
+  after it in kebab-case. `analytics overview` maps `from` / `to` to
+  `--since` / `--until` (RENAMED); `types` follows the trigger-events cursor
+  itself (EXEMPT). A stale entry in either map fails too.
+
 ### Fixed
 
+- `api-keys create --idempotency-key` no longer promises a safe retry. The
+  route never replays a request (a replay would disclose the one-time
+  plaintext key again), so a retry mints a second key whatever the key says.
+  The flag stays and is still sent (flags are additive-only); its help now
+  says so. `tests/idempotency-flags.test.ts` fails when a command promises a
+  safe retry on a route whose `x-brew-idempotency` is not `replay` or
+  `fail_closed`.
 - `emails get-audit --limit` is 1-50 findings per page (default 10). The
   0.8.0 notes and `--help` said 1-100 / default 100, copied from a spec
   that published the shared list limit; the server refuses a `--limit`
@@ -19,6 +48,20 @@ Not tagged or published: `package.json` says 0.8.1, but there is no
   flag's tokens as `x-brew-include-tokens`; the CLI's help text already
   names the same tokens, and `tests/include-tokens.test.ts` now fails if a
   re-vendored spec and a `--include` help line disagree.
+- Resynced again with the live spec after brew-v2#1649, #1650, #1651, #1655,
+  #1656, #1658 and #1660. `emails get --include` names the new `text` and
+  `links` expansions: the visible body text, and each link destination once
+  with its visible text and count. The new list `search`, the audience
+  `addEmails` / `removeEmails` edit and contact group counts need SDK 11.1,
+  which is not on npm yet, so their flags come when the CLI adopts it.
+- Resynced again after brew-v2#1662, #1665 and #1676. The newly typed
+  response fields come through as-is:
+  - sends and audience runs carry `pauseReason` while paused;
+  - an audience run's `nodeStats[].sendId` names each send step's own send;
+  - the domain health report types its placement test's `status` and `phase`;
+  - `emails restore` answers the restored design.
+
+  No command changes; `--limit` help already says the default is 100.
 
 ## 0.8.0
 

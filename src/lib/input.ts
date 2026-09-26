@@ -155,6 +155,18 @@ export const IDEMPOTENCY_FLAG = {
   summary: 'Idempotency-Key for safe retries (auto-generated otherwise)',
 } as const
 
+/**
+ * `--idempotency-key` on a route that never replays a request
+ * (`x-brew-idempotency: disabled`). Flags are additive-only after release, so
+ * the flag stays and is still sent, but its help must not promise a safe
+ * retry.
+ */
+export const NON_REPLAYING_IDEMPOTENCY_FLAG = {
+  flag: '--idempotency-key <key>',
+  summary:
+    'Accepted for compatibility only: this route never replays, so a retry runs again',
+} as const
+
 export const INPUT_FLAG = {
   flag: '--input <json>',
   summary: 'Full JSON request body, or - to read stdin (flags override it)',

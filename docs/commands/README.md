@@ -429,9 +429,16 @@ List custom contact fields
 - Route: `GET /v1/fields`
 - Class: read
 - SDK: `brew.fields.list(...)`
+- `--include <tokens>` — Expansions: coverage (per-field fill stats: percent of contacts with a value, and top values)
+- `--audience-id <audienceId>` — Scope --include coverage to one saved audience (ignored without it)
+- `--limit <n>` — Page size, 1-100 (default 100)
+- `--cursor <cursor>` — Opaque pagination cursor from a previous page
+- `--all` — Follow the cursor and return every page as one result
 
 ```bash
 brew-cli fields list
+brew-cli fields list --include coverage
+brew-cli fields list --include coverage --audience-id aud_2SmZOWV3ZQ7W5x6g3m4p --all --json
 ```
 
 ### brew-cli fields get
@@ -587,11 +594,15 @@ Fetch one email design by id — the bare row
 - Class: read
 - SDK: `brew.emails.get(...)`
 - Argument `emailId` — Design id returned by emails generate/import
-- `--include <tokens>` — Comma-separated expansions: html, versions
+- `--include <tokens>` — Comma-separated expansions: html, versions, text, links
+- `--email-version-id <emailVersionId>` — Read this saved version instead of the current head (ids from --include versions)
+- `--run-id <runId>` — Read the version a generate or edit run produced (the runId it returned)
 
 ```bash
 brew-cli emails get eml_2SmZOWV3ZQ7W5x6g3m4p
 brew-cli emails get eml_2SmZOWV3ZQ7W5x6g3m4p --include html,versions
+brew-cli emails get eml_2SmZOWV3ZQ7W5x6g3m4p --include text,links
+brew-cli emails get eml_2SmZOWV3ZQ7W5x6g3m4p --email-version-id emv_2SmZOWV3ZQ7W5x6g3m4p --include html
 ```
 
 ### brew-cli emails generate
@@ -1793,9 +1804,15 @@ List every brand in the organization
 - Route: `GET /v1/brands`
 - Class: read
 - SDK: `brew.brands.list(...)`
+- `--status <status>` — Only brands in one lifecycle state: extracting | completed | failed | deleting
+- `--limit <n>` — Page size, 1-100 (default 100)
+- `--cursor <cursor>` — Opaque pagination cursor from a previous page
+- `--all` — Follow the cursor and return every page as one result
 
 ```bash
 brew-cli brands list --json
+brew-cli brands list --status completed
+brew-cli brands list --all --json
 ```
 
 ### brew-cli brands get
@@ -1838,6 +1855,9 @@ List API keys in the organization (already-redacted `keyPreview`, never the secr
 - Route: `GET /v1/api-keys`
 - Class: read
 - SDK: `brew.apiKeys.list(...)`
+- `--limit <n>` — Page size, 1-100 (default 100)
+- `--cursor <cursor>` — Opaque pagination cursor from a previous page
+- `--all` — Follow the cursor and return every page as one result
 
 ```bash
 brew-cli api-keys list
@@ -1855,7 +1875,7 @@ Mint an API key; the plaintext `key` is returned ONCE — this output is the onl
 - `--permissions <scopes...>` — all | contacts | emails | automations | transactional | domains | sends | audiences | brands (default: all)
 - `--brand-id <brandId>` — Bind the NEW key to this brand id (omit for an organization-wide key); not the acting --brand
 - `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
-- `--idempotency-key <key>` — Idempotency-Key for safe retries (auto-generated otherwise)
+- `--idempotency-key <key>` — Accepted for compatibility only: this route never replays, so a retry runs again
 
 ```bash
 brew-cli api-keys create --name CI --permissions emails domains
@@ -2164,6 +2184,9 @@ List the integration catalog with per-provider connected state (connect via Sett
 - Route: `GET /v1/integrations`
 - Class: read
 - SDK: `brew.integrations.list(...)`
+- `--limit <n>` — Page size, 1-100 (default 100)
+- `--cursor <cursor>` — Opaque pagination cursor from a previous page
+- `--all` — Follow the cursor and return every page as one result
 
 ```bash
 brew-cli integrations list
