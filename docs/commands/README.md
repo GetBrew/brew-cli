@@ -2,7 +2,7 @@
 
 <!-- GENERATED FILE — do not edit. Regenerate with `bun run docs:commands`. -->
 
-130 commands. Classes: read (always safe), write
+135 commands. Classes: read (always safe), write
 (mutating, retry-safe), destructive (irreversible — the confirmation
 protocol applies: interactive y/N on a TTY, exit 4 + JSON envelope with
 a `confirmCommand` otherwise, `--yes` to proceed).
@@ -119,7 +119,7 @@ a `confirmCommand` otherwise, `--yes` to proceed).
 | `brew-cli analytics trigger-instances list` | read | `GET /v1/automations/trigger-instances` | List fired-trigger instances with their lifecycle `state` (`automations trigger-instances list`) |
 | `brew-cli brand get` | read | `GET /v1/brand` | Fetch the key's brand + extraction readiness (`ready` flag) |
 | `brew-cli brand update` | write | `PATCH /v1/brand` | Update brand identity and/or design-system markdown (PATCH) |
-| `brew-cli brand get-images` | read | `GET /v1/brand/images` | Browse or semantically search the brand's image library |
+| `brew-cli brand get-images` | read | `GET /v1/brand/images` | List or semantically search the brand's assets: logos, brand images and images made with Brew |
 | `brew-cli brands list` | read | `GET /v1/brands` | List every brand in the organization |
 | `brew-cli brands get` | read | `GET /v1/brands/{brandId}` | One brand's lifecycle state (the extraction polling endpoint) |
 | `brew-cli brands create` | write | `POST /v1/brands` | Create a brand and start async extraction (needs an ORGANIZATION-scoped key); poll `brands get` until ready |
@@ -133,6 +133,11 @@ a `confirmCommand` otherwise, `--yes` to proceed).
 | `brew-cli domains health` | read | `GET /v1/domains/{domainId}/health` | Deliverability health: verdict, signals, DNS/auth, reputation |
 | `brew-cli domains update` | write | `PATCH /v1/domains/{domainId}` | Update default sender settings for a domain |
 | `brew-cli domains delete` | destructive | `DELETE /v1/domains/{domainId}` | Delete a sending domain |
+| `brew-cli domains unsubscribes list` | read | `GET /v1/domains/{domainId}/unsubscribes` | List a marketing domain's unsubscribes, newest first; each row's scope says domain, all (brand-wide) or both |
+| `brew-cli domains unsubscribes add` | write | `POST /v1/domains/{domainId}/unsubscribes` | Add up to 1,000 addresses to a marketing domain's unsubscribe list (this domain only; idempotent) |
+| `brew-cli domains unsubscribes remove` | destructive | `DELETE /v1/domains/{domainId}/unsubscribes/{email}` | Take one address off a marketing domain's unsubscribe list (resubscribes it to this domain only; idempotent) |
+| `brew-cli domains unsubscribes import` | write | `POST /v1/domains/{domainId}/unsubscribes/import` | Import a CSV (another ESP's unsubscribe export) into a marketing domain's unsubscribe list: 10,000 rows per call |
+| `brew-cli domains unsubscribes export` | read | `GET /v1/domains/{domainId}/unsubscribes/export` | Export a marketing domain's unsubscribe list as CSV text (raw CSV on a TTY; capped at 50,000 rows or ~4 MB) |
 | `brew-cli content generate-image` | write ($) | `POST /v1/content/generate-image` | Generate or edit an image from a prompt |
 | `brew-cli content gif` | write ($) | `POST /v1/content/gif` | Create an animated GIF from a prompt, image, or video |
 | `brew-cli content transform` | write ($) | `POST /v1/content/transform` | Optimize or resize a hosted image |
@@ -1779,14 +1784,13 @@ cat brand-patch.json | brew-cli brand update --input -
 
 ### brew-cli brand get-images
 
-Browse or semantically search the brand's image library
+List or semantically search the brand's assets: logos, brand images and images made with Brew
 
 - Route: `GET /v1/brand/images`
 - Class: read
-- SDK: `brew.brand.getImages(...)`
-- `--query <text>` — Semantic search over image descriptions
-- `--type <type>` — Filter by image category
-- `--aspect-ratio <ratio>` — Filter by aspect ratio (e.g. 16:9)
+- `--query <text>` — Semantic search over brand and generated images (1 credit per new search; relevance order)
+- `--kind <kind>` — logo, brand (site or uploaded) or generated (made with Brew)
+- `--sort <order>` — newest (default) or oldest; ignored with --query
 - `--limit <n>` — Page size, 1-100 (default 100)
 - `--cursor <cursor>` — Opaque pagination cursor from a previous page
 - `--all` — Follow the cursor and return every page as one result
@@ -1794,7 +1798,8 @@ Browse or semantically search the brand's image library
 
 ```bash
 brew-cli brand get-images
-brew-cli brand get-images --query "team photo" --aspect-ratio 16:9
+brew-cli brand get-images --kind generated --sort oldest
+brew-cli brand get-images --query "team photo" --kind brand
 ```
 
 ### brew-cli brands list
@@ -1997,6 +2002,84 @@ Delete a sending domain
 
 ```bash
 brew-cli domains delete dom_8s1Kj --yes
+```
+
+### brew-cli domains unsubscribes list
+
+List a marketing domain's unsubscribes, newest first; each row's scope says domain, all (brand-wide) or both
+
+- Route: `GET /v1/domains/{domainId}/unsubscribes`
+- Class: read
+- Argument `domainId` — Marketing domain id (from `domains list`)
+- `--query <text>` — Search: an address (anything with @) matches it, by prefix while partial; other text searches address and name
+- `--scope <scope>` — domain (this domain's list), all (the brand-wide opt-out) or any (default: either)
+- `--limit <n>` — Page size, 1-100 (default 100)
+- `--cursor <cursor>` — Opaque pagination cursor from a previous page
+- `--all` — Follow the cursor and return every page as one result
+- `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
+
+```bash
+brew-cli domains unsubscribes list kx7bkh53hasmfeh5kd7sqgykt187g8ww
+brew-cli domains unsubscribes list kx7bkh53hasmfeh5kd7sqgykt187g8ww --scope domain --query jane@
+```
+
+### brew-cli domains unsubscribes add
+
+Add up to 1,000 addresses to a marketing domain's unsubscribe list (this domain only; idempotent)
+
+- Route: `POST /v1/domains/{domainId}/unsubscribes`
+- Class: write
+- Argument `domainId` — Marketing domain id (from `domains list`)
+- `--emails <emails...>` — Address(es) to suppress on this domain, repeatable
+- `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
+- `--idempotency-key <key>` — Idempotency-Key for safe retries (auto-generated otherwise)
+
+```bash
+brew-cli domains unsubscribes add kx7bkh53hasmfeh5kd7sqgykt187g8ww --emails jane@example.com sam@example.com
+brew-cli domains unsubscribes add kx7bkh53hasmfeh5kd7sqgykt187g8ww --input '["jane@example.com"]'
+```
+
+### brew-cli domains unsubscribes remove
+
+Take one address off a marketing domain's unsubscribe list (resubscribes it to this domain only; idempotent)
+
+- Route: `DELETE /v1/domains/{domainId}/unsubscribes/{email}`
+- Class: destructive
+- Argument `domainId` — Marketing domain id (from `domains list`)
+- Argument `email` — Address to take off the list
+
+```bash
+brew-cli domains unsubscribes remove kx7bkh53hasmfeh5kd7sqgykt187g8ww jane@example.com --yes
+```
+
+### brew-cli domains unsubscribes import
+
+Import a CSV (another ESP's unsubscribe export) into a marketing domain's unsubscribe list: 10,000 rows per call
+
+- Route: `POST /v1/domains/{domainId}/unsubscribes/import`
+- Class: write
+- Argument `domainId` — Marketing domain id (from `domains list`)
+- `--file <path>` — CSV file to import, or - for stdin
+- `--column <header>` — Header of the address column, when detection fails (default: an email header or the column of addresses)
+- `--idempotency-key <key>` — Idempotency-Key for safe retries (auto-generated otherwise)
+
+```bash
+brew-cli domains unsubscribes import kx7bkh53hasmfeh5kd7sqgykt187g8ww --file unsubscribes.csv
+cat export.csv | brew-cli domains unsubscribes import kx7bkh53hasmfeh5kd7sqgykt187g8ww --file - --column "Email Address"
+```
+
+### brew-cli domains unsubscribes export
+
+Export a marketing domain's unsubscribe list as CSV text (raw CSV on a TTY; capped at 50,000 rows or ~4 MB)
+
+- Route: `GET /v1/domains/{domainId}/unsubscribes/export`
+- Class: read
+- Argument `domainId` — Marketing domain id (from `domains list`)
+- `--scope <scope>` — domain (this domain's list), all (the brand-wide opt-out) or any (default: either)
+
+```bash
+brew-cli domains unsubscribes export kx7bkh53hasmfeh5kd7sqgykt187g8ww
+brew-cli domains unsubscribes export kx7bkh53hasmfeh5kd7sqgykt187g8ww --scope domain --json | jq -r .csv > unsubscribes.csv
 ```
 
 ### brew-cli content generate-image
@@ -2287,6 +2370,7 @@ brew-cli api GET /v1/llms.txt
 
 SDK methods intentionally without a dedicated command:
 
+- `brand.getImages` — covered by `brand get-images` (raw route: SDK 10 forwards only the retired type/aspectRatio filters, not kind/sort; bind the SDK method on the upgrade that forwards them)
 - `automations.triggers.getContract` — covered by `automations triggers contract get` (raw route, bound pre-SDK-v9; SDK-method migration tracked separately)
 - `automations.triggers.putContract` — covered by `automations triggers contract put` (raw route, bound pre-SDK-v9)
 - `automations.triggers.validatePayload` — covered by `automations triggers contract validate` (raw route, bound pre-SDK-v9)

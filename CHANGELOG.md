@@ -5,8 +5,25 @@
 Not tagged or published: `package.json` says 0.8.1, but there is no
 `v0.8.1` tag. Pushing the tag publishes it (see `RELEASING.md`).
 
+### Changed (breaking)
+
+- `brand get-images` lists the brand's whole asset library, as the Assets
+  page shows it: logos, brand images and images made with Brew. `--kind
+  logo|brand|generated` narrows it and `--sort newest|oldest` orders it;
+  `--query` searches brand and generated images by meaning (1 credit per new
+  search). `--type` and `--aspect-ratio` are gone with the API filters they
+  set (GetBrew/brew-v2#1713). Rows show ID (the app's `/assets?image=` id),
+  KIND, URL and ADDED. SDK 10's `brand.getImages` cannot send `kind` or
+  `sort`, so the command uses the raw transport until the CLI adopts the SDK
+  release that forwards them.
+
 ### Added
 
+- `domains unsubscribes list|add|remove|import|export`: one marketing
+  domain's unsubscribe list (GetBrew/brew-v2#1579). `remove` asks for
+  confirmation (`--yes`); `import --file <path|->` takes another ESP's
+  export, up to 10,000 rows per call. Raw transport until the CLI adopts an
+  SDK with `domains.unsubscribes`.
 - `fields list` sends every parameter its route takes. `--include coverage`
   adds per-field fill stats, `--audience-id <id>` scopes them to one saved
   audience, and `--limit` / `--cursor` / `--all` page. Before, it returned

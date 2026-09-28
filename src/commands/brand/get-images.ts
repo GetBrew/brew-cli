@@ -1,7 +1,6 @@
-import type { ListBrandImagesInput } from '@brew.new/sdk'
+import type { operations } from '../../generated/openapi-types'
 import { defineCommand } from '../../lib/define-command'
 import {
-  asSdkInput,
   flagInt,
   flagString,
   INPUT_FLAG,
@@ -15,22 +14,40 @@ import {
   collectAll,
   LIMIT_FLAG,
 } from '../../lib/paginate'
+import { rawRequest } from '../../lib/raw-request'
 
+type BrandImagesPage =
+  operations['getBrandImages']['responses'][200]['content']['application/json']
+
+/**
+ * The brand's asset library, as the Assets page in the Brew app shows it:
+ * logos, brand images and images made with Brew. Raw route because
+ * `@brew.new/sdk` 10's `brand.getImages` forwards only the retired
+ * `type` / `aspectRatio` filters: once the CLI adopts the SDK release that
+ * forwards `kind` and `sort`, bind `brand.getImages` here and drop
+ * `isRawTransport` (and its `SDK_SKIP_LIST` entry).
+ */
 export const brandGetImagesCommand = defineCommand({
   path: ['brand', 'get-images'],
-  summary: "Browse or semantically search the brand's image library",
-  sdkMethod: 'brand.getImages',
+  summary:
+    "List or semantically search the brand's assets: logos, brand images and images made with Brew",
+  sdkMethod: null,
+  isRawTransport: true,
   route: { method: 'GET', path: '/v1/brand/images' },
   commandClass: 'read',
   flags: [
     {
       flag: '--query <text>',
-      summary: 'Semantic search over image descriptions',
+      summary:
+        'Semantic search over brand and generated images (1 credit per new search; relevance order)',
     },
-    { flag: '--type <type>', summary: 'Filter by image category' },
     {
-      flag: '--aspect-ratio <ratio>',
-      summary: 'Filter by aspect ratio (e.g. 16:9)',
+      flag: '--kind <kind>',
+      summary: 'logo, brand (site or uploaded) or generated (made with Brew)',
+    },
+    {
+      flag: '--sort <order>',
+      summary: 'newest (default) or oldest; ignored with --query',
     },
     LIMIT_FLAG,
     CURSOR_FLAG,
@@ -39,46 +56,50 @@ export const brandGetImagesCommand = defineCommand({
   ],
   examples: [
     'brew-cli brand get-images',
-    'brew-cli brand get-images --query "team photo" --aspect-ratio 16:9',
+    'brew-cli brand get-images --kind generated --sort oldest',
+    'brew-cli brand get-images --query "team photo" --kind brand',
   ],
   run: async ({ ctx, flags }) => {
     const base = await readJsonFlag(ctx, flags.input, '--input')
     const input = mergeInput(base, {
       q: flagString(flags.query),
-      type: flagString(flags.type),
-      aspectRatio: flagString(flags.aspectRatio),
+      kind: flagString(flags.kind),
+      sort: flagString(flags.sort),
       limit: flagInt(flags.limit, '--limit'),
       cursor: flagString(flags.cursor),
-    })
-    const brand = ctx.client().brand
+    }) as Record<string, unknown>
+    const fetchPage = (cursor: string | undefined) =>
+      rawRequest<BrandImagesPage>(ctx, {
+        method: 'GET',
+        path: '/v1/brand/images',
+        query: {
+          q: flagString(input.q),
+          kind: flagString(input.kind),
+          sort: flagString(input.sort),
+          limit: input.limit === undefined ? undefined : String(input.limit),
+          cursor: cursor ?? flagString(input.cursor),
+        },
+      })
     if (flags.all === true) {
-      const rows = await collectAll(ctx, (cursor) =>
-        brand.getImages(
-          asSdkInput<ListBrandImagesInput>({
-            ...input,
-            ...(cursor === undefined ? {} : { cursor }),
-          })
-        )
-      )
+      const rows = await collectAll(ctx, (cursor) => fetchPage(cursor))
       return {
         data: { data: rows, pagination: { cursor: null, hasMore: false } },
         human: renderImages(rows),
       }
     }
-    const result = await brand.getImages(
-      asSdkInput<ListBrandImagesInput>(input)
-    )
-    return { data: result, human: renderImages(result.data) }
+    const page = await fetchPage(undefined)
+    return { data: page, human: renderImages(page.data) }
   },
 })
 
 function renderImages(rows: ReadonlyArray<unknown>): string {
   if (rows.length === 0) {
-    return 'No brand images found.'
+    return 'No brand assets found.'
   }
   return renderTable(rows as ReadonlyArray<Record<string, unknown>>, [
+    { key: 'assetId', header: 'ID' },
+    { key: 'kind', header: 'KIND' },
     { key: 'url', header: 'URL' },
-    { key: 'category', header: 'CATEGORY' },
-    { key: 'aspectRatio', header: 'ASPECT' },
+    { key: 'addedAt', header: 'ADDED' },
   ])
 }

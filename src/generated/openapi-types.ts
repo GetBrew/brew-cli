@@ -87,6 +87,8 @@ export interface paths {
          *
          *     **Returns** `200` with the generated-email shape: the NEW head after a prompt edit, or the CURRENT head after an envelope patch (with its `title`, `subjectLine` and `group` after the patch); a text response when the agent answered in prose.
          *
+         *     **Automations** a prompt edit moves every automation `sendEmail` step pinned to the previous latest version onto the new one, in a new unpublished automation version (while a Brew agent is still building that automation, its in-progress draft is updated in place instead); the published version keeps its pin until the next publish. Steps pinned to an older version do not move. An envelope patch writes no version and moves nothing.
+         *
          *     **Errors** `404 EMAIL_NOT_FOUND`, `EMAIL_VERSION_NOT_FOUND` (a pin that is not one of this design's versions), `EMAIL_GROUP_NOT_FOUND` (a `groupId` that is not one of this brand's groups); `409 EMAIL_IN_PROGRESS` while the design is still generating (or a concurrent edit moved the head between read and patch); `422 BRAND_NOT_READY` until the brand has finished extracting; `502 EMAIL_GENERATION_FAILED` when the agent run fails (retry later); `400 INVALID_REQUEST` for a body with none of the four fields, or `emailVersionId` without `prompt`.
          *
          *     **See also** `cloneEmail` (name the copy with `title`), `restoreEmailVersion`, `listEmails`.
@@ -181,7 +183,7 @@ export interface paths {
         put?: never;
         /**
          * Restore a historical version
-         * @description Non-destructive restore: clones the numbered version into a NEW `latest` row (demoting the current head) and returns the same generated-email shape as an edit, including the fresh `emailVersionId`.
+         * @description Non-destructive restore: clones the numbered version into a NEW `latest` row (demoting the current head) and returns the same generated-email shape as an edit, including the fresh `emailVersionId`. Like a prompt edit, it moves every automation `sendEmail` step pinned to the previous latest version onto the new one, in a new unpublished automation version; the published version keeps its pin until the next publish, and steps pinned to an older version do not move. To keep a step on a design that will change, clone the email and pin the clone, and leave the clone unedited: a prompt edit or restore of the clone moves the step the same way, and a manual canvas edit changes the content of the pinned version in place, published automations included.
          */
         post: operations["restoreEmailVersion"];
         delete?: never;
@@ -477,7 +479,7 @@ export interface paths {
          *
          *     **Returns** campaign `202 { status: 'queued' | 'scheduled', sendId, scheduledAt?, warnings? }` (poll `getSend`; `warnings[]` carries one `CONSENT_RECORD_MISSING` per inline recipient that is a subscribed contact with no consent record, and one `RECIPIENTS_EXCLUDED` with the counts when unsubscribed, suppressed or undeliverable contacts will be skipped); test `200 { status: 'completed', recipient }`.
          *
-         *     **Errors** `404 EMAIL_NOT_FOUND`, `DOMAIN_NOT_FOUND`, `AUDIENCE_NOT_FOUND` (a resource in another brand also surfaces as `404`); `422 EMAIL_NOT_READY`, `DOMAIN_NOT_READY`, `DOMAIN_PURPOSE_NOT_ALLOWED`, `LIQUID_RENDER_ERROR`; `422 CONSENT_REQUIRED` when an inline marketing recipient has no contact record with marketing consent and no `consent` was supplied (`details.recipients`); `422 RECIPIENT_UNSUBSCRIBED` when an inline recipient is an existing contact who opted out (`details.recipients`, never re-subscribed); `422 NO_ELIGIBLE_RECIPIENTS` when an immediate send would reach nobody because every contact it targets is unsubscribed, suppressed or undeliverable (`details.eligibility` = `{ total, eligible, excluded: { unsubscribed, suppressed, invalidEmail } }`; no send is created, while a scheduled send is accepted instead); `402 SEND_QUOTA_EXCEEDED` when the plan's monthly volume would be exceeded (no `Retry-After`).
+         *     **Errors** `400 INVALID_REQUEST` (`param: subject`) when `subject` has a line break or runs over 1000 characters (993 on a test send, for the `[TEST]` prefix), judged on the text every recipient receives; `404 EMAIL_NOT_FOUND`, `DOMAIN_NOT_FOUND`, `AUDIENCE_NOT_FOUND` (a resource in another brand also surfaces as `404`); `422 EMAIL_NOT_READY`, `DOMAIN_NOT_READY`, `DOMAIN_PURPOSE_NOT_ALLOWED`, `LIQUID_RENDER_ERROR`; `422 CONSENT_REQUIRED` when an inline marketing recipient has no contact record with marketing consent and no `consent` was supplied (`details.recipients`); `422 RECIPIENT_UNSUBSCRIBED` when an inline recipient is an existing contact who opted out (`details.recipients`, never re-subscribed); `422 NO_ELIGIBLE_RECIPIENTS` when an immediate send would reach nobody because every contact it targets is unsubscribed, suppressed or undeliverable (`details.eligibility` = `{ total, eligible, excluded: { unsubscribed, suppressed, invalidEmail } }`; no send is created, while a scheduled send is accepted instead); `402 SEND_QUOTA_EXCEEDED` when the plan's monthly volume would be exceeded (no `Retry-After`).
          *
          *     **See also** `listSends`, `cancelSend`, `fireTrigger`.
          */
@@ -743,7 +745,7 @@ export interface paths {
          *
          *     **Returns** the bare automation row, or with `dryRun: true` a `200 AutomationDryRunReport` `{ valid, blockers[], warnings[], blockingIssues[], nodeCounts }`: `blockingIssues[]` lists per-node references the effective trigger or contact catalog cannot provide (`fatal: true` for filter or split conditions and triple-brace `{{{ }}}` body tokens fails publish; `fatal: false` for subject, previewText, fromName, replyTo and double-brace body tags renders empty at send time); `valid` is false when any blocker or blocking issue is present, while publish itself hard-blocks only fatal issues so a live automation can be republished after a soft orphan. Updating a LIVE automation saves a draft and does not go live: the previously published version keeps serving until you republish, `published` describes the returned row, `isLive`, `liveVersion` and `liveAutomationVersionId` describe the automation, and `warnings[]` carries `DRAFT_SAVED_NOT_LIVE`.
          *
-         *     **Errors** `404 AUTOMATION_NOT_FOUND`, `AUTOMATION_VERSION_NOT_FOUND` (pin `liveAutomationVersionId`, a `versions[]` id, or a run row's `automationVersionId`), `TRIGGER_EVENT_NOT_FOUND`; `400 AUTOMATION_GRAPH_INVALID` (`details.issues[]`); `409 PUBLISH_VALIDATION_FAILED` (`details.blockers[]`), `AUTOMATION_VERSION_CONFLICT` (re-read, reapply, retry); `422 AUTOMATION_NOT_PUBLISHED` (nothing to unpublish), `AUTOMATION_NOT_PAUSABLE` (a manual-audience automation pauses through its runs).
+         *     **Errors** `404 AUTOMATION_NOT_FOUND`, `AUTOMATION_VERSION_NOT_FOUND` (pin `liveAutomationVersionId`, a `versions[]` id, or a run row's `automationVersionId`), `TRIGGER_EVENT_NOT_FOUND`; `400 AUTOMATION_GRAPH_INVALID` (`details.issues[]`); `409 AUTOMATION_VERSION_CONFLICT` (re-read, reapply, retry); `422 PUBLISH_VALIDATION_FAILED` (`details.blockers[]`), `AUTOMATION_NOT_PUBLISHED` (nothing to unpublish), `AUTOMATION_NOT_PAUSABLE` (a manual-audience automation pauses through its runs).
          *
          *     **See also** `createAutomation`, `testAutomation`, `runAutomation`, `listAutomationRuns`.
          */
@@ -1147,7 +1149,7 @@ export interface paths {
          *
          *     **Use when** an event in your product should start every published automation attached to this trigger.
          *
-         *     **Input** `{ payload }`, validated against the trigger’s `payloadSchema`. Unknown fields are accepted and reported in `warnings[]`. The contact derived from the payload is upserted before the fan-out.
+         *     **Input** `{ payload }`, validated against the trigger’s `payloadSchema`. Unknown fields are accepted and reported in `warnings[]`. The contact derived from the payload is upserted before the fan-out with the declared top-level scalar fields the fire sent; object and array fields stay template data, and a contract `fallbackValue` is never written onto the contact. A value the contact field’s type refuses is left out and reported as a `FIELD_TYPE_MISMATCH` warning (`field`, `expectedType`, `actualType`); the rest of the contact is written and the runs still start.
          *
          *     **Returns** `202 { triggerInstanceId, triggerEventId, status, automationRunIds[], publishedAutomations[], counts, warnings[], receivedAt }`. Follow a run with `getAutomationRun`, the fire itself with `getTriggerInstance`. `counts.skipped` is the recipients a suppression already covered, so `automations: 2, skipped: 2` means nothing was delivered.
          *
@@ -1319,7 +1321,7 @@ export interface paths {
          *
          *     **Use when** paging through contacts, running a free-text search, or reading one saved audience’s members. Typed filter clauses and counts are `searchContacts`.
          *
-         *     **Input** `search` (free text), `audienceId` (only that saved audience’s members), `sort` (any core column or custom field, default `createdAt`) and `order`, `limit` and `cursor`.
+         *     **Input** `search` (a whole email address matches only that contact, with its `+` encoded as `%2B`; other text matches any of its words in email, first and last name), `audienceId` (only that saved audience’s members), `sort` (any core column or custom field, default `createdAt`) and `order`, `limit` and `cursor`.
          *
          *     **Returns** `200` with a page of `Contact` rows.
          *
@@ -1333,7 +1335,7 @@ export interface paths {
          * Create or update contacts
          * @description Upserts a single contact OR a batch (`{ contacts: [...] }`, up to 1000 rows). Unknown custom fields auto-create field definitions on the brand, typed from the batch (native booleans/numbers, ISO-date strings → `date`, anything else `string`).
          *
-         *     Custom-field values are coerced to the definition's type (dates → epoch ms, `"1,234"` → 1234, `yes`/`no` → booleans). A value that cannot be coerced (`"$49"` in a number field) is a `409 FIELD_TYPE_MISMATCH` on a single upsert and a per-row `errors[]` entry (`code: FIELD_TYPE_MISMATCH`, `field`) in a batch — the other rows still land.
+         *     Custom-field values are coerced to the definition's type (dates → epoch ms, `"1,234"` → 1234, `yes`/`no` → booleans). A value that cannot be coerced (`"$49"` in a number field) is a `409 FIELD_TYPE_MISMATCH` on a single upsert and a per-row `errors[]` entry (`code: FIELD_TYPE_MISMATCH`, `field`) in a batch — the other rows still land. A `customFields` key is never stored under a core field name. One whose loss would change the contact (`subscribed`, `First Name`, `consent`, a suppression flag or domain opt-out, or an `email` naming another address) is a `422 CORE_FIELD_IMMUTABLE` on a single upsert (nothing written) and a per-row `errors[]` entry (`code: CORE_FIELD_IMMUTABLE`, `field`) in a batch; send `firstName`, `lastName`, `subscribed` and `consent` at the top level. A key naming a field Brew manages (`createdAt`, `validationStatus`) is dropped with a `warnings[]` entry (`code: CORE_FIELD_IGNORED`, `field`) and the contact is still written, and an `email` key repeating the contact address is ignored.
          *
          *     Optional `consent: { source: "api" | "form" | "import", capturedAt?, policyVersion?, evidence? }` records marketing consent provenance on the contact (per row, or once at batch level as the default). It never changes `subscribed`. An inline marketing send later needs the contact to be subscribed, and warns when no record exists.
          *
@@ -1399,7 +1401,7 @@ export interface paths {
          * Get contacts
          * @description The single "Get Contacts" read. Structured search over the brand’s contacts: free-text `search`, `filters` (`{ field, operator, value }` combined with `logic: "and" | "or" | "none"`; the allowed operators depend on the field’s type — see the `operator` schema — and an unsupported pairing is a `400`, never a dropped clause), `sort` + `order`, and cursor pagination. Returns `{ data, pagination }`.
          *
-         *     Folds the former `GET /v1/contacts` (omit all filters to list everything) and `GET /v1/contacts/{email}` (use `filters: [{ field: "email", operator: "equals", value: "…" }]`).
+         *     `search` with a whole email address matches only that contact, like `filters: [{ field: "email", operator: "equals", value: "…" }]` or `GET /v1/contacts/{email}`. Any other `search` text matches the contacts whose email, first or last name contains any of its words, which can include other contacts, in `sort` order, so act on a contact found by its address. Omit every filter to list everything.
          *
          *     Pass an optional `audienceId` to scope the search to a saved audience’s members — its stored filter set is evaluated as one unit with its own `logicalOperator` (an OR audience stays an OR) and then ANDed with `filters`, so the page is exactly who a send to that audience reaches (an unknown / cross-brand id, or an audience a send would refuse → `400`).
          *
@@ -1443,11 +1445,11 @@ export interface paths {
         put?: never;
         /**
          * Bulk-import contacts from CSV
-         * @description Parse a raw CSV string and upsert the rows as contacts (≤ 1000). By default each column header maps to a field of the same name (`email` is required); pass `mapping` to remap columns explicitly. Rows with a missing/invalid email are SKIPPED (counted in `summary.skipped`), not errored; disposable-domain rows are imported with `validationStatus: "risky"` (deliverable but flagged). Returns the same `{ summary, fieldsCreated, errors, warnings }` as batch-create — `207` when some rows fail.
+         * @description Parse a raw CSV string and upsert the rows as contacts (≤ 1000). By default each column header maps to a field of the same name (`email` is required). A header that spells a core field, ignoring case, spaces, `_` and `-`, or whose field key equals it (`First.Name`), maps to it: `Email`, `First Name`, `Last Name` and `Subscribed` fill `email`, `firstName`, `lastName` and `subscribed`. Pass `mapping` to remap single columns; the columns it leaves out keep their default mapping, `""` leaves a column out, and a key that names no column is a `400`. A core field that `mapping` fills is filled from that column alone: another column whose default would fill it is left out with a `CSV_COLUMN_IGNORED` warning. Rows with a missing/invalid email are SKIPPED (counted in `summary.skipped`), not errored; disposable-domain rows are imported with `validationStatus: "risky"` (deliverable but flagged). Returns the same `{ summary, fieldsCreated, errors, warnings }` as batch-create — `207` when some rows fail.
          *
-         *     CSV cells are text: a column mapped onto an EXISTING field is coerced to that field's type (dates → epoch ms, `1,234` → 1234, `yes`/`no` → booleans), and a cell that cannot be coerced (`$49` in a number column) fails ITS row with a per-row `errors[]` entry (`code: FIELD_TYPE_MISMATCH`, `field`) while the other rows still land. An undeclared column is created as a `string` field unless every value is an ISO date (→ `date`); predeclare `number` / `bool` columns with `POST /v1/fields`.
+         *     CSV cells are text: a column mapped onto an EXISTING field is coerced to that field's type (dates → epoch ms, `1,234` → 1234, `yes`/`no` → booleans), and a cell that cannot be coerced (`$49` in a number column) fails ITS row with a per-row `errors[]` entry (`code: FIELD_TYPE_MISMATCH`, `field`) while the other rows still land. An undeclared column is created as a `string` field unless every value is an ISO date (→ `date`); predeclare `number` / `bool` columns with `POST /v1/fields`. A column whose field Brew manages (`Created At`, `Validation Status`) is not imported and adds a `warnings[]` entry (`code: CSV_COLUMN_IGNORED`, `field` names the column).
          *
-         *     A `subscribed` column reads ESP status words (`unsubscribed`, `cleaned`, `active`, …). An opt-out unsubscribes the contact, new or existing. A subscribed value only applies to new contacts: a row that asks to re-subscribe a contact who opted out keeps its other fields and adds a `warnings[]` entry (`code: RESUBSCRIBE_SKIPPED`, `email`).
+         *     A `subscribed` column reads true/false and ESP status words (`unsubscribed`, `cleaned`, `blocklisted`, `transactional`, `active`, …). An opt-out unsubscribes the contact, new or existing. A word that is not a subscription status (`maybe`) fails its row (`code: FIELD_TYPE_MISMATCH`, `field: subscribed`) instead of importing the contact subscribed. A subscribed value only applies to new contacts: a row that asks to re-subscribe a contact who opted out keeps its other fields and adds a `warnings[]` entry (`code: RESUBSCRIBE_SKIPPED`, `email`).
          */
         post: operations["importContactsCsv"];
         delete?: never;
@@ -1526,7 +1528,17 @@ export interface paths {
         post?: never;
         /**
          * Delete a contact field
-         * @description Deletes a custom field definition (core columns cannot be deleted — `422 CORE_FIELD_IMMUTABLE`). Idempotent — an unknown name resolves with `deleted: false`.
+         * @description Deletes a custom field and clears its value from every contact. The values cannot be recovered, and a field created later with the same name starts empty.
+         *
+         *     **Use when** a field and its values should go. To change a field's type, delete it, create it again with the new type and re-import the values. Check saved audiences first: afterwards a filter on the field sees no value, so `is_empty` and `not_exists` match every contact.
+         *
+         *     **Input** `fieldName` in the path.
+         *
+         *     **Returns** `200` with `{ fieldName, deleted }`. A name with no custom field resolves `deleted: false` and clears nothing, so repeating the call is safe. The three legacy consent fields (`marketingConsentSource`, `marketingConsentCapturedAt`, `marketingConsentPolicyVersion`) lose only the definition: their values stay, because they still serve as consent evidence.
+         *
+         *     **Errors** `422 CORE_FIELD_IMMUTABLE` for a core column.
+         *
+         *     **See also** `listContactFields`, `getContactField`, `createContactField`.
          */
         delete: operations["deleteContactField"];
         options?: never;
@@ -1738,6 +1750,90 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/domains/{domainId}/unsubscribes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List a domain's unsubscribes
+         * @description Every MARKETING sending domain is its own unsubscribe list, keyed by the domain's host inside the brand's contacts. Returns one page (`{ data, pagination }`, newest first). Each row carries `scope`: `domain` (on this host's list), `all` (the brand-wide opt-out — `subscribed: false` on the contact, which blocks every marketing send) or `both`. `?scope=` narrows; `?q=` searches by address. Transactional domains own no list → `422 DOMAIN_PURPOSE_NOT_ALLOWED`.
+         */
+        get: operations["listDomainUnsubscribes"];
+        put?: never;
+        /**
+         * Add addresses to a domain's unsubscribe list
+         * @description Suppresses up to 1,000 addresses from THIS marketing domain's mail. An existing contact is suppressed for this host only — sends from OTHER marketing domains still reach it; set `subscribed: false` on the contact for a brand-wide opt-out. An address with no contact is created already globally unsubscribed, so every marketing domain skips it (`summary.created`). Addresses already on the list count under `alreadyUnsubscribed`, never errored (idempotent); malformed ones are reported in `invalid` and skipped.
+         */
+        post: operations["addDomainUnsubscribes"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/domains/{domainId}/unsubscribes/{email}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Remove an address from a domain's unsubscribe list
+         * @description Takes one address off THIS domain's list (resubscribes it to this host only). Idempotent — `removed: false` when the address was not on the list. Never clears the brand-wide opt-out: `globallyUnsubscribed: true` means every marketing send still skips the contact until `PATCH /v1/contacts/{email}` sets `subscribed: true`. URL-encode the address.
+         */
+        delete: operations["removeDomainUnsubscribe"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/domains/{domainId}/unsubscribes/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Import a CSV into a domain's unsubscribe list
+         * @description Migrates an unsubscribe list (another ESP's export) into THIS marketing domain's list. `csv` is the file text: an `email` header — or any column of addresses, or one headerless column; pass `column` to name the header when detection fails (`400` otherwise). Synchronous and bounded: 10,000 rows per call (`truncated: true` when the file carried more — split it across calls) and 2,000,000 characters (a longer `csv` is rejected as `400 INVALID_REQUEST`). Idempotent per address. An address with no contact row is created already globally unsubscribed, exactly as `POST /v1/domains/{domainId}/unsubscribes` does, so every marketing domain skips it. The contact CSV importer's `subscribed` column is the BRAND-WIDE flag — use this endpoint for per-domain opt-outs.
+         */
+        post: operations["importDomainUnsubscribes"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/domains/{domainId}/unsubscribes/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Export a domain's unsubscribe list
+         * @description The whole list as CSV text (`Email,Scope,Unsubscribed At,Source,Send ID`) inside the JSON envelope — the v1 transport is JSON-only. Capped at 50,000 rows or ~4 MB of CSV, whichever comes first, so the response stays under the platform body limit (`truncated: true` beyond; narrow with `?scope=`).
+         */
+        get: operations["exportDomainUnsubscribes"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/domains/{domainId}/health": {
         parameters: {
             query?: never;
@@ -1893,7 +1989,7 @@ export interface paths {
         };
         /**
          * Get brand images
-         * @description The brand’s image library — dual-mode. Pass `?q=` for SEMANTIC search (the query is embedded + vector-searched over the brand’s indexed assets; `?type` and `?aspectRatio` narrow it) — this path is **credit-metered** (`402 INSUFFICIENT_CREDITS` when out of credits). Omit `?q=` to BROWSE the stored harvested + generated library (free), optionally filtered by `?type` / `?aspectRatio`. Either way returns `{ data, pagination }` of images with a description + dimensions. (The smaller `identity` / `emailDesign` / `imageStyle` / `logos` sub-resources embed into `GET /v1/brand?include=…`; images stay separate because they paginate.)
+         * @description The brand’s asset library, as the Assets page shows it: logos, brand images (from the site or uploaded, including the social preview and site screenshot) and images made with Brew. Omit `?q=` to BROWSE it (free), newest first or `?sort=oldest`. Pass `?q=` for SEMANTIC search over brand and generated images (the query is embedded + vector-searched), in relevance order — this path is **credit-metered** on its first page (`402 INSUFFICIENT_CREDITS` when out of credits). `?kind=logo|brand|generated` narrows either mode; logos are not searchable. Each row carries `assetId` (the id the app opens at `/assets?image=<assetId>`), `kind`, `url` and what is known: description, dimensions, category, page, when it was added, and a logo’s variant. (The smaller `identity` / `emailDesign` / `imageStyle` / `logos` sub-resources embed into `GET /v1/brand?include=…`; images stay separate because they paginate.)
          */
         get: operations["getBrandImages"];
         put?: never;
@@ -1967,7 +2063,7 @@ export interface paths {
         put?: never;
         /**
          * Generate an image
-         * @description Generates an image via the Brew AI image pipeline. `text-to-image` (default) creates from a prompt; `image-editing` edits `image1` (required) guided by the prompt. Returns a CDN-hosted URL. Usage-metered: charges the actual image gateway cost (no fixed price).
+         * @description Generates an image via the Brew AI image pipeline. `text-to-image` (default) creates from a prompt; `image-editing` edits `image1` (required) guided by the prompt. Returns a CDN-hosted URL, and saves the image to the brand’s generated images (`GET /v1/brand/images?kind=generated`). Usage-metered: charges the actual image gateway cost (no fixed price).
          */
         post: operations["generateImage"];
         delete?: never;
@@ -2478,7 +2574,7 @@ export interface components {
                 actionType?: string;
                 /** @description Email design id — required for sendEmail. */
                 emailId: string;
-                /** @description Exact email version id for deterministic delivery — required. */
+                /** @description Email version id to send — required. A pin to the latest version follows new versions (prompt edit, restore) into an unpublished draft; older pins stay. */
                 emailVersionId: string;
                 /** @description Owned sending-domain id — optional at authoring; required, and verified (sendable: true), at publish and on every live run. A marketing domain enforces the unsubscribe link; a sendingPurpose "transactional" domain skips it and delivers even to unsubscribed contacts, so choose one only for genuinely transactional flows (receipts, password resets). */
                 domainId?: string;
@@ -2495,7 +2591,7 @@ export interface components {
                 replyTo?: string;
                 /** @description Informational email title mirror; tolerated for round-trips. */
                 emailTitle?: string;
-                /** @description Sender address on a verified sending domain; resolved from the domain default when unset. */
+                /** @description Sender address on domainId's own domain; resolved from the domain default when unset. */
                 fromAddress?: string;
             };
         } | {
@@ -2958,7 +3054,7 @@ export interface components {
         };
         ApiWarning: {
             /** @enum {string} */
-            code: "DRAFT_SAVED_NOT_LIVE" | "ENFORCEMENT_LOOSENED_WHILE_PUBLISHED" | "REQUIRED_FIELD_SATISFIED_BY_FALLBACK" | "RESUBSCRIBE_SKIPPED" | "RECIPIENTS_EXCLUDED" | "CONSENT_RECORD_MISSING";
+            code: "DRAFT_SAVED_NOT_LIVE" | "ENFORCEMENT_LOOSENED_WHILE_PUBLISHED" | "REQUIRED_FIELD_SATISFIED_BY_FALLBACK" | "RESUBSCRIBE_SKIPPED" | "CORE_FIELD_IGNORED" | "CSV_COLUMN_IGNORED" | "RECIPIENTS_EXCLUDED" | "CONSENT_RECORD_MISSING";
             message: string;
             field?: string;
         };
@@ -3215,6 +3311,8 @@ export interface components {
             /** @default false */
             suppressed?: boolean;
             suppressedReason?: string | null;
+            /** @default [] */
+            unsubscribedDomains?: string[];
             /** Format: date-time */
             lastValidatedAt?: string;
             validationDetails?: {
@@ -3402,6 +3500,16 @@ export interface components {
             updatedAt: string;
             /** Format: date-time */
             verifiedAt?: string;
+        };
+        DomainUnsubscribeRow: {
+            email: string;
+            /** @enum {string} */
+            scope: "domain" | "all" | "both";
+            /** Format: date-time */
+            unsubscribedAt?: string;
+            /** @enum {string} */
+            source?: "link" | "one_click" | "api" | "import" | "manual";
+            sendId?: string;
         };
         Template: {
             emailId: string;
@@ -4510,7 +4618,7 @@ export interface components {
                     actionType?: string;
                     /** @description Email design id — required for sendEmail. */
                     emailId: string;
-                    /** @description Exact email version id for deterministic delivery — required. */
+                    /** @description Email version id to send — required. A pin to the latest version follows new versions (prompt edit, restore) into an unpublished draft; older pins stay. */
                     emailVersionId: string;
                     /** @description Owned sending-domain id — optional at authoring; required, and verified (sendable: true), at publish and on every live run. A marketing domain enforces the unsubscribe link; a sendingPurpose "transactional" domain skips it and delivers even to unsubscribed contacts, so choose one only for genuinely transactional flows (receipts, password resets). */
                     domainId?: string;
@@ -4527,7 +4635,7 @@ export interface components {
                     replyTo?: string;
                     /** @description Informational email title mirror; tolerated for round-trips. */
                     emailTitle?: string;
-                    /** @description Sender address on a verified sending domain; resolved from the domain default when unset. */
+                    /** @description Sender address on domainId's own domain; resolved from the domain default when unset. */
                     fromAddress?: string;
                 };
             } | {
@@ -5032,7 +5140,7 @@ export interface components {
                     actionType?: string;
                     /** @description Email design id — required for sendEmail. */
                     emailId: string;
-                    /** @description Exact email version id for deterministic delivery — required. */
+                    /** @description Email version id to send — required. A pin to the latest version follows new versions (prompt edit, restore) into an unpublished draft; older pins stay. */
                     emailVersionId: string;
                     /** @description Owned sending-domain id — optional at authoring; required, and verified (sendable: true), at publish and on every live run. A marketing domain enforces the unsubscribe link; a sendingPurpose "transactional" domain skips it and delivers even to unsubscribed contacts, so choose one only for genuinely transactional flows (receipts, password resets). */
                     domainId?: string;
@@ -5049,7 +5157,7 @@ export interface components {
                     replyTo?: string;
                     /** @description Informational email title mirror; tolerated for round-trips. */
                     emailTitle?: string;
-                    /** @description Sender address on a verified sending domain; resolved from the domain default when unset. */
+                    /** @description Sender address on domainId's own domain; resolved from the domain default when unset. */
                     fromAddress?: string;
                 };
             } | {
@@ -6032,6 +6140,8 @@ export interface components {
                 /** @default false */
                 suppressed?: boolean;
                 suppressedReason?: string | null;
+                /** @default [] */
+                unsubscribedDomains?: string[];
                 /** Format: date-time */
                 lastValidatedAt?: string;
                 validationDetails?: {
@@ -6174,6 +6284,8 @@ export interface components {
                 /** @default false */
                 suppressed?: boolean;
                 suppressedReason?: string | null;
+                /** @default [] */
+                unsubscribedDomains?: string[];
                 /** Format: date-time */
                 lastValidatedAt?: string;
                 validationDetails?: {
@@ -6253,6 +6365,8 @@ export interface components {
                 /** @default false */
                 suppressed?: boolean;
                 suppressedReason?: string | null;
+                /** @default [] */
+                unsubscribedDomains?: string[];
                 /** Format: date-time */
                 lastValidatedAt?: string;
                 validationDetails?: {
@@ -6296,6 +6410,7 @@ export interface components {
             otherCount?: number;
         };
         ContactsSearchRequest: {
+            /** @description A whole email address matches only that contact. Other text matches the contacts whose email, first or last name contains any of its words, in `sort` order. */
             search?: string;
             /** @default [] */
             filters?: {
@@ -6823,6 +6938,76 @@ export interface components {
             domainId: string;
             deleted: boolean;
         };
+        DomainUnsubscribesListResponse: {
+            domainId: string;
+            domainHost: string;
+            data: {
+                email: string;
+                /** @enum {string} */
+                scope: "domain" | "all" | "both";
+                /** Format: date-time */
+                unsubscribedAt?: string;
+                /** @enum {string} */
+                source?: "link" | "one_click" | "api" | "import" | "manual";
+                sendId?: string;
+            }[];
+            pagination: {
+                limit: number;
+                cursor: string | null;
+                hasMore: boolean;
+            };
+        };
+        DomainUnsubscribesAddResponse: {
+            domainId: string;
+            domainHost: string;
+            summary: {
+                received: number;
+                added: number;
+                alreadyUnsubscribed: number;
+                created: number;
+                invalid: number;
+            };
+            invalid: {
+                email: string;
+                /** @enum {string} */
+                code: "INVALID_EMAIL";
+            }[];
+        };
+        DomainUnsubscribesAddRequest: {
+            emails: string[];
+        };
+        DomainUnsubscribeRemoveResponse: {
+            domainId: string;
+            domainHost: string;
+            email: string;
+            removed: boolean;
+            globallyUnsubscribed: boolean;
+        };
+        DomainUnsubscribesImportResponse: {
+            domainId: string;
+            domainHost: string;
+            summary: {
+                rows: number;
+                added: number;
+                alreadyUnsubscribed: number;
+                created: number;
+                skipped: number;
+            };
+            skippedSample: string[];
+            truncated: boolean;
+            column: string | null;
+        };
+        DomainUnsubscribesImportRequest: {
+            csv: string;
+            column?: string;
+        };
+        DomainUnsubscribesExportResponse: {
+            domainId: string;
+            domainHost: string;
+            csv: string;
+            rowCount: number;
+            truncated: boolean;
+        };
         DomainHealth: {
             domainId: string;
             name: string;
@@ -7075,14 +7260,23 @@ export interface components {
         };
         BrandImagesResponse: {
             data: {
+                assetId: string;
+                /** @enum {string} */
+                kind: "logo" | "brand" | "generated";
                 url: string;
                 description?: string;
                 width?: number;
                 height?: number;
-                aspectRatio?: string;
                 category?: string;
                 pageUrl?: string;
-                prompt?: string;
+                /** Format: date-time */
+                addedAt?: string;
+                logo?: {
+                    type?: string;
+                    theme?: string;
+                    background?: string;
+                    format?: string;
+                };
             }[];
             pagination: {
                 limit: number;
@@ -7626,7 +7820,7 @@ export interface operations {
                     "application/json": components["schemas"]["EmailGenerateTextResponse"];
                 };
             };
-            /** @description A design was persisted. Usage-metered: the actual token usage of the email agent is charged (no fixed price, so no `X-Credit-Cost` header). `emailVersionId` pins the exact version for sends + automation `sendEmail` nodes. */
+            /** @description A design was persisted. Usage-metered: the actual token usage of the email agent is charged (no fixed price, so no `X-Credit-Cost` header). `emailVersionId` pins the exact version for sends + automation `sendEmail` nodes; a step pinned to the latest version follows later edits and restores (see `restoreEmailVersion`). */
             201: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -8376,7 +8570,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description The design was imported + persisted. Free — no model runs. `emailVersionId` pins the exact version for sends + automation nodes. */
+            /** @description The design was imported + persisted. Free — no model runs. `emailVersionId` pins the exact version for sends + automation nodes; a step pinned to the latest version follows later edits and restores. */
             201: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -13310,7 +13504,7 @@ export interface operations {
     listAutomations: {
         parameters: {
             query?: {
-                /** @description Only automations whose name matches these words (full-text, best match first instead of newest first). */
+                /** @description Only automations whose name matches these words (full-text), still newest first. */
                 search?: string;
                 /**
                  * @description Page size (1-100). Defaults to 100.
@@ -18226,7 +18420,7 @@ export interface operations {
     listContacts: {
         parameters: {
             query?: {
-                /** @description Free-text search. */
+                /** @description A whole email address matches only that contact. Other text matches the contacts whose email, first or last name contains any of its words, in `sort` order. Encode an address's `+` as `%2B`. */
                 search?: string;
                 /** @description Only members of this saved audience. */
                 audienceId?: string;
@@ -22989,6 +23183,883 @@ export interface operations {
             };
         };
     };
+    listDomainUnsubscribes: {
+        parameters: {
+            query?: {
+                /** @description An address (anything with `@`) matches that address — exactly once complete, by prefix while partial. Other text is a word search over the address and the contact name. */
+                q?: string;
+                /** @description Which opt-outs to include: `domain` = this host’s list only, `all` = the brand-wide opt-out only, `any` (default) = either. */
+                scope?: "any" | "domain" | "all";
+                /**
+                 * @description Page size (1–100). Defaults to 100.
+                 * @example 50
+                 */
+                limit?: number;
+                /** @description Opaque pagination cursor echoed from the previous page’s `pagination.cursor`. Omit for the first page. */
+                cursor?: string;
+            };
+            header?: {
+                /**
+                 * @description The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+                 * @example kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+                 */
+                "X-Brand-Id"?: string;
+            };
+            path: {
+                /** @description Domain id (opaque Convex document id) returned by `POST /v1/domains` and listed by `GET /v1/domains`. */
+                domainId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page of the domain’s unsubscribe list. */
+            200: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    "X-RateLimit-Reset": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "domainId": "kx7bkh53hasmfeh5kd7sqgykt187g8ww",
+                     *       "domainHost": "send.example.com",
+                     *       "data": [
+                     *         {
+                     *           "email": "jane@example.com",
+                     *           "scope": "domain",
+                     *           "unsubscribedAt": "2026-09-17T09:12:00.000Z",
+                     *           "source": "link",
+                     *           "sendId": "kh7c1w2m3n4p5q6r7s8t9u0v1w2x3y4z"
+                     *         }
+                     *       ],
+                     *       "pagination": {
+                     *         "limit": 100,
+                     *         "cursor": null,
+                     *         "hasMore": false
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["DomainUnsubscribesListResponse"];
+                };
+            };
+            /**
+             * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+             *
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             */
+            400: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `API_KEY_REVOKED`: The API key was revoked.
+             *
+             *     `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+             *
+             *     `INVALID_API_KEY`: The API key is malformed or unknown.
+             */
+            401: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+             *
+             *     `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+             *
+             *     `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+             *
+             *     `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+             */
+            403: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+             *
+             *     `DOMAIN_NOT_FOUND`: No domain with that id exists in the brand.
+             */
+            404: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `DOMAIN_PURPOSE_NOT_ALLOWED`: The sending domain is admitted for a different purpose than this send (marketing vs transactional). */
+            422: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            429: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    "X-RateLimit-Reset": number;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it. */
+            500: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+        };
+    };
+    addDomainUnsubscribes: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Optional idempotency key for safe retries. Reusing the same key with the same request body returns the original response for 24 hours.
+                 * @example api-request-2026-04-08-001
+                 */
+                "Idempotency-Key"?: string;
+                /**
+                 * @description The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+                 * @example kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+                 */
+                "X-Brand-Id"?: string;
+            };
+            path: {
+                /** @description Domain id (opaque Convex document id) returned by `POST /v1/domains` and listed by `GET /v1/domains`. */
+                domainId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "emails": [
+                 *         "jane@example.com",
+                 *         "sam@example.com"
+                 *       ]
+                 *     }
+                 */
+                "application/json": components["schemas"]["DomainUnsubscribesAddRequest"];
+            };
+        };
+        responses: {
+            /** @description Per-address outcome summary. */
+            200: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    "X-RateLimit-Reset": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "domainId": "kx7bkh53hasmfeh5kd7sqgykt187g8ww",
+                     *       "domainHost": "send.example.com",
+                     *       "summary": {
+                     *         "received": 2,
+                     *         "added": 1,
+                     *         "alreadyUnsubscribed": 0,
+                     *         "created": 1,
+                     *         "invalid": 0
+                     *       },
+                     *       "invalid": []
+                     *     }
+                     */
+                    "application/json": components["schemas"]["DomainUnsubscribesAddResponse"];
+                };
+            };
+            /**
+             * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+             *
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             */
+            400: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `API_KEY_REVOKED`: The API key was revoked.
+             *
+             *     `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+             *
+             *     `INVALID_API_KEY`: The API key is malformed or unknown.
+             */
+            401: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+             *
+             *     `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+             *
+             *     `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+             *
+             *     `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+             */
+            403: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+             *
+             *     `DOMAIN_NOT_FOUND`: No domain with that id exists in the brand.
+             */
+            404: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+             *
+             *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
+             */
+            409: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `DOMAIN_PURPOSE_NOT_ALLOWED`: The sending domain is admitted for a different purpose than this send (marketing vs transactional). */
+            422: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            429: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    "X-RateLimit-Reset": number;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it. */
+            500: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+        };
+    };
+    removeDomainUnsubscribe: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+                 * @example kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+                 */
+                "X-Brand-Id"?: string;
+            };
+            path: {
+                /** @description Domain id (opaque Convex document id) returned by `POST /v1/domains` and listed by `GET /v1/domains`. */
+                domainId: string;
+                /** @description The address to take off the list (URL-encoded). */
+                email: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed (or was not listed). */
+            200: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    "X-RateLimit-Reset": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "domainId": "kx7bkh53hasmfeh5kd7sqgykt187g8ww",
+                     *       "domainHost": "send.example.com",
+                     *       "email": "jane@example.com",
+                     *       "removed": true,
+                     *       "globallyUnsubscribed": false
+                     *     }
+                     */
+                    "application/json": components["schemas"]["DomainUnsubscribeRemoveResponse"];
+                };
+            };
+            /**
+             * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+             *
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             */
+            400: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `API_KEY_REVOKED`: The API key was revoked.
+             *
+             *     `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+             *
+             *     `INVALID_API_KEY`: The API key is malformed or unknown.
+             */
+            401: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+             *
+             *     `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+             *
+             *     `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+             *
+             *     `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+             */
+            403: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+             *
+             *     `DOMAIN_NOT_FOUND`: No domain with that id exists in the brand.
+             */
+            404: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `DOMAIN_PURPOSE_NOT_ALLOWED`: The sending domain is admitted for a different purpose than this send (marketing vs transactional). */
+            422: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            429: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    "X-RateLimit-Reset": number;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it. */
+            500: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+        };
+    };
+    importDomainUnsubscribes: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Optional idempotency key for safe retries. Reusing the same key with the same request body returns the original response for 24 hours.
+                 * @example api-request-2026-04-08-001
+                 */
+                "Idempotency-Key"?: string;
+                /**
+                 * @description The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+                 * @example kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+                 */
+                "X-Brand-Id"?: string;
+            };
+            path: {
+                /** @description Domain id (opaque Convex document id) returned by `POST /v1/domains` and listed by `GET /v1/domains`. */
+                domainId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "csv": "email\njane@example.com\nsam@example.com\n"
+                 *     }
+                 */
+                "application/json": components["schemas"]["DomainUnsubscribesImportRequest"];
+            };
+        };
+        responses: {
+            /** @description Import summary. */
+            200: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    "X-RateLimit-Reset": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "domainId": "kx7bkh53hasmfeh5kd7sqgykt187g8ww",
+                     *       "domainHost": "send.example.com",
+                     *       "summary": {
+                     *         "rows": 2,
+                     *         "added": 1,
+                     *         "alreadyUnsubscribed": 0,
+                     *         "created": 1,
+                     *         "skipped": 0
+                     *       },
+                     *       "skippedSample": [],
+                     *       "truncated": false,
+                     *       "column": "email"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["DomainUnsubscribesImportResponse"];
+                };
+            };
+            /**
+             * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+             *
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             */
+            400: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `API_KEY_REVOKED`: The API key was revoked.
+             *
+             *     `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+             *
+             *     `INVALID_API_KEY`: The API key is malformed or unknown.
+             */
+            401: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+             *
+             *     `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+             *
+             *     `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+             *
+             *     `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+             */
+            403: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+             *
+             *     `DOMAIN_NOT_FOUND`: No domain with that id exists in the brand.
+             */
+            404: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+             *
+             *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
+             */
+            409: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `PAYLOAD_TOO_LARGE`: The request body exceeds the route cap. */
+            413: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `DOMAIN_PURPOSE_NOT_ALLOWED`: The sending domain is admitted for a different purpose than this send (marketing vs transactional). */
+            422: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            429: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    "X-RateLimit-Reset": number;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it. */
+            500: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+        };
+    };
+    exportDomainUnsubscribes: {
+        parameters: {
+            query?: {
+                /** @description Which opt-outs to include: `domain` = this host’s list only, `all` = the brand-wide opt-out only, `any` (default) = either. */
+                scope?: "any" | "domain" | "all";
+            };
+            header?: {
+                /**
+                 * @description The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+                 * @example kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+                 */
+                "X-Brand-Id"?: string;
+            };
+            path: {
+                /** @description Domain id (opaque Convex document id) returned by `POST /v1/domains` and listed by `GET /v1/domains`. */
+                domainId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description CSV text plus counts. */
+            200: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    "X-RateLimit-Reset": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "domainId": "kx7bkh53hasmfeh5kd7sqgykt187g8ww",
+                     *       "domainHost": "send.example.com",
+                     *       "csv": "Email,Scope,Unsubscribed At,Source,Send ID\r\njane@example.com,domain,2026-09-17T09:12:00.000Z,link,kh7c1w2m3n4p5q6r7s8t9u0v1w2x3y4z\r\n",
+                     *       "rowCount": 1,
+                     *       "truncated": false
+                     *     }
+                     */
+                    "application/json": components["schemas"]["DomainUnsubscribesExportResponse"];
+                };
+            };
+            /**
+             * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+             *
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             */
+            400: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `API_KEY_REVOKED`: The API key was revoked.
+             *
+             *     `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+             *
+             *     `INVALID_API_KEY`: The API key is malformed or unknown.
+             */
+            401: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+             *
+             *     `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+             *
+             *     `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+             *
+             *     `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+             */
+            403: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+             *
+             *     `DOMAIN_NOT_FOUND`: No domain with that id exists in the brand.
+             */
+            404: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `DOMAIN_PURPOSE_NOT_ALLOWED`: The sending domain is admitted for a different purpose than this send (marketing vs transactional). */
+            422: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            429: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    "X-RateLimit-Reset": number;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it. */
+            500: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+        };
+    };
     getDomainHealth: {
         parameters: {
             query?: never;
@@ -24114,9 +25185,12 @@ export interface operations {
     getBrandImages: {
         parameters: {
             query?: {
+                /** @description Semantic search over what the images show. Costs 1 credit per new search; results come back in relevance order and `sort` is ignored. Logos are not searchable. */
                 q?: string;
-                type?: string;
-                aspectRatio?: string;
+                /** @description `logo`, `brand` (images from the site or uploaded, including the social preview and site screenshot) or `generated` (made with Brew). Omit for every kind. */
+                kind?: "logo" | "brand" | "generated";
+                /** @description Browse order: `newest` (default) or `oldest`. */
+                sort?: "newest" | "oldest";
                 /**
                  * @description Page size (1-100). Defaults to 100.
                  * @example 50
@@ -24136,7 +25210,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description A page of brand images (semantic results when `?q=`). */
+            /** @description A page of brand assets (semantic results, in relevance order, when `?q=`). */
             200: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -24154,10 +25228,24 @@ export interface operations {
                      * @example {
                      *       "data": [
                      *         {
+                     *           "assetId": "5bc912f9",
+                     *           "kind": "generated",
                      *           "url": "https://cdn.brew.new/cnt/abc.png",
                      *           "description": "Clerk user-profile component",
                      *           "width": 1056,
-                     *           "height": 1002
+                     *           "height": 1002,
+                     *           "addedAt": "2026-09-24T18:02:11.000Z"
+                     *         },
+                     *         {
+                     *           "assetId": "1d4e7a20",
+                     *           "kind": "logo",
+                     *           "url": "https://cdn.brew.new/cnt/logo.svg",
+                     *           "logo": {
+                     *             "type": "logo",
+                     *             "theme": "dark",
+                     *             "background": "transparent",
+                     *             "format": "svg"
+                     *           }
                      *         }
                      *       ],
                      *       "pagination": {

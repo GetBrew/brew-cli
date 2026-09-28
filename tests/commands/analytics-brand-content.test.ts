@@ -328,13 +328,19 @@ describe('brand update', () => {
 })
 
 describe('brand get-images', () => {
-  it('maps --query and --aspect-ratio onto q/aspectRatio', async () => {
+  it('maps --query, --kind and --sort onto q/kind/sort', async () => {
     let query: URLSearchParams | undefined
     server.use(
       http.get(`${API}/v1/brand/images`, ({ request }) => {
         query = new URL(request.url).searchParams
         return HttpResponse.json({
-          data: [{ url: 'https://cdn.brew.new/img.png' }],
+          data: [
+            {
+              assetId: '5bc912f9',
+              kind: 'generated',
+              url: 'https://cdn.brew.new/img.png',
+            },
+          ],
           pagination: PAGE_DONE,
         })
       })
@@ -344,12 +350,53 @@ describe('brand get-images', () => {
       'get-images',
       '--query',
       'team photo',
-      '--aspect-ratio',
-      '16:9',
+      '--kind',
+      'brand',
+      '--sort',
+      'oldest',
     ])
     expect(result.code).toBe(0)
     expect(query?.get('q')).toBe('team photo')
-    expect(query?.get('aspectRatio')).toBe('16:9')
+    expect(query?.get('kind')).toBe('brand')
+    expect(query?.get('sort')).toBe('oldest')
+    expect(query?.has('type')).toBe(false)
+    expect(query?.has('aspectRatio')).toBe(false)
+  })
+
+  it('walks every page with --all', async () => {
+    const cursors: Array<string | null> = []
+    server.use(
+      http.get(`${API}/v1/brand/images`, ({ request }) => {
+        const cursor = new URL(request.url).searchParams.get('cursor')
+        cursors.push(cursor)
+        return HttpResponse.json(
+          cursor === null
+            ? {
+                data: [
+                  {
+                    assetId: 'aaaaaaaa',
+                    kind: 'logo',
+                    url: 'https://cdn.brew.new/a.png',
+                  },
+                ],
+                pagination: { limit: 1, cursor: 'next', hasMore: true },
+              }
+            : {
+                data: [
+                  {
+                    assetId: 'bbbbbbbb',
+                    kind: 'brand',
+                    url: 'https://cdn.brew.new/b.png',
+                  },
+                ],
+                pagination: PAGE_DONE,
+              }
+        )
+      })
+    )
+    const result = await cli(['brand', 'get-images', '--kind', 'logo', '--all'])
+    expect(result.code).toBe(0)
+    expect(cursors).toEqual([null, 'next'])
   })
 })
 
