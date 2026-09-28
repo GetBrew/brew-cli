@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.9.0
+
+Not tagged or published. It needs brew-v2#1708 deployed, because its spec
+adds `groupBy`/`bucket` to the events read. The same spec carries
+brew-v2#1579's per-domain unsubscribe lists, which 0.8.x never had commands
+for; `parity-spec` flagged all five routes.
+
+### Added
+
+- `analytics event-counts`: counts of the email events the same filters
+  list, per `--group-by` (one or two of `eventType`, `emailId`,
+  `automationId`, `sendId`, `source`, `link`, `recipientDomain`,
+  `unsubscribeReason`) and/or `--bucket day|week|month`. Clicks per link:
+  `--event-type clicked --group-by link`. Prints the largest groups with the
+  total, `otherCount`, and whether the window was truncated. It refuses a
+  call with neither `--group-by` nor `--bucket`.
+- `domains unsubscribes list|add|remove|import|export`: a marketing domain's
+  own unsubscribe list. `add` suppresses the addresses from that domain only,
+  `remove` never re-subscribes a brand-wide opt-out, and `import` reads a CSV
+  `--file` (or stdin) with `--column`.
+- All six use the raw transport until the CLI adopts `@brew.new/sdk` 11.2
+  (`analytics.eventCounts`, `domains.unsubscribes.*`).
+
 ## 0.8.1
 
 Not tagged or published: `package.json` says 0.8.1, but there is no

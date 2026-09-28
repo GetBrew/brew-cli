@@ -2,7 +2,7 @@
 
 <!-- GENERATED FILE — do not edit. Regenerate with `bun run docs:commands`. -->
 
-130 commands. Classes: read (always safe), write
+136 commands. Classes: read (always safe), write
 (mutating, retry-safe), destructive (irreversible — the confirmation
 protocol applies: interactive y/N on a TTY, exit 4 + JSON envelope with
 a `confirmCommand` otherwise, `--yes` to proceed).
@@ -114,6 +114,7 @@ a `confirmCommand` otherwise, `--yes` to proceed).
 | `brew-cli analytics campaigns` | read | `GET /v1/sends` | Lifetime per-campaign KPIs (`sends list --kind campaign`; stats ride each row) |
 | `brew-cli analytics automations` | read | `GET /v1/analytics/automations` | Windowed per-automation performance + totals |
 | `brew-cli analytics events` | read | `GET /v1/analytics/events` | Unified event explorer (email, automation, trigger, inbound) |
+| `brew-cli analytics event-counts` | read | `GET /v1/analytics/events` | Count email events per field and/or period (clicks per link, events per day, unsubscribe reasons) |
 | `brew-cli analytics sends list` | read | `GET /v1/sends` | List campaign/automation sends with delivery stats (`sends list`) |
 | `brew-cli analytics sends get` | read | `GET /v1/sends/{sendId}` | Fetch one send by id — the bare row (`sends get`) |
 | `brew-cli analytics trigger-instances list` | read | `GET /v1/automations/trigger-instances` | List fired-trigger instances with their lifecycle `state` (`automations trigger-instances list`) |
@@ -133,6 +134,11 @@ a `confirmCommand` otherwise, `--yes` to proceed).
 | `brew-cli domains health` | read | `GET /v1/domains/{domainId}/health` | Deliverability health: verdict, signals, DNS/auth, reputation |
 | `brew-cli domains update` | write | `PATCH /v1/domains/{domainId}` | Update default sender settings for a domain |
 | `brew-cli domains delete` | destructive | `DELETE /v1/domains/{domainId}` | Delete a sending domain |
+| `brew-cli domains unsubscribes list` | read | `GET /v1/domains/{domainId}/unsubscribes` | One page of a marketing domain's unsubscribe list, newest first |
+| `brew-cli domains unsubscribes add` | write | `POST /v1/domains/{domainId}/unsubscribes` | Add addresses to a marketing domain's unsubscribe list (that domain only) |
+| `brew-cli domains unsubscribes remove` | write | `DELETE /v1/domains/{domainId}/unsubscribes/{email}` | Take one address off a domain's unsubscribe list (never re-subscribes a brand-wide opt-out) |
+| `brew-cli domains unsubscribes import` | write | `POST /v1/domains/{domainId}/unsubscribes/import` | Add every address in a CSV to a domain's unsubscribe list |
+| `brew-cli domains unsubscribes export` | read | `GET /v1/domains/{domainId}/unsubscribes/export` | A domain's unsubscribe list as CSV (truncated when capped) |
 | `brew-cli content generate-image` | write ($) | `POST /v1/content/generate-image` | Generate or edit an image from a prompt |
 | `brew-cli content gif` | write ($) | `POST /v1/content/gif` | Create an animated GIF from a prompt, image, or video |
 | `brew-cli content transform` | write ($) | `POST /v1/content/transform` | Optimize or resize a hosted image |
@@ -1691,6 +1697,28 @@ brew-cli analytics events --since 2026-08-01 --event-type clicked
 brew-cli analytics events --recipient jane@example.com --all --json
 ```
 
+### brew-cli analytics event-counts
+
+Count email events per field and/or period (clicks per link, events per day, unsubscribe reasons)
+
+- Route: `GET /v1/analytics/events`
+- Class: read
+- `--group-by <fields>` — One or two comma-separated fields: eventType, emailId, automationId, sendId, source, link, recipientDomain, unsubscribeReason
+- `--bucket <period>` — Count per UTC day, week (Monday start) or month
+- `--since <datetime>` — Window start (ISO-8601)
+- `--until <datetime>` — Window end (ISO-8601)
+- `--event-type <type>` — Only one email event type (e.g. clicked)
+- `--send-id <sendId>` — Only one send
+- `--email-id <emailId>` — Only one design
+- `--recipient <rules>` — CSV of recipient rules (max 10): an address, @domain, or substring; prefix ! to exclude
+- `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
+
+```bash
+brew-cli analytics event-counts --send-id snd_123 --event-type clicked --group-by link
+brew-cli analytics event-counts --group-by eventType --bucket day
+brew-cli analytics event-counts --group-by unsubscribeReason --json
+```
+
 ### brew-cli analytics sends list
 
 List campaign/automation sends with delivery stats (`sends list`)
@@ -1997,6 +2025,79 @@ Delete a sending domain
 
 ```bash
 brew-cli domains delete dom_8s1Kj --yes
+```
+
+### brew-cli domains unsubscribes list
+
+One page of a marketing domain's unsubscribe list, newest first
+
+- Route: `GET /v1/domains/{domainId}/unsubscribes`
+- Class: read
+- Argument `domainId` — Marketing domain id
+- `--q <text>` — Search by address
+- `--scope <scope>` — any (default), domain (this list only) or all (brand-wide opt-outs)
+- `--limit <n>` — Page size, 1-100 (default 100)
+- `--cursor <cursor>` — Opaque pagination cursor from a previous page
+
+```bash
+brew-cli domains unsubscribes list dom_123
+brew-cli domains unsubscribes list dom_123 --scope domain --q ada
+```
+
+### brew-cli domains unsubscribes add
+
+Add addresses to a marketing domain's unsubscribe list (that domain only)
+
+- Route: `POST /v1/domains/{domainId}/unsubscribes`
+- Class: write
+- Argument `domainId` — Marketing domain id
+- `--email <addresses...>` — Address to suppress, repeatable (up to 1,000)
+- `--idempotency-key <key>` — Idempotency-Key for safe retries (auto-generated otherwise)
+
+```bash
+brew-cli domains unsubscribes add dom_123 --email ada@example.com --email bo@example.com
+```
+
+### brew-cli domains unsubscribes remove
+
+Take one address off a domain's unsubscribe list (never re-subscribes a brand-wide opt-out)
+
+- Route: `DELETE /v1/domains/{domainId}/unsubscribes/{email}`
+- Class: write
+- Argument `domainId` — Marketing domain id
+- Argument `email` — Address to remove
+
+```bash
+brew-cli domains unsubscribes remove dom_123 ada@example.com
+```
+
+### brew-cli domains unsubscribes import
+
+Add every address in a CSV to a domain's unsubscribe list
+
+- Route: `POST /v1/domains/{domainId}/unsubscribes/import`
+- Class: write
+- Argument `domainId` — Marketing domain id
+- `--file <path>` — CSV file, or - for stdin
+- `--column <header>` — The column holding the addresses (by header)
+- `--idempotency-key <key>` — Idempotency-Key for safe retries (auto-generated otherwise)
+
+```bash
+brew-cli domains unsubscribes import dom_123 --file optouts.csv --column Email
+```
+
+### brew-cli domains unsubscribes export
+
+A domain's unsubscribe list as CSV (truncated when capped)
+
+- Route: `GET /v1/domains/{domainId}/unsubscribes/export`
+- Class: read
+- Argument `domainId` — Marketing domain id
+- `--scope <scope>` — any (default), domain or all
+
+```bash
+brew-cli domains unsubscribes export dom_123 > optouts.csv
+brew-cli domains unsubscribes export dom_123 --scope all --json
 ```
 
 ### brew-cli content generate-image

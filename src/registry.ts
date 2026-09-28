@@ -1,5 +1,6 @@
 import { analyticsAutomationsCommand } from './commands/analytics/automations'
 import { analyticsCampaignsCommand } from './commands/analytics/campaigns'
+import { analyticsEventCountsCommand } from './commands/analytics/event-counts'
 import { analyticsEventsCommand } from './commands/analytics/events'
 import { analyticsOverviewCommand } from './commands/analytics/overview'
 import { analyticsSendsGetCommand } from './commands/analytics/sends/get'
@@ -86,6 +87,11 @@ import { domainsDeleteCommand } from './commands/domains/delete'
 import { domainsGetCommand } from './commands/domains/get'
 import { domainsHealthCommand } from './commands/domains/health'
 import { domainsListCommand } from './commands/domains/list'
+import { domainsUnsubscribesAddCommand } from './commands/domains/unsubscribes/add'
+import { domainsUnsubscribesExportCommand } from './commands/domains/unsubscribes/export'
+import { domainsUnsubscribesImportCommand } from './commands/domains/unsubscribes/import'
+import { domainsUnsubscribesListCommand } from './commands/domains/unsubscribes/list'
+import { domainsUnsubscribesRemoveCommand } from './commands/domains/unsubscribes/remove'
 import { domainsUpdateCommand } from './commands/domains/update'
 import { domainsVerifyCommand } from './commands/domains/verify'
 import { emailsAuditCommand } from './commands/emails/audit'
@@ -233,6 +239,7 @@ export const ALL_COMMANDS: readonly CommandSpec[] = [
   analyticsCampaignsCommand,
   analyticsAutomationsCommand,
   analyticsEventsCommand,
+  analyticsEventCountsCommand,
   analyticsSendsListCommand,
   analyticsSendsGetCommand,
   analyticsTriggerInstancesListCommand,
@@ -252,6 +259,11 @@ export const ALL_COMMANDS: readonly CommandSpec[] = [
   domainsHealthCommand,
   domainsUpdateCommand,
   domainsDeleteCommand,
+  domainsUnsubscribesListCommand,
+  domainsUnsubscribesAddCommand,
+  domainsUnsubscribesRemoveCommand,
+  domainsUnsubscribesImportCommand,
+  domainsUnsubscribesExportCommand,
   contentGenerateImageCommand,
   contentGifCommand,
   contentTransformCommand,
