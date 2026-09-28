@@ -769,7 +769,7 @@ components:
                   description: Informational email title mirror; tolerated for round-trips.
                 fromAddress:
                   type: string
-                  description: Sender address on a verified sending domain; resolved from the domain default when unset.
+                  description: Sender address on domainId's own domain; resolved from the domain default when unset.
               required:
                 - emailId
                 - emailVersionId
@@ -6840,7 +6840,7 @@ components:
                         description: Informational email title mirror; tolerated for round-trips.
                       fromAddress:
                         type: string
-                        description: Sender address on a verified sending domain; resolved from the domain default when unset.
+                        description: Sender address on domainId's own domain; resolved from the domain default when unset.
                     required:
                       - emailId
                       - emailVersionId
@@ -8311,7 +8311,7 @@ components:
                         description: Informational email title mirror; tolerated for round-trips.
                       fromAddress:
                         type: string
-                        description: Sender address on a verified sending domain; resolved from the domain default when unset.
+                        description: Sender address on domainId's own domain; resolved from the domain default when unset.
                     required:
                       - emailId
                       - emailVersionId
@@ -25937,7 +25937,7 @@ paths:
 
         **Returns** campaign `202 { status: 'queued' | 'scheduled', sendId, scheduledAt?, warnings? }` (poll `getSend`; `warnings[]` carries one `CONSENT_RECORD_MISSING` per inline recipient that is a subscribed contact with no consent record, and one `RECIPIENTS_EXCLUDED` with the counts when unsubscribed, suppressed or undeliverable contacts will be skipped); test `200 { status: 'completed', recipient }`.
 
-        **Errors** `404 EMAIL_NOT_FOUND`, `DOMAIN_NOT_FOUND`, `AUDIENCE_NOT_FOUND` (a resource in another brand also surfaces as `404`); `422 EMAIL_NOT_READY`, `DOMAIN_NOT_READY`, `DOMAIN_PURPOSE_NOT_ALLOWED`, `LIQUID_RENDER_ERROR`; `422 CONSENT_REQUIRED` when an inline marketing recipient has no contact record with marketing consent and no `consent` was supplied (`details.recipients`); `422 RECIPIENT_UNSUBSCRIBED` when an inline recipient is an existing contact who opted out (`details.recipients`, never re-subscribed); `422 NO_ELIGIBLE_RECIPIENTS` when an immediate send would reach nobody because every contact it targets is unsubscribed, suppressed or undeliverable (`details.eligibility` = `{ total, eligible, excluded: { unsubscribed, suppressed, invalidEmail } }`; no send is created, while a scheduled send is accepted instead); `402 SEND_QUOTA_EXCEEDED` when the plan's monthly volume would be exceeded (no `Retry-After`).
+        **Errors** `400 INVALID_REQUEST` (`param: subject`) when `subject` has a line break or runs over 1000 characters (993 on a test send, for the `[TEST]` prefix), judged on the text every recipient receives; `404 EMAIL_NOT_FOUND`, `DOMAIN_NOT_FOUND`, `AUDIENCE_NOT_FOUND` (a resource in another brand also surfaces as `404`); `422 EMAIL_NOT_READY`, `DOMAIN_NOT_READY`, `DOMAIN_PURPOSE_NOT_ALLOWED`, `LIQUID_RENDER_ERROR`; `422 CONSENT_REQUIRED` when an inline marketing recipient has no contact record with marketing consent and no `consent` was supplied (`details.recipients`); `422 RECIPIENT_UNSUBSCRIBED` when an inline recipient is an existing contact who opted out (`details.recipients`, never re-subscribed); `422 NO_ELIGIBLE_RECIPIENTS` when an immediate send would reach nobody because every contact it targets is unsubscribed, suppressed or undeliverable (`details.eligibility` = `{ total, eligible, excluded: { unsubscribed, suppressed, invalidEmail } }`; no send is created, while a scheduled send is accepted instead); `402 SEND_QUOTA_EXCEEDED` when the plan's monthly volume would be exceeded (no `Retry-After`).
 
         **See also** `listSends`, `cancelSend`, `fireTrigger`.
       parameters:
@@ -30618,7 +30618,7 @@ paths:
 
         **Returns** the bare automation row, or with `dryRun: true` a `200 AutomationDryRunReport` `{ valid, blockers[], warnings[], blockingIssues[], nodeCounts }`: `blockingIssues[]` lists per-node references the effective trigger or contact catalog cannot provide (`fatal: true` for filter or split conditions and triple-brace `{{{ }}}` body tokens fails publish; `fatal: false` for subject, previewText, fromName, replyTo and double-brace body tags renders empty at send time); `valid` is false when any blocker or blocking issue is present, while publish itself hard-blocks only fatal issues so a live automation can be republished after a soft orphan. Updating a LIVE automation saves a draft and does not go live: the previously published version keeps serving until you republish, `published` describes the returned row, `isLive`, `liveVersion` and `liveAutomationVersionId` describe the automation, and `warnings[]` carries `DRAFT_SAVED_NOT_LIVE`.
 
-        **Errors** `404 AUTOMATION_NOT_FOUND`, `AUTOMATION_VERSION_NOT_FOUND` (pin `liveAutomationVersionId`, a `versions[]` id, or a run row's `automationVersionId`), `TRIGGER_EVENT_NOT_FOUND`; `400 AUTOMATION_GRAPH_INVALID` (`details.issues[]`); `409 PUBLISH_VALIDATION_FAILED` (`details.blockers[]`), `AUTOMATION_VERSION_CONFLICT` (re-read, reapply, retry); `422 AUTOMATION_NOT_PUBLISHED` (nothing to unpublish), `AUTOMATION_NOT_PAUSABLE` (a manual-audience automation pauses through its runs).
+        **Errors** `404 AUTOMATION_NOT_FOUND`, `AUTOMATION_VERSION_NOT_FOUND` (pin `liveAutomationVersionId`, a `versions[]` id, or a run row's `automationVersionId`), `TRIGGER_EVENT_NOT_FOUND`; `400 AUTOMATION_GRAPH_INVALID` (`details.issues[]`); `409 AUTOMATION_VERSION_CONFLICT` (re-read, reapply, retry); `422 PUBLISH_VALIDATION_FAILED` (`details.blockers[]`), `AUTOMATION_NOT_PUBLISHED` (nothing to unpublish), `AUTOMATION_NOT_PAUSABLE` (a manual-audience automation pauses through its runs).
 
         **See also** `createAutomation`, `testAutomation`, `runAutomation`, `listAutomationRuns`.
       parameters:
