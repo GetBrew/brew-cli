@@ -29,7 +29,8 @@ which was never tagged.
   with a `DATE_ORDER_ASSUMED` warning. The command also gains `--validate`
   (deliverability check, 2 credits per address), `--consent-source
   api|form|import` (a consent record on every row) and `--input` for the
-  full body, such as a consent record with `evidence`; flags override it.
+  full body: the CSV itself, or a consent record with `evidence`, whose
+  other fields `--consent-source` keeps. Flags override it.
 - `emails clone --title`, `--group-id` and `--group-name`, and
   `emails import-figma --group-id` and `--group-name`: name and file the new
   design, which the API took but the CLI could not send.

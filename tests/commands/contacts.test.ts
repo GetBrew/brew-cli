@@ -378,6 +378,80 @@ describe('contacts import-csv', () => {
     })
   })
 
+  it('keeps a --input consent record when --consent-source sets its source', async () => {
+    let body: unknown
+    server.use(
+      http.post(
+        'https://brew.new/api/v1/contacts/import-csv',
+        async ({ request }) => {
+          body = await request.json()
+          return HttpResponse.json({ imported: 1 }, { status: 202 })
+        }
+      )
+    )
+    const dir = mkdtempSync(join(tmpdir(), 'brew-cli-csv-'))
+    const csvPath = join(dir, 'contacts.csv')
+    writeFileSync(csvPath, 'Email\njane@example.com\n')
+    const result = await runCli(
+      [
+        'contacts',
+        'import-csv',
+        '--file',
+        csvPath,
+        '--input',
+        '{"consent":{"source":"form","evidence":"Footer form","policyVersion":"v3"}}',
+        '--consent-source',
+        'import',
+      ],
+      { env: env() }
+    )
+    expect(result.code).toBe(0)
+    expect(body).toEqual({
+      csv: 'Email\njane@example.com\n',
+      consent: {
+        source: 'import',
+        evidence: 'Footer form',
+        policyVersion: 'v3',
+      },
+    })
+  })
+
+  it('takes the CSV from --input when --file is absent', async () => {
+    let body: unknown
+    server.use(
+      http.post(
+        'https://brew.new/api/v1/contacts/import-csv',
+        async ({ request }) => {
+          body = await request.json()
+          return HttpResponse.json({ imported: 1 }, { status: 202 })
+        }
+      )
+    )
+    const result = await runCli(
+      [
+        'contacts',
+        'import-csv',
+        '--input',
+        '{"csv":"Email\\njane@example.com\\n","dateOrder":"day_first"}',
+      ],
+      { env: env() }
+    )
+    expect(result.code).toBe(0)
+    expect(body).toEqual({
+      csv: 'Email\njane@example.com\n',
+      dateOrder: 'day_first',
+    })
+  })
+
+  it('refuses a call with no CSV at all', async () => {
+    const result = await runCli(
+      ['contacts', 'import-csv', '--date-order', 'day_first'],
+      { env: env() }
+    )
+    expect(result.code).toBe(2)
+    expect(result.stderr).toContain('--file')
+  })
+
   it('refuses --input - with --file -', async () => {
     const result = await runCli(
       ['contacts', 'import-csv', '--file', '-', '--input', '-'],

@@ -20,12 +20,16 @@ type ImportCsvContactsInput = Parameters<ContactsResource['importCsv']>[0]
 
 export const contactsImportCsvCommand = defineCommand({
   path: ['contacts', 'import-csv'],
-  summary: 'Bulk-import contacts from a CSV file or stdin',
+  summary:
+    'Bulk-import contacts from a CSV file or stdin (free; --validate costs 2 credits per address)',
   sdkMethod: 'contacts.importCsv',
   route: { method: 'POST', path: '/v1/contacts/import-csv' },
   commandClass: 'write',
   flags: [
-    { flag: '--file <path>', summary: 'CSV file to import, or - for stdin' },
+    {
+      flag: '--file <path>',
+      summary: 'CSV file to import, or - for stdin (or csv in --input)',
+    },
     {
       flag: '--mapping <pairs...>',
       summary: 'Column mapping csvColumn=fieldName, repeatable',
@@ -43,7 +47,7 @@ export const contactsImportCsvCommand = defineCommand({
     {
       flag: '--consent-source <source>',
       summary:
-        'Stamp a marketing consent record on every row: api, form or import (the full record goes in --input)',
+        'Stamp a marketing consent record on every row: api, form or import (sets the source of a record given in --input)',
     },
     INPUT_FLAG,
     IDEMPOTENCY_FLAG,
@@ -58,21 +62,27 @@ export const contactsImportCsvCommand = defineCommand({
       throw new CliUsageError('Only one of --input and --file can read stdin.')
     }
     const base = await readJsonFlag(ctx, flags.input, '--input')
-    const csv = await readTextFlag(ctx, flags.file, '--file')
-    if (csv === undefined || csv.trim() === '') {
-      throw new CliUsageError(
-        '--file is required (a CSV path, or - for stdin).'
-      )
-    }
     const consentSource = flagString(flags.consentSource)
     const input = mergeInput(base, {
-      csv,
+      csv: await readTextFlag(ctx, flags.file, '--file'),
       mapping: parseKeyValues(flags.mapping, '--mapping'),
       dateOrder: flagString(flags.dateOrder),
       validate: flags.validate === true ? true : undefined,
-      consent:
-        consentSource === undefined ? undefined : { source: consentSource },
     })
+    if (typeof input.csv !== 'string' || input.csv.trim() === '') {
+      throw new CliUsageError(
+        'Pass the CSV with --file (a path, or - for stdin) or as csv in --input.'
+      )
+    }
+    if (consentSource !== undefined) {
+      // --consent-source sets the source; a record from --input keeps its
+      // capturedAt, policyVersion and evidence.
+      const record = input.consent
+      input.consent = {
+        ...(typeof record === 'object' && record !== null ? record : {}),
+        source: consentSource,
+      }
+    }
     const result = await ctx
       .client()
       .contacts.importCsv(
