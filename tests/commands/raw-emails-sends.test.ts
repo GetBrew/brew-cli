@@ -106,6 +106,46 @@ describe('emails clone', () => {
     expect(result.code).toBe(0)
     expect(text).toBe('{}')
   })
+
+  it('names and files the clone', async () => {
+    let body: unknown
+    server.use(
+      http.post(`${API}/v1/emails/eml_1/clone`, async ({ request }) => {
+        body = await request.json()
+        return HttpResponse.json({ emailId: 'eml_2' }, { status: 201 })
+      })
+    )
+    const result = await runCli(
+      [
+        'emails',
+        'clone',
+        'eml_1',
+        '--title',
+        'Fall sale (B)',
+        '--group-name',
+        'Fall campaign',
+      ],
+      { env: env(), extraCommands: EXTRA }
+    )
+    expect(result.code).toBe(0)
+    expect(body).toEqual({ title: 'Fall sale (B)', groupName: 'Fall campaign' })
+  })
+
+  it('refuses --group-id with --group-name', async () => {
+    const result = await runCli(
+      [
+        'emails',
+        'clone',
+        'eml_1',
+        '--group-id',
+        'grp_1',
+        '--group-name',
+        'Fall campaign',
+      ],
+      { env: env(), extraCommands: EXTRA }
+    )
+    expect(result.code).toBe(2)
+  })
 })
 
 describe('emails export', () => {
@@ -136,6 +176,30 @@ describe('emails export', () => {
       templateName: 'Fall sale',
       dryRun: true,
     })
+  })
+
+  it('sends --sender-email for Brevo and Mailjet', async () => {
+    let body: unknown
+    server.use(
+      http.post(`${API}/v1/emails/eml_1/export`, async ({ request }) => {
+        body = await request.json()
+        return HttpResponse.json({ provider: 'brevo' })
+      })
+    )
+    const result = await runCli(
+      [
+        'emails',
+        'export',
+        'eml_1',
+        '--provider',
+        'brevo',
+        '--sender-email',
+        'news@acme.com',
+      ],
+      { env: env(), extraCommands: EXTRA }
+    )
+    expect(result.code).toBe(0)
+    expect(body).toEqual({ provider: 'brevo', senderEmail: 'news@acme.com' })
   })
 
   it('requires --provider', async () => {
@@ -203,6 +267,26 @@ describe('emails import-figma', () => {
       subjectLine: 'Launch day is here',
     })
     expect(bodies[1]).toEqual({ figmaUrl: url })
+  })
+
+  it('files the design with --group-id', async () => {
+    let body: unknown
+    server.use(
+      http.post(`${API}/v1/emails/figma`, async ({ request }) => {
+        body = await request.json()
+        return HttpResponse.json(
+          { emailId: 'eml_figma', emailVersionId: 'emv_1', format: 'jsx' },
+          { status: 201 }
+        )
+      })
+    )
+    const url = 'https://www.figma.com/design/abc123/Launch?node-id=1-2'
+    const result = await runCli(
+      ['emails', 'import-figma', '--url', url, '--group-id', 'grp_launch'],
+      { env: env(), extraCommands: EXTRA }
+    )
+    expect(result.code).toBe(0)
+    expect(body).toEqual({ figmaUrl: url, groupId: 'grp_launch' })
   })
 })
 

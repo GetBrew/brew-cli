@@ -21,11 +21,16 @@ export const emailsExportCommand = defineCommand({
     {
       flag: '--provider <provider>',
       summary:
-        'Connected ESP: braze, hubspot, klaviyo, mailchimp, iterable, postmark, onesignal, mailgun, sendgrid',
+        'Connected ESP: braze, brevo, hubspot, klaviyo, mailchimp, mailjet, iterable, postmark, onesignal, mailgun, sendgrid',
     },
     {
       flag: '--template-name <name>',
       summary: 'Template name in the ESP (default: the email title)',
+    },
+    {
+      flag: '--sender-email <email>',
+      summary:
+        'Brevo or Mailjet: the active sender to use (omit when the account has exactly one)',
     },
     {
       flag: '--dry-run',
@@ -42,16 +47,18 @@ export const emailsExportCommand = defineCommand({
     const provider = flagString(flags.provider)
     if (provider === undefined) {
       throw new CliUsageError(
-        '--provider is required: braze, hubspot, klaviyo, mailchimp, iterable, postmark, onesignal, mailgun, or sendgrid.'
+        '--provider is required: braze, brevo, hubspot, klaviyo, mailchimp, mailjet, iterable, postmark, onesignal, mailgun, or sendgrid.'
       )
     }
     const templateName = flagString(flags.templateName)
+    const senderEmail = flagString(flags.senderEmail)
     return {
       data: await ctx.client().emails.export(
         asSdkInput<ExportEmailInput>({
           emailId: args.emailId ?? '',
           provider,
           ...(templateName === undefined ? {} : { templateName }),
+          ...(senderEmail === undefined ? {} : { senderEmail }),
           // The spec field is snake_case, unlike the rest of the API surface.
           ...(flags.dryRun === true ? { dryRun: true } : {}),
         }),

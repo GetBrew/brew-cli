@@ -421,11 +421,16 @@ Bulk-import contacts from a CSV file or stdin
 - SDK: `brew.contacts.importCsv(...)`
 - `--file <path>` — CSV file to import, or - for stdin
 - `--mapping <pairs...>` — Column mapping csvColumn=fieldName, repeatable
+- `--date-order <order>` — month_first or day_first: how to read dates like 03/04/2026 (a day over 12 in the column wins; default month-first, with a DATE_ORDER_ASSUMED warning)
+- `--validate` — Deliverability-check every imported address (2 credits per address)
+- `--consent-source <source>` — Stamp a marketing consent record on every row: api, form or import (the full record goes in --input)
+- `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
 - `--idempotency-key <key>` — Idempotency-Key for safe retries (auto-generated otherwise)
 
 ```bash
 brew-cli contacts import-csv --file contacts.csv
 cat contacts.csv | brew-cli contacts import-csv --file - --mapping Email=email
+brew-cli contacts import-csv --file eu-signups.csv --date-order day_first --consent-source import
 ```
 
 ### brew-cli fields list
@@ -666,6 +671,8 @@ Convert one Figma frame into an editable design (deterministic, free)
 - `--title <title>` — Design title (default: the Figma frame name)
 - `--format <format>` — Representation returned in content: jsx (default) or html
 - `--subject-line <text>` — The design's default inbox subject line
+- `--group-id <groupId>` — File the design under an existing group (grp_…), or ungrouped
+- `--group-name <name>` — File the design under a group found (or created) by this name; not with --group-id
 - `--idempotency-key <key>` — Idempotency-Key for safe retries (auto-generated otherwise)
 
 ```bash
@@ -707,11 +714,15 @@ Clone a design into a new one (exact snapshot copy, no AI)
 - SDK: `brew.emails.clone(...)`
 - Argument `emailId` — Design id to clone
 - `--email-version-id <id>` — Exact source version to clone (default: latest)
+- `--title <title>` — Name for the clone (default: Copy of <source title>)
+- `--group-id <groupId>` — File the clone under an existing group (grp_…), or ungrouped
+- `--group-name <name>` — File the clone under a group found (or created) by this name; not with --group-id
 - `--idempotency-key <key>` — Idempotency-Key for safe retries (auto-generated otherwise)
 
 ```bash
 brew-cli emails clone eml_2SmZOWV3ZQ7W5x6g3m4p
 brew-cli emails clone eml_2SmZOWV3ZQ7W5x6g3m4p --email-version-id emv_9f2kX
+brew-cli emails clone eml_2SmZOWV3ZQ7W5x6g3m4p --title "Fall sale (B)" --group-name "Fall campaign"
 ```
 
 ### brew-cli emails restore
@@ -750,8 +761,9 @@ Export a design to a connected ESP as a template (not a send)
 - Class: write
 - SDK: `brew.emails.export(...)`
 - Argument `emailId` — Design id to export
-- `--provider <provider>` — Connected ESP: braze, hubspot, klaviyo, mailchimp, iterable, postmark, onesignal, mailgun, sendgrid
+- `--provider <provider>` — Connected ESP: braze, brevo, hubspot, klaviyo, mailchimp, mailjet, iterable, postmark, onesignal, mailgun, sendgrid
 - `--template-name <name>` — Template name in the ESP (default: the email title)
+- `--sender-email <email>` — Brevo or Mailjet: the active sender to use (omit when the account has exactly one)
 - `--dry-run` — Validate design, ownership, and ESP connection without creating a template
 - `--idempotency-key <key>` — Idempotency-Key for safe retries (auto-generated otherwise)
 
