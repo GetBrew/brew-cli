@@ -1995,7 +1995,7 @@ export interface paths {
         };
         /**
          * Get brand images
-         * @description The brand’s image library — dual-mode. Pass `?q=` for SEMANTIC search (the query is embedded + vector-searched over the brand’s indexed assets; `?type` and `?aspectRatio` narrow it) — this path is **credit-metered** (`402 INSUFFICIENT_CREDITS` when out of credits). Omit `?q=` to BROWSE the stored harvested + generated library (free), optionally filtered by `?type` / `?aspectRatio`. Either way returns `{ data, pagination }` of images with a description + dimensions. (The smaller `identity` / `emailDesign` / `imageStyle` / `logos` sub-resources embed into `GET /v1/brand?include=…`; images stay separate because they paginate.)
+         * @description The brand’s asset library, as the Assets page shows it: logos, brand images (from the site or uploaded, including the social preview and site screenshot) and images made with Brew. Omit `?q=` to BROWSE it (free), newest first or `?sort=oldest`. Pass `?q=` for SEMANTIC search over brand and generated images (the query is embedded + vector-searched), in relevance order — this path is **credit-metered** on its first page (`402 INSUFFICIENT_CREDITS` when out of credits). `?kind=logo|brand|generated` narrows either mode; logos are not searchable. Each row carries `assetId` (the id the app opens at `/assets?image=<assetId>`), `kind`, `url` and what is known: description, dimensions, category, page, when it was added, and a logo’s variant. (The smaller `identity` / `emailDesign` / `imageStyle` / `logos` sub-resources embed into `GET /v1/brand?include=…`; images stay separate because they paginate.)
          */
         get: operations["getBrandImages"];
         put?: never;
@@ -7309,14 +7309,23 @@ export interface components {
         };
         BrandImagesResponse: {
             data: {
+                assetId: string;
+                /** @enum {string} */
+                kind: "logo" | "brand" | "generated";
                 url: string;
                 description?: string;
                 width?: number;
                 height?: number;
-                aspectRatio?: string;
                 category?: string;
                 pageUrl?: string;
-                prompt?: string;
+                /** Format: date-time */
+                addedAt?: string;
+                logo?: {
+                    type?: string;
+                    theme?: string;
+                    background?: string;
+                    format?: string;
+                };
             }[];
             pagination: {
                 limit: number;
@@ -25204,9 +25213,12 @@ export interface operations {
     getBrandImages: {
         parameters: {
             query?: {
+                /** @description Semantic search over what the images show. Costs 1 credit per new search; results come back in relevance order and `sort` is ignored. Logos are not searchable. */
                 q?: string;
-                type?: string;
-                aspectRatio?: string;
+                /** @description `logo`, `brand` (images from the site or uploaded, including the social preview and site screenshot) or `generated` (made with Brew). Omit for every kind. */
+                kind?: "logo" | "brand" | "generated";
+                /** @description Browse order: `newest` (default) or `oldest`. */
+                sort?: "newest" | "oldest";
                 /**
                  * @description Page size (1-100). Defaults to 100.
                  * @example 50
@@ -25226,7 +25238,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description A page of brand images (semantic results when `?q=`). */
+            /** @description A page of brand assets (semantic results, in relevance order, when `?q=`). */
             200: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -25244,10 +25256,24 @@ export interface operations {
                      * @example {
                      *       "data": [
                      *         {
+                     *           "assetId": "5bc912f9",
+                     *           "kind": "generated",
                      *           "url": "https://cdn.brew.new/cnt/abc.png",
                      *           "description": "Clerk user-profile component",
                      *           "width": 1056,
-                     *           "height": 1002
+                     *           "height": 1002,
+                     *           "addedAt": "2026-09-24T18:02:11.000Z"
+                     *         },
+                     *         {
+                     *           "assetId": "1d4e7a20",
+                     *           "kind": "logo",
+                     *           "url": "https://cdn.brew.new/cnt/logo.svg",
+                     *           "logo": {
+                     *             "type": "logo",
+                     *             "theme": "dark",
+                     *             "background": "transparent",
+                     *             "format": "svg"
+                     *           }
                      *         }
                      *       ],
                      *       "pagination": {

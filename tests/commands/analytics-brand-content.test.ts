@@ -328,13 +328,22 @@ describe('brand update', () => {
 })
 
 describe('brand get-images', () => {
-  it('maps --query and --aspect-ratio onto q/aspectRatio', async () => {
+  it('maps --query, --kind and --sort onto q/kind/sort', async () => {
     let query: URLSearchParams | undefined
     server.use(
       http.get(`${API}/v1/brand/images`, ({ request }) => {
         query = new URL(request.url).searchParams
         return HttpResponse.json({
-          data: [{ url: 'https://cdn.brew.new/img.png' }],
+          data: [
+            {
+              assetId: '5bc912f9',
+              kind: 'brand',
+              url: 'https://cdn.brew.new/img.png',
+              width: 1200,
+              height: 630,
+              addedAt: '2026-09-24T18:02:11.000Z',
+            },
+          ],
           pagination: PAGE_DONE,
         })
       })
@@ -344,12 +353,26 @@ describe('brand get-images', () => {
       'get-images',
       '--query',
       'team photo',
-      '--aspect-ratio',
-      '16:9',
+      '--kind',
+      'brand',
+      '--sort',
+      'oldest',
     ])
     expect(result.code).toBe(0)
     expect(query?.get('q')).toBe('team photo')
-    expect(query?.get('aspectRatio')).toBe('16:9')
+    expect(query?.get('kind')).toBe('brand')
+    expect(query?.get('sort')).toBe('oldest')
+    expect(query?.has('type')).toBe(false)
+    expect(query?.has('aspectRatio')).toBe(false)
+  })
+
+  it('refuses the retired --type and --aspect-ratio with the way forward', async () => {
+    const type = await cli(['brand', 'get-images', '--type', 'hero'])
+    const ratio = await cli(['brand', 'get-images', '--aspect-ratio', '16:9'])
+    expect(type.code).toBe(2)
+    expect(type.stderr).toContain('--kind')
+    expect(ratio.code).toBe(2)
+    expect(ratio.stderr).toContain('width and height')
   })
 })
 

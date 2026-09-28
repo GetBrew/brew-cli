@@ -2,8 +2,8 @@
 
 ## 0.9.0
 
-Its spec is the live one after brew-v2#1708, #1711 and #1715 (deployed
-2026-09-28). #1708 adds `groupBy`/`bucket` to the events read, and the spec
+Its spec is the live one after brew-v2#1708, #1711, #1713 and #1715
+(deployed 2026-09-28). #1708 adds `groupBy`/`bucket` to the events read, and the spec
 carries brew-v2#1579's per-domain unsubscribe lists, which 0.8.x never had
 commands for; `parity-spec` flagged all five routes. It also ships 0.8.1,
 which was never tagged.
@@ -34,6 +34,16 @@ which was never tagged.
   `emails import-figma --group-id` and `--group-name`: name and file the new
   design, which the API took but the CLI could not send.
 - `emails export --sender-email`: the Brevo or Mailjet sender to use.
+
+### Changed by the API
+
+- `brand get-images` takes `--kind logo|brand|generated` and
+  `--sort newest|oldest` and lists the whole asset library the Assets page
+  shows, as `KIND`, `URL`, `SIZE`, `ADDED`. brew-v2#1713 retired the `type`
+  and `aspectRatio` filters, so `--type` and `--aspect-ratio` now exit 2
+  naming the way forward. It uses the raw transport, because SDK 10's
+  `brand.getImages` cannot send `kind` or `sort`, until the CLI adopts
+  `@brew.new/sdk` 11.2.
 
 ### Fixed
 

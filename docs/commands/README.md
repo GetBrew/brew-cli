@@ -120,7 +120,7 @@ a `confirmCommand` otherwise, `--yes` to proceed).
 | `brew-cli analytics trigger-instances list` | read | `GET /v1/automations/trigger-instances` | List fired-trigger instances with their lifecycle `state` (`automations trigger-instances list`) |
 | `brew-cli brand get` | read | `GET /v1/brand` | Fetch the key's brand + extraction readiness (`ready` flag) |
 | `brew-cli brand update` | write | `PATCH /v1/brand` | Update brand identity and/or design-system markdown (PATCH) |
-| `brew-cli brand get-images` | read | `GET /v1/brand/images` | Browse or semantically search the brand's image library |
+| `brew-cli brand get-images` | read | `GET /v1/brand/images` | Browse or semantically search the brand's assets (logos, brand images, images made with Brew) |
 | `brew-cli brands list` | read | `GET /v1/brands` | List every brand in the organization |
 | `brew-cli brands get` | read | `GET /v1/brands/{brandId}` | One brand's lifecycle state (the extraction polling endpoint) |
 | `brew-cli brands create` | write | `POST /v1/brands` | Create a brand and start async extraction (needs an ORGANIZATION-scoped key); poll `brands get` until ready |
@@ -1819,14 +1819,16 @@ cat brand-patch.json | brew-cli brand update --input -
 
 ### brew-cli brand get-images
 
-Browse or semantically search the brand's image library
+Browse or semantically search the brand's assets (logos, brand images, images made with Brew)
 
 - Route: `GET /v1/brand/images`
 - Class: read
 - SDK: `brew.brand.getImages(...)`
-- `--query <text>` — Semantic search over image descriptions
-- `--type <type>` — Filter by image category
-- `--aspect-ratio <ratio>` — Filter by aspect ratio (e.g. 16:9)
+- `--query <text>` — Semantic search over what the images show (1 credit per new search; logos are not searchable)
+- `--kind <kind>` — logo, brand (from the site or uploaded) or generated
+- `--sort <order>` — Browse order: newest (default) or oldest; ignored by --query
+- `--type <type>` — Retired by the API: use --kind
+- `--aspect-ratio <ratio>` — Retired by the API: rows carry width and height instead of a shape filter
 - `--limit <n>` — Page size, 1-100 (default 100)
 - `--cursor <cursor>` — Opaque pagination cursor from a previous page
 - `--all` — Follow the cursor and return every page as one result
@@ -1834,7 +1836,8 @@ Browse or semantically search the brand's image library
 
 ```bash
 brew-cli brand get-images
-brew-cli brand get-images --query "team photo" --aspect-ratio 16:9
+brew-cli brand get-images --kind generated --sort oldest --all
+brew-cli brand get-images --query "team photo" --kind brand
 ```
 
 ### brew-cli brands list
