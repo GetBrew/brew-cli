@@ -744,7 +744,7 @@ components:
                 emailVersionId:
                   type: string
                   minLength: 1
-                  description: Exact email version id for deterministic delivery — required.
+                  description: Email version id to send — required. A pin to the latest version follows new versions (prompt edit, restore) into an unpublished draft; older pins stay.
                 domainId:
                   type: string
                   minLength: 1
@@ -769,7 +769,7 @@ components:
                   description: Informational email title mirror; tolerated for round-trips.
                 fromAddress:
                   type: string
-                  description: Sender address on a verified sending domain; resolved from the domain default when unset.
+                  description: Sender address on domainId's own domain; resolved from the domain default when unset.
               required:
                 - emailId
                 - emailVersionId
@@ -2094,6 +2094,8 @@ components:
             - ENFORCEMENT_LOOSENED_WHILE_PUBLISHED
             - REQUIRED_FIELD_SATISFIED_BY_FALLBACK
             - RESUBSCRIBE_SKIPPED
+            - CORE_FIELD_IGNORED
+            - CSV_COLUMN_IGNORED
             - RECIPIENTS_EXCLUDED
             - CONSENT_RECORD_MISSING
         message:
@@ -2729,6 +2731,11 @@ components:
           type:
             - string
             - "null"
+        unsubscribedDomains:
+          type: array
+          items:
+            type: string
+          default: []
         lastValidatedAt:
           type: string
           format: date-time
@@ -3292,6 +3299,34 @@ components:
         - records
         - createdAt
         - updatedAt
+      additionalProperties: false
+    DomainUnsubscribeRow:
+      type: object
+      properties:
+        email:
+          type: string
+        scope:
+          type: string
+          enum:
+            - domain
+            - all
+            - both
+        unsubscribedAt:
+          type: string
+          format: date-time
+        source:
+          type: string
+          enum:
+            - link
+            - one_click
+            - api
+            - import
+            - manual
+        sendId:
+          type: string
+      required:
+        - email
+        - scope
       additionalProperties: false
     Template:
       type: object
@@ -6496,6 +6531,10 @@ components:
         - range
         - truncated
       additionalProperties: false
+    EventsAnalyticsSuccessResponse:
+      anyOf:
+        - $ref: "#/components/schemas/EventsAnalyticsResponse"
+        - $ref: "#/components/schemas/EventsBreakdownResponse"
     EventsAnalyticsResponse:
       type: object
       properties:
@@ -6620,6 +6659,66 @@ components:
         - pagination
         - range
       additionalProperties: false
+    EventsBreakdownResponse:
+      type: object
+      properties:
+        count:
+          type: integer
+          minimum: 0
+          description: Email events counted.
+        groups:
+          type: array
+          items:
+            type: object
+            properties:
+              key:
+                type: object
+                additionalProperties:
+                  type:
+                    - string
+                    - "null"
+              bucket:
+                type: string
+                format: date-time
+              count:
+                type: integer
+                exclusiveMinimum: 0
+            required:
+              - key
+              - count
+            additionalProperties: false
+          description: The largest 200 groups, largest first. `key` maps each `groupBy` field to its value (`null` when the event has none); `bucket` is the UTC period start. `unsubscribeReason` counts an unsubscribe once per reason it gave.
+        otherCount:
+          type: integer
+          minimum: 0
+          description: The summed counts of the groups not listed.
+        range:
+          type: object
+          properties:
+            from:
+              type: string
+              format: date-time
+            to:
+              type: string
+              format: date-time
+          required:
+            - from
+            - to
+          additionalProperties: false
+        truncated:
+          type: boolean
+          description: "True when the window held more than the 20,000 events one count reads: the counts cover the newest events back to `coveredFrom`. Narrow the window or add `eventType`."
+        coveredFrom:
+          type: string
+          format: date-time
+          description: "With `truncated`: every event after this instant is counted; older ones are not."
+      required:
+        - count
+        - groups
+        - otherCount
+        - range
+        - truncated
+      additionalProperties: false
     AutomationsPostRequest:
       type: object
       properties:
@@ -6716,7 +6815,7 @@ components:
                       emailVersionId:
                         type: string
                         minLength: 1
-                        description: Exact email version id for deterministic delivery — required.
+                        description: Email version id to send — required. A pin to the latest version follows new versions (prompt edit, restore) into an unpublished draft; older pins stay.
                       domainId:
                         type: string
                         minLength: 1
@@ -6741,7 +6840,7 @@ components:
                         description: Informational email title mirror; tolerated for round-trips.
                       fromAddress:
                         type: string
-                        description: Sender address on a verified sending domain; resolved from the domain default when unset.
+                        description: Sender address on domainId's own domain; resolved from the domain default when unset.
                     required:
                       - emailId
                       - emailVersionId
@@ -8187,7 +8286,7 @@ components:
                       emailVersionId:
                         type: string
                         minLength: 1
-                        description: Exact email version id for deterministic delivery — required.
+                        description: Email version id to send — required. A pin to the latest version follows new versions (prompt edit, restore) into an unpublished draft; older pins stay.
                       domainId:
                         type: string
                         minLength: 1
@@ -8212,7 +8311,7 @@ components:
                         description: Informational email title mirror; tolerated for round-trips.
                       fromAddress:
                         type: string
-                        description: Sender address on a verified sending domain; resolved from the domain default when unset.
+                        description: Sender address on domainId's own domain; resolved from the domain default when unset.
                     required:
                       - emailId
                       - emailVersionId
@@ -10985,6 +11084,11 @@ components:
               type:
                 - string
                 - "null"
+            unsubscribedDomains:
+              type: array
+              items:
+                type: string
+              default: []
             lastValidatedAt:
               type: string
               format: date-time
@@ -11282,6 +11386,11 @@ components:
               type:
                 - string
                 - "null"
+            unsubscribedDomains:
+              type: array
+              items:
+                type: string
+              default: []
             lastValidatedAt:
               type: string
               format: date-time
@@ -11438,6 +11547,11 @@ components:
                 type:
                   - string
                   - "null"
+              unsubscribedDomains:
+                type: array
+                items:
+                  type: string
+                default: []
               lastValidatedAt:
                 type: string
                 format: date-time
@@ -11554,6 +11668,7 @@ components:
         search:
           type: string
           minLength: 1
+          description: A whole email address matches only that contact. Other text matches the contacts whose email, first or last name contains any of its words, in `sort` order.
         filters:
           type: array
           items:
@@ -13180,6 +13295,237 @@ components:
       required:
         - domainId
         - deleted
+      additionalProperties: false
+    DomainUnsubscribesListResponse:
+      type: object
+      properties:
+        domainId:
+          type: string
+          minLength: 1
+          maxLength: 64
+        domainHost:
+          type: string
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              email:
+                type: string
+              scope:
+                type: string
+                enum:
+                  - domain
+                  - all
+                  - both
+              unsubscribedAt:
+                type: string
+                format: date-time
+              source:
+                type: string
+                enum:
+                  - link
+                  - one_click
+                  - api
+                  - import
+                  - manual
+              sendId:
+                type: string
+            required:
+              - email
+              - scope
+            additionalProperties: false
+        pagination:
+          type: object
+          properties:
+            limit:
+              type: integer
+              minimum: 1
+              maximum: 100
+            cursor:
+              type:
+                - string
+                - "null"
+            hasMore:
+              type: boolean
+          required:
+            - limit
+            - cursor
+            - hasMore
+          additionalProperties: false
+      required:
+        - domainId
+        - domainHost
+        - data
+        - pagination
+      additionalProperties: false
+    DomainUnsubscribesAddResponse:
+      type: object
+      properties:
+        domainId:
+          type: string
+          minLength: 1
+          maxLength: 64
+        domainHost:
+          type: string
+        summary:
+          type: object
+          properties:
+            received:
+              type: integer
+            added:
+              type: integer
+            alreadyUnsubscribed:
+              type: integer
+            created:
+              type: integer
+            invalid:
+              type: integer
+          required:
+            - received
+            - added
+            - alreadyUnsubscribed
+            - created
+            - invalid
+          additionalProperties: false
+        invalid:
+          type: array
+          items:
+            type: object
+            properties:
+              email:
+                type: string
+              code:
+                type: string
+                enum:
+                  - INVALID_EMAIL
+            required:
+              - email
+              - code
+            additionalProperties: false
+      required:
+        - domainId
+        - domainHost
+        - summary
+        - invalid
+      additionalProperties: false
+    DomainUnsubscribesAddRequest:
+      type: object
+      properties:
+        emails:
+          type: array
+          items:
+            type: string
+            maxLength: 320
+          minItems: 1
+          maxItems: 1000
+      required:
+        - emails
+      additionalProperties: false
+    DomainUnsubscribeRemoveResponse:
+      type: object
+      properties:
+        domainId:
+          type: string
+          minLength: 1
+          maxLength: 64
+        domainHost:
+          type: string
+        email:
+          type: string
+        removed:
+          type: boolean
+        globallyUnsubscribed:
+          type: boolean
+      required:
+        - domainId
+        - domainHost
+        - email
+        - removed
+        - globallyUnsubscribed
+      additionalProperties: false
+    DomainUnsubscribesImportResponse:
+      type: object
+      properties:
+        domainId:
+          type: string
+          minLength: 1
+          maxLength: 64
+        domainHost:
+          type: string
+        summary:
+          type: object
+          properties:
+            rows:
+              type: integer
+            added:
+              type: integer
+            alreadyUnsubscribed:
+              type: integer
+            created:
+              type: integer
+            skipped:
+              type: integer
+          required:
+            - rows
+            - added
+            - alreadyUnsubscribed
+            - created
+            - skipped
+          additionalProperties: false
+        skippedSample:
+          type: array
+          items:
+            type: string
+        truncated:
+          type: boolean
+        column:
+          type:
+            - string
+            - "null"
+      required:
+        - domainId
+        - domainHost
+        - summary
+        - skippedSample
+        - truncated
+        - column
+      additionalProperties: false
+    DomainUnsubscribesImportRequest:
+      type: object
+      properties:
+        csv:
+          type: string
+          minLength: 1
+          maxLength: 2000000
+        column:
+          type: string
+          minLength: 1
+          maxLength: 128
+      required:
+        - csv
+      additionalProperties: false
+    DomainUnsubscribesExportResponse:
+      type: object
+      properties:
+        domainId:
+          type: string
+          minLength: 1
+          maxLength: 64
+        domainHost:
+          type: string
+        csv:
+          type: string
+        rowCount:
+          type: integer
+        truncated:
+          type: boolean
+      required:
+        - domainId
+        - domainHost
+        - csv
+        - rowCount
+        - truncated
       additionalProperties: false
     DomainHealth:
       type: object
@@ -15497,7 +15843,7 @@ paths:
               example:
                 response: No email was generated.
         "201":
-          description: "A design was persisted. Usage-metered: the actual token usage of the email agent is charged (no fixed price, so no `X-Credit-Cost` header). `emailVersionId` pins the exact version for sends + automation `sendEmail` nodes."
+          description: "A design was persisted. Usage-metered: the actual token usage of the email agent is charged (no fixed price, so no `X-Credit-Cost` header). `emailVersionId` pins the exact version for sends + automation `sendEmail` nodes; a step pinned to the latest version follows later edits and restores (see `restoreEmailVersion`)."
           headers:
             x-request-id:
               schema:
@@ -16410,6 +16756,8 @@ paths:
         **Input** `prompt` runs the Brew email agent against the current latest version (or the `emailVersionId` pin, optionally grounded by `contentUrls`) and writes a new `version: "latest"` row on the same `emailId` (the previous head becomes a numeric historical version); usage-metered by actual token spend. `title` renames the design (its canvas name, 1 to 200 characters), `subjectLine` sets the default inbox subject and `groupId` moves it into an existing group (`null` = Ungrouped); any of them without `prompt` is ONE atomic in-place patch (no AI run, no new version, free). With `prompt`, the rename and move land first so the new version inherits them and the subject is applied to the new head. `emailVersionId` requires `prompt`.
 
         **Returns** `200` with the generated-email shape: the NEW head after a prompt edit, or the CURRENT head after an envelope patch (with its `title`, `subjectLine` and `group` after the patch); a text response when the agent answered in prose.
+
+        **Automations** a prompt edit moves every automation `sendEmail` step pinned to the previous latest version onto the new one, in a new unpublished automation version (while a Brew agent is still building that automation, its in-progress draft is updated in place instead); the published version keeps its pin until the next publish. Steps pinned to an older version do not move. An envelope patch writes no version and moves nothing.
 
         **Errors** `404 EMAIL_NOT_FOUND`, `EMAIL_VERSION_NOT_FOUND` (a pin that is not one of this design's versions), `EMAIL_GROUP_NOT_FOUND` (a `groupId` that is not one of this brand's groups); `409 EMAIL_IN_PROGRESS` while the design is still generating (or a concurrent edit moved the head between read and patch); `422 BRAND_NOT_READY` until the brand has finished extracting; `502 EMAIL_GENERATION_FAILED` when the agent run fails (retry later); `400 INVALID_REQUEST` for a body with none of the four fields, or `emailVersionId` without `prompt`.
 
@@ -17339,7 +17687,7 @@ paths:
                     <html><body><h1>Spring sale</h1><p>20% off everything.</p></body></html>"
       responses:
         "201":
-          description: The design was imported + persisted. Free — no model runs. `emailVersionId` pins the exact version for sends + automation nodes.
+          description: The design was imported + persisted. Free — no model runs. `emailVersionId` pins the exact version for sends + automation nodes; a step pinned to the latest version follows later edits and restores.
           headers:
             x-request-id:
               schema:
@@ -18729,7 +19077,7 @@ paths:
       tags:
         - Emails
       summary: Restore a historical version
-      description: "Non-destructive restore: clones the numbered version into a NEW `latest` row (demoting the current head) and returns the same generated-email shape as an edit, including the fresh `emailVersionId`."
+      description: "Non-destructive restore: clones the numbered version into a NEW `latest` row (demoting the current head) and returns the same generated-email shape as an edit, including the fresh `emailVersionId`. Like a prompt edit, it moves every automation `sendEmail` step pinned to the previous latest version onto the new one, in a new unpublished automation version; the published version keeps its pin until the next publish, and steps pinned to an older version do not move. To keep a step on a design that will change, clone the email and pin the clone, and leave the clone unedited: a prompt edit or restore of the clone moves the step the same way, and a manual canvas edit changes the content of the pinned version in place, published automations included."
       parameters:
         - name: Idempotency-Key
           in: header
@@ -25589,7 +25937,7 @@ paths:
 
         **Returns** campaign `202 { status: 'queued' | 'scheduled', sendId, scheduledAt?, warnings? }` (poll `getSend`; `warnings[]` carries one `CONSENT_RECORD_MISSING` per inline recipient that is a subscribed contact with no consent record, and one `RECIPIENTS_EXCLUDED` with the counts when unsubscribed, suppressed or undeliverable contacts will be skipped); test `200 { status: 'completed', recipient }`.
 
-        **Errors** `404 EMAIL_NOT_FOUND`, `DOMAIN_NOT_FOUND`, `AUDIENCE_NOT_FOUND` (a resource in another brand also surfaces as `404`); `422 EMAIL_NOT_READY`, `DOMAIN_NOT_READY`, `DOMAIN_PURPOSE_NOT_ALLOWED`, `LIQUID_RENDER_ERROR`; `422 CONSENT_REQUIRED` when an inline marketing recipient has no contact record with marketing consent and no `consent` was supplied (`details.recipients`); `422 RECIPIENT_UNSUBSCRIBED` when an inline recipient is an existing contact who opted out (`details.recipients`, never re-subscribed); `422 NO_ELIGIBLE_RECIPIENTS` when an immediate send would reach nobody because every contact it targets is unsubscribed, suppressed or undeliverable (`details.eligibility` = `{ total, eligible, excluded: { unsubscribed, suppressed, invalidEmail } }`; no send is created, while a scheduled send is accepted instead); `402 SEND_QUOTA_EXCEEDED` when the plan's monthly volume would be exceeded (no `Retry-After`).
+        **Errors** `400 INVALID_REQUEST` (`param: subject`) when `subject` has a line break or runs over 1000 characters (993 on a test send, for the `[TEST]` prefix), judged on the text every recipient receives; `404 EMAIL_NOT_FOUND`, `DOMAIN_NOT_FOUND`, `AUDIENCE_NOT_FOUND` (a resource in another brand also surfaces as `404`); `422 EMAIL_NOT_READY`, `DOMAIN_NOT_READY`, `DOMAIN_PURPOSE_NOT_ALLOWED`, `LIQUID_RENDER_ERROR`; `422 CONSENT_REQUIRED` when an inline marketing recipient has no contact record with marketing consent and no `consent` was supplied (`details.recipients`); `422 RECIPIENT_UNSUBSCRIBED` when an inline recipient is an existing contact who opted out (`details.recipients`, never re-subscribed); `422 NO_ELIGIBLE_RECIPIENTS` when an immediate send would reach nobody because every contact it targets is unsubscribed, suppressed or undeliverable (`details.eligibility` = `{ total, eligible, excluded: { unsubscribed, suppressed, invalidEmail } }`; no send is created, while a scheduled send is accepted instead); `402 SEND_QUOTA_EXCEEDED` when the plan's monthly volume would be exceeded (no `Retry-After`).
 
         **See also** `listSends`, `cancelSend`, `fireTrigger`.
       parameters:
@@ -28553,9 +28901,11 @@ paths:
 
         **Input** Equality filters: `eventType`, `sendId`, `emailId`, `automationId`, `messageClass` (`marketing` or `transactional`; absent stamps count as marketing). Run scope: `automationRunId` returns one run’s events across every domain (its lifecycle rows and the deliveries it produced), newest first and not windowed unless `from`/`to` are given; only `eventType` combines with it. Recipient rules `recipient` (csv, max 10): a full address matches exactly, `@domain` matches everyone on the domain, other text matches as a substring, a `!` prefix excludes (`recipient=@clay.com,!ceo@clay.com`); includes OR together, excludes always apply. Send facets `source` (csv), `audienceId` (csv, max 20), `domain` (sending domain), `triggerEventId` (csv, max 10, resolved to the automations they wire). Any facet or recipient rule narrows the feed to email events and adds `sendSource`, `sendContext` and `messageClass` to each row (plus `triggerProvider` and `triggerTitle` on triggered rows). Machine-classified opens and clicks (scanner detonation, Apple proxy prefetch) are excluded unless `includeMachineOpens=true` or `includeMachineClicks=true` (audit only).
 
-        **Returns** `200 { data: Event[], pagination: { limit, cursor, hasMore }, range }`; page with `cursor` until it is `null`. Rows carry the run join keys when stamped: `automationRunId`, `triggerInstanceId`, `audienceRunId` (plus `sendId`, `nodeId`). Requires the `emails` scope.
+        **Grouped counts** `groupBy` (one or two csv fields: `eventType`, `emailId`, `automationId`, `sendId`, `source`, `link`, `recipientDomain`, `unsubscribeReason`) and/or `bucket` (`day`, `week` or `month`, UTC, Monday weeks) count the email events the same filters list instead of returning them: `link` with `eventType=clicked` is clicks per link, `unsubscribeReason` counts an unsubscribe once per reason it gave. The count reads the newest 20,000 events; a busier window answers `truncated: true` with `coveredFrom` (narrow `from`/`to` or add `eventType`). Events, not unique recipients: `getAnalyticsOverview` `opened`/`clicked` count unique human recipients.
 
-        **Errors** `400 INVALID_REQUEST` for an inverted window, an unknown `eventType`, or more than 10 recipient rules or 20 audience ids.
+        **Returns** `200 { data: Event[], pagination: { limit, cursor, hasMore }, range }`; page with `cursor` until it is `null`. Rows carry the run join keys when stamped: `automationRunId`, `triggerInstanceId`, `audienceRunId` (plus `sendId`, `nodeId`). With `groupBy`/`bucket`: `200 { count, groups: [{ key, bucket?, count }], otherCount, range, truncated, coveredFrom? }`, the largest 200 groups first. Requires the `emails` scope.
+
+        **Errors** `400 INVALID_REQUEST` for an inverted window, an unknown `eventType`, or more than 10 recipient rules or 20 audience ids; with `groupBy`/`bucket`, for an unknown or repeated field, more than two fields, a non-email `eventType`, `cursor` or `automationRunId` (`limit` is ignored).
 
         **See also** `getAnalyticsOverview`, `listSends`, `listAutomationRuns`.
       parameters:
@@ -28685,6 +29035,33 @@ paths:
             type: string
             minLength: 1
             maxLength: 8192
+        - name: groupBy
+          in: query
+          required: false
+          description: "Count the email events these filters list per value of one or two comma-separated fields instead of returning them: eventType, emailId, automationId, sendId, source, link, recipientDomain, unsubscribeReason."
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 200
+            x-brew-group-by-tokens:
+              - eventType
+              - emailId
+              - automationId
+              - sendId
+              - source
+              - link
+              - recipientDomain
+              - unsubscribeReason
+        - name: bucket
+          in: query
+          required: false
+          description: Count the email events these filters list per UTC day, week (Monday start) or month; combines with `groupBy`.
+          schema:
+            type: string
+            enum:
+              - day
+              - week
+              - month
         - name: X-Brand-Id
           in: header
           required: false
@@ -28696,7 +29073,7 @@ paths:
           example: kx7b3s7fapqz8mjm12ekz1kxdx87yceg
       responses:
         "200":
-          description: A page of unified analytics events.
+          description: A page of unified analytics events, or grouped counts with `groupBy`/`bucket`.
           headers:
             x-request-id:
               schema:
@@ -28729,24 +29106,43 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/EventsAnalyticsResponse"
-              example:
-                data:
-                  - id: evt_abc
-                    occurredAt: '2026-04-08T12:34:56.789Z'
-                    domain: email
-                    eventType: opened
-                    recipientEmail: jane@example.com
-                    sendId: r4Kq8ZxL2mW7nT1vPb9Yc
-                    emailId: qkE3pWv2xN9dLmR4tYbZ7
-                    emailName: Spring Launch
-                pagination:
-                  limit: 50
-                  cursor: null
-                  hasMore: false
-                range:
-                  from: '2026-04-01T12:34:56.789Z'
-                  to: '2026-04-08T12:34:56.789Z'
+                $ref: "#/components/schemas/EventsAnalyticsSuccessResponse"
+              examples:
+                page:
+                  summary: Event page
+                  value:
+                    data:
+                      - id: evt_abc
+                        occurredAt: '2026-04-08T12:34:56.789Z'
+                        domain: email
+                        eventType: opened
+                        recipientEmail: jane@example.com
+                        sendId: r4Kq8ZxL2mW7nT1vPb9Yc
+                        emailId: qkE3pWv2xN9dLmR4tYbZ7
+                        emailName: Spring Launch
+                    pagination:
+                      limit: 50
+                      cursor: null
+                      hasMore: false
+                    range:
+                      from: '2026-04-01T12:34:56.789Z'
+                      to: '2026-04-08T12:34:56.789Z'
+                grouped:
+                  summary: Clicks per link (groupBy=link, eventType=clicked)
+                  value:
+                    count: 412
+                    groups:
+                      - key:
+                          link: https://example.com/spring
+                        count: 301
+                      - key:
+                          link: https://example.com/pricing
+                        count: 111
+                    otherCount: 0
+                    range:
+                      from: '2026-04-01T12:34:56.789Z'
+                      to: '2026-04-08T12:34:56.789Z'
+                    truncated: false
         "400":
           description: |-
             `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
@@ -29525,9 +29921,9 @@ paths:
             type: string
             minLength: 1
             maxLength: 200
-            description: Only automations whose name matches these words (full-text, best match first instead of newest first).
+            description: Only automations whose name matches these words (full-text), still newest first.
           required: false
-          description: Only automations whose name matches these words (full-text, best match first instead of newest first).
+          description: Only automations whose name matches these words (full-text), still newest first.
           name: search
           in: query
         - schema:
@@ -30222,7 +30618,7 @@ paths:
 
         **Returns** the bare automation row, or with `dryRun: true` a `200 AutomationDryRunReport` `{ valid, blockers[], warnings[], blockingIssues[], nodeCounts }`: `blockingIssues[]` lists per-node references the effective trigger or contact catalog cannot provide (`fatal: true` for filter or split conditions and triple-brace `{{{ }}}` body tokens fails publish; `fatal: false` for subject, previewText, fromName, replyTo and double-brace body tags renders empty at send time); `valid` is false when any blocker or blocking issue is present, while publish itself hard-blocks only fatal issues so a live automation can be republished after a soft orphan. Updating a LIVE automation saves a draft and does not go live: the previously published version keeps serving until you republish, `published` describes the returned row, `isLive`, `liveVersion` and `liveAutomationVersionId` describe the automation, and `warnings[]` carries `DRAFT_SAVED_NOT_LIVE`.
 
-        **Errors** `404 AUTOMATION_NOT_FOUND`, `AUTOMATION_VERSION_NOT_FOUND` (pin `liveAutomationVersionId`, a `versions[]` id, or a run row's `automationVersionId`), `TRIGGER_EVENT_NOT_FOUND`; `400 AUTOMATION_GRAPH_INVALID` (`details.issues[]`); `409 PUBLISH_VALIDATION_FAILED` (`details.blockers[]`), `AUTOMATION_VERSION_CONFLICT` (re-read, reapply, retry); `422 AUTOMATION_NOT_PUBLISHED` (nothing to unpublish), `AUTOMATION_NOT_PAUSABLE` (a manual-audience automation pauses through its runs).
+        **Errors** `404 AUTOMATION_NOT_FOUND`, `AUTOMATION_VERSION_NOT_FOUND` (pin `liveAutomationVersionId`, a `versions[]` id, or a run row's `automationVersionId`), `TRIGGER_EVENT_NOT_FOUND`; `400 AUTOMATION_GRAPH_INVALID` (`details.issues[]`); `409 AUTOMATION_VERSION_CONFLICT` (re-read, reapply, retry); `422 PUBLISH_VALIDATION_FAILED` (`details.blockers[]`), `AUTOMATION_NOT_PUBLISHED` (nothing to unpublish), `AUTOMATION_NOT_PAUSABLE` (a manual-audience automation pauses through its runs).
 
         **See also** `createAutomation`, `testAutomation`, `runAutomation`, `listAutomationRuns`.
       parameters:
@@ -37375,7 +37771,7 @@ paths:
 
         **Use when** an event in your product should start every published automation attached to this trigger.
 
-        **Input** `{ payload }`, validated against the trigger’s `payloadSchema`. Unknown fields are accepted and reported in `warnings[]`. The contact derived from the payload is upserted before the fan-out.
+        **Input** `{ payload }`, validated against the trigger’s `payloadSchema`. Unknown fields are accepted and reported in `warnings[]`. The contact derived from the payload is upserted before the fan-out with the declared top-level scalar fields the fire sent; object and array fields stay template data, and a contract `fallbackValue` is never written onto the contact. A value the contact field’s type refuses is left out and reported as a `FIELD_TYPE_MISMATCH` warning (`field`, `expectedType`, `actualType`); the rest of the contact is written and the runs still start.
 
         **Returns** `202 { triggerInstanceId, triggerEventId, status, automationRunIds[], publishedAutomations[], counts, warnings[], receivedAt }`. Follow a run with `getAutomationRun`, the fire itself with `getTriggerInstance`. `counts.skipped` is the recipients a suppression already covered, so `automations: 2, skipped: 2` means nothing was delivered.
 
@@ -40036,7 +40432,7 @@ paths:
       description: |-
         Upserts a single contact OR a batch (`{ contacts: [...] }`, up to 1000 rows). Unknown custom fields auto-create field definitions on the brand, typed from the batch (native booleans/numbers, ISO-date strings → `date`, anything else `string`).
 
-        Custom-field values are coerced to the definition's type (dates → epoch ms, `"1,234"` → 1234, `yes`/`no` → booleans). A value that cannot be coerced (`"$49"` in a number field) is a `409 FIELD_TYPE_MISMATCH` on a single upsert and a per-row `errors[]` entry (`code: FIELD_TYPE_MISMATCH`, `field`) in a batch — the other rows still land.
+        Custom-field values are coerced to the definition's type (dates → epoch ms, `"1,234"` → 1234, `yes`/`no` → booleans). A value that cannot be coerced (`"$49"` in a number field) is a `409 FIELD_TYPE_MISMATCH` on a single upsert and a per-row `errors[]` entry (`code: FIELD_TYPE_MISMATCH`, `field`) in a batch — the other rows still land. A `customFields` key is never stored under a core field name. One whose loss would change the contact (`subscribed`, `First Name`, `consent`, a suppression flag or domain opt-out, or an `email` naming another address) is a `422 CORE_FIELD_IMMUTABLE` on a single upsert (nothing written) and a per-row `errors[]` entry (`code: CORE_FIELD_IMMUTABLE`, `field`) in a batch; send `firstName`, `lastName`, `subscribed` and `consent` at the top level. A key naming a field Brew manages (`createdAt`, `validationStatus`) is dropped with a `warnings[]` entry (`code: CORE_FIELD_IGNORED`, `field`) and the contact is still written, and an `email` key repeating the contact address is ignored.
 
         Optional `consent: { source: "api" | "form" | "import", capturedAt?, policyVersion?, evidence? }` records marketing consent provenance on the contact (per row, or once at batch level as the default). It never changes `subscribed`. An inline marketing send later needs the contact to be subscribed, and warns when no record exists.
 
@@ -40444,7 +40840,7 @@ paths:
                       code: FIELD_TYPE_MISMATCH
                       type: conflict
                       message: A value does not match the declared type of its custom field.
-                      suggestion: Send a value that matches the field definition, or update the field definition first.
+                      suggestion: Send a value that matches the field's type. To change the type, delete the field (this clears its value on every contact) and create it again.
                       docs: https://docs.brew.new/api-reference/api/errors
                 idempotencyConflict:
                   summary: IDEMPOTENCY_CONFLICT
@@ -40655,7 +41051,7 @@ paths:
 
         **Use when** paging through contacts, running a free-text search, or reading one saved audience’s members. Typed filter clauses and counts are `searchContacts`.
 
-        **Input** `search` (free text), `audienceId` (only that saved audience’s members), `sort` (any core column or custom field, default `createdAt`) and `order`, `limit` and `cursor`.
+        **Input** `search` (a whole email address matches only that contact, with its `+` encoded as `%2B`; other text matches any of its words in email, first and last name), `audienceId` (only that saved audience’s members), `sort` (any core column or custom field, default `createdAt`) and `order`, `limit` and `cursor`.
 
         **Returns** `200` with a page of `Contact` rows.
 
@@ -40666,9 +41062,9 @@ paths:
         - schema:
             type: string
             minLength: 1
-            description: Free-text search.
+            description: A whole email address matches only that contact. Other text matches the contacts whose email, first or last name contains any of its words, in `sort` order. Encode an address's `+` as `%2B`.
           required: false
-          description: Free-text search.
+          description: A whole email address matches only that contact. Other text matches the contacts whose email, first or last name contains any of its words, in `sort` order. Encode an address's `+` as `%2B`.
           name: search
           in: query
         - schema:
@@ -41364,7 +41760,7 @@ paths:
                       code: FIELD_TYPE_MISMATCH
                       type: conflict
                       message: A value does not match the declared type of its custom field.
-                      suggestion: Send a value that matches the field definition, or update the field definition first.
+                      suggestion: Send a value that matches the field's type. To change the type, delete the field (this clears its value on every contact) and create it again.
                       docs: https://docs.brew.new/api-reference/api/errors
         "422":
           description: |-
@@ -42167,7 +42563,7 @@ paths:
       description: |-
         The single "Get Contacts" read. Structured search over the brand’s contacts: free-text `search`, `filters` (`{ field, operator, value }` combined with `logic: "and" | "or" | "none"`; the allowed operators depend on the field’s type — see the `operator` schema — and an unsupported pairing is a `400`, never a dropped clause), `sort` + `order`, and cursor pagination. Returns `{ data, pagination }`.
 
-        Folds the former `GET /v1/contacts` (omit all filters to list everything) and `GET /v1/contacts/{email}` (use `filters: [{ field: "email", operator: "equals", value: "…" }]`).
+        `search` with a whole email address matches only that contact, like `filters: [{ field: "email", operator: "equals", value: "…" }]` or `GET /v1/contacts/{email}`. Any other `search` text matches the contacts whose email, first or last name contains any of its words, which can include other contacts, in `sort` order, so act on a contact found by its address. Omit every filter to list everything.
 
         Pass an optional `audienceId` to scope the search to a saved audience’s members — its stored filter set is evaluated as one unit with its own `logicalOperator` (an OR audience stays an OR) and then ANDed with `filters`, so the page is exactly who a send to that audience reaches (an unknown / cross-brand id, or an audience a send would refuse → `400`).
 
@@ -42468,7 +42864,7 @@ paths:
                       code: FIELD_TYPE_MISMATCH
                       type: conflict
                       message: A value does not match the declared type of its custom field.
-                      suggestion: Send a value that matches the field definition, or update the field definition first.
+                      suggestion: Send a value that matches the field's type. To change the type, delete the field (this clears its value on every contact) and create it again.
                       docs: https://docs.brew.new/api-reference/api/errors
         "422":
           description: |-
@@ -43029,11 +43425,11 @@ paths:
         - Contacts
       summary: Bulk-import contacts from CSV
       description: |-
-        Parse a raw CSV string and upsert the rows as contacts (≤ 1000). By default each column header maps to a field of the same name (`email` is required); pass `mapping` to remap columns explicitly. Rows with a missing/invalid email are SKIPPED (counted in `summary.skipped`), not errored; disposable-domain rows are imported with `validationStatus: "risky"` (deliverable but flagged). Returns the same `{ summary, fieldsCreated, errors, warnings }` as batch-create — `207` when some rows fail.
+        Parse a raw CSV string and upsert the rows as contacts (≤ 1000). By default each column header maps to a field of the same name (`email` is required). A header that spells a core field, ignoring case, spaces, `_` and `-`, or whose field key equals it (`First.Name`), maps to it: `Email`, `First Name`, `Last Name` and `Subscribed` fill `email`, `firstName`, `lastName` and `subscribed`. Pass `mapping` to remap single columns; the columns it leaves out keep their default mapping, `""` leaves a column out, and a key that names no column is a `400`. A core field that `mapping` fills is filled from that column alone: another column whose default would fill it is left out with a `CSV_COLUMN_IGNORED` warning. Rows with a missing/invalid email are SKIPPED (counted in `summary.skipped`), not errored; disposable-domain rows are imported with `validationStatus: "risky"` (deliverable but flagged). Returns the same `{ summary, fieldsCreated, errors, warnings }` as batch-create — `207` when some rows fail.
 
-        CSV cells are text: a column mapped onto an EXISTING field is coerced to that field's type (dates → epoch ms, `1,234` → 1234, `yes`/`no` → booleans), and a cell that cannot be coerced (`$49` in a number column) fails ITS row with a per-row `errors[]` entry (`code: FIELD_TYPE_MISMATCH`, `field`) while the other rows still land. An undeclared column is created as a `string` field unless every value is an ISO date (→ `date`); predeclare `number` / `bool` columns with `POST /v1/fields`.
+        CSV cells are text: a column mapped onto an EXISTING field is coerced to that field's type (dates → epoch ms, `1,234` → 1234, `yes`/`no` → booleans), and a cell that cannot be coerced (`$49` in a number column) fails ITS row with a per-row `errors[]` entry (`code: FIELD_TYPE_MISMATCH`, `field`) while the other rows still land. An undeclared column is created as a `string` field unless every value is an ISO date (→ `date`); predeclare `number` / `bool` columns with `POST /v1/fields`. A column whose field Brew manages (`Created At`, `Validation Status`) is not imported and adds a `warnings[]` entry (`code: CSV_COLUMN_IGNORED`, `field` names the column).
 
-        A `subscribed` column reads ESP status words (`unsubscribed`, `cleaned`, `active`, …). An opt-out unsubscribes the contact, new or existing. A subscribed value only applies to new contacts: a row that asks to re-subscribe a contact who opted out keeps its other fields and adds a `warnings[]` entry (`code: RESUBSCRIBE_SKIPPED`, `email`).
+        A `subscribed` column reads true/false and ESP status words (`unsubscribed`, `cleaned`, `blocklisted`, `transactional`, `active`, …). An opt-out unsubscribes the contact, new or existing. A word that is not a subscription status (`maybe`) fails its row (`code: FIELD_TYPE_MISMATCH`, `field: subscribed`) instead of importing the contact subscribed. A subscribed value only applies to new contacts: a row that asks to re-subscribe a contact who opted out keeps its other fields and adds a `warnings[]` entry (`code: RESUBSCRIBE_SKIPPED`, `email`).
       requestBody:
         required: true
         content:
@@ -45086,7 +45482,18 @@ paths:
       tags:
         - Contact Fields
       summary: Delete a contact field
-      description: "Deletes a custom field definition (core columns cannot be deleted — `422 CORE_FIELD_IMMUTABLE`). Idempotent — an unknown name resolves with `deleted: false`."
+      description: |-
+        Deletes a custom field and clears its value from every contact. The values cannot be recovered, and a field created later with the same name starts empty.
+
+        **Use when** a field and its values should go. To change a field's type, delete it, create it again with the new type and re-import the values. Check saved audiences first: afterwards a filter on the field sees no value, so `is_empty` and `not_exists` match every contact.
+
+        **Input** `fieldName` in the path.
+
+        **Returns** `200` with `{ fieldName, deleted }`. A name with no custom field resolves `deleted: false` and clears nothing, so repeating the call is safe. The three legacy consent fields (`marketingConsentSource`, `marketingConsentCapturedAt`, `marketingConsentPolicyVersion`) lose only the definition: their values stay, because they still serve as consent evidence.
+
+        **Errors** `422 CORE_FIELD_IMMUTABLE` for a core column.
+
+        **See also** `listContactFields`, `getContactField`, `createContactField`.
       parameters:
         - schema:
             type: string
@@ -46050,7 +46457,7 @@ paths:
                       code: FIELD_TYPE_MISMATCH
                       type: conflict
                       message: A value does not match the declared type of its custom field.
-                      suggestion: Send a value that matches the field definition, or update the field definition first.
+                      suggestion: Send a value that matches the field's type. To change the type, delete the field (this clears its value on every contact) and create it again.
                       docs: https://docs.brew.new/api-reference/api/errors
                 idempotencyConflict:
                   summary: IDEMPOTENCY_CONFLICT
@@ -46846,7 +47253,7 @@ paths:
                       code: FIELD_TYPE_MISMATCH
                       type: conflict
                       message: A value does not match the declared type of its custom field.
-                      suggestion: Send a value that matches the field definition, or update the field definition first.
+                      suggestion: Send a value that matches the field's type. To change the type, delete the field (this clears its value on every contact) and create it again.
                       docs: https://docs.brew.new/api-reference/api/errors
         "422":
           description: "`CORE_FIELD_IMMUTABLE`: The field is a core contact column and cannot be created, changed, or deleted as a custom field."
@@ -50598,6 +51005,1973 @@ paths:
       x-brew-idempotency: replay
       x-brew-credited: false
       x-brew-rate-policy: domains.write
+  /v1/domains/{domainId}/unsubscribes:
+    get:
+      operationId: listDomainUnsubscribes
+      tags:
+        - Domains
+      summary: List a domain's unsubscribes
+      description: "Every MARKETING sending domain is its own unsubscribe list, keyed by the domain's host inside the brand's contacts. Returns one page (`{ data, pagination }`, newest first). Each row carries `scope`: `domain` (on this host's list), `all` (the brand-wide opt-out — `subscribed: false` on the contact, which blocks every marketing send) or `both`. `?scope=` narrows; `?q=` searches by address. Transactional domains own no list → `422 DOMAIN_PURPOSE_NOT_ALLOWED`."
+      parameters:
+        - name: q
+          in: query
+          required: false
+          description: An address (anything with `@`) matches that address — exactly once complete, by prefix while partial. Other text is a word search over the address and the contact name.
+          schema:
+            type: string
+            maxLength: 320
+        - name: scope
+          in: query
+          required: false
+          description: "Which opt-outs to include: `domain` = this host’s list only, `all` = the brand-wide opt-out only, `any` (default) = either."
+          schema:
+            type: string
+            enum:
+              - any
+              - domain
+              - all
+        - name: limit
+          in: query
+          required: false
+          description: Page size (1–100). Defaults to 100.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+          example: 50
+        - name: cursor
+          in: query
+          required: false
+          description: Opaque pagination cursor echoed from the previous page’s `pagination.cursor`. Omit for the first page.
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 512
+        - schema:
+            type: string
+            minLength: 1
+            maxLength: 64
+            description: Domain id (opaque Convex document id) returned by `POST /v1/domains` and listed by `GET /v1/domains`.
+            example: kx7bkh53hasmfeh5kd7sqgykt187g8ww
+          required: true
+          description: Domain id (opaque Convex document id) returned by `POST /v1/domains` and listed by `GET /v1/domains`.
+          name: domainId
+          in: path
+        - name: X-Brand-Id
+          in: header
+          required: false
+          description: The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 64
+          example: kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+      responses:
+        "200":
+          description: A page of the domain’s unsubscribe list.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+            X-RateLimit-Limit:
+              schema:
+                type: integer
+                description: Requests allowed in the current rolling rate limit window.
+                example: 100
+              required: true
+              description: Requests allowed in the current rolling rate limit window.
+            X-RateLimit-Remaining:
+              schema:
+                type: integer
+                description: Requests remaining in the current rolling rate limit window.
+                example: 99
+              required: true
+              description: Requests remaining in the current rolling rate limit window.
+            X-RateLimit-Reset:
+              schema:
+                type: integer
+                description: Unix timestamp in seconds for when the rolling window fully resets.
+                example: 1712592360
+              required: true
+              description: Unix timestamp in seconds for when the rolling window fully resets.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DomainUnsubscribesListResponse"
+              example:
+                domainId: kx7bkh53hasmfeh5kd7sqgykt187g8ww
+                domainHost: send.example.com
+                data:
+                  - email: jane@example.com
+                    scope: domain
+                    unsubscribedAt: '2026-09-17T09:12:00.000Z'
+                    source: link
+                    sendId: kh7c1w2m3n4p5q6r7s8t9u0v1w2x3y4z
+                pagination:
+                  limit: 100
+                  cursor: null
+                  hasMore: false
+        "400":
+          description: |-
+            `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+
+            `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                brandIdRequired:
+                  summary: BRAND_ID_REQUIRED
+                  value:
+                    error:
+                      code: BRAND_ID_REQUIRED
+                      type: invalid_request
+                      message: An organization-scoped credential called a brand-scoped operation without naming the brand.
+                      suggestion: List brands with GET /v1/brands, then name one with the X-Brand-Id header. There is no default brand.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                invalidRequest:
+                  summary: INVALID_REQUEST
+                  value:
+                    error:
+                      code: INVALID_REQUEST
+                      type: invalid_request
+                      message: "The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender."
+                      suggestion: Fix the field reported in `param` and retry.
+                      docs: https://docs.brew.new/api-reference/api/errors
+        "401":
+          description: |-
+            `API_KEY_REVOKED`: The API key was revoked.
+
+            `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+
+            `INVALID_API_KEY`: The API key is malformed or unknown.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                apiKeyRevoked:
+                  summary: API_KEY_REVOKED
+                  value:
+                    error:
+                      code: API_KEY_REVOKED
+                      type: authentication_error
+                      message: The API key was revoked.
+                      suggestion: Create a new active API key and retry.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                authenticationRequired:
+                  summary: AUTHENTICATION_REQUIRED
+                  value:
+                    error:
+                      code: AUTHENTICATION_REQUIRED
+                      type: authentication_error
+                      message: No API key or session accompanied the request.
+                      suggestion: Provide a valid API key or sign in with an organization session.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                invalidApiKey:
+                  summary: INVALID_API_KEY
+                  value:
+                    error:
+                      code: INVALID_API_KEY
+                      type: authentication_error
+                      message: The API key is malformed or unknown.
+                      suggestion: Check the API key format and retry with a valid active key.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+        "403":
+          description: |-
+            `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+
+            `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+
+            `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+
+            `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                accountSuspended:
+                  summary: ACCOUNT_SUSPENDED
+                  value:
+                    error:
+                      code: ACCOUNT_SUSPENDED
+                      type: authorization_error
+                      message: The organization behind the credential is suspended.
+                      suggestion: The organization behind this credential is suspended. Contact support@brew.new; do not retry.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                brandScopeMismatch:
+                  summary: BRAND_SCOPE_MISMATCH
+                  value:
+                    error:
+                      code: BRAND_SCOPE_MISMATCH
+                      type: authorization_error
+                      message: A brand-scoped credential named a brand other than the one it is bound to.
+                      suggestion: Omit the brand to use the one this credential is bound to, or use an organization-scoped credential to reach other brands.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                insufficientPermissions:
+                  summary: INSUFFICIENT_PERMISSIONS
+                  value:
+                    error:
+                      code: INSUFFICIENT_PERMISSIONS
+                      type: authorization_error
+                      message: The credential lacks the permission scope the operation needs.
+                      suggestion: Use an API key or session with the required permission.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                insufficientRole:
+                  summary: INSUFFICIENT_ROLE
+                  value:
+                    error:
+                      code: INSUFFICIENT_ROLE
+                      type: authorization_error
+                      message: "The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role)."
+                      suggestion: Ask an organization admin to run this, to add you to the brand, or to make you an admin.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+        "404":
+          description: |-
+            `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+
+            `DOMAIN_NOT_FOUND`: No domain with that id exists in the brand.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                brandNotFound:
+                  summary: BRAND_NOT_FOUND
+                  value:
+                    error:
+                      code: BRAND_NOT_FOUND
+                      type: not_found
+                      message: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+                      suggestion: List the brands this credential can reach with GET /v1/brands.
+                      docs: https://docs.brew.new/api-reference/api/errors
+                domainNotFound:
+                  summary: DOMAIN_NOT_FOUND
+                  value:
+                    error:
+                      code: DOMAIN_NOT_FOUND
+                      type: not_found
+                      message: No domain with that id exists in the brand.
+                      suggestion: Use GET /v1/domains to choose a verified domain.
+                      docs: https://docs.brew.new/api-reference/api/errors
+        "422":
+          description: "`DOMAIN_PURPOSE_NOT_ALLOWED`: The sending domain is admitted for a different purpose than this send (marketing vs transactional)."
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                domainPurposeNotAllowed:
+                  summary: DOMAIN_PURPOSE_NOT_ALLOWED
+                  value:
+                    error:
+                      code: DOMAIN_PURPOSE_NOT_ALLOWED
+                      type: invalid_request
+                      message: The sending domain is admitted for a different purpose than this send (marketing vs transactional).
+                      suggestion: Use a marketing domain for campaigns and audience sends. For transactional flows, wire the design into a published automation with a trigger and fire POST /v1/automations/triggers/{triggerEventId}/fire.
+                      docs: https://docs.brew.new/api-reference/api/errors
+        "429":
+          description: "`RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens."
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+            X-RateLimit-Limit:
+              schema:
+                type: integer
+                description: Requests allowed in the current rolling rate limit window.
+                example: 100
+              required: true
+              description: Requests allowed in the current rolling rate limit window.
+            X-RateLimit-Remaining:
+              schema:
+                type: integer
+                description: Requests remaining in the current rolling rate limit window.
+                example: 99
+              required: true
+              description: Requests remaining in the current rolling rate limit window.
+            X-RateLimit-Reset:
+              schema:
+                type: integer
+                description: Unix timestamp in seconds for when the rolling window fully resets.
+                example: 1712592360
+              required: true
+              description: Unix timestamp in seconds for when the rolling window fully resets.
+            Retry-After:
+              schema:
+                type: integer
+                description: Seconds to wait before retrying the request.
+                example: 42
+              required: true
+              description: Seconds to wait before retrying the request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                rateLimited:
+                  summary: RATE_LIMITED
+                  value:
+                    error:
+                      code: RATE_LIMITED
+                      type: rate_limit
+                      message: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens.
+                      suggestion: Wait for the retry window before sending another request.
+                      docs: https://docs.brew.new/api-reference/api/rate-limits
+                      retryAfter: 42
+        "500":
+          description: "`INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it."
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                internalError:
+                  summary: INTERNAL_ERROR
+                  value:
+                    error:
+                      code: INTERNAL_ERROR
+                      type: internal_error
+                      message: An unexpected failure; the x-request-id header identifies it.
+                      suggestion: Retry the request. If it keeps failing, contact support with the x-request-id header.
+                      docs: https://docs.brew.new/api-reference/api/errors
+      x-brew-scope: domains
+      x-brew-brand-scope: brand
+      x-brew-idempotency: none
+      x-brew-credited: false
+      x-brew-rate-policy: domains.read
+    post:
+      operationId: addDomainUnsubscribes
+      tags:
+        - Domains
+      summary: Add addresses to a domain's unsubscribe list
+      description: "Suppresses up to 1,000 addresses from THIS marketing domain's mail. An existing contact is suppressed for this host only — sends from OTHER marketing domains still reach it; set `subscribed: false` on the contact for a brand-wide opt-out. An address with no contact is created already globally unsubscribed, so every marketing domain skips it (`summary.created`). Addresses already on the list count under `alreadyUnsubscribed`, never errored (idempotent); malformed ones are reported in `invalid` and skipped."
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: false
+          description: Optional idempotency key for safe retries. Reusing the same key with the same request body returns the original response for 24 hours.
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 100
+          example: api-request-2026-04-08-001
+        - schema:
+            type: string
+            minLength: 1
+            maxLength: 64
+            description: Domain id (opaque Convex document id) returned by `POST /v1/domains` and listed by `GET /v1/domains`.
+            example: kx7bkh53hasmfeh5kd7sqgykt187g8ww
+          required: true
+          description: Domain id (opaque Convex document id) returned by `POST /v1/domains` and listed by `GET /v1/domains`.
+          name: domainId
+          in: path
+        - name: X-Brand-Id
+          in: header
+          required: false
+          description: The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 64
+          example: kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DomainUnsubscribesAddRequest"
+            example:
+              emails:
+                - jane@example.com
+                - sam@example.com
+      responses:
+        "200":
+          description: Per-address outcome summary.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+            X-RateLimit-Limit:
+              schema:
+                type: integer
+                description: Requests allowed in the current rolling rate limit window.
+                example: 100
+              required: true
+              description: Requests allowed in the current rolling rate limit window.
+            X-RateLimit-Remaining:
+              schema:
+                type: integer
+                description: Requests remaining in the current rolling rate limit window.
+                example: 99
+              required: true
+              description: Requests remaining in the current rolling rate limit window.
+            X-RateLimit-Reset:
+              schema:
+                type: integer
+                description: Unix timestamp in seconds for when the rolling window fully resets.
+                example: 1712592360
+              required: true
+              description: Unix timestamp in seconds for when the rolling window fully resets.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DomainUnsubscribesAddResponse"
+              example:
+                domainId: kx7bkh53hasmfeh5kd7sqgykt187g8ww
+                domainHost: send.example.com
+                summary:
+                  received: 2
+                  added: 1
+                  alreadyUnsubscribed: 0
+                  created: 1
+                  invalid: 0
+                invalid: []
+        "400":
+          description: |-
+            `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+
+            `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                brandIdRequired:
+                  summary: BRAND_ID_REQUIRED
+                  value:
+                    error:
+                      code: BRAND_ID_REQUIRED
+                      type: invalid_request
+                      message: An organization-scoped credential called a brand-scoped operation without naming the brand.
+                      suggestion: List brands with GET /v1/brands, then name one with the X-Brand-Id header. There is no default brand.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                invalidRequest:
+                  summary: INVALID_REQUEST
+                  value:
+                    error:
+                      code: INVALID_REQUEST
+                      type: invalid_request
+                      message: "The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender."
+                      suggestion: Fix the field reported in `param` and retry.
+                      docs: https://docs.brew.new/api-reference/api/errors
+        "401":
+          description: |-
+            `API_KEY_REVOKED`: The API key was revoked.
+
+            `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+
+            `INVALID_API_KEY`: The API key is malformed or unknown.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                apiKeyRevoked:
+                  summary: API_KEY_REVOKED
+                  value:
+                    error:
+                      code: API_KEY_REVOKED
+                      type: authentication_error
+                      message: The API key was revoked.
+                      suggestion: Create a new active API key and retry.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                authenticationRequired:
+                  summary: AUTHENTICATION_REQUIRED
+                  value:
+                    error:
+                      code: AUTHENTICATION_REQUIRED
+                      type: authentication_error
+                      message: No API key or session accompanied the request.
+                      suggestion: Provide a valid API key or sign in with an organization session.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                invalidApiKey:
+                  summary: INVALID_API_KEY
+                  value:
+                    error:
+                      code: INVALID_API_KEY
+                      type: authentication_error
+                      message: The API key is malformed or unknown.
+                      suggestion: Check the API key format and retry with a valid active key.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+        "403":
+          description: |-
+            `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+
+            `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+
+            `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+
+            `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                accountSuspended:
+                  summary: ACCOUNT_SUSPENDED
+                  value:
+                    error:
+                      code: ACCOUNT_SUSPENDED
+                      type: authorization_error
+                      message: The organization behind the credential is suspended.
+                      suggestion: The organization behind this credential is suspended. Contact support@brew.new; do not retry.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                brandScopeMismatch:
+                  summary: BRAND_SCOPE_MISMATCH
+                  value:
+                    error:
+                      code: BRAND_SCOPE_MISMATCH
+                      type: authorization_error
+                      message: A brand-scoped credential named a brand other than the one it is bound to.
+                      suggestion: Omit the brand to use the one this credential is bound to, or use an organization-scoped credential to reach other brands.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                insufficientPermissions:
+                  summary: INSUFFICIENT_PERMISSIONS
+                  value:
+                    error:
+                      code: INSUFFICIENT_PERMISSIONS
+                      type: authorization_error
+                      message: The credential lacks the permission scope the operation needs.
+                      suggestion: Use an API key or session with the required permission.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                insufficientRole:
+                  summary: INSUFFICIENT_ROLE
+                  value:
+                    error:
+                      code: INSUFFICIENT_ROLE
+                      type: authorization_error
+                      message: "The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role)."
+                      suggestion: Ask an organization admin to run this, to add you to the brand, or to make you an admin.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+        "404":
+          description: |-
+            `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+
+            `DOMAIN_NOT_FOUND`: No domain with that id exists in the brand.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                brandNotFound:
+                  summary: BRAND_NOT_FOUND
+                  value:
+                    error:
+                      code: BRAND_NOT_FOUND
+                      type: not_found
+                      message: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+                      suggestion: List the brands this credential can reach with GET /v1/brands.
+                      docs: https://docs.brew.new/api-reference/api/errors
+                domainNotFound:
+                  summary: DOMAIN_NOT_FOUND
+                  value:
+                    error:
+                      code: DOMAIN_NOT_FOUND
+                      type: not_found
+                      message: No domain with that id exists in the brand.
+                      suggestion: Use GET /v1/domains to choose a verified domain.
+                      docs: https://docs.brew.new/api-reference/api/errors
+        "409":
+          description: |-
+            `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+
+            `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                idempotencyConflict:
+                  summary: IDEMPOTENCY_CONFLICT
+                  value:
+                    error:
+                      code: IDEMPOTENCY_CONFLICT
+                      type: conflict
+                      message: The same Idempotency-Key was reused with a different request body.
+                      suggestion: Reuse the original payload or send a new idempotency key.
+                      docs: https://docs.brew.new/api-reference/api/idempotency
+                idempotencyInProgress:
+                  summary: IDEMPOTENCY_IN_PROGRESS
+                  value:
+                    error:
+                      code: IDEMPOTENCY_IN_PROGRESS
+                      type: conflict
+                      message: A request with this Idempotency-Key is still executing.
+                      suggestion: Wait for the original request to finish, then retry the same key to replay its response.
+                      docs: https://docs.brew.new/api-reference/api/idempotency
+        "422":
+          description: "`DOMAIN_PURPOSE_NOT_ALLOWED`: The sending domain is admitted for a different purpose than this send (marketing vs transactional)."
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                domainPurposeNotAllowed:
+                  summary: DOMAIN_PURPOSE_NOT_ALLOWED
+                  value:
+                    error:
+                      code: DOMAIN_PURPOSE_NOT_ALLOWED
+                      type: invalid_request
+                      message: The sending domain is admitted for a different purpose than this send (marketing vs transactional).
+                      suggestion: Use a marketing domain for campaigns and audience sends. For transactional flows, wire the design into a published automation with a trigger and fire POST /v1/automations/triggers/{triggerEventId}/fire.
+                      docs: https://docs.brew.new/api-reference/api/errors
+        "429":
+          description: "`RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens."
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+            X-RateLimit-Limit:
+              schema:
+                type: integer
+                description: Requests allowed in the current rolling rate limit window.
+                example: 100
+              required: true
+              description: Requests allowed in the current rolling rate limit window.
+            X-RateLimit-Remaining:
+              schema:
+                type: integer
+                description: Requests remaining in the current rolling rate limit window.
+                example: 99
+              required: true
+              description: Requests remaining in the current rolling rate limit window.
+            X-RateLimit-Reset:
+              schema:
+                type: integer
+                description: Unix timestamp in seconds for when the rolling window fully resets.
+                example: 1712592360
+              required: true
+              description: Unix timestamp in seconds for when the rolling window fully resets.
+            Retry-After:
+              schema:
+                type: integer
+                description: Seconds to wait before retrying the request.
+                example: 42
+              required: true
+              description: Seconds to wait before retrying the request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                rateLimited:
+                  summary: RATE_LIMITED
+                  value:
+                    error:
+                      code: RATE_LIMITED
+                      type: rate_limit
+                      message: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens.
+                      suggestion: Wait for the retry window before sending another request.
+                      docs: https://docs.brew.new/api-reference/api/rate-limits
+                      retryAfter: 42
+        "500":
+          description: "`INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it."
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                internalError:
+                  summary: INTERNAL_ERROR
+                  value:
+                    error:
+                      code: INTERNAL_ERROR
+                      type: internal_error
+                      message: An unexpected failure; the x-request-id header identifies it.
+                      suggestion: Retry the request. If it keeps failing, contact support with the x-request-id header.
+                      docs: https://docs.brew.new/api-reference/api/errors
+      x-brew-scope: domains
+      x-brew-brand-scope: brand
+      x-brew-idempotency: replay
+      x-brew-credited: false
+      x-brew-rate-policy: domains.write
+  /v1/domains/{domainId}/unsubscribes/{email}:
+    delete:
+      operationId: removeDomainUnsubscribe
+      tags:
+        - Domains
+      summary: Remove an address from a domain's unsubscribe list
+      description: "Takes one address off THIS domain's list (resubscribes it to this host only). Idempotent — `removed: false` when the address was not on the list. Never clears the brand-wide opt-out: `globallyUnsubscribed: true` means every marketing send still skips the contact until `PATCH /v1/contacts/{email}` sets `subscribed: true`. URL-encode the address."
+      parameters:
+        - schema:
+            type: string
+            minLength: 1
+            maxLength: 64
+            description: Domain id (opaque Convex document id) returned by `POST /v1/domains` and listed by `GET /v1/domains`.
+            example: kx7bkh53hasmfeh5kd7sqgykt187g8ww
+          required: true
+          description: Domain id (opaque Convex document id) returned by `POST /v1/domains` and listed by `GET /v1/domains`.
+          name: domainId
+          in: path
+        - schema:
+            type: string
+            minLength: 3
+            maxLength: 320
+            description: The address to take off the list (URL-encoded).
+            example: jane%40example.com
+          required: true
+          description: The address to take off the list (URL-encoded).
+          name: email
+          in: path
+        - name: X-Brand-Id
+          in: header
+          required: false
+          description: The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 64
+          example: kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+      responses:
+        "200":
+          description: Removed (or was not listed).
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+            X-RateLimit-Limit:
+              schema:
+                type: integer
+                description: Requests allowed in the current rolling rate limit window.
+                example: 100
+              required: true
+              description: Requests allowed in the current rolling rate limit window.
+            X-RateLimit-Remaining:
+              schema:
+                type: integer
+                description: Requests remaining in the current rolling rate limit window.
+                example: 99
+              required: true
+              description: Requests remaining in the current rolling rate limit window.
+            X-RateLimit-Reset:
+              schema:
+                type: integer
+                description: Unix timestamp in seconds for when the rolling window fully resets.
+                example: 1712592360
+              required: true
+              description: Unix timestamp in seconds for when the rolling window fully resets.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DomainUnsubscribeRemoveResponse"
+              example:
+                domainId: kx7bkh53hasmfeh5kd7sqgykt187g8ww
+                domainHost: send.example.com
+                email: jane@example.com
+                removed: true
+                globallyUnsubscribed: false
+        "400":
+          description: |-
+            `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+
+            `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                brandIdRequired:
+                  summary: BRAND_ID_REQUIRED
+                  value:
+                    error:
+                      code: BRAND_ID_REQUIRED
+                      type: invalid_request
+                      message: An organization-scoped credential called a brand-scoped operation without naming the brand.
+                      suggestion: List brands with GET /v1/brands, then name one with the X-Brand-Id header. There is no default brand.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                invalidRequest:
+                  summary: INVALID_REQUEST
+                  value:
+                    error:
+                      code: INVALID_REQUEST
+                      type: invalid_request
+                      message: "The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender."
+                      suggestion: Fix the field reported in `param` and retry.
+                      docs: https://docs.brew.new/api-reference/api/errors
+        "401":
+          description: |-
+            `API_KEY_REVOKED`: The API key was revoked.
+
+            `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+
+            `INVALID_API_KEY`: The API key is malformed or unknown.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                apiKeyRevoked:
+                  summary: API_KEY_REVOKED
+                  value:
+                    error:
+                      code: API_KEY_REVOKED
+                      type: authentication_error
+                      message: The API key was revoked.
+                      suggestion: Create a new active API key and retry.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                authenticationRequired:
+                  summary: AUTHENTICATION_REQUIRED
+                  value:
+                    error:
+                      code: AUTHENTICATION_REQUIRED
+                      type: authentication_error
+                      message: No API key or session accompanied the request.
+                      suggestion: Provide a valid API key or sign in with an organization session.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                invalidApiKey:
+                  summary: INVALID_API_KEY
+                  value:
+                    error:
+                      code: INVALID_API_KEY
+                      type: authentication_error
+                      message: The API key is malformed or unknown.
+                      suggestion: Check the API key format and retry with a valid active key.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+        "403":
+          description: |-
+            `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+
+            `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+
+            `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+
+            `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                accountSuspended:
+                  summary: ACCOUNT_SUSPENDED
+                  value:
+                    error:
+                      code: ACCOUNT_SUSPENDED
+                      type: authorization_error
+                      message: The organization behind the credential is suspended.
+                      suggestion: The organization behind this credential is suspended. Contact support@brew.new; do not retry.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                brandScopeMismatch:
+                  summary: BRAND_SCOPE_MISMATCH
+                  value:
+                    error:
+                      code: BRAND_SCOPE_MISMATCH
+                      type: authorization_error
+                      message: A brand-scoped credential named a brand other than the one it is bound to.
+                      suggestion: Omit the brand to use the one this credential is bound to, or use an organization-scoped credential to reach other brands.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                insufficientPermissions:
+                  summary: INSUFFICIENT_PERMISSIONS
+                  value:
+                    error:
+                      code: INSUFFICIENT_PERMISSIONS
+                      type: authorization_error
+                      message: The credential lacks the permission scope the operation needs.
+                      suggestion: Use an API key or session with the required permission.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                insufficientRole:
+                  summary: INSUFFICIENT_ROLE
+                  value:
+                    error:
+                      code: INSUFFICIENT_ROLE
+                      type: authorization_error
+                      message: "The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role)."
+                      suggestion: Ask an organization admin to run this, to add you to the brand, or to make you an admin.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+        "404":
+          description: |-
+            `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+
+            `DOMAIN_NOT_FOUND`: No domain with that id exists in the brand.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                brandNotFound:
+                  summary: BRAND_NOT_FOUND
+                  value:
+                    error:
+                      code: BRAND_NOT_FOUND
+                      type: not_found
+                      message: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+                      suggestion: List the brands this credential can reach with GET /v1/brands.
+                      docs: https://docs.brew.new/api-reference/api/errors
+                domainNotFound:
+                  summary: DOMAIN_NOT_FOUND
+                  value:
+                    error:
+                      code: DOMAIN_NOT_FOUND
+                      type: not_found
+                      message: No domain with that id exists in the brand.
+                      suggestion: Use GET /v1/domains to choose a verified domain.
+                      docs: https://docs.brew.new/api-reference/api/errors
+        "422":
+          description: "`DOMAIN_PURPOSE_NOT_ALLOWED`: The sending domain is admitted for a different purpose than this send (marketing vs transactional)."
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                domainPurposeNotAllowed:
+                  summary: DOMAIN_PURPOSE_NOT_ALLOWED
+                  value:
+                    error:
+                      code: DOMAIN_PURPOSE_NOT_ALLOWED
+                      type: invalid_request
+                      message: The sending domain is admitted for a different purpose than this send (marketing vs transactional).
+                      suggestion: Use a marketing domain for campaigns and audience sends. For transactional flows, wire the design into a published automation with a trigger and fire POST /v1/automations/triggers/{triggerEventId}/fire.
+                      docs: https://docs.brew.new/api-reference/api/errors
+        "429":
+          description: "`RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens."
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+            X-RateLimit-Limit:
+              schema:
+                type: integer
+                description: Requests allowed in the current rolling rate limit window.
+                example: 100
+              required: true
+              description: Requests allowed in the current rolling rate limit window.
+            X-RateLimit-Remaining:
+              schema:
+                type: integer
+                description: Requests remaining in the current rolling rate limit window.
+                example: 99
+              required: true
+              description: Requests remaining in the current rolling rate limit window.
+            X-RateLimit-Reset:
+              schema:
+                type: integer
+                description: Unix timestamp in seconds for when the rolling window fully resets.
+                example: 1712592360
+              required: true
+              description: Unix timestamp in seconds for when the rolling window fully resets.
+            Retry-After:
+              schema:
+                type: integer
+                description: Seconds to wait before retrying the request.
+                example: 42
+              required: true
+              description: Seconds to wait before retrying the request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                rateLimited:
+                  summary: RATE_LIMITED
+                  value:
+                    error:
+                      code: RATE_LIMITED
+                      type: rate_limit
+                      message: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens.
+                      suggestion: Wait for the retry window before sending another request.
+                      docs: https://docs.brew.new/api-reference/api/rate-limits
+                      retryAfter: 42
+        "500":
+          description: "`INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it."
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                internalError:
+                  summary: INTERNAL_ERROR
+                  value:
+                    error:
+                      code: INTERNAL_ERROR
+                      type: internal_error
+                      message: An unexpected failure; the x-request-id header identifies it.
+                      suggestion: Retry the request. If it keeps failing, contact support with the x-request-id header.
+                      docs: https://docs.brew.new/api-reference/api/errors
+      x-brew-scope: domains
+      x-brew-brand-scope: brand
+      x-brew-idempotency: none
+      x-brew-credited: false
+      x-brew-rate-policy: domains.write
+  /v1/domains/{domainId}/unsubscribes/import:
+    post:
+      operationId: importDomainUnsubscribes
+      tags:
+        - Domains
+      summary: Import a CSV into a domain's unsubscribe list
+      description: "Migrates an unsubscribe list (another ESP's export) into THIS marketing domain's list. `csv` is the file text: an `email` header — or any column of addresses, or one headerless column; pass `column` to name the header when detection fails (`400` otherwise). Synchronous and bounded: 10,000 rows per call (`truncated: true` when the file carried more — split it across calls) and 2,000,000 characters (a longer `csv` is rejected as `400 INVALID_REQUEST`). Idempotent per address. An address with no contact row is created already globally unsubscribed, exactly as `POST /v1/domains/{domainId}/unsubscribes` does, so every marketing domain skips it. The contact CSV importer's `subscribed` column is the BRAND-WIDE flag — use this endpoint for per-domain opt-outs."
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: false
+          description: Optional idempotency key for safe retries. Reusing the same key with the same request body returns the original response for 24 hours.
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 100
+          example: api-request-2026-04-08-001
+        - schema:
+            type: string
+            minLength: 1
+            maxLength: 64
+            description: Domain id (opaque Convex document id) returned by `POST /v1/domains` and listed by `GET /v1/domains`.
+            example: kx7bkh53hasmfeh5kd7sqgykt187g8ww
+          required: true
+          description: Domain id (opaque Convex document id) returned by `POST /v1/domains` and listed by `GET /v1/domains`.
+          name: domainId
+          in: path
+        - name: X-Brand-Id
+          in: header
+          required: false
+          description: The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 64
+          example: kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DomainUnsubscribesImportRequest"
+            example:
+              csv: |
+                email
+                jane@example.com
+                sam@example.com
+      responses:
+        "200":
+          description: Import summary.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+            X-RateLimit-Limit:
+              schema:
+                type: integer
+                description: Requests allowed in the current rolling rate limit window.
+                example: 100
+              required: true
+              description: Requests allowed in the current rolling rate limit window.
+            X-RateLimit-Remaining:
+              schema:
+                type: integer
+                description: Requests remaining in the current rolling rate limit window.
+                example: 99
+              required: true
+              description: Requests remaining in the current rolling rate limit window.
+            X-RateLimit-Reset:
+              schema:
+                type: integer
+                description: Unix timestamp in seconds for when the rolling window fully resets.
+                example: 1712592360
+              required: true
+              description: Unix timestamp in seconds for when the rolling window fully resets.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DomainUnsubscribesImportResponse"
+              example:
+                domainId: kx7bkh53hasmfeh5kd7sqgykt187g8ww
+                domainHost: send.example.com
+                summary:
+                  rows: 2
+                  added: 1
+                  alreadyUnsubscribed: 0
+                  created: 1
+                  skipped: 0
+                skippedSample: []
+                truncated: false
+                column: email
+        "400":
+          description: |-
+            `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+
+            `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                brandIdRequired:
+                  summary: BRAND_ID_REQUIRED
+                  value:
+                    error:
+                      code: BRAND_ID_REQUIRED
+                      type: invalid_request
+                      message: An organization-scoped credential called a brand-scoped operation without naming the brand.
+                      suggestion: List brands with GET /v1/brands, then name one with the X-Brand-Id header. There is no default brand.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                invalidRequest:
+                  summary: INVALID_REQUEST
+                  value:
+                    error:
+                      code: INVALID_REQUEST
+                      type: invalid_request
+                      message: "The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender."
+                      suggestion: Fix the field reported in `param` and retry.
+                      docs: https://docs.brew.new/api-reference/api/errors
+        "401":
+          description: |-
+            `API_KEY_REVOKED`: The API key was revoked.
+
+            `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+
+            `INVALID_API_KEY`: The API key is malformed or unknown.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                apiKeyRevoked:
+                  summary: API_KEY_REVOKED
+                  value:
+                    error:
+                      code: API_KEY_REVOKED
+                      type: authentication_error
+                      message: The API key was revoked.
+                      suggestion: Create a new active API key and retry.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                authenticationRequired:
+                  summary: AUTHENTICATION_REQUIRED
+                  value:
+                    error:
+                      code: AUTHENTICATION_REQUIRED
+                      type: authentication_error
+                      message: No API key or session accompanied the request.
+                      suggestion: Provide a valid API key or sign in with an organization session.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                invalidApiKey:
+                  summary: INVALID_API_KEY
+                  value:
+                    error:
+                      code: INVALID_API_KEY
+                      type: authentication_error
+                      message: The API key is malformed or unknown.
+                      suggestion: Check the API key format and retry with a valid active key.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+        "403":
+          description: |-
+            `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+
+            `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+
+            `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+
+            `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                accountSuspended:
+                  summary: ACCOUNT_SUSPENDED
+                  value:
+                    error:
+                      code: ACCOUNT_SUSPENDED
+                      type: authorization_error
+                      message: The organization behind the credential is suspended.
+                      suggestion: The organization behind this credential is suspended. Contact support@brew.new; do not retry.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                brandScopeMismatch:
+                  summary: BRAND_SCOPE_MISMATCH
+                  value:
+                    error:
+                      code: BRAND_SCOPE_MISMATCH
+                      type: authorization_error
+                      message: A brand-scoped credential named a brand other than the one it is bound to.
+                      suggestion: Omit the brand to use the one this credential is bound to, or use an organization-scoped credential to reach other brands.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                insufficientPermissions:
+                  summary: INSUFFICIENT_PERMISSIONS
+                  value:
+                    error:
+                      code: INSUFFICIENT_PERMISSIONS
+                      type: authorization_error
+                      message: The credential lacks the permission scope the operation needs.
+                      suggestion: Use an API key or session with the required permission.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                insufficientRole:
+                  summary: INSUFFICIENT_ROLE
+                  value:
+                    error:
+                      code: INSUFFICIENT_ROLE
+                      type: authorization_error
+                      message: "The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role)."
+                      suggestion: Ask an organization admin to run this, to add you to the brand, or to make you an admin.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+        "404":
+          description: |-
+            `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+
+            `DOMAIN_NOT_FOUND`: No domain with that id exists in the brand.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                brandNotFound:
+                  summary: BRAND_NOT_FOUND
+                  value:
+                    error:
+                      code: BRAND_NOT_FOUND
+                      type: not_found
+                      message: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+                      suggestion: List the brands this credential can reach with GET /v1/brands.
+                      docs: https://docs.brew.new/api-reference/api/errors
+                domainNotFound:
+                  summary: DOMAIN_NOT_FOUND
+                  value:
+                    error:
+                      code: DOMAIN_NOT_FOUND
+                      type: not_found
+                      message: No domain with that id exists in the brand.
+                      suggestion: Use GET /v1/domains to choose a verified domain.
+                      docs: https://docs.brew.new/api-reference/api/errors
+        "409":
+          description: |-
+            `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+
+            `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                idempotencyConflict:
+                  summary: IDEMPOTENCY_CONFLICT
+                  value:
+                    error:
+                      code: IDEMPOTENCY_CONFLICT
+                      type: conflict
+                      message: The same Idempotency-Key was reused with a different request body.
+                      suggestion: Reuse the original payload or send a new idempotency key.
+                      docs: https://docs.brew.new/api-reference/api/idempotency
+                idempotencyInProgress:
+                  summary: IDEMPOTENCY_IN_PROGRESS
+                  value:
+                    error:
+                      code: IDEMPOTENCY_IN_PROGRESS
+                      type: conflict
+                      message: A request with this Idempotency-Key is still executing.
+                      suggestion: Wait for the original request to finish, then retry the same key to replay its response.
+                      docs: https://docs.brew.new/api-reference/api/idempotency
+        "413":
+          description: "`PAYLOAD_TOO_LARGE`: The request body exceeds the route cap."
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                payloadTooLarge:
+                  summary: PAYLOAD_TOO_LARGE
+                  value:
+                    error:
+                      code: PAYLOAD_TOO_LARGE
+                      type: invalid_request
+                      message: The request body exceeds the route cap.
+                      suggestion: Reduce the payload size and retry.
+                      docs: https://docs.brew.new/api-reference/api/errors
+        "422":
+          description: "`DOMAIN_PURPOSE_NOT_ALLOWED`: The sending domain is admitted for a different purpose than this send (marketing vs transactional)."
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                domainPurposeNotAllowed:
+                  summary: DOMAIN_PURPOSE_NOT_ALLOWED
+                  value:
+                    error:
+                      code: DOMAIN_PURPOSE_NOT_ALLOWED
+                      type: invalid_request
+                      message: The sending domain is admitted for a different purpose than this send (marketing vs transactional).
+                      suggestion: Use a marketing domain for campaigns and audience sends. For transactional flows, wire the design into a published automation with a trigger and fire POST /v1/automations/triggers/{triggerEventId}/fire.
+                      docs: https://docs.brew.new/api-reference/api/errors
+        "429":
+          description: "`RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens."
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+            X-RateLimit-Limit:
+              schema:
+                type: integer
+                description: Requests allowed in the current rolling rate limit window.
+                example: 100
+              required: true
+              description: Requests allowed in the current rolling rate limit window.
+            X-RateLimit-Remaining:
+              schema:
+                type: integer
+                description: Requests remaining in the current rolling rate limit window.
+                example: 99
+              required: true
+              description: Requests remaining in the current rolling rate limit window.
+            X-RateLimit-Reset:
+              schema:
+                type: integer
+                description: Unix timestamp in seconds for when the rolling window fully resets.
+                example: 1712592360
+              required: true
+              description: Unix timestamp in seconds for when the rolling window fully resets.
+            Retry-After:
+              schema:
+                type: integer
+                description: Seconds to wait before retrying the request.
+                example: 42
+              required: true
+              description: Seconds to wait before retrying the request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                rateLimited:
+                  summary: RATE_LIMITED
+                  value:
+                    error:
+                      code: RATE_LIMITED
+                      type: rate_limit
+                      message: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens.
+                      suggestion: Wait for the retry window before sending another request.
+                      docs: https://docs.brew.new/api-reference/api/rate-limits
+                      retryAfter: 42
+        "500":
+          description: "`INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it."
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                internalError:
+                  summary: INTERNAL_ERROR
+                  value:
+                    error:
+                      code: INTERNAL_ERROR
+                      type: internal_error
+                      message: An unexpected failure; the x-request-id header identifies it.
+                      suggestion: Retry the request. If it keeps failing, contact support with the x-request-id header.
+                      docs: https://docs.brew.new/api-reference/api/errors
+      x-brew-scope: domains
+      x-brew-brand-scope: brand
+      x-brew-idempotency: replay
+      x-brew-credited: false
+      x-brew-rate-policy: domains.write
+  /v1/domains/{domainId}/unsubscribes/export:
+    get:
+      operationId: exportDomainUnsubscribes
+      tags:
+        - Domains
+      summary: Export a domain's unsubscribe list
+      description: "The whole list as CSV text (`Email,Scope,Unsubscribed At,Source,Send ID`) inside the JSON envelope — the v1 transport is JSON-only. Capped at 50,000 rows or ~4 MB of CSV, whichever comes first, so the response stays under the platform body limit (`truncated: true` beyond; narrow with `?scope=`)."
+      parameters:
+        - name: scope
+          in: query
+          required: false
+          description: "Which opt-outs to include: `domain` = this host’s list only, `all` = the brand-wide opt-out only, `any` (default) = either."
+          schema:
+            type: string
+            enum:
+              - any
+              - domain
+              - all
+        - schema:
+            type: string
+            minLength: 1
+            maxLength: 64
+            description: Domain id (opaque Convex document id) returned by `POST /v1/domains` and listed by `GET /v1/domains`.
+            example: kx7bkh53hasmfeh5kd7sqgykt187g8ww
+          required: true
+          description: Domain id (opaque Convex document id) returned by `POST /v1/domains` and listed by `GET /v1/domains`.
+          name: domainId
+          in: path
+        - name: X-Brand-Id
+          in: header
+          required: false
+          description: The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 64
+          example: kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+      responses:
+        "200":
+          description: CSV text plus counts.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+            X-RateLimit-Limit:
+              schema:
+                type: integer
+                description: Requests allowed in the current rolling rate limit window.
+                example: 100
+              required: true
+              description: Requests allowed in the current rolling rate limit window.
+            X-RateLimit-Remaining:
+              schema:
+                type: integer
+                description: Requests remaining in the current rolling rate limit window.
+                example: 99
+              required: true
+              description: Requests remaining in the current rolling rate limit window.
+            X-RateLimit-Reset:
+              schema:
+                type: integer
+                description: Unix timestamp in seconds for when the rolling window fully resets.
+                example: 1712592360
+              required: true
+              description: Unix timestamp in seconds for when the rolling window fully resets.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DomainUnsubscribesExportResponse"
+              example:
+                domainId: kx7bkh53hasmfeh5kd7sqgykt187g8ww
+                domainHost: send.example.com
+                csv: "Email,Scope,Unsubscribed At,Source,Send ID\r
+
+                  jane@example.com,domain,2026-09-17T09:12:00.000Z,link,kh7c1w2m3n4p5q6r7s8t9u0v1w2x3y4z\r\n"
+                rowCount: 1
+                truncated: false
+        "400":
+          description: |-
+            `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+
+            `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                brandIdRequired:
+                  summary: BRAND_ID_REQUIRED
+                  value:
+                    error:
+                      code: BRAND_ID_REQUIRED
+                      type: invalid_request
+                      message: An organization-scoped credential called a brand-scoped operation without naming the brand.
+                      suggestion: List brands with GET /v1/brands, then name one with the X-Brand-Id header. There is no default brand.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                invalidRequest:
+                  summary: INVALID_REQUEST
+                  value:
+                    error:
+                      code: INVALID_REQUEST
+                      type: invalid_request
+                      message: "The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender."
+                      suggestion: Fix the field reported in `param` and retry.
+                      docs: https://docs.brew.new/api-reference/api/errors
+        "401":
+          description: |-
+            `API_KEY_REVOKED`: The API key was revoked.
+
+            `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+
+            `INVALID_API_KEY`: The API key is malformed or unknown.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                apiKeyRevoked:
+                  summary: API_KEY_REVOKED
+                  value:
+                    error:
+                      code: API_KEY_REVOKED
+                      type: authentication_error
+                      message: The API key was revoked.
+                      suggestion: Create a new active API key and retry.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                authenticationRequired:
+                  summary: AUTHENTICATION_REQUIRED
+                  value:
+                    error:
+                      code: AUTHENTICATION_REQUIRED
+                      type: authentication_error
+                      message: No API key or session accompanied the request.
+                      suggestion: Provide a valid API key or sign in with an organization session.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                invalidApiKey:
+                  summary: INVALID_API_KEY
+                  value:
+                    error:
+                      code: INVALID_API_KEY
+                      type: authentication_error
+                      message: The API key is malformed or unknown.
+                      suggestion: Check the API key format and retry with a valid active key.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+        "403":
+          description: |-
+            `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+
+            `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+
+            `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+
+            `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                accountSuspended:
+                  summary: ACCOUNT_SUSPENDED
+                  value:
+                    error:
+                      code: ACCOUNT_SUSPENDED
+                      type: authorization_error
+                      message: The organization behind the credential is suspended.
+                      suggestion: The organization behind this credential is suspended. Contact support@brew.new; do not retry.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                brandScopeMismatch:
+                  summary: BRAND_SCOPE_MISMATCH
+                  value:
+                    error:
+                      code: BRAND_SCOPE_MISMATCH
+                      type: authorization_error
+                      message: A brand-scoped credential named a brand other than the one it is bound to.
+                      suggestion: Omit the brand to use the one this credential is bound to, or use an organization-scoped credential to reach other brands.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                insufficientPermissions:
+                  summary: INSUFFICIENT_PERMISSIONS
+                  value:
+                    error:
+                      code: INSUFFICIENT_PERMISSIONS
+                      type: authorization_error
+                      message: The credential lacks the permission scope the operation needs.
+                      suggestion: Use an API key or session with the required permission.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                insufficientRole:
+                  summary: INSUFFICIENT_ROLE
+                  value:
+                    error:
+                      code: INSUFFICIENT_ROLE
+                      type: authorization_error
+                      message: "The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role)."
+                      suggestion: Ask an organization admin to run this, to add you to the brand, or to make you an admin.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+        "404":
+          description: |-
+            `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+
+            `DOMAIN_NOT_FOUND`: No domain with that id exists in the brand.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                brandNotFound:
+                  summary: BRAND_NOT_FOUND
+                  value:
+                    error:
+                      code: BRAND_NOT_FOUND
+                      type: not_found
+                      message: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+                      suggestion: List the brands this credential can reach with GET /v1/brands.
+                      docs: https://docs.brew.new/api-reference/api/errors
+                domainNotFound:
+                  summary: DOMAIN_NOT_FOUND
+                  value:
+                    error:
+                      code: DOMAIN_NOT_FOUND
+                      type: not_found
+                      message: No domain with that id exists in the brand.
+                      suggestion: Use GET /v1/domains to choose a verified domain.
+                      docs: https://docs.brew.new/api-reference/api/errors
+        "422":
+          description: "`DOMAIN_PURPOSE_NOT_ALLOWED`: The sending domain is admitted for a different purpose than this send (marketing vs transactional)."
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                domainPurposeNotAllowed:
+                  summary: DOMAIN_PURPOSE_NOT_ALLOWED
+                  value:
+                    error:
+                      code: DOMAIN_PURPOSE_NOT_ALLOWED
+                      type: invalid_request
+                      message: The sending domain is admitted for a different purpose than this send (marketing vs transactional).
+                      suggestion: Use a marketing domain for campaigns and audience sends. For transactional flows, wire the design into a published automation with a trigger and fire POST /v1/automations/triggers/{triggerEventId}/fire.
+                      docs: https://docs.brew.new/api-reference/api/errors
+        "429":
+          description: "`RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens."
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+            X-RateLimit-Limit:
+              schema:
+                type: integer
+                description: Requests allowed in the current rolling rate limit window.
+                example: 100
+              required: true
+              description: Requests allowed in the current rolling rate limit window.
+            X-RateLimit-Remaining:
+              schema:
+                type: integer
+                description: Requests remaining in the current rolling rate limit window.
+                example: 99
+              required: true
+              description: Requests remaining in the current rolling rate limit window.
+            X-RateLimit-Reset:
+              schema:
+                type: integer
+                description: Unix timestamp in seconds for when the rolling window fully resets.
+                example: 1712592360
+              required: true
+              description: Unix timestamp in seconds for when the rolling window fully resets.
+            Retry-After:
+              schema:
+                type: integer
+                description: Seconds to wait before retrying the request.
+                example: 42
+              required: true
+              description: Seconds to wait before retrying the request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                rateLimited:
+                  summary: RATE_LIMITED
+                  value:
+                    error:
+                      code: RATE_LIMITED
+                      type: rate_limit
+                      message: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens.
+                      suggestion: Wait for the retry window before sending another request.
+                      docs: https://docs.brew.new/api-reference/api/rate-limits
+                      retryAfter: 42
+        "500":
+          description: "`INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it."
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                internalError:
+                  summary: INTERNAL_ERROR
+                  value:
+                    error:
+                      code: INTERNAL_ERROR
+                      type: internal_error
+                      message: An unexpected failure; the x-request-id header identifies it.
+                      suggestion: Retry the request. If it keeps failing, contact support with the x-request-id header.
+                      docs: https://docs.brew.new/api-reference/api/errors
+      x-brew-scope: domains
+      x-brew-brand-scope: brand
+      x-brew-idempotency: none
+      x-brew-credited: false
+      x-brew-rate-policy: domains.read
   /v1/domains/{domainId}/health:
     get:
       operationId: getDomainHealth
