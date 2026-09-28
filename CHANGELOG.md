@@ -2,8 +2,9 @@
 
 ## 0.9.0
 
-Not tagged or published. It needs brew-v2#1708 deployed, because its spec
-adds `groupBy`/`bucket` to the events read. The same spec carries
+Not tagged or published yet: pushing the `v0.9.0` tag publishes it (see
+`RELEASING.md`). Its spec is the live one after brew-v2#1708 (deployed
+2026-09-28), which adds `groupBy`/`bucket` to the events read and carries
 brew-v2#1579's per-domain unsubscribe lists, which 0.8.x never had commands
 for; `parity-spec` flagged all five routes.
 
