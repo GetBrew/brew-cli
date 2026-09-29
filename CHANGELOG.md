@@ -50,7 +50,9 @@ request.
 - **A stalled response body no longer hangs the CLI.** SDK timeouts and
   cancellation now cover the body read (`@brew.new/sdk` 11.3), and the raw
   transport and `api` escape hatch — which had no deadline at all — bound
-  every attempt, body included.
+  every attempt, body included: the SDK's 30 s per attempt, or the route's
+  own budget when it is long-running (`api POST /v1/emails` waits as long
+  as `emails generate`). Pass `--timeout` for longer.
 - SDK timeouts report `CLI_TIMEOUT`: they arrived as an `AbortError` that
   fell through to `CLI_UNEXPECTED` (only `emails audit`'s own deadline
   reached `CLI_TIMEOUT`). Failed or dropped connections report
