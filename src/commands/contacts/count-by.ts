@@ -106,8 +106,11 @@ function renderCounts(body: CountContactsByResponse): string {
       : { bucket: group.bucket }),
     count: group.count,
   }))
+  // A --bucket-only count has no grouped fields: leave out an all-blank column.
   const table = renderTable(rows, [
-    { key: 'group', header: 'GROUP' },
+    ...(rows.some((row) => row.group !== '')
+      ? [{ key: 'group', header: 'GROUP' }]
+      : []),
     ...(rows.some((row) => 'bucket' in row)
       ? [{ key: 'bucket', header: 'PERIOD' }]
       : []),

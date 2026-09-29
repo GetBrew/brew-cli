@@ -542,6 +542,33 @@ describe('contacts count-by', () => {
     expect(result.stdout).toContain('4 in unlisted groups')
   })
 
+  it('counts per period alone with --bucket, showing the PERIOD column', async () => {
+    let body: unknown
+    server.use(
+      http.post(SEARCH_URL, async ({ request }) => {
+        body = await request.json()
+        return HttpResponse.json({
+          count: 7,
+          groups: [
+            { key: {}, bucket: '2026-08-01T00:00:00.000Z', count: 3 },
+            { key: {}, bucket: '2026-09-01T00:00:00.000Z', count: 4 },
+          ],
+          otherCount: 0,
+        })
+      })
+    )
+    const result = await runCli(['contacts', 'count-by', '--bucket', 'month'], {
+      env: env(),
+      ttyOut: true,
+    })
+    expect(result.code).toBe(0)
+    expect(body).toEqual({ count: true, bucket: 'month' })
+    expect(result.stdout).toContain('PERIOD')
+    expect(result.stdout).not.toContain('GROUP')
+    expect(result.stdout).toContain('2026-09-01T00:00:00.000Z')
+    expect(result.stdout).toContain('total 7')
+  })
+
   it('refuses a count with neither --group-by nor --bucket before any request', async () => {
     const result = await runCli(['contacts', 'count-by'], { env: env() })
     expect(result.code).toBe(2)
