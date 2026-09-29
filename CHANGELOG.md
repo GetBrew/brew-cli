@@ -2,11 +2,11 @@
 
 ## 0.9.0
 
-Not tagged or published yet: pushing the `v0.9.0` tag publishes it (see
-`RELEASING.md`). Its spec is the live one after brew-v2#1708 (deployed
-2026-09-28), which adds `groupBy`/`bucket` to the events read and carries
-brew-v2#1579's per-domain unsubscribe lists, which 0.8.x never had commands
-for; `parity-spec` flagged all five routes.
+Its spec is the live one after brew-v2#1708, #1711, #1713 and #1715
+(deployed 2026-09-28). #1708 adds `groupBy`/`bucket` to the events read, and the spec
+carries brew-v2#1579's per-domain unsubscribe lists, which 0.8.x never had
+commands for; `parity-spec` flagged all five routes. It also ships 0.8.1,
+which was never tagged.
 
 ### Added
 
@@ -23,6 +23,36 @@ for; `parity-spec` flagged all five routes.
   `--file` (or stdin) with `--column`.
 - All six use the raw transport until the CLI adopts `@brew.new/sdk` 11.2
   (`analytics.eventCounts`, `domains.unsubscribes.*`).
+- `contacts import-csv --date-order month_first|day_first` (brew-v2#1715):
+  how to read a date column whose dates read either way (`03/04/2026`). A day
+  over 12 in the column wins; without it such a column reads month-first
+  with a `DATE_ORDER_ASSUMED` warning. The command also gains `--validate`
+  (deliverability check, 2 credits per address), `--consent-source
+  api|form|import` (a consent record on every row) and `--input` for the
+  full body: the CSV itself, or a consent record with `evidence`, whose
+  other fields `--consent-source` keeps. Flags override it.
+- `emails clone --title`, `--group-id` and `--group-name`, and
+  `emails import-figma --group-id` and `--group-name`: name and file the new
+  design, which the API took but the CLI could not send.
+- `emails export --sender-email`: the Brevo or Mailjet sender to use.
+- `contracts infer` forwards `subjectKind` from the
+  `{ "example": {...}, "subjectKind": "trigger" }` form of `--input`; a bare
+  example is still sent whole.
+
+### Changed by the API
+
+- `brand get-images` takes `--kind logo|brand|generated` and
+  `--sort newest|oldest` and lists the whole asset library the Assets page
+  shows, as `ASSET ID`, `KIND`, `URL`, `SIZE`, `ADDED`. brew-v2#1713 retired
+  the `type` and `aspectRatio` filters, so `--type` and `--aspect-ratio` (or
+  either key in `--input`) now exit 2 naming the way forward. It uses the raw transport, because SDK 10's
+  `brand.getImages` cannot send `kind` or `sort`, until the CLI adopts
+  `@brew.new/sdk` 11.2.
+
+### Fixed
+
+- `emails export --provider` help and its missing-flag error list `brevo`
+  and `mailjet`, which the API accepts.
 
 ## 0.8.1
 

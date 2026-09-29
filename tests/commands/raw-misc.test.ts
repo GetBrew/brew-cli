@@ -422,3 +422,58 @@ describe('domains health', () => {
     expect((result.json as { verdict: string }).verdict).toBe('healthy')
   })
 })
+
+describe('contracts infer', () => {
+  it('forwards subjectKind from the { example, subjectKind } envelope', async () => {
+    let body: unknown
+    server.use(
+      http.post(
+        'https://brew.new/api/v1/payload-contracts/infer',
+        async ({ request }) => {
+          body = await request.json()
+          return HttpResponse.json({ fields: [], issues: [] })
+        }
+      )
+    )
+    const result = await runCli(
+      [
+        'contracts',
+        'infer',
+        '--input',
+        '{"example":{"email":"jane@example.com"},"subjectKind":"trigger"}',
+      ],
+      { env: env() }
+    )
+    expect(result.code).toBe(0)
+    expect(body).toEqual({
+      example: { email: 'jane@example.com' },
+      subjectKind: 'trigger',
+    })
+  })
+
+  it('keeps a bare example whole, even a field named subjectKind', async () => {
+    let body: unknown
+    server.use(
+      http.post(
+        'https://brew.new/api/v1/payload-contracts/infer',
+        async ({ request }) => {
+          body = await request.json()
+          return HttpResponse.json({ fields: [], issues: [] })
+        }
+      )
+    )
+    const result = await runCli(
+      [
+        'contracts',
+        'infer',
+        '--input',
+        '{"email":"jane@example.com","subjectKind":"order"}',
+      ],
+      { env: env() }
+    )
+    expect(result.code).toBe(0)
+    expect(body).toEqual({
+      example: { email: 'jane@example.com', subjectKind: 'order' },
+    })
+  })
+})
