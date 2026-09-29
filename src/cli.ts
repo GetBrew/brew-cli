@@ -135,36 +135,44 @@ function errorContextFor(
 ): ErrorContext {
   const request = ctx.transport.lastRequest()
   const drain = ctx.transport.drain()
+  // The command bound to the route the failed request actually hit — the
+  // `api` escape hatch borrows its class and replay policy from it.
+  const bound =
+    request === undefined ? undefined : commandFor(request, commands)
+  const isRead =
+    bound === undefined ? ctx.traits?.isRead : bound.commandClass === 'read'
   return {
     ...(request === undefined ? {} : { request }),
     ...(drain === undefined ? {} : { drain }),
-    ...(ctx.traits === undefined ? {} : { isRead: ctx.traits.isRead }),
-    replays: doesReplay(ctx, request, commands),
+    ...(isRead === undefined ? {} : { isRead }),
+    replays:
+      bound === undefined
+        ? ctx.traits?.replays === true
+        : (bound.flags ?? []).includes(IDEMPOTENCY_FLAG),
+    readsStdin: readsStdin(ctx.rawArgv),
     retryCommand: (key) => buildRetryCommand(ctx.rawArgv, key),
   }
 }
 
-/**
- * Whether the API would replay the request that failed for the same key:
- * decided by the route that request actually hit (the `api` escape hatch
- * and multi-call commands included) — its command declares the replaying
- * `--idempotency-key`. With no request recorded, the command's own route.
- */
-function doesReplay(
-  ctx: CliContext,
-  request: { readonly method: string; readonly path: string } | undefined,
+function commandFor(
+  request: { readonly method: string; readonly path: string },
   commands: readonly CommandSpec[]
-): boolean {
-  if (request === undefined) {
-    return ctx.traits?.replays === true
-  }
+): CommandSpec | undefined {
   const apiPath = request.path.split('?')[0] ?? ''
-  return commands.some(
+  return commands.find(
     (spec) =>
       spec.route !== undefined &&
       spec.route.method === request.method &&
-      matchesTemplate(spec.route.path, apiPath) &&
-      (spec.flags ?? []).includes(IDEMPOTENCY_FLAG)
+      matchesTemplate(spec.route.path, apiPath)
+  )
+}
+
+/** `--input -`, `--file -` or `--data -`: the re-run needs the same stdin. */
+function readsStdin(rawArgv: readonly string[]): boolean {
+  return rawArgv.some(
+    (token, index) =>
+      token === '-' &&
+      ['--input', '--file', '--data'].includes(rawArgv[index - 1] ?? '')
   )
 }
 

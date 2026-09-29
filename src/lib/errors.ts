@@ -243,6 +243,8 @@ export type ErrorContext = {
   readonly replays?: boolean
   /** Builds the re-run command line for a key. */
   readonly retryCommand?: (idempotencyKey: string) => string
+  /** The command read its body from stdin: the re-run needs it again. */
+  readonly readsStdin?: boolean
   readonly drain?: DrainProgress
 }
 
@@ -392,7 +394,7 @@ function withReplayAdvice(
   const retryCommand = context.retryCommand?.(key)
   return {
     ...envelope,
-    suggestion: `The API keeps working after the CLI disconnects, so this may still complete. Re-run with --idempotency-key ${key} to get its result instead of running it twice (the key replays for 24 hours).${holdNote}`,
+    suggestion: `The API keeps working after the CLI disconnects, so this may still complete. Re-run with --idempotency-key ${key} to get its result instead of running it twice (the key replays for 24 hours${context.readsStdin === true ? '; pipe the same input to it again' : ''}).${holdNote}`,
     idempotencyKey: key,
     ...(retryCommand === undefined ? {} : { retryCommand }),
   }

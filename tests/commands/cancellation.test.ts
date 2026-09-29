@@ -177,6 +177,41 @@ describe('Ctrl-C / SIGTERM mid-request', () => {
     })
   })
 
+  it('treats a raw POST to a read route as the read it is', async () => {
+    const controller = new AbortController()
+    server.use(
+      http.post(`${API}/v1/contacts/search`, interruptOnRequest(controller))
+    )
+
+    const result = await runCli(
+      ['api', 'POST', '/v1/contacts/search', '--data', '{"limit":5}', '--yes'],
+      { env: env(), signal: controller.signal }
+    )
+
+    expect(result.code).toBe(130)
+    const error = envelopeOf(result.stderr)
+    expect(error.suggestion).toBe('It only reads; nothing was changed.')
+    expect(error.retryCommand).toBeUndefined()
+  })
+
+  it('reminds a stdin-fed write to pipe the same input to its re-run', async () => {
+    const controller = new AbortController()
+    server.use(http.post(`${API}/v1/emails`, interruptOnRequest(controller)))
+
+    const result = await runCli(['emails', 'generate', '--input', '-'], {
+      env: env(),
+      signal: controller.signal,
+      stdin: JSON.stringify({ prompt: 'Welcome' }),
+    })
+
+    expect(result.code).toBe(130)
+    const error = envelopeOf(result.stderr)
+    expect(String(error.suggestion)).toContain(
+      'pipe the same input to it again'
+    )
+    expect(String(error.retryCommand)).toContain('--input -')
+  })
+
   it('prints the re-run command for a human', async () => {
     const controller = new AbortController()
     server.use(http.post(`${API}/v1/emails`, interruptOnRequest(controller)))
