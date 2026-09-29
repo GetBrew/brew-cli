@@ -1,13 +1,19 @@
 import { PassThrough } from 'node:stream'
 import { describe, expect, it, vi } from 'vitest'
-import { CliApiError } from '../../src/lib/errors'
+import { makeContext } from '../../src/lib/context'
+import {
+  CliApiError,
+  CliConnectionError,
+  CliInterruptError,
+  CliTimeoutError,
+} from '../../src/lib/errors'
 import { rawRequest, responseToApiError } from '../../src/lib/raw-request'
-import type { CliContext } from '../../src/lib/types'
+import type { CliContext, CliIo } from '../../src/lib/types'
 
 const API_KEY = 'brew_abcdefghijklmnopqrstuvwxyz012345'
 
-function context(): CliContext {
-  return {
+function context(io: Partial<CliIo> = {}): CliContext {
+  return makeContext({
     io: {
       stdout: new PassThrough(),
       stderr: new PassThrough(),
@@ -16,21 +22,23 @@ function context(): CliContext {
       env: { BREW_API_KEY: API_KEY },
       readStdin: async () => '',
       readLine: async () => '',
+      ...io,
     },
-    mode: 'json',
-    globals: {
-      json: true,
-      quiet: true,
-      yes: false,
-      apiKey: undefined,
-      brand: undefined,
-      apiUrl: undefined,
-    },
-    client: () => {
-      throw new Error('SDK client is not used by rawRequest')
-    },
+    flags: { json: true, quiet: true },
     rawArgv: [],
-  }
+  })
+}
+
+/** A 200 whose body sends a few bytes and then never ends. */
+function stalledResponse(): Response {
+  return new Response(
+    new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode('{"ok":'))
+      },
+    }),
+    { headers: { 'content-type': 'application/json' } }
+  )
 }
 
 describe('rawRequest', () => {
@@ -53,23 +61,73 @@ describe('rawRequest', () => {
     )
   })
 
-  it('forwards a caller-provided abort signal to fetch', async () => {
+  it('stops at the command signal, rejecting with its reason', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(stalledResponse())
     const controller = new AbortController()
-    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+    const reason = new CliInterruptError('SIGINT')
+    setTimeout(() => {
+      controller.abort(reason)
+    }, 20)
+
+    await expect(
+      rawRequest(context({ signal: controller.signal }), {
+        method: 'GET',
+        path: '/v1/api-keys',
+      })
+    ).rejects.toBe(reason)
+  })
+
+  it('bounds a stalled response body with its attempt deadline', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(stalledResponse())
+    const ctx = makeContext({
+      io: context().io,
+      flags: { json: true, quiet: true, timeout: '150ms' },
+      rawArgv: [],
+    })
+    const started = performance.now()
+
+    const error = await rawRequest(ctx, {
+      method: 'GET',
+      path: '/v1/api-keys',
+    }).catch((caught: unknown) => caught)
+
+    expect(error).toBeInstanceOf(CliTimeoutError)
+    expect(performance.now() - started).toBeLessThan(2000)
+  })
+
+  it('reports a failed connection as CliConnectionError, cause kept', async () => {
+    const cause = new TypeError('fetch failed')
+    vi.spyOn(globalThis, 'fetch').mockRejectedValue(cause)
+
+    const error = await rawRequest(context(), {
+      method: 'GET',
+      path: '/v1/api-keys',
+    }).catch((caught: unknown) => caught)
+
+    expect(error).toBeInstanceOf(CliConnectionError)
+    expect((error as CliConnectionError).cause).toBe(cause)
+  })
+
+  it('records the request it sent, key included', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       new Response(JSON.stringify({ ok: true }), {
         headers: { 'content-type': 'application/json' },
       })
     )
+    const ctx = context()
 
-    const result = await rawRequest<{ readonly ok: boolean }>(context(), {
+    await rawRequest(ctx, {
       method: 'POST',
       path: '/v1/emails/audit',
       body: { emailHtml: '<p>Hello</p>' },
-      signal: controller.signal,
+      idempotencyKey: 'key_1',
     })
 
-    expect(result).toEqual({ ok: true })
-    expect(fetchSpy.mock.calls[0]?.[1]?.signal).toBe(controller.signal)
+    expect(ctx.transport.lastRequest()).toEqual({
+      method: 'POST',
+      path: '/v1/emails/audit',
+      idempotencyKey: 'key_1',
+    })
   })
 })
 

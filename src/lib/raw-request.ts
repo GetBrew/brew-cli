@@ -1,8 +1,106 @@
 import { CLI_NAME, CLI_VERSION } from '../version'
 import type { ResolvedAuth } from './client'
 import { isOrgLevelPath, resolveAuth } from './client'
-import { CliApiError, errorTypeForStatus, suggestionForStatus } from './errors'
+import type { HttpMethod } from './define-command'
+import {
+  CliApiError,
+  CliConnectionError,
+  CliTimeoutError,
+  errorTypeForStatus,
+  suggestionForStatus,
+} from './errors'
+import { anySignal, apiPathOf } from './transport'
 import type { CliContext } from './types'
+
+/** A raw attempt's deadline when neither `--timeout` nor a route default applies — the SDK's default. */
+export const DEFAULT_ATTEMPT_TIMEOUT_MS = 30_000
+
+/**
+ * One raw HTTP attempt, bounded end to end: a deadline that covers the
+ * response BODY as well as the headers, the command's signal (interrupt and
+ * `--timeout`), and a record of the request for error envelopes. A failure
+ * is classified by what aborted, never by the error's name: the command's
+ * own reason (interrupt or deadline) is rethrown as-is, this attempt's
+ * deadline becomes a `CliTimeoutError`, anything else a `CliConnectionError`.
+ */
+export async function rawFetch(
+  ctx: CliContext,
+  request: {
+    readonly method: HttpMethod
+    readonly url: string
+    readonly headers: Headers
+    readonly body?: string
+    readonly timeoutMs: number
+  }
+): Promise<{ readonly response: Response; readonly text: string }> {
+  const attempt = new AbortController()
+  const timer = setTimeout(() => {
+    attempt.abort(new CliTimeoutError(request.timeoutMs))
+  }, request.timeoutMs)
+  const combined = anySignal([ctx.signal, attempt.signal])
+  const { signal } = combined
+  if (signal.aborted) {
+    clearTimeout(timer)
+    combined.release()
+    throw signal.reason
+  }
+  ctx.transport.record({
+    method: request.method,
+    path: apiPathOf(new URL(request.url)),
+    idempotencyKey: request.headers.get('idempotency-key') ?? undefined,
+  })
+  try {
+    const response = await fetch(request.url, {
+      method: request.method,
+      headers: request.headers,
+      signal,
+      ...(request.body === undefined ? {} : { body: request.body }),
+    })
+    return { response, text: await readBodyText(response, signal) }
+  } catch (error) {
+    if (signal.aborted) {
+      throw signal.reason
+    }
+    throw new CliConnectionError(error)
+  } finally {
+    clearTimeout(timer)
+    combined.release()
+  }
+}
+
+/**
+ * Read a body as text, ending the read the moment `signal` aborts. Cancels
+ * its own reader rather than trusting the runtime to error the stream on
+ * abort — a mocked body, or a runtime that does not, would otherwise hang
+ * past the deadline.
+ */
+async function readBodyText(
+  response: Response,
+  signal: AbortSignal
+): Promise<string> {
+  if (response.body === null) {
+    return ''
+  }
+  const reader = response.body.getReader()
+  const onAbort = (): void => {
+    reader.cancel(signal.reason).catch(() => undefined)
+  }
+  signal.addEventListener('abort', onAbort, { once: true })
+  const decoder = new TextDecoder()
+  let text = ''
+  try {
+    for (;;) {
+      const { done, value } = await reader.read()
+      signal.throwIfAborted()
+      if (done) {
+        return text + decoder.decode()
+      }
+      text += decoder.decode(value, { stream: true })
+    }
+  } finally {
+    signal.removeEventListener('abort', onAbort)
+  }
+}
 
 /**
  * Minimal typed transport for public-API operations the published SDK does
@@ -10,9 +108,10 @@ import type { CliContext } from './types'
  * error-envelope mapping with the `api` escape hatch. Each caller swaps to
  * the SDK method when it ships — the parity-sdk sentinel flags the moment
  * that becomes possible. Unlike the SDK transport, raw calls are
- * single-attempt (no retry loop). POST calls receive an invocation-scoped
- * idempotency key automatically; callers can provide a stable key when they
- * need to replay safely across process restarts.
+ * single-attempt (no retry loop), bounded by `rawFetch`'s deadline. POST
+ * calls get an idempotency key automatically; a timed-out or interrupted
+ * one reports that key (and the command that replays it), and callers can
+ * pass their own to replay across process restarts.
  */
 export async function rawRequest<TResponse>(
   ctx: CliContext,
@@ -23,7 +122,6 @@ export async function rawRequest<TResponse>(
     readonly query?: Readonly<Record<string, string | undefined>>
     readonly idempotencyKey?: string | undefined
     readonly allowAnonymous?: boolean
-    readonly signal?: AbortSignal
   }
 ): Promise<TResponse> {
   const auth = resolveAuth({
@@ -48,13 +146,13 @@ export async function rawRequest<TResponse>(
       url.searchParams.set(key, value)
     }
   }
-  const response = await fetch(url, {
+  const { response, text } = await rawFetch(ctx, {
     method: request.method,
+    url: url.toString(),
     headers,
     ...(hasBody ? { body: JSON.stringify(request.body) } : {}),
-    ...(request.signal === undefined ? {} : { signal: request.signal }),
+    timeoutMs: ctx.budget.attemptMs ?? DEFAULT_ATTEMPT_TIMEOUT_MS,
   })
-  const text = await response.text()
   const parsed = tryParseJson(text)
   if (!response.ok) {
     throw responseToApiError(response, parsed)

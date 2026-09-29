@@ -1,7 +1,8 @@
 import { BrewApiError } from '@brew.new/sdk'
 import { maskApiKey, resolveAuth } from '../lib/client'
 import { defineCommand } from '../lib/define-command'
-import { CliApiError } from '../lib/errors'
+import { CliApiError, CliInterruptError } from '../lib/errors'
+import type { CliContext } from '../lib/types'
 import { ALL_COMMANDS } from '../registry'
 
 /** Discovery endpoints without a dedicated command route. */
@@ -34,6 +35,7 @@ export const doctorCommand = defineCommand({
       isReachable = health.status === 'ok'
       apiVersion = health.version ?? null
     } catch (error) {
+      rethrowIfCancelled(ctx)
       reachabilityError = error instanceof Error ? error.message : String(error)
     }
 
@@ -47,6 +49,7 @@ export const doctorCommand = defineCommand({
         isAuthValid = true
         plan = usage.plan?.key ?? null
       } catch (error) {
+        rethrowIfCancelled(ctx)
         if (
           (error instanceof BrewApiError || error instanceof CliApiError) &&
           (error.status === 401 || error.status === 403)
@@ -83,6 +86,7 @@ export const doctorCommand = defineCommand({
         extraLocally = [...localOps].filter((op) => !liveOps.has(op))
         isSurfaceChecked = true
       } catch {
+        rethrowIfCancelled(ctx)
         // /v1/help unavailable — surface check stays unperformed.
       }
     }
@@ -133,3 +137,14 @@ export const doctorCommand = defineCommand({
     }
   },
 })
+
+/**
+ * A Ctrl-C (or SIGTERM) must stop doctor, not become a "not reachable"
+ * line in a report that exits 0. A `--timeout` deadline, by contrast, is
+ * a reachability finding like any other failed probe.
+ */
+function rethrowIfCancelled(ctx: CliContext): void {
+  if (ctx.signal.aborted && ctx.signal.reason instanceof CliInterruptError) {
+    throw ctx.signal.reason
+  }
+}

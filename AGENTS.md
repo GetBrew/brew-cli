@@ -45,7 +45,9 @@ of leaving a hole:
   (generated from the vendored spec via `bun run generate:types`; CI
   checks freshness; never hand-edit).
 - Raw calls are single-attempt (no SDK retry loop) — declare
-  `IDEMPOTENCY_FLAG` on POST commands.
+  `IDEMPOTENCY_FLAG` on POST commands. They go through `rawFetch`, whose
+  deadline covers the response body and which observes the command's
+  signal (interrupt and `--timeout`); never call `fetch` directly.
 - The moment the SDK ships the operation, the parity-sdk sentinel fails
   on the new uncovered method: swap the command to the SDK call, drop
   `isRawTransport`, and delete any related skip entries. Raw transport is
@@ -63,8 +65,11 @@ of leaving a hole:
    fan-out over several routes declares none), `commandClass`, ≥1 realistic
    example. `destructive` ⇔ `confirmSummary`.
 3. Ergonomic flags for scalars; `INPUT_FLAG` for deep JSON;
-   `IDEMPOTENCY_FLAG` on POST mutations; reuse
-   `ALL_FLAG`/`LIMIT_FLAG`/`CURSOR_FLAG` for pagination.
+   `IDEMPOTENCY_FLAG` on POST mutations (and pass `requestOptions(flags)`
+   to the SDK call so a `retryCommand` replays); reuse
+   `ALL_FLAG`/`LIMIT_FLAG`/`CURSOR_FLAG` for pagination. A command whose
+   server work routinely outlasts 30 s declares `defaultTimeoutMs` from the
+   SDK's per-call constant, via `lib/long-running.ts`.
 4. Import SDK input types (`import type { X } from '@brew.new/sdk'`; the
    `Parameters<Resource['method']>[0]` fallback when unexported). The one
    allowed cast is `asSdkInput<T>` at the SDK call.
@@ -92,7 +97,10 @@ bun run docs:commands:check
 - stdout carries ONLY the command's data payload; everything else goes to
   stderr. JSON mode prints API envelopes verbatim.
 - Exit codes are API surface: 0 ok, 1 API/runtime, 2 usage, 3 auth,
-  4 confirmation-required. Never repurpose them.
+  4 confirmation-required, 130/143 interrupted by SIGINT/SIGTERM (then
+  the CLI re-raises the signal). Never repurpose them.
+- Never swallow an interrupt: a command that catches errors to degrade
+  gracefully (doctor, whoami) rethrows a `CliInterruptError`.
 - Flags and command names are additive-only after release — renames and
   removals are breaking changes.
 - Never hit the real Brew API from tests; MSW only. Never commit API keys.

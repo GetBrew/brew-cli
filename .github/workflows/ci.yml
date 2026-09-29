@@ -34,3 +34,7 @@ jobs:
           node dist/bin.js --version
           node dist/bin.js --help > /dev/null
           node dist/bin.js docs --agent > /dev/null
+      # SIGINT/SIGTERM against the built binary: the in-process suite cannot
+      # prove the process dies by the signal after printing its envelope.
+      - name: Signal smoke
+        run: bun run smoke:signals

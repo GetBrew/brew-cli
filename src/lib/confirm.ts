@@ -43,24 +43,87 @@ export async function enforceConfirmation(
 }
 
 export function buildConfirmCommand(rawArgv: readonly string[]): string {
-  // The envelope goes to stdout and into agent transcripts — never echo a
-  // raw credential back. The re-run resolves the key from env/config.
+  return ['brew-cli', ...rerunTokens(rawArgv), '--yes'].join(' ')
+}
+
+/**
+ * The command line that replays an interrupted or timed-out write: the same
+ * argv with the idempotency key its request carried, so the API returns the
+ * first attempt's result instead of running it again.
+ */
+export function buildRetryCommand(
+  rawArgv: readonly string[],
+  idempotencyKey: string
+): string {
+  return [
+    'brew-cli',
+    ...rerunTokens(rawArgv, { dropIdempotencyKey: true }),
+    '--idempotency-key',
+    shellQuote(idempotencyKey),
+  ].join(' ')
+}
+
+/**
+ * argv, shell-quoted, for a command the caller will run again. Both
+ * envelopes go to stdout and into agent transcripts, so a credential is
+ * never echoed back: `--api-key` goes (the re-run resolves the key from env
+ * or config) and so does an `Authorization` header passed to `api`.
+ */
+function rerunTokens(
+  rawArgv: readonly string[],
+  options: { readonly dropIdempotencyKey?: boolean } = {}
+): string[] {
   const tokens: string[] = []
   for (let index = 0; index < rawArgv.length; index += 1) {
     const token = rawArgv[index]
     if (token === undefined) {
       continue
     }
-    if (token === '--api-key') {
+    if (
+      token === '--api-key' ||
+      (options.dropIdempotencyKey === true && token === '--idempotency-key')
+    ) {
       index += 1
       continue
     }
-    if (token.startsWith('--api-key=')) {
+    if (
+      token.startsWith('--api-key=') ||
+      (options.dropIdempotencyKey === true &&
+        token.startsWith('--idempotency-key='))
+    ) {
+      continue
+    }
+    if (token.startsWith('--header=')) {
+      if (!isCredentialHeader(token.slice('--header='.length))) {
+        tokens.push(shellQuote(token))
+      }
+      continue
+    }
+    if (token === '--header') {
+      // Variadic: every value up to the next flag belongs to it.
+      const values: string[] = []
+      while (
+        index + 1 < rawArgv.length &&
+        !(rawArgv[index + 1] ?? '').startsWith('-')
+      ) {
+        index += 1
+        const value = rawArgv[index] ?? ''
+        if (!isCredentialHeader(value)) {
+          values.push(shellQuote(value))
+        }
+      }
+      if (values.length > 0) {
+        tokens.push('--header', ...values)
+      }
       continue
     }
     tokens.push(shellQuote(token))
   }
-  return ['brew-cli', ...tokens, '--yes'].join(' ')
+  return tokens
+}
+
+function isCredentialHeader(header: string): boolean {
+  return /^\s*(authorization|cookie|x-api-key)\s*:/i.test(header)
 }
 
 function shellQuote(token: string): string {

@@ -25,6 +25,9 @@ export function buildManifest(): Record<string, unknown> {
       '2': 'usage error',
       '3': 'authentication error',
       '4': 'confirmation required (re-run with --yes)',
+      '130':
+        'interrupted by SIGINT (Ctrl-C); the CLI then re-raises the signal',
+      '143': 'terminated by SIGTERM; the CLI then re-raises the signal',
     },
     confirmationProtocol: {
       exitCode: 4,

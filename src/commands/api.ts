@@ -1,8 +1,11 @@
 import { resolveAuth } from '../lib/client'
 import { defineCommand } from '../lib/define-command'
 import { CliUsageError } from '../lib/errors'
+import { longRunningTimeoutMs } from '../lib/long-running'
 import {
   buildRawHeaders,
+  DEFAULT_ATTEMPT_TIMEOUT_MS,
+  rawFetch,
   responseToApiError,
   tryParseJson,
 } from '../lib/raw-request'
@@ -39,7 +42,8 @@ export const apiCommand = defineCommand({
     },
     {
       flag: '--idempotency-key <key>',
-      summary: 'Idempotency-Key header for safe POST retries',
+      summary:
+        'Idempotency-Key header for safe POST retries (a POST gets one generated otherwise)',
     },
   ],
   examples: [
@@ -67,14 +71,20 @@ export const apiCommand = defineCommand({
     if (method === 'GET' && body !== undefined) {
       throw new CliUsageError('GET requests cannot carry --data.')
     }
+    // A POST always carries a key — the user's, or one generated for this
+    // invocation — so a timed-out or interrupted POST can be replayed with
+    // it (the envelope prints it) instead of run twice. A key passed with
+    // --header wins; the one reported is whatever was actually sent.
     const headers = buildRawHeaders({
       auth,
       path,
       hasJsonBody: body !== undefined,
       idempotencyKey:
-        typeof flags.idempotencyKey === 'string'
+        typeof flags.idempotencyKey === 'string' && flags.idempotencyKey !== ''
           ? flags.idempotencyKey
-          : undefined,
+          : method === 'POST'
+            ? crypto.randomUUID()
+            : undefined,
     })
     for (const header of readHeaderFlags(flags.header)) {
       const separator = header.indexOf(':')
@@ -88,12 +98,19 @@ export const apiCommand = defineCommand({
         header.slice(separator + 1).trim()
       )
     }
-    const response = await fetch(`${auth.apiUrl}${path}`, {
+    const { response, text } = await rawFetch(ctx, {
       method,
+      url: `${auth.apiUrl}${path}`,
       headers,
       ...(body === undefined ? {} : { body }),
+      // --timeout, else the SDK's own default for this route when it is a
+      // long-running one (`api POST /v1/emails` waits as long as `emails
+      // generate`), else the SDK's 30 s.
+      timeoutMs:
+        ctx.budget.attemptMs ??
+        longRunningTimeoutMs({ method, path: barePath }) ??
+        DEFAULT_ATTEMPT_TIMEOUT_MS,
     })
-    const text = await response.text()
     const parsed = tryParseJson(text)
     if (!response.ok) {
       throw responseToApiError(response, parsed)

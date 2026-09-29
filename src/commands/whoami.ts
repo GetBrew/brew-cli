@@ -1,6 +1,7 @@
 import { BrewApiError } from '@brew.new/sdk'
 import { maskApiKey, resolveAuth } from '../lib/client'
 import { defineCommand } from '../lib/define-command'
+import { CliInterruptError } from '../lib/errors'
 import { progress } from '../lib/output'
 
 export const whoamiCommand = defineCommand({
@@ -21,6 +22,10 @@ export const whoamiCommand = defineCommand({
         error instanceof BrewApiError &&
         (error.status === 401 || error.status === 403)
       ) {
+        throw error
+      }
+      // Ctrl-C stops the command; it is not an outage to degrade around.
+      if (error instanceof CliInterruptError) {
         throw error
       }
       progress(

@@ -30,6 +30,7 @@ export const emailsAuditCommand = defineCommand({
   sdkMethod: 'emails.auditEmail',
   route: { method: 'POST', path: '/v1/emails/audit' },
   commandClass: 'write',
+  defaultTimeoutMs: AUDIT_EMAIL_DEFAULT_TIMEOUT_MS,
   isCredited: true,
   flags: [
     {
@@ -73,20 +74,14 @@ export const emailsAuditCommand = defineCommand({
         '--file is required (a path, or - for stdin), or emailHtml via --input.'
       )
     }
-    const signal = AbortSignal.timeout(AUDIT_EMAIL_DEFAULT_TIMEOUT_MS)
-    try {
-      const result = await ctx
-        .client()
-        .emails.auditEmail(asSdkInput<AuditEmailInput>(input), {
-          signal,
-          ...(requestOptions(flags) ?? {}),
-        })
-      return { data: result }
-    } catch (error) {
-      if (signal.aborted) {
-        throw signal.reason
-      }
-      throw error
-    }
+    // The 65 s audit deadline is the command's `defaultTimeoutMs`: the
+    // whole command, body read included, and `--timeout` overrides it.
+    const result = await ctx
+      .client()
+      .emails.auditEmail(
+        asSdkInput<AuditEmailInput>(input),
+        requestOptions(flags)
+      )
+    return { data: result }
   },
 })

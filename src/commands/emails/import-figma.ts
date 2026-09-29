@@ -1,4 +1,5 @@
 import type { BrewClient } from '@brew.new/sdk'
+import { IMPORT_FIGMA_DEFAULT_TIMEOUT_MS } from '@brew.new/sdk'
 import { defineCommand } from '../../lib/define-command'
 import { CliUsageError } from '../../lib/errors'
 import {
@@ -17,6 +18,7 @@ export const emailsImportFigmaCommand = defineCommand({
   sdkMethod: 'emails.importFigma',
   route: { method: 'POST', path: '/v1/emails/figma' },
   commandClass: 'write',
+  defaultTimeoutMs: IMPORT_FIGMA_DEFAULT_TIMEOUT_MS,
   flags: [
     {
       flag: '--url <figmaUrl>',

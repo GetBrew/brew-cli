@@ -13,6 +13,30 @@ request.
 
 ### Added
 
+- **Cancellation.** Ctrl-C (SIGINT) or SIGTERM stops the request in flight
+  wherever it is — connecting, reading the body, backing off, or between
+  `--all` pages — and exits `130` / `143` with a `CLI_INTERRUPTED`
+  envelope (`type: cancelled`, distinct from the y/N decline
+  `CLI_ABORTED`), then re-raises the signal so a calling shell loop stops
+  too. A second signal, or 3 s without stopping, exits at once. A
+  pre-interrupted command sends nothing.
+- **`--timeout <duration>`** (`90`, `90s`, `1500ms`, `5m`): a whole-command
+  deadline — every attempt, retry, backoff, `--all` page and response
+  body. Long-running commands (`emails generate`/`edit`/`audit`/
+  `preview-clients`/`import`/`import-figma`, `content gif`/
+  `generate-image`) default to the SDK's own per-call budget; an explicit
+  `--timeout` always wins. **`--max-retries <0-10>`** tunes the retry loop.
+  Bad values exit 2.
+- **Replay advice.** A write whose outcome is unknown — `CLI_TIMEOUT`, the
+  new `CLI_CONNECTION`, `CLI_INTERRUPTED`, a 5xx, or `409
+  IDEMPOTENCY_IN_PROGRESS` — carries the `idempotencyKey` it was sent with
+  and a `retryCommand` that replays it (the API returns the first
+  attempt's result) instead of running it twice. A read says nothing
+  changed; a route that does not replay says to check state first. An
+  interrupted `--all` drain reports `progress` (rows, pages, the cursor to
+  resume at).
+- `brew-cli api POST` generates an idempotency key when none is given, so
+  a failed raw POST can be replayed too.
 - `contacts count-by`: exact contact counts per field value, per email
   domain (`--group-by emailDomain`) or per signup period (`--bucket
   day|week|month`), largest group first. `contacts count` gives only the
@@ -21,9 +45,25 @@ request.
   `automations list` and `audiences list`, and `audiences update
   --add-email/--remove-email` (membership by address).
 
+### Fixed
+
+- **A stalled response body no longer hangs the CLI.** SDK timeouts and
+  cancellation now cover the body read (`@brew.new/sdk` 11.3), and the raw
+  transport and `api` escape hatch — which had no deadline at all — bound
+  every attempt, body included.
+- SDK timeouts report `CLI_TIMEOUT`: they arrived as an `AbortError` that
+  fell through to `CLI_UNEXPECTED` (only `emails audit`'s own deadline
+  reached `CLI_TIMEOUT`). Failed or dropped connections report
+  `CLI_CONNECTION` instead of `CLI_UNEXPECTED`.
+- `doctor` and `whoami` no longer turn a Ctrl-C into a report or a warning
+  that exits 0.
+- A re-run command (`confirmCommand`, `retryCommand`) never echoes an
+  `Authorization`, `Cookie` or `X-Api-Key` header passed to `api
+  --header`.
+
 ### Changed
 
-- `@brew.new/sdk` `^10.0.0` → `^11.2.0`. The SDK's own 11.0.0 breaking
+- `@brew.new/sdk` `^10.0.0` → `^11.3.0`. The SDK's own 11.0.0 breaking
   changes are API-side (`emails.previewClients` starts a rendering job, the
   contact `verificationStatus` mirror is gone, `emails.get` returns the
   detail row); the commands already passed those responses through as-is.

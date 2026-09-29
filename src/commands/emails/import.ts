@@ -1,4 +1,5 @@
 import type { EmailImportInput } from '@brew.new/sdk'
+import { IMPORT_EMAIL_DEFAULT_TIMEOUT_MS } from '@brew.new/sdk'
 import { defineCommand } from '../../lib/define-command'
 import { CliUsageError } from '../../lib/errors'
 import {
@@ -18,6 +19,7 @@ export const emailsImportCommand = defineCommand({
   sdkMethod: 'emails.import',
   route: { method: 'POST', path: '/v1/emails/import' },
   commandClass: 'write',
+  defaultTimeoutMs: IMPORT_EMAIL_DEFAULT_TIMEOUT_MS,
   flags: [
     {
       flag: '--file <path>',

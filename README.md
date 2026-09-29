@@ -67,7 +67,21 @@ Designed for AI agents as first-class users:
   stderr with stable `code`s, the `x-request-id`, and `details` when
   the API names the offending fields (a trigger fire's `400 INVALID_PAYLOAD`).
 - **Semantic exit codes** — `0` ok · `1` API/runtime · `2` usage ·
-  `3` auth · `4` confirmation required.
+  `3` auth · `4` confirmation required · `130` interrupted (SIGINT) ·
+  `143` terminated (SIGTERM). After printing its envelope an interrupted
+  CLI re-raises the signal, so a shell loop around it stops too.
+- **Every request is bounded** — the deadline covers the response body,
+  not only the headers. `--timeout <duration>` (`90s`, `1500ms`, `5m`)
+  caps the whole command, retries and `--all` pages included; long-running
+  commands (`emails generate`, `content gif`, …) default to the SDK's own
+  per-call budget. `--max-retries <n>` tunes the retry loop. Ctrl-C stops
+  a request wherever it is.
+- **Replay, don't repeat** — the API keeps working after the CLI
+  disconnects, so a write that timed out, lost its connection or was
+  interrupted may still complete. Its envelope carries the
+  `idempotencyKey` it was sent with and a `retryCommand` that replays it
+  (the first attempt's result, not a second write) instead of running it
+  twice.
 - **Confirmation protocol** — irreversible commands (sends, deletes,
   trigger fires) never hang waiting for input: non-interactive callers
   get exit `4` plus a JSON envelope containing a ready-to-run

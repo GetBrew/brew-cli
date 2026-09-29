@@ -12,6 +12,11 @@ export type Page<T> = {
  * Drains a cursor-paginated list for `--all`. The API contract keeps
  * `pagination.cursor` string-or-null (never omitted); a repeated cursor
  * aborts the loop as a defense against a server-side pagination bug.
+ *
+ * An interrupt or `--timeout` stops the drain between pages as well as
+ * mid-page. Rows fetched so far are NOT printed — a partial list would read
+ * as the whole list — but the error reports how far it got and the cursor
+ * to resume at.
  */
 export async function collectAll<T>(
   ctx: CliContext,
@@ -21,7 +26,20 @@ export async function collectAll<T>(
   let cursor: string | undefined
   let pageCount = 0
   for (;;) {
-    const page = await fetchPage(cursor)
+    let page: Page<T>
+    try {
+      ctx.signal.throwIfAborted()
+      page = await fetchPage(cursor)
+    } catch (error) {
+      if (pageCount > 0) {
+        ctx.transport.setDrain({
+          rowsFetched: rows.length,
+          pagesFetched: pageCount,
+          ...(cursor === undefined ? {} : { resumeCursor: cursor }),
+        })
+      }
+      throw error
+    }
     rows.push(...page.data)
     pageCount += 1
     const next = page.pagination?.cursor ?? null
