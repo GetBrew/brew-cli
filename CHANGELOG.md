@@ -1,9 +1,12 @@
 # Changelog
 
-## 0.8.1
+## 0.9.0
 
-Not tagged or published: `package.json` says 0.8.1, but there is no
-`v0.8.1` tag. Pushing the tag publishes it (see `RELEASING.md`).
+Not tagged or published yet: pushing the `v0.9.0` tag publishes it (see
+`RELEASING.md`). Its spec is the live one after brew-v2#1708 (deployed
+2026-09-28), which adds `groupBy`/`bucket` to the events read and carries
+brew-v2#1579's per-domain unsubscribe lists, which 0.8.x never had commands
+for; `parity-spec` flagged all five routes.
 
 ### Changed (breaking)
 
@@ -13,17 +16,32 @@ Not tagged or published: `package.json` says 0.8.1, but there is no
   `--query` searches brand and generated images by meaning (1 credit per new
   search). `--type` and `--aspect-ratio` are gone with the API filters they
   set (GetBrew/brew-v2#1713). Rows show ID (the app's `/assets?image=` id),
-  KIND, URL and ADDED. SDK 10's `brand.getImages` cannot send `kind` or
-  `sort`, so the command uses the raw transport until the CLI adopts the SDK
-  release that forwards them.
+  KIND, URL and ADDED. The SDK before 12 cannot send `kind` or `sort`,
+  so the command uses the raw transport until the CLI adopts SDK 12.
 
 ### Added
 
-- `domains unsubscribes list|add|remove|import|export`: one marketing
-  domain's unsubscribe list (GetBrew/brew-v2#1579). `remove` asks for
-  confirmation (`--yes`); `import --file <path|->` takes another ESP's
-  export, up to 10,000 rows per call. Raw transport until the CLI adopts an
-  SDK with `domains.unsubscribes`.
+- `analytics event-counts`: counts of the email events the same filters
+  list, per `--group-by` (one or two of `eventType`, `emailId`,
+  `automationId`, `sendId`, `source`, `link`, `recipientDomain`,
+  `unsubscribeReason`) and/or `--bucket day|week|month`. Clicks per link:
+  `--event-type clicked --group-by link`. Prints the largest groups with the
+  total, `otherCount`, and whether the window was truncated. It refuses a
+  call with neither `--group-by` nor `--bucket`.
+- `domains unsubscribes list|add|remove|import|export`: a marketing domain's
+  own unsubscribe list. `add` suppresses the addresses from that domain only,
+  `remove` never re-subscribes a brand-wide opt-out, and `import` reads a CSV
+  `--file` (or stdin) with `--column`.
+- All six use the raw transport until the CLI adopts `@brew.new/sdk` 11.2
+  (`analytics.eventCounts`, `domains.unsubscribes.*`).
+
+## 0.8.1
+
+Not tagged or published: `package.json` says 0.8.1, but there is no
+`v0.8.1` tag. Pushing the tag publishes it (see `RELEASING.md`).
+
+### Added
+
 - `fields list` sends every parameter its route takes. `--include coverage`
   adds per-field fill stats, `--audience-id <id>` scopes them to one saved
   audience, and `--limit` / `--cursor` / `--all` page. Before, it returned

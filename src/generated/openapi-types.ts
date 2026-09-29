@@ -645,9 +645,11 @@ export interface paths {
          *
          *     **Input** Equality filters: `eventType`, `sendId`, `emailId`, `automationId`, `messageClass` (`marketing` or `transactional`; absent stamps count as marketing). Run scope: `automationRunId` returns one run’s events across every domain (its lifecycle rows and the deliveries it produced), newest first and not windowed unless `from`/`to` are given; only `eventType` combines with it. Recipient rules `recipient` (csv, max 10): a full address matches exactly, `@domain` matches everyone on the domain, other text matches as a substring, a `!` prefix excludes (`recipient=@clay.com,!ceo@clay.com`); includes OR together, excludes always apply. Send facets `source` (csv), `audienceId` (csv, max 20), `domain` (sending domain), `triggerEventId` (csv, max 10, resolved to the automations they wire). Any facet or recipient rule narrows the feed to email events and adds `sendSource`, `sendContext` and `messageClass` to each row (plus `triggerProvider` and `triggerTitle` on triggered rows). Machine-classified opens and clicks (scanner detonation, Apple proxy prefetch) are excluded unless `includeMachineOpens=true` or `includeMachineClicks=true` (audit only).
          *
-         *     **Returns** `200 { data: Event[], pagination: { limit, cursor, hasMore }, range }`; page with `cursor` until it is `null`. Rows carry the run join keys when stamped: `automationRunId`, `triggerInstanceId`, `audienceRunId` (plus `sendId`, `nodeId`). Requires the `emails` scope.
+         *     **Grouped counts** `groupBy` (one or two csv fields: `eventType`, `emailId`, `automationId`, `sendId`, `source`, `link`, `recipientDomain`, `unsubscribeReason`) and/or `bucket` (`day`, `week` or `month`, UTC, Monday weeks) count the email events the same filters list instead of returning them: `link` with `eventType=clicked` is clicks per link, `unsubscribeReason` counts an unsubscribe once per reason it gave. The count reads the newest 20,000 events; a busier window answers `truncated: true` with `coveredFrom` (narrow `from`/`to` or add `eventType`). Events, not unique recipients: `getAnalyticsOverview` `opened`/`clicked` count unique human recipients.
          *
-         *     **Errors** `400 INVALID_REQUEST` for an inverted window, an unknown `eventType`, or more than 10 recipient rules or 20 audience ids.
+         *     **Returns** `200 { data: Event[], pagination: { limit, cursor, hasMore }, range }`; page with `cursor` until it is `null`. Rows carry the run join keys when stamped: `automationRunId`, `triggerInstanceId`, `audienceRunId` (plus `sendId`, `nodeId`). With `groupBy`/`bucket`: `200 { count, groups: [{ key, bucket?, count }], otherCount, range, truncated, coveredFrom? }`, the largest 200 groups first. Requires the `emails` scope.
+         *
+         *     **Errors** `400 INVALID_REQUEST` for an inverted window, an unknown `eventType`, or more than 10 recipient rules or 20 audience ids; with `groupBy`/`bucket`, for an unknown or repeated field, more than two fields, a non-email `eventType`, `cursor` or `automationRunId` (`limit` is ignored).
          *
          *     **See also** `getAnalyticsOverview`, `listSends`, `listAutomationRuns`.
          */
@@ -691,7 +693,7 @@ export interface paths {
          *
          *     **Input** Trigger binding, exactly one: an EVENT automation passes `triggerEventId`; a MANUAL-AUDIENCE automation omits it and gives the trigger node `config: { "mode": "manualAudience", "audienceId": "…" }`. Typed conditions: every filter and condition-mode split uses a non-empty `conditions` array; each condition needs `field`, `type` (`string`, `number`, `date` or `bool`) and a canonical snake_case `operator`; unary operators omit `value`, comparisons require a type-correct scalar, a non-empty array, or an exact two-value `between` tuple (see `AutomationNode`). Every `sendEmail` node carries `emailId`, `emailVersionId` and `subject` (`previewText` is optional; the design's `<Preview>` is the source of truth). `domainId` is optional at create time; publishing or running requires a verified one from `listDomains`. There is no `messageClass` key: the delivery class derives from the sending domain's `sendingPurpose` (a transactional-purpose domain sends with no unsubscribe link and delivers to unsubscribed contacts), so pick the class by picking the domain. `dryRun: true` validates without persisting.
          *
-         *     **Returns** `201` with the bare `AutomationRow`; with `dryRun: true`, `200` with an `AutomationDryRunReport` `{ valid, blockers[], warnings[], blockingIssues[], nodeCounts }` (`blockers[]` fail publish, `warnings[]` are advisory, `blockingIssues[]` lists per-node references the bound trigger or contact catalog cannot provide; `valid` is false when any blocker or blocking issue is present).
+         *     **Returns** `201` with the bare `AutomationRow`; with `dryRun: true`, `200` with an `AutomationDryRunReport` `{ valid, blockers[], warnings[], blockingIssues[], nodeCounts }` (`blockers[]` fail publish, `warnings[]` are advisory, `blockingIssues[]` lists per-node references the bound trigger or contact catalog cannot provide, each of which also fails publish; `valid` is false when any blocker or blocking issue is present).
          *
          *     **Errors** `400 AUTOMATION_GRAPH_INVALID` with `details.issues[]` (`kind`, `nodeId`, `message` per problem); `404 TRIGGER_EVENT_NOT_FOUND` for an unknown `triggerEventId`.
          *
@@ -743,7 +745,7 @@ export interface paths {
          *
          *     **Input** Update: one or more of `name`, `description`, `nodes`, `connections`, `triggerEventId`, under the same typed condition contract as create (explicit `type`, canonical snake_case `operator`, no `value` for unary operators, type-correct values elsewhere); `dryRun: true` validates without persisting. Lifecycle: `published: true` promotes the stored latest version live (optionally pin `automationVersionId`; the graph is validated first), `published: false` unpublishes, `paused: true` or `false` freezes or resumes future send steps (`stopInFlight` also stops runs already in progress).
          *
-         *     **Returns** the bare automation row, or with `dryRun: true` a `200 AutomationDryRunReport` `{ valid, blockers[], warnings[], blockingIssues[], nodeCounts }`: `blockingIssues[]` lists per-node references the effective trigger or contact catalog cannot provide (`fatal: true` for filter or split conditions and triple-brace `{{{ }}}` body tokens fails publish; `fatal: false` for subject, previewText, fromName, replyTo and double-brace body tags renders empty at send time); `valid` is false when any blocker or blocking issue is present, while publish itself hard-blocks only fatal issues so a live automation can be republished after a soft orphan. Updating a LIVE automation saves a draft and does not go live: the previously published version keeps serving until you republish, `published` describes the returned row, `isLive`, `liveVersion` and `liveAutomationVersionId` describe the automation, and `warnings[]` carries `DRAFT_SAVED_NOT_LIVE`.
+         *     **Returns** the bare automation row, or with `dryRun: true` a `200 AutomationDryRunReport` `{ valid, blockers[], warnings[], blockingIssues[], nodeCounts }`: `blockingIssues[]` lists per-node references the effective trigger or contact catalog cannot provide, and publish refuses every one of them, fallback or not (`fatal` says what the reference would do: `true` for filter or split conditions and triple-brace `{{{ }}}` body tokens would break the run, `false` for subject, previewText, fromName, replyTo and double-brace body tags would render empty); `valid` is false when any blocker or blocking issue is present. Updating a LIVE automation saves a draft and does not go live: the previously published version keeps serving until you republish, `published` describes the returned row, `isLive`, `liveVersion` and `liveAutomationVersionId` describe the automation, and `warnings[]` carries `DRAFT_SAVED_NOT_LIVE`.
          *
          *     **Errors** `404 AUTOMATION_NOT_FOUND`, `AUTOMATION_VERSION_NOT_FOUND` (pin `liveAutomationVersionId`, a `versions[]` id, or a run row's `automationVersionId`), `TRIGGER_EVENT_NOT_FOUND`; `400 AUTOMATION_GRAPH_INVALID` (`details.issues[]`); `409 AUTOMATION_VERSION_CONFLICT` (re-read, reapply, retry); `422 PUBLISH_VALIDATION_FAILED` (`details.blockers[]`), `AUTOMATION_NOT_PUBLISHED` (nothing to unpublish), `AUTOMATION_NOT_PAUSABLE` (a manual-audience automation pauses through its runs).
          *
@@ -1151,7 +1153,7 @@ export interface paths {
          *
          *     **Input** `{ payload }`, validated against the trigger’s `payloadSchema`. Unknown fields are accepted and reported in `warnings[]`. The contact derived from the payload is upserted before the fan-out with the declared top-level scalar fields the fire sent; object and array fields stay template data, and a contract `fallbackValue` is never written onto the contact. A value the contact field’s type refuses is left out and reported as a `FIELD_TYPE_MISMATCH` warning (`field`, `expectedType`, `actualType`); the rest of the contact is written and the runs still start.
          *
-         *     **Returns** `202 { triggerInstanceId, triggerEventId, status, automationRunIds[], publishedAutomations[], counts, warnings[], receivedAt }`. Follow a run with `getAutomationRun`, the fire itself with `getTriggerInstance`. `counts.skipped` is the recipients a suppression already covered, so `automations: 2, skipped: 2` means nothing was delivered.
+         *     **Returns** `202 { triggerInstanceId, triggerEventId, status, automationRunIds[], notStarted[], publishedAutomations[], counts, warnings[], receivedAt }`. Follow a run with `getAutomationRun`, the fire itself with `getTriggerInstance`. `notStarted[]` names each automation whose run failed to start and why, so a `triggered` fire with no runs explains itself. `counts.skipped` is the recipients a suppression already covered, so `automations: 2, skipped: 2` means nothing was delivered.
          *
          *     **Idempotency** send a stable `Idempotency-Key` header on every retry. A repeat answers `200` with `status: "replayed"` and the ORIGINAL run ids; nothing fires twice.
          *
@@ -1337,6 +1339,8 @@ export interface paths {
          *
          *     Custom-field values are coerced to the definition's type (dates → epoch ms, `"1,234"` → 1234, `yes`/`no` → booleans). A value that cannot be coerced (`"$49"` in a number field) is a `409 FIELD_TYPE_MISMATCH` on a single upsert and a per-row `errors[]` entry (`code: FIELD_TYPE_MISMATCH`, `field`) in a batch — the other rows still land. A `customFields` key is never stored under a core field name. One whose loss would change the contact (`subscribed`, `First Name`, `consent`, a suppression flag or domain opt-out, or an `email` naming another address) is a `422 CORE_FIELD_IMMUTABLE` on a single upsert (nothing written) and a per-row `errors[]` entry (`code: CORE_FIELD_IMMUTABLE`, `field`) in a batch; send `firstName`, `lastName`, `subscribed` and `consent` at the top level. A key naming a field Brew manages (`createdAt`, `validationStatus`) is dropped with a `warnings[]` entry (`code: CORE_FIELD_IGNORED`, `field`) and the contact is still written, and an `email` key repeating the contact address is ignored.
          *
+         *     Dates: a JSON number is epoch milliseconds. A string may be ISO (`2026-04-03`, with or without a time and offset), a Unix timestamp in seconds (10 digits) or milliseconds (13), a month name (`3 Apr 2026`, `April 3, 2026`, `03-Apr-26`), year-first (`2026/04/03`), compact (`20260403`), month and year read as the 1st (`2026-04`), dotted day-first (`03.04.2026`), or a slash or dash date. A slash or dash date with a day over 12 reads that way (`13/04/2026` is 13 April). One that reads either way (`03/04/2026`) follows the day/month order the batch's other dates in that field prove, else month/day, with a `warnings[]` entry (`code: DATE_ORDER_ASSUMED`, `field`). Send `YYYY-MM-DD` to be unambiguous.
+         *
          *     Optional `consent: { source: "api" | "form" | "import", capturedAt?, policyVersion?, evidence? }` records marketing consent provenance on the contact (per row, or once at batch level as the default). It never changes `subscribed`. An inline marketing send later needs the contact to be subscribed, and warns when no record exists.
          *
          *     `subscribed: false` unsubscribes the contact, new or existing. `subscribed: true` only applies to a NEW contact: Brew never re-subscribes a contact who opted out, so a single upsert asking for it is a `422 RESUBSCRIBE_NOT_ALLOWED` (nothing written), and a batch row keeps its other fields and adds a `warnings[]` entry (`code: RESUBSCRIBE_SKIPPED`, `email`).
@@ -1448,6 +1452,8 @@ export interface paths {
          * @description Parse a raw CSV string and upsert the rows as contacts (≤ 1000). By default each column header maps to a field of the same name (`email` is required). A header that spells a core field, ignoring case, spaces, `_` and `-`, or whose field key equals it (`First.Name`), maps to it: `Email`, `First Name`, `Last Name` and `Subscribed` fill `email`, `firstName`, `lastName` and `subscribed`. Pass `mapping` to remap single columns; the columns it leaves out keep their default mapping, `""` leaves a column out, and a key that names no column is a `400`. A core field that `mapping` fills is filled from that column alone: another column whose default would fill it is left out with a `CSV_COLUMN_IGNORED` warning. Rows with a missing/invalid email are SKIPPED (counted in `summary.skipped`), not errored; disposable-domain rows are imported with `validationStatus: "risky"` (deliverable but flagged). Returns the same `{ summary, fieldsCreated, errors, warnings }` as batch-create — `207` when some rows fail.
          *
          *     CSV cells are text: a column mapped onto an EXISTING field is coerced to that field's type (dates → epoch ms, `1,234` → 1234, `yes`/`no` → booleans), and a cell that cannot be coerced (`$49` in a number column) fails ITS row with a per-row `errors[]` entry (`code: FIELD_TYPE_MISMATCH`, `field`) while the other rows still land. An undeclared column is created as a `string` field unless every value is an ISO date (→ `date`); predeclare `number` / `bool` columns with `POST /v1/fields`. A column whose field Brew manages (`Created At`, `Validation Status`) is not imported and adds a `warnings[]` entry (`code: CSV_COLUMN_IGNORED`, `field` names the column).
+         *
+         *     A date column is read in ONE day/month order: the order its own dates prove (a day over 12 anywhere in the column, `13/04/2026`), else `dateOrder` (`day_first` reads `03/04/2026` as 3 April, `month_first` as 4 March), else month/day with a `warnings[]` entry (`code: DATE_ORDER_ASSUMED`, `field`). Dotted dates (`03.04.2026`) are day-first. ISO (`2026-04-03`), Unix seconds or milliseconds, month names (`3 Apr 2026`), year-first (`2026/04/03`) and compact (`20260403`) dates need no order. Convert to `YYYY-MM-DD` to be unambiguous.
          *
          *     A `subscribed` column reads true/false and ESP status words (`unsubscribed`, `cleaned`, `blocklisted`, `transactional`, `active`, …). An opt-out unsubscribes the contact, new or existing. A word that is not a subscription status (`maybe`) fails its row (`code: FIELD_TYPE_MISMATCH`, `field: subscribed`) instead of importing the contact subscribed. A subscribed value only applies to new contacts: a row that asks to re-subscribe a contact who opted out keeps its other fields and adds a `warnings[]` entry (`code: RESUBSCRIBE_SKIPPED`, `email`).
          */
@@ -3054,7 +3060,7 @@ export interface components {
         };
         ApiWarning: {
             /** @enum {string} */
-            code: "DRAFT_SAVED_NOT_LIVE" | "ENFORCEMENT_LOOSENED_WHILE_PUBLISHED" | "REQUIRED_FIELD_SATISFIED_BY_FALLBACK" | "RESUBSCRIBE_SKIPPED" | "CORE_FIELD_IGNORED" | "CSV_COLUMN_IGNORED" | "RECIPIENTS_EXCLUDED" | "CONSENT_RECORD_MISSING";
+            code: "DRAFT_SAVED_NOT_LIVE" | "ENFORCEMENT_LOOSENED_WHILE_PUBLISHED" | "REQUIRED_FIELD_SATISFIED_BY_FALLBACK" | "RESUBSCRIBE_SKIPPED" | "CORE_FIELD_IGNORED" | "DATE_ORDER_ASSUMED" | "CSV_COLUMN_IGNORED" | "RECIPIENTS_EXCLUDED" | "CONSENT_RECORD_MISSING";
             message: string;
             field?: string;
         };
@@ -3083,7 +3089,7 @@ export interface components {
                 /** @description Human-readable description of the finding. */
                 message: string;
             }[];
-            /** @description Trigger-payload / draft-variable compatibility findings. Present (possibly empty) on POST and PATCH dry-run responses. `valid` is false when any entry is present. */
+            /** @description Trigger-payload / draft-variable compatibility findings. Present (possibly empty) on POST and PATCH dry-run responses. Every entry blocks publish, and `valid` is false when any is present. */
             blockingIssues?: {
                 nodeId: string;
                 nodeLabel: string;
@@ -3096,9 +3102,9 @@ export interface components {
                 variable: string;
                 /** @description Short user-facing reason. */
                 reason: string;
-                /** @description true — filter/split conditions and triple-brace `{{{ }}}` body tokens: the run genuinely breaks, and publish fails. false — subject/previewText/fromName/replyTo and double-brace body tags: the value renders empty at send time; advisory only. */
+                /** @description What the reference would do at send time. true — a filter/split condition or triple-brace `{{{ }}}` body token: the run would break. false — a subject/previewText/fromName/replyTo or double-brace body tag: it would render empty. Both block publish. */
                 fatal: boolean;
-                /** @description The token carries an inline `{{ name | fallback }}` fallback, so it renders the fallback rather than empty. Never blocks publish. */
+                /** @description The token carries an inline `{{ name | fallback }}` fallback. It still blocks publish: a fallback covers a missing value, not a field the trigger never declares. */
                 hasFallback: boolean;
             }[];
             /** @description Per-kind node counts of the validated graph. */
@@ -4537,6 +4543,7 @@ export interface components {
             };
             truncated: boolean;
         };
+        EventsAnalyticsSuccessResponse: components["schemas"]["EventsAnalyticsResponse"] | components["schemas"]["EventsBreakdownResponse"];
         EventsAnalyticsResponse: {
             data: {
                 id: string;
@@ -4583,6 +4590,34 @@ export interface components {
                 /** Format: date-time */
                 to: string;
             };
+        };
+        EventsBreakdownResponse: {
+            /** @description Email events counted. */
+            count: number;
+            /** @description The largest 200 groups, largest first. `key` maps each `groupBy` field to its value (`null` when the event has none); `bucket` is the UTC period start. `unsubscribeReason` counts an unsubscribe once per reason it gave. */
+            groups: {
+                key: {
+                    [key: string]: string | null;
+                };
+                /** Format: date-time */
+                bucket?: string;
+                count: number;
+            }[];
+            /** @description The summed counts of the groups not listed. */
+            otherCount: number;
+            range: {
+                /** Format: date-time */
+                from: string;
+                /** Format: date-time */
+                to: string;
+            };
+            /** @description True when the window held more than the 20,000 events one count reads: the counts cover the newest events back to `coveredFrom`. Narrow the window or add `eventType`. */
+            truncated: boolean;
+            /**
+             * Format: date-time
+             * @description With `truncated`: every event after this instant is counted; older ones are not.
+             */
+            coveredFrom?: string;
         };
         AutomationsPostRequest: {
             name: string;
@@ -5915,12 +5950,21 @@ export interface components {
             triggerInstanceId: string;
             triggerEventId: string;
             /**
-             * @description `triggered` = this call started the runs. `replayed` = the same `Idempotency-Key` already fired; nothing ran twice.
+             * @description `triggered` = this call accepted and matched the event; `automationRunIds` lists the runs it started and `notStarted` any it could not. `replayed` = the same `Idempotency-Key` already fired; nothing ran twice.
              * @enum {string}
              */
             status: "triggered" | "replayed";
             /** @description The runs this fire started — `GET /v1/automations/runs/{automationRunId}`. */
             automationRunIds: string[];
+            /**
+             * @description Matched automations whose run failed to start, each with the reason; one skipped on purpose (paused past its window, a suppressed contact) is not listed. A fire can answer `triggered` with no runs; this says why.
+             * @default []
+             */
+            notStarted?: {
+                automationId: string;
+                /** @description Why its run did not start. A refusal (a merge tag or condition field the trigger does not declare, a step the run gate finds incomplete) repeats on every fire until the automation or trigger is fixed; an unexpected error is retried automatically. */
+                reason: string;
+            }[];
             publishedAutomations: ({
                 automationId: string;
                 name?: string;
@@ -6518,6 +6562,11 @@ export interface components {
                 policyVersion?: string;
                 evidence?: string;
             };
+            /**
+             * @description Order for a date column whose dates read either way (`03/04/2026`): `day_first` is 3 April, `month_first` 4 March. A day over 12 in the column overrides it. Default month-first, with a DATE_ORDER_ASSUMED warning.
+             * @enum {string}
+             */
+            dateOrder?: "month_first" | "day_first";
         };
         ContactsBatchDeleteResponse: {
             deletedCount: number;
@@ -13352,6 +13401,10 @@ export interface operations {
                  */
                 limit?: number;
                 cursor?: string;
+                /** @description Count the email events these filters list per value of one or two comma-separated fields instead of returning them: eventType, emailId, automationId, sendId, source, link, recipientDomain, unsubscribeReason. */
+                groupBy?: string;
+                /** @description Count the email events these filters list per UTC day, week (Monday start) or month; combines with `groupBy`. */
+                bucket?: "day" | "week" | "month";
             };
             header?: {
                 /**
@@ -13365,7 +13418,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description A page of unified analytics events. */
+            /** @description A page of unified analytics events, or grouped counts with `groupBy`/`bucket`. */
             200: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -13379,32 +13432,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    /**
-                     * @example {
-                     *       "data": [
-                     *         {
-                     *           "id": "evt_abc",
-                     *           "occurredAt": "2026-04-08T12:34:56.789Z",
-                     *           "domain": "email",
-                     *           "eventType": "opened",
-                     *           "recipientEmail": "jane@example.com",
-                     *           "sendId": "r4Kq8ZxL2mW7nT1vPb9Yc",
-                     *           "emailId": "qkE3pWv2xN9dLmR4tYbZ7",
-                     *           "emailName": "Spring Launch"
-                     *         }
-                     *       ],
-                     *       "pagination": {
-                     *         "limit": 50,
-                     *         "cursor": null,
-                     *         "hasMore": false
-                     *       },
-                     *       "range": {
-                     *         "from": "2026-04-01T12:34:56.789Z",
-                     *         "to": "2026-04-08T12:34:56.789Z"
-                     *       }
-                     *     }
-                     */
-                    "application/json": components["schemas"]["EventsAnalyticsResponse"];
+                    "application/json": components["schemas"]["EventsAnalyticsSuccessResponse"];
                 };
             };
             /**

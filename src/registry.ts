@@ -1,5 +1,6 @@
 import { analyticsAutomationsCommand } from './commands/analytics/automations'
 import { analyticsCampaignsCommand } from './commands/analytics/campaigns'
+import { analyticsEventCountsCommand } from './commands/analytics/event-counts'
 import { analyticsEventsCommand } from './commands/analytics/events'
 import { analyticsOverviewCommand } from './commands/analytics/overview'
 import { analyticsSendsGetCommand } from './commands/analytics/sends/get'
@@ -238,6 +239,7 @@ export const ALL_COMMANDS: readonly CommandSpec[] = [
   analyticsCampaignsCommand,
   analyticsAutomationsCommand,
   analyticsEventsCommand,
+  analyticsEventCountsCommand,
   analyticsSendsListCommand,
   analyticsSendsGetCommand,
   analyticsTriggerInstancesListCommand,

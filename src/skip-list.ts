@@ -23,7 +23,7 @@ export const SDK_SKIP_LIST: readonly SdkSkip[] = [
   {
     sdkPath: 'brand.getImages',
     reason:
-      'covered by `brand get-images` (raw route: SDK 10 forwards only the retired type/aspectRatio filters, not kind/sort; bind the SDK method on the upgrade that forwards them)',
+      'covered by `brand get-images` (raw route: the SDK before 12 forwards only the retired type/aspectRatio filters, not kind/sort; bind the SDK method when the CLI adopts SDK 12)',
   },
   {
     sdkPath: 'automations.triggers.getContract',
