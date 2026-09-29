@@ -2069,7 +2069,7 @@ export interface paths {
         put?: never;
         /**
          * Generate an image
-         * @description Generates an image via the Brew AI image pipeline. `text-to-image` (default) creates from a prompt; `image-editing` edits `image1` (required) guided by the prompt. Returns a CDN-hosted URL. Usage-metered: charges the actual image gateway cost (no fixed price).
+         * @description Generates an image via the Brew AI image pipeline. `text-to-image` (default) creates from a prompt; `image-editing` edits `image1` (required) guided by the prompt. Returns a CDN-hosted URL, and saves the image to the brand’s generated images (`GET /v1/brand/images?kind=generated`). Usage-metered: charges the actual image gateway cost (no fixed price).
          */
         post: operations["generateImage"];
         delete?: never;
