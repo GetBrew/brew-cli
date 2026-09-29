@@ -81,7 +81,10 @@ Designed for AI agents as first-class users:
   interrupted may still complete. Its envelope carries the
   `idempotencyKey` it was sent with and a `retryCommand` that replays it
   (the first attempt's result, not a second write) instead of running it
-  twice.
+  twice. The replay needs the API's idempotency store: while it is
+  degraded, writes other than sends run without it, so for a write that
+  must not happen twice (creating a brand, say) pass `--max-retries 0` and
+  check whether it landed before you re-run it.
 - **Confirmation protocol** — irreversible commands (sends, deletes,
   trigger fires) never hang waiting for input: non-interactive callers
   get exit `4` plus a JSON envelope containing a ready-to-run

@@ -38,6 +38,9 @@ this build lacks (update the CLI); auth/reachability failures name the fix.
   replays the first attempt instead of running it twice. Never re-run the
   original command with a fresh key. A `409 IDEMPOTENCY_IN_PROGRESS` means
   the first attempt is still running: wait, then re-run `retryCommand`.
+  While the API's idempotency store is degraded, writes other than sends
+  run without the replay guarantee: for a write that must not happen
+  twice, pass `--max-retries 0` and check whether it landed before re-running.
 - `--timeout <duration>` bounds the whole command (body, retries, pages);
   use it to fit a tool-call budget. `--max-retries 0` for one attempt.
 - Destructive commands (sends, deletes, fires, cancels) never hang: they
