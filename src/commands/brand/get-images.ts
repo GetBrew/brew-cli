@@ -25,13 +25,19 @@ type BrandAsset = BrandImagesPage['data'][number]
  * forwards only `q`, `type`, `aspectRatio`, `limit` and `cursor`, and
  * brew-v2#1713 replaced `type` with `kind`, added `sort` and retired
  * `aspectRatio`: once the CLI adopts SDK 11.2, bind `brand.getImages(...)`
- * here and drop `isRawTransport`.
+ * here, drop `isRawTransport` and its `SDK_SKIP_LIST` entry.
  */
+const RETIRED_FILTERS: Readonly<Record<string, string>> = {
+  type: '--type (type) was retired by the API: use --kind logo|brand|generated.',
+  aspectRatio:
+    '--aspect-ratio (aspectRatio) was retired by the API: every image carries its width and height.',
+}
+
 export const brandGetImagesCommand = defineCommand({
   path: ['brand', 'get-images'],
   summary:
     "Browse or semantically search the brand's assets (logos, brand images, images made with Brew)",
-  sdkMethod: 'brand.getImages',
+  sdkMethod: null,
   isRawTransport: true,
   route: { method: 'GET', path: '/v1/brand/images' },
   commandClass: 'read',
@@ -69,16 +75,6 @@ export const brandGetImagesCommand = defineCommand({
     'brew-cli brand get-images --query "team photo" --kind brand',
   ],
   run: async ({ ctx, flags }) => {
-    if (flagString(flags.type) !== undefined) {
-      throw new CliUsageError(
-        '--type was retired by the API: use --kind logo|brand|generated.'
-      )
-    }
-    if (flagString(flags.aspectRatio) !== undefined) {
-      throw new CliUsageError(
-        '--aspect-ratio was retired by the API: every image carries its width and height.'
-      )
-    }
     const base = await readJsonFlag(ctx, flags.input, '--input')
     const input = mergeInput(base, {
       q: flagString(flags.query),
@@ -86,7 +82,16 @@ export const brandGetImagesCommand = defineCommand({
       sort: flagString(flags.sort),
       limit: flagInt(flags.limit, '--limit'),
       cursor: flagString(flags.cursor),
+      type: flagString(flags.type),
+      aspectRatio: flagString(flags.aspectRatio),
     })
+    // A retired filter from a flag or from --input fails here, naming the
+    // way forward, instead of as a 400 from the API.
+    for (const [key, message] of Object.entries(RETIRED_FILTERS)) {
+      if (input[key] !== undefined) {
+        throw new CliUsageError(message)
+      }
+    }
     const page = (cursor: string | undefined) =>
       rawRequest<BrandImagesPage>(ctx, {
         method: 'GET',
@@ -122,6 +127,7 @@ function renderAssets(rows: ReadonlyArray<BrandAsset>): string {
   }
   return renderTable(
     rows.map((row) => ({
+      assetId: row.assetId,
       kind: row.kind,
       url: row.url,
       size:
@@ -131,6 +137,7 @@ function renderAssets(rows: ReadonlyArray<BrandAsset>): string {
       added: row.addedAt ?? '',
     })),
     [
+      { key: 'assetId', header: 'ASSET ID' },
       { key: 'kind', header: 'KIND' },
       { key: 'url', header: 'URL' },
       { key: 'size', header: 'SIZE' },

@@ -374,6 +374,17 @@ describe('brand get-images', () => {
     expect(ratio.code).toBe(2)
     expect(ratio.stderr).toContain('width and height')
   })
+
+  it('refuses a retired filter given in --input too', async () => {
+    const result = await cli([
+      'brand',
+      'get-images',
+      '--input',
+      '{"type":"hero"}',
+    ])
+    expect(result.code).toBe(2)
+    expect(result.stderr).toContain('--kind')
+  })
 })
 
 describe('content generate-image', () => {

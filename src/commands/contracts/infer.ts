@@ -19,14 +19,17 @@ export const contractsInferCommand = defineCommand({
   examples: [
     `brew-cli contracts infer --input '{"email":"jane@example.com","order":{"total":9.5}}'`,
   ],
-  // Accepts either the bare example object or `{ example: {...} }`.
-  // Un-inferable spots (nulls, empty arrays) come back under `issues`.
+  // Accepts either the bare example object or `{ example: {...} }`; only the
+  // envelope carries `subjectKind` (a bare example may have its own field of
+  // that name). Un-inferable spots (nulls, empty arrays) come back under
+  // `issues`.
   run: async ({ ctx, flags }) => {
     const input = mergeInput(
       await readJsonFlag(ctx, flags.input, '--input'),
       {}
     )
-    const example = input.example ?? input
+    const isEnvelope = input.example !== undefined
+    const example = isEnvelope ? input.example : input
     if (
       typeof example !== 'object' ||
       example === null ||
@@ -40,7 +43,12 @@ export const contractsInferCommand = defineCommand({
     const body = await rawRequest<ContractInferResponse>(ctx, {
       method: 'POST',
       path: '/v1/payload-contracts/infer',
-      body: { example },
+      body: {
+        example,
+        ...(isEnvelope && input.subjectKind !== undefined
+          ? { subjectKind: input.subjectKind }
+          : {}),
+      },
     })
     return { data: body }
   },

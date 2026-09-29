@@ -35,14 +35,17 @@ which was never tagged.
   `emails import-figma --group-id` and `--group-name`: name and file the new
   design, which the API took but the CLI could not send.
 - `emails export --sender-email`: the Brevo or Mailjet sender to use.
+- `contracts infer` forwards `subjectKind` from the
+  `{ "example": {...}, "subjectKind": "trigger" }` form of `--input`; a bare
+  example is still sent whole.
 
 ### Changed by the API
 
 - `brand get-images` takes `--kind logo|brand|generated` and
   `--sort newest|oldest` and lists the whole asset library the Assets page
-  shows, as `KIND`, `URL`, `SIZE`, `ADDED`. brew-v2#1713 retired the `type`
-  and `aspectRatio` filters, so `--type` and `--aspect-ratio` now exit 2
-  naming the way forward. It uses the raw transport, because SDK 10's
+  shows, as `ASSET ID`, `KIND`, `URL`, `SIZE`, `ADDED`. brew-v2#1713 retired
+  the `type` and `aspectRatio` filters, so `--type` and `--aspect-ratio` (or
+  either key in `--input`) now exit 2 naming the way forward. It uses the raw transport, because SDK 10's
   `brand.getImages` cannot send `kind` or `sort`, until the CLI adopts
   `@brew.new/sdk` 11.2.
 

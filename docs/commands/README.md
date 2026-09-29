@@ -1823,7 +1823,6 @@ Browse or semantically search the brand's assets (logos, brand images, images ma
 
 - Route: `GET /v1/brand/images`
 - Class: read
-- SDK: `brew.brand.getImages(...)`
 - `--query <text>` — Semantic search over what the images show (1 credit per new search; logos are not searchable)
 - `--kind <kind>` — logo, brand (from the site or uploaded) or generated
 - `--sort <order>` — Browse order: newest (default) or oldest; ignored by --query
@@ -2406,6 +2405,7 @@ SDK methods intentionally without a dedicated command:
 - `automations.triggers.getContract` — covered by `automations triggers contract get` (raw route, bound pre-SDK-v9; SDK-method migration tracked separately)
 - `automations.triggers.putContract` — covered by `automations triggers contract put` (raw route, bound pre-SDK-v9)
 - `automations.triggers.validatePayload` — covered by `automations triggers contract validate` (raw route, bound pre-SDK-v9)
+- `brand.getImages` — covered by `brand get-images` (raw route: SDK 10 cannot send `kind` or `sort`, brew-v2#1713; bind SDK 11.2)
 - `payloadContracts.infer` — covered by `contracts infer` (raw route, bound pre-SDK-v9)
 - `contacts.searchAll` — auto-pager covered by `contacts search --all`
 - `analytics.eventsAll` — auto-pager covered by `analytics events --all`
