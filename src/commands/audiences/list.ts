@@ -29,6 +29,10 @@ export const audiencesListCommand = defineCommand({
       summary:
         '0.6 flag: includes ride the detail read now (`audiences get --include count,build`)',
     },
+    {
+      flag: '--search <text>',
+      summary: 'Only audiences whose name contains this text',
+    },
     LIMIT_FLAG,
     CURSOR_FLAG,
     ALL_FLAG,
@@ -47,6 +51,7 @@ export const audiencesListCommand = defineCommand({
       throw includeRidesDetailRead('audiences get')
     }
     const input = mergeInput(base, {
+      search: flagString(flags.search),
       limit: flagInt(flags.limit, '--limit'),
       cursor: flagString(flags.cursor),
     })

@@ -5,7 +5,7 @@ description: Drive the Brew email platform from the terminal with brew-cli — e
 
 # brew-cli for agents
 
-One typed command per public-API operation (130 commands, generated docs in
+One typed command per public-API operation (137 commands, generated docs in
 `docs/commands/README.md`). JSON output is automatic when stdout is piped.
 
 ## Start every session with the trust check

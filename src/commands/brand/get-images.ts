@@ -1,7 +1,9 @@
+import type { ListBrandImagesInput } from '@brew.new/sdk'
 import type { components } from '../../generated/openapi-types'
 import { defineCommand } from '../../lib/define-command'
 import { CliUsageError } from '../../lib/errors'
 import {
+  asSdkInput,
   flagInt,
   flagString,
   INPUT_FLAG,
@@ -15,17 +17,14 @@ import {
   collectAll,
   LIMIT_FLAG,
 } from '../../lib/paginate'
-import { rawRequest } from '../../lib/raw-request'
 
 type BrandImagesPage = components['schemas']['BrandImagesResponse']
 type BrandAsset = BrandImagesPage['data'][number]
 
 /**
- * The brand's asset library. Raw route because SDK 10's `brand.getImages`
- * forwards only `q`, `type`, `aspectRatio`, `limit` and `cursor`, and
- * brew-v2#1713 replaced `type` with `kind`, added `sort` and retired
- * `aspectRatio`: once the CLI adopts SDK 11.2, bind `brand.getImages(...)`
- * here, drop `isRawTransport` and its `SDK_SKIP_LIST` entry.
+ * Filters brew-v2#1713 retired (`type` became `kind`; `aspectRatio` went).
+ * The SDK does not send them, so they are refused here, naming the way
+ * forward, rather than silently dropped.
  */
 const RETIRED_FILTERS: Readonly<Record<string, string>> = {
   type: '--type (type) was retired by the API: use --kind logo|brand|generated.',
@@ -37,8 +36,7 @@ export const brandGetImagesCommand = defineCommand({
   path: ['brand', 'get-images'],
   summary:
     "Browse or semantically search the brand's assets (logos, brand images, images made with Brew)",
-  sdkMethod: null,
-  isRawTransport: true,
+  sdkMethod: 'brand.getImages',
   route: { method: 'GET', path: '/v1/brand/images' },
   commandClass: 'read',
   flags: [
@@ -92,12 +90,15 @@ export const brandGetImagesCommand = defineCommand({
         throw new CliUsageError(message)
       }
     }
+    // --kind and --sort pass through unchecked: the API validates them.
     const page = (cursor: string | undefined) =>
-      rawRequest<BrandImagesPage>(ctx, {
-        method: 'GET',
-        path: '/v1/brand/images',
-        query: toQuery(cursor === undefined ? input : { ...input, cursor }),
-      })
+      ctx
+        .client()
+        .brand.getImages(
+          asSdkInput<ListBrandImagesInput>(
+            cursor === undefined ? input : { ...input, cursor }
+          )
+        )
     if (flags.all === true) {
       const rows = await collectAll(ctx, page)
       return {
@@ -109,17 +110,6 @@ export const brandGetImagesCommand = defineCommand({
     return { data: result, human: renderAssets(result.data) }
   },
 })
-
-function toQuery(
-  input: Readonly<Record<string, unknown>>
-): Record<string, string | undefined> {
-  const query: Record<string, string | undefined> = {}
-  for (const [key, value] of Object.entries(input)) {
-    query[key] =
-      value === undefined || value === null ? undefined : String(value)
-  }
-  return query
-}
 
 function renderAssets(rows: ReadonlyArray<BrandAsset>): string {
   if (rows.length === 0) {

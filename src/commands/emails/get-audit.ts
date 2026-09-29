@@ -1,24 +1,13 @@
-import type { operations } from '../../generated/openapi-types'
 import { defineCommand } from '../../lib/define-command'
 import { flagInt, flagString } from '../../lib/input'
 import { CURSOR_FLAG } from '../../lib/paginate'
-import { rawRequest } from '../../lib/raw-request'
 
-type EmailAuditPage =
-  operations['getEmailAudit']['responses'][200]['content']['application/json']
-
-/**
- * A saved audit, read back by the `auditId` that `emails audit` returned.
- * Raw route because `@brew.new/sdk` 10 has no method for it: once the CLI
- * adopts SDK 11, bind `emails.getAudit(auditId, { cursor, limit })` here and
- * drop `isRawTransport`.
- */
+/** A saved audit, read back by the `auditId` that `emails audit` returned. */
 export const emailsGetAuditCommand = defineCommand({
   path: ['emails', 'get-audit'],
   summary:
     'Read a saved email audit: one page of its findings (free; never reruns the audit)',
-  sdkMethod: null,
-  isRawTransport: true,
+  sdkMethod: 'emails.getAudit',
   route: { method: 'GET', path: '/v1/emails/audits/{auditId}' },
   commandClass: 'read',
   args: [
@@ -42,13 +31,10 @@ export const emailsGetAuditCommand = defineCommand({
   // says whether one exists.
   run: async ({ ctx, args, flags }) => {
     const limit = flagInt(flags.limit, '--limit')
-    const body = await rawRequest<EmailAuditPage>(ctx, {
-      method: 'GET',
-      path: `/v1/emails/audits/${encodeURIComponent(args.auditId ?? '')}`,
-      query: {
-        cursor: flagString(flags.cursor),
-        limit: limit === undefined ? undefined : String(limit),
-      },
+    const cursor = flagString(flags.cursor)
+    const body = await ctx.client().emails.getAudit(args.auditId ?? '', {
+      ...(cursor === undefined ? {} : { cursor }),
+      ...(limit === undefined ? {} : { limit }),
     })
     return { data: body }
   },

@@ -25,6 +25,11 @@ export const emailsListCommand = defineCommand({
   commandClass: 'read',
   flags: [
     {
+      flag: '--search <text>',
+      summary:
+        'Only designs whose title contains this text, or whose title, subject, preview or text matches its words',
+    },
+    {
       flag: '--status <status>',
       summary: 'Filter by status: generating | ready | failed',
     },
@@ -84,6 +89,7 @@ export const emailsListCommand = defineCommand({
     )
     const base = await readJsonFlag(ctx, flags.input, '--input')
     const input = mergeInput(base, {
+      search: flagString(flags.search),
       status: flagString(flags.status),
       groupId: flagString(flags.groupId),
       sortBy:

@@ -63,6 +63,7 @@ import {
   configUnsetCommand,
 } from './commands/config'
 import { contactsCountCommand } from './commands/contacts/count'
+import { contactsCountByCommand } from './commands/contacts/count-by'
 import { contactsDeleteCommand } from './commands/contacts/delete'
 import { contactsDeleteManyCommand } from './commands/contacts/delete-many'
 import { contactsGetCommand } from './commands/contacts/get'
@@ -156,6 +157,7 @@ export const ALL_COMMANDS: readonly CommandSpec[] = [
   contactsSearchCommand,
   contactsGetCommand,
   contactsCountCommand,
+  contactsCountByCommand,
   contactsUpsertCommand,
   contactsUpsertManyCommand,
   contactsUpdateCommand,

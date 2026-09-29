@@ -1,23 +1,14 @@
-import type { operations } from '../../../generated/openapi-types'
+import type { ListDomainUnsubscribesInput } from '@brew.new/sdk'
 import { defineCommand } from '../../../lib/define-command'
-import { flagInt, flagString } from '../../../lib/input'
+import { asSdkInput, flagInt, flagString } from '../../../lib/input'
 import { renderTable } from '../../../lib/output'
 import { CURSOR_FLAG, LIMIT_FLAG } from '../../../lib/paginate'
-import { rawRequest } from '../../../lib/raw-request'
 
-type Page =
-  operations['listDomainUnsubscribes']['responses'][200]['content']['application/json']
-
-/**
- * One page of a marketing domain's unsubscribe list. Raw route because
- * `@brew.new/sdk` 10 has no method for it: once the CLI adopts SDK 11.2,
- * bind `domains.unsubscribes.list(...)` here and drop `isRawTransport`.
- */
+/** One page of a marketing domain's unsubscribe list. */
 export const domainsUnsubscribesListCommand = defineCommand({
   path: ['domains', 'unsubscribes', 'list'],
   summary: "One page of a marketing domain's unsubscribe list, newest first",
-  sdkMethod: null,
-  isRawTransport: true,
+  sdkMethod: 'domains.unsubscribes.list',
   route: { method: 'GET', path: '/v1/domains/{domainId}/unsubscribes' },
   commandClass: 'read',
   args: [
@@ -39,16 +30,19 @@ export const domainsUnsubscribesListCommand = defineCommand({
   ],
   run: async ({ ctx, args, flags }) => {
     const limit = flagInt(flags.limit, '--limit')
-    const body = await rawRequest<Page>(ctx, {
-      method: 'GET',
-      path: `/v1/domains/${encodeURIComponent(args.domainId ?? '')}/unsubscribes`,
-      query: {
-        q: flagString(flags.q),
-        scope: flagString(flags.scope),
-        limit: limit === undefined ? undefined : String(limit),
-        cursor: flagString(flags.cursor),
-      },
-    })
+    const q = flagString(flags.q)
+    const scope = flagString(flags.scope)
+    const cursor = flagString(flags.cursor)
+    // --scope passes through unchecked: the API validates it.
+    const body = await ctx.client().domains.unsubscribes.list(
+      asSdkInput<ListDomainUnsubscribesInput>({
+        domainId: args.domainId ?? '',
+        ...(q === undefined ? {} : { q }),
+        ...(scope === undefined ? {} : { scope }),
+        ...(limit === undefined ? {} : { limit }),
+        ...(cursor === undefined ? {} : { cursor }),
+      })
+    )
     return { data: body, human: renderRows(body.data) }
   },
 })

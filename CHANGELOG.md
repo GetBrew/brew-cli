@@ -1,5 +1,44 @@
 # Changelog
 
+## 0.10.0
+
+Not tagged or published yet: pushing the `v0.10.0` tag publishes it (see
+`RELEASING.md`).
+
+Moves to `@brew.new/sdk` 11 (it pinned `^10.0.0`, so it could not receive an
+SDK fix). Every command now goes through an SDK method except the paged
+`api-keys list` / `integrations list` reads and the `api` escape hatch, so
+they share the SDK's retries and timeouts instead of a single-attempt raw
+request.
+
+### Added
+
+- `contacts count-by`: exact contact counts per field value, per email
+  domain (`--group-by emailDomain`) or per signup period (`--bucket
+  day|week|month`), largest group first. `contacts count` gives only the
+  total.
+- The flags 0.8.1 said would come with SDK 11: `--search` on `emails list`,
+  `automations list` and `audiences list`, and `audiences update
+  --add-email/--remove-email` (membership by address).
+
+### Changed
+
+- `@brew.new/sdk` `^10.0.0` → `^11.2.0`. The SDK's own 11.0.0 breaking
+  changes are API-side (`emails.previewClients` starts a rendering job, the
+  contact `verificationStatus` mirror is gone, `emails.get` returns the
+  detail row); the commands already passed those responses through as-is.
+- Moved from the raw transport onto SDK methods: `analytics event-counts`,
+  `domains unsubscribes list|add|remove|import|export`, `emails get-audit`,
+  `emails get-client-preview`, `templates get`, `emails get
+  --email-version-id|--run-id`, `brand get-images`, `contracts infer`, and
+  `automations triggers contract get|put|validate`. Reads, PUTs and DELETEs
+  among them now retry a transient failure; a POST retries with the same
+  idempotency key. Five `SDK_SKIP_LIST` entries that existed only because
+  of the old pin are gone.
+- `analytics event-counts` refuses `cursor` and `automationRunId` from
+  `--input` with the API's own reason (exit 2) instead of forwarding them to
+  a `400`. `limit` is ignored, as the API ignores it.
+
 ## 0.9.0
 
 Its spec is the live one after brew-v2#1708, #1711, #1713 and #1715

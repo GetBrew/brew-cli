@@ -483,3 +483,68 @@ describe('fields', () => {
     expect(result.code).toBe(4)
   })
 })
+
+describe('contacts count-by', () => {
+  it('sends a grouped count: count, the field list, bucket and filters', async () => {
+    let body: unknown
+    server.use(
+      http.post(SEARCH_URL, async ({ request }) => {
+        body = await request.json()
+        return HttpResponse.json({
+          count: 12,
+          groups: [
+            { key: { emailDomain: 'example.com' }, count: 9 },
+            { key: { emailDomain: 'acme.io' }, count: 3 },
+          ],
+          otherCount: 0,
+        })
+      })
+    )
+    const result = await runCli(
+      [
+        'contacts',
+        'count-by',
+        '--group-by',
+        'emailDomain, plan',
+        '--bucket',
+        'month',
+        '--filter',
+        'subscribed:equals:true',
+      ],
+      { env: env() }
+    )
+    expect(result.code).toBe(0)
+    expect(body).toMatchObject({
+      count: true,
+      groupBy: ['emailDomain', 'plan'],
+      bucket: 'month',
+      filters: [{ field: 'subscribed', operator: 'equals', value: 'true' }],
+    })
+    expect((result.json as { count: number }).count).toBe(12)
+  })
+
+  it('renders the groups as a table for a human', async () => {
+    server.use(
+      http.post(SEARCH_URL, () =>
+        HttpResponse.json({
+          count: 9,
+          groups: [{ key: { emailDomain: 'example.com' }, count: 9 }],
+          otherCount: 4,
+        })
+      )
+    )
+    const result = await runCli(
+      ['contacts', 'count-by', '--group-by', 'emailDomain'],
+      { env: env(), ttyOut: true }
+    )
+    expect(result.code).toBe(0)
+    expect(result.stdout).toContain('emailDomain=example.com')
+    expect(result.stdout).toContain('4 in unlisted groups')
+  })
+
+  it('refuses a count with neither --group-by nor --bucket before any request', async () => {
+    const result = await runCli(['contacts', 'count-by'], { env: env() })
+    expect(result.code).toBe(2)
+    expect(result.stderr).toContain('--group-by')
+  })
+})

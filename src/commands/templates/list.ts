@@ -53,7 +53,9 @@ export const templatesListCommand = defineCommand({
     })
     const templates = ctx.client().templates
     if (flags.all === true) {
-      const rows = await collectAll(ctx, (cursor) =>
+      // `representation` may arrive through --input, so the SDK's return
+      // type is the full-or-summary union; rows pass through verbatim.
+      const rows = await collectAll<unknown>(ctx, (cursor) =>
         templates.list(
           asSdkInput<ListTemplatesInput>({
             ...input,

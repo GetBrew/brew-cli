@@ -1,17 +1,17 @@
-import type { components } from '../../../generated/openapi-types'
+import type {
+  GetTriggerContractInput,
+  PutTriggerContractInput,
+  ValidateTriggerPayloadInput,
+} from '@brew.new/sdk'
 import { defineCommand } from '../../../lib/define-command'
 import { CliUsageError } from '../../../lib/errors'
 import {
+  asSdkInput,
   flagString,
   INPUT_FLAG,
   mergeInput,
   readJsonFlag,
 } from '../../../lib/input'
-import { rawRequest } from '../../../lib/raw-request'
-
-type ContractGetResponse = components['schemas']['PayloadContractGetResponse']
-type ContractValidateResponse =
-  components['schemas']['PayloadContractValidateResponse']
 
 const FORMAT_FLAG = {
   flag: '--format <format>',
@@ -30,17 +30,14 @@ const ENFORCEMENT_MODES = new Set(['off', 'prune', 'strict'])
  */
 const VALIDATE_ENFORCEMENT_MODES = new Set(['prune', 'strict'])
 
-function formatQuery(value: unknown): string {
+function formatOption(value: unknown): string | undefined {
   const format = flagString(value)
-  if (format === undefined) {
-    return ''
-  }
-  if (!FORMATS.has(format)) {
+  if (format !== undefined && !FORMATS.has(format)) {
     throw new CliUsageError(
       `Unknown --format '${format}' (expected json | ts | zod | jsonschema | skill).`
     )
   }
-  return `?format=${format}`
+  return format
 }
 
 /** Text formats print `content` raw on a TTY; `--json | jq -r .content` for pipes. */
@@ -52,8 +49,7 @@ export const automationsTriggersContractGetCommand = defineCommand({
   path: ['automations', 'triggers', 'contract', 'get'],
   summary:
     'Read a trigger payload contract: stored when declared, derived otherwise; --format renders ts/zod/jsonschema/skill',
-  sdkMethod: null,
-  isRawTransport: true,
+  sdkMethod: 'automations.triggers.getContract',
   route: {
     method: 'GET',
     path: '/v1/automations/triggers/{triggerEventId}/contract',
@@ -73,10 +69,13 @@ export const automationsTriggersContractGetCommand = defineCommand({
     'brew-cli automations triggers contract get tri_signup --format skill --json | jq -r .content',
   ],
   run: async ({ ctx, args, flags }) => {
-    const body = await rawRequest<ContractGetResponse>(ctx, {
-      method: 'GET',
-      path: `/v1/automations/triggers/${encodeURIComponent(args.triggerEventId ?? '')}/contract${formatQuery(flags.format)}`,
-    })
+    const format = formatOption(flags.format)
+    const body = await ctx.client().automations.triggers.getContract(
+      asSdkInput<GetTriggerContractInput>({
+        triggerEventId: args.triggerEventId ?? '',
+        ...(format === undefined ? {} : { format }),
+      })
+    )
     return { data: body, ...contentHuman(body) }
   },
 })
@@ -85,8 +84,7 @@ export const automationsTriggersContractPutCommand = defineCommand({
   path: ['automations', 'triggers', 'contract', 'put'],
   summary:
     'Declare (or replace) the stored payload contract for a trigger — tree-validated before any write; omitting --enforcement leaves the stored setting unchanged',
-  sdkMethod: null,
-  isRawTransport: true,
+  sdkMethod: 'automations.triggers.putContract',
   route: {
     method: 'PUT',
     path: '/v1/automations/triggers/{triggerEventId}/contract',
@@ -142,11 +140,14 @@ export const automationsTriggersContractPutCommand = defineCommand({
         'Empty contract body — pass --input (fields and/or name) or --enforcement <mode>.'
       )
     }
-    const body = await rawRequest<ContractGetResponse>(ctx, {
-      method: 'PUT',
-      path: `/v1/automations/triggers/${encodeURIComponent(args.triggerEventId ?? '')}/contract`,
-      body: requestBody,
-    })
+    // The trigger id is spread LAST: a `triggerEventId` inside --input must
+    // not retarget the call at another trigger.
+    const body = await ctx.client().automations.triggers.putContract(
+      asSdkInput<PutTriggerContractInput>({
+        ...requestBody,
+        triggerEventId: args.triggerEventId ?? '',
+      })
+    )
     return { data: body }
   },
 })
@@ -155,8 +156,7 @@ export const automationsTriggersContractValidateCommand = defineCommand({
   path: ['automations', 'triggers', 'contract', 'validate'],
   summary:
     "Dry-run a payload against a trigger's contract (the fire path's validator) — never fires; invalid payloads still exit 0",
-  sdkMethod: null,
-  isRawTransport: true,
+  sdkMethod: 'automations.triggers.validatePayload',
   route: {
     method: 'POST',
     path: '/v1/automations/triggers/{triggerEventId}/contract/validate',
@@ -194,14 +194,13 @@ export const automationsTriggersContractValidateCommand = defineCommand({
         `Unknown --enforcement '${enforcement}' (expected prune | strict).`
       )
     }
-    const body = await rawRequest<ContractValidateResponse>(ctx, {
-      method: 'POST',
-      path: `/v1/automations/triggers/${encodeURIComponent(args.triggerEventId ?? '')}/contract/validate`,
-      body: {
+    const body = await ctx.client().automations.triggers.validatePayload(
+      asSdkInput<ValidateTriggerPayloadInput>({
+        triggerEventId: args.triggerEventId ?? '',
         payload,
         ...(enforcement !== undefined ? { enforcement } : {}),
-      },
-    })
+      })
+    )
     return { data: body }
   },
 })

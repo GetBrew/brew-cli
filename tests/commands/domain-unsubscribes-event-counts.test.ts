@@ -82,6 +82,50 @@ describe('analytics event-counts', () => {
     })
     expect(result.code).not.toBe(0)
   })
+
+  // The API refuses a paged or run-scoped count; the SDK does not send those
+  // keys, so the CLI refuses them up front instead of dropping them and
+  // counting something else. No handler is registered: exit 2 also proves no
+  // request went out.
+  it.each([
+    ['automationRunId', { groupBy: ['eventType'], automationRunId: 'run_1' }],
+    ['cursor', { groupBy: 'eventType', cursor: 'c_1' }],
+  ])('refuses %s in --input with a usage error', async (key, body) => {
+    const result = await runCli(
+      ['analytics', 'event-counts', '--input', JSON.stringify(body)],
+      { env: env(), extraCommands: EXTRA }
+    )
+    expect(result.code).toBe(2)
+    expect(result.stderr).toContain(key)
+  })
+
+  it('accepts groupBy as an array in --input and ignores limit, as the API does', async () => {
+    let url: URL | undefined
+    server.use(
+      http.get(`${API}/v1/analytics/events`, ({ request }) => {
+        url = new URL(request.url)
+        return HttpResponse.json({
+          count: 3,
+          groups: [{ key: { eventType: 'opened' }, count: 3 }],
+          otherCount: 0,
+          range: { from: 'a', to: 'b' },
+          truncated: false,
+        })
+      })
+    )
+    const result = await runCli(
+      [
+        'analytics',
+        'event-counts',
+        '--input',
+        JSON.stringify({ groupBy: ['eventType', 'link'], limit: 10 }),
+      ],
+      { env: env(), extraCommands: EXTRA }
+    )
+    expect(result.code).toBe(0)
+    expect(url?.searchParams.get('groupBy')).toBe('eventType,link')
+    expect(url?.searchParams.has('limit')).toBe(false)
+  })
 })
 
 describe('domains unsubscribes', () => {

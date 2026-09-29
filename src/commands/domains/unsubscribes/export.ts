@@ -1,21 +1,12 @@
-import type { operations } from '../../../generated/openapi-types'
+import type { ExportDomainUnsubscribesInput } from '@brew.new/sdk'
 import { defineCommand } from '../../../lib/define-command'
-import { flagString } from '../../../lib/input'
-import { rawRequest } from '../../../lib/raw-request'
+import { asSdkInput, flagString } from '../../../lib/input'
 
-type Exported =
-  operations['exportDomainUnsubscribes']['responses'][200]['content']['application/json']
-
-/**
- * A domain's list as CSV text. Raw route because `@brew.new/sdk` 10 has no
- * method for it: once the CLI adopts SDK 11.2, bind
- * `domains.unsubscribes.export(...)` here and drop `isRawTransport`.
- */
+/** A domain's list as CSV text. */
 export const domainsUnsubscribesExportCommand = defineCommand({
   path: ['domains', 'unsubscribes', 'export'],
   summary: "A domain's unsubscribe list as CSV (truncated when capped)",
-  sdkMethod: null,
-  isRawTransport: true,
+  sdkMethod: 'domains.unsubscribes.export',
   route: {
     method: 'GET',
     path: '/v1/domains/{domainId}/unsubscribes/export',
@@ -35,11 +26,14 @@ export const domainsUnsubscribesExportCommand = defineCommand({
     'brew-cli domains unsubscribes export dom_123 --scope all --json',
   ],
   run: async ({ ctx, args, flags }) => {
-    const body = await rawRequest<Exported>(ctx, {
-      method: 'GET',
-      path: `/v1/domains/${encodeURIComponent(args.domainId ?? '')}/unsubscribes/export`,
-      query: { scope: flagString(flags.scope) },
-    })
+    const scope = flagString(flags.scope)
+    // --scope passes through unchecked: the API validates it.
+    const body = await ctx.client().domains.unsubscribes.export(
+      asSdkInput<ExportDomainUnsubscribesInput>({
+        domainId: args.domainId ?? '',
+        ...(scope === undefined ? {} : { scope }),
+      })
+    )
     return { data: body, human: body.csv }
   },
 })
