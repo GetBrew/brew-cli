@@ -1,7 +1,7 @@
 import { BrewApiError } from '@brew.new/sdk'
 import { maskApiKey, resolveAuth } from '../lib/client'
 import { defineCommand } from '../lib/define-command'
-import { CliApiError, CliInterruptError } from '../lib/errors'
+import { CliApiError } from '../lib/errors'
 import type { CliContext } from '../lib/types'
 import { ALL_COMMANDS } from '../registry'
 
@@ -35,7 +35,7 @@ export const doctorCommand = defineCommand({
       isReachable = health.status === 'ok'
       apiVersion = health.version ?? null
     } catch (error) {
-      rethrowIfCancelled(ctx)
+      rethrowIfStopped(ctx)
       reachabilityError = error instanceof Error ? error.message : String(error)
     }
 
@@ -49,7 +49,7 @@ export const doctorCommand = defineCommand({
         isAuthValid = true
         plan = usage.plan?.key ?? null
       } catch (error) {
-        rethrowIfCancelled(ctx)
+        rethrowIfStopped(ctx)
         if (
           (error instanceof BrewApiError || error instanceof CliApiError) &&
           (error.status === 401 || error.status === 403)
@@ -86,7 +86,7 @@ export const doctorCommand = defineCommand({
         extraLocally = [...localOps].filter((op) => !liveOps.has(op))
         isSurfaceChecked = true
       } catch {
-        rethrowIfCancelled(ctx)
+        rethrowIfStopped(ctx)
         // /v1/help unavailable — surface check stays unperformed.
       }
     }
@@ -139,12 +139,12 @@ export const doctorCommand = defineCommand({
 })
 
 /**
- * A Ctrl-C (or SIGTERM) must stop doctor, not become a "not reachable"
- * line in a report that exits 0. A `--timeout` deadline, by contrast, is
- * a reachability finding like any other failed probe.
+ * When the command itself is stopped — Ctrl-C, SIGTERM, or its own
+ * `--timeout` running out — doctor stops with that envelope instead of
+ * turning it into a "not reachable" finding (or skipping the auth check in
+ * a report that still exits 0). A probe that fails on its own, including
+ * the SDK's per-attempt timeout, stays a finding.
  */
-function rethrowIfCancelled(ctx: CliContext): void {
-  if (ctx.signal.aborted && ctx.signal.reason instanceof CliInterruptError) {
-    throw ctx.signal.reason
-  }
+function rethrowIfStopped(ctx: CliContext): void {
+  ctx.signal.throwIfAborted()
 }

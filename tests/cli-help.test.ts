@@ -61,6 +61,30 @@ describe('cli basics', () => {
     )
   })
 
+  it('never echoes a credential header in the confirmation envelope', async () => {
+    const result = await runCli(
+      [
+        'api',
+        'DELETE',
+        '/v1/audiences/aud_1',
+        '--header',
+        'Authorization: Bearer secret-1',
+        'Proxy-Authorization: Basic secret-2',
+        'X-Auth-Token: secret-3',
+        'Cookie: session=secret-4',
+        'X-Trace: t1',
+        'Idempotency-Key: k1',
+      ],
+      { env: { BREW_CLI_CONFIG_DIR: '/nonexistent-config-dir' } }
+    )
+    expect(result.code).toBe(4)
+    expect(result.stdout).not.toMatch(/secret-\d/)
+    const envelope = result.json as { confirmCommand: string }
+    expect(envelope.confirmCommand).toBe(
+      "brew-cli api DELETE /v1/audiences/aud_1 --header 'X-Trace: t1' 'Idempotency-Key: k1' --yes"
+    )
+  })
+
   it('accepts global flags before the subcommand', async () => {
     const result = await runCli(['--json', 'docs'])
     expect(result.code).toBe(0)

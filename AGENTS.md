@@ -99,8 +99,10 @@ bun run docs:commands:check
 - Exit codes are API surface: 0 ok, 1 API/runtime, 2 usage, 3 auth,
   4 confirmation-required, 130/143 interrupted by SIGINT/SIGTERM (then
   the CLI re-raises the signal). Never repurpose them.
-- Never swallow an interrupt: a command that catches errors to degrade
-  gracefully (doctor, whoami) rethrows a `CliInterruptError`.
+- Never swallow a stop: a command that catches errors to degrade
+  gracefully (doctor, whoami) calls `ctx.signal.throwIfAborted()` first,
+  so Ctrl-C, SIGTERM and its own `--timeout` end it with their envelope
+  instead of a degraded result that exits 0.
 - Flags and command names are additive-only after release — renames and
   removals are breaking changes.
 - Never hit the real Brew API from tests; MSW only. Never commit API keys.

@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { HttpResponse, http } from 'msw'
 import { describe, expect, it } from 'vitest'
 import { readConfig } from '../../src/lib/config-store'
+import { CliInterruptError } from '../../src/lib/errors'
 import { server } from '../helpers/msw-server'
 import { runCli } from '../helpers/run-cli'
 
@@ -146,6 +147,45 @@ describe('whoami', () => {
       env: tempConfigEnv({ BREW_API_KEY: KEY }),
     })
     expect(unauthorized.code).toBe(3)
+  })
+
+  it('stops with CLI_TIMEOUT when its own --timeout expires, never a degraded exit 0', async () => {
+    server.use(
+      http.get(
+        'https://brew.new/api/v1/usage',
+        () => new Promise<Response>(() => undefined)
+      )
+    )
+
+    const result = await runCli(['whoami', '--timeout', '300ms'], {
+      env: tempConfigEnv({ BREW_API_KEY: KEY }),
+    })
+
+    expect(result.code).toBe(1)
+    expect(result.stdout).toBe('')
+    expect(result.stderr).not.toContain('could not reach /v1/usage')
+    const line = result.stderr.trim().split('\n').at(-1) ?? ''
+    expect((JSON.parse(line) as { error: { code: string } }).error.code).toBe(
+      'CLI_TIMEOUT'
+    )
+  })
+
+  it('stops on Ctrl-C, never a degraded exit 0', async () => {
+    const controller = new AbortController()
+    server.use(
+      http.get('https://brew.new/api/v1/usage', () => {
+        controller.abort(new CliInterruptError('SIGINT'))
+        return new Promise<Response>(() => undefined)
+      })
+    )
+
+    const result = await runCli(['whoami'], {
+      env: tempConfigEnv({ BREW_API_KEY: KEY }),
+      signal: controller.signal,
+    })
+
+    expect(result.code).toBe(130)
+    expect(result.stdout).toBe('')
   })
 })
 

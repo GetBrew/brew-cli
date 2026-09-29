@@ -57,11 +57,13 @@ request.
   fell through to `CLI_UNEXPECTED` (only `emails audit`'s own deadline
   reached `CLI_TIMEOUT`). Failed or dropped connections report
   `CLI_CONNECTION` instead of `CLI_UNEXPECTED`.
-- `doctor` and `whoami` no longer turn a Ctrl-C into a report or a warning
-  that exits 0.
-- A re-run command (`confirmCommand`, `retryCommand`) never echoes an
-  `Authorization`, `Cookie` or `X-Api-Key` header passed to `api
-  --header`.
+- `doctor` and `whoami` no longer turn a Ctrl-C, or their own `--timeout`
+  running out, into a report or a warning (`whoami` exited 0 with
+  `usage: null`): they stop with `CLI_INTERRUPTED` / `CLI_TIMEOUT`.
+- A re-run command (`confirmCommand`, `retryCommand`) never echoes a
+  credential header passed to `api --header`: `Authorization`,
+  `Proxy-Authorization`, cookies, or any name mentioning an API key, auth, a
+  token, secret, password, session or signature.
 
 ### Changed
 

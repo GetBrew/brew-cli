@@ -67,7 +67,7 @@ export function buildRetryCommand(
  * argv, shell-quoted, for a command the caller will run again. Both
  * envelopes go to stdout and into agent transcripts, so a credential is
  * never echoed back: `--api-key` goes (the re-run resolves the key from env
- * or config) and so does an `Authorization` header passed to `api`.
+ * or config) and so does any credential header passed to `api --header`.
  */
 function rerunTokens(
   rawArgv: readonly string[],
@@ -122,8 +122,19 @@ function rerunTokens(
   return tokens
 }
 
+/**
+ * A header whose NAME says it can carry a credential: `Authorization` and
+ * `Proxy-Authorization`, cookies, and any name mentioning an API key, auth,
+ * a token, secret, password, session or signature. Dropping a harmless
+ * header from a re-run costs less than printing a secret into a transcript.
+ * `Idempotency-Key` is not a credential: the re-run needs it.
+ */
+const CREDENTIAL_HEADER_NAME =
+  /authorization|cookie|api-?key|auth|token|secret|passw(or)?d|session|signature|credential/i
+
 function isCredentialHeader(header: string): boolean {
-  return /^\s*(authorization|cookie|x-api-key)\s*:/i.test(header)
+  const name = /^\s*([^:\s]+)\s*:/.exec(header)?.[1]
+  return name !== undefined && CREDENTIAL_HEADER_NAME.test(name)
 }
 
 function shellQuote(token: string): string {

@@ -15,6 +15,13 @@ import { spawn } from 'node:child_process'
 import { createServer } from 'node:http'
 import type { AddressInfo } from 'node:net'
 
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    // Never what keeps the smoke process alive once it has its answer.
+    setTimeout(resolve, ms).unref()
+  })
+}
+
 type Outcome = {
   readonly exitCode: number | null
   readonly signal: NodeJS.Signals | null
@@ -68,17 +75,34 @@ async function interruptMidRequest(
       resolve({ code, sig })
     })
   })
-  await requested
+  const stopServer = (): void => {
+    server.closeAllConnections()
+    server.close()
+  }
+  // The request must arrive before anything is interrupted. A CLI that
+  // fails to start (or never sends) must fail the smoke test promptly, not
+  // leave CI waiting for its job timeout.
+  const startup = await Promise.race([
+    requested.then(() => 'requested' as const),
+    exited.then(() => 'exited' as const),
+    delay(10_000).then(() => 'no request' as const),
+  ])
+  if (startup !== 'requested') {
+    child.kill('SIGKILL')
+    stopServer()
+    throw new Error(
+      startup === 'exited'
+        ? `${signal}: the CLI exited before sending its request: ${stderr.trim()}`
+        : `${signal}: the CLI sent no request within 10 s`
+    )
+  }
   const started = performance.now()
   child.kill(signal)
-  const timeout = new Promise<'timeout'>((resolve) => {
-    setTimeout(() => {
-      resolve('timeout')
-    }, 5000)
-  })
-  const result = await Promise.race([exited, timeout])
-  server.closeAllConnections()
-  server.close()
+  const result = await Promise.race([
+    exited,
+    delay(5000).then(() => 'timeout' as const),
+  ])
+  stopServer()
   if (result === 'timeout') {
     child.kill('SIGKILL')
     throw new Error(`${signal}: the CLI did not exit within 5 s`)
