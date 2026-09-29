@@ -37,7 +37,7 @@ a `confirmCommand` otherwise, `--yes` to proceed).
 | `brew-cli contacts delete` | destructive | `DELETE /v1/contacts/{email}` | Delete one contact by email (idempotent) |
 | `brew-cli contacts delete-many` | destructive | `POST /v1/contacts/batch-delete` | Delete up to 1000 contacts by email |
 | `brew-cli contacts validate` | write ($) | `POST /v1/contacts/validate` | Batch-validate email deliverability (no contacts created) |
-| `brew-cli contacts import-csv` | write | `POST /v1/contacts/import-csv` | Bulk-import contacts from a CSV file or stdin |
+| `brew-cli contacts import-csv` | write | `POST /v1/contacts/import-csv` | Bulk-import contacts from a CSV file or stdin (free; --validate costs 2 credits per address) |
 | `brew-cli fields list` | read | `GET /v1/fields` | List custom contact fields |
 | `brew-cli fields get` | read | `GET /v1/fields/{fieldName}` | Fetch one contact field definition by name — the bare row |
 | `brew-cli fields create` | write | `POST /v1/fields` | Create a custom contact field |
@@ -120,7 +120,7 @@ a `confirmCommand` otherwise, `--yes` to proceed).
 | `brew-cli analytics trigger-instances list` | read | `GET /v1/automations/trigger-instances` | List fired-trigger instances with their lifecycle `state` (`automations trigger-instances list`) |
 | `brew-cli brand get` | read | `GET /v1/brand` | Fetch the key's brand + extraction readiness (`ready` flag) |
 | `brew-cli brand update` | write | `PATCH /v1/brand` | Update brand identity and/or design-system markdown (PATCH) |
-| `brew-cli brand get-images` | read | `GET /v1/brand/images` | List or semantically search the brand's assets: logos, brand images and images made with Brew |
+| `brew-cli brand get-images` | read | `GET /v1/brand/images` | Browse or semantically search the brand's assets (logos, brand images, images made with Brew) |
 | `brew-cli brands list` | read | `GET /v1/brands` | List every brand in the organization |
 | `brew-cli brands get` | read | `GET /v1/brands/{brandId}` | One brand's lifecycle state (the extraction polling endpoint) |
 | `brew-cli brands create` | write | `POST /v1/brands` | Create a brand and start async extraction (needs an ORGANIZATION-scoped key); poll `brands get` until ready |
@@ -414,18 +414,23 @@ brew-cli contacts validate --input '{"emails":["jane@example.com"]}'
 
 ### brew-cli contacts import-csv
 
-Bulk-import contacts from a CSV file or stdin
+Bulk-import contacts from a CSV file or stdin (free; --validate costs 2 credits per address)
 
 - Route: `POST /v1/contacts/import-csv`
 - Class: write
 - SDK: `brew.contacts.importCsv(...)`
-- `--file <path>` — CSV file to import, or - for stdin
+- `--file <path>` — CSV file to import, or - for stdin (or csv in --input)
 - `--mapping <pairs...>` — Column mapping csvColumn=fieldName, repeatable
+- `--date-order <order>` — month_first or day_first: how to read dates like 03/04/2026 (a day over 12 in the column wins; default month-first, with a DATE_ORDER_ASSUMED warning)
+- `--validate` — Deliverability-check every imported address (2 credits per address)
+- `--consent-source <source>` — Stamp a marketing consent record on every row: api, form or import (sets the source of a record given in --input)
+- `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
 - `--idempotency-key <key>` — Idempotency-Key for safe retries (auto-generated otherwise)
 
 ```bash
 brew-cli contacts import-csv --file contacts.csv
 cat contacts.csv | brew-cli contacts import-csv --file - --mapping Email=email
+brew-cli contacts import-csv --file eu-signups.csv --date-order day_first --consent-source import
 ```
 
 ### brew-cli fields list
@@ -666,6 +671,8 @@ Convert one Figma frame into an editable design (deterministic, free)
 - `--title <title>` — Design title (default: the Figma frame name)
 - `--format <format>` — Representation returned in content: jsx (default) or html
 - `--subject-line <text>` — The design's default inbox subject line
+- `--group-id <groupId>` — File the design under an existing group (grp_…), or ungrouped
+- `--group-name <name>` — File the design under a group found (or created) by this name; not with --group-id
 - `--idempotency-key <key>` — Idempotency-Key for safe retries (auto-generated otherwise)
 
 ```bash
@@ -707,11 +714,15 @@ Clone a design into a new one (exact snapshot copy, no AI)
 - SDK: `brew.emails.clone(...)`
 - Argument `emailId` — Design id to clone
 - `--email-version-id <id>` — Exact source version to clone (default: latest)
+- `--title <title>` — Name for the clone (default: Copy of <source title>)
+- `--group-id <groupId>` — File the clone under an existing group (grp_…), or ungrouped
+- `--group-name <name>` — File the clone under a group found (or created) by this name; not with --group-id
 - `--idempotency-key <key>` — Idempotency-Key for safe retries (auto-generated otherwise)
 
 ```bash
 brew-cli emails clone eml_2SmZOWV3ZQ7W5x6g3m4p
 brew-cli emails clone eml_2SmZOWV3ZQ7W5x6g3m4p --email-version-id emv_9f2kX
+brew-cli emails clone eml_2SmZOWV3ZQ7W5x6g3m4p --title "Fall sale (B)" --group-name "Fall campaign"
 ```
 
 ### brew-cli emails restore
@@ -750,8 +761,9 @@ Export a design to a connected ESP as a template (not a send)
 - Class: write
 - SDK: `brew.emails.export(...)`
 - Argument `emailId` — Design id to export
-- `--provider <provider>` — Connected ESP: braze, hubspot, klaviyo, mailchimp, iterable, postmark, onesignal, mailgun, sendgrid
+- `--provider <provider>` — Connected ESP: braze, brevo, hubspot, klaviyo, mailchimp, mailjet, iterable, postmark, onesignal, mailgun, sendgrid
 - `--template-name <name>` — Template name in the ESP (default: the email title)
+- `--sender-email <email>` — Brevo or Mailjet: the active sender to use (omit when the account has exactly one)
 - `--dry-run` — Validate design, ownership, and ESP connection without creating a template
 - `--idempotency-key <key>` — Idempotency-Key for safe retries (auto-generated otherwise)
 
@@ -1807,13 +1819,15 @@ cat brand-patch.json | brew-cli brand update --input -
 
 ### brew-cli brand get-images
 
-List or semantically search the brand's assets: logos, brand images and images made with Brew
+Browse or semantically search the brand's assets (logos, brand images, images made with Brew)
 
 - Route: `GET /v1/brand/images`
 - Class: read
-- `--query <text>` — Semantic search over brand and generated images (1 credit per new search; relevance order)
-- `--kind <kind>` — logo, brand (site or uploaded) or generated (made with Brew)
-- `--sort <order>` — newest (default) or oldest; ignored with --query
+- `--query <text>` — Semantic search over what the images show (1 credit per new search; logos are not searchable)
+- `--kind <kind>` — logo, brand (from the site or uploaded) or generated
+- `--sort <order>` — Browse order: newest (default) or oldest; ignored by --query
+- `--type <type>` — Retired by the API: use --kind
+- `--aspect-ratio <ratio>` — Retired by the API: rows carry width and height instead of a shape filter
 - `--limit <n>` — Page size, 1-100 (default 100)
 - `--cursor <cursor>` — Opaque pagination cursor from a previous page
 - `--all` — Follow the cursor and return every page as one result
@@ -1821,7 +1835,7 @@ List or semantically search the brand's assets: logos, brand images and images m
 
 ```bash
 brew-cli brand get-images
-brew-cli brand get-images --kind generated --sort oldest
+brew-cli brand get-images --kind generated --sort oldest --all
 brew-cli brand get-images --query "team photo" --kind brand
 ```
 
@@ -2392,6 +2406,7 @@ SDK methods intentionally without a dedicated command:
 - `automations.triggers.getContract` — covered by `automations triggers contract get` (raw route, bound pre-SDK-v9; SDK-method migration tracked separately)
 - `automations.triggers.putContract` — covered by `automations triggers contract put` (raw route, bound pre-SDK-v9)
 - `automations.triggers.validatePayload` — covered by `automations triggers contract validate` (raw route, bound pre-SDK-v9)
+- `brand.getImages` — covered by `brand get-images` (raw route: SDK 10 cannot send `kind` or `sort`, brew-v2#1713; bind SDK 11.2)
 - `payloadContracts.infer` — covered by `contracts infer` (raw route, bound pre-SDK-v9)
 - `contacts.searchAll` — auto-pager covered by `contacts search --all`
 - `analytics.eventsAll` — auto-pager covered by `analytics events --all`

@@ -337,8 +337,11 @@ describe('brand get-images', () => {
           data: [
             {
               assetId: '5bc912f9',
-              kind: 'generated',
+              kind: 'brand',
               url: 'https://cdn.brew.new/img.png',
+              width: 1200,
+              height: 630,
+              addedAt: '2026-09-24T18:02:11.000Z',
             },
           ],
           pagination: PAGE_DONE,
@@ -363,40 +366,24 @@ describe('brand get-images', () => {
     expect(query?.has('aspectRatio')).toBe(false)
   })
 
-  it('walks every page with --all', async () => {
-    const cursors: Array<string | null> = []
-    server.use(
-      http.get(`${API}/v1/brand/images`, ({ request }) => {
-        const cursor = new URL(request.url).searchParams.get('cursor')
-        cursors.push(cursor)
-        return HttpResponse.json(
-          cursor === null
-            ? {
-                data: [
-                  {
-                    assetId: 'aaaaaaaa',
-                    kind: 'logo',
-                    url: 'https://cdn.brew.new/a.png',
-                  },
-                ],
-                pagination: { limit: 1, cursor: 'next', hasMore: true },
-              }
-            : {
-                data: [
-                  {
-                    assetId: 'bbbbbbbb',
-                    kind: 'brand',
-                    url: 'https://cdn.brew.new/b.png',
-                  },
-                ],
-                pagination: PAGE_DONE,
-              }
-        )
-      })
-    )
-    const result = await cli(['brand', 'get-images', '--kind', 'logo', '--all'])
-    expect(result.code).toBe(0)
-    expect(cursors).toEqual([null, 'next'])
+  it('refuses the retired --type and --aspect-ratio with the way forward', async () => {
+    const type = await cli(['brand', 'get-images', '--type', 'hero'])
+    const ratio = await cli(['brand', 'get-images', '--aspect-ratio', '16:9'])
+    expect(type.code).toBe(2)
+    expect(type.stderr).toContain('--kind')
+    expect(ratio.code).toBe(2)
+    expect(ratio.stderr).toContain('width and height')
+  })
+
+  it('refuses a retired filter given in --input too', async () => {
+    const result = await cli([
+      'brand',
+      'get-images',
+      '--input',
+      '{"type":"hero"}',
+    ])
+    expect(result.code).toBe(2)
+    expect(result.stderr).toContain('--kind')
   })
 })
 

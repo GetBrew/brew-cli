@@ -41,6 +41,11 @@ export const SDK_SKIP_LIST: readonly SdkSkip[] = [
       'covered by `automations triggers contract validate` (raw route, bound pre-SDK-v9)',
   },
   {
+    sdkPath: 'brand.getImages',
+    reason:
+      'covered by `brand get-images` (raw route: SDK 10 cannot send `kind` or `sort`, brew-v2#1713; bind SDK 11.2)',
+  },
+  {
     sdkPath: 'payloadContracts.infer',
     reason: 'covered by `contracts infer` (raw route, bound pre-SDK-v9)',
   },

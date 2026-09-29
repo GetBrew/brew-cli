@@ -34,6 +34,15 @@ export const emailsImportFigmaCommand = defineCommand({
       flag: '--subject-line <text>',
       summary: "The design's default inbox subject line",
     },
+    {
+      flag: '--group-id <groupId>',
+      summary: 'File the design under an existing group (grp_…), or ungrouped',
+    },
+    {
+      flag: '--group-name <name>',
+      summary:
+        'File the design under a group found (or created) by this name; not with --group-id',
+    },
     IDEMPOTENCY_FLAG,
   ],
   examples: [
@@ -50,6 +59,11 @@ export const emailsImportFigmaCommand = defineCommand({
     const title = flagString(flags.title)
     const format = flagString(flags.format)
     const subjectLine = flagString(flags.subjectLine)
+    const groupId = flagString(flags.groupId)
+    const groupName = flagString(flags.groupName)
+    if (groupId !== undefined && groupName !== undefined) {
+      throw new CliUsageError('Pass --group-id or --group-name, not both.')
+    }
     return {
       data: await ctx.client().emails.importFigma(
         asSdkInput<ImportFigmaInput>({
@@ -57,6 +71,8 @@ export const emailsImportFigmaCommand = defineCommand({
           ...(title === undefined ? {} : { title }),
           ...(format === undefined ? {} : { format }),
           ...(subjectLine === undefined ? {} : { subjectLine }),
+          ...(groupId === undefined ? {} : { groupId }),
+          ...(groupName === undefined ? {} : { groupName }),
         }),
         requestOptions(flags)
       ),
