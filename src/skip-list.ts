@@ -21,11 +21,6 @@ export type SpecSkip = {
 /** SDK methods that intentionally have no dedicated CLI command. */
 export const SDK_SKIP_LIST: readonly SdkSkip[] = [
   {
-    sdkPath: 'brand.getImages',
-    reason:
-      'covered by `brand get-images` (raw route: the SDK before 12 forwards only the retired type/aspectRatio filters, not kind/sort; bind the SDK method when the CLI adopts SDK 12)',
-  },
-  {
     sdkPath: 'automations.triggers.getContract',
     reason:
       'covered by `automations triggers contract get` (raw route, bound pre-SDK-v9; SDK-method migration tracked separately)',

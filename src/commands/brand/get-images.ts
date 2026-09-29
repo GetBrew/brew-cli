@@ -33,17 +33,6 @@ const RETIRED_FILTERS: Readonly<Record<string, string>> = {
     '--aspect-ratio (aspectRatio) was retired by the API: every image carries its width and height.',
 }
 
-type BrandImagesPage =
-  operations['getBrandImages']['responses'][200]['content']['application/json']
-
-/**
- * The brand's asset library, as the Assets page in the Brew app shows it:
- * logos, brand images and images made with Brew. Raw route because
- * `@brew.new/sdk` 10's `brand.getImages` forwards only the retired
- * `type` / `aspectRatio` filters: once the CLI adopts the SDK release that
- * forwards `kind` and `sort`, bind `brand.getImages` here and drop
- * `isRawTransport` (and its `SDK_SKIP_LIST` entry).
- */
 export const brandGetImagesCommand = defineCommand({
   path: ['brand', 'get-images'],
   summary:

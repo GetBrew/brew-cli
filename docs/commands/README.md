@@ -2402,7 +2402,6 @@ brew-cli api GET /v1/llms.txt
 
 SDK methods intentionally without a dedicated command:
 
-- `brand.getImages` — covered by `brand get-images` (raw route: the SDK before 12 forwards only the retired type/aspectRatio filters, not kind/sort; bind the SDK method when the CLI adopts SDK 12)
 - `automations.triggers.getContract` — covered by `automations triggers contract get` (raw route, bound pre-SDK-v9; SDK-method migration tracked separately)
 - `automations.triggers.putContract` — covered by `automations triggers contract put` (raw route, bound pre-SDK-v9)
 - `automations.triggers.validatePayload` — covered by `automations triggers contract validate` (raw route, bound pre-SDK-v9)

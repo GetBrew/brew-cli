@@ -8,17 +8,6 @@ carries brew-v2#1579's per-domain unsubscribe lists, which 0.8.x never had
 commands for; `parity-spec` flagged all five routes. It also ships 0.8.1,
 which was never tagged.
 
-### Changed (breaking)
-
-- `brand get-images` lists the brand's whole asset library, as the Assets
-  page shows it: logos, brand images and images made with Brew. `--kind
-  logo|brand|generated` narrows it and `--sort newest|oldest` orders it;
-  `--query` searches brand and generated images by meaning (1 credit per new
-  search). `--type` and `--aspect-ratio` are gone with the API filters they
-  set (GetBrew/brew-v2#1713). Rows show ID (the app's `/assets?image=` id),
-  KIND, URL and ADDED. The SDK before 12 cannot send `kind` or `sort`,
-  so the command uses the raw transport until the CLI adopts SDK 12.
-
 ### Added
 
 - `analytics event-counts`: counts of the email events the same filters
