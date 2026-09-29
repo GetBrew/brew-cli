@@ -1,6 +1,7 @@
 import { PassThrough } from 'node:stream'
 import { BrewApiError } from '@brew.new/sdk'
 import { describe, expect, it } from 'vitest'
+import { makeContext } from '../../src/lib/context'
 import {
   CliApiError,
   CliAuthError,
@@ -166,30 +167,20 @@ describe('printError — details', () => {
     const stderr = new PassThrough()
     return {
       stderr,
-      ctx: {
+      ctx: makeContext({
         io: {
           stdout: new PassThrough(),
           stderr,
-          isTtyOut: false,
+          // Output mode follows the TTY, as it does for a real command.
+          isTtyOut: mode === 'human',
           isTtyIn: false,
           env: {},
           readStdin: async () => '',
           readLine: async () => '',
         },
-        mode,
-        globals: {
-          json: mode === 'json',
-          quiet: true,
-          yes: false,
-          apiKey: undefined,
-          brand: undefined,
-          apiUrl: undefined,
-        },
-        client: () => {
-          throw new Error('SDK client is not used by printError')
-        },
+        flags: { json: mode === 'json', quiet: true },
         rawArgv: [],
-      },
+      }),
     }
   }
 

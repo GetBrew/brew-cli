@@ -1,4 +1,5 @@
 import type { GenerateEmailInput } from '@brew.new/sdk'
+import { GENERATE_EMAIL_DEFAULT_TIMEOUT_MS } from '@brew.new/sdk'
 import { defineCommand } from '../../lib/define-command'
 import { CliUsageError } from '../../lib/errors'
 import {
@@ -19,6 +20,7 @@ export const emailsGenerateCommand = defineCommand({
   sdkMethod: 'emails.generate',
   route: { method: 'POST', path: '/v1/emails' },
   commandClass: 'write',
+  defaultTimeoutMs: GENERATE_EMAIL_DEFAULT_TIMEOUT_MS,
   isCredited: true,
   flags: [
     { flag: '--prompt <text>', summary: 'What the email should be' },
@@ -64,10 +66,10 @@ export const emailsGenerateCommand = defineCommand({
     progress(ctx, 'Generating email… (typically 30-90s)')
     const result = await ctx
       .client()
-      .emails.generate(asSdkInput<GenerateEmailInput>(input), {
-        timeoutMs: 240_000,
-        ...(requestOptions(flags) ?? {}),
-      })
+      .emails.generate(
+        asSdkInput<GenerateEmailInput>(input),
+        requestOptions(flags)
+      )
     return { data: result }
   },
 })

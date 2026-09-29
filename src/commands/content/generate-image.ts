@@ -1,4 +1,5 @@
 import type { ContentGenerateImageRequest } from '@brew.new/sdk'
+import { GENERATE_IMAGE_DEFAULT_TIMEOUT_MS } from '@brew.new/sdk'
 import { defineCommand } from '../../lib/define-command'
 import { CliUsageError } from '../../lib/errors'
 import {
@@ -17,6 +18,7 @@ export const contentGenerateImageCommand = defineCommand({
   sdkMethod: 'content.generateImage',
   route: { method: 'POST', path: '/v1/content/generate-image' },
   commandClass: 'write',
+  defaultTimeoutMs: GENERATE_IMAGE_DEFAULT_TIMEOUT_MS,
   isCredited: true,
   flags: [
     { flag: '--prompt <text>', summary: 'What to generate' },

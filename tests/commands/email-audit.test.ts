@@ -2,7 +2,7 @@ import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { HttpResponse, http } from 'msw'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 
 import {
   AUDIT_EMAIL_DEFAULT_TIMEOUT_MS,
@@ -23,7 +23,6 @@ function env(): Record<string, string | undefined> {
 
 describe('emails audit', () => {
   it('audits a file with the exact copy and purpose fields', async () => {
-    const timeoutSpy = vi.spyOn(AbortSignal, 'timeout')
     const directory = mkdtempSync(join(tmpdir(), 'brew-email-audit-'))
     const file = join(directory, 'email.html')
     writeFileSync(file, '<p>Hello</p>')
@@ -66,8 +65,11 @@ describe('emails audit', () => {
       sendingPurpose: 'marketing',
     })
     expect(idempotencyKey).toBe('audit-1')
+    // The 65 s audit deadline is the command's own whole-command default.
     expect(AUDIT_EMAIL_DEFAULT_TIMEOUT_MS).toBe(65_000)
-    expect(timeoutSpy).toHaveBeenCalledWith(AUDIT_EMAIL_DEFAULT_TIMEOUT_MS)
+    expect(emailsAuditCommand.defaultTimeoutMs).toBe(
+      AUDIT_EMAIL_DEFAULT_TIMEOUT_MS
+    )
   })
 
   it('accepts the full request as JSON from stdin', async () => {
@@ -125,28 +127,40 @@ describe('emails audit', () => {
     )
   })
 
-  it('reports the local audit deadline as a retryable timeout', async () => {
-    vi.spyOn(globalThis, 'fetch').mockRejectedValue(
-      new DOMException(
-        'The operation was aborted due to timeout',
-        'TimeoutError'
+  it('reports its deadline as a retryable timeout that names the replay key', async () => {
+    server.use(
+      http.post(
+        `${API}/v1/emails/audit`,
+        () => new Promise<Response>(() => undefined)
       )
     )
 
     const result = await runCli(
-      ['emails', 'audit', '--input', '{"emailHtml":"<p>Hello</p>"}'],
+      [
+        'emails',
+        'audit',
+        '--input',
+        '{"emailHtml":"<p>Hello</p>"}',
+        '--timeout',
+        '150ms',
+        '--idempotency-key',
+        'audit-9',
+      ],
       { env: env(), extraCommands: [emailsAuditCommand] }
     )
 
     expect(result.code).toBe(1)
-    expect(JSON.parse(result.stderr)).toEqual({
-      error: {
-        code: 'CLI_TIMEOUT',
-        type: 'service_unavailable',
-        message: 'The request timed out before the API responded.',
-        suggestion:
-          'Retry the request. Reuse the same Idempotency-Key for a POST request.',
-      },
-    })
+    const { error } = JSON.parse(result.stderr) as {
+      error: Record<string, unknown>
+    }
+    expect(error.code).toBe('CLI_TIMEOUT')
+    expect(error.type).toBe('service_unavailable')
+    expect(error.message).toBe(
+      'No complete response within 150ms (POST /v1/emails/audit).'
+    )
+    expect(error.idempotencyKey).toBe('audit-9')
+    expect(error.retryCommand).toBe(
+      'brew-cli emails audit --input \'{"emailHtml":"<p>Hello</p>"}\' --timeout 150ms --idempotency-key audit-9'
+    )
   })
 })

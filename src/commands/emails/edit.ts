@@ -1,4 +1,5 @@
 import type { EditEmailInput } from '@brew.new/sdk'
+import { EDIT_EMAIL_DEFAULT_TIMEOUT_MS } from '@brew.new/sdk'
 import { defineCommand } from '../../lib/define-command'
 import { CliUsageError } from '../../lib/errors'
 import {
@@ -28,6 +29,7 @@ export const emailsEditCommand = defineCommand({
   sdkMethod: 'emails.edit',
   route: { method: 'PATCH', path: '/v1/emails/{emailId}' },
   commandClass: 'write',
+  defaultTimeoutMs: EDIT_EMAIL_DEFAULT_TIMEOUT_MS,
   isCredited: true,
   args: [{ name: 'emailId', summary: 'Design id to edit', isRequired: true }],
   flags: [
@@ -106,8 +108,7 @@ export const emailsEditCommand = defineCommand({
     const result = await ctx
       .client()
       .emails.edit(
-        asSdkInput<EditEmailInput>({ ...input, emailId: args.emailId ?? '' }),
-        { timeoutMs: 240_000 }
+        asSdkInput<EditEmailInput>({ ...input, emailId: args.emailId ?? '' })
       )
     return { data: result }
   },

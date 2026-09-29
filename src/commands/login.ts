@@ -5,6 +5,7 @@ import {
   resolveAuth,
 } from '../lib/client'
 import { updateConfig } from '../lib/config-store'
+import { sdkTransportFor } from '../lib/context'
 import { defineCommand } from '../lib/define-command'
 import { CliUsageError } from '../lib/errors'
 import { progress } from '../lib/output'
@@ -35,7 +36,7 @@ export const loginCommand = defineCommand({
       env: ctx.io.env,
     })
     // Throws a 401 BrewApiError (exit 3) when the key is invalid.
-    await buildSdkClient(auth).usage.get()
+    await buildSdkClient(auth, sdkTransportFor(ctx)).usage.get()
     const path = updateConfig(ctx.io.env, { apiKey: candidate })
     progress(ctx, `Logged in. Key stored in ${path} (0600).`)
     return {

@@ -30,8 +30,19 @@ this build lacks (update the CLI); auth/reachability failures name the fix.
 ## The contract you can rely on
 
 - Exit codes: 0 ok · 1 API error · 2 usage · 3 auth · 4 confirmation
-  required. Errors are JSON envelopes on stderr with stable `code`s and
-  `requestId`.
+  required · 130/143 interrupted by SIGINT/SIGTERM. Errors are JSON
+  envelopes on stderr with stable `code`s and `requestId`.
+- A write that ends `CLI_TIMEOUT`, `CLI_CONNECTION` or `CLI_INTERRUPTED`
+  (or a 5xx) may still complete on the server. Re-run the envelope's
+  `retryCommand` — it carries the same `--idempotency-key`, so the API
+  replays the first attempt instead of running it twice. Never re-run the
+  original command with a fresh key. A `409 IDEMPOTENCY_IN_PROGRESS` means
+  the first attempt is still running: wait, then re-run `retryCommand`.
+  While the API's idempotency store is degraded, writes other than sends
+  run without the replay guarantee: for a write that must not happen
+  twice, pass `--max-retries 0` and check whether it landed before re-running.
+- `--timeout <duration>` bounds the whole command (body, retries, pages);
+  use it to fit a tool-call budget. `--max-retries 0` for one attempt.
 - Destructive commands (sends, deletes, fires, cancels) never hang: they
   exit 4 with a `confirmCommand` to re-run once a human approves, or take
   `--yes`. Do not pass `--yes` for real campaign sends without an explicit

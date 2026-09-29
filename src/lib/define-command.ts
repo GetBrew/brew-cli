@@ -67,6 +67,12 @@ export type CommandSpec = {
   /** True when the operation consumes Brew credits. */
   readonly isCredited?: boolean
   /**
+   * A long-running command's whole-command deadline when `--timeout` is not
+   * given: the SDK's own per-call default for the same method (see
+   * `lib/long-running.ts`). An explicit `--timeout` always wins.
+   */
+  readonly defaultTimeoutMs?: number
+  /**
    * True when the command calls the API through the raw transport because
    * the published SDK does not expose the operation yet. Swap to the SDK
    * method (and drop this marker) when the SDK ships it.
@@ -114,5 +120,15 @@ export const GLOBAL_FLAGS: readonly FlagSpec[] = [
   {
     flag: '--api-url <url>',
     summary: 'API base URL (else BREW_API_URL, else https://brew.new/api)',
+  },
+  {
+    flag: '--timeout <duration>',
+    summary:
+      'Give up after this long, retries and the response body included (90s, 1500ms, 5m)',
+  },
+  {
+    flag: '--max-retries <n>',
+    summary:
+      'Retries after a transient failure, 0-10 (default 2; raw requests make one attempt)',
   },
 ]

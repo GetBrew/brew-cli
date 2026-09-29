@@ -1,4 +1,5 @@
 import type { ContentGifRequest } from '@brew.new/sdk'
+import { GIF_DEFAULT_TIMEOUT_MS } from '@brew.new/sdk'
 import { defineCommand } from '../../lib/define-command'
 import { CliUsageError } from '../../lib/errors'
 import {
@@ -18,6 +19,7 @@ export const contentGifCommand = defineCommand({
   sdkMethod: 'content.gif',
   route: { method: 'POST', path: '/v1/content/gif' },
   commandClass: 'write',
+  defaultTimeoutMs: GIF_DEFAULT_TIMEOUT_MS,
   isCredited: true,
   flags: [
     { flag: '--from <source>', summary: 'prompt | image | video' },

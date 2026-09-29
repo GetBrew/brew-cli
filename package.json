@@ -49,10 +49,11 @@
     "docs:commands": "bun run scripts/generate-command-docs.ts",
     "docs:commands:check": "bun run scripts/generate-command-docs.ts --check",
     "generate:types": "node scripts/generate-types.mjs",
-    "prepublishOnly": "bun run clean && bun run tsc && bun run lint && bun run test && bun run build"
+    "prepublishOnly": "bun run clean && bun run tsc && bun run lint && bun run test && bun run build",
+    "smoke:signals": "bun run scripts/signal-smoke.ts"
   },
   "dependencies": {
-    "@brew.new/sdk": "^11.2.0",
+    "@brew.new/sdk": "^11.3.0",
     "commander": "^14.0.0"
   },
   "devDependencies": {

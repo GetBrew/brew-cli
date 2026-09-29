@@ -4,6 +4,7 @@ import {
   buildSdkClient,
   isOrgLevelPath,
   maskApiKey,
+  type SdkTransport,
 } from '../../src/lib/client'
 import { server } from '../helpers/msw-server'
 
@@ -14,6 +15,16 @@ const AUTH = {
   apiUrl: 'https://brew.new/api',
 } as const
 
+function transport(overrides: Partial<SdkTransport> = {}): SdkTransport {
+  return {
+    signal: new AbortController().signal,
+    fetch: (input, init) => globalThis.fetch(input, init),
+    timeoutMs: undefined,
+    maxRetries: undefined,
+    ...overrides,
+  }
+}
+
 describe('brand header bridge (SDK 8.0.0 withBrand shim)', () => {
   it('injects X-Brand-Id on brand-scoped SDK calls', async () => {
     let brandHeader: string | null = null
@@ -23,7 +34,7 @@ describe('brand header bridge (SDK 8.0.0 withBrand shim)', () => {
         return HttpResponse.json({ fields: [] })
       })
     )
-    await buildSdkClient(AUTH).fields.list()
+    await buildSdkClient(AUTH, transport()).fields.list()
     expect(brandHeader).toBe('bd_42')
   })
 
@@ -35,7 +46,7 @@ describe('brand header bridge (SDK 8.0.0 withBrand shim)', () => {
         return HttpResponse.json({ plan: 'growth' })
       })
     )
-    await buildSdkClient(AUTH).usage.get()
+    await buildSdkClient(AUTH, transport()).usage.get()
     expect(brandHeader).toBeNull()
   })
 
@@ -47,7 +58,7 @@ describe('brand header bridge (SDK 8.0.0 withBrand shim)', () => {
         return HttpResponse.json({ plan: 'growth' })
       })
     )
-    await buildSdkClient(AUTH).usage.get()
+    await buildSdkClient(AUTH, transport()).usage.get()
     expect(userAgent).toContain('brew-cli/')
   })
 })
@@ -81,5 +92,56 @@ describe('maskApiKey', () => {
     )
     expect(maskApiKey('short')).toBe('sho…')
     expect(maskApiKey('brew_abcdef')).toBe('bre…')
+  })
+})
+
+describe('buildSdkClient transport', () => {
+  it('cancels every call through the client-level signal', async () => {
+    server.use(
+      http.get(
+        'https://brew.new/api/v1/usage',
+        () => new Promise<Response>(() => undefined)
+      )
+    )
+    const controller = new AbortController()
+    const pending = buildSdkClient(
+      AUTH,
+      transport({ signal: controller.signal })
+    ).usage.get()
+    controller.abort(new Error('stop'))
+    await expect(pending).rejects.toThrow('stop')
+  })
+
+  it('sends every attempt through the transport fetch', async () => {
+    const seen: string[] = []
+    server.use(
+      http.get('https://brew.new/api/v1/usage', () =>
+        HttpResponse.json({ plan: 'growth' })
+      )
+    )
+    await buildSdkClient(
+      AUTH,
+      transport({
+        fetch: (input, init) => {
+          seen.push(String(input))
+          return globalThis.fetch(input, init)
+        },
+      })
+    ).usage.get()
+    expect(seen).toEqual(['https://brew.new/api/v1/usage'])
+  })
+
+  it('applies --max-retries to the SDK retry loop', async () => {
+    let calls = 0
+    server.use(
+      http.get('https://brew.new/api/v1/usage', () => {
+        calls += 1
+        return new HttpResponse(null, { status: 503 })
+      })
+    )
+    await expect(
+      buildSdkClient(AUTH, transport({ maxRetries: 0 })).usage.get()
+    ).rejects.toThrow()
+    expect(calls).toBe(1)
   })
 })

@@ -1,4 +1,5 @@
 import type { PreviewEmailClientsInput } from '@brew.new/sdk'
+import { PREVIEW_EMAIL_CLIENTS_DEFAULT_TIMEOUT_MS } from '@brew.new/sdk'
 import { defineCommand } from '../../lib/define-command'
 import {
   asSdkInput,
@@ -16,6 +17,7 @@ export const emailsPreviewClientsCommand = defineCommand({
   sdkMethod: 'emails.previewClients',
   route: { method: 'POST', path: '/v1/emails/{emailId}/client-previews' },
   commandClass: 'write',
+  defaultTimeoutMs: PREVIEW_EMAIL_CLIENTS_DEFAULT_TIMEOUT_MS,
   isCredited: true,
   args: [
     { name: 'emailId', summary: 'Design id to preview', isRequired: true },

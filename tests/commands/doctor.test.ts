@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { HttpResponse, http } from 'msw'
 import { describe, expect, it } from 'vitest'
+import { CliInterruptError } from '../../src/lib/errors'
 import { ALL_COMMANDS } from '../../src/registry'
 import { server } from '../helpers/msw-server'
 import { runCli } from '../helpers/run-cli'
@@ -14,6 +15,12 @@ function env(): Record<string, string | undefined> {
     BREW_CLI_CONFIG_DIR: mkdtempSync(join(tmpdir(), 'brew-cli-test-')),
     BREW_API_KEY: KEY,
   }
+}
+
+/** The JSON error envelope: the last stderr line (progress lines come first). */
+function envelopeOf(stderr: string): Record<string, unknown> {
+  const line = stderr.trim().split('\n').at(-1) ?? ''
+  return (JSON.parse(line) as { error: Record<string, unknown> }).error
 }
 
 function liveEndpoints(): Array<{ method: string; path: string }> {
@@ -112,5 +119,45 @@ describe('doctor', () => {
     const data = result.json as { ok: boolean; apiKey: null }
     expect(data.ok).toBe(true)
     expect(data.apiKey).toBeNull()
+  })
+
+  it('stops with CLI_TIMEOUT when its own --timeout expires mid-probe', async () => {
+    mountApi(liveEndpoints())
+    server.use(
+      http.get(
+        'https://brew.new/api/v1/usage',
+        () => new Promise<Response>(() => undefined)
+      )
+    )
+
+    const result = await runCli(['doctor', '--timeout', '300ms'], {
+      env: env(),
+    })
+
+    // The caller's own budget ran out: that ends the command, it is not a
+    // finding to report (and never an exit 0 with the auth check skipped).
+    expect(result.code).toBe(1)
+    expect(result.stdout).toBe('')
+    expect(envelopeOf(result.stderr).code).toBe('CLI_TIMEOUT')
+  })
+
+  it('stops on Ctrl-C instead of reporting', async () => {
+    const controller = new AbortController()
+    mountApi(liveEndpoints())
+    server.use(
+      http.get('https://brew.new/api/v1/usage', () => {
+        controller.abort(new CliInterruptError('SIGINT'))
+        return new Promise<Response>(() => undefined)
+      })
+    )
+
+    const result = await runCli(['doctor'], {
+      env: env(),
+      signal: controller.signal,
+    })
+
+    expect(result.code).toBe(130)
+    expect(result.stdout).toBe('')
+    expect(envelopeOf(result.stderr).code).toBe('CLI_INTERRUPTED')
   })
 })

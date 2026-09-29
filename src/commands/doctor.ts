@@ -2,6 +2,7 @@ import { BrewApiError } from '@brew.new/sdk'
 import { maskApiKey, resolveAuth } from '../lib/client'
 import { defineCommand } from '../lib/define-command'
 import { CliApiError } from '../lib/errors'
+import type { CliContext } from '../lib/types'
 import { ALL_COMMANDS } from '../registry'
 
 /** Discovery endpoints without a dedicated command route. */
@@ -34,6 +35,7 @@ export const doctorCommand = defineCommand({
       isReachable = health.status === 'ok'
       apiVersion = health.version ?? null
     } catch (error) {
+      rethrowIfStopped(ctx)
       reachabilityError = error instanceof Error ? error.message : String(error)
     }
 
@@ -47,6 +49,7 @@ export const doctorCommand = defineCommand({
         isAuthValid = true
         plan = usage.plan?.key ?? null
       } catch (error) {
+        rethrowIfStopped(ctx)
         if (
           (error instanceof BrewApiError || error instanceof CliApiError) &&
           (error.status === 401 || error.status === 403)
@@ -83,6 +86,7 @@ export const doctorCommand = defineCommand({
         extraLocally = [...localOps].filter((op) => !liveOps.has(op))
         isSurfaceChecked = true
       } catch {
+        rethrowIfStopped(ctx)
         // /v1/help unavailable — surface check stays unperformed.
       }
     }
@@ -133,3 +137,14 @@ export const doctorCommand = defineCommand({
     }
   },
 })
+
+/**
+ * When the command itself is stopped — Ctrl-C, SIGTERM, or its own
+ * `--timeout` running out — doctor stops with that envelope instead of
+ * turning it into a "not reachable" finding (or skipping the auth check in
+ * a report that still exits 0). A probe that fails on its own, including
+ * the SDK's per-attempt timeout, stays a finding.
+ */
+function rethrowIfStopped(ctx: CliContext): void {
+  ctx.signal.throwIfAborted()
+}

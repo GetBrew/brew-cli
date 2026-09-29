@@ -81,12 +81,33 @@ export function resolveAuth(input: {
   return { apiKey, apiKeySource, brandId, apiUrl }
 }
 
-export function buildSdkClient(auth: ResolvedAuth): BrewClient {
+/** How a command's SDK client sends: its signal, deadlines and recorder. */
+export type SdkTransport = {
+  readonly signal: AbortSignal
+  readonly fetch: typeof globalThis.fetch
+  readonly timeoutMs: number | undefined
+  readonly maxRetries: number | undefined
+}
+
+export function buildSdkClient(
+  auth: ResolvedAuth,
+  transport: SdkTransport
+): BrewClient {
   return createBrewClient({
     apiKey: auth.apiKey,
     baseUrl: auth.apiUrl,
     userAgent: `${CLI_NAME}/${CLI_VERSION}`,
     ...(auth.brandId === undefined ? {} : { brandId: auth.brandId }),
+    // Client-wide, so every call the command makes observes the interrupt
+    // and the deadline without each command file threading a signal.
+    signal: transport.signal,
+    fetch: transport.fetch,
+    ...(transport.timeoutMs === undefined
+      ? {}
+      : { timeoutMs: transport.timeoutMs }),
+    ...(transport.maxRetries === undefined
+      ? {}
+      : { maxRetries: transport.maxRetries }),
   })
 }
 

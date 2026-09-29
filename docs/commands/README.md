@@ -15,6 +15,8 @@ a `confirmCommand` otherwise, `--yes` to proceed).
 - `--api-key <key>` — Brew API key (else BREW_API_KEY, else stored login)
 - `--brand <brandId>` — Brand id for organization-scoped keys (else BREW_BRAND_ID)
 - `--api-url <url>` — API base URL (else BREW_API_URL, else https://brew.new/api)
+- `--timeout <duration>` — Give up after this long, retries and the response body included (90s, 1500ms, 5m)
+- `--max-retries <n>` — Retries after a transient failure, 0-10 (default 2; raw requests make one attempt)
 
 ## Commands
 
@@ -2432,7 +2434,7 @@ Raw authenticated request against the Brew public API
 - Argument `path` — API path, e.g. /v1/contacts/search
 - `--data <json>` — JSON request body, or - to read stdin
 - `--header <headers...>` — Extra header(s) as "Name: value"
-- `--idempotency-key <key>` — Idempotency-Key header for safe POST retries
+- `--idempotency-key <key>` — Idempotency-Key header for safe POST retries (a POST gets one generated otherwise)
 
 ```bash
 brew-cli api GET /v1/fields

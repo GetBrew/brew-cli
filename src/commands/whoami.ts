@@ -23,6 +23,9 @@ export const whoamiCommand = defineCommand({
       ) {
         throw error
       }
+      // Ctrl-C, SIGTERM or the command's own --timeout stops it: none of
+      // them is an outage to degrade around.
+      ctx.signal.throwIfAborted()
       progress(
         ctx,
         'Warning: could not reach /v1/usage — showing local credential state only.'

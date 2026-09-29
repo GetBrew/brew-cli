@@ -1,17 +1,22 @@
+import { BrewApiError } from '@brew.new/sdk'
 import { Command, CommanderError } from 'commander'
-import { enforceConfirmation } from './lib/confirm'
+import { buildRetryCommand, enforceConfirmation } from './lib/confirm'
 import { makeContext, makeFallbackContext } from './lib/context'
 import type { CommandSpec } from './lib/define-command'
 import { GLOBAL_FLAGS } from './lib/define-command'
 import {
+  CliApiError,
   CliUsageError,
+  type ErrorContext,
   EXIT_OK,
   EXIT_USAGE,
   printError,
   toExitCode,
 } from './lib/errors'
+import { IDEMPOTENCY_FLAG } from './lib/input'
+import { matchesTemplate } from './lib/long-running'
 import { printData } from './lib/output'
-import type { CliContext, CliIo } from './lib/types'
+import type { CliContext, CliIo, CommandTraits } from './lib/types'
 import { ALL_COMMANDS } from './registry'
 import { CLI_NAME, CLI_VERSION } from './version'
 
@@ -54,6 +59,7 @@ Environment:
 Exit codes:
   0 success · 1 API/runtime error · 2 usage error · 3 auth error
   4 confirmation required (re-run with --yes)
+  130 interrupted (SIGINT) · 143 terminated (SIGTERM)
 
 Agents: run \`${CLI_NAME} docs --agent\` for the machine-readable manifest.
 `
@@ -100,8 +106,81 @@ export async function run(
     }
     flushCommanderStderr()
     const ctx = activeContext ?? makeFallbackContext(io, argv)
-    printError(ctx, error)
-    return toExitCode(error)
+    const reported = reportedError(ctx, error)
+    printError(ctx, reported, errorContextFor(ctx, commands))
+    return toExitCode(reported)
+  }
+}
+
+/**
+ * Once the command's signal has aborted — an interrupt or the deadline —
+ * its reason is what happened, whatever surfaced first: a prompt that threw
+ * its own AbortError, a stream that closed. Only a real HTTP answer that
+ * arrived before the abort keeps its own error.
+ */
+function reportedError(ctx: CliContext, error: unknown): unknown {
+  if (!ctx.signal.aborted) {
+    return error
+  }
+  if (error instanceof BrewApiError || error instanceof CliApiError) {
+    return error
+  }
+  return ctx.signal.reason
+}
+
+/** What the error envelope needs to know about the command that failed. */
+function errorContextFor(
+  ctx: CliContext,
+  commands: readonly CommandSpec[]
+): ErrorContext {
+  const request = ctx.transport.lastRequest()
+  const drain = ctx.transport.drain()
+  // The command bound to the route the failed request actually hit — the
+  // `api` escape hatch borrows its class and replay policy from it.
+  const bound =
+    request === undefined ? undefined : commandFor(request, commands)
+  const isRead =
+    bound === undefined ? ctx.traits?.isRead : bound.commandClass === 'read'
+  return {
+    ...(request === undefined ? {} : { request }),
+    ...(drain === undefined ? {} : { drain }),
+    ...(isRead === undefined ? {} : { isRead }),
+    replays:
+      bound === undefined
+        ? ctx.traits?.replays === true
+        : (bound.flags ?? []).includes(IDEMPOTENCY_FLAG),
+    readsStdin: readsStdin(ctx.rawArgv),
+    retryCommand: (key) => buildRetryCommand(ctx.rawArgv, key),
+  }
+}
+
+function commandFor(
+  request: { readonly method: string; readonly path: string },
+  commands: readonly CommandSpec[]
+): CommandSpec | undefined {
+  const apiPath = request.path.split('?')[0] ?? ''
+  return commands.find(
+    (spec) =>
+      spec.route !== undefined &&
+      spec.route.method === request.method &&
+      matchesTemplate(spec.route.path, apiPath)
+  )
+}
+
+/** `--input -`, `--file -` or `--data -`: the re-run needs the same stdin. */
+function readsStdin(rawArgv: readonly string[]): boolean {
+  return rawArgv.some(
+    (token, index) =>
+      token === '-' &&
+      ['--input', '--file', '--data'].includes(rawArgv[index - 1] ?? '')
+  )
+}
+
+function traitsOf(spec: CommandSpec): CommandTraits {
+  return {
+    isRead: spec.commandClass === 'read',
+    replays: (spec.flags ?? []).includes(IDEMPOTENCY_FLAG),
+    defaultTimeoutMs: spec.defaultTimeoutMs,
   }
 }
 
@@ -229,16 +308,23 @@ function registerCommand(
       },
       {}
     )
-    const ctx = makeContext({ io, flags, rawArgv })
+    const ctx = makeContext({ io, flags, rawArgv, traits: traitsOf(spec) })
     onContext?.(ctx)
     const invocation = { ctx, args: positional, flags }
     await enforceConfirmation(spec, invocation)
-    const outcome = await spec.run(invocation)
-    if (outcome !== undefined) {
-      printData(ctx, outcome.data, outcome.human)
-      if (outcome.exitCode !== undefined && outcome.exitCode !== 0) {
-        onExitCode?.(outcome.exitCode)
+    // Armed only now: time a human spends at the y/N prompt is not the
+    // request's.
+    ctx.startDeadline()
+    try {
+      const outcome = await spec.run(invocation)
+      if (outcome !== undefined) {
+        printData(ctx, outcome.data, outcome.human)
+        if (outcome.exitCode !== undefined && outcome.exitCode !== 0) {
+          onExitCode?.(outcome.exitCode)
+        }
       }
+    } finally {
+      ctx.stopDeadline()
     }
   })
 }

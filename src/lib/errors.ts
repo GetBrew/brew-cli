@@ -1,4 +1,9 @@
-import { BrewApiError } from '@brew.new/sdk'
+import {
+  BrewApiError,
+  BrewConnectionError,
+  BrewTimeoutError,
+} from '@brew.new/sdk'
+import type { DrainProgress, RecordedRequest } from './transport'
 import type { CliContext } from './types'
 
 export const EXIT_OK = 0
@@ -6,6 +11,55 @@ export const EXIT_RUNTIME = 1
 export const EXIT_USAGE = 2
 export const EXIT_AUTH = 3
 export const EXIT_CONFIRM = 4
+/** 128 + SIGINT, as a shell reports a Ctrl-C'd process. */
+export const EXIT_INTERRUPTED = 130
+/** 128 + SIGTERM, as a shell reports a terminated process. */
+export const EXIT_TERMINATED = 143
+
+export type InterruptSignal = 'SIGINT' | 'SIGTERM'
+
+export function exitCodeForSignal(signal: InterruptSignal): number {
+  return signal === 'SIGINT' ? EXIT_INTERRUPTED : EXIT_TERMINATED
+}
+
+/**
+ * The process received SIGINT or SIGTERM. It is the abort REASON of the
+ * command's signal, so the SDK and the raw transport rethrow it as-is.
+ */
+export class CliInterruptError extends Error {
+  readonly signal: InterruptSignal
+
+  constructor(signal: InterruptSignal) {
+    super(signal === 'SIGINT' ? 'Interrupted.' : 'Terminated.')
+    this.name = 'CliInterruptError'
+    this.signal = signal
+  }
+}
+
+/**
+ * A deadline the CLI owns ran out: the command's `--timeout` (or its
+ * default), or one raw attempt's. Named `TimeoutError` like the platform's
+ * and the SDK's, so every timeout check agrees.
+ */
+export class CliTimeoutError extends Error {
+  readonly timeoutMs: number
+
+  constructor(timeoutMs: number) {
+    super(`No complete response within ${timeoutMs}ms.`)
+    this.name = 'TimeoutError'
+    this.timeoutMs = timeoutMs
+  }
+}
+
+/** A raw request's connection failed or dropped before the body arrived. */
+export class CliConnectionError extends Error {
+  constructor(cause: unknown) {
+    super('The connection failed before a complete response arrived.', {
+      cause,
+    })
+    this.name = 'CliConnectionError'
+  }
+}
 
 /** Bad invocation: malformed input, unusable flag combinations. */
 export class CliUsageError extends Error {}
@@ -136,6 +190,9 @@ export class ConfirmationRequiredError extends Error {
 }
 
 export function toExitCode(error: unknown): number {
+  if (error instanceof CliInterruptError) {
+    return exitCodeForSignal(error.signal)
+  }
   if (error instanceof ConfirmationRequiredError) {
     return EXIT_CONFIRM
   }
@@ -163,9 +220,90 @@ export type CliErrorEnvelope = {
   /** The API's `details` object, verbatim, when the refusal carried one. */
   readonly details?: Record<string, unknown>
   readonly status?: number
+  /**
+   * When the outcome of a replaying write is unknown (a timeout, a dropped
+   * connection, an interrupt, a 5xx): the key its request carried, and the
+   * command that replays it instead of running it twice.
+   */
+  readonly idempotencyKey?: string
+  readonly retryCommand?: string
+  /** How far an interrupted `--all` drain got, and the cursor to resume at. */
+  readonly progress?: DrainProgress
 }
 
-export function toErrorEnvelope(error: unknown): CliErrorEnvelope {
+/**
+ * What the CLI knows about the command that failed, for advice an error
+ * alone cannot give: which request it was, whether it only read, whether its
+ * route replays a keyed request, and the command line that would replay it.
+ */
+export type ErrorContext = {
+  readonly request?: RecordedRequest
+  readonly isRead?: boolean
+  /** `true` when the route replays a request carrying the same key. */
+  readonly replays?: boolean
+  /** Builds the re-run command line for a key. */
+  readonly retryCommand?: (idempotencyKey: string) => string
+  /** The command read its body from stdin: the re-run needs it again. */
+  readonly readsStdin?: boolean
+  readonly drain?: DrainProgress
+}
+
+export function toErrorEnvelope(
+  error: unknown,
+  context: ErrorContext = {}
+): CliErrorEnvelope {
+  const envelope = baseEnvelope(error, context)
+  const drain = context.drain
+  return withReplayAdvice(
+    drain === undefined ? envelope : { ...envelope, progress: drain },
+    error,
+    context
+  )
+}
+
+function baseEnvelope(error: unknown, context: ErrorContext): CliErrorEnvelope {
+  if (error instanceof CliInterruptError) {
+    return {
+      code: 'CLI_INTERRUPTED',
+      type: 'cancelled',
+      message: `${error.signal === 'SIGINT' ? 'Interrupted' : 'Terminated'} (${error.signal}) ${
+        context.request === undefined
+          ? 'before any request was sent.'
+          : `while waiting for ${context.request.method} ${pathOnly(context.request.path)}.`
+      }`,
+    }
+  }
+  if (isTimeoutError(error)) {
+    return {
+      code: 'CLI_TIMEOUT',
+      type: 'service_unavailable',
+      message: timeoutMessage(error, context),
+      suggestion:
+        'Retry the request. Reuse the same Idempotency-Key for a POST request.',
+    }
+  }
+  if (
+    error instanceof BrewConnectionError ||
+    error instanceof CliConnectionError
+  ) {
+    const cause =
+      error.cause instanceof Error && error.cause.message !== ''
+        ? `: ${error.cause.message}`
+        : ''
+    return {
+      code: 'CLI_CONNECTION',
+      type: 'service_unavailable',
+      message:
+        error instanceof BrewConnectionError
+          ? error.message
+          : `${error.message.replace(/\.$/, '')}${
+              context.request === undefined
+                ? ''
+                : ` (${context.request.method} ${pathOnly(context.request.path)})`
+            }${cause}.`,
+      suggestion: 'Check the connection and retry the request.',
+    }
+  }
   if (error instanceof BrewApiError || error instanceof CliApiError) {
     const details = readErrorDetails(error)
     return {
@@ -195,15 +333,6 @@ export function toErrorEnvelope(error: unknown): CliErrorEnvelope {
       message: error.message,
     }
   }
-  if (isTimeoutError(error)) {
-    return {
-      code: 'CLI_TIMEOUT',
-      type: 'service_unavailable',
-      message: 'The request timed out before the API responded.',
-      suggestion:
-        'Retry the request. Reuse the same Idempotency-Key for a POST request.',
-    }
-  }
   if (error instanceof CommandAbortedError) {
     return {
       code: 'CLI_ABORTED',
@@ -220,7 +349,103 @@ export function toErrorEnvelope(error: unknown): CliErrorEnvelope {
   return { code: 'CLI_UNEXPECTED', type: 'internal_error', message }
 }
 
-export function printError(ctx: CliContext, error: unknown): void {
+const IN_PROGRESS_CODE = 'IDEMPOTENCY_IN_PROGRESS'
+
+/**
+ * Advice for an UNKNOWN outcome — a timeout, a dropped connection, an
+ * interrupt, a 5xx, or the API saying the first attempt is still running.
+ * The server keeps working after the CLI disconnects, so a write may still
+ * complete: the only safe re-run is one that replays it with the same key.
+ * A definite answer (any other 4xx, a conflict that needs a NEW key) gets
+ * no key: replaying it would fail the same way.
+ */
+function withReplayAdvice(
+  envelope: CliErrorEnvelope,
+  error: unknown,
+  context: ErrorContext
+): CliErrorEnvelope {
+  if (!isUnknownOutcome(envelope)) {
+    return envelope
+  }
+  const isInProgress =
+    envelope.code === IN_PROGRESS_CODE ||
+    (error instanceof BrewTimeoutError && error.inProgress) ||
+    (error instanceof BrewConnectionError && error.inProgress)
+  const holdNote = isInProgress
+    ? ' The first attempt is still running on the server, which holds its key for up to 15 minutes: until then a replay answers 409 IDEMPOTENCY_IN_PROGRESS, so wait and re-run.'
+    : ''
+  if (context.request === undefined) {
+    return envelope.code === 'CLI_INTERRUPTED'
+      ? { ...envelope, suggestion: 'Nothing was sent.' }
+      : envelope
+  }
+  if (context.isRead === true || context.request.method === 'GET') {
+    return envelope.code === 'CLI_INTERRUPTED'
+      ? { ...envelope, suggestion: 'It only reads; nothing was changed.' }
+      : envelope
+  }
+  const key = errorIdempotencyKey(error) ?? context.request.idempotencyKey
+  if (context.replays !== true || key === undefined) {
+    return {
+      ...envelope,
+      suggestion: `${pathOnly(context.request.path)} may already have been changed, and this route does not replay a request: check its current state before running it again.`,
+    }
+  }
+  const retryCommand = context.retryCommand?.(key)
+  return {
+    ...envelope,
+    suggestion: `The API keeps working after the CLI disconnects, so this may still complete. Re-run with --idempotency-key ${key} to get its result instead of running it twice (the key replays for 24 hours${context.readsStdin === true ? '; pipe the same input to it again' : ''}).${holdNote}`,
+    idempotencyKey: key,
+    ...(retryCommand === undefined ? {} : { retryCommand }),
+  }
+}
+
+function isUnknownOutcome(envelope: CliErrorEnvelope): boolean {
+  if (
+    envelope.code === 'CLI_INTERRUPTED' ||
+    envelope.code === 'CLI_TIMEOUT' ||
+    envelope.code === 'CLI_CONNECTION' ||
+    envelope.code === IN_PROGRESS_CODE
+  ) {
+    return true
+  }
+  return envelope.status !== undefined && envelope.status >= 500
+}
+
+function errorIdempotencyKey(error: unknown): string | undefined {
+  if (
+    error instanceof BrewApiError ||
+    error instanceof BrewTimeoutError ||
+    error instanceof BrewConnectionError
+  ) {
+    return error.idempotencyKey
+  }
+  return undefined
+}
+
+function timeoutMessage(error: unknown, context: ErrorContext): string {
+  if (error instanceof BrewTimeoutError) {
+    return error.message
+  }
+  if (error instanceof CliTimeoutError) {
+    const request = context.request
+    return request === undefined
+      ? error.message
+      : `${error.message.replace(/\.$/, '')} (${request.method} ${pathOnly(request.path)}).`
+  }
+  return 'The request timed out before the API responded.'
+}
+
+/** Drop the query string: it can carry an email address. */
+function pathOnly(path: string): string {
+  return path.split('?')[0] ?? path
+}
+
+export function printError(
+  ctx: CliContext,
+  error: unknown,
+  context: ErrorContext = {}
+): void {
   if (error instanceof ConfirmationRequiredError) {
     ctx.io.stdout.write(`${JSON.stringify(error.envelope)}\n`)
     if (ctx.mode === 'human') {
@@ -230,7 +455,7 @@ export function printError(ctx: CliContext, error: unknown): void {
     }
     return
   }
-  const envelope = toErrorEnvelope(error)
+  const envelope = toErrorEnvelope(error, context)
   if (ctx.mode === 'json') {
     ctx.io.stderr.write(`${JSON.stringify({ error: envelope })}\n`)
     return
@@ -241,6 +466,19 @@ export function printError(ctx: CliContext, error: unknown): void {
   ]
   if (envelope.suggestion) {
     lines.push(envelope.suggestion)
+  }
+  if (envelope.retryCommand) {
+    lines.push(`Re-run: ${envelope.retryCommand}`)
+  }
+  if (envelope.progress) {
+    const { rowsFetched, pagesFetched, resumeCursor } = envelope.progress
+    lines.push(
+      `Fetched ${rowsFetched} rows in ${pagesFetched} pages before stopping${
+        resumeCursor === undefined
+          ? '.'
+          : `; resume with --cursor ${resumeCursor} --all.`
+      }`
+    )
   }
   if (envelope.docs) {
     lines.push(`Docs: ${envelope.docs}`)
@@ -308,11 +546,17 @@ function apiErrorStatus(error: unknown): number | undefined {
   }
 }
 
-function isTimeoutError(error: unknown): boolean {
+/**
+ * The SDK's `BrewTimeoutError`, the CLI's own `CliTimeoutError`, and the
+ * platform's `AbortSignal.timeout` DOMException all name themselves
+ * `TimeoutError`.
+ */
+export function isTimeoutError(error: unknown): boolean {
   return (
-    typeof error === 'object' &&
-    error !== null &&
-    'name' in error &&
-    error.name === 'TimeoutError'
+    error instanceof BrewTimeoutError ||
+    (typeof error === 'object' &&
+      error !== null &&
+      'name' in error &&
+      error.name === 'TimeoutError')
   )
 }

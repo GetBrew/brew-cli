@@ -18,6 +18,11 @@ export type RunCliOptions = {
    * be tested before it is wired into src/registry.ts.
    */
   readonly extraCommands?: readonly CommandSpec[]
+  /**
+   * Stands in for the process signal handler: abort it with a
+   * `CliInterruptError` to simulate SIGINT/SIGTERM at an exact moment.
+   */
+  readonly signal?: AbortSignal
 }
 
 export type RunCliResult = {
@@ -50,6 +55,7 @@ export async function runCli(
     env: options.env ?? {},
     readStdin: async () => options.stdin ?? '',
     readLine: async () => options.promptAnswer ?? '',
+    ...(options.signal === undefined ? {} : { signal: options.signal }),
   }
   const code = await run(
     argv,
