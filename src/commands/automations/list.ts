@@ -22,7 +22,16 @@ export const automationsListCommand = defineCommand({
   sdkMethod: 'automations.list',
   route: { method: 'GET', path: '/v1/automations' },
   commandClass: 'read',
-  flags: [LIMIT_FLAG, CURSOR_FLAG, ALL_FLAG, INPUT_FLAG],
+  flags: [
+    {
+      flag: '--search <text>',
+      summary: 'Only automations whose name matches these words',
+    },
+    LIMIT_FLAG,
+    CURSOR_FLAG,
+    ALL_FLAG,
+    INPUT_FLAG,
+  ],
   examples: [
     'brew-cli automations list',
     'brew-cli automations list --all --json',
@@ -30,6 +39,7 @@ export const automationsListCommand = defineCommand({
   run: async ({ ctx, flags }) => {
     const base = await readJsonFlag(ctx, flags.input, '--input')
     const input = mergeInput(base, {
+      search: flagString(flags.search),
       limit: flagInt(flags.limit, '--limit'),
       cursor: flagString(flags.cursor),
     })

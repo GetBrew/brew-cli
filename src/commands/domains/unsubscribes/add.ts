@@ -1,23 +1,17 @@
-import type { operations } from '../../../generated/openapi-types'
 import { defineCommand } from '../../../lib/define-command'
 import { CliUsageError } from '../../../lib/errors'
-import { flagString, IDEMPOTENCY_FLAG, toStringArray } from '../../../lib/input'
-import { rawRequest } from '../../../lib/raw-request'
+import {
+  IDEMPOTENCY_FLAG,
+  requestOptions,
+  toStringArray,
+} from '../../../lib/input'
 
-type Added =
-  operations['addDomainUnsubscribes']['responses'][200]['content']['application/json']
-
-/**
- * Suppress addresses from ONE marketing domain's mail. Raw route because
- * `@brew.new/sdk` 10 has no method for it: once the CLI adopts SDK 11.2,
- * bind `domains.unsubscribes.add(...)` here and drop `isRawTransport`.
- */
+/** Suppress addresses from ONE marketing domain's mail. */
 export const domainsUnsubscribesAddCommand = defineCommand({
   path: ['domains', 'unsubscribes', 'add'],
   summary:
     "Add addresses to a marketing domain's unsubscribe list (that domain only)",
-  sdkMethod: null,
-  isRawTransport: true,
+  sdkMethod: 'domains.unsubscribes.add',
   route: { method: 'POST', path: '/v1/domains/{domainId}/unsubscribes' },
   commandClass: 'write',
   args: [
@@ -38,12 +32,12 @@ export const domainsUnsubscribesAddCommand = defineCommand({
     if (emails === undefined) {
       throw new CliUsageError('Pass at least one --email.')
     }
-    const body = await rawRequest<Added>(ctx, {
-      method: 'POST',
-      path: `/v1/domains/${encodeURIComponent(args.domainId ?? '')}/unsubscribes`,
-      body: { emails },
-      idempotencyKey: flagString(flags.idempotencyKey),
-    })
+    const body = await ctx
+      .client()
+      .domains.unsubscribes.add(
+        { domainId: args.domainId ?? '', emails: [...emails] },
+        requestOptions(flags)
+      )
     return { data: body }
   },
 })

@@ -21,30 +21,6 @@ export type SpecSkip = {
 /** SDK methods that intentionally have no dedicated CLI command. */
 export const SDK_SKIP_LIST: readonly SdkSkip[] = [
   {
-    sdkPath: 'automations.triggers.getContract',
-    reason:
-      'covered by `automations triggers contract get` (raw route, bound pre-SDK-v9; SDK-method migration tracked separately)',
-  },
-  {
-    sdkPath: 'automations.triggers.putContract',
-    reason:
-      'covered by `automations triggers contract put` (raw route, bound pre-SDK-v9)',
-  },
-  {
-    sdkPath: 'automations.triggers.validatePayload',
-    reason:
-      'covered by `automations triggers contract validate` (raw route, bound pre-SDK-v9)',
-  },
-  {
-    sdkPath: 'brand.getImages',
-    reason:
-      'covered by `brand get-images` (raw route: SDK 10 cannot send `kind` or `sort`, brew-v2#1713; bind SDK 11.2)',
-  },
-  {
-    sdkPath: 'payloadContracts.infer',
-    reason: 'covered by `contracts infer` (raw route, bound pre-SDK-v9)',
-  },
-  {
     sdkPath: 'contacts.searchAll',
     reason: 'auto-pager covered by `contacts search --all`',
   },
@@ -77,8 +53,8 @@ export const SDK_SKIP_LIST: readonly SdkSkip[] = [
  *
  * Empty as of 0.7.0: every v1 operation is bound, including the detail
  * reads, the sends root, trigger instances, trigger readiness, and the
- * run/audience-run lifecycle actions. 0.8.0 keeps it empty by binding the
- * saved-audit, rendering-job and template reads as raw routes ahead of
- * SDK 11.
+ * run/audience-run lifecycle actions. Since 0.10.0 (SDK 11.2) every one of
+ * them goes through an SDK method except the paged `api-keys list` and
+ * `integrations list` reads and the `api` escape hatch.
  */
 export const SPEC_SKIP_LIST: readonly SpecSkip[] = []

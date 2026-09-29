@@ -1,21 +1,11 @@
-import type { operations } from '../../generated/openapi-types'
 import { defineCommand } from '../../lib/define-command'
-import { rawRequest } from '../../lib/raw-request'
 
-type EmailClientPreviewJob =
-  operations['getEmailRendering']['responses'][200]['content']['application/json']
-
-/**
- * Polls the rendering job `emails preview-clients` starts. Raw route because
- * `@brew.new/sdk` 10 has no method for it: once the CLI adopts SDK 11, bind
- * `emails.getClientPreview(previewId)` here and drop `isRawTransport`.
- */
+/** Polls the rendering job `emails preview-clients` starts. */
 export const emailsGetClientPreviewCommand = defineCommand({
   path: ['emails', 'get-client-preview'],
   summary:
     'Poll a client-preview rendering job: per-client screenshot links once it settles (free; never re-renders)',
-  sdkMethod: null,
-  isRawTransport: true,
+  sdkMethod: 'emails.getClientPreview',
   route: { method: 'GET', path: '/v1/emails/client-previews/{previewId}' },
   commandClass: 'read',
   args: [
@@ -34,10 +24,9 @@ export const emailsGetClientPreviewCommand = defineCommand({
   // `failed`; each client then carries its `imageUrl`, or a `reason` and
   // whether it is `retryable`.
   run: async ({ ctx, args }) => {
-    const body = await rawRequest<EmailClientPreviewJob>(ctx, {
-      method: 'GET',
-      path: `/v1/emails/client-previews/${encodeURIComponent(args.previewId ?? '')}`,
-    })
+    const body = await ctx
+      .client()
+      .emails.getClientPreview(args.previewId ?? '')
     return { data: body }
   },
 })

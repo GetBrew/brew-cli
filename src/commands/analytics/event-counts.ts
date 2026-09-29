@@ -1,31 +1,33 @@
-import type { operations } from '../../generated/openapi-types'
+import type { EventCountsInput, EventCountsResponse } from '@brew.new/sdk'
 import { defineCommand } from '../../lib/define-command'
 import { CliUsageError } from '../../lib/errors'
 import {
+  asSdkInput,
   flagString,
   INPUT_FLAG,
   mergeInput,
   readJsonFlag,
 } from '../../lib/input'
 import { renderTable } from '../../lib/output'
-import { rawRequest } from '../../lib/raw-request'
-
-type EventCounts = Extract<
-  operations['getEventsAnalytics']['responses'][200]['content']['application/json'],
-  { groups: unknown }
->
 
 /**
- * Grouped counts of the email events `analytics events` lists. Raw route
- * because `@brew.new/sdk` 10 has no method for it: once the CLI adopts SDK
- * 11.2, bind `analytics.eventCounts(...)` here and drop `isRawTransport`.
+ * Keys the events read takes for a page of ROWS that a grouped count
+ * refuses, with the API's own reason. The SDK does not send them, so they
+ * are refused here rather than silently dropped. (`limit` only sizes a page
+ * and a count ignores it, as the API does.)
  */
+const ROW_ONLY_KEYS: Readonly<Record<string, string>> = {
+  cursor: 'A grouped count is not paged; drop `cursor`.',
+  automationRunId:
+    '`groupBy` and `bucket` count email events and do not combine with `automationRunId`.',
+}
+
+/** Grouped counts of the email events `analytics events` lists. */
 export const analyticsEventCountsCommand = defineCommand({
   path: ['analytics', 'event-counts'],
   summary:
     'Count email events per field and/or period (clicks per link, events per day, unsubscribe reasons)',
-  sdkMethod: null,
-  isRawTransport: true,
+  sdkMethod: 'analytics.eventCounts',
   route: { method: 'GET', path: '/v1/analytics/events' },
   commandClass: 'read',
   flags: [
@@ -69,34 +71,46 @@ export const analyticsEventCountsCommand = defineCommand({
       sendId: flagString(flags.sendId),
       emailId: flagString(flags.emailId),
       recipient: flagString(flags.recipient),
-    }) as Record<string, unknown>
+    })
     if (input.groupBy === undefined && input.bucket === undefined) {
       throw new CliUsageError(
         'Pass --group-by, --bucket, or both (`analytics events` lists the rows).'
       )
     }
-    const query: Record<string, string | undefined> = {}
-    for (const [key, value] of Object.entries(input)) {
-      if (key === 'cursor' || key === 'limit') {
-        continue
+    for (const [key, reason] of Object.entries(ROW_ONLY_KEYS)) {
+      if (input[key] !== undefined) {
+        throw new CliUsageError(reason)
       }
-      query[key] =
-        value === undefined || value === null
-          ? undefined
-          : Array.isArray(value)
-            ? value.map(String).join(',')
-            : String(value)
     }
-    const body = await rawRequest<EventCounts>(ctx, {
-      method: 'GET',
-      path: '/v1/analytics/events',
-      query,
-    })
+    const { limit: _pageSize, ...counted } = input
+    const body = await ctx.client().analytics.eventCounts(
+      asSdkInput<EventCountsInput>({
+        ...counted,
+        ...(counted.groupBy === undefined
+          ? {}
+          : { groupBy: toFieldList(counted.groupBy) }),
+      })
+    )
     return { data: body, human: renderCounts(body) }
   },
 })
 
-function renderCounts(body: EventCounts): string {
+/**
+ * `--group-by eventType,link` (or a `groupBy` string in --input) becomes the
+ * field list the SDK sends; an array from --input passes through. The API
+ * validates the fields and how many.
+ */
+function toFieldList(value: unknown): unknown {
+  if (typeof value !== 'string') {
+    return value
+  }
+  return value
+    .split(',')
+    .map((field) => field.trim())
+    .filter((field) => field !== '')
+}
+
+function renderCounts(body: EventCountsResponse): string {
   if (body.groups.length === 0) {
     return `No events counted (total ${body.count}).`
   }
@@ -107,8 +121,11 @@ function renderCounts(body: EventCounts): string {
     ...(group.bucket === undefined ? {} : { bucket: group.bucket }),
     count: group.count,
   }))
+  // A --bucket-only count has no grouped fields: leave out an all-blank column.
   const table = renderTable(rows, [
-    { key: 'group', header: 'GROUP' },
+    ...(rows.some((row) => row.group !== '')
+      ? [{ key: 'group', header: 'GROUP' }]
+      : []),
     ...(rows.some((row) => 'bucket' in row)
       ? [{ key: 'bucket', header: 'PERIOD' }]
       : []),

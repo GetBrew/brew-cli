@@ -1,11 +1,6 @@
-import type { operations } from '../../generated/openapi-types'
 import { defineCommand } from '../../lib/define-command'
 import { CliUsageError } from '../../lib/errors'
 import { flagString } from '../../lib/input'
-import { rawRequest } from '../../lib/raw-request'
-
-type EmailDetail =
-  operations['getEmail']['responses'][200]['content']['application/json']
 
 export const emailsGetCommand = defineCommand({
   path: ['emails', 'get'],
@@ -52,21 +47,11 @@ export const emailsGetCommand = defineCommand({
         'Pass --email-version-id or --run-id, not both: each selects the version to read.'
       )
     }
-    if (emailVersionId === undefined && runId === undefined) {
-      return {
-        data: await ctx
-          .client()
-          .emails.get(emailId, include === undefined ? undefined : { include }),
-      }
-    }
-    // `@brew.new/sdk` 10's `emails.get` options carry no version selector
-    // (SDK 11's do): a selected read goes through the raw transport until the
-    // CLI adopts SDK 11.
     return {
-      data: await rawRequest<EmailDetail>(ctx, {
-        method: 'GET',
-        path: `/v1/emails/${encodeURIComponent(emailId)}`,
-        query: { include, emailVersionId, runId },
+      data: await ctx.client().emails.get(emailId, {
+        ...(include === undefined ? {} : { include }),
+        ...(emailVersionId === undefined ? {} : { emailVersionId }),
+        ...(runId === undefined ? {} : { runId }),
       }),
     }
   },

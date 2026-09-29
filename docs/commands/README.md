@@ -2,7 +2,7 @@
 
 <!-- GENERATED FILE — do not edit. Regenerate with `bun run docs:commands`. -->
 
-136 commands. Classes: read (always safe), write
+137 commands. Classes: read (always safe), write
 (mutating, retry-safe), destructive (irreversible — the confirmation
 protocol applies: interactive y/N on a TTY, exit 4 + JSON envelope with
 a `confirmCommand` otherwise, `--yes` to proceed).
@@ -31,6 +31,7 @@ a `confirmCommand` otherwise, `--yes` to proceed).
 | `brew-cli contacts search` | read | `POST /v1/contacts/search` | Search contacts with structured filters (the contacts read) |
 | `brew-cli contacts get` | read | `GET /v1/contacts/{email}` | Fetch one contact by email — the bare row |
 | `brew-cli contacts count` | read | `POST /v1/contacts/search` | Count contacts matching a filter |
+| `brew-cli contacts count-by` | read | `POST /v1/contacts/search` | Count contacts per field value, email domain, or signup period (largest group first) |
 | `brew-cli contacts upsert` | write | `POST /v1/contacts` | Create or update one contact by email |
 | `brew-cli contacts upsert-many` | write | `POST /v1/contacts` | Create or update a batch of contacts (up to 100 per call) |
 | `brew-cli contacts update` | write | `PATCH /v1/contacts/{email}` | Partially update one contact (PATCH; never retried) |
@@ -74,7 +75,7 @@ a `confirmCommand` otherwise, `--yes` to proceed).
 | `brew-cli audiences list` | read | `GET /v1/audiences` | List audience segments; one segment is `audiences get` |
 | `brew-cli audiences get` | read | `GET /v1/audiences/{audienceId}` | Fetch one audience segment by id — the bare row |
 | `brew-cli audiences create` | write | `POST /v1/audiences` | Create an audience segment from a filter definition |
-| `brew-cli audiences update` | write | `PATCH /v1/audiences/{audienceId}` | Update an audience segment (name and/or filters) |
+| `brew-cli audiences update` | write | `PATCH /v1/audiences/{audienceId}` | Update an audience segment: its name, its filters, or its members by email |
 | `brew-cli audiences duplicate` | write | `POST /v1/audiences/{audienceId}/duplicate` | Copy an audience segment (the copy gets a "(copy)" name) |
 | `brew-cli audiences from-events` | write | `POST /v1/audiences/from-events` | Create a frozen audience snapshot from analytics events (async build) |
 | `brew-cli audiences delete` | destructive | `DELETE /v1/audiences/{audienceId}` | Delete an audience segment (contacts are kept) |
@@ -313,6 +314,27 @@ brew-cli contacts count
 brew-cli contacts count --filter subscribed:equals:true
 ```
 
+### brew-cli contacts count-by
+
+Count contacts per field value, email domain, or signup period (largest group first)
+
+- Route: `POST /v1/contacts/search`
+- Class: read
+- SDK: `brew.contacts.countBy(...)`
+- `--group-by <fields>` — One or two comma-separated fields: a contact field, a custom field, or emailDomain
+- `--bucket <period>` — Count per UTC day, week or month of createdAt
+- `--search <text>` — Free-text search
+- `--filter <filters...>` — Structured filter field:operator[:value], repeatable
+- `--audience <audienceId>` — Scope to one audience
+- `--logic <logic>` — Filter combinator: and | or
+- `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
+
+```bash
+brew-cli contacts count-by --group-by emailDomain
+brew-cli contacts count-by --bucket month --filter subscribed:equals:true
+brew-cli contacts count-by --group-by country,plan --json
+```
+
 ### brew-cli contacts upsert
 
 Create or update one contact by email
@@ -500,6 +522,7 @@ List email designs; one design is `emails get`
 - Route: `GET /v1/emails`
 - Class: read
 - SDK: `brew.emails.list(...)`
+- `--search <text>` — Only designs whose title contains this text, or whose title, subject, preview or text matches its words
 - `--status <status>` — Filter by status: generating | ready | failed
 - `--group-id <groupId>` — Filter by one group id; use ungrouped for no saved group
 - `--sort-by <field>` — Timestamp the page is ordered by and that --since/--until bound: updatedAt (default) | createdAt
@@ -799,6 +822,7 @@ Read a saved email audit: one page of its findings (free; never reruns the audit
 
 - Route: `GET /v1/emails/audits/{auditId}`
 - Class: read
+- SDK: `brew.emails.getAudit(...)`
 - Argument `auditId` — The auditId `emails audit` returned (reports are kept 7 days)
 - `--limit <n>` — Findings per page, 1-50 (default 10)
 - `--cursor <cursor>` — Opaque pagination cursor from a previous page
@@ -833,6 +857,7 @@ Poll a client-preview rendering job: per-client screenshot links once it settles
 
 - Route: `GET /v1/emails/client-previews/{previewId}`
 - Class: read
+- SDK: `brew.emails.getClientPreview(...)`
 - Argument `previewId` — The previewId `emails preview-clients` returned
 
 ```bash
@@ -1024,6 +1049,7 @@ List audience segments; one segment is `audiences get`
 - Class: read
 - SDK: `brew.audiences.list(...)`
 - `--include <tokens>` — 0.6 flag: includes ride the detail read now (`audiences get --include count,build`)
+- `--search <text>` — Only audiences whose name contains this text
 - `--limit <n>` — Page size, 1-100 (default 100)
 - `--cursor <cursor>` — Opaque pagination cursor from a previous page
 - `--all` — Follow the cursor and return every page as one result
@@ -1067,17 +1093,20 @@ brew-cli audiences create --name VIP --input '{"filters":{"filters":[{"field":"p
 
 ### brew-cli audiences update
 
-Update an audience segment (name and/or filters)
+Update an audience segment: its name, its filters, or its members by email
 
 - Route: `PATCH /v1/audiences/{audienceId}`
 - Class: write
 - SDK: `brew.audiences.update(...)`
 - Argument `audienceId` — Audience id to update
 - `--name <name>` — New audience name
+- `--add-email <addresses...>` — Add these contacts by email, repeatable (refused when the filters cannot express it exactly)
+- `--remove-email <addresses...>` — Remove these contacts by email, repeatable (same rule)
 - `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
 
 ```bash
 brew-cli audiences update aud_3k9sQ --name "VIP customers"
+brew-cli audiences update aud_3k9sQ --add-email ada@example.com --remove-email bo@example.com
 brew-cli audiences update aud_3k9sQ --input '{"filters":{"filters":[{"field":"plan","operator":"equals","value":"vip"}],"logicalOperator":"and"}}'
 ```
 
@@ -1136,6 +1165,7 @@ List automations (lean rows; `automations get` for the graph)
 - Route: `GET /v1/automations`
 - Class: read
 - SDK: `brew.automations.list(...)`
+- `--search <text>` — Only automations whose name matches these words
 - `--limit <n>` — Page size, 1-100 (default 100)
 - `--cursor <cursor>` — Opaque pagination cursor from a previous page
 - `--all` — Follow the cursor and return every page as one result
@@ -1324,6 +1354,7 @@ Read a trigger payload contract: stored when declared, derived otherwise; --form
 
 - Route: `GET /v1/automations/triggers/{triggerEventId}/contract`
 - Class: read
+- SDK: `brew.automations.triggers.getContract(...)`
 - Argument `triggerEventId` — Trigger id (tri_…, or an integration composite id)
 - `--format <format>` — Rendering: json (default, the contract object) or ts | zod | jsonschema | skill ({format, content})
 
@@ -1339,6 +1370,7 @@ Declare (or replace) the stored payload contract for a trigger — tree-validate
 
 - Route: `PUT /v1/automations/triggers/{triggerEventId}/contract`
 - Class: write
+- SDK: `brew.automations.triggers.putContract(...)`
 - Argument `triggerEventId` — Trigger id (tri_…)
 - `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
 - `--enforcement <mode>` — off (advisory, the default) | prune (drop fields not on the list) | strict (reject a payload carrying them)
@@ -1354,6 +1386,7 @@ Dry-run a payload against a trigger's contract (the fire path's validator) — n
 
 - Route: `POST /v1/automations/triggers/{triggerEventId}/contract/validate`
 - Class: read
+- SDK: `brew.automations.triggers.validatePayload(...)`
 - Argument `triggerEventId` — Trigger id (tri_…)
 - `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
 - `--enforcement <mode>` — Preview a mode other than the stored one: prune | strict
@@ -1368,6 +1401,7 @@ Draft a payload contract from a real example payload — nothing is saved; PUT t
 
 - Route: `POST /v1/payload-contracts/infer`
 - Class: read
+- SDK: `brew.payloadContracts.infer(...)`
 - `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
 
 ```bash
@@ -1715,6 +1749,7 @@ Count email events per field and/or period (clicks per link, events per day, uns
 
 - Route: `GET /v1/analytics/events`
 - Class: read
+- SDK: `brew.analytics.eventCounts(...)`
 - `--group-by <fields>` — One or two comma-separated fields: eventType, emailId, automationId, sendId, source, link, recipientDomain, unsubscribeReason
 - `--bucket <period>` — Count per UTC day, week (Monday start) or month
 - `--since <datetime>` — Window start (ISO-8601)
@@ -1823,6 +1858,7 @@ Browse or semantically search the brand's assets (logos, brand images, images ma
 
 - Route: `GET /v1/brand/images`
 - Class: read
+- SDK: `brew.brand.getImages(...)`
 - `--query <text>` — Semantic search over what the images show (1 credit per new search; logos are not searchable)
 - `--kind <kind>` — logo, brand (from the site or uploaded) or generated
 - `--sort <order>` — Browse order: newest (default) or oldest; ignored by --query
@@ -2047,6 +2083,7 @@ One page of a marketing domain's unsubscribe list, newest first
 
 - Route: `GET /v1/domains/{domainId}/unsubscribes`
 - Class: read
+- SDK: `brew.domains.unsubscribes.list(...)`
 - Argument `domainId` — Marketing domain id
 - `--q <text>` — Search by address
 - `--scope <scope>` — any (default), domain (this list only) or all (brand-wide opt-outs)
@@ -2064,6 +2101,7 @@ Add addresses to a marketing domain's unsubscribe list (that domain only)
 
 - Route: `POST /v1/domains/{domainId}/unsubscribes`
 - Class: write
+- SDK: `brew.domains.unsubscribes.add(...)`
 - Argument `domainId` — Marketing domain id
 - `--email <addresses...>` — Address to suppress, repeatable (up to 1,000)
 - `--idempotency-key <key>` — Idempotency-Key for safe retries (auto-generated otherwise)
@@ -2078,6 +2116,7 @@ Take one address off a domain's unsubscribe list (never re-subscribes a brand-wi
 
 - Route: `DELETE /v1/domains/{domainId}/unsubscribes/{email}`
 - Class: write
+- SDK: `brew.domains.unsubscribes.remove(...)`
 - Argument `domainId` — Marketing domain id
 - Argument `email` — Address to remove
 
@@ -2091,6 +2130,7 @@ Add every address in a CSV to a domain's unsubscribe list
 
 - Route: `POST /v1/domains/{domainId}/unsubscribes/import`
 - Class: write
+- SDK: `brew.domains.unsubscribes.import(...)`
 - Argument `domainId` — Marketing domain id
 - `--file <path>` — CSV file, or - for stdin
 - `--column <header>` — The column holding the addresses (by header)
@@ -2106,6 +2146,7 @@ A domain's unsubscribe list as CSV (truncated when capped)
 
 - Route: `GET /v1/domains/{domainId}/unsubscribes/export`
 - Class: read
+- SDK: `brew.domains.unsubscribes.export(...)`
 - Argument `domainId` — Marketing domain id
 - `--scope <scope>` — any (default), domain or all
 
@@ -2244,6 +2285,7 @@ Fetch one public template: its links and the referenceEmailId to remix; --includ
 
 - Route: `GET /v1/templates/{templateId}`
 - Class: read
+- SDK: `brew.templates.get(...)`
 - Argument `templateId` — Template id: the TEMPLATE column (emailId) of `templates list`
 - `--include <tokens>` — Expansions: html (the rendered HTML; a large page arrives as a content.url download link instead)
 
@@ -2402,11 +2444,6 @@ brew-cli api GET /v1/llms.txt
 
 SDK methods intentionally without a dedicated command:
 
-- `automations.triggers.getContract` — covered by `automations triggers contract get` (raw route, bound pre-SDK-v9; SDK-method migration tracked separately)
-- `automations.triggers.putContract` — covered by `automations triggers contract put` (raw route, bound pre-SDK-v9)
-- `automations.triggers.validatePayload` — covered by `automations triggers contract validate` (raw route, bound pre-SDK-v9)
-- `brand.getImages` — covered by `brand get-images` (raw route: SDK 10 cannot send `kind` or `sort`, brew-v2#1713; bind SDK 11.2)
-- `payloadContracts.infer` — covered by `contracts infer` (raw route, bound pre-SDK-v9)
 - `contacts.searchAll` — auto-pager covered by `contacts search --all`
 - `analytics.eventsAll` — auto-pager covered by `analytics events --all`
 - `sends.listAll` — auto-pager covered by `sends list --all`

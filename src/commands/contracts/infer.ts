@@ -1,18 +1,18 @@
-import type { components } from '../../generated/openapi-types'
+import type { InferPayloadContractInput } from '@brew.new/sdk'
 import { defineCommand } from '../../lib/define-command'
 import { CliUsageError } from '../../lib/errors'
-import { INPUT_FLAG, mergeInput, readJsonFlag } from '../../lib/input'
-import { rawRequest } from '../../lib/raw-request'
-
-type ContractInferResponse =
-  components['schemas']['PayloadContractInferResponse']
+import {
+  asSdkInput,
+  INPUT_FLAG,
+  mergeInput,
+  readJsonFlag,
+} from '../../lib/input'
 
 export const contractsInferCommand = defineCommand({
   path: ['contracts', 'infer'],
   summary:
     'Draft a payload contract from a real example payload — nothing is saved; PUT the draft on a trigger',
-  sdkMethod: null,
-  isRawTransport: true,
+  sdkMethod: 'payloadContracts.infer',
   route: { method: 'POST', path: '/v1/payload-contracts/infer' },
   commandClass: 'read',
   flags: [INPUT_FLAG],
@@ -40,16 +40,15 @@ export const contractsInferCommand = defineCommand({
         '--input with a non-empty example object is required (the JSON your system sends).'
       )
     }
-    const body = await rawRequest<ContractInferResponse>(ctx, {
-      method: 'POST',
-      path: '/v1/payload-contracts/infer',
-      body: {
+    // `subjectKind` passes through unchecked: the API validates it.
+    const body = await ctx.client().payloadContracts.infer(
+      asSdkInput<InferPayloadContractInput>({
         example,
         ...(isEnvelope && input.subjectKind !== undefined
           ? { subjectKind: input.subjectKind }
           : {}),
-      },
-    })
+      })
+    )
     return { data: body }
   },
 })

@@ -1,22 +1,17 @@
-import type { operations } from '../../../generated/openapi-types'
 import { defineCommand } from '../../../lib/define-command'
 import { CliUsageError } from '../../../lib/errors'
-import { flagString, IDEMPOTENCY_FLAG, readTextFlag } from '../../../lib/input'
-import { rawRequest } from '../../../lib/raw-request'
+import {
+  flagString,
+  IDEMPOTENCY_FLAG,
+  readTextFlag,
+  requestOptions,
+} from '../../../lib/input'
 
-type Imported =
-  operations['importDomainUnsubscribes']['responses'][200]['content']['application/json']
-
-/**
- * Add every address in a CSV to a domain's list. Raw route because
- * `@brew.new/sdk` 10 has no method for it: once the CLI adopts SDK 11.2,
- * bind `domains.unsubscribes.import(...)` here and drop `isRawTransport`.
- */
+/** Add every address in a CSV to a domain's list. */
 export const domainsUnsubscribesImportCommand = defineCommand({
   path: ['domains', 'unsubscribes', 'import'],
   summary: "Add every address in a CSV to a domain's unsubscribe list",
-  sdkMethod: null,
-  isRawTransport: true,
+  sdkMethod: 'domains.unsubscribes.import',
   route: {
     method: 'POST',
     path: '/v1/domains/{domainId}/unsubscribes/import',
@@ -44,12 +39,14 @@ export const domainsUnsubscribesImportCommand = defineCommand({
       )
     }
     const column = flagString(flags.column)
-    const body = await rawRequest<Imported>(ctx, {
-      method: 'POST',
-      path: `/v1/domains/${encodeURIComponent(args.domainId ?? '')}/unsubscribes/import`,
-      body: { csv, ...(column === undefined ? {} : { column }) },
-      idempotencyKey: flagString(flags.idempotencyKey),
-    })
+    const body = await ctx.client().domains.unsubscribes.import(
+      {
+        domainId: args.domainId ?? '',
+        csv,
+        ...(column === undefined ? {} : { column }),
+      },
+      requestOptions(flags)
+    )
     return { data: body }
   },
 })
