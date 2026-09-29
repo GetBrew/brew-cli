@@ -2,9 +2,6 @@
 
 ## 0.10.0
 
-Not tagged or published yet: pushing the `v0.10.0` tag publishes it (see
-`RELEASING.md`).
-
 Moves to `@brew.new/sdk` 11 (it pinned `^10.0.0`, so it could not receive an
 SDK fix). Every command now goes through an SDK method except the paged
 `api-keys list` / `integrations list` reads and the `api` escape hatch, so
