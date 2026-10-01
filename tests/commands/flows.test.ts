@@ -204,7 +204,7 @@ describe('flows list, counting', () => {
     expect(result.stdout).toContain('at least 1 flow in total')
   })
 
-  it('says an empty partial read is not a definitive none', async () => {
+  it('an empty partial --semantic read says search may be unavailable', async () => {
     server.use(
       http.get(`${API}/v1/flows`, () =>
         HttpResponse.json({
@@ -219,8 +219,29 @@ describe('flows list, counting', () => {
       ttyOut: true,
     })
     expect(result.code).toBe(0)
-    expect(result.stdout).toContain('No flows found in a partial read')
+    expect(result.stdout).toContain('not a definitive none')
+    expect(result.stdout).toContain('Retry without --semantic')
     expect(result.stdout).not.toContain('No flows found.')
+  })
+
+  it('an empty partial read without --semantic names the cut, not a semantic retry', async () => {
+    server.use(
+      http.get(`${API}/v1/flows`, () =>
+        HttpResponse.json({
+          data: [],
+          pagination: PAGE_DONE,
+          total: 0,
+          isTotalExact: false,
+        })
+      )
+    )
+    const result = await cli(
+      ['flows', 'list', '--brand-domain', 'old-brand.com'],
+      { ttyOut: true }
+    )
+    expect(result.code).toBe(0)
+    expect(result.stdout).toContain('newest 500 flows')
+    expect(result.stdout).not.toContain('--semantic')
   })
 
   it('passes total and isTotalExact through --json untouched', async () => {

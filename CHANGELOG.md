@@ -10,8 +10,9 @@
   `--semantic` only orders it), so `flows list --limit 1 --json` answers
   "how many" in one call. When `isTotalExact` is false — the catalog read was
   cut at 500 flows, or a `--semantic` search could not run — the line says
-  `at least …`, and an empty partial read says so instead of `No flows
-  found.` `--json` passes `total` and `isTotalExact` through, and `--all`
+  `at least …`, and an empty partial read says why instead of `No flows
+  found.`: retry without `--semantic` when search could not run, or older
+  matches past the newest 500 flows are not listed. `--json` passes `total` and `isTotalExact` through, and `--all`
   keeps them on its merged envelope (GetBrew/brew-v2#1805). Against a
   deployment that predates the count, nothing changes.
 

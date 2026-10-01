@@ -87,7 +87,10 @@ export const flowsListCommand = defineCommand({
         slug,
         include === undefined ? undefined : { include }
       )
-      return { data: singleRowPage(flow), human: renderFlows([flow], {}) }
+      return {
+        data: singleRowPage(flow),
+        human: renderFlows([flow], {}, { isSemantic: false }),
+      }
     }
     if (include !== undefined) {
       throw includeRidesDetailRead('flows get', '--slug')
@@ -101,6 +104,7 @@ export const flowsListCommand = defineCommand({
       limit: flagInt(flags.limit, '--limit'),
       cursor: flagString(flags.cursor),
     })
+    const isSemantic = 'semantic' in input && input.semantic !== undefined
     if (flags.all === true) {
       let count: FlowCount = {}
       const rows = await collectAll(ctx, async (cursor) => {
@@ -119,11 +123,14 @@ export const flowsListCommand = defineCommand({
           pagination: { cursor: null, hasMore: false },
           ...count,
         },
-        human: renderFlows(rows, count),
+        human: renderFlows(rows, count, { isSemantic }),
       }
     }
     const result = await flows.list(asSdkInput<ListFlowsInput>(input))
-    return { data: result, human: renderFlows(result.data, readCount(result)) }
+    return {
+      data: result,
+      human: renderFlows(result.data, readCount(result), { isSemantic }),
+    }
   },
 })
 
@@ -157,6 +164,18 @@ function readCount(page: object): FlowCount {
   }
 }
 
+/**
+ * Nothing found in a PARTIAL read is not "no flows match". The command knows
+ * which partial read it was: a `--semantic` search that could not run is
+ * retried without it; a read cut at the cap cannot list older flows at all,
+ * so retrying the same query would change nothing.
+ */
+function partialEmptyMessage({ isSemantic }: { isSemantic: boolean }): string {
+  return isSemantic
+    ? 'No flows found, but semantic search may be unavailable, so that is not a definitive none. Retry without --semantic.'
+    : 'No flows found among the newest 500 flows the API reads, so that is not a definitive none: older matches are not listed.'
+}
+
 /** "167 flows in total; 25 on this page", or "at least …" for a floor. */
 function countLine(count: FlowCount, onPage: number): string | undefined {
   if (count.total === undefined) {
@@ -168,12 +187,14 @@ function countLine(count: FlowCount, onPage: number): string | undefined {
   return count.total === onPage ? total : `${total}; ${onPage} on this page`
 }
 
-function renderFlows(rows: ReadonlyArray<Flow>, count: FlowCount): string {
+function renderFlows(
+  rows: ReadonlyArray<Flow>,
+  count: FlowCount,
+  { isSemantic }: { isSemantic: boolean }
+): string {
   if (rows.length === 0) {
-    // A partial read (a `semantic` search that could not run, or a corpus
-    // read cut at its cap) found nothing — that is not "no flows match".
     return count.isTotalExact === false
-      ? 'No flows found in a partial read (semantic search may be unavailable, or the catalog read was cut). Retry without --semantic.'
+      ? partialEmptyMessage({ isSemantic })
       : 'No flows found.'
   }
   const line = countLine(count, rows.length)
