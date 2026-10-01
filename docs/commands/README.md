@@ -2319,6 +2319,7 @@ List public email flows (real multi-step sequences by brand) as cards; `flows ge
 brew-cli flows list --type signup --sort emails
 brew-cli flows list --brand-domain brew.new --json
 brew-cli flows list --semantic "developer onboarding drip"
+brew-cli flows list --type signup --limit 1 --json  # .total counts every match
 ```
 
 ### brew-cli flows get

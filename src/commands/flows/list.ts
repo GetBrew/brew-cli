@@ -75,6 +75,7 @@ export const flowsListCommand = defineCommand({
     'brew-cli flows list --type signup --sort emails',
     'brew-cli flows list --brand-domain brew.new --json',
     'brew-cli flows list --semantic "developer onboarding drip"',
+    'brew-cli flows list --type signup --limit 1 --json  # .total counts every match',
   ],
   run: async ({ ctx, flags }) => {
     const flows = ctx.client().flows
@@ -86,7 +87,7 @@ export const flowsListCommand = defineCommand({
         slug,
         include === undefined ? undefined : { include }
       )
-      return { data: singleRowPage(flow), human: renderFlows([flow]) }
+      return { data: singleRowPage(flow), human: renderFlows([flow], {}) }
     }
     if (include !== undefined) {
       throw includeRidesDetailRead('flows get', '--slug')
@@ -101,29 +102,82 @@ export const flowsListCommand = defineCommand({
       cursor: flagString(flags.cursor),
     })
     if (flags.all === true) {
-      const rows = await collectAll(ctx, (cursor) =>
-        flows.list(
+      let count: FlowCount = {}
+      const rows = await collectAll(ctx, async (cursor) => {
+        const page = await flows.list(
           asSdkInput<ListFlowsInput>({
             ...input,
             ...(cursor === undefined ? {} : { cursor }),
           })
         )
-      )
+        count = readCount(page)
+        return page
+      })
       return {
-        data: { data: rows, pagination: { cursor: null, hasMore: false } },
-        human: renderFlows(rows),
+        data: {
+          data: rows,
+          pagination: { cursor: null, hasMore: false },
+          ...count,
+        },
+        human: renderFlows(rows, count),
       }
     }
     const result = await flows.list(asSdkInput<ListFlowsInput>(input))
-    return { data: result, human: renderFlows(result.data) }
+    return { data: result, human: renderFlows(result.data, readCount(result)) }
   },
 })
 
-function renderFlows(rows: ReadonlyArray<Flow>): string {
-  if (rows.length === 0) {
-    return 'No flows found.'
+/**
+ * What `GET /v1/flows` says about every page: `total` counts the flows the
+ * query matches (filters narrow it, `semantic` only orders it), and it is a
+ * floor when `isTotalExact` is false. Optional, so the command still reads a
+ * deployment that predates the count (brew-v2#1805) and prints no count line.
+ */
+type FlowCount = {
+  readonly total?: number
+  readonly isTotalExact?: boolean
+}
+
+/**
+ * The count a page carries, read at runtime: the field is new in the API
+ * (and SDK 11.4), so a page from an older deployment simply has none. Only
+ * the fields present are returned, so `--all` can spread them onto its
+ * merged envelope.
+ */
+function readCount(page: object): FlowCount {
+  const total =
+    'total' in page && typeof page.total === 'number' ? page.total : undefined
+  const isTotalExact =
+    'isTotalExact' in page && typeof page.isTotalExact === 'boolean'
+      ? page.isTotalExact
+      : undefined
+  return {
+    ...(total === undefined ? {} : { total }),
+    ...(isTotalExact === undefined ? {} : { isTotalExact }),
   }
-  return renderTable(
+}
+
+/** "167 flows in total; 25 on this page", or "at least …" for a floor. */
+function countLine(count: FlowCount, onPage: number): string | undefined {
+  if (count.total === undefined) {
+    return undefined
+  }
+  const floor = count.isTotalExact === false ? 'at least ' : ''
+  const noun = count.total === 1 ? 'flow' : 'flows'
+  const total = `${floor}${count.total} ${noun} in total`
+  return count.total === onPage ? total : `${total}; ${onPage} on this page`
+}
+
+function renderFlows(rows: ReadonlyArray<Flow>, count: FlowCount): string {
+  if (rows.length === 0) {
+    // A partial read (a `semantic` search that could not run, or a corpus
+    // read cut at its cap) found nothing — that is not "no flows match".
+    return count.isTotalExact === false
+      ? 'No flows found in a partial read (semantic search may be unavailable, or the catalog read was cut). Retry without --semantic.'
+      : 'No flows found.'
+  }
+  const line = countLine(count, rows.length)
+  const table = renderTable(
     rows.map((row) => ({
       slug: row.slug,
       brand: row.brand.name,
@@ -141,4 +195,5 @@ function renderFlows(rows: ReadonlyArray<Flow>): string {
       { key: 'spanDays', header: 'SPAN (DAYS)' },
     ]
   )
+  return line === undefined ? table : `${line}\n\n${table}`
 }

@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.11.0
+
+### Added
+
+- **`flows list` says how many flows match.** The table now leads with
+  `167 flows in total; 25 on this page` from the API's new `total`, which
+  counts every flow the query matches across all pages (filters narrow it,
+  `--semantic` only orders it), so `flows list --limit 1 --json` answers
+  "how many" in one call. When `isTotalExact` is false — the catalog read was
+  cut at 500 flows, or a `--semantic` search could not run — the line says
+  `at least …`, and an empty partial read says so instead of `No flows
+  found.` `--json` passes `total` and `isTotalExact` through, and `--all`
+  keeps them on its merged envelope (GetBrew/brew-v2#1805). Against a
+  deployment that predates the count, nothing changes.
+
+### Spec sync
+
+- The vendored OpenAPI spec and generated types catch up with the API:
+  `total` / `isTotalExact` on the flows list, `pauseReason:
+  'domain_unsendable'`, the `EMAIL_IMAGES_MISSING` error code (`422` on an
+  automation run), the trigger update's `409
+  CONTRACT_LOCKED_BY_PUBLISHED_AUTOMATIONS`, and the payload issue code
+  `invalid_email`.
+
 ## 0.10.0
 
 Moves to `@brew.new/sdk` 11 (it pinned `^10.0.0`, so it could not receive an

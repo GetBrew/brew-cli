@@ -163,6 +163,95 @@ describe('flows get', () => {
   })
 })
 
+describe('flows list, counting', () => {
+  it('leads the table with how many flows the query matches across every page', async () => {
+    server.use(
+      http.get(`${API}/v1/flows`, () =>
+        HttpResponse.json({
+          data: [CARD],
+          pagination: { limit: 1, cursor: 'b2ZmOjE', hasMore: true },
+          total: 167,
+          isTotalExact: true,
+        })
+      )
+    )
+    const result = await cli(['flows', 'list', '--limit', '1'], {
+      ttyOut: true,
+    })
+    expect(result.code).toBe(0)
+    expect(result.stdout).toContain('167 flows in total; 1 on this page')
+    expect(result.stdout).toContain('notion.com')
+  })
+
+  it('marks a partial read’s total as a floor', async () => {
+    server.use(
+      http.get(`${API}/v1/flows`, () =>
+        HttpResponse.json({
+          data: [CARD],
+          pagination: PAGE_DONE,
+          total: 1,
+          isTotalExact: false,
+        })
+      )
+    )
+    const result = await cli(
+      ['flows', 'list', '--brand-domain', 'notion.com'],
+      {
+        ttyOut: true,
+      }
+    )
+    expect(result.code).toBe(0)
+    expect(result.stdout).toContain('at least 1 flow in total')
+  })
+
+  it('says an empty partial read is not a definitive none', async () => {
+    server.use(
+      http.get(`${API}/v1/flows`, () =>
+        HttpResponse.json({
+          data: [],
+          pagination: PAGE_DONE,
+          total: 0,
+          isTotalExact: false,
+        })
+      )
+    )
+    const result = await cli(['flows', 'list', '--semantic', 'win-back'], {
+      ttyOut: true,
+    })
+    expect(result.code).toBe(0)
+    expect(result.stdout).toContain('No flows found in a partial read')
+    expect(result.stdout).not.toContain('No flows found.')
+  })
+
+  it('passes total and isTotalExact through --json untouched', async () => {
+    server.use(
+      http.get(`${API}/v1/flows`, () =>
+        HttpResponse.json({
+          data: [CARD],
+          pagination: { limit: 1, cursor: 'b2ZmOjE', hasMore: true },
+          total: 167,
+          isTotalExact: true,
+        })
+      )
+    )
+    const result = await cli(['flows', 'list', '--limit', '1', '--json'])
+    expect(result.code).toBe(0)
+    expect(result.json).toMatchObject({ total: 167, isTotalExact: true })
+  })
+
+  it('omits the count line when the API sends no total (an older deployment)', async () => {
+    server.use(
+      http.get(`${API}/v1/flows`, () =>
+        HttpResponse.json({ data: [CARD], pagination: PAGE_DONE })
+      )
+    )
+    const result = await cli(['flows', 'list'], { ttyOut: true })
+    expect(result.code).toBe(0)
+    expect(result.stdout).not.toContain('in total')
+    expect(result.stdout).toContain('notion.com')
+  })
+})
+
 describe('flows list, paging', () => {
   it('--all follows the cursor across pages', async () => {
     const cursors: Array<string | null> = []
@@ -189,6 +278,34 @@ describe('flows list, paging', () => {
       'notion.com',
       'linear.app',
     ])
+  })
+
+  it('--all keeps the total the API reported', async () => {
+    server.use(
+      http.get(`${API}/v1/flows`, ({ request }) => {
+        const cursor = new URL(request.url).searchParams.get('cursor')
+        return cursor === null
+          ? HttpResponse.json({
+              data: [CARD],
+              pagination: { limit: 1, cursor: 'page-2', hasMore: true },
+              total: 2,
+              isTotalExact: true,
+            })
+          : HttpResponse.json({
+              data: [{ ...CARD, slug: 'linear.app' }],
+              pagination: { limit: 1, cursor: null, hasMore: false },
+              total: 2,
+              isTotalExact: true,
+            })
+      })
+    )
+    const result = await cli(['flows', 'list', '--all', '--limit', '1'])
+    expect(result.code).toBe(0)
+    expect(result.json).toMatchObject({
+      pagination: { cursor: null, hasMore: false },
+      total: 2,
+      isTotalExact: true,
+    })
   })
 
   it('surfaces the typed 404 envelope for an unknown slug', async () => {
