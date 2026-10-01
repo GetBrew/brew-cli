@@ -24794,7 +24794,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `SERVICE_UNAVAILABLE`: A dependency the operation must consult (billing, the idempotency store) is temporarily unavailable, so the request was refused rather than run unmetered. */
+            /** @description `SERVICE_UNAVAILABLE`: Semantic search over flows cannot run right now (no search index, or its kill switch), so a `semantic` query is refused rather than answered with an empty page. */
             503: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */

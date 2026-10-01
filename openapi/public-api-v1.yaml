@@ -54516,7 +54516,7 @@ paths:
                       suggestion: Retry the request. If it keeps failing, contact support with the x-request-id header.
                       docs: https://docs.brew.new/api-reference/api/errors
         "503":
-          description: "`SERVICE_UNAVAILABLE`: A dependency the operation must consult (billing, the idempotency store) is temporarily unavailable, so the request was refused rather than run unmetered."
+          description: "`SERVICE_UNAVAILABLE`: Semantic search over flows cannot run right now (no search index, or its kill switch), so a `semantic` query is refused rather than answered with an empty page."
           headers:
             x-request-id:
               schema:
@@ -54543,8 +54543,8 @@ paths:
                     error:
                       code: SERVICE_UNAVAILABLE
                       type: service_unavailable
-                      message: A dependency the operation must consult (billing, the idempotency store) is temporarily unavailable, so the request was refused rather than run unmetered.
-                      suggestion: Retry the request after a short delay.
+                      message: Semantic search over flows cannot run right now (no search index, or its kill switch), so a `semantic` query is refused rather than answered with an empty page.
+                      suggestion: "Retry without `semantic`: `brand`, `category`, `type` and `sort` still narrow and order the list."
                       docs: https://docs.brew.new/api-reference/api/errors
       x-brew-scope: none
       x-brew-brand-scope: org
