@@ -165,14 +165,14 @@ function readCount(page: object): FlowCount {
 }
 
 /**
- * Nothing found in a PARTIAL read is not "no flows match". The command knows
- * which partial read it was: a `--semantic` search that could not run is
- * retried without it; a read cut at the cap cannot list older flows at all,
- * so retrying the same query would change nothing.
+ * Nothing found in a PARTIAL read is not "no flows match". A partial read has
+ * one cause, the API's 500-flow cut, which the filters apply after (a search
+ * that cannot run is the API's 503, surfaced as an error). The command knows
+ * which 500 were read, so it names them; no retry of the query gets past it.
  */
 function partialEmptyMessage({ isSemantic }: { isSemantic: boolean }): string {
   return isSemantic
-    ? 'No flows found, but semantic search may be unavailable, so that is not a definitive none. Retry without --semantic.'
+    ? 'No flows found among the 500 flows nearest your --semantic query, so that is not a definitive none: matches past those are not listed.'
     : 'No flows found among the newest 500 flows the API reads, so that is not a definitive none: older matches are not listed.'
 }
 

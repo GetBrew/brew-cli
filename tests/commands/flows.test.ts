@@ -204,7 +204,7 @@ describe('flows list, counting', () => {
     expect(result.stdout).toContain('at least 1 flow in total')
   })
 
-  it('an empty partial --semantic read says search may be unavailable', async () => {
+  it('an empty partial --semantic read names the 500 nearest the query', async () => {
     server.use(
       http.get(`${API}/v1/flows`, () =>
         HttpResponse.json({
@@ -215,13 +215,43 @@ describe('flows list, counting', () => {
         })
       )
     )
-    const result = await cli(['flows', 'list', '--semantic', 'win-back'], {
-      ttyOut: true,
-    })
+    const result = await cli(
+      ['flows', 'list', '--semantic', 'win-back', '--type', 'signup'],
+      { ttyOut: true }
+    )
     expect(result.code).toBe(0)
     expect(result.stdout).toContain('not a definitive none')
-    expect(result.stdout).toContain('Retry without --semantic')
+    expect(result.stdout).toContain('500 flows nearest your --semantic query')
+    // The search ran; it was cut. No "unavailable" or retry advice.
+    expect(result.stdout).not.toContain('unavailable')
     expect(result.stdout).not.toContain('No flows found.')
+  })
+
+  it('surfaces a semantic search that cannot run as the API’s 503 envelope', async () => {
+    server.use(
+      http.get(`${API}/v1/flows`, () =>
+        HttpResponse.json(
+          {
+            error: {
+              code: 'SERVICE_UNAVAILABLE',
+              type: 'service_unavailable',
+              message: 'Semantic search over flows is unavailable right now.',
+              suggestion:
+                'Retry without `semantic`: `brand`, `category`, `type` and `sort` still narrow and order the list.',
+              docs: 'https://docs.brew.new/api-reference/api/errors',
+            },
+          },
+          { status: 503, headers: { 'Retry-After': '300' } }
+        )
+      )
+    )
+    const result = await cli(['flows', 'list', '--semantic', 'win-back'])
+    expect(result.code).not.toBe(0)
+    const body = JSON.parse(result.stderr) as {
+      error: { code: string; suggestion?: string }
+    }
+    expect(body.error.code).toBe('SERVICE_UNAVAILABLE')
+    expect(body.error.suggestion).toContain('Retry without `semantic`')
   })
 
   it('an empty partial read without --semantic names the cut, not a semantic retry', async () => {

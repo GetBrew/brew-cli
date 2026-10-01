@@ -1915,9 +1915,9 @@ export interface paths {
          *
          *     **Input** `brand` (exact domain), `category`, `type` (`signup` | `newsletter`), `sort` (`newest` | `emails` | `span` | `remixes`), or `semantic` for relevance-ranked search (then `sort` is ignored).
          *
-         *     **Returns** `200` with flow cards and `total`, the number of flows the query matches across every page (filters narrow it; `semantic` only orders it), so one `limit=1` call counts them. `isTotalExact` is false when the read covered only part of the catalog (cut at 500 flows, or a `semantic` search that could not run), and `total` is then a floor. A card never carries `anchor` or `steps`; every card carries the `slug` that `getFlow` takes. A flow holds at most 12 steps: capture keeps the first 12 and cuts the tail, so `emailCount: 12` means twelve **or more** were sent.
+         *     **Returns** `200` with flow cards and `total`, the number of flows the query matches across every page (filters narrow it; `semantic` only orders it), so one `limit=1` call counts them. `isTotalExact` is false when the read was cut at 500 flows (the newest, or the 500 nearest a `semantic` query; filters apply after it), and `total` is then a floor. A card never carries `anchor` or `steps`; every card carries the `slug` that `getFlow` takes. A flow holds at most 12 steps: capture keeps the first 12 and cuts the tail, so `emailCount: 12` means twelve **or more** were sent.
          *
-         *     **Errors** `400 INVALID_REQUEST` for an unknown query key or value.
+         *     **Errors** `400 INVALID_REQUEST` for an unknown query key or value; `503 SERVICE_UNAVAILABLE` when `semantic` search cannot run (no index, or its kill switch); retry without `semantic`.
          *
          *     **See also** `getFlow`, `listTemplates`.
          */
@@ -7258,7 +7258,7 @@ export interface components {
             };
             /** @description Flows this query matches across every page (filters narrow, `semantic` only orders); a floor when `isTotalExact` is false. */
             total: number;
-            /** @description False when the read covered only part of the catalog (cut at 500 flows, or a `semantic` search that could not run), so `total` is a floor. */
+            /** @description False when the read was cut at 500 flows (the newest, or the 500 nearest a `semantic` query), so `total` is a floor. */
             isTotalExact: boolean;
         };
         BrandGetResponse: {
@@ -24788,6 +24788,19 @@ export interface operations {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
                     "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `SERVICE_UNAVAILABLE`: A dependency the operation must consult (billing, the idempotency store) is temporarily unavailable, so the request was refused rather than run unmetered. */
+            503: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
                     [name: string]: unknown;
                 };
                 content: {

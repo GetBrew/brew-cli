@@ -8,18 +8,22 @@
   `167 flows in total; 25 on this page` from the API's new `total`, which
   counts every flow the query matches across all pages (filters narrow it,
   `--semantic` only orders it), so `flows list --limit 1 --json` answers
-  "how many" in one call. When `isTotalExact` is false — the catalog read was
-  cut at 500 flows, or a `--semantic` search could not run — the line says
+  "how many" in one call. When `isTotalExact` is false — the read was cut at
+  500 flows — the line says
   `at least …`, and an empty partial read says why instead of `No flows
-  found.`: retry without `--semantic` when search could not run, or older
-  matches past the newest 500 flows are not listed. `--json` passes `total` and `isTotalExact` through, and `--all`
+  found.`: the API reads at most 500 flows (the newest, or the 500 nearest
+  your `--semantic` query) before the filters apply, so matches past those
+  are not listed. `--json` passes `total` and `isTotalExact` through, and `--all`
   keeps them on its merged envelope (GetBrew/brew-v2#1805). Against a
   deployment that predates the count, nothing changes.
+- **A `--semantic` search the API cannot run** (no search index, or its kill
+  switch) now fails with the API's `503 SERVICE_UNAVAILABLE` envelope
+  ("Retry without `semantic`") instead of printing an empty table.
 
 ### Spec sync
 
 - The vendored OpenAPI spec and generated types catch up with the API:
-  `total` / `isTotalExact` on the flows list, `pauseReason:
+  `total` / `isTotalExact` and the `503` on the flows list, `pauseReason:
   'domain_unsendable'`, the `EMAIL_IMAGES_MISSING` error code (`422` on an
   automation run), the trigger update's `409
   CONTRACT_LOCKED_BY_PUBLISHED_AUTOMATIONS`, and the payload issue code
