@@ -5,7 +5,7 @@ description: Drive the Brew email platform from the terminal with brew-cli — e
 
 # brew-cli for agents
 
-One typed command per public-API operation (140 commands, generated docs in
+One typed command per public-API operation (145 commands, generated docs in
 `docs/commands/README.md`). JSON output is automatic when stdout is piped.
 
 ## Start every session with the trust check
@@ -67,6 +67,14 @@ brew-cli emails get <emailId> --email-version-id <id>   # a saved version (ids f
 brew-cli emails preview-clients <emailId>        # starts a rendering job (10 credits)
 brew-cli emails get-client-preview <previewId>   # poll it; screenshots are previews[].imageUrl
 brew-cli sends get <sendId> --include events
+brew-cli insights list --severity critical       # what Brew Insights found; insights get <id> for one in full
+brew-cli insights list --include pulse,report,suggestions,memo --json
+brew-cli emails comments list <emailId> --include messages   # teammates' comment threads on a design
+brew-cli emails comments list <emailId> --comment-id <cmt_…> --all --json   # one thread, every message
+brew-cli chats list                              # recent Brew chats; chats get <chatId> to resume one
+brew-cli notifications list --type email_send_failed   # what finished or failed (reading marks nothing read)
+brew-cli domains health <domainId> --include scoreHistory,scoreRuns
+brew-cli contacts get <email> --include openProfile     # smart-send open-time profile (needs the emails scope)
 brew-cli content upload-image ./logo.png         # a local file into the brand library (free); prints its assetId
 brew-cli brand delete-image <assetId> --yes      # remove one library image (destructive; its URL keeps working)
 brew-cli api GET '/v1/sends?kind=campaign'   # raw escape hatch for anything else

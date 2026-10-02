@@ -57,6 +57,7 @@ import { brandsCreateCommand } from './commands/brands/create'
 import { brandsGetCommand } from './commands/brands/get'
 import { brandsListCommand } from './commands/brands/list'
 import { chatsGetCommand } from './commands/chats/get'
+import { chatsListCommand } from './commands/chats/list'
 import {
   configGetCommand,
   configListCommand,
@@ -100,6 +101,7 @@ import { domainsUpdateCommand } from './commands/domains/update'
 import { domainsVerifyCommand } from './commands/domains/verify'
 import { emailsAuditCommand } from './commands/emails/audit'
 import { emailsCloneCommand } from './commands/emails/clone'
+import { emailsCommentsListCommand } from './commands/emails/comments/list'
 import { emailsCreateInboxPlacementTestCommand } from './commands/emails/create-inbox-placement-test'
 import { emailsDeleteCommand } from './commands/emails/delete'
 import { emailsEditCommand } from './commands/emails/edit'
@@ -128,9 +130,12 @@ import { fieldsListCommand } from './commands/fields/list'
 import { flowsGetCommand } from './commands/flows/get'
 import { flowsListCommand } from './commands/flows/list'
 import { healthCommand } from './commands/health'
+import { insightsGetCommand } from './commands/insights/get'
+import { insightsListCommand } from './commands/insights/list'
 import { integrationsListCommand } from './commands/integrations/list'
 import { loginCommand } from './commands/login'
 import { logoutCommand } from './commands/logout'
+import { notificationsListCommand } from './commands/notifications/list'
 import { sendsCancelCommand } from './commands/sends/cancel'
 import { sendsGetCommand } from './commands/sends/get'
 import { sendsListCommand } from './commands/sends/list'
@@ -179,6 +184,7 @@ export const ALL_COMMANDS: readonly CommandSpec[] = [
   emailsGroupsUpdateCommand,
   emailsGroupsDeleteCommand,
   emailsGetCommand,
+  emailsCommentsListCommand,
   emailsGenerateCommand,
   emailsImportCommand,
   emailsImportFigmaCommand,
@@ -248,6 +254,8 @@ export const ALL_COMMANDS: readonly CommandSpec[] = [
   analyticsSendsListCommand,
   analyticsSendsGetCommand,
   analyticsTriggerInstancesListCommand,
+  insightsListCommand,
+  insightsGetCommand,
   brandGetCommand,
   brandUpdateCommand,
   brandGetImagesCommand,
@@ -282,7 +290,9 @@ export const ALL_COMMANDS: readonly CommandSpec[] = [
   flowsListCommand,
   flowsGetCommand,
   integrationsListCommand,
+  chatsListCommand,
   chatsGetCommand,
+  notificationsListCommand,
   healthCommand,
   usageCommand,
   doctorCommand,

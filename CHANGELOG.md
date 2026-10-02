@@ -1,5 +1,77 @@
 # Changelog
 
+## 0.13.0
+
+Needs `@brew.new/sdk` `^11.6.0` (`insights.list` / `insights.get`,
+`emails.comments.list`, `chats.list`, `notifications.list`, and `include` on
+`domains.health`, `contacts.get` and `contacts.search`).
+
+Typed reads for what the data command (`data run`, `POST /v1/data`) used to
+answer from its tables. `data run` itself is unchanged in this release.
+
+### Added
+
+- **`insights list`** reads Brew Insights (GetBrew/brew-v2#1828): the findings
+  the insight engine keeps about the brand's email (at most 200), most severe
+  first, with the engine's `freshness` on every page. `--state open|all`,
+  `--severity critical|warning|opportunity|info`, `--limit`, `--cursor`,
+  `--all`. `--include pulse,report,suggestions,memo` adds what the Insights
+  page shows beside the findings: the last 7 days against the 7 before, the
+  latest intelligence report, its suggestions (up to 25) and the analysis
+  agent's memo, each `null` until it exists. `--all` asks for them on the first
+  page only and keeps them, with `freshness`, beside the merged rows. A TTY
+  leads with how current the findings are, says when the latest run failed
+  (the findings may be stale), and prints each expansion it asked for under
+  the table. Free.
+- **`insights get <insightId>`**: one finding in full, with its rationale, the
+  frozen `metrics` (the only numbers to quote about it), `evidence` links, the
+  detector's `method` and the run that produced it. An unknown id and another
+  brand's id are the same `404 INSIGHT_NOT_FOUND`. Free.
+- **`emails comments list <emailId>`** reads a design's open comment threads,
+  newest activity first, as the canvas pins show them (GetBrew/brew-v2#1831):
+  where each sits, who is in it, how many messages and the latest one.
+  `--include messages` adds each thread's newest messages (author, body,
+  mentions; at most 3 threads a page). `--comment-id <cmt_…>` reads one
+  thread, `--messages-cursor` its next older messages, and `--comment-id …
+  --all` follows that cursor to the first message and prints the whole thread,
+  oldest first. A stop mid-walk prints nothing and reports in
+  `progress.resumeCursor` the `--messages-cursor` to resume at.
+  `--messages-cursor` without `--comment-id`, or `--cursor` with it, exits 2
+  before sending. An email the brand does not have is an empty page, not a
+  404. Free.
+- **`chats list`**: the brand's Brew chats, most recently active first, with
+  title (an untitled chat shows its opening prompt on a TTY), status, origin
+  and link; `chats get <chatId>` reads one (GetBrew/brew-v2#1831). `--limit`,
+  `--cursor`, `--all`. Free.
+- **`notifications list`**: the app's bell as a read, newest first: generations,
+  sends, imports, domain checks and score runs finishing or failing
+  (GetBrew/brew-v2#1831). `--type` keeps one type. A page can hold fewer rows
+  than `--limit`, even none, while more follow, so a TTY prints the next
+  `--cursor` whenever there is one and `--all` drains through short pages.
+  Rows outside the key's scopes are left out, and a comment mention or reply
+  never reaches an API key. Reading marks nothing read. Free.
+- **`domains health --include scoreHistory,scoreRuns`** adds up to 50 saved
+  score snapshots, newest first (`scoreHistory`), and the last 5 automated
+  domain score runs (`scoreRuns`) (GetBrew/brew-v2#1830).
+- **`contacts get --include openProfile`** and **`contacts search --include
+  openProfile`** attach the smart-send open-time profile: 48 UTC half-hour
+  open counts, `totalOpens`, `lastOpenedAt`, and once there is enough history
+  the best open and send minute (`null` before any opens)
+  (GetBrew/brew-v2#1830). The key needs the `emails` scope as well (`403
+  INSUFFICIENT_PERMISSIONS` without it). `contacts search` sends it as the
+  body's `include` array; a page then holds at most 10 contacts, and a TTY adds
+  `OPENS` and `BEST SEND (UTC)` columns.
+
+### Spec sync
+
+- The vendored OpenAPI spec and generated types catch up with the API: the five
+  operations above, `include` on `getDomainHealth`, `getContact` and
+  `searchContacts`, and `INSIGHT_NOT_FOUND`. They also carry what reached the
+  API's main since 0.12.0: the rebuilt email audit (GetBrew/brew-v2#1851:
+  `emailJsx` / `emailId` sources, finding `evidence`, an inferred
+  `sendingPurpose`) and add-image's `0` / `unknown` answer for an image it
+  could not measure (GetBrew/brew-v2#1849).
+
 ## 0.12.0
 
 Needs `@brew.new/sdk` `^11.5.0` (`brand.deleteImage`, `content.uploadImage`,

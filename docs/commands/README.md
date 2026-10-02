@@ -2,7 +2,7 @@
 
 <!-- GENERATED FILE — do not edit. Regenerate with `bun run docs:commands`. -->
 
-140 commands. Classes: read (always safe), write
+145 commands. Classes: read (always safe), write
 (mutating, retry-safe), destructive (irreversible — the confirmation
 protocol applies: interactive y/N on a TTY, exit 4 + JSON envelope with
 a `confirmCommand` otherwise, `--yes` to proceed).
@@ -52,6 +52,7 @@ a `confirmCommand` otherwise, `--yes` to proceed).
 | `brew-cli emails groups update` | write | `PATCH /v1/email-groups/{groupId}` | Rename an email folder (group), move designs into it, or both |
 | `brew-cli emails groups delete` | destructive | `DELETE /v1/email-groups/{groupId}` | Delete an email folder (group); its emails move to Ungrouped |
 | `brew-cli emails get` | read | `GET /v1/emails/{emailId}` | Fetch one email design by id — the bare row |
+| `brew-cli emails comments list` | read | `GET /v1/emails/{emailId}/comments` | List a design's open comment threads (who, where, latest message); --include messages adds the messages |
 | `brew-cli emails generate` | write ($) | `POST /v1/emails` | Generate a new on-brand email design from a prompt |
 | `brew-cli emails import` | write | `POST /v1/emails/import` | Import existing HTML, MJML, or JSX as a new editable design |
 | `brew-cli emails import-figma` | write | `POST /v1/emails/figma` | Convert one Figma frame into an editable design (deterministic, free) |
@@ -121,6 +122,8 @@ a `confirmCommand` otherwise, `--yes` to proceed).
 | `brew-cli analytics sends list` | read | `GET /v1/sends` | List campaign/automation sends with delivery stats (`sends list`) |
 | `brew-cli analytics sends get` | read | `GET /v1/sends/{sendId}` | Fetch one send by id — the bare row (`sends get`) |
 | `brew-cli analytics trigger-instances list` | read | `GET /v1/automations/trigger-instances` | List fired-trigger instances with their lifecycle `state` (`automations trigger-instances list`) |
+| `brew-cli insights list` | read | `GET /v1/insights` | List Brew Insights findings, most severe first, with the engine's freshness; `insights get` reads one |
+| `brew-cli insights get` | read | `GET /v1/insights/{insightId}` | Fetch one Brew Insights finding in full: rationale, frozen metrics, evidence, method |
 | `brew-cli brand get` | read | `GET /v1/brand` | Fetch the key's brand + extraction readiness (`ready` flag) |
 | `brew-cli brand update` | write | `PATCH /v1/brand` | Update brand identity and/or design-system markdown (PATCH) |
 | `brew-cli brand get-images` | read | `GET /v1/brand/images` | Browse or semantically search the brand's assets (logos, brand images, images made with Brew) |
@@ -155,7 +158,9 @@ a `confirmCommand` otherwise, `--yes` to proceed).
 | `brew-cli flows list` | read | `GET /v1/flows` | List public email flows (real multi-step sequences by brand) as cards; `flows get <slug>` reads one |
 | `brew-cli flows get` | read | `GET /v1/flows/{slug}` | Fetch one public email flow by brand domain, with every step (day offset, wait, subject, template id) |
 | `brew-cli integrations list` | read | `GET /v1/integrations` | List the integration catalog with per-provider connected state (connect via Settings, not this CLI) |
+| `brew-cli chats list` | read | `GET /v1/chats` | List the brand's Brew chats, most recently active first; `chats get` reads one |
 | `brew-cli chats get` | read | `GET /v1/chats/{chatId}` | Brand-scoped digest of a Brew chat (artifacts + transcript tail) |
+| `brew-cli notifications list` | read | `GET /v1/notifications` | List the brand's notifications (generations, sends, imports, domain checks), newest first |
 | `brew-cli health` | read | `GET /v1/health` | Check Brew API liveness (no auth required) |
 | `brew-cli usage` | read | `GET /v1/usage` | Show plan, credit balance, and email-send quota |
 | `brew-cli doctor` | read | — | Trust check: auth, API reachability, and installed-CLI vs live-API drift |
@@ -277,6 +282,7 @@ Search contacts with structured filters (the contacts read)
 - `--logic <logic>` — Filter combinator: and | or
 - `--sort <field>` — Sort field
 - `--order <order>` — Sort order: asc | desc
+- `--include <tokens>` — Comma-separated expansions: openProfile (each row's smart-send open-time profile; a page then holds at most 10 rows; needs the emails scope too)
 - `--limit <n>` — Page size, 1-100 (default 100)
 - `--cursor <cursor>` — Opaque pagination cursor from a previous page
 - `--all` — Follow the cursor and return every page as one result
@@ -286,6 +292,7 @@ Search contacts with structured filters (the contacts read)
 brew-cli contacts search --filter email:equals:jane@example.com
 brew-cli contacts search --search jane --limit 10
 brew-cli contacts search --all --json
+brew-cli contacts search --audience aud_123 --include openProfile --json
 ```
 
 ### brew-cli contacts get
@@ -296,9 +303,11 @@ Fetch one contact by email — the bare row
 - Class: read
 - SDK: `brew.contacts.get(...)`
 - Argument `email` — Email address of the contact (the contact primary key)
+- `--include <tokens>` — Expansions: openProfile (the contact's smart-send open-time profile, null before any opens; needs the emails scope too)
 
 ```bash
 brew-cli contacts get jane@example.com
+brew-cli contacts get jane@example.com --include openProfile --json
 ```
 
 ### brew-cli contacts count
@@ -646,6 +655,27 @@ brew-cli emails get eml_2SmZOWV3ZQ7W5x6g3m4p
 brew-cli emails get eml_2SmZOWV3ZQ7W5x6g3m4p --include html,versions
 brew-cli emails get eml_2SmZOWV3ZQ7W5x6g3m4p --include text,links
 brew-cli emails get eml_2SmZOWV3ZQ7W5x6g3m4p --email-version-id emv_2SmZOWV3ZQ7W5x6g3m4p --include html
+```
+
+### brew-cli emails comments list
+
+List a design's open comment threads (who, where, latest message); --include messages adds the messages
+
+- Route: `GET /v1/emails/{emailId}/comments`
+- Class: read
+- SDK: `brew.emails.comments.list(...)`
+- Argument `emailId` — Design id (from `emails list`)
+- `--include <tokens>` — Comma-separated expansions: messages (each thread's newest messages, oldest first; at most 3 threads per page)
+- `--comment-id <commentId>` — Read this one thread (cmt_…) instead of the page
+- `--messages-cursor <cursor>` — With --comment-id: the thread's messagesCursor, for its next older messages (implies --include messages)
+- `--limit <n>` — Page size, 1-100 (default 100; at most 3 with --include messages)
+- `--cursor <cursor>` — Opaque pagination cursor from a previous page
+- `--all` — Follow the cursor and return every thread as one page; with --comment-id, that thread with every message
+
+```bash
+brew-cli emails comments list em_123
+brew-cli emails comments list em_123 --include messages --json
+brew-cli emails comments list em_123 --comment-id cmt_V1StGXR8Z5jdHi6BmyT2a --all --json
 ```
 
 ### brew-cli emails generate
@@ -1833,6 +1863,42 @@ brew-cli analytics trigger-instances list --trigger tri_signup
 brew-cli analytics trigger-instances list --all --json
 ```
 
+### brew-cli insights list
+
+List Brew Insights findings, most severe first, with the engine's freshness; `insights get` reads one
+
+- Route: `GET /v1/insights`
+- Class: read
+- SDK: `brew.insights.list(...)`
+- `--state <state>` — open (default: active findings and ended snoozes) | all (adds resolved, cleared, dismissed, stale and snoozed ones)
+- `--severity <severity>` — Only this severity, up to 200 of its own: critical | warning | opportunity | info
+- `--include <tokens>` — Comma-separated expansions: pulse (the last 7 days against the 7 before), report (the latest intelligence report), suggestions (its open suggestions, up to 25), memo (the analysis agent's memo)
+- `--limit <n>` — Page size, 1-100 (default 100)
+- `--cursor <cursor>` — Opaque pagination cursor from a previous page
+- `--all` — Follow the cursor and return every page as one result
+- `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
+
+```bash
+brew-cli insights list
+brew-cli insights list --severity critical --json
+brew-cli insights list --state all --all --json
+brew-cli insights list --include pulse,report,suggestions,memo
+```
+
+### brew-cli insights get
+
+Fetch one Brew Insights finding in full: rationale, frozen metrics, evidence, method
+
+- Route: `GET /v1/insights/{insightId}`
+- Class: read
+- SDK: `brew.insights.get(...)`
+- Argument `insightId` — The insightId an `insights list` row carries
+
+```bash
+brew-cli insights get k17a8m2v4w5x6y7z8a9b0c1d2e3f4g5h
+brew-cli insights get k17a8m2v4w5x6y7z8a9b0c1d2e3f4g5h --json | jq .metrics
+```
+
 ### brew-cli brand get
 
 Fetch the key's brand + extraction readiness (`ready` flag)
@@ -2064,9 +2130,11 @@ Deliverability health: verdict, signals, DNS/auth, reputation
 - Class: read
 - SDK: `brew.domains.health(...)`
 - Argument `domainId` — Domain id to inspect
+- `--include <tokens>` — Comma-separated expansions: scoreHistory (up to 50 saved score snapshots, newest first), scoreRuns (the last 5 automated domain score runs)
 
 ```bash
 brew-cli domains health kx7bkh53hasmfeh5kd7sqgykt187g8ww
+brew-cli domains health kx7bkh53hasmfeh5kd7sqgykt187g8ww --include scoreHistory,scoreRuns --json
 ```
 
 ### brew-cli domains update
@@ -2407,6 +2475,22 @@ brew-cli integrations list
 brew-cli integrations list --json
 ```
 
+### brew-cli chats list
+
+List the brand's Brew chats, most recently active first; `chats get` reads one
+
+- Route: `GET /v1/chats`
+- Class: read
+- SDK: `brew.chats.list(...)`
+- `--limit <n>` — Page size, 1-100 (default 100)
+- `--cursor <cursor>` — Opaque pagination cursor from a previous page
+- `--all` — Follow the cursor and return every page as one result
+
+```bash
+brew-cli chats list --limit 10
+brew-cli chats list --all --json
+```
+
 ### brew-cli chats get
 
 Brand-scoped digest of a Brew chat (artifacts + transcript tail)
@@ -2418,6 +2502,24 @@ Brand-scoped digest of a Brew chat (artifacts + transcript tail)
 
 ```bash
 brew-cli chats get Hk2mZ8t9QbY3sW1vR0pLd
+```
+
+### brew-cli notifications list
+
+List the brand's notifications (generations, sends, imports, domain checks), newest first
+
+- Route: `GET /v1/notifications`
+- Class: read
+- SDK: `brew.notifications.list(...)`
+- `--type <type>` — Only this notification type (e.g. email_sent, email_send_failed, import_job, domain_score_run)
+- `--limit <n>` — Page size, 1-100 (default 100)
+- `--cursor <cursor>` — Opaque pagination cursor from a previous page
+- `--all` — Follow the cursor and return every page as one result
+
+```bash
+brew-cli notifications list
+brew-cli notifications list --type email_send_failed --json
+brew-cli notifications list --all --json
 ```
 
 ### brew-cli health
@@ -2505,6 +2607,9 @@ SDK methods intentionally without a dedicated command:
 - `analytics.eventsAll` — auto-pager covered by `analytics events --all`
 - `sends.listAll` — auto-pager covered by `sends list --all`
 - `automations.triggerInstances.listAll` — auto-pager covered by `automations trigger-instances list --all`
+- `chats.listAll` — auto-pager covered by `chats list --all`
+- `emails.comments.listAllMessages` — auto-pager covered by `emails comments list <emailId> --comment-id <id> --all`
+- `notifications.listAll` — auto-pager covered by `notifications list --all`
 - `brand.update` — SDK alias of brand.patch, exposed as `brand update`
 - `withBrand` — client scoping helper activated by the global `--brand`; not an API command
 

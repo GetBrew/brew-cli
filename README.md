@@ -106,9 +106,10 @@ Designed for AI agents as first-class users:
 
 The full generated reference lives in
 [`docs/commands/README.md`](./docs/commands/README.md). Resource groups:
-`contacts`, `fields`, `emails`, `sends`, `audiences`, `automations`
-(+ `triggers`, `runs`, `audience-runs`, `trigger-instances`), `analytics`,
-`brand`, `content`, `templates`, `flows`, plus
+`contacts`, `fields`, `emails` (+ `groups`, `comments`), `sends`,
+`audiences`, `automations` (+ `triggers`, `runs`, `audience-runs`,
+`trigger-instances`), `analytics`, `insights`, `brand`, `content`,
+`templates`, `flows`, `chats`, `notifications`, plus
 `login`/`logout`/`whoami`/`config`/`usage`/`health`/`docs`/`api`.
 
 Every collection has a real detail read — `<group> get <id>` returns the
