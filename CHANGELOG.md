@@ -2,18 +2,27 @@
 
 ## Unreleased
 
+Removing a command is breaking, so the next release is a major
+(RELEASING.md).
+
 ### Breaking
 
 - **`brew-cli data run` is removed; `POST /v1/data` is retired**
   (GetBrew/brew-v2#1825). Use the typed commands instead: `emails list`,
   `emails groups list`, `contacts search`, `contacts count`,
   `contacts count-by`, `audiences list`, `audiences get`, `automations list`,
-  `automations runs list`, `domains list`, `sends list`, and
-  `analytics overview`, `events` and `event-counts`; the full
-  question-by-question mapping is in the API changelog
-  (https://docs.brew.new/changelog/api). The vendored spec and generated
-  types drop the route and its `DataCommandResponse` schema. The
-  `@brew.new/sdk` pin is unchanged; the CLI no longer calls `data.run`.
+  `automations runs list`, `domains list`, `sends list`,
+  `analytics overview`, `analytics events` and `analytics event-counts`. The
+  full question-by-question mapping is in the API changelog
+  (https://docs.brew.new/changelog/api).
+  No equivalent: table discovery (`db ls`, `db schema`) and `jq` pipelines.
+  Read the typed resource and filter its result; writes go through each
+  resource's own methods. Design comments, brand insights and
+  intelligence, notifications, domain-score history and per-contact open
+  profiles have no public read yet; chats are read by ID only.
+  The vendored spec and generated types drop the route and its
+  `DataCommandResponse` schema. The `@brew.new/sdk` pin is unchanged; the CLI
+  no longer calls `data.run`.
 
 ## 0.11.0
 
