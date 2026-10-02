@@ -383,7 +383,7 @@ export interface paths {
         };
         /**
          * List email groups
-         * @description Lists the brand’s email folders under `{ data, pagination }`. Named groups use `grp_*` ids; Ungrouped is always included as `{ groupId: "ungrouped", groupName: "Ungrouped" }`. `emailCount` is capped at 100. A named group carries `createdBy` (the creator’s name) and `createdByUserId` when a person created it; older groups and groups made by an organization API key have neither.
+         * @description Lists the brand’s email folders under `{ data, pagination }`. Named groups use `grp_*` ids; Ungrouped is always included as `{ groupId: "ungrouped", groupName: "Ungrouped" }`. `emailCount` is capped at 100. A named group a person created carries `createdBy` (their name, or "Former member") and `createdByUserId`; older and org-key groups have neither.
          *
          *     **Use when** picking the `groupId` to file a design under or to filter `listEmails` by.
          *
@@ -2362,7 +2362,7 @@ export interface components {
                 groupId: string;
                 groupName: string;
             } | null;
-            /** @description Creator as Brew shows it: a name, "API", "MCP" or "Name · MCP". */
+            /** @description Creator as Brew shows it: a name, "API", "MCP", "Name · MCP" or "Former member". */
             createdBy?: string;
             /** @description Creator user id; absent for an organization API key. */
             createdByUserId?: string;
@@ -2393,7 +2393,7 @@ export interface components {
                 groupId: string;
                 groupName: string;
             } | null;
-            /** @description Creator as Brew shows it: a name, "API", "MCP" or "Name · MCP". */
+            /** @description Creator as Brew shows it: a name, "API", "MCP", "Name · MCP" or "Former member". */
             createdBy?: string;
             /** @description Creator user id; absent for an organization API key. */
             createdByUserId?: string;
@@ -2435,7 +2435,7 @@ export interface components {
             groupId: string;
             groupName: string;
             emailCount: number;
-            /** @description Creator as Brew shows it: a name, "API", "MCP" or "Name · MCP". */
+            /** @description Group creator as Brew shows it: a name or "Former member"; absent for an organization API key. */
             createdBy?: string;
             /** @description Creator user id; absent for an organization API key. */
             createdByUserId?: string;
@@ -3058,7 +3058,7 @@ export interface components {
                 branch?: string;
             }[];
             emailIds: string[];
-            /** @description Creator as Brew shows it: a name, "API", "MCP" or "Name · MCP". */
+            /** @description Creator as Brew shows it: a name, "API", "MCP", "Name · MCP" or "Former member". */
             createdBy?: string;
             /** @description Creator user id; absent for an organization API key. */
             createdByUserId?: string;
@@ -3623,7 +3623,7 @@ export interface components {
                     groupId: string;
                     groupName: string;
                 } | null;
-                /** @description Creator as Brew shows it: a name, "API", "MCP" or "Name · MCP". */
+                /** @description Creator as Brew shows it: a name, "API", "MCP", "Name · MCP" or "Former member". */
                 createdBy?: string;
                 /** @description Creator user id; absent for an organization API key. */
                 createdByUserId?: string;
@@ -4199,7 +4199,7 @@ export interface components {
                 groupId: string;
                 groupName: string;
                 emailCount: number;
-                /** @description Creator as Brew shows it: a name, "API", "MCP" or "Name · MCP". */
+                /** @description Group creator as Brew shows it: a name or "Former member"; absent for an organization API key. */
                 createdBy?: string;
                 /** @description Creator user id; absent for an organization API key. */
                 createdByUserId?: string;
@@ -5151,7 +5151,7 @@ export interface components {
                     branch?: string;
                 }[];
                 emailIds: string[];
-                /** @description Creator as Brew shows it: a name, "API", "MCP" or "Name · MCP". */
+                /** @description Creator as Brew shows it: a name, "API", "MCP", "Name · MCP" or "Former member". */
                 createdBy?: string;
                 /** @description Creator user id; absent for an organization API key. */
                 createdByUserId?: string;
