@@ -31,7 +31,8 @@ const GROUP_SUMMARIES: Readonly<Record<string, string>> = {
   chats: 'Read Brew chat context for hand-offs',
   config: 'Read and write stored CLI configuration',
   contacts: 'Manage contacts',
-  content: 'Credit-metered content generation (images, GIFs, renders)',
+  content:
+    'Content generation (images, GIFs, renders; credit-metered) and the brand image library (add, upload; free)',
   docs: 'Reference material for humans and agents',
   domains: 'Manage sending domains',
   emails: 'Manage email designs and send campaigns',
@@ -136,9 +137,14 @@ function errorContextFor(
   const request = ctx.transport.lastRequest()
   const drain = ctx.transport.drain()
   // The command bound to the route the failed request actually hit — the
-  // `api` escape hatch borrows its class and replay policy from it.
+  // `api` escape hatch borrows its class and replay policy from it. A
+  // command with an operation of its own answers for itself: a multi-step
+  // one (`content upload-image`) must never offer to replay only its last
+  // request, whose route may replay when the command as a whole does not.
   const bound =
-    request === undefined ? undefined : commandFor(request, commands)
+    request === undefined || ctx.traits?.declaresOperation === true
+      ? undefined
+      : commandFor(request, commands)
   const isRead =
     bound === undefined ? ctx.traits?.isRead : bound.commandClass === 'read'
   return {
@@ -180,6 +186,10 @@ function traitsOf(spec: CommandSpec): CommandTraits {
   return {
     isRead: spec.commandClass === 'read',
     replays: (spec.flags ?? []).includes(IDEMPOTENCY_FLAG),
+    declaresOperation:
+      spec.route !== undefined ||
+      spec.sdkMethod !== null ||
+      spec.derivedFrom !== undefined,
     defaultTimeoutMs: spec.defaultTimeoutMs,
   }
 }

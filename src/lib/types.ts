@@ -42,6 +42,13 @@ export type CommandTraits = {
   readonly isRead: boolean
   /** The route replays a request that carries the same idempotency key. */
   readonly replays: boolean
+  /**
+   * The command names its own API operation (a route, an SDK method, or the
+   * methods it fans out to), so a failure is described by its own class and
+   * replay policy. Only a command with none — the `api` escape hatch —
+   * borrows those of the route its request hit.
+   */
+  readonly declaresOperation: boolean
   /** A long-running command's own whole-command deadline. */
   readonly defaultTimeoutMs: number | undefined
 }

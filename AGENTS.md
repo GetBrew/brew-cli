@@ -65,8 +65,12 @@ of leaving a hole:
    fan-out over several routes declares none), `commandClass`, ≥1 realistic
    example. `destructive` ⇔ `confirmSummary`.
 3. Ergonomic flags for scalars; `INPUT_FLAG` for deep JSON;
-   `IDEMPOTENCY_FLAG` on POST mutations (and pass `requestOptions(flags)`
-   to the SDK call so a `retryCommand` replays); reuse
+   `IDEMPOTENCY_FLAG` on POST mutations whose route replays a keyed
+   request (`x-brew-idempotency`: `replay` or `fail_closed`), and pass
+   `requestOptions(flags)` to the SDK call so a `retryCommand` replays. A
+   new command on a route that never replays (`none`, `disabled`, e.g.
+   `content create-image-upload`) declares no key flag: the flag's help
+   promises a safe retry (`tests/idempotency-flags.test.ts`). Reuse
    `ALL_FLAG`/`LIMIT_FLAG`/`CURSOR_FLAG` for pagination. A command whose
    server work routinely outlasts 30 s declares `defaultTimeoutMs` from the
    SDK's per-call constant, via `lib/long-running.ts`.

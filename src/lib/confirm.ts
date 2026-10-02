@@ -137,7 +137,8 @@ function isCredentialHeader(header: string): boolean {
   return name !== undefined && CREDENTIAL_HEADER_NAME.test(name)
 }
 
-function shellQuote(token: string): string {
+/** `token` as one shell word: as-is when safe, else single-quoted. */
+export function shellQuote(token: string): string {
   if (/^[A-Za-z0-9@%+=:,./_-]+$/.test(token)) {
     return token
   }

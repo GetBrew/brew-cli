@@ -2,7 +2,7 @@
 
 <!-- GENERATED FILE — do not edit. Regenerate with `bun run docs:commands`. -->
 
-137 commands. Classes: read (always safe), write
+140 commands. Classes: read (always safe), write
 (mutating, retry-safe), destructive (irreversible — the confirmation
 protocol applies: interactive y/N on a TTY, exit 4 + JSON envelope with
 a `confirmCommand` otherwise, `--yes` to proceed).
@@ -124,6 +124,7 @@ a `confirmCommand` otherwise, `--yes` to proceed).
 | `brew-cli brand get` | read | `GET /v1/brand` | Fetch the key's brand + extraction readiness (`ready` flag) |
 | `brew-cli brand update` | write | `PATCH /v1/brand` | Update brand identity and/or design-system markdown (PATCH) |
 | `brew-cli brand get-images` | read | `GET /v1/brand/images` | Browse or semantically search the brand's assets (logos, brand images, images made with Brew) |
+| `brew-cli brand delete-image` | destructive | `DELETE /v1/brand/images/{assetId}` | Remove one image from the brand library by assetId (free, idempotent, not logos); its file stays hosted at its URL |
 | `brew-cli brands list` | read | `GET /v1/brands` | List every brand in the organization |
 | `brew-cli brands get` | read | `GET /v1/brands/{brandId}` | One brand's lifecycle state (the extraction polling endpoint) |
 | `brew-cli brands create` | write | `POST /v1/brands` | Create a brand and start async extraction (needs an ORGANIZATION-scoped key); poll `brands get` until ready |
@@ -146,7 +147,9 @@ a `confirmCommand` otherwise, `--yes` to proceed).
 | `brew-cli content gif` | write ($) | `POST /v1/content/gif` | Create an animated GIF from a prompt, image, or video |
 | `brew-cli content transform` | write ($) | `POST /v1/content/transform` | Optimize or resize a hosted image |
 | `brew-cli content html-to-png` | write ($) | `POST /v1/content/html-to-png` | Render HTML to a hosted PNG |
-| `brew-cli content add-image` | write ($) | `POST /v1/content/add-image` | Mirror an external image onto Brew-hosted storage |
+| `brew-cli content add-image` | write | `POST /v1/content/add-image` | Add an image to the brand library from a public URL, a batch of URLs, or an upload (free); returns its assetId |
+| `brew-cli content create-image-upload` | write | `POST /v1/content/image-uploads` | Open a single-use upload for one local image file (free): POST its bytes to uploadUrl, then `content add-image --upload-id` |
+| `brew-cli content upload-image` | write | — | Upload a local image file (PNG, JPEG, GIF, WebP, AVIF, TIFF, SVG; up to 20 MB, SVG 2 MB) into the brand library (free); returns its assetId |
 | `brew-cli templates list` | read | `GET /v1/templates` | List public templates (each row carries the rendered html) |
 | `brew-cli templates get` | read | `GET /v1/templates/{templateId}` | Fetch one public template: its links and the referenceEmailId to remix; --include html adds its HTML |
 | `brew-cli flows list` | read | `GET /v1/flows` | List public email flows (real multi-step sequences by brand) as cards; `flows get <slug>` reads one |
@@ -1881,6 +1884,19 @@ brew-cli brand get-images --kind generated --sort oldest --all
 brew-cli brand get-images --query "team photo" --kind brand
 ```
 
+### brew-cli brand delete-image
+
+Remove one image from the brand library by assetId (free, idempotent, not logos); its file stays hosted at its URL
+
+- Route: `DELETE /v1/brand/images/{assetId}`
+- Class: destructive
+- SDK: `brew.brand.deleteImage(...)`
+- Argument `assetId` — The image to remove: its 8-character assetId from `brand get-images`
+
+```bash
+brew-cli brand delete-image 5bc912f9 --yes
+```
+
 ### brew-cli brands list
 
 List every brand in the organization
@@ -2251,18 +2267,52 @@ cat snippet.html | brew-cli content html-to-png --file -
 
 ### brew-cli content add-image
 
-Mirror an external image onto Brew-hosted storage
+Add an image to the brand library from a public URL, a batch of URLs, or an upload (free); returns its assetId
 
 - Route: `POST /v1/content/add-image`
 - Class: write
-- Consumes Brew credits
 - SDK: `brew.content.addImage(...)`
-- `--url <url>` — Image URL to mirror
+- `--url <url>` — One public image URL (imageUrl)
+- `--upload-id <id>` — An upload whose bytes were sent (uploadId, from `content create-image-upload`); a repeat returns the same image for 24 hours
 - `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
 - `--idempotency-key <key>` — Idempotency-Key for safe retries (auto-generated otherwise)
 
 ```bash
 brew-cli content add-image --url https://cdn.example.com/logo.png
+brew-cli content add-image --upload-id imgup_V1StGXR8_Z5jdHi6B-myT
+brew-cli content add-image --input '{"imageUrls":["https://cdn.example.com/a.png","https://cdn.example.com/b.png"]}'
+```
+
+### brew-cli content create-image-upload
+
+Open a single-use upload for one local image file (free): POST its bytes to uploadUrl, then `content add-image --upload-id`
+
+- Route: `POST /v1/content/image-uploads`
+- Class: write
+- SDK: `brew.content.createImageUpload(...)`
+- `--file-name <name>` — The file name, e.g. logo.png (names the converted file)
+- `--size <bytes>` — The file size in bytes: at most 20,000,000 (2,097,152 for SVG)
+- `--content-type <type>` — Image type, else read from the file name's extension: image/png, image/jpeg, image/gif, image/webp, image/avif, image/tiff, image/svg+xml
+- `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
+
+```bash
+brew-cli content create-image-upload --file-name logo.png --size 48213
+brew-cli content create-image-upload --file-name hero --content-type image/webp --size 1048576
+```
+
+### brew-cli content upload-image
+
+Upload a local image file (PNG, JPEG, GIF, WebP, AVIF, TIFF, SVG; up to 20 MB, SVG 2 MB) into the brand library (free); returns its assetId
+
+- Class: write
+- SDK: `brew.content.uploadImage(...)`
+- Argument `file` — Path to the image file
+- `--file-name <name>` — The name Brew stores it under (default: the path's file name)
+- `--content-type <type>` — Image type, else read from the file name's extension: image/png, image/jpeg, image/gif, image/webp, image/avif, image/tiff, image/svg+xml
+
+```bash
+brew-cli content upload-image ./logo.png
+brew-cli content upload-image ./export.bin --file-name hero.webp --content-type image/webp
 ```
 
 ### brew-cli templates list
