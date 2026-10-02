@@ -433,6 +433,39 @@ describe('content create-image-upload', () => {
     expect(result.stdout).toContain(
       `brew-cli content add-image --upload-id ${UPLOAD_ID}`
     )
+    // The bytes may be sent from another machine, where the file has its
+    // own path: the step says to point @ at it.
+    expect(result.stdout).toContain("point @ at the file's path there")
+  })
+
+  it('carries --brand and --api-url into the add-image step it prints', async () => {
+    const staging = 'https://staging.example.test/api'
+    server.use(
+      http.post(`${staging}/v1/content/image-uploads`, () =>
+        HttpResponse.json(TICKET, { status: 201 })
+      )
+    )
+    const result = await cli(
+      [
+        'content',
+        'create-image-upload',
+        '--file-name',
+        'logo.png',
+        '--size',
+        '12',
+        '--brand',
+        'brand_42',
+        '--api-url',
+        staging,
+      ],
+      { ttyOut: true }
+    )
+    expect(result.code).toBe(0)
+    // An organization key needs the brand on the second call too, or it
+    // answers BRAND_ID_REQUIRED.
+    expect(result.stdout).toContain(
+      `brew-cli content add-image --upload-id ${UPLOAD_ID} --brand brand_42 --api-url ${staging}`
+    )
   })
 })
 

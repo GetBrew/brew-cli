@@ -81,19 +81,45 @@ export const contentCreateImageUploadCommand = defineCommand({
       .content.createImageUpload(
         asSdkInput<ContentImageUploadCreateRequest>(input)
       )
-    return { data: result, human: renderTicket(result, fileName) }
+    return {
+      data: result,
+      human: renderTicket(result, fileName, {
+        brand: ctx.globals.brand,
+        apiUrl: ctx.globals.apiUrl,
+      }),
+    }
   },
 })
 
+/**
+ * The two steps that finish the upload. The bytes may go from another
+ * machine, where the file has its own path; the add-image step keeps the
+ * `--brand` and `--api-url` this call was given, since an organization key
+ * answers BRAND_ID_REQUIRED without the brand.
+ */
 function renderTicket(
   ticket: ContentImageUploadCreateResponse,
-  fileName: string
+  fileName: string,
+  target: {
+    readonly brand: string | undefined
+    readonly apiUrl: string | undefined
+  }
 ): string {
+  const addImage = [
+    'brew-cli content add-image --upload-id',
+    ticket.uploadId,
+    ...(target.brand === undefined
+      ? []
+      : ['--brand', shellQuote(target.brand)]),
+    ...(target.apiUrl === undefined
+      ? []
+      : ['--api-url', shellQuote(target.apiUrl)]),
+  ].join(' ')
   return [
     `Upload ${ticket.uploadId} is open until ${ticket.expiresAt} (at most ${ticket.maxBytes} bytes).`,
-    "1. POST the file's raw bytes to uploadUrl, with no API key (the URL is its own credential: keep it private):",
+    "1. POST the file's raw bytes to uploadUrl, with no API key (the URL is its own credential: keep it private). On the machine that sends them, point @ at the file's path there:",
     `   curl -X POST --data-binary ${shellQuote(`@${fileName}`)} ${shellQuote(ticket.uploadUrl)}`,
     '2. Add it to the brand library within 15 minutes of the bytes landing:',
-    `   brew-cli content add-image --upload-id ${ticket.uploadId}`,
+    `   ${addImage}`,
   ].join('\n')
 }

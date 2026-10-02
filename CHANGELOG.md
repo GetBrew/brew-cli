@@ -20,7 +20,8 @@ Needs `@brew.new/sdk` `^11.5.0` (`brand.deleteImage`, `content.uploadImage`,
 - **`content create-image-upload --file-name --size [--content-type]`**: the
   first step alone, for bytes sent from somewhere else. Prints the `uploadId`,
   `uploadUrl`, `expiresAt` and `maxBytes`, and on a TTY the `curl` and
-  `content add-image --upload-id` that finish it. The type is read from the
+  `content add-image --upload-id` that finish it (the add-image line keeps the
+  `--brand` and `--api-url` it was given). The type is read from the
   name when `--content-type` is absent. No `--idempotency-key`: the route
   never replays (its answer carries a bearer URL).
 - **`content add-image --upload-id <id>`** adds an upload whose bytes were
