@@ -2,6 +2,9 @@
 
 ## 0.11.0
 
+Moves to `@brew.new/sdk` `^11.4.0` (typed `total` / `isTotalExact` on
+`flows.list`, and the group writes' `moved` / `notMoved`).
+
 ### Added
 
 - **`flows list` says how many flows match.** The table now leads with
