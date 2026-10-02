@@ -11,13 +11,13 @@ export interface paths {
         };
         /**
          * List email designs
-         * @description Lists the brand’s designs, newest first on the `sortBy` timestamp, as `{ data, pagination }`. Each row carries `emailId`, the latest `emailVersionId`, `title`, `status`, `previewImage` (when captured), `updatedAt` and `group` (`{ groupId, groupName }` or `null` when Ungrouped).
+         * @description Lists the brand’s designs, newest first on the `sortBy` timestamp, as `{ data, pagination }`. Each row carries `emailId`, the latest `emailVersionId`, `title`, `status`, `previewImage` (when captured), `updatedAt`, `group` (`{ groupId, groupName }` or `null` when Ungrouped) and its creator.
          *
          *     **Use when** browsing designs or finding the `emailId` to send, edit or inspect. One design with its HTML or version history is `getEmail`.
          *
          *     **Input** `status` (`generating`, `ready`, `failed`), `groupId` (`grp_…` or `ungrouped`), `sortBy` (`updatedAt` default, or `createdAt`) with an inclusive `from`/`to` ISO 8601 window on that timestamp, `limit` and `cursor`.
          *
-         *     **Returns** `200` with a page of `EmailSummary` rows and a `pagination` envelope (`cursor` is `null` on the last page).
+         *     **Returns** `200` with a page of `EmailSummary` rows and a `pagination` envelope (`cursor` is `null` on the last page). `createdBy` is the creator exactly as the Brew emails list shows it: a person’s name (`Former member` once they leave the brand), `API` or `MCP` for a credential with no person, or the two joined (`Name · MCP`); `createdByUserId` is that person’s stable user id. `createdBy` is absent when the creator cannot be named, with `createdByUserId` still present.
          *
          *     **Errors** `400 INVALID_REQUEST` for an unknown query key, an invalid status or a reversed window.
          *
@@ -55,7 +55,7 @@ export interface paths {
         };
         /**
          * Get an email design
-         * @description Reads one design as the bare `EmailDetail` row: `emailId`, the `emailVersionId` (the pin for `POST /v1/sends` and sendEmail nodes), `title`, `status`, `previewStatus`, `subjectLine`, `previewText`, `previewImage`, `updatedAt` and `group`, plus `errorMessage` when a generation failed.
+         * @description Reads one design as the bare `EmailDetail` row: `emailId`, the `emailVersionId` (the pin for `POST /v1/sends` and sendEmail nodes), `title`, `status`, `previewStatus`, `subjectLine`, `previewText`, `previewImage`, `updatedAt`, `group` and `createdBy` / `createdByUserId` (the design’s creator, shared by every version), plus `errorMessage` when a generation failed.
          *
          *     **Use when** inspecting a design before sending it, pinning a version, polling a generation you started, or pulling rendered HTML or version history.
          *
@@ -383,7 +383,7 @@ export interface paths {
         };
         /**
          * List email groups
-         * @description Lists the brand’s email folders under `{ data, pagination }`. Named groups use `grp_*` ids; Ungrouped is always included as `{ groupId: "ungrouped", groupName: "Ungrouped" }`. `emailCount` is capped at 100.
+         * @description Lists the brand’s email folders under `{ data, pagination }`. Named groups use `grp_*` ids; Ungrouped is always included as `{ groupId: "ungrouped", groupName: "Ungrouped" }`. `emailCount` is capped at 100. A named group a person created carries `createdByUserId` and, when they can be named, `createdBy` (their name or "Former member"); older and org-key groups have neither.
          *
          *     **Use when** picking the `groupId` to file a design under or to filter `listEmails` by.
          *
@@ -399,7 +399,7 @@ export interface paths {
         put?: never;
         /**
          * Create an email group
-         * @description Creates a named email folder. Returns `201` with `{ groupId, groupName, emailCount: 0 }`. Reserved names (`Ungrouped` / `ungrouped` / `__ungrouped__`) are `400`. Duplicate names are `409 EMAIL_GROUP_NAME_CONFLICT`. Pass the returned `groupId` as `groupId` on create/import/clone.
+         * @description Creates a named email folder. Returns `201` with `{ groupId, groupName, emailCount }`. Pass `emailIds` (up to 50) to move existing designs in, in the same transaction as the create; the response then adds `moved` and `notMoved` (`not_found`, `generating`, `not_movable`, `folder_full` or `retry`; resend `retry` ids in a follow-up `PATCH`). Reserved names (`Ungrouped` / `ungrouped` / `__ungrouped__`) are `400`. Duplicate names are `409 EMAIL_GROUP_NAME_CONFLICT`. Pass the returned `groupId` as `groupId` on create/import/clone.
          */
         post: operations["createEmailGroup"];
         delete?: never;
@@ -417,7 +417,7 @@ export interface paths {
         };
         /**
          * Get an email group
-         * @description Reads one email folder as the bare `EmailGroupSummary` (`groupId`, `groupName`, `emailCount`).
+         * @description Reads one email folder as the bare `EmailGroupSummary` (`groupId`, `groupName`, `emailCount`, plus `createdByUserId` when a person created it, and `createdBy` when they can be named).
          *
          *     **Use when** confirming a group before filing designs under it, or reading the `ungrouped` catalog row.
          *
@@ -440,8 +440,8 @@ export interface paths {
         options?: never;
         head?: never;
         /**
-         * Rename an email group
-         * @description Renames a named folder. Ungrouped cannot be renamed (`400`). Unknown / cross-brand ids are `404`. Duplicate names are `409 EMAIL_GROUP_NAME_CONFLICT`.
+         * Update an email group
+         * @description Renames a named folder (`name`), moves existing designs into it (`emailIds`, up to 50, one request against the rate limit), or both, in one transaction. A move adds `moved` and `notMoved` (`not_found`, `generating`, `not_movable`, `folder_full` or `retry`; resend `retry` ids) to the response. Ungrouped is not a target (`400`). Unknown / cross-brand ids are `404`. Duplicate names are `409 EMAIL_GROUP_NAME_CONFLICT`.
          */
         patch: operations["updateEmailGroup"];
         trace?: never;
@@ -479,7 +479,7 @@ export interface paths {
          *
          *     **Returns** campaign `202 { status: 'queued' | 'scheduled', sendId, scheduledAt?, warnings? }` (poll `getSend`; `warnings[]` carries one `CONSENT_RECORD_MISSING` per inline recipient that is a subscribed contact with no consent record, and one `RECIPIENTS_EXCLUDED` with the counts when unsubscribed, suppressed or undeliverable contacts will be skipped); test `200 { status: 'completed', recipient }`.
          *
-         *     **Errors** `400 INVALID_REQUEST` (`param: subject`) when `subject` has a line break or runs over 1000 characters (993 on a test send, for the `[TEST]` prefix), judged on the text every recipient receives; `404 EMAIL_NOT_FOUND`, `DOMAIN_NOT_FOUND`, `AUDIENCE_NOT_FOUND` (a resource in another brand also surfaces as `404`); `422 EMAIL_NOT_READY`, `DOMAIN_NOT_READY`, `DOMAIN_PURPOSE_NOT_ALLOWED`, `LIQUID_RENDER_ERROR`; `422 CONSENT_REQUIRED` when an inline marketing recipient has no contact record with marketing consent and no `consent` was supplied (`details.recipients`); `422 RECIPIENT_UNSUBSCRIBED` when an inline recipient is an existing contact who opted out (`details.recipients`, never re-subscribed); `422 NO_ELIGIBLE_RECIPIENTS` when an immediate send would reach nobody because every contact it targets is unsubscribed, suppressed or undeliverable (`details.eligibility` = `{ total, eligible, excluded: { unsubscribed, suppressed, invalidEmail } }`; no send is created, while a scheduled send is accepted instead); `402 SEND_QUOTA_EXCEEDED` when the plan's monthly volume would be exceeded (no `Retry-After`).
+         *     **Errors** `400 INVALID_REQUEST` (`param: subject`) when `subject` has a line break or runs over 1000 characters (993 on a test send, for the `[TEST]` prefix), judged on the text every recipient receives; `404 EMAIL_NOT_FOUND`, `DOMAIN_NOT_FOUND`, `AUDIENCE_NOT_FOUND` (a resource in another brand also surfaces as `404`); `422 EMAIL_NOT_READY`, `DOMAIN_NOT_READY`, `DOMAIN_PURPOSE_NOT_ALLOWED`, `LIQUID_RENDER_ERROR`; `422 CONSENT_REQUIRED` when an inline marketing recipient has no contact record with marketing consent and no `consent` was supplied (`details.recipients`); `422 RECIPIENT_UNSUBSCRIBED` when an inline recipient is an existing contact who opted out (`details.recipients`, never re-subscribed); `422 NO_ELIGIBLE_RECIPIENTS` when an immediate send would reach nobody because every contact it targets is unsubscribed, suppressed or undeliverable (`details.eligibility` = `{ total, eligible, excluded: { unsubscribed, suppressed, invalidEmail } }`; no send is created, while a scheduled send is accepted instead); `422 EMAIL_IMAGES_MISSING` when the email shows a cdn.brew.new image that does not exist (`details.missingImages[]`; a dead icon whose real file sits elsewhere in its pack is moved there instead when the key has `emails` access); `402 SEND_QUOTA_EXCEEDED` when the plan's monthly volume would be exceeded (no `Retry-After`).
          *
          *     **See also** `listSends`, `cancelSend`, `fireTrigger`.
          */
@@ -671,13 +671,13 @@ export interface paths {
         };
         /**
          * List automations
-         * @description Lists the brand’s automations under `{ data, pagination }` as LEAN rows: identity, `name`, `version`, `published`, `paused` and live-version state, `emailIds` and `updatedAt`; the graph is omitted.
+         * @description Lists the brand’s automations under `{ data, pagination }` as LEAN rows: identity, `name`, `version`, `published`, `paused` and live-version state, `emailIds`, `updatedAt` and attribution; the graph is omitted.
          *
          *     **Use when** browsing automations or finding the `automationId` to update, run or inspect.
          *
          *     **Input** `limit` and `cursor` (an opaque native cursor).
          *
-         *     **Returns** `200` with a page of lean automation rows.
+         *     **Returns** `200` with a page of lean automation rows. `createdBy` / `createdByUserId` name the creator (`createdBy: "API"` when an organization API key made it, `Former member` once a person leaves the brand, absent when the creator cannot be named); while live, `publishedBy` / `publishedByUserId` name whoever published the live version.
          *
          *     **Errors** `400 INVALID_REQUEST` for an unknown query key or a malformed cursor.
          *
@@ -715,7 +715,7 @@ export interface paths {
         };
         /**
          * Get an automation
-         * @description Reads one automation as the bare row, LEAN by default (graph omitted), with `published`, `paused`, `pausedAt` and the live version it serves.
+         * @description Reads one automation as the bare row, LEAN by default (graph omitted), with `published`, `paused`, `pausedAt`, the live version it serves, its creator (`createdBy`, `createdByUserId`) and, while live, the live version’s publisher (`publishedBy`, `publishedByUserId`).
          *
          *     **Use when** reading a flow before editing or publishing it, pinning `liveAutomationVersionId`, or inspecting its graph.
          *
@@ -747,7 +747,7 @@ export interface paths {
          *
          *     **Returns** the bare automation row, or with `dryRun: true` a `200 AutomationDryRunReport` `{ valid, blockers[], warnings[], blockingIssues[], nodeCounts }`: `blockingIssues[]` lists per-node references the effective trigger or contact catalog cannot provide, and publish refuses every one of them, fallback or not (`fatal` says what the reference would do: `true` for filter or split conditions and triple-brace `{{{ }}}` body tokens would break the run, `false` for subject, previewText, fromName, replyTo and double-brace body tags would render empty); `valid` is false when any blocker or blocking issue is present. Updating a LIVE automation saves a draft and does not go live: the previously published version keeps serving until you republish, `published` describes the returned row, `isLive`, `liveVersion` and `liveAutomationVersionId` describe the automation, and `warnings[]` carries `DRAFT_SAVED_NOT_LIVE`.
          *
-         *     **Errors** `404 AUTOMATION_NOT_FOUND`, `AUTOMATION_VERSION_NOT_FOUND` (pin `liveAutomationVersionId`, a `versions[]` id, or a run row's `automationVersionId`), `TRIGGER_EVENT_NOT_FOUND`; `400 AUTOMATION_GRAPH_INVALID` (`details.issues[]`); `409 AUTOMATION_VERSION_CONFLICT` (re-read, reapply, retry); `422 PUBLISH_VALIDATION_FAILED` (`details.blockers[]`), `AUTOMATION_NOT_PUBLISHED` (nothing to unpublish), `AUTOMATION_NOT_PAUSABLE` (a manual-audience automation pauses through its runs).
+         *     **Errors** `404 AUTOMATION_NOT_FOUND`, `AUTOMATION_VERSION_NOT_FOUND` (pin `liveAutomationVersionId`, a `versions[]` id, or a run row's `automationVersionId`), `TRIGGER_EVENT_NOT_FOUND`; `400 AUTOMATION_GRAPH_INVALID` (`details.issues[]`); `409 AUTOMATION_VERSION_CONFLICT` (re-read, reapply, retry); `422 PUBLISH_VALIDATION_FAILED` (`details.blockers[]`; a cdn.brew.new image a step would send that does not exist is a blocker, listed in `details.missingImages[]`, and a dead icon whose real file sits elsewhere in its pack is moved there instead when the key has `emails` access), `AUTOMATION_NOT_PUBLISHED` (nothing to unpublish), `AUTOMATION_NOT_PAUSABLE` (a manual-audience automation pauses through its runs).
          *
          *     **See also** `createAutomation`, `testAutomation`, `runAutomation`, `listAutomationRuns`.
          */
@@ -765,7 +765,7 @@ export interface paths {
         put?: never;
         /**
          * Test an automation
-         * @description Runs the saved automation END-TO-END through the real workflow in TEST mode — works on drafts and for both event and manual-audience automations; every node executes (filters/splits evaluate against `payload`, wait nodes fast-forward). Pass `testRecipient` to DELIVER each send-email node’s email for real to that address (real subject/preview/sender name via the Brew test domain; customer addresses are never hit) — omit it for a silent dry-run with no mail. Test runs never count against analytics rollups or send quotas. Returns `202` with the started run id; follow per-node status via `GET /v1/automations/runs/{automationRunId}&include=logs`. Optional `scenario` controls simulate timed opens/clicks at engagement-filter nodes and force left/right percentage-split choices (waits use a virtual clock; controls stay separate from `payload`, and simulated events never enter live analytics or send quotas); the run row’s `testCoverage` reports visited nodes, traversed connections, evaluated or forced decisions, uncovered paths and simulation limitations.
+         * @description Runs the saved automation END-TO-END through the real workflow in TEST mode — works on drafts and for both event and manual-audience automations; every node executes (filters/splits evaluate against `payload`, and `contact.<name>` conditions read the test recipient’s contact unless `payload` supplies that field — a flat `contact.<name>` key or a `contact` object — and the trigger’s contract keeps extra keys; wait nodes fast-forward). Pass `testRecipient` to DELIVER each send-email node’s email for real to that address (real subject/preview/sender name via the Brew test domain; customer addresses are never hit) — omit it for a silent dry-run with no mail. Test runs never count against analytics rollups or send quotas. Returns `202` with the started run id; follow per-node status via `GET /v1/automations/runs/{automationRunId}&include=logs`. Optional `scenario` controls simulate timed opens/clicks at engagement-filter nodes and force left/right percentage-split choices (waits use a virtual clock; controls stay separate from `payload`, and simulated events never enter live analytics or send quotas); the run row’s `testCoverage` reports visited nodes, traversed connections, evaluated or forced decisions, uncovered paths and simulation limitations.
          */
         post: operations["testAutomation"];
         delete?: never;
@@ -785,7 +785,7 @@ export interface paths {
         put?: never;
         /**
          * Run a manual-audience automation
-         * @description Launches a MANUAL-AUDIENCE automation against the audience bound to its trigger node. `dryRun: true` previews without sending; `scheduledAt` launches later, at most 1 year ahead. Percentage-based `gradualSend` delivers each send step in custom hour or calendar-day batches and supports manual pause/resume/cancel. `400` when `scheduledAt` is more than 1 year ahead, or a `gradualSend` plan exceeds 50,000 recipients, 30 batches, or 30 elapsed days. Returns `202` with the `audienceRunId`.
+         * @description Launches a MANUAL-AUDIENCE automation against the audience bound to its trigger node. `dryRun: true` previews without sending; `scheduledAt` launches later, at most 1 year ahead. Percentage-based `gradualSend` delivers each send step in custom hour or calendar-day batches and supports manual pause/resume/cancel. `400` when `scheduledAt` is more than 1 year ahead, or a `gradualSend` plan exceeds 50,000 recipients, 30 batches, or 30 elapsed days. `422 EMAIL_IMAGES_MISSING` when a step would send a cdn.brew.new image that does not exist (`details.missingImages[]`). Returns `202` with the `audienceRunId`.
          */
         post: operations["runAutomation"];
         delete?: never;
@@ -1103,7 +1103,7 @@ export interface paths {
         head?: never;
         /**
          * Update a trigger
-         * @description Updates one or more editable fields (`title`, `description`, `payloadSchema`). Whether a trigger fires is governed solely by `automation.published` on each wired automation — there is no per-trigger off-switch. Integration-provisioned triggers are immutable here (`422 TRIGGER_IMMUTABLE`). Returns the bare updated row.
+         * @description Updates one or more editable fields (`title`, `description`, `payloadSchema`). Whether a trigger fires is governed solely by `automation.published` on each wired automation — there is no per-trigger off-switch. Integration-provisioned triggers are immutable here (`422 TRIGGER_IMMUTABLE`). While a published automation uses the trigger, a `payloadSchema` change that would stop it from running (removing or retyping a field it reads, or declaring the shape of an open object or list so one of its merge tags no longer resolves) is refused with `409 CONTRACT_LOCKED_BY_PUBLISHED_AUTOMATIONS`. Returns the bare updated row.
          */
         patch: operations["updateTrigger"];
         trace?: never;
@@ -1157,7 +1157,7 @@ export interface paths {
          *
          *     **Idempotency** send a stable `Idempotency-Key` header on every retry. A repeat answers `200` with `status: "replayed"` and the ORIGINAL run ids; nothing fires twice.
          *
-         *     **Errors** `400 INVALID_PAYLOAD` when the payload does not satisfy the schema; `404 TRIGGER_EVENT_NOT_FOUND` for an unknown or cross-brand id; `422 NO_PUBLISHED_AUTOMATION` when nothing published listens for the trigger; `409 IDEMPOTENCY_CONFLICT` when a key is reused with a different body.
+         *     **Errors** `400 INVALID_PAYLOAD` when the payload does not satisfy the schema, or when `email` (or `user.email`) is not one plain address such as `jane@example.com`: a display name (`Jane <jane@example.com>`), a list or a line break is refused with `details.errors[].code: "invalid_email"`, and no contact is written; `404 TRIGGER_EVENT_NOT_FOUND` for an unknown or cross-brand id; `422 NO_PUBLISHED_AUTOMATION` when nothing published listens for the trigger; `409 IDEMPOTENCY_CONFLICT` when a key is reused with a different body.
          *
          *     **See also** `checkTriggerReady`, `getTriggerInstance`, `listAutomationRuns`.
          */
@@ -1909,15 +1909,15 @@ export interface paths {
         };
         /**
          * List flows
-         * @description Lists public email flows, one brand’s real onboarding or newsletter sequence with the day each email landed, as cards under `{ data, pagination }`. Organization-wide: the same bounded corpus the gallery shows (a few hundred flows), paged with `limit`/`cursor`.
+         * @description Lists public email flows, one brand’s real onboarding or newsletter sequence with the day each email landed, as cards under `{ data, pagination, total }`. Organization-wide: the same bounded corpus the gallery shows (a few hundred flows), paged with `limit`/`cursor`.
          *
          *     **Use when** studying how real brands sequence email to plan or remix an automation, or finding the `slug` to read one flow in full.
          *
          *     **Input** `brand` (exact domain), `category`, `type` (`signup` | `newsletter`), `sort` (`newest` | `emails` | `span` | `remixes`), or `semantic` for relevance-ranked search (then `sort` is ignored).
          *
-         *     **Returns** `200` with flow cards. A card never carries `anchor` or `steps`; every card carries the `slug` that `getFlow` takes. A flow holds at most 12 steps: capture keeps the first 12 and cuts the tail, so `emailCount: 12` means twelve **or more** were sent.
+         *     **Returns** `200` with flow cards and `total`, the number of flows the query matches across every page (filters narrow it; `semantic` only orders it), so one `limit=1` call counts them. `isTotalExact` is false when the read was cut at 500 flows (the newest, or the 500 nearest a `semantic` query; filters apply after it), and `total` is then a floor. A card never carries `anchor` or `steps`; every card carries the `slug` that `getFlow` takes. A flow holds at most 12 steps: capture keeps the first 12 and cuts the tail, so `emailCount: 12` means twelve **or more** were sent.
          *
-         *     **Errors** `400 INVALID_REQUEST` for an unknown query key or value.
+         *     **Errors** `400 INVALID_REQUEST` for an unknown query key or value; `503 SERVICE_UNAVAILABLE` when `semantic` search cannot run (no index, or its kill switch); retry without `semantic`.
          *
          *     **See also** `getFlow`, `listTemplates`.
          */
@@ -2362,6 +2362,10 @@ export interface components {
                 groupId: string;
                 groupName: string;
             } | null;
+            /** @description Creator as Brew shows it: a name or "Former member", "API" or "MCP", or both joined ("Name · MCP"); absent when the creator cannot be named. */
+            createdBy?: string;
+            /** @description Creator user id; absent for an organization API key. */
+            createdByUserId?: string;
         };
         EmailDetail: {
             emailId: string;
@@ -2389,6 +2393,10 @@ export interface components {
                 groupId: string;
                 groupName: string;
             } | null;
+            /** @description Creator as Brew shows it: a name or "Former member", "API" or "MCP", or both joined ("Name · MCP"); absent when the creator cannot be named. */
+            createdBy?: string;
+            /** @description Creator user id; absent for an organization API key. */
+            createdByUserId?: string;
             /** @description The version that was read: its number, or `latest` for the current head. */
             version?: number | "latest";
             /** @description Echoes the `runId` query parameter when one was passed. */
@@ -2427,6 +2435,29 @@ export interface components {
             groupId: string;
             groupName: string;
             emailCount: number;
+            /** @description Group creator as Brew shows it: a name or "Former member"; absent for an organization API key or when the creator cannot be named. */
+            createdBy?: string;
+            /** @description Creator user id; absent for an organization API key. */
+            createdByUserId?: string;
+        };
+        EmailGroupWriteResponse: {
+            groupId: string;
+            groupName: string;
+            emailCount: number;
+            /** @description Group creator as Brew shows it: a name or "Former member"; absent for an organization API key or when the creator cannot be named. */
+            createdBy?: string;
+            /** @description Creator user id; absent for an organization API key. */
+            createdByUserId?: string;
+            /** @description Listed designs now in the group, counting any that were already there. */
+            moved?: number;
+            notMoved?: {
+                emailId: string;
+                /**
+                 * @description `not_found`: no such design in this brand. `generating`: a generation is still running; move it after. `not_movable`: an older design stored in a format the folder move does not support. `folder_full`: the folder holds the 200 designs a move can place. `retry`: this call reached its read budget (large designs fit fewer per call); send these ids again.
+                 * @enum {string}
+                 */
+                reason: "not_found" | "generating" | "not_movable" | "folder_full" | "retry";
+            }[];
         };
         Send: {
             sendId: string;
@@ -2446,10 +2477,10 @@ export interface components {
             /** @enum {string} */
             approvalState?: "pending" | "approved" | "rejected";
             /**
-             * @description Why a paused send is held. `plan_limit` means the organization ran out of monthly email sends; the send resumes on its own once the allowance has room, or you can cancel it. `manual` means its operator paused the gradual ramp; resume it to continue.
+             * @description Why a paused send is held. `plan_limit`: the organization ran out of monthly email sends. `domain_unsendable`: its sending domain stopped passing DNS; fails after 7 days. Both resume on their own and can be canceled. `manual`: its operator paused the gradual ramp; resume it to continue.
              * @enum {string}
              */
-            pauseReason?: "manual" | "plan_limit";
+            pauseReason?: "manual" | "plan_limit" | "domain_unsendable";
             subject?: string;
             previewText?: string;
             from?: {
@@ -2625,7 +2656,7 @@ export interface components {
                 /** @enum {string} */
                 logicalOperator: "AND" | "OR";
                 conditions: ({
-                    /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
+                    /** @description Trigger payload path (trackingNumber, order.total, items[0].sku) or contact.<name> to read the recipient contact (contact.plan). */
                     field: string;
                     /** @enum {string} */
                     type: "string";
@@ -2634,7 +2665,7 @@ export interface components {
                     /** @description String value to compare against. */
                     value: string;
                 } | {
-                    /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
+                    /** @description Trigger payload path (trackingNumber, order.total, items[0].sku) or contact.<name> to read the recipient contact (contact.plan). */
                     field: string;
                     /** @enum {string} */
                     type: "number";
@@ -2643,7 +2674,7 @@ export interface components {
                     /** @description Finite numeric value to compare against. */
                     value: number;
                 } | {
-                    /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
+                    /** @description Trigger payload path (trackingNumber, order.total, items[0].sku) or contact.<name> to read the recipient contact (contact.plan). */
                     field: string;
                     /** @enum {string} */
                     type: "date";
@@ -2652,7 +2683,7 @@ export interface components {
                     /** @description ISO date string or Unix timestamp in milliseconds to compare against. */
                     value: string | number;
                 } | {
-                    /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
+                    /** @description Trigger payload path (trackingNumber, order.total, items[0].sku) or contact.<name> to read the recipient contact (contact.plan). */
                     field: string;
                     /** @enum {string} */
                     type: "string";
@@ -2661,7 +2692,7 @@ export interface components {
                     /** @description Non-empty array of string values to compare against. */
                     value: string[];
                 } | {
-                    /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
+                    /** @description Trigger payload path (trackingNumber, order.total, items[0].sku) or contact.<name> to read the recipient contact (contact.plan). */
                     field: string;
                     /** @enum {string} */
                     type: "number";
@@ -2670,7 +2701,7 @@ export interface components {
                     /** @description Non-empty array of finite numbers to compare against. */
                     value: number[];
                 } | {
-                    /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
+                    /** @description Trigger payload path (trackingNumber, order.total, items[0].sku) or contact.<name> to read the recipient contact (contact.plan). */
                     field: string;
                     /** @enum {string} */
                     type: "number";
@@ -2682,7 +2713,7 @@ export interface components {
                         number
                     ];
                 } | {
-                    /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
+                    /** @description Trigger payload path (trackingNumber, order.total, items[0].sku) or contact.<name> to read the recipient contact (contact.plan). */
                     field: string;
                     /** @enum {string} */
                     type: "date";
@@ -2694,7 +2725,7 @@ export interface components {
                         string | number
                     ];
                 } | {
-                    /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
+                    /** @description Trigger payload path (trackingNumber, order.total, items[0].sku) or contact.<name> to read the recipient contact (contact.plan). */
                     field: string;
                     /** @enum {string} */
                     type: "string";
@@ -2704,7 +2735,7 @@ export interface components {
                      */
                     operator: "is_empty" | "is_not_empty";
                 } | {
-                    /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
+                    /** @description Trigger payload path (trackingNumber, order.total, items[0].sku) or contact.<name> to read the recipient contact (contact.plan). */
                     field: string;
                     /** @enum {string} */
                     type: "number";
@@ -2714,7 +2745,7 @@ export interface components {
                      */
                     operator: "is_empty" | "is_not_empty";
                 } | {
-                    /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
+                    /** @description Trigger payload path (trackingNumber, order.total, items[0].sku) or contact.<name> to read the recipient contact (contact.plan). */
                     field: string;
                     /** @enum {string} */
                     type: "date";
@@ -2724,7 +2755,7 @@ export interface components {
                      */
                     operator: "is_empty" | "is_not_empty";
                 } | {
-                    /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
+                    /** @description Trigger payload path (trackingNumber, order.total, items[0].sku) or contact.<name> to read the recipient contact (contact.plan). */
                     field: string;
                     /** @enum {string} */
                     type: "bool";
@@ -2782,7 +2813,7 @@ export interface components {
                 /** @enum {string} */
                 logicalOperator: "AND" | "OR";
                 conditions: ({
-                    /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
+                    /** @description Trigger payload path (trackingNumber, order.total, items[0].sku) or contact.<name> to read the recipient contact (contact.plan). */
                     field: string;
                     /** @enum {string} */
                     type: "string";
@@ -2791,7 +2822,7 @@ export interface components {
                     /** @description String value to compare against. */
                     value: string;
                 } | {
-                    /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
+                    /** @description Trigger payload path (trackingNumber, order.total, items[0].sku) or contact.<name> to read the recipient contact (contact.plan). */
                     field: string;
                     /** @enum {string} */
                     type: "number";
@@ -2800,7 +2831,7 @@ export interface components {
                     /** @description Finite numeric value to compare against. */
                     value: number;
                 } | {
-                    /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
+                    /** @description Trigger payload path (trackingNumber, order.total, items[0].sku) or contact.<name> to read the recipient contact (contact.plan). */
                     field: string;
                     /** @enum {string} */
                     type: "date";
@@ -2809,7 +2840,7 @@ export interface components {
                     /** @description ISO date string or Unix timestamp in milliseconds to compare against. */
                     value: string | number;
                 } | {
-                    /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
+                    /** @description Trigger payload path (trackingNumber, order.total, items[0].sku) or contact.<name> to read the recipient contact (contact.plan). */
                     field: string;
                     /** @enum {string} */
                     type: "string";
@@ -2818,7 +2849,7 @@ export interface components {
                     /** @description Non-empty array of string values to compare against. */
                     value: string[];
                 } | {
-                    /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
+                    /** @description Trigger payload path (trackingNumber, order.total, items[0].sku) or contact.<name> to read the recipient contact (contact.plan). */
                     field: string;
                     /** @enum {string} */
                     type: "number";
@@ -2827,7 +2858,7 @@ export interface components {
                     /** @description Non-empty array of finite numbers to compare against. */
                     value: number[];
                 } | {
-                    /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
+                    /** @description Trigger payload path (trackingNumber, order.total, items[0].sku) or contact.<name> to read the recipient contact (contact.plan). */
                     field: string;
                     /** @enum {string} */
                     type: "number";
@@ -2839,7 +2870,7 @@ export interface components {
                         number
                     ];
                 } | {
-                    /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
+                    /** @description Trigger payload path (trackingNumber, order.total, items[0].sku) or contact.<name> to read the recipient contact (contact.plan). */
                     field: string;
                     /** @enum {string} */
                     type: "date";
@@ -2851,7 +2882,7 @@ export interface components {
                         string | number
                     ];
                 } | {
-                    /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
+                    /** @description Trigger payload path (trackingNumber, order.total, items[0].sku) or contact.<name> to read the recipient contact (contact.plan). */
                     field: string;
                     /** @enum {string} */
                     type: "string";
@@ -2861,7 +2892,7 @@ export interface components {
                      */
                     operator: "is_empty" | "is_not_empty";
                 } | {
-                    /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
+                    /** @description Trigger payload path (trackingNumber, order.total, items[0].sku) or contact.<name> to read the recipient contact (contact.plan). */
                     field: string;
                     /** @enum {string} */
                     type: "number";
@@ -2871,7 +2902,7 @@ export interface components {
                      */
                     operator: "is_empty" | "is_not_empty";
                 } | {
-                    /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
+                    /** @description Trigger payload path (trackingNumber, order.total, items[0].sku) or contact.<name> to read the recipient contact (contact.plan). */
                     field: string;
                     /** @enum {string} */
                     type: "date";
@@ -2881,7 +2912,7 @@ export interface components {
                      */
                     operator: "is_empty" | "is_not_empty";
                 } | {
-                    /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
+                    /** @description Trigger payload path (trackingNumber, order.total, items[0].sku) or contact.<name> to read the recipient contact (contact.plan). */
                     field: string;
                     /** @enum {string} */
                     type: "bool";
@@ -3046,7 +3077,14 @@ export interface components {
                 branch?: string;
             }[];
             emailIds: string[];
+            /** @description Creator as Brew shows it: a name or "Former member", "API" or "MCP", or both joined ("Name · MCP"); absent when the creator cannot be named. */
             createdBy?: string;
+            /** @description Creator user id; absent for an organization API key. */
+            createdByUserId?: string;
+            /** @description Who published the live version; absent while not live. */
+            publishedBy?: string;
+            /** @description Publisher user id of the live version. */
+            publishedByUserId?: string;
             /** Format: date-time */
             createdAt?: string;
             /** Format: date-time */
@@ -3604,6 +3642,10 @@ export interface components {
                     groupId: string;
                     groupName: string;
                 } | null;
+                /** @description Creator as Brew shows it: a name or "Former member", "API" or "MCP", or both joined ("Name · MCP"); absent when the creator cannot be named. */
+                createdBy?: string;
+                /** @description Creator user id; absent for an organization API key. */
+                createdByUserId?: string;
             }[];
             pagination: {
                 limit: number;
@@ -3628,7 +3670,7 @@ export interface components {
             };
         };
         /** @enum {string} */
-        ApiErrorCode: "ACCOUNT_SUSPENDED" | "API_KEY_REVOKED" | "AUDIENCE_BUILD_ACTIVE" | "AUDIENCE_BUILD_ALREADY_ACTIVE" | "AUDIENCE_EDIT_CONFLICT" | "AUDIENCE_MEMBERSHIP_NOT_EXPRESSIBLE" | "AUDIENCE_NOT_FOUND" | "AUDIENCE_RUN_NOT_FOUND" | "AUDIT_NOT_FOUND" | "AUTHENTICATION_REQUIRED" | "AUTOMATION_GRAPH_INVALID" | "AUTOMATION_NOT_FOUND" | "AUTOMATION_NOT_PAUSABLE" | "AUTOMATION_NOT_PUBLISHED" | "AUTOMATION_RUN_NOT_FOUND" | "AUTOMATION_VERSION_CONFLICT" | "AUTOMATION_VERSION_NOT_FOUND" | "BATCH_TOO_LARGE" | "BRAND_DOMAIN_CONFLICT" | "BRAND_ID_REQUIRED" | "BRAND_LIMIT_REACHED" | "BRAND_NOT_FOUND" | "BRAND_NOT_READY" | "BRAND_SCOPE_MISMATCH" | "CHAT_NOT_FOUND" | "CONSENT_REQUIRED" | "CONTACT_NOT_FOUND" | "CONTENT_OPERATION_FAILED" | "CONTRACT_LOCKED_BY_PUBLISHED_AUTOMATIONS" | "CORE_FIELD_IMMUTABLE" | "DOMAIN_ALREADY_EXISTS" | "DOMAIN_CLAIMED_ELSEWHERE" | "DOMAIN_NOT_FOUND" | "DOMAIN_NOT_READY" | "DOMAIN_OTHER_BRAND" | "DOMAIN_PROVIDER_ERROR" | "DOMAIN_PURPOSE_NOT_ALLOWED" | "DOMAIN_VERIFICATION_FAILED" | "DOMAIN_VERIFIED_ELSEWHERE" | "EMAIL_GENERATION_FAILED" | "EMAIL_GROUP_NAME_CONFLICT" | "EMAIL_GROUP_NOT_FOUND" | "EMAIL_IMPORT_FAILED" | "EMAIL_IN_PROGRESS" | "EMAIL_IN_USE_BY_AUTOMATION" | "EMAIL_NOT_FOUND" | "EMAIL_NOT_READY" | "EMAIL_RUN_AMBIGUOUS" | "EMAIL_TEMPLATE_INVALID" | "EMAIL_VERSION_NOT_FOUND" | "EXPORT_PROVIDER_ERROR" | "EXPORT_UNSUPPORTED" | "FIELD_NOT_FOUND" | "FIELD_TYPE_MISMATCH" | "FIGMA_ACCESS_DENIED" | "FIGMA_CONVERSION_FAILED" | "FIGMA_FRAME_NOT_FOUND" | "FIGMA_NOT_CONNECTED" | "FIGMA_UNAVAILABLE" | "FIGMA_URL_INVALID" | "FLOW_NOT_FOUND" | "IDEMPOTENCY_CONFLICT" | "IDEMPOTENCY_IN_PROGRESS" | "INSUFFICIENT_CREDITS" | "INSUFFICIENT_PERMISSIONS" | "INSUFFICIENT_ROLE" | "INTEGRATION_NOT_CONNECTED" | "INTERNAL_ERROR" | "INVALID_API_KEY" | "INVALID_EMAIL" | "INVALID_PAYLOAD" | "INVALID_REQUEST" | "LIQUID_RENDER_ERROR" | "METHOD_NOT_ALLOWED" | "MISSING_EMAIL" | "NO_ELIGIBLE_RECIPIENTS" | "NO_PUBLISHED_AUTOMATION" | "NOT_FOUND" | "NOT_IMPLEMENTED" | "ORG_SCOPE_REQUIRED" | "PAYLOAD_SCHEMA_EMAIL_REQUIRED" | "PAYLOAD_TOO_LARGE" | "PREVIEW_NOT_FOUND" | "PUBLISH_VALIDATION_FAILED" | "RATE_LIMITED" | "RECIPIENT_UNSUBSCRIBED" | "REFERENCE_EMAIL_NOT_FOUND" | "RESUBSCRIBE_NOT_ALLOWED" | "RUN_IN_PROGRESS" | "RUN_NOT_CANCELLABLE" | "RUN_NOT_PAUSABLE" | "RUN_NOT_PAUSED" | "RUN_NOT_RESUMABLE" | "RUN_START_FAILED" | "RUN_STOP_FAILED" | "SEND_NOT_CANCELLABLE" | "SEND_NOT_FOUND" | "SEND_NOT_PAUSABLE" | "SEND_NOT_RESUMABLE" | "SEND_QUOTA_EXCEEDED" | "SERVICE_UNAVAILABLE" | "TEMPLATE_NOT_FOUND" | "TRIGGER_ALREADY_EXISTS" | "TRIGGER_EVENT_NOT_FOUND" | "TRIGGER_HAS_DEPENDENT_AUTOMATIONS" | "TRIGGER_IMMUTABLE" | "TRIGGER_INSTANCE_NOT_FOUND" | "TRIGGER_LIMIT_REACHED";
+        ApiErrorCode: "ACCOUNT_SUSPENDED" | "API_KEY_REVOKED" | "AUDIENCE_BUILD_ACTIVE" | "AUDIENCE_BUILD_ALREADY_ACTIVE" | "AUDIENCE_EDIT_CONFLICT" | "AUDIENCE_MEMBERSHIP_NOT_EXPRESSIBLE" | "AUDIENCE_NOT_FOUND" | "AUDIENCE_RUN_NOT_FOUND" | "AUDIT_NOT_FOUND" | "AUTHENTICATION_REQUIRED" | "AUTOMATION_GRAPH_INVALID" | "AUTOMATION_NOT_FOUND" | "AUTOMATION_NOT_PAUSABLE" | "AUTOMATION_NOT_PUBLISHED" | "AUTOMATION_RUN_NOT_FOUND" | "AUTOMATION_VERSION_CONFLICT" | "AUTOMATION_VERSION_NOT_FOUND" | "BATCH_TOO_LARGE" | "BRAND_DOMAIN_CONFLICT" | "BRAND_ID_REQUIRED" | "BRAND_LIMIT_REACHED" | "BRAND_NOT_FOUND" | "BRAND_NOT_READY" | "BRAND_SCOPE_MISMATCH" | "CHAT_NOT_FOUND" | "CONSENT_REQUIRED" | "CONTACT_NOT_FOUND" | "CONTENT_OPERATION_FAILED" | "CONTRACT_LOCKED_BY_PUBLISHED_AUTOMATIONS" | "CORE_FIELD_IMMUTABLE" | "DOMAIN_ALREADY_EXISTS" | "DOMAIN_CLAIMED_ELSEWHERE" | "DOMAIN_NOT_FOUND" | "DOMAIN_NOT_READY" | "DOMAIN_OTHER_BRAND" | "DOMAIN_PROVIDER_ERROR" | "DOMAIN_PURPOSE_NOT_ALLOWED" | "DOMAIN_VERIFICATION_FAILED" | "DOMAIN_VERIFIED_ELSEWHERE" | "EMAIL_GENERATION_FAILED" | "EMAIL_GROUP_NAME_CONFLICT" | "EMAIL_GROUP_NOT_FOUND" | "EMAIL_IMAGES_MISSING" | "EMAIL_IMPORT_FAILED" | "EMAIL_IN_PROGRESS" | "EMAIL_IN_USE_BY_AUTOMATION" | "EMAIL_NOT_FOUND" | "EMAIL_NOT_READY" | "EMAIL_RUN_AMBIGUOUS" | "EMAIL_TEMPLATE_INVALID" | "EMAIL_VERSION_NOT_FOUND" | "EXPORT_PROVIDER_ERROR" | "EXPORT_UNSUPPORTED" | "FIELD_NOT_FOUND" | "FIELD_TYPE_MISMATCH" | "FIGMA_ACCESS_DENIED" | "FIGMA_CONVERSION_FAILED" | "FIGMA_FRAME_NOT_FOUND" | "FIGMA_NOT_CONNECTED" | "FIGMA_UNAVAILABLE" | "FIGMA_URL_INVALID" | "FLOW_NOT_FOUND" | "IDEMPOTENCY_CONFLICT" | "IDEMPOTENCY_IN_PROGRESS" | "INSUFFICIENT_CREDITS" | "INSUFFICIENT_PERMISSIONS" | "INSUFFICIENT_ROLE" | "INTEGRATION_NOT_CONNECTED" | "INTERNAL_ERROR" | "INVALID_API_KEY" | "INVALID_EMAIL" | "INVALID_PAYLOAD" | "INVALID_REQUEST" | "LIQUID_RENDER_ERROR" | "METHOD_NOT_ALLOWED" | "MISSING_EMAIL" | "NO_ELIGIBLE_RECIPIENTS" | "NO_PUBLISHED_AUTOMATION" | "NOT_FOUND" | "NOT_IMPLEMENTED" | "ORG_SCOPE_REQUIRED" | "PAYLOAD_SCHEMA_EMAIL_REQUIRED" | "PAYLOAD_TOO_LARGE" | "PREVIEW_NOT_FOUND" | "PUBLISH_VALIDATION_FAILED" | "RATE_LIMITED" | "RECIPIENT_UNSUBSCRIBED" | "REFERENCE_EMAIL_NOT_FOUND" | "RESUBSCRIBE_NOT_ALLOWED" | "RUN_IN_PROGRESS" | "RUN_NOT_CANCELLABLE" | "RUN_NOT_PAUSABLE" | "RUN_NOT_PAUSED" | "RUN_NOT_RESUMABLE" | "RUN_START_FAILED" | "RUN_STOP_FAILED" | "SEND_NOT_CANCELLABLE" | "SEND_NOT_FOUND" | "SEND_NOT_PAUSABLE" | "SEND_NOT_RESUMABLE" | "SEND_QUOTA_EXCEEDED" | "SERVICE_UNAVAILABLE" | "TEMPLATE_NOT_FOUND" | "TRIGGER_ALREADY_EXISTS" | "TRIGGER_EVENT_NOT_FOUND" | "TRIGGER_HAS_DEPENDENT_AUTOMATIONS" | "TRIGGER_IMMUTABLE" | "TRIGGER_INSTANCE_NOT_FOUND" | "TRIGGER_LIMIT_REACHED";
         EmailGenerateTextResponse: {
             response: string;
         };
@@ -4176,6 +4218,10 @@ export interface components {
                 groupId: string;
                 groupName: string;
                 emailCount: number;
+                /** @description Group creator as Brew shows it: a name or "Former member"; absent for an organization API key or when the creator cannot be named. */
+                createdBy?: string;
+                /** @description Creator user id; absent for an organization API key. */
+                createdByUserId?: string;
             }[];
             pagination: {
                 limit: number;
@@ -4186,10 +4232,14 @@ export interface components {
         EmailGroupCreateRequest: {
             /** @description Named folder label (1–60 chars). Reserved names `Ungrouped` / `ungrouped` / `__ungrouped__` are rejected. */
             name: string;
+            /** @description Designs (`emailId`) to move into this group; up to 50 in one call, which is one request against the rate limit. They land at the top in this order; designs already in the group keep their place. Designs that cannot move come back in `notMoved` — send the `retry` ones again. */
+            emailIds?: string[];
         };
         EmailGroupPatchRequest: {
             /** @description Named folder label (1–60 chars). Reserved names `Ungrouped` / `ungrouped` / `__ungrouped__` are rejected. */
-            name: string;
+            name?: string;
+            /** @description Designs (`emailId`) to move into this group; up to 50 in one call, which is one request against the rate limit. They land at the top in this order; designs already in the group keep their place. Designs that cannot move come back in `notMoved` — send the `retry` ones again. */
+            emailIds?: string[];
         };
         EmailGroupDeleteResponse: {
             groupId: string;
@@ -4214,10 +4264,10 @@ export interface components {
                 /** @enum {string} */
                 approvalState?: "pending" | "approved" | "rejected";
                 /**
-                 * @description Why a paused send is held. `plan_limit` means the organization ran out of monthly email sends; the send resumes on its own once the allowance has room, or you can cancel it. `manual` means its operator paused the gradual ramp; resume it to continue.
+                 * @description Why a paused send is held. `plan_limit`: the organization ran out of monthly email sends. `domain_unsendable`: its sending domain stopped passing DNS; fails after 7 days. Both resume on their own and can be canceled. `manual`: its operator paused the gradual ramp; resume it to continue.
                  * @enum {string}
                  */
-                pauseReason?: "manual" | "plan_limit";
+                pauseReason?: "manual" | "plan_limit" | "domain_unsendable";
                 subject?: string;
                 previewText?: string;
                 from?: {
@@ -4698,7 +4748,7 @@ export interface components {
                     /** @enum {string} */
                     logicalOperator: "AND" | "OR";
                     conditions: ({
-                        /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
+                        /** @description Trigger payload path (trackingNumber, order.total, items[0].sku) or contact.<name> to read the recipient contact (contact.plan). */
                         field: string;
                         /** @enum {string} */
                         type: "string";
@@ -4707,7 +4757,7 @@ export interface components {
                         /** @description String value to compare against. */
                         value: string;
                     } | {
-                        /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
+                        /** @description Trigger payload path (trackingNumber, order.total, items[0].sku) or contact.<name> to read the recipient contact (contact.plan). */
                         field: string;
                         /** @enum {string} */
                         type: "number";
@@ -4716,7 +4766,7 @@ export interface components {
                         /** @description Finite numeric value to compare against. */
                         value: number;
                     } | {
-                        /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
+                        /** @description Trigger payload path (trackingNumber, order.total, items[0].sku) or contact.<name> to read the recipient contact (contact.plan). */
                         field: string;
                         /** @enum {string} */
                         type: "date";
@@ -4725,7 +4775,7 @@ export interface components {
                         /** @description ISO date string or Unix timestamp in milliseconds to compare against. */
                         value: string | number;
                     } | {
-                        /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
+                        /** @description Trigger payload path (trackingNumber, order.total, items[0].sku) or contact.<name> to read the recipient contact (contact.plan). */
                         field: string;
                         /** @enum {string} */
                         type: "string";
@@ -4734,7 +4784,7 @@ export interface components {
                         /** @description Non-empty array of string values to compare against. */
                         value: string[];
                     } | {
-                        /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
+                        /** @description Trigger payload path (trackingNumber, order.total, items[0].sku) or contact.<name> to read the recipient contact (contact.plan). */
                         field: string;
                         /** @enum {string} */
                         type: "number";
@@ -4743,7 +4793,7 @@ export interface components {
                         /** @description Non-empty array of finite numbers to compare against. */
                         value: number[];
                     } | {
-                        /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
+                        /** @description Trigger payload path (trackingNumber, order.total, items[0].sku) or contact.<name> to read the recipient contact (contact.plan). */
                         field: string;
                         /** @enum {string} */
                         type: "number";
@@ -4755,7 +4805,7 @@ export interface components {
                             number
                         ];
                     } | {
-                        /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
+                        /** @description Trigger payload path (trackingNumber, order.total, items[0].sku) or contact.<name> to read the recipient contact (contact.plan). */
                         field: string;
                         /** @enum {string} */
                         type: "date";
@@ -4767,7 +4817,7 @@ export interface components {
                             string | number
                         ];
                     } | {
-                        /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
+                        /** @description Trigger payload path (trackingNumber, order.total, items[0].sku) or contact.<name> to read the recipient contact (contact.plan). */
                         field: string;
                         /** @enum {string} */
                         type: "string";
@@ -4777,7 +4827,7 @@ export interface components {
                          */
                         operator: "is_empty" | "is_not_empty";
                     } | {
-                        /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
+                        /** @description Trigger payload path (trackingNumber, order.total, items[0].sku) or contact.<name> to read the recipient contact (contact.plan). */
                         field: string;
                         /** @enum {string} */
                         type: "number";
@@ -4787,7 +4837,7 @@ export interface components {
                          */
                         operator: "is_empty" | "is_not_empty";
                     } | {
-                        /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
+                        /** @description Trigger payload path (trackingNumber, order.total, items[0].sku) or contact.<name> to read the recipient contact (contact.plan). */
                         field: string;
                         /** @enum {string} */
                         type: "date";
@@ -4797,7 +4847,7 @@ export interface components {
                          */
                         operator: "is_empty" | "is_not_empty";
                     } | {
-                        /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
+                        /** @description Trigger payload path (trackingNumber, order.total, items[0].sku) or contact.<name> to read the recipient contact (contact.plan). */
                         field: string;
                         /** @enum {string} */
                         type: "bool";
@@ -4855,7 +4905,7 @@ export interface components {
                     /** @enum {string} */
                     logicalOperator: "AND" | "OR";
                     conditions: ({
-                        /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
+                        /** @description Trigger payload path (trackingNumber, order.total, items[0].sku) or contact.<name> to read the recipient contact (contact.plan). */
                         field: string;
                         /** @enum {string} */
                         type: "string";
@@ -4864,7 +4914,7 @@ export interface components {
                         /** @description String value to compare against. */
                         value: string;
                     } | {
-                        /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
+                        /** @description Trigger payload path (trackingNumber, order.total, items[0].sku) or contact.<name> to read the recipient contact (contact.plan). */
                         field: string;
                         /** @enum {string} */
                         type: "number";
@@ -4873,7 +4923,7 @@ export interface components {
                         /** @description Finite numeric value to compare against. */
                         value: number;
                     } | {
-                        /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
+                        /** @description Trigger payload path (trackingNumber, order.total, items[0].sku) or contact.<name> to read the recipient contact (contact.plan). */
                         field: string;
                         /** @enum {string} */
                         type: "date";
@@ -4882,7 +4932,7 @@ export interface components {
                         /** @description ISO date string or Unix timestamp in milliseconds to compare against. */
                         value: string | number;
                     } | {
-                        /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
+                        /** @description Trigger payload path (trackingNumber, order.total, items[0].sku) or contact.<name> to read the recipient contact (contact.plan). */
                         field: string;
                         /** @enum {string} */
                         type: "string";
@@ -4891,7 +4941,7 @@ export interface components {
                         /** @description Non-empty array of string values to compare against. */
                         value: string[];
                     } | {
-                        /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
+                        /** @description Trigger payload path (trackingNumber, order.total, items[0].sku) or contact.<name> to read the recipient contact (contact.plan). */
                         field: string;
                         /** @enum {string} */
                         type: "number";
@@ -4900,7 +4950,7 @@ export interface components {
                         /** @description Non-empty array of finite numbers to compare against. */
                         value: number[];
                     } | {
-                        /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
+                        /** @description Trigger payload path (trackingNumber, order.total, items[0].sku) or contact.<name> to read the recipient contact (contact.plan). */
                         field: string;
                         /** @enum {string} */
                         type: "number";
@@ -4912,7 +4962,7 @@ export interface components {
                             number
                         ];
                     } | {
-                        /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
+                        /** @description Trigger payload path (trackingNumber, order.total, items[0].sku) or contact.<name> to read the recipient contact (contact.plan). */
                         field: string;
                         /** @enum {string} */
                         type: "date";
@@ -4924,7 +4974,7 @@ export interface components {
                             string | number
                         ];
                     } | {
-                        /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
+                        /** @description Trigger payload path (trackingNumber, order.total, items[0].sku) or contact.<name> to read the recipient contact (contact.plan). */
                         field: string;
                         /** @enum {string} */
                         type: "string";
@@ -4934,7 +4984,7 @@ export interface components {
                          */
                         operator: "is_empty" | "is_not_empty";
                     } | {
-                        /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
+                        /** @description Trigger payload path (trackingNumber, order.total, items[0].sku) or contact.<name> to read the recipient contact (contact.plan). */
                         field: string;
                         /** @enum {string} */
                         type: "number";
@@ -4944,7 +4994,7 @@ export interface components {
                          */
                         operator: "is_empty" | "is_not_empty";
                     } | {
-                        /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
+                        /** @description Trigger payload path (trackingNumber, order.total, items[0].sku) or contact.<name> to read the recipient contact (contact.plan). */
                         field: string;
                         /** @enum {string} */
                         type: "date";
@@ -4954,7 +5004,7 @@ export interface components {
                          */
                         operator: "is_empty" | "is_not_empty";
                     } | {
-                        /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
+                        /** @description Trigger payload path (trackingNumber, order.total, items[0].sku) or contact.<name> to read the recipient contact (contact.plan). */
                         field: string;
                         /** @enum {string} */
                         type: "bool";
@@ -5124,7 +5174,14 @@ export interface components {
                     branch?: string;
                 }[];
                 emailIds: string[];
+                /** @description Creator as Brew shows it: a name or "Former member", "API" or "MCP", or both joined ("Name · MCP"); absent when the creator cannot be named. */
                 createdBy?: string;
+                /** @description Creator user id; absent for an organization API key. */
+                createdByUserId?: string;
+                /** @description Who published the live version; absent while not live. */
+                publishedBy?: string;
+                /** @description Publisher user id of the live version. */
+                publishedByUserId?: string;
                 /** Format: date-time */
                 createdAt?: string;
                 /** Format: date-time */
@@ -5220,7 +5277,7 @@ export interface components {
                     /** @enum {string} */
                     logicalOperator: "AND" | "OR";
                     conditions: ({
-                        /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
+                        /** @description Trigger payload path (trackingNumber, order.total, items[0].sku) or contact.<name> to read the recipient contact (contact.plan). */
                         field: string;
                         /** @enum {string} */
                         type: "string";
@@ -5229,7 +5286,7 @@ export interface components {
                         /** @description String value to compare against. */
                         value: string;
                     } | {
-                        /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
+                        /** @description Trigger payload path (trackingNumber, order.total, items[0].sku) or contact.<name> to read the recipient contact (contact.plan). */
                         field: string;
                         /** @enum {string} */
                         type: "number";
@@ -5238,7 +5295,7 @@ export interface components {
                         /** @description Finite numeric value to compare against. */
                         value: number;
                     } | {
-                        /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
+                        /** @description Trigger payload path (trackingNumber, order.total, items[0].sku) or contact.<name> to read the recipient contact (contact.plan). */
                         field: string;
                         /** @enum {string} */
                         type: "date";
@@ -5247,7 +5304,7 @@ export interface components {
                         /** @description ISO date string or Unix timestamp in milliseconds to compare against. */
                         value: string | number;
                     } | {
-                        /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
+                        /** @description Trigger payload path (trackingNumber, order.total, items[0].sku) or contact.<name> to read the recipient contact (contact.plan). */
                         field: string;
                         /** @enum {string} */
                         type: "string";
@@ -5256,7 +5313,7 @@ export interface components {
                         /** @description Non-empty array of string values to compare against. */
                         value: string[];
                     } | {
-                        /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
+                        /** @description Trigger payload path (trackingNumber, order.total, items[0].sku) or contact.<name> to read the recipient contact (contact.plan). */
                         field: string;
                         /** @enum {string} */
                         type: "number";
@@ -5265,7 +5322,7 @@ export interface components {
                         /** @description Non-empty array of finite numbers to compare against. */
                         value: number[];
                     } | {
-                        /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
+                        /** @description Trigger payload path (trackingNumber, order.total, items[0].sku) or contact.<name> to read the recipient contact (contact.plan). */
                         field: string;
                         /** @enum {string} */
                         type: "number";
@@ -5277,7 +5334,7 @@ export interface components {
                             number
                         ];
                     } | {
-                        /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
+                        /** @description Trigger payload path (trackingNumber, order.total, items[0].sku) or contact.<name> to read the recipient contact (contact.plan). */
                         field: string;
                         /** @enum {string} */
                         type: "date";
@@ -5289,7 +5346,7 @@ export interface components {
                             string | number
                         ];
                     } | {
-                        /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
+                        /** @description Trigger payload path (trackingNumber, order.total, items[0].sku) or contact.<name> to read the recipient contact (contact.plan). */
                         field: string;
                         /** @enum {string} */
                         type: "string";
@@ -5299,7 +5356,7 @@ export interface components {
                          */
                         operator: "is_empty" | "is_not_empty";
                     } | {
-                        /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
+                        /** @description Trigger payload path (trackingNumber, order.total, items[0].sku) or contact.<name> to read the recipient contact (contact.plan). */
                         field: string;
                         /** @enum {string} */
                         type: "number";
@@ -5309,7 +5366,7 @@ export interface components {
                          */
                         operator: "is_empty" | "is_not_empty";
                     } | {
-                        /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
+                        /** @description Trigger payload path (trackingNumber, order.total, items[0].sku) or contact.<name> to read the recipient contact (contact.plan). */
                         field: string;
                         /** @enum {string} */
                         type: "date";
@@ -5319,7 +5376,7 @@ export interface components {
                          */
                         operator: "is_empty" | "is_not_empty";
                     } | {
-                        /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
+                        /** @description Trigger payload path (trackingNumber, order.total, items[0].sku) or contact.<name> to read the recipient contact (contact.plan). */
                         field: string;
                         /** @enum {string} */
                         type: "bool";
@@ -5377,7 +5434,7 @@ export interface components {
                     /** @enum {string} */
                     logicalOperator: "AND" | "OR";
                     conditions: ({
-                        /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
+                        /** @description Trigger payload path (trackingNumber, order.total, items[0].sku) or contact.<name> to read the recipient contact (contact.plan). */
                         field: string;
                         /** @enum {string} */
                         type: "string";
@@ -5386,7 +5443,7 @@ export interface components {
                         /** @description String value to compare against. */
                         value: string;
                     } | {
-                        /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
+                        /** @description Trigger payload path (trackingNumber, order.total, items[0].sku) or contact.<name> to read the recipient contact (contact.plan). */
                         field: string;
                         /** @enum {string} */
                         type: "number";
@@ -5395,7 +5452,7 @@ export interface components {
                         /** @description Finite numeric value to compare against. */
                         value: number;
                     } | {
-                        /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
+                        /** @description Trigger payload path (trackingNumber, order.total, items[0].sku) or contact.<name> to read the recipient contact (contact.plan). */
                         field: string;
                         /** @enum {string} */
                         type: "date";
@@ -5404,7 +5461,7 @@ export interface components {
                         /** @description ISO date string or Unix timestamp in milliseconds to compare against. */
                         value: string | number;
                     } | {
-                        /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
+                        /** @description Trigger payload path (trackingNumber, order.total, items[0].sku) or contact.<name> to read the recipient contact (contact.plan). */
                         field: string;
                         /** @enum {string} */
                         type: "string";
@@ -5413,7 +5470,7 @@ export interface components {
                         /** @description Non-empty array of string values to compare against. */
                         value: string[];
                     } | {
-                        /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
+                        /** @description Trigger payload path (trackingNumber, order.total, items[0].sku) or contact.<name> to read the recipient contact (contact.plan). */
                         field: string;
                         /** @enum {string} */
                         type: "number";
@@ -5422,7 +5479,7 @@ export interface components {
                         /** @description Non-empty array of finite numbers to compare against. */
                         value: number[];
                     } | {
-                        /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
+                        /** @description Trigger payload path (trackingNumber, order.total, items[0].sku) or contact.<name> to read the recipient contact (contact.plan). */
                         field: string;
                         /** @enum {string} */
                         type: "number";
@@ -5434,7 +5491,7 @@ export interface components {
                             number
                         ];
                     } | {
-                        /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
+                        /** @description Trigger payload path (trackingNumber, order.total, items[0].sku) or contact.<name> to read the recipient contact (contact.plan). */
                         field: string;
                         /** @enum {string} */
                         type: "date";
@@ -5446,7 +5503,7 @@ export interface components {
                             string | number
                         ];
                     } | {
-                        /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
+                        /** @description Trigger payload path (trackingNumber, order.total, items[0].sku) or contact.<name> to read the recipient contact (contact.plan). */
                         field: string;
                         /** @enum {string} */
                         type: "string";
@@ -5456,7 +5513,7 @@ export interface components {
                          */
                         operator: "is_empty" | "is_not_empty";
                     } | {
-                        /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
+                        /** @description Trigger payload path (trackingNumber, order.total, items[0].sku) or contact.<name> to read the recipient contact (contact.plan). */
                         field: string;
                         /** @enum {string} */
                         type: "number";
@@ -5466,7 +5523,7 @@ export interface components {
                          */
                         operator: "is_empty" | "is_not_empty";
                     } | {
-                        /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
+                        /** @description Trigger payload path (trackingNumber, order.total, items[0].sku) or contact.<name> to read the recipient contact (contact.plan). */
                         field: string;
                         /** @enum {string} */
                         type: "date";
@@ -5476,7 +5533,7 @@ export interface components {
                          */
                         operator: "is_empty" | "is_not_empty";
                     } | {
-                        /** @description Trigger payload field reference: a bare name, a dot path, or a bracket-indexed list element — for example trackingNumber, order.total, or items[0].sku. */
+                        /** @description Trigger payload path (trackingNumber, order.total, items[0].sku) or contact.<name> to read the recipient contact (contact.plan). */
                         field: string;
                         /** @enum {string} */
                         type: "bool";
@@ -6056,7 +6113,7 @@ export interface components {
             valid: boolean;
             errors: {
                 /** @enum {string} */
-                code: "payload_not_object" | "missing_required" | "invalid_type" | "unexpected_key" | "required_satisfied_by_fallback";
+                code: "payload_not_object" | "missing_required" | "invalid_type" | "unexpected_key" | "required_satisfied_by_fallback" | "invalid_email";
                 field: string;
                 message: string;
                 expectedType?: string;
@@ -6064,7 +6121,7 @@ export interface components {
             }[];
             warnings: {
                 /** @enum {string} */
-                code: "payload_not_object" | "missing_required" | "invalid_type" | "unexpected_key" | "required_satisfied_by_fallback";
+                code: "payload_not_object" | "missing_required" | "invalid_type" | "unexpected_key" | "required_satisfied_by_fallback" | "invalid_email";
                 field: string;
                 message: string;
                 expectedType?: string;
@@ -7256,6 +7313,10 @@ export interface components {
                 cursor: string | null;
                 hasMore: boolean;
             };
+            /** @description Flows this query matches across every page (filters narrow, `semantic` only orders); a floor when `isTotalExact` is false. */
+            total: number;
+            /** @description False when the read was cut at 500 flows (the newest, or the 500 nearest a `semantic` query), so `total` is a floor. */
+            isTotalExact: boolean;
         };
         BrandGetResponse: {
             brandId: string;
@@ -11176,7 +11237,9 @@ export interface operations {
                      *         {
                      *           "groupId": "grp_welcome",
                      *           "groupName": "Welcome",
-                     *           "emailCount": 3
+                     *           "emailCount": 3,
+                     *           "createdBy": "Sam Rivera",
+                     *           "createdByUserId": "user_2xK9mPq4Rt7Vw1Yb"
                      *         },
                      *         {
                      *           "groupId": "ungrouped",
@@ -11310,14 +11373,18 @@ export interface operations {
             content: {
                 /**
                  * @example {
-                 *       "name": "Welcome"
+                 *       "name": "Welcome",
+                 *       "emailIds": [
+                 *         "V1StGXR8_Z5jdHi6B-myT",
+                 *         "qkE3pWv2xN9dLmR4tYbZ7"
+                 *       ]
                  *     }
                  */
                 "application/json": components["schemas"]["EmailGroupCreateRequest"];
             };
         };
         responses: {
-            /** @description Created. */
+            /** @description Created, with any designs moved in. */
             201: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -11335,10 +11402,12 @@ export interface operations {
                      * @example {
                      *       "groupId": "grp_welcome",
                      *       "groupName": "Welcome",
-                     *       "emailCount": 0
+                     *       "emailCount": 2,
+                     *       "moved": 2,
+                     *       "notMoved": []
                      *     }
                      */
-                    "application/json": components["schemas"]["EmailGroupSummary"];
+                    "application/json": components["schemas"]["EmailGroupWriteResponse"];
                 };
             };
             /**
@@ -11494,7 +11563,9 @@ export interface operations {
                      * @example {
                      *       "groupId": "grp_welcome",
                      *       "groupName": "Welcome",
-                     *       "emailCount": 3
+                     *       "emailCount": 3,
+                     *       "createdBy": "Sam Rivera",
+                     *       "createdByUserId": "user_2xK9mPq4Rt7Vw1Yb"
                      *     }
                      */
                     "application/json": components["schemas"]["EmailGroupSummary"];
@@ -11798,7 +11869,7 @@ export interface operations {
                      *       "emailCount": 3
                      *     }
                      */
-                    "application/json": components["schemas"]["EmailGroupSummary"];
+                    "application/json": components["schemas"]["EmailGroupWriteResponse"];
                 };
             };
             /**
@@ -12281,6 +12352,8 @@ export interface operations {
              *     `DOMAIN_NOT_READY`: The domain is not verified for sending.
              *
              *     `DOMAIN_PURPOSE_NOT_ALLOWED`: The sending domain is admitted for a different purpose than this send (marketing vs transactional).
+             *
+             *     `EMAIL_IMAGES_MISSING`: The email shows an image on cdn.brew.new that does not exist, so it was not sent; `details.missingImages[]` lists each URL and the email it is in.
              *
              *     `EMAIL_NOT_READY`: The design is still generating or failed to generate, so it cannot be sent or cloned.
              *
@@ -13804,6 +13877,8 @@ export interface operations {
                      *       "emailIds": [
                      *         "V1StGXR8_Z5jdHi6B-myT"
                      *       ],
+                     *       "createdBy": "Sam Rivera",
+                     *       "createdByUserId": "user_2xK9mPq4Rt7Vw1Yb",
                      *       "createdAt": "2026-04-08T12:00:00.000Z",
                      *       "updatedAt": "2026-04-08T12:00:00.000Z"
                      *     }
@@ -14735,6 +14810,17 @@ export interface operations {
              *     `RUN_IN_PROGRESS`: A manual-audience run is already in progress for this automation.
              */
             409: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `EMAIL_IMAGES_MISSING`: The email shows an image on cdn.brew.new that does not exist, so it was not sent; `details.missingImages[]` lists each URL and the email it is in. */
+            422: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
                     "x-request-id": string;
@@ -16930,6 +17016,17 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
+            /** @description `CONTRACT_LOCKED_BY_PUBLISHED_AUTOMATIONS`: A published automation consumes this trigger, so the contract change must stay backward compatible: enforcement cannot tighten, a referenced field cannot be removed, retyped, or made required without a fallback, and an open object or list cannot gain a shape that drops a field a published automation reads. */
+            409: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
             /** @description `TRIGGER_IMMUTABLE`: Integration-provisioned triggers cannot be changed through the API. */
             422: {
                 headers: {
@@ -17756,7 +17853,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `CONTRACT_LOCKED_BY_PUBLISHED_AUTOMATIONS`: A published automation consumes this trigger, so the contract change must stay backward compatible: enforcement cannot tighten, and a referenced field cannot be removed, retyped, or made required without a fallback. */
+            /** @description `CONTRACT_LOCKED_BY_PUBLISHED_AUTOMATIONS`: A published automation consumes this trigger, so the contract change must stay backward compatible: enforcement cannot tighten, a referenced field cannot be removed, retyped, or made required without a fallback, and an open object or list cannot gain a shape that drops a field a published automation reads. */
             409: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -24336,7 +24433,7 @@ export interface operations {
     listTemplates: {
         parameters: {
             query?: {
-                /** @description Only this brand's templates, by domain (e.g. `vercel.com`); case-insensitive. */
+                /** @description Only this brand's templates, by domain (e.g. `brew.new`); case-insensitive. */
                 brand?: string;
                 /** @description Email category, matched case-insensitively (unknown → empty page): welcome, newsletter, promotional, product-launch, product-update, order-confirmation, shipping-update, receipt, cart-abandonment, subscription, password-reset, verification, security-alert, account-update, event-invitation, event-reminder, feedback-request, re-engagement, referral, support, business, internal, notification, general. */
                 category?: string;
@@ -24623,7 +24720,7 @@ export interface operations {
     listFlows: {
         parameters: {
             query?: {
-                /** @description Exact brand domain filter for LIST, e.g. `vercel.com`. */
+                /** @description Exact brand domain filter for LIST, e.g. `brew.new`. */
                 brand?: string;
                 /** @description Filter LIST by the flow’s dominant step category (`welcome`, `newsletter`, `promotion`, `education`, …). */
                 category?: "verification" | "transactional" | "direct_sales" | "welcome" | "promotion" | "newsletter" | "education" | "abandoned_cart" | "winback" | "other";
@@ -24689,7 +24786,9 @@ export interface operations {
                      *         "limit": 100,
                      *         "cursor": null,
                      *         "hasMore": false
-                     *       }
+                     *       },
+                     *       "total": 1,
+                     *       "isTotalExact": true
                      *     }
                      */
                     "application/json": components["schemas"]["FlowsListResponse"];
@@ -24758,6 +24857,19 @@ export interface operations {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
                     "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `SERVICE_UNAVAILABLE`: Semantic search over flows cannot run right now (no search index, or its kill switch), so a `semantic` query is refused rather than answered with an empty page. */
+            503: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
                     [name: string]: unknown;
                 };
                 content: {

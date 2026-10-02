@@ -163,6 +163,146 @@ describe('flows get', () => {
   })
 })
 
+describe('flows list, counting', () => {
+  it('leads the table with how many flows the query matches across every page', async () => {
+    server.use(
+      http.get(`${API}/v1/flows`, () =>
+        HttpResponse.json({
+          data: [CARD],
+          pagination: { limit: 1, cursor: 'b2ZmOjE', hasMore: true },
+          total: 167,
+          isTotalExact: true,
+        })
+      )
+    )
+    const result = await cli(['flows', 'list', '--limit', '1'], {
+      ttyOut: true,
+    })
+    expect(result.code).toBe(0)
+    expect(result.stdout).toContain('167 flows in total; 1 on this page')
+    expect(result.stdout).toContain('notion.com')
+  })
+
+  it('marks a partial read’s total as a floor', async () => {
+    server.use(
+      http.get(`${API}/v1/flows`, () =>
+        HttpResponse.json({
+          data: [CARD],
+          pagination: PAGE_DONE,
+          total: 1,
+          isTotalExact: false,
+        })
+      )
+    )
+    const result = await cli(
+      ['flows', 'list', '--brand-domain', 'notion.com'],
+      {
+        ttyOut: true,
+      }
+    )
+    expect(result.code).toBe(0)
+    expect(result.stdout).toContain('at least 1 flow in total')
+  })
+
+  it('an empty partial --semantic read names the 500 nearest the query', async () => {
+    server.use(
+      http.get(`${API}/v1/flows`, () =>
+        HttpResponse.json({
+          data: [],
+          pagination: PAGE_DONE,
+          total: 0,
+          isTotalExact: false,
+        })
+      )
+    )
+    const result = await cli(
+      ['flows', 'list', '--semantic', 'win-back', '--type', 'signup'],
+      { ttyOut: true }
+    )
+    expect(result.code).toBe(0)
+    expect(result.stdout).toContain('not a definitive none')
+    expect(result.stdout).toContain('500 flows nearest your --semantic query')
+    // The search ran; it was cut. No "unavailable" or retry advice.
+    expect(result.stdout).not.toContain('unavailable')
+    expect(result.stdout).not.toContain('No flows found.')
+  })
+
+  it('surfaces a semantic search that cannot run as the API’s 503 envelope', async () => {
+    server.use(
+      http.get(`${API}/v1/flows`, () =>
+        HttpResponse.json(
+          {
+            error: {
+              code: 'SERVICE_UNAVAILABLE',
+              type: 'service_unavailable',
+              message: 'Semantic search over flows is unavailable right now.',
+              suggestion:
+                'Retry without `semantic`: `brand`, `category`, `type` and `sort` still narrow and order the list.',
+              docs: 'https://docs.brew.new/api-reference/api/errors',
+            },
+          },
+          { status: 503, headers: { 'Retry-After': '300' } }
+        )
+      )
+    )
+    const result = await cli(['flows', 'list', '--semantic', 'win-back'])
+    expect(result.code).not.toBe(0)
+    const body = JSON.parse(result.stderr) as {
+      error: { code: string; suggestion?: string }
+    }
+    expect(body.error.code).toBe('SERVICE_UNAVAILABLE')
+    expect(body.error.suggestion).toContain('Retry without `semantic`')
+  })
+
+  it('an empty partial read without --semantic names the cut, not a semantic retry', async () => {
+    server.use(
+      http.get(`${API}/v1/flows`, () =>
+        HttpResponse.json({
+          data: [],
+          pagination: PAGE_DONE,
+          total: 0,
+          isTotalExact: false,
+        })
+      )
+    )
+    const result = await cli(
+      ['flows', 'list', '--brand-domain', 'old-brand.com'],
+      { ttyOut: true }
+    )
+    expect(result.code).toBe(0)
+    expect(result.stdout).toContain('newest 500 flows')
+    expect(result.stdout).not.toContain('--semantic')
+  })
+
+  it('passes total and isTotalExact through --json untouched', async () => {
+    server.use(
+      http.get(`${API}/v1/flows`, () =>
+        HttpResponse.json({
+          data: [CARD],
+          pagination: { limit: 1, cursor: 'b2ZmOjE', hasMore: true },
+          total: 167,
+          isTotalExact: true,
+        })
+      )
+    )
+    const result = await cli(['flows', 'list', '--limit', '1', '--json'])
+    expect(result.code).toBe(0)
+    expect(result.json).toMatchObject({ total: 167, isTotalExact: true })
+  })
+
+  it('omits the count line when the API sends no total (an older deployment)', async () => {
+    server.use(
+      http.get(`${API}/v1/flows`, () =>
+        HttpResponse.json({ data: [CARD], pagination: PAGE_DONE })
+      )
+    )
+    const result = await cli(['flows', 'list'], { ttyOut: true })
+    expect(result.code).toBe(0)
+    expect(result.stdout).not.toContain('in total')
+    expect(result.stdout).toContain('notion.com')
+  })
+})
+
 describe('flows list, paging', () => {
   it('--all follows the cursor across pages', async () => {
     const cursors: Array<string | null> = []
@@ -189,6 +329,63 @@ describe('flows list, paging', () => {
       'notion.com',
       'linear.app',
     ])
+  })
+
+  it('--all from a cursor counts what it listed, never "on this page"', async () => {
+    server.use(
+      http.get(`${API}/v1/flows`, ({ request }) => {
+        const cursor = new URL(request.url).searchParams.get('cursor')
+        return cursor === 'page-2'
+          ? HttpResponse.json({
+              data: [{ ...CARD, slug: 'linear.app' }],
+              pagination: { limit: 1, cursor: 'page-3', hasMore: true },
+              total: 3,
+              isTotalExact: true,
+            })
+          : HttpResponse.json({
+              data: [{ ...CARD, slug: 'figma.com' }],
+              pagination: { limit: 1, cursor: null, hasMore: false },
+              total: 3,
+              isTotalExact: true,
+            })
+      })
+    )
+    const result = await cli(
+      ['flows', 'list', '--all', '--limit', '1', '--cursor', 'page-2'],
+      { ttyOut: true }
+    )
+    expect(result.code).toBe(0)
+    // Two pages merged: "2 on this page" would misstate what was fetched.
+    expect(result.stdout).toContain('3 flows in total; 2 listed')
+    expect(result.stdout).not.toContain('on this page')
+  })
+
+  it('--all keeps the total the API reported', async () => {
+    server.use(
+      http.get(`${API}/v1/flows`, ({ request }) => {
+        const cursor = new URL(request.url).searchParams.get('cursor')
+        return cursor === null
+          ? HttpResponse.json({
+              data: [CARD],
+              pagination: { limit: 1, cursor: 'page-2', hasMore: true },
+              total: 2,
+              isTotalExact: true,
+            })
+          : HttpResponse.json({
+              data: [{ ...CARD, slug: 'linear.app' }],
+              pagination: { limit: 1, cursor: null, hasMore: false },
+              total: 2,
+              isTotalExact: true,
+            })
+      })
+    )
+    const result = await cli(['flows', 'list', '--all', '--limit', '1'])
+    expect(result.code).toBe(0)
+    expect(result.json).toMatchObject({
+      pagination: { cursor: null, hasMore: false },
+      total: 2,
+      isTotalExact: true,
+    })
   })
 
   it('surfaces the typed 404 envelope for an unknown slug', async () => {

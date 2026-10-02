@@ -1,5 +1,46 @@
 # Changelog
 
+## 0.11.0
+
+Moves to `@brew.new/sdk` `^11.4.0` (typed `total` / `isTotalExact` on
+`flows.list`, and the group writes' `moved` / `notMoved`).
+
+### Added
+
+- **`flows list` says how many flows match.** The table now leads with
+  `167 flows in total; 25 on this page` from the API's new `total`, which
+  counts every flow the query matches across all pages (filters narrow it,
+  `--semantic` only orders it), so `flows list --limit 1 --json` answers
+  "how many" in one call. When `isTotalExact` is false — the read was cut at
+  500 flows — the line says
+  `at least …`, and an empty partial read says why instead of `No flows
+  found.`, and `--all` counts what it listed (`3 flows in total; 2
+  listed`), never "on this page": the API reads at most 500 flows (the newest, or the 500 nearest
+  your `--semantic` query) before the filters apply, so matches past those
+  are not listed. `--json` passes `total` and `isTotalExact` through, and `--all`
+  keeps them on its merged envelope (GetBrew/brew-v2#1805). Against a
+  deployment that predates the count, nothing changes.
+- **A `--semantic` search the API cannot run** (no search index, or its kill
+  switch) now fails with the API's `503 SERVICE_UNAVAILABLE` envelope
+  ("Retry without `semantic`") instead of printing an empty table.
+
+- **`emails groups create` / `update --email-ids`** move up to 50 designs
+  into a folder in the same call, and `update` no longer requires `--name`, so
+  a move alone is one command (GetBrew/brew-v2#1814). The result carries
+  `moved` and `notMoved` (each design left where it was, with a reason).
+  `update` with neither `--name` nor `--email-ids` exits 2 before sending.
+
+### Spec sync
+
+- The vendored OpenAPI spec and generated types catch up with the API:
+  `total` / `isTotalExact` and the `503` on the flows list, `pauseReason:
+  'domain_unsendable'`, the `EMAIL_IMAGES_MISSING` error code (`422` on an
+  automation run), the trigger update's `409
+  CONTRACT_LOCKED_BY_PUBLISHED_AUTOMATIONS`, the payload issue code
+  `invalid_email`, and creator attribution on emails, email groups and
+  automations (`createdBy` / `createdByUserId`, `publishedBy` /
+  `publishedByUserId`; GetBrew/brew-v2#1816).
+
 ## 0.10.0
 
 Moves to `@brew.new/sdk` 11 (it pinned `^10.0.0`, so it could not receive an
