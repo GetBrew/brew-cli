@@ -8,7 +8,7 @@ import {
   mergeInput,
   readJsonFlag,
 } from '../../../lib/input'
-import { EMAIL_IDS_FLAG, toEmailIds } from './email-ids'
+import { assertEmailIdsNotEmpty, EMAIL_IDS_FLAG, toEmailIds } from './email-ids'
 
 export const emailsGroupsUpdateCommand = defineCommand({
   path: ['emails', 'groups', 'update'],
@@ -38,6 +38,7 @@ export const emailsGroupsUpdateCommand = defineCommand({
       name: flagString(flags.name),
       emailIds: toEmailIds(flagString(flags.emailIds)),
     })
+    assertEmailIdsNotEmpty(input.emailIds)
     const hasName = typeof input.name === 'string' && input.name !== ''
     const hasEmailIds = Array.isArray(input.emailIds)
     if (!(hasName || hasEmailIds)) {

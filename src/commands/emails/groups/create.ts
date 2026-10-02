@@ -10,7 +10,7 @@ import {
   readJsonFlag,
   requestOptions,
 } from '../../../lib/input'
-import { EMAIL_IDS_FLAG, toEmailIds } from './email-ids'
+import { assertEmailIdsNotEmpty, EMAIL_IDS_FLAG, toEmailIds } from './email-ids'
 
 export const emailsGroupsCreateCommand = defineCommand({
   path: ['emails', 'groups', 'create'],
@@ -41,6 +41,7 @@ export const emailsGroupsCreateCommand = defineCommand({
     if (typeof input.name !== 'string' || input.name === '') {
       throw new CliUsageError('--name is required (or provide it via --input).')
     }
+    assertEmailIdsNotEmpty(input.emailIds)
     return {
       data: await ctx
         .client()

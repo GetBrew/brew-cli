@@ -108,6 +108,48 @@ describe('emails groups update', () => {
     expect(body).toEqual({ name: 'Welcome series' })
   })
 
+  it('refuses an empty --email-ids list before sending, on update and create', async () => {
+    let calls = 0
+    server.use(
+      http.patch(`${EMAIL_GROUPS_URL}/grp_1`, () => {
+        calls += 1
+        return HttpResponse.json({})
+      }),
+      http.post(EMAIL_GROUPS_URL, () => {
+        calls += 1
+        return HttpResponse.json({}, { status: 201 })
+      })
+    )
+    const update = await runCli(
+      ['emails', 'groups', 'update', 'grp_1', '--email-ids', ','],
+      { env: env(), extraCommands: EXTRA }
+    )
+    expect(update.code).toBe(2)
+    expect(update.stderr).toContain('--email-ids')
+    // Beside a valid rename, an empty list still fails locally rather than
+    // turning the rename into an API validation error.
+    const rename = await runCli(
+      [
+        'emails',
+        'groups',
+        'update',
+        'grp_1',
+        '--name',
+        'Launches',
+        '--email-ids',
+        ' , ',
+      ],
+      { env: env(), extraCommands: EXTRA }
+    )
+    expect(rename.code).toBe(2)
+    const create = await runCli(
+      ['emails', 'groups', 'create', '--name', 'Launches', '--email-ids', ','],
+      { env: env(), extraCommands: EXTRA }
+    )
+    expect(create.code).toBe(2)
+    expect(calls).toBe(0)
+  })
+
   it('refuses an update with neither --name nor --email-ids before sending', async () => {
     let calls = 0
     server.use(
