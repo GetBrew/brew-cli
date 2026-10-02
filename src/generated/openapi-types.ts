@@ -17,7 +17,7 @@ export interface paths {
          *
          *     **Input** `status` (`generating`, `ready`, `failed`), `groupId` (`grp_…` or `ungrouped`), `sortBy` (`updatedAt` default, or `createdAt`) with an inclusive `from`/`to` ISO 8601 window on that timestamp, `limit` and `cursor`.
          *
-         *     **Returns** `200` with a page of `EmailSummary` rows and a `pagination` envelope (`cursor` is `null` on the last page). `createdBy` is the creator exactly as the Brew emails list shows it: a person’s name, `API` or `MCP` for a credential with no person, or `Name · MCP` for a person working through MCP; `createdByUserId` is that person’s stable user id.
+         *     **Returns** `200` with a page of `EmailSummary` rows and a `pagination` envelope (`cursor` is `null` on the last page). `createdBy` is the creator exactly as the Brew emails list shows it: a person’s name (`Former member` once they leave the brand), `API` or `MCP` for a credential with no person, or the two joined (`Name · MCP`); `createdByUserId` is that person’s stable user id. `createdBy` is absent when the creator cannot be named, with `createdByUserId` still present.
          *
          *     **Errors** `400 INVALID_REQUEST` for an unknown query key, an invalid status or a reversed window.
          *
@@ -383,7 +383,7 @@ export interface paths {
         };
         /**
          * List email groups
-         * @description Lists the brand’s email folders under `{ data, pagination }`. Named groups use `grp_*` ids; Ungrouped is always included as `{ groupId: "ungrouped", groupName: "Ungrouped" }`. `emailCount` is capped at 100. A named group a person created carries `createdBy` (their name, or "Former member") and `createdByUserId`; older and org-key groups have neither.
+         * @description Lists the brand’s email folders under `{ data, pagination }`. Named groups use `grp_*` ids; Ungrouped is always included as `{ groupId: "ungrouped", groupName: "Ungrouped" }`. `emailCount` is capped at 100. A named group a person created carries `createdByUserId` and, when they can be named, `createdBy` (their name or "Former member"); older and org-key groups have neither.
          *
          *     **Use when** picking the `groupId` to file a design under or to filter `listEmails` by.
          *
@@ -417,7 +417,7 @@ export interface paths {
         };
         /**
          * Get an email group
-         * @description Reads one email folder as the bare `EmailGroupSummary` (`groupId`, `groupName`, `emailCount`, plus `createdBy` and `createdByUserId` when a person created it).
+         * @description Reads one email folder as the bare `EmailGroupSummary` (`groupId`, `groupName`, `emailCount`, plus `createdByUserId` when a person created it, and `createdBy` when they can be named).
          *
          *     **Use when** confirming a group before filing designs under it, or reading the `ungrouped` catalog row.
          *
@@ -677,7 +677,7 @@ export interface paths {
          *
          *     **Input** `limit` and `cursor` (an opaque native cursor).
          *
-         *     **Returns** `200` with a page of lean automation rows. `createdBy` / `createdByUserId` name the creator (`createdBy: "API"` when an organization API key made it); while live, `publishedBy` / `publishedByUserId` name whoever published the live version.
+         *     **Returns** `200` with a page of lean automation rows. `createdBy` / `createdByUserId` name the creator (`createdBy: "API"` when an organization API key made it, `Former member` once a person leaves the brand, absent when the creator cannot be named); while live, `publishedBy` / `publishedByUserId` name whoever published the live version.
          *
          *     **Errors** `400 INVALID_REQUEST` for an unknown query key or a malformed cursor.
          *
@@ -2362,7 +2362,7 @@ export interface components {
                 groupId: string;
                 groupName: string;
             } | null;
-            /** @description Creator as Brew shows it: a name, "API", "MCP", "Name · MCP" or "Former member". */
+            /** @description Creator as Brew shows it: a name or "Former member", "API" or "MCP", or both joined ("Name · MCP"); absent when the creator cannot be named. */
             createdBy?: string;
             /** @description Creator user id; absent for an organization API key. */
             createdByUserId?: string;
@@ -2393,7 +2393,7 @@ export interface components {
                 groupId: string;
                 groupName: string;
             } | null;
-            /** @description Creator as Brew shows it: a name, "API", "MCP", "Name · MCP" or "Former member". */
+            /** @description Creator as Brew shows it: a name or "Former member", "API" or "MCP", or both joined ("Name · MCP"); absent when the creator cannot be named. */
             createdBy?: string;
             /** @description Creator user id; absent for an organization API key. */
             createdByUserId?: string;
@@ -2435,7 +2435,7 @@ export interface components {
             groupId: string;
             groupName: string;
             emailCount: number;
-            /** @description Group creator as Brew shows it: a name or "Former member"; absent for an organization API key. */
+            /** @description Group creator as Brew shows it: a name or "Former member"; absent for an organization API key or when the creator cannot be named. */
             createdBy?: string;
             /** @description Creator user id; absent for an organization API key. */
             createdByUserId?: string;
@@ -3058,7 +3058,7 @@ export interface components {
                 branch?: string;
             }[];
             emailIds: string[];
-            /** @description Creator as Brew shows it: a name, "API", "MCP", "Name · MCP" or "Former member". */
+            /** @description Creator as Brew shows it: a name or "Former member", "API" or "MCP", or both joined ("Name · MCP"); absent when the creator cannot be named. */
             createdBy?: string;
             /** @description Creator user id; absent for an organization API key. */
             createdByUserId?: string;
@@ -3623,7 +3623,7 @@ export interface components {
                     groupId: string;
                     groupName: string;
                 } | null;
-                /** @description Creator as Brew shows it: a name, "API", "MCP", "Name · MCP" or "Former member". */
+                /** @description Creator as Brew shows it: a name or "Former member", "API" or "MCP", or both joined ("Name · MCP"); absent when the creator cannot be named. */
                 createdBy?: string;
                 /** @description Creator user id; absent for an organization API key. */
                 createdByUserId?: string;
@@ -4199,7 +4199,7 @@ export interface components {
                 groupId: string;
                 groupName: string;
                 emailCount: number;
-                /** @description Group creator as Brew shows it: a name or "Former member"; absent for an organization API key. */
+                /** @description Group creator as Brew shows it: a name or "Former member"; absent for an organization API key or when the creator cannot be named. */
                 createdBy?: string;
                 /** @description Creator user id; absent for an organization API key. */
                 createdByUserId?: string;
@@ -5151,7 +5151,7 @@ export interface components {
                     branch?: string;
                 }[];
                 emailIds: string[];
-                /** @description Creator as Brew shows it: a name, "API", "MCP", "Name · MCP" or "Former member". */
+                /** @description Creator as Brew shows it: a name or "Former member", "API" or "MCP", or both joined ("Name · MCP"); absent when the creator cannot be named. */
                 createdBy?: string;
                 /** @description Creator user id; absent for an organization API key. */
                 createdByUserId?: string;
@@ -24404,7 +24404,7 @@ export interface operations {
     listTemplates: {
         parameters: {
             query?: {
-                /** @description Only this brand's templates, by domain (e.g. `vercel.com`); case-insensitive. */
+                /** @description Only this brand's templates, by domain (e.g. `brew.new`); case-insensitive. */
                 brand?: string;
                 /** @description Email category, matched case-insensitively (unknown → empty page): welcome, newsletter, promotional, product-launch, product-update, order-confirmation, shipping-update, receipt, cart-abandonment, subscription, password-reset, verification, security-alert, account-update, event-invitation, event-reminder, feedback-request, re-engagement, referral, support, business, internal, notification, general. */
                 category?: string;
@@ -24691,7 +24691,7 @@ export interface operations {
     listFlows: {
         parameters: {
             query?: {
-                /** @description Exact brand domain filter for LIST, e.g. `vercel.com`. */
+                /** @description Exact brand domain filter for LIST, e.g. `brew.new`. */
                 brand?: string;
                 /** @description Filter LIST by the flow’s dominant step category (`welcome`, `newsletter`, `promotion`, `education`, …). */
                 category?: "verification" | "transactional" | "direct_sales" | "welcome" | "promotion" | "newsletter" | "education" | "abandoned_cart" | "winback" | "other";
