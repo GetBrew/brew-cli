@@ -43,13 +43,17 @@ const EXTRA = [
   templatesGetCommand,
 ]
 
-function cli(argv: readonly string[]): Promise<RunCliResult> {
+function cli(
+  argv: readonly string[],
+  options: { readonly ttyOut?: boolean } = {}
+): Promise<RunCliResult> {
   return runCli(argv, {
     env: {
       BREW_CLI_CONFIG_DIR: mkdtempSync(join(tmpdir(), 'brew-cli-test-')),
       BREW_API_KEY: KEY,
     },
     extraCommands: EXTRA,
+    ...options,
   })
 }
 
@@ -549,6 +553,77 @@ describe('templates list', () => {
     expect(query?.get('semantic')).toBe('minimal launch')
     const data = result.json as { data: Array<{ emailId: string }> }
     expect(data.data[0]?.emailId).toBe('em_1')
+  })
+})
+
+describe('templates list count mode (brew-v2#1821)', () => {
+  it('prints { count } verbatim, and "N templates" on a TTY', async () => {
+    let query: URLSearchParams | undefined
+    server.use(
+      http.get(`${API}/v1/templates`, ({ request }) => {
+        query = new URL(request.url).searchParams
+        return HttpResponse.json({ count: 167 })
+      })
+    )
+    const json = await cli(['templates', 'list', '--input', '{"count":true}'])
+    expect(json.code).toBe(0)
+    expect(query?.get('count')).toBe('true')
+    expect(json.json).toEqual({ count: 167 })
+
+    const human = await cli(
+      ['templates', 'list', '--input', '{"count":true}'],
+      {
+        ttyOut: true,
+      }
+    )
+    expect(human.code).toBe(0)
+    expect(human.stdout).toBe('167 templates\n')
+  })
+
+  it('prints a groupBy count as value/count lines, and refuses --all', async () => {
+    let query: URLSearchParams | undefined
+    server.use(
+      http.get(`${API}/v1/templates`, ({ request }) => {
+        query = new URL(request.url).searchParams
+        return HttpResponse.json({
+          count: 167,
+          groupBy: 'brand',
+          groups: [
+            { value: 'vercel.com', name: 'Vercel', count: 12 },
+            { value: 'linear.app', count: 9 },
+          ],
+          groupCount: 40,
+          ungroupedCount: 3,
+          pagination: { limit: 100, cursor: 'grp_2', hasMore: true },
+        })
+      })
+    )
+    const result = await cli(
+      ['templates', 'list', '--input', '{"count":true,"groupBy":"brand"}'],
+      { ttyOut: true }
+    )
+    expect(result.code).toBe(0)
+    expect(query?.get('groupBy')).toBe('brand')
+    expect(result.stdout).toBe(
+      [
+        'BRAND       NAME    COUNT',
+        'vercel.com  Vercel  12',
+        'linear.app          9',
+        '167 templates in total · 40 brands · 3 with no brand · more groups: --cursor grp_2',
+        '',
+      ].join('\n')
+    )
+
+    // --all drains rows; a count has none, so it is refused before sending.
+    const all = await cli([
+      'templates',
+      'list',
+      '--all',
+      '--input',
+      '{"count":true}',
+    ])
+    expect(all.code).toBe(2)
+    expect(String(JSON.parse(all.stderr).error.message)).toContain('--all')
   })
 })
 

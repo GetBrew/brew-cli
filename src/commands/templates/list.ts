@@ -1,5 +1,7 @@
 import type { ListTemplatesInput } from '@brew.new/sdk'
+import type { operations } from '../../generated/openapi-types'
 import { defineCommand } from '../../lib/define-command'
+import { CliUsageError } from '../../lib/errors'
 import {
   asSdkInput,
   flagInt,
@@ -15,6 +17,15 @@ import {
   collectAll,
   LIMIT_FLAG,
 } from '../../lib/paginate'
+
+/**
+ * The API's count mode (`count: true`, optionally `groupBy`; brew-v2#1821):
+ * `{ count, groups? }` instead of rows. The SDK does not type it yet.
+ */
+type TemplatesCount = Extract<
+  operations['listTemplates']['responses'][200]['content']['application/json'],
+  { count: number }
+>
 
 export const templatesListCommand = defineCommand({
   path: ['templates', 'list'],
@@ -52,6 +63,15 @@ export const templatesListCommand = defineCommand({
       cursor: flagString(flags.cursor),
     })
     const templates = ctx.client().templates
+    const isCount =
+      input.count === true ||
+      input.count === 'true' ||
+      input.groupBy !== undefined
+    if (flags.all === true && isCount) {
+      throw new CliUsageError(
+        '--all pages through rows; a count has none. Page its groups with --cursor.'
+      )
+    }
     if (flags.all === true) {
       // `representation` may arrive through --input, so the SDK's return
       // type is the full-or-summary union; rows pass through verbatim.
@@ -68,10 +88,53 @@ export const templatesListCommand = defineCommand({
         human: renderTemplates(rows),
       }
     }
-    const result = await templates.list(asSdkInput<ListTemplatesInput>(input))
-    return { data: result, human: renderTemplates(result.data) }
+    const result: unknown = await templates.list(
+      asSdkInput<ListTemplatesInput>(input)
+    )
+    // A count answers `{ count, groups? }`, not rows: the table would throw.
+    const page = result as { data?: unknown }
+    return {
+      data: result,
+      human: Array.isArray(page.data)
+        ? renderTemplates(page.data)
+        : renderCount(result as TemplatesCount),
+    }
   },
 })
+
+function renderCount(body: TemplatesCount): string {
+  const total = `${body.count} template${body.count === 1 ? '' : 's'}`
+  const groups = body.groups ?? []
+  if (body.groupBy === undefined && groups.length === 0) {
+    return total
+  }
+  const noun = body.groupBy === 'category' ? 'categories' : 'brands'
+  const table = renderTable(
+    groups.map((group) => ({ ...group })),
+    [
+      {
+        key: 'value',
+        header: body.groupBy === 'category' ? 'CATEGORY' : 'BRAND',
+      },
+      ...(groups.some((group) => group.name !== undefined)
+        ? [{ key: 'name', header: 'NAME' }]
+        : []),
+      { key: 'count', header: 'COUNT' },
+    ]
+  )
+  const cursor = body.pagination?.hasMore ? body.pagination.cursor : null
+  const footer = [
+    `${total} in total`,
+    body.groupCount === undefined ? '' : `${body.groupCount} ${noun}`,
+    body.ungroupedCount
+      ? `${body.ungroupedCount} with no ${noun === 'brands' ? 'brand' : 'category'}`
+      : '',
+    cursor === null ? '' : `more groups: --cursor ${cursor}`,
+  ]
+    .filter(Boolean)
+    .join(' · ')
+  return groups.length === 0 ? footer : `${table}\n${footer}`
+}
 
 function renderTemplates(rows: ReadonlyArray<unknown>): string {
   if (rows.length === 0) {

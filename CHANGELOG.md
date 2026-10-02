@@ -54,6 +54,14 @@ Needs `@brew.new/sdk` `^11.5.0` (`brand.deleteImage`, `content.uploadImage`,
   called; the non-replaying advice says "this command does not replay a
   request".
 
+- **`templates list --input '{"count":true}'` (and `groupBy`) no longer
+  crashes** with `CLI_UNEXPECTED`: the API's count mode (GetBrew/brew-v2#1821)
+  answers `{ count, groups? }`, and the command drew its row table from it in
+  every mode. `--json` prints the answer verbatim; a TTY shows `167
+  templates`, or one `value  name  count` line per group with the total, the
+  group count, the ungrouped count and the `--cursor` for more groups. `--all`
+  with a count exits 2 (it pages rows; a count has none).
+
 ### Spec sync
 
 - The vendored OpenAPI spec and generated types catch up with the API: the
