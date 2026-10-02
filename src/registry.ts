@@ -49,6 +49,7 @@ import { automationsTriggersReadyCommand } from './commands/automations/triggers
 import { automationsTriggersUpdateCommand } from './commands/automations/triggers/update'
 import { automationsUnpublishCommand } from './commands/automations/unpublish'
 import { automationsUpdateCommand } from './commands/automations/update'
+import { brandDeleteImageCommand } from './commands/brand/delete-image'
 import { brandGetCommand } from './commands/brand/get'
 import { brandGetImagesCommand } from './commands/brand/get-images'
 import { brandUpdateCommand } from './commands/brand/update'
@@ -75,10 +76,12 @@ import { contactsUpsertCommand } from './commands/contacts/upsert'
 import { contactsUpsertManyCommand } from './commands/contacts/upsert-many'
 import { contactsValidateCommand } from './commands/contacts/validate'
 import { contentAddImageCommand } from './commands/content/add-image'
+import { contentCreateImageUploadCommand } from './commands/content/create-image-upload'
 import { contentGenerateImageCommand } from './commands/content/generate-image'
 import { contentGifCommand } from './commands/content/gif'
 import { contentHtmlToPngCommand } from './commands/content/html-to-png'
 import { contentTransformCommand } from './commands/content/transform'
+import { contentUploadImageCommand } from './commands/content/upload-image'
 import { contractsInferCommand } from './commands/contracts/infer'
 import { docsApiCommand, docsCommand } from './commands/docs'
 import { doctorCommand } from './commands/doctor'
@@ -246,6 +249,7 @@ export const ALL_COMMANDS: readonly CommandSpec[] = [
   brandGetCommand,
   brandUpdateCommand,
   brandGetImagesCommand,
+  brandDeleteImageCommand,
   brandsListCommand,
   brandsGetCommand,
   brandsCreateCommand,
@@ -269,6 +273,8 @@ export const ALL_COMMANDS: readonly CommandSpec[] = [
   contentTransformCommand,
   contentHtmlToPngCommand,
   contentAddImageCommand,
+  contentCreateImageUploadCommand,
+  contentUploadImageCommand,
   templatesListCommand,
   templatesGetCommand,
   flowsListCommand,

@@ -1542,7 +1542,7 @@ export interface paths {
          *
          *     **Returns** `200` with `{ fieldName, deleted }`. A name with no custom field resolves `deleted: false` and clears nothing, so repeating the call is safe. The three legacy consent fields (`marketingConsentSource`, `marketingConsentCapturedAt`, `marketingConsentPolicyVersion`) lose only the definition: their values stay, because they still serve as consent evidence.
          *
-         *     **Errors** `422 CORE_FIELD_IMMUTABLE` for a core column.
+         *     **Errors** `422 CORE_FIELD_IMMUTABLE` for a core column. `409 AUDIENCE_BUILD_ACTIVE` for the hidden field of an event-derived audience that is still building; retry once the build finishes.
          *
          *     **See also** `listContactFields`, `getContactField`, `createContactField`.
          */
@@ -1869,7 +1869,7 @@ export interface paths {
         };
         /**
          * List templates
-         * @description Lists public templates under { data, pagination }. The default full representation includes HTML. Set representation=summary for metadata, previewImage, viewUrl, and referenceEmailId without HTML. Supports exact brand and category filters; query matches title text or an exact template identifier. semantic ranks up to 200 matches using vector search; query additionally filters those matches when both are supplied. Browse defaults to 50 full rows or 20 summary rows. Brand and category match case-insensitively. Continue with pagination.cursor, including after an empty filtered page with hasMore=true. Templates are organization-wide references; pass referenceEmailId to POST /v1/emails to remix one.
+         * @description Lists public templates under { data, pagination }. The default full representation includes HTML. Set representation=summary for metadata, previewImage, viewUrl, and referenceEmailId without HTML. Supports exact brand and category filters; query matches title text or an exact template identifier. semantic ranks up to 200 matches using vector search; query additionally filters those matches when both are supplied. Browse defaults to 50 full rows or 20 summary rows. Brand and category match case-insensitively. Continue with pagination.cursor, including after an empty filtered page with hasMore=true. Templates are organization-wide references; pass referenceEmailId to POST /v1/emails to remix one. Set count=true for { count }, the number of templates matching brand and category (refreshed every 15 minutes), instead of rows; add groupBy=brand or groupBy=category for per-value counts, largest first, 100 groups a page with the same pagination.cursor (count does not combine with semantic or query).
          */
         get: operations["listTemplates"];
         put?: never;
@@ -2001,6 +2001,36 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/brand/images/{assetId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete a brand image
+         * @description Removes one image from the brand library and from image search, as Delete image on the Assets page does. Its file stays hosted at its URL, so emails already using it keep rendering.
+         *
+         *     **Use when** an image should no longer be offered for new designs. Confirm with the user first. Free; no credits are charged.
+         *
+         *     **Input** `assetId` in the path, as `getBrandImages` returns it. One image per call.
+         *
+         *     **Returns** `200` with `{ assetId, deleted }`. An `assetId` not in the library resolves `deleted: false` and changes nothing, so repeating the call is safe.
+         *
+         *     **Errors** `400 INVALID_REQUEST` for a logo (manage logos on the Assets page) or a malformed `assetId`.
+         *
+         *     **See also** `getBrandImages`, `addImage`.
+         */
+        delete: operations["deleteBrandImage"];
         options?: never;
         head?: never;
         patch?: never;
@@ -2149,9 +2179,49 @@ export interface paths {
         put?: never;
         /**
          * Add image
-         * @description Adds image URLs to the brand image library: fetches them, optimizes them, stores them, and vector-indexes them so the email agent can find them. Pass `imageUrl` for one synchronous import or `imageUrls` for up to 100 images in a durable background import. Free; no credits are charged.
+         * @description Adds an image to the brand image library: fetches or reads it, converts it, stores it, and vector-indexes it so the email agent can find it. Free; no credits are charged.
+         *
+         *     **Use when** a public image URL, a batch of them, or a local file should be reusable in designs and searches.
+         *
+         *     **Input** exactly one of `imageUrl` (one public URL, synchronous), `imageUrls` (1 to 100 public URLs, a durable background import) or `uploadId` (a local file whose bytes were sent to the `uploadUrl` from `createImageUpload`, synchronous).
+         *
+         *     **Returns** `200` with `{ url, width, height, aspectRatio, assetId }` for `imageUrl` and `uploadId`; `202` with `{ accepted, skipped, runId }` for `imageUrls`. Repeating an `uploadId` call returns the same answer for 24 hours, even if the image was deleted since.
+         *
+         *     **Errors** `422 CONTENT_OPERATION_FAILED` when the image cannot be fetched, decoded or saved (for an upload: bytes that are not PNG, JPEG, GIF, WebP, AVIF, TIFF or SVG). For `uploadId`: `404 UPLOAD_NOT_FOUND` (unknown, expired or another brand), `409 UPLOAD_NOT_RECEIVED` (the bytes were never sent), `409 UPLOAD_IN_PROGRESS` (another call is converting it; retry shortly) and `413 PAYLOAD_TOO_LARGE` (over 20 MB, or an SVG over 2 MB).
+         *
+         *     **See also** `createImageUpload`, `getBrandImages`, `deleteBrandImage`.
          */
         post: operations["addImage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/content/image-uploads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create an image upload
+         * @description Opens a single-use upload for one local image file. POST the file's raw bytes to the returned `uploadUrl`, then call `addImage` with the `uploadId` to put it in the brand library. The bytes go straight to storage, so files up to 20 MB fit even though a JSON body is capped far lower. Free; no credits are charged.
+         *
+         *     **Use when** the image is a file on your machine rather than a public URL (a public URL goes straight to `addImage` as `imageUrl`).
+         *
+         *     **Input** `fileName`, `contentType` (`image/png`, `image/jpeg`, `image/gif`, `image/webp`, `image/avif`, `image/tiff` or `image/svg+xml`) and `size` in bytes (at most 20,000,000; 2,097,152 for SVG).
+         *
+         *     **Returns** `201` with `{ uploadId, uploadUrl, expiresAt, maxBytes }`. Within 15 minutes, send the bytes: `curl -X POST --data-binary @logo.png "<uploadUrl>"` answers `200` with `{ uploadId, status: "uploaded", size, expiresAt }`; call `addImage` before that `expiresAt` (15 minutes from when the bytes land) (`404 UPLOAD_NOT_FOUND` for an unknown or expired URL, `413 PAYLOAD_TOO_LARGE` over `maxBytes`). The URL carries its own credential; keep it private. Sending again never replaces the first file.
+         *
+         *     **Errors** `400 INVALID_REQUEST` for an unsupported `contentType` or a `size` over the cap; `429 RATE_LIMITED` also when the brand already has 20 uploads open (its message says so, and `Retry-After` is when the oldest expires).
+         *
+         *     **See also** `addImage`, `getBrandImages`.
+         */
+        post: operations["createImageUpload"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3640,7 +3710,7 @@ export interface components {
             };
         };
         /** @enum {string} */
-        ApiErrorCode: "ACCOUNT_SUSPENDED" | "API_KEY_REVOKED" | "AUDIENCE_BUILD_ACTIVE" | "AUDIENCE_BUILD_ALREADY_ACTIVE" | "AUDIENCE_EDIT_CONFLICT" | "AUDIENCE_MEMBERSHIP_NOT_EXPRESSIBLE" | "AUDIENCE_NOT_FOUND" | "AUDIENCE_RUN_NOT_FOUND" | "AUDIT_NOT_FOUND" | "AUTHENTICATION_REQUIRED" | "AUTOMATION_GRAPH_INVALID" | "AUTOMATION_NOT_FOUND" | "AUTOMATION_NOT_PAUSABLE" | "AUTOMATION_NOT_PUBLISHED" | "AUTOMATION_RUN_NOT_FOUND" | "AUTOMATION_VERSION_CONFLICT" | "AUTOMATION_VERSION_NOT_FOUND" | "BATCH_TOO_LARGE" | "BRAND_DOMAIN_CONFLICT" | "BRAND_ID_REQUIRED" | "BRAND_LIMIT_REACHED" | "BRAND_NOT_FOUND" | "BRAND_NOT_READY" | "BRAND_SCOPE_MISMATCH" | "CHAT_NOT_FOUND" | "CONSENT_REQUIRED" | "CONTACT_NOT_FOUND" | "CONTENT_OPERATION_FAILED" | "CONTRACT_LOCKED_BY_PUBLISHED_AUTOMATIONS" | "CORE_FIELD_IMMUTABLE" | "DOMAIN_ALREADY_EXISTS" | "DOMAIN_CLAIMED_ELSEWHERE" | "DOMAIN_NOT_FOUND" | "DOMAIN_NOT_READY" | "DOMAIN_OTHER_BRAND" | "DOMAIN_PROVIDER_ERROR" | "DOMAIN_PURPOSE_NOT_ALLOWED" | "DOMAIN_VERIFICATION_FAILED" | "DOMAIN_VERIFIED_ELSEWHERE" | "EMAIL_GENERATION_FAILED" | "EMAIL_GROUP_NAME_CONFLICT" | "EMAIL_GROUP_NOT_FOUND" | "EMAIL_IMAGES_MISSING" | "EMAIL_IMPORT_FAILED" | "EMAIL_IN_PROGRESS" | "EMAIL_IN_USE_BY_AUTOMATION" | "EMAIL_NOT_FOUND" | "EMAIL_NOT_READY" | "EMAIL_RUN_AMBIGUOUS" | "EMAIL_TEMPLATE_INVALID" | "EMAIL_VERSION_NOT_FOUND" | "EXPORT_PROVIDER_ERROR" | "EXPORT_UNSUPPORTED" | "FIELD_NOT_FOUND" | "FIELD_TYPE_MISMATCH" | "FIGMA_ACCESS_DENIED" | "FIGMA_CONVERSION_FAILED" | "FIGMA_FRAME_NOT_FOUND" | "FIGMA_NOT_CONNECTED" | "FIGMA_UNAVAILABLE" | "FIGMA_URL_INVALID" | "FLOW_NOT_FOUND" | "IDEMPOTENCY_CONFLICT" | "IDEMPOTENCY_IN_PROGRESS" | "INSUFFICIENT_CREDITS" | "INSUFFICIENT_PERMISSIONS" | "INSUFFICIENT_ROLE" | "INTEGRATION_NOT_CONNECTED" | "INTERNAL_ERROR" | "INVALID_API_KEY" | "INVALID_EMAIL" | "INVALID_PAYLOAD" | "INVALID_REQUEST" | "LIQUID_RENDER_ERROR" | "METHOD_NOT_ALLOWED" | "MISSING_EMAIL" | "NO_ELIGIBLE_RECIPIENTS" | "NO_PUBLISHED_AUTOMATION" | "NOT_FOUND" | "NOT_IMPLEMENTED" | "ORG_SCOPE_REQUIRED" | "PAYLOAD_SCHEMA_EMAIL_REQUIRED" | "PAYLOAD_TOO_LARGE" | "PREVIEW_NOT_FOUND" | "PUBLISH_VALIDATION_FAILED" | "RATE_LIMITED" | "RECIPIENT_UNSUBSCRIBED" | "REFERENCE_EMAIL_NOT_FOUND" | "RESUBSCRIBE_NOT_ALLOWED" | "RUN_IN_PROGRESS" | "RUN_NOT_CANCELLABLE" | "RUN_NOT_PAUSABLE" | "RUN_NOT_PAUSED" | "RUN_NOT_RESUMABLE" | "RUN_START_FAILED" | "RUN_STOP_FAILED" | "SEND_NOT_CANCELLABLE" | "SEND_NOT_FOUND" | "SEND_NOT_PAUSABLE" | "SEND_NOT_RESUMABLE" | "SEND_QUOTA_EXCEEDED" | "SERVICE_UNAVAILABLE" | "TEMPLATE_NOT_FOUND" | "TRIGGER_ALREADY_EXISTS" | "TRIGGER_EVENT_NOT_FOUND" | "TRIGGER_HAS_DEPENDENT_AUTOMATIONS" | "TRIGGER_IMMUTABLE" | "TRIGGER_INSTANCE_NOT_FOUND" | "TRIGGER_LIMIT_REACHED";
+        ApiErrorCode: "ACCOUNT_SUSPENDED" | "API_KEY_REVOKED" | "AUDIENCE_BUILD_ACTIVE" | "AUDIENCE_BUILD_ALREADY_ACTIVE" | "AUDIENCE_EDIT_CONFLICT" | "AUDIENCE_MEMBERSHIP_NOT_EXPRESSIBLE" | "AUDIENCE_NOT_FOUND" | "AUDIENCE_RUN_NOT_FOUND" | "AUDIT_NOT_FOUND" | "AUTHENTICATION_REQUIRED" | "AUTOMATION_GRAPH_INVALID" | "AUTOMATION_NOT_FOUND" | "AUTOMATION_NOT_PAUSABLE" | "AUTOMATION_NOT_PUBLISHED" | "AUTOMATION_RUN_NOT_FOUND" | "AUTOMATION_VERSION_CONFLICT" | "AUTOMATION_VERSION_NOT_FOUND" | "BATCH_TOO_LARGE" | "BRAND_DOMAIN_CONFLICT" | "BRAND_ID_REQUIRED" | "BRAND_LIMIT_REACHED" | "BRAND_NOT_FOUND" | "BRAND_NOT_READY" | "BRAND_SCOPE_MISMATCH" | "CHAT_NOT_FOUND" | "CONSENT_REQUIRED" | "CONTACT_NOT_FOUND" | "CONTENT_OPERATION_FAILED" | "CONTRACT_LOCKED_BY_PUBLISHED_AUTOMATIONS" | "CORE_FIELD_IMMUTABLE" | "DOMAIN_ALREADY_EXISTS" | "DOMAIN_CLAIMED_ELSEWHERE" | "DOMAIN_NOT_FOUND" | "DOMAIN_NOT_READY" | "DOMAIN_OTHER_BRAND" | "DOMAIN_PROVIDER_ERROR" | "DOMAIN_PURPOSE_NOT_ALLOWED" | "DOMAIN_VERIFICATION_FAILED" | "DOMAIN_VERIFIED_ELSEWHERE" | "EMAIL_GENERATION_FAILED" | "EMAIL_GROUP_NAME_CONFLICT" | "EMAIL_GROUP_NOT_FOUND" | "EMAIL_IMAGES_MISSING" | "EMAIL_IMPORT_FAILED" | "EMAIL_IN_PROGRESS" | "EMAIL_IN_USE_BY_AUTOMATION" | "EMAIL_NOT_FOUND" | "EMAIL_NOT_READY" | "EMAIL_RUN_AMBIGUOUS" | "EMAIL_TEMPLATE_INVALID" | "EMAIL_VERSION_NOT_FOUND" | "EXPORT_PROVIDER_ERROR" | "EXPORT_UNSUPPORTED" | "FIELD_NOT_FOUND" | "FIELD_TYPE_MISMATCH" | "FIGMA_ACCESS_DENIED" | "FIGMA_CONVERSION_FAILED" | "FIGMA_FRAME_NOT_FOUND" | "FIGMA_NOT_CONNECTED" | "FIGMA_UNAVAILABLE" | "FIGMA_URL_INVALID" | "FLOW_NOT_FOUND" | "IDEMPOTENCY_CONFLICT" | "IDEMPOTENCY_IN_PROGRESS" | "INSUFFICIENT_CREDITS" | "INSUFFICIENT_PERMISSIONS" | "INSUFFICIENT_ROLE" | "INTEGRATION_NOT_CONNECTED" | "INTERNAL_ERROR" | "INVALID_API_KEY" | "INVALID_EMAIL" | "INVALID_PAYLOAD" | "INVALID_REQUEST" | "LIQUID_RENDER_ERROR" | "METHOD_NOT_ALLOWED" | "MISSING_EMAIL" | "NO_ELIGIBLE_RECIPIENTS" | "NO_PUBLISHED_AUTOMATION" | "NOT_FOUND" | "NOT_IMPLEMENTED" | "ORG_SCOPE_REQUIRED" | "PAYLOAD_SCHEMA_EMAIL_REQUIRED" | "PAYLOAD_TOO_LARGE" | "PREVIEW_NOT_FOUND" | "PUBLISH_VALIDATION_FAILED" | "RATE_LIMITED" | "RECIPIENT_UNSUBSCRIBED" | "REFERENCE_EMAIL_NOT_FOUND" | "RESUBSCRIBE_NOT_ALLOWED" | "RUN_IN_PROGRESS" | "RUN_NOT_CANCELLABLE" | "RUN_NOT_PAUSABLE" | "RUN_NOT_PAUSED" | "RUN_NOT_RESUMABLE" | "RUN_START_FAILED" | "RUN_STOP_FAILED" | "SEND_NOT_CANCELLABLE" | "SEND_NOT_FOUND" | "SEND_NOT_PAUSABLE" | "SEND_NOT_RESUMABLE" | "SEND_QUOTA_EXCEEDED" | "SERVICE_UNAVAILABLE" | "TEMPLATE_NOT_FOUND" | "TRIGGER_ALREADY_EXISTS" | "TRIGGER_EVENT_NOT_FOUND" | "TRIGGER_HAS_DEPENDENT_AUTOMATIONS" | "TRIGGER_IMMUTABLE" | "TRIGGER_INSTANCE_NOT_FOUND" | "TRIGGER_LIMIT_REACHED" | "UPLOAD_IN_PROGRESS" | "UPLOAD_NOT_FOUND" | "UPLOAD_NOT_RECEIVED";
         EmailGenerateTextResponse: {
             response: string;
         };
@@ -7364,6 +7434,10 @@ export interface components {
                 hasMore: boolean;
             };
         };
+        BrandImageDeleteResponse: {
+            assetId: string;
+            deleted: boolean;
+        };
         BrandsListResponse: {
             data: {
                 brandId: string;
@@ -7555,6 +7629,7 @@ export interface components {
             width: number;
             height: number;
             aspectRatio: string;
+            assetId: string;
         };
         ContentAddImageBatchResponse: {
             accepted: number;
@@ -7566,6 +7641,27 @@ export interface components {
             imageUrl: string;
         } | {
             imageUrls: string[];
+        } | {
+            uploadId: string;
+        };
+        ContentImageUploadCreateResponse: {
+            uploadId: string;
+            /** Format: uri */
+            uploadUrl: string;
+            /** Format: date-time */
+            expiresAt: string;
+            maxBytes: number;
+        };
+        ContentImageUploadCreateRequest: {
+            /** @description The file name, for example logo.png. It names the converted file; the library description comes from the image caption. */
+            fileName: string;
+            /**
+             * @description The file type: image/png, image/jpeg, image/gif, image/webp, image/avif, image/tiff or image/svg+xml. It sets the size cap (2 MB for SVG). The bytes decide what is converted: a declared type that differs is ignored, and bytes that are none of these formats are refused when the image is added.
+             * @enum {string}
+             */
+            contentType: "image/jpeg" | "image/png" | "image/gif" | "image/webp" | "image/avif" | "image/tiff" | "image/svg+xml";
+            /** @description The file size in bytes: at most 20,000,000 (2,097,152 for SVG). */
+            size: number;
         };
         UsageGetResponse: {
             plan: {
@@ -20881,6 +20977,17 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
+            /** @description `AUDIENCE_BUILD_ACTIVE`: The audience is being built, so neither it nor the hidden field its build stamps can be changed, copied, or deleted yet. */
+            409: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
             /** @description `CORE_FIELD_IMMUTABLE`: The field is a core contact column and cannot be created, changed, or deleted as a custom field. */
             422: {
                 headers: {
@@ -21542,7 +21649,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `AUDIENCE_BUILD_ACTIVE`: The audience is being built, so it cannot be changed, copied, or deleted yet. */
+            /** @description `AUDIENCE_BUILD_ACTIVE`: The audience is being built, so neither it nor the hidden field its build stamps can be changed, copied, or deleted yet. */
             409: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -21715,7 +21822,7 @@ export interface operations {
                 };
             };
             /**
-             * @description `AUDIENCE_BUILD_ACTIVE`: The audience is being built, so it cannot be changed, copied, or deleted yet.
+             * @description `AUDIENCE_BUILD_ACTIVE`: The audience is being built, so neither it nor the hidden field its build stamps can be changed, copied, or deleted yet.
              *
              *     `AUDIENCE_EDIT_CONFLICT`: The audience changed since it was read; the update was not applied.
              *
@@ -22105,7 +22212,7 @@ export interface operations {
                 };
             };
             /**
-             * @description `AUDIENCE_BUILD_ACTIVE`: The audience is being built, so it cannot be changed, copied, or deleted yet.
+             * @description `AUDIENCE_BUILD_ACTIVE`: The audience is being built, so neither it nor the hidden field its build stamps can be changed, copied, or deleted yet.
              *
              *     `AUDIENCE_EDIT_CONFLICT`: The audience changed since it was read; the update was not applied.
              *
@@ -24398,6 +24505,10 @@ export interface operations {
                 query?: string;
                 /** @description Full rows include HTML. Summary rows include selection metadata and links only. */
                 representation?: "full" | "summary";
+                /** @description Return `{ count }`, the number of templates matching `brand`/`category`, instead of rows. Not with `semantic` or `query`. */
+                count?: boolean | ("true" | "false");
+                /** @description With `count: true`: also count per brand or per category, largest first, 100 groups a page; continue with `cursor`. */
+                groupBy?: "brand" | "category";
                 /**
                  * @description Page size, 1–100 (default 50: each row carries its full HTML).
                  * @example 50
@@ -24411,7 +24522,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description A page of templates matching the filters. */
+            /** @description A page of templates matching the filters, or their counts when count=true. */
             200: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -24460,6 +24571,28 @@ export interface operations {
                             viewUrl: string;
                         }[];
                         pagination: {
+                            limit: number;
+                            cursor: string | null;
+                            hasMore: boolean;
+                        };
+                    } | {
+                        /** @description Templates matching `brand`/`category`. */
+                        count: number;
+                        /** @enum {string} */
+                        groupBy?: "brand" | "category";
+                        /** @description With `groupBy`: up to 100 groups, largest first. */
+                        groups?: {
+                            /** @description The brand domain or category; pass it back as the `brand`/`category` filter. */
+                            value: string;
+                            /** @description The brand's curated display name, when it has one. */
+                            name?: string;
+                            count: number;
+                        }[];
+                        /** @description Distinct brands or categories across every page. */
+                        groupCount?: number;
+                        /** @description Matching templates with no brand (or no category), so in no group. */
+                        ungroupedCount?: number;
+                        pagination?: {
                             limit: number;
                             cursor: string | null;
                             hasMore: boolean;
@@ -25463,6 +25596,141 @@ export interface operations {
                     "x-request-id": string;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+        };
+    };
+    deleteBrandImage: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+                 * @example kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+                 */
+                "X-Brand-Id"?: string;
+            };
+            path: {
+                /** @description The image to delete: the `assetId` that `GET /v1/brand/images` returns. */
+                assetId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted (or not in the library). */
+            200: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    "X-RateLimit-Reset": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "assetId": "5bc912f9",
+                     *       "deleted": true
+                     *     }
+                     */
+                    "application/json": components["schemas"]["BrandImageDeleteResponse"];
+                };
+            };
+            /**
+             * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+             *
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             */
+            400: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `API_KEY_REVOKED`: The API key was revoked.
+             *
+             *     `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+             *
+             *     `INVALID_API_KEY`: The API key is malformed or unknown.
+             */
+            401: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+             *
+             *     `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+             *
+             *     `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+             *
+             *     `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+             */
+            403: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization). */
+            404: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            429: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    "X-RateLimit-Reset": number;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it. */
+            500: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
                     [name: string]: unknown;
                 };
                 content: {
@@ -26672,7 +26940,7 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        /** @description Pass one public `imageUrl` for a synchronous import, or `imageUrls` with 1–100 public URLs for a durable batch import. */
+        /** @description Pass one public `imageUrl` for a synchronous import, `imageUrls` with 1 to 100 public URLs for a durable batch import, or the `uploadId` of a local file sent through `POST /v1/content/image-uploads`. */
         requestBody: {
             content: {
                 "application/json": components["schemas"]["ContentAddImageRequest"];
@@ -26695,10 +26963,11 @@ export interface operations {
                 content: {
                     /**
                      * @example {
-                     *       "url": "https://cdn.brew.new/api-host-3f2c8d9a-1b4e-4c7a-9e21-7d6f0a5b1c34.png",
+                     *       "url": "https://cdn.brew.new/cnt/1d943539cbe0cc60.png",
                      *       "width": 1200,
                      *       "height": 675,
-                     *       "aspectRatio": "wide"
+                     *       "aspectRatio": "wide",
+                     *       "assetId": "5f750e5f"
                      *     }
                      */
                     "application/json": components["schemas"]["ContentAddImageResponse"];
@@ -26779,7 +27048,11 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization). */
+            /**
+             * @description `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+             *
+             *     `UPLOAD_NOT_FOUND`: The image upload is unknown, expired, or belongs to another brand.
+             */
             404: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -26794,6 +27067,10 @@ export interface operations {
              * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
              *
              *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
+             *
+             *     `UPLOAD_IN_PROGRESS`: Another request is still adding this uploaded image.
+             *
+             *     `UPLOAD_NOT_RECEIVED`: The image upload has not received its file yet.
              */
             409: {
                 headers: {
@@ -26805,8 +27082,158 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
+            /** @description `PAYLOAD_TOO_LARGE`: The request body exceeds the route cap. */
+            413: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
             /** @description `CONTENT_OPERATION_FAILED`: The media operation could not be completed for the given input. */
             422: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            429: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    "X-RateLimit-Reset": number;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it. */
+            500: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+        };
+    };
+    createImageUpload: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+                 * @example kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+                 */
+                "X-Brand-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        /** @description The file to upload: its name, type and size in bytes. */
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ContentImageUploadCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description The upload is open. POST the raw file bytes to `uploadUrl`, then call `POST /v1/content/add-image` with `uploadId`. */
+            201: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    "X-RateLimit-Reset": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "uploadId": "imgup_V1StGXR8_Z5jdHi6B-myT",
+                     *       "uploadUrl": "https://example-deployment-123.convex.site/uploads/brand-image?uploadId=imgup_V1StGXR8_Z5jdHi6B-myT&token=9b1c4f6e2a7d8e3f0a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f",
+                     *       "expiresAt": "2026-10-01T18:15:00.000Z",
+                     *       "maxBytes": 20000000
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ContentImageUploadCreateResponse"];
+                };
+            };
+            /**
+             * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+             *
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             */
+            400: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `API_KEY_REVOKED`: The API key was revoked.
+             *
+             *     `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+             *
+             *     `INVALID_API_KEY`: The API key is malformed or unknown.
+             */
+            401: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+             *
+             *     `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+             *
+             *     `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+             *
+             *     `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+             */
+            403: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization). */
+            404: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
                     "x-request-id": string;

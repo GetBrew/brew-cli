@@ -24,6 +24,78 @@ Removing a command is breaking, so the next release is a major
   `DataCommandResponse` schema. The `@brew.new/sdk` pin is unchanged; the CLI
   no longer calls `data.run`.
 
+## 0.12.0
+
+Needs `@brew.new/sdk` `^11.5.0` (`brand.deleteImage`, `content.uploadImage`,
+`content.createImageUpload`, `addImage({ uploadId })`).
+
+### Added
+
+- **`content upload-image <file>`** puts a local image file in the brand
+  library in one command and prints what `add-image` prints, `assetId`
+  included (GetBrew/brew-v2#1819). It opens an upload, POSTs the bytes to its
+  `uploadUrl` without the API key (the URL carries its own credential, and is
+  never printed in an error), then adds the upload. PNG, JPEG, GIF, WebP,
+  AVIF, TIFF or SVG; the type comes from the extension, or `--content-type`.
+  `--file-name` sets the name Brew stores it under. A missing or unreadable
+  path, a directory, an empty file, an extension it cannot read, a type the
+  API does not take, or a file over 20,000,000 bytes (2,097,152 for SVG) exits
+  2 before anything is read or sent. Free.
+- **`content create-image-upload --file-name --size [--content-type]`**: the
+  first step alone, for bytes sent from somewhere else. Prints the `uploadId`,
+  `uploadUrl`, `expiresAt` and `maxBytes`, and on a TTY the `curl` and
+  `content add-image --upload-id` that finish it (the add-image line keeps the
+  `--brand` and `--api-url` it was given). The type is read from the
+  name when `--content-type` is absent. No `--idempotency-key`: the route
+  never replays (its answer carries a bearer URL).
+- **`content add-image --upload-id <id>`** adds an upload whose bytes were
+  sent. A repeat returns the same image for 24 hours. `--url`, `--upload-id`
+  and an `imageUrls` batch in `--input` are exclusive: two of them exit 2.
+- **`brand delete-image <assetId>`** removes one image from the brand library
+  and image search, as Delete image on the Assets page does
+  (GetBrew/brew-v2#1817). `assetId` is what `brand get-images` lists. It is
+  destructive: exit 4 with a `confirmCommand` unless `--yes`, a y/N prompt on
+  a TTY. It prints `{ assetId, deleted }`; an id not in the library is
+  `deleted: false` and exits 0. The file stays hosted, so emails already using
+  it keep rendering. A logo is the API's `400 INVALID_REQUEST`. Free.
+
+### Fixed
+
+- **`content add-image` is free**, and no longer says it consumes credits. Its
+  summary said it mirrored an image; it adds it to the brand library and
+  returns `{ url, width, height, aspectRatio, assetId }`, which a TTY now
+  shows as lines instead of raw JSON.
+- `content add-image --input '{"imageUrls":[...]}'` exited 2 ("An image URL is
+  required"): a batch import is accepted now and answers the API's `202
+  { accepted, skipped, runId }`.
+- `content add-image` gives an attempt the SDK's 300 s (the route's own
+  limit) instead of 30 s, inside a 300 s whole-command deadline like the
+  other long-running commands, so converting a large animation no longer
+  times out while the server keeps working. `api POST /v1/content/add-image`
+  waits as long.
+- A command that sends several requests no longer borrows the replay advice
+  of whichever route its last request hit. Every command now answers for
+  itself, and only the `api` escape hatch borrows the policy of the route it
+  called; the non-replaying advice says "this command does not replay a
+  request".
+
+- **`templates list --input '{"count":true}'` (and `groupBy`) no longer
+  crashes** with `CLI_UNEXPECTED`: the API's count mode (GetBrew/brew-v2#1821)
+  answers `{ count, groups? }`, and the command drew its row table from it in
+  every mode. `--json` prints the answer verbatim; a TTY shows `167
+  templates`, or one `value  name  count` line per group with the total, the
+  group count, the ungrouped count and the `--cursor` for more groups. `--all`
+  with a count exits 2 (it pages rows; a count has none).
+
+### Spec sync
+
+- The vendored OpenAPI spec and generated types catch up with the API: the
+  two routes above, `uploadId` on add-image and `assetId` on its answer, the
+  upload error codes (`404 UPLOAD_NOT_FOUND`, `409 UPLOAD_NOT_RECEIVED`,
+  `409 UPLOAD_IN_PROGRESS`, `413 PAYLOAD_TOO_LARGE`), `count` / `groupBy` on
+  `GET /v1/templates` (GetBrew/brew-v2#1821), and `409 AUDIENCE_BUILD_ACTIVE`
+  on a field delete (GetBrew/brew-v2#1758).
+
 ## 0.11.0
 
 Moves to `@brew.new/sdk` `^11.4.0` (typed `total` / `isTotalExact` on

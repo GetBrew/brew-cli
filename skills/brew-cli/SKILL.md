@@ -5,7 +5,7 @@ description: Drive the Brew email platform from the terminal with brew-cli — e
 
 # brew-cli for agents
 
-One typed command per public-API operation (136 commands, generated docs in
+One typed command per public-API operation (139 commands, generated docs in
 `docs/commands/README.md`). JSON output is automatic when stdout is piped.
 
 ## Start every session with the trust check
@@ -67,6 +67,8 @@ brew-cli emails get <emailId> --email-version-id <id>   # a saved version (ids f
 brew-cli emails preview-clients <emailId>        # starts a rendering job (10 credits)
 brew-cli emails get-client-preview <previewId>   # poll it; screenshots are previews[].imageUrl
 brew-cli sends get <sendId> --include events
+brew-cli content upload-image ./logo.png         # a local file into the brand library (free); prints its assetId
+brew-cli brand delete-image <assetId> --yes      # remove one library image (destructive; its URL keeps working)
 brew-cli api GET '/v1/sends?kind=campaign'   # raw escape hatch for anything else
 ```
 

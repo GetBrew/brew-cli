@@ -34,6 +34,7 @@ brew-cli whoami
 brew-cli contacts search --filter email:equals:jane@example.com
 brew-cli emails list --limit 10
 brew-cli emails send em_123 --test --to you@company.com
+brew-cli content upload-image ./logo.png   # a local image into the brand library
 ```
 
 Every command supports `--json` (automatic when stdout is piped), prints

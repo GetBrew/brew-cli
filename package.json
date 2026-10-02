@@ -1,6 +1,6 @@
 {
   "name": "@brew.new/cli",
-  "version": "0.11.0",
+  "version": "0.12.0",
   "description": "Official agent-first command-line interface for the Brew public API.",
   "license": "MIT",
   "author": "Brew",
@@ -53,7 +53,7 @@
     "smoke:signals": "bun run scripts/signal-smoke.ts"
   },
   "dependencies": {
-    "@brew.new/sdk": "^11.4.0",
+    "@brew.new/sdk": "^11.5.0",
     "commander": "^14.0.0"
   },
   "devDependencies": {

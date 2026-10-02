@@ -3867,6 +3867,9 @@ components:
         - TRIGGER_IMMUTABLE
         - TRIGGER_INSTANCE_NOT_FOUND
         - TRIGGER_LIMIT_REACHED
+        - UPLOAD_IN_PROGRESS
+        - UPLOAD_NOT_FOUND
+        - UPLOAD_NOT_RECEIVED
     EmailGenerateTextResponse:
       type: object
       properties:
@@ -14553,6 +14556,17 @@ components:
         - data
         - pagination
       additionalProperties: false
+    BrandImageDeleteResponse:
+      type: object
+      properties:
+        assetId:
+          type: string
+        deleted:
+          type: boolean
+      required:
+        - assetId
+        - deleted
+      additionalProperties: false
     BrandsListResponse:
       type: object
       properties:
@@ -15130,11 +15144,14 @@ components:
           minimum: 0
         aspectRatio:
           type: string
+        assetId:
+          type: string
       required:
         - url
         - width
         - height
         - aspectRatio
+        - assetId
       additionalProperties: false
     ContentAddImageBatchResponse:
       type: object
@@ -15173,6 +15190,63 @@ components:
           required:
             - imageUrls
           additionalProperties: false
+        - type: object
+          properties:
+            uploadId:
+              type: string
+              pattern: ^imgup_[A-Za-z0-9_-]{21}$
+          required:
+            - uploadId
+          additionalProperties: false
+    ContentImageUploadCreateResponse:
+      type: object
+      properties:
+        uploadId:
+          type: string
+        uploadUrl:
+          type: string
+          format: uri
+        expiresAt:
+          type: string
+          format: date-time
+        maxBytes:
+          type: integer
+          exclusiveMinimum: 0
+      required:
+        - uploadId
+        - uploadUrl
+        - expiresAt
+        - maxBytes
+      additionalProperties: false
+    ContentImageUploadCreateRequest:
+      type: object
+      properties:
+        fileName:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: The file name, for example logo.png. It names the converted file; the library description comes from the image caption.
+        contentType:
+          type: string
+          enum:
+            - image/jpeg
+            - image/png
+            - image/gif
+            - image/webp
+            - image/avif
+            - image/tiff
+            - image/svg+xml
+          description: "The file type: image/png, image/jpeg, image/gif, image/webp, image/avif, image/tiff or image/svg+xml. It sets the size cap (2 MB for SVG). The bytes decide what is converted: a declared type that differs is ignored, and bytes that are none of these formats are refused when the image is added."
+        size:
+          type: integer
+          minimum: 1
+          maximum: 20000000
+          description: "The file size in bytes: at most 20,000,000 (2,097,152 for SVG)."
+      required:
+        - fileName
+        - contentType
+        - size
+      additionalProperties: false
     UsageGetResponse:
       type: object
       properties:
@@ -45714,7 +45788,7 @@ paths:
 
         **Returns** `200` with `{ fieldName, deleted }`. A name with no custom field resolves `deleted: false` and clears nothing, so repeating the call is safe. The three legacy consent fields (`marketingConsentSource`, `marketingConsentCapturedAt`, `marketingConsentPolicyVersion`) lose only the definition: their values stay, because they still serve as consent evidence.
 
-        **Errors** `422 CORE_FIELD_IMMUTABLE` for a core column.
+        **Errors** `422 CORE_FIELD_IMMUTABLE` for a core column. `409 AUDIENCE_BUILD_ACTIVE` for the hidden field of an event-derived audience that is still building; retry once the build finishes.
 
         **See also** `listContactFields`, `getContactField`, `createContactField`.
       parameters:
@@ -45939,6 +46013,30 @@ paths:
                       type: not_found
                       message: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
                       suggestion: List the brands this credential can reach with GET /v1/brands.
+                      docs: https://docs.brew.new/api-reference/api/errors
+        "409":
+          description: "`AUDIENCE_BUILD_ACTIVE`: The audience is being built, so neither it nor the hidden field its build stamps can be changed, copied, or deleted yet."
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                audienceBuildActive:
+                  summary: AUDIENCE_BUILD_ACTIVE
+                  value:
+                    error:
+                      code: AUDIENCE_BUILD_ACTIVE
+                      type: conflict
+                      message: The audience is being built, so neither it nor the hidden field its build stamps can be changed, copied, or deleted yet.
+                      suggestion: Wait for the build to finish (poll GET /v1/audiences/{audienceId}?include=build), then retry.
                       docs: https://docs.brew.new/api-reference/api/errors
         "422":
           description: "`CORE_FIELD_IMMUTABLE`: The field is a core contact column and cannot be created, changed, or deleted as a custom field."
@@ -47422,7 +47520,7 @@ paths:
                       docs: https://docs.brew.new/api-reference/api/errors
         "409":
           description: |-
-            `AUDIENCE_BUILD_ACTIVE`: The audience is being built, so it cannot be changed, copied, or deleted yet.
+            `AUDIENCE_BUILD_ACTIVE`: The audience is being built, so neither it nor the hidden field its build stamps can be changed, copied, or deleted yet.
 
             `AUDIENCE_EDIT_CONFLICT`: The audience changed since it was read; the update was not applied.
 
@@ -47448,7 +47546,7 @@ paths:
                     error:
                       code: AUDIENCE_BUILD_ACTIVE
                       type: conflict
-                      message: The audience is being built, so it cannot be changed, copied, or deleted yet.
+                      message: The audience is being built, so neither it nor the hidden field its build stamps can be changed, copied, or deleted yet.
                       suggestion: Wait for the build to finish (poll GET /v1/audiences/{audienceId}?include=build), then retry.
                       docs: https://docs.brew.new/api-reference/api/errors
                 audienceEditConflict:
@@ -47815,7 +47913,7 @@ paths:
                       suggestion: List the brands this credential can reach with GET /v1/brands.
                       docs: https://docs.brew.new/api-reference/api/errors
         "409":
-          description: "`AUDIENCE_BUILD_ACTIVE`: The audience is being built, so it cannot be changed, copied, or deleted yet."
+          description: "`AUDIENCE_BUILD_ACTIVE`: The audience is being built, so neither it nor the hidden field its build stamps can be changed, copied, or deleted yet."
           headers:
             x-request-id:
               schema:
@@ -47835,7 +47933,7 @@ paths:
                     error:
                       code: AUDIENCE_BUILD_ACTIVE
                       type: conflict
-                      message: The audience is being built, so it cannot be changed, copied, or deleted yet.
+                      message: The audience is being built, so neither it nor the hidden field its build stamps can be changed, copied, or deleted yet.
                       suggestion: Wait for the build to finish (poll GET /v1/audiences/{audienceId}?include=build), then retry.
                       docs: https://docs.brew.new/api-reference/api/errors
         "429":
@@ -48579,7 +48677,7 @@ paths:
                       docs: https://docs.brew.new/api-reference/api/errors
         "409":
           description: |-
-            `AUDIENCE_BUILD_ACTIVE`: The audience is being built, so it cannot be changed, copied, or deleted yet.
+            `AUDIENCE_BUILD_ACTIVE`: The audience is being built, so neither it nor the hidden field its build stamps can be changed, copied, or deleted yet.
 
             `AUDIENCE_EDIT_CONFLICT`: The audience changed since it was read; the update was not applied.
 
@@ -48605,7 +48703,7 @@ paths:
                     error:
                       code: AUDIENCE_BUILD_ACTIVE
                       type: conflict
-                      message: The audience is being built, so it cannot be changed, copied, or deleted yet.
+                      message: The audience is being built, so neither it nor the hidden field its build stamps can be changed, copied, or deleted yet.
                       suggestion: Wait for the build to finish (poll GET /v1/audiences/{audienceId}?include=build), then retry.
                       docs: https://docs.brew.new/api-reference/api/errors
                 audienceEditConflict:
@@ -53609,7 +53707,7 @@ paths:
       tags:
         - Templates
       summary: List templates
-      description: Lists public templates under { data, pagination }. The default full representation includes HTML. Set representation=summary for metadata, previewImage, viewUrl, and referenceEmailId without HTML. Supports exact brand and category filters; query matches title text or an exact template identifier. semantic ranks up to 200 matches using vector search; query additionally filters those matches when both are supplied. Browse defaults to 50 full rows or 20 summary rows. Brand and category match case-insensitively. Continue with pagination.cursor, including after an empty filtered page with hasMore=true. Templates are organization-wide references; pass referenceEmailId to POST /v1/emails to remix one.
+      description: Lists public templates under { data, pagination }. The default full representation includes HTML. Set representation=summary for metadata, previewImage, viewUrl, and referenceEmailId without HTML. Supports exact brand and category filters; query matches title text or an exact template identifier. semantic ranks up to 200 matches using vector search; query additionally filters those matches when both are supplied. Browse defaults to 50 full rows or 20 summary rows. Brand and category match case-insensitively. Continue with pagination.cursor, including after an empty filtered page with hasMore=true. Templates are organization-wide references; pass referenceEmailId to POST /v1/emails to remix one. Set count=true for { count }, the number of templates matching brand and category (refreshed every 15 minutes), instead of rows; add groupBy=brand or groupBy=category for per-value counts, largest first, 100 groups a page with the same pagination.cursor (count does not combine with semantic or query).
       parameters:
         - schema:
             type: string
@@ -53656,6 +53754,31 @@ paths:
           name: representation
           in: query
         - schema:
+            anyOf:
+              - type: boolean
+              - type: string
+                enum:
+                  - 'true'
+                  - 'false'
+            description: Return `{ count }`, the number of templates matching `brand`/`category`, instead of rows. Not with `semantic` or `query`.
+          required: false
+          description: Return `{ count }`, the number of templates matching `brand`/`category`, instead of rows. Not with `semantic` or `query`.
+          name: count
+          in: query
+        - schema:
+            type: string
+            enum:
+              - brand
+              - category
+            description: "With `count: true`: also count per brand or per category, largest first, 100 groups a page; continue with `cursor`."
+            x-brew-group-by-tokens:
+              - brand
+              - category
+          required: false
+          description: "With `count: true`: also count per brand or per category, largest first, 100 groups a page; continue with `cursor`."
+          name: groupBy
+          in: query
+        - schema:
             type: integer
             minimum: 1
             maximum: 100
@@ -53675,7 +53798,7 @@ paths:
           in: query
       responses:
         "200":
-          description: A page of templates matching the filters.
+          description: A page of templates matching the filters, or their counts when count=true.
           headers:
             x-request-id:
               schema:
@@ -53771,6 +53894,67 @@ paths:
                     required:
                       - data
                       - pagination
+                    additionalProperties: false
+                  - type: object
+                    properties:
+                      count:
+                        type: integer
+                        minimum: 0
+                        description: Templates matching `brand`/`category`.
+                      groupBy:
+                        type: string
+                        enum:
+                          - brand
+                          - category
+                      groups:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            value:
+                              type: string
+                              minLength: 1
+                              description: The brand domain or category; pass it back as the `brand`/`category` filter.
+                            name:
+                              type: string
+                              minLength: 1
+                              description: The brand's curated display name, when it has one.
+                            count:
+                              type: integer
+                              exclusiveMinimum: 0
+                          required:
+                            - value
+                            - count
+                          additionalProperties: false
+                        description: "With `groupBy`: up to 100 groups, largest first."
+                      groupCount:
+                        type: integer
+                        minimum: 0
+                        description: Distinct brands or categories across every page.
+                      ungroupedCount:
+                        type: integer
+                        minimum: 0
+                        description: Matching templates with no brand (or no category), so in no group.
+                      pagination:
+                        type: object
+                        properties:
+                          limit:
+                            type: integer
+                            minimum: 1
+                            maximum: 100
+                          cursor:
+                            type:
+                              - string
+                              - "null"
+                          hasMore:
+                            type: boolean
+                        required:
+                          - limit
+                          - cursor
+                          - hasMore
+                        additionalProperties: false
+                    required:
+                      - count
                     additionalProperties: false
               example:
                 data:
@@ -56026,6 +56210,329 @@ paths:
       x-brew-idempotency: none
       x-brew-credited: true
       x-brew-rate-policy: brand.read
+  /v1/brand/images/{assetId}:
+    delete:
+      operationId: deleteBrandImage
+      tags:
+        - Brand
+      summary: Delete a brand image
+      description: |-
+        Removes one image from the brand library and from image search, as Delete image on the Assets page does. Its file stays hosted at its URL, so emails already using it keep rendering.
+
+        **Use when** an image should no longer be offered for new designs. Confirm with the user first. Free; no credits are charged.
+
+        **Input** `assetId` in the path, as `getBrandImages` returns it. One image per call.
+
+        **Returns** `200` with `{ assetId, deleted }`. An `assetId` not in the library resolves `deleted: false` and changes nothing, so repeating the call is safe.
+
+        **Errors** `400 INVALID_REQUEST` for a logo (manage logos on the Assets page) or a malformed `assetId`.
+
+        **See also** `getBrandImages`, `addImage`.
+      parameters:
+        - schema:
+            type: string
+            pattern: ^[0-9a-f]{8}$
+            description: "The image to delete: the `assetId` that `GET /v1/brand/images` returns."
+            example: 5bc912f9
+          required: true
+          description: "The image to delete: the `assetId` that `GET /v1/brand/images` returns."
+          name: assetId
+          in: path
+        - name: X-Brand-Id
+          in: header
+          required: false
+          description: The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 64
+          example: kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+      responses:
+        "200":
+          description: Deleted (or not in the library).
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+            X-RateLimit-Limit:
+              schema:
+                type: integer
+                description: Requests allowed in the current rolling rate limit window.
+                example: 100
+              required: true
+              description: Requests allowed in the current rolling rate limit window.
+            X-RateLimit-Remaining:
+              schema:
+                type: integer
+                description: Requests remaining in the current rolling rate limit window.
+                example: 99
+              required: true
+              description: Requests remaining in the current rolling rate limit window.
+            X-RateLimit-Reset:
+              schema:
+                type: integer
+                description: Unix timestamp in seconds for when the rolling window fully resets.
+                example: 1712592360
+              required: true
+              description: Unix timestamp in seconds for when the rolling window fully resets.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BrandImageDeleteResponse"
+              example:
+                assetId: 5bc912f9
+                deleted: true
+        "400":
+          description: |-
+            `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+
+            `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                brandIdRequired:
+                  summary: BRAND_ID_REQUIRED
+                  value:
+                    error:
+                      code: BRAND_ID_REQUIRED
+                      type: invalid_request
+                      message: An organization-scoped credential called a brand-scoped operation without naming the brand.
+                      suggestion: List brands with GET /v1/brands, then name one with the X-Brand-Id header. There is no default brand.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                invalidRequest:
+                  summary: INVALID_REQUEST
+                  value:
+                    error:
+                      code: INVALID_REQUEST
+                      type: invalid_request
+                      message: "The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender."
+                      suggestion: Fix the field reported in `param` and retry.
+                      docs: https://docs.brew.new/api-reference/api/errors
+        "401":
+          description: |-
+            `API_KEY_REVOKED`: The API key was revoked.
+
+            `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+
+            `INVALID_API_KEY`: The API key is malformed or unknown.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                apiKeyRevoked:
+                  summary: API_KEY_REVOKED
+                  value:
+                    error:
+                      code: API_KEY_REVOKED
+                      type: authentication_error
+                      message: The API key was revoked.
+                      suggestion: Create a new active API key and retry.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                authenticationRequired:
+                  summary: AUTHENTICATION_REQUIRED
+                  value:
+                    error:
+                      code: AUTHENTICATION_REQUIRED
+                      type: authentication_error
+                      message: No API key or session accompanied the request.
+                      suggestion: Provide a valid API key or sign in with an organization session.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                invalidApiKey:
+                  summary: INVALID_API_KEY
+                  value:
+                    error:
+                      code: INVALID_API_KEY
+                      type: authentication_error
+                      message: The API key is malformed or unknown.
+                      suggestion: Check the API key format and retry with a valid active key.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+        "403":
+          description: |-
+            `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+
+            `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+
+            `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+
+            `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                accountSuspended:
+                  summary: ACCOUNT_SUSPENDED
+                  value:
+                    error:
+                      code: ACCOUNT_SUSPENDED
+                      type: authorization_error
+                      message: The organization behind the credential is suspended.
+                      suggestion: The organization behind this credential is suspended. Contact support@brew.new; do not retry.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                brandScopeMismatch:
+                  summary: BRAND_SCOPE_MISMATCH
+                  value:
+                    error:
+                      code: BRAND_SCOPE_MISMATCH
+                      type: authorization_error
+                      message: A brand-scoped credential named a brand other than the one it is bound to.
+                      suggestion: Omit the brand to use the one this credential is bound to, or use an organization-scoped credential to reach other brands.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                insufficientPermissions:
+                  summary: INSUFFICIENT_PERMISSIONS
+                  value:
+                    error:
+                      code: INSUFFICIENT_PERMISSIONS
+                      type: authorization_error
+                      message: The credential lacks the permission scope the operation needs.
+                      suggestion: Use an API key or session with the required permission.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                insufficientRole:
+                  summary: INSUFFICIENT_ROLE
+                  value:
+                    error:
+                      code: INSUFFICIENT_ROLE
+                      type: authorization_error
+                      message: "The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role)."
+                      suggestion: Ask an organization admin to run this, to add you to the brand, or to make you an admin.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+        "404":
+          description: "`BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization)."
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                brandNotFound:
+                  summary: BRAND_NOT_FOUND
+                  value:
+                    error:
+                      code: BRAND_NOT_FOUND
+                      type: not_found
+                      message: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+                      suggestion: List the brands this credential can reach with GET /v1/brands.
+                      docs: https://docs.brew.new/api-reference/api/errors
+        "429":
+          description: "`RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens."
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+            X-RateLimit-Limit:
+              schema:
+                type: integer
+                description: Requests allowed in the current rolling rate limit window.
+                example: 100
+              required: true
+              description: Requests allowed in the current rolling rate limit window.
+            X-RateLimit-Remaining:
+              schema:
+                type: integer
+                description: Requests remaining in the current rolling rate limit window.
+                example: 99
+              required: true
+              description: Requests remaining in the current rolling rate limit window.
+            X-RateLimit-Reset:
+              schema:
+                type: integer
+                description: Unix timestamp in seconds for when the rolling window fully resets.
+                example: 1712592360
+              required: true
+              description: Unix timestamp in seconds for when the rolling window fully resets.
+            Retry-After:
+              schema:
+                type: integer
+                description: Seconds to wait before retrying the request.
+                example: 42
+              required: true
+              description: Seconds to wait before retrying the request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                rateLimited:
+                  summary: RATE_LIMITED
+                  value:
+                    error:
+                      code: RATE_LIMITED
+                      type: rate_limit
+                      message: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens.
+                      suggestion: Wait for the retry window before sending another request.
+                      docs: https://docs.brew.new/api-reference/api/rate-limits
+                      retryAfter: 42
+        "500":
+          description: "`INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it."
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                internalError:
+                  summary: INTERNAL_ERROR
+                  value:
+                    error:
+                      code: INTERNAL_ERROR
+                      type: internal_error
+                      message: An unexpected failure; the x-request-id header identifies it.
+                      suggestion: Retry the request. If it keeps failing, contact support with the x-request-id header.
+                      docs: https://docs.brew.new/api-reference/api/errors
+      x-brew-scope: emails
+      x-brew-brand-scope: brand
+      x-brew-idempotency: none
+      x-brew-credited: false
+      x-brew-rate-policy: brand.write
   /v1/brands:
     get:
       operationId: listBrands
@@ -58718,7 +59225,18 @@ paths:
       tags:
         - Content
       summary: Add image
-      description: "Adds image URLs to the brand image library: fetches them, optimizes them, stores them, and vector-indexes them so the email agent can find them. Pass `imageUrl` for one synchronous import or `imageUrls` for up to 100 images in a durable background import. Free; no credits are charged."
+      description: |-
+        Adds an image to the brand image library: fetches or reads it, converts it, stores it, and vector-indexes it so the email agent can find it. Free; no credits are charged.
+
+        **Use when** a public image URL, a batch of them, or a local file should be reusable in designs and searches.
+
+        **Input** exactly one of `imageUrl` (one public URL, synchronous), `imageUrls` (1 to 100 public URLs, a durable background import) or `uploadId` (a local file whose bytes were sent to the `uploadUrl` from `createImageUpload`, synchronous).
+
+        **Returns** `200` with `{ url, width, height, aspectRatio, assetId }` for `imageUrl` and `uploadId`; `202` with `{ accepted, skipped, runId }` for `imageUrls`. Repeating an `uploadId` call returns the same answer for 24 hours, even if the image was deleted since.
+
+        **Errors** `422 CONTENT_OPERATION_FAILED` when the image cannot be fetched, decoded or saved (for an upload: bytes that are not PNG, JPEG, GIF, WebP, AVIF, TIFF or SVG). For `uploadId`: `404 UPLOAD_NOT_FOUND` (unknown, expired or another brand), `409 UPLOAD_NOT_RECEIVED` (the bytes were never sent), `409 UPLOAD_IN_PROGRESS` (another call is converting it; retry shortly) and `413 PAYLOAD_TOO_LARGE` (over 20 MB, or an SVG over 2 MB).
+
+        **See also** `createImageUpload`, `getBrandImages`, `deleteBrandImage`.
       parameters:
         - name: Idempotency-Key
           in: header
@@ -58740,7 +59258,7 @@ paths:
           example: kx7b3s7fapqz8mjm12ekz1kxdx87yceg
       requestBody:
         required: true
-        description: Pass one public `imageUrl` for a synchronous import, or `imageUrls` with 1–100 public URLs for a durable batch import.
+        description: Pass one public `imageUrl` for a synchronous import, `imageUrls` with 1 to 100 public URLs for a durable batch import, or the `uploadId` of a local file sent through `POST /v1/content/image-uploads`.
         content:
           application/json:
             schema:
@@ -58782,10 +59300,11 @@ paths:
               schema:
                 $ref: "#/components/schemas/ContentAddImageResponse"
               example:
-                url: https://cdn.brew.new/api-host-3f2c8d9a-1b4e-4c7a-9e21-7d6f0a5b1c34.png
+                url: https://cdn.brew.new/cnt/1d943539cbe0cc60.png
                 width: 1200
                 height: 675
                 aspectRatio: wide
+                assetId: 5f750e5f
         "202":
           description: The batch was accepted for durable import; images appear in the brand library progressively.
           headers:
@@ -58967,7 +59486,10 @@ paths:
                       suggestion: Ask an organization admin to run this, to add you to the brand, or to make you an admin.
                       docs: https://docs.brew.new/api-reference/api/authentication
         "404":
-          description: "`BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization)."
+          description: |-
+            `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+
+            `UPLOAD_NOT_FOUND`: The image upload is unknown, expired, or belongs to another brand.
           headers:
             x-request-id:
               schema:
@@ -58990,11 +59512,24 @@ paths:
                       message: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
                       suggestion: List the brands this credential can reach with GET /v1/brands.
                       docs: https://docs.brew.new/api-reference/api/errors
+                uploadNotFound:
+                  summary: UPLOAD_NOT_FOUND
+                  value:
+                    error:
+                      code: UPLOAD_NOT_FOUND
+                      type: not_found
+                      message: The image upload is unknown, expired, or belongs to another brand.
+                      suggestion: Open a new upload with POST /v1/content/image-uploads, send the file, then add it within 15 minutes.
+                      docs: https://docs.brew.new/api-reference/api/errors
         "409":
           description: |-
             `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
 
             `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
+
+            `UPLOAD_IN_PROGRESS`: Another request is still adding this uploaded image.
+
+            `UPLOAD_NOT_RECEIVED`: The image upload has not received its file yet.
           headers:
             x-request-id:
               schema:
@@ -59026,6 +59561,48 @@ paths:
                       message: A request with this Idempotency-Key is still executing.
                       suggestion: Wait for the original request to finish, then retry the same key to replay its response.
                       docs: https://docs.brew.new/api-reference/api/idempotency
+                uploadInProgress:
+                  summary: UPLOAD_IN_PROGRESS
+                  value:
+                    error:
+                      code: UPLOAD_IN_PROGRESS
+                      type: conflict
+                      message: Another request is still adding this uploaded image.
+                      suggestion: Wait a few seconds, then call POST /v1/content/add-image with the same uploadId to receive its result.
+                      docs: https://docs.brew.new/api-reference/api/errors
+                uploadNotReceived:
+                  summary: UPLOAD_NOT_RECEIVED
+                  value:
+                    error:
+                      code: UPLOAD_NOT_RECEIVED
+                      type: conflict
+                      message: The image upload has not received its file yet.
+                      suggestion: POST the raw file bytes to the uploadUrl, then call POST /v1/content/add-image with the same uploadId.
+                      docs: https://docs.brew.new/api-reference/api/errors
+        "413":
+          description: "`PAYLOAD_TOO_LARGE`: The request body exceeds the route cap."
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                payloadTooLarge:
+                  summary: PAYLOAD_TOO_LARGE
+                  value:
+                    error:
+                      code: PAYLOAD_TOO_LARGE
+                      type: invalid_request
+                      message: The request body exceeds the route cap.
+                      suggestion: Reduce the payload size and retry.
+                      docs: https://docs.brew.new/api-reference/api/errors
         "422":
           description: "`CONTENT_OPERATION_FAILED`: The media operation could not be completed for the given input."
           headers:
@@ -59130,6 +59707,329 @@ paths:
       x-brew-scope: emails
       x-brew-brand-scope: brand
       x-brew-idempotency: replay
+      x-brew-credited: false
+      x-brew-rate-policy: content.transform
+  /v1/content/image-uploads:
+    post:
+      operationId: createImageUpload
+      tags:
+        - Content
+      summary: Create an image upload
+      description: |-
+        Opens a single-use upload for one local image file. POST the file's raw bytes to the returned `uploadUrl`, then call `addImage` with the `uploadId` to put it in the brand library. The bytes go straight to storage, so files up to 20 MB fit even though a JSON body is capped far lower. Free; no credits are charged.
+
+        **Use when** the image is a file on your machine rather than a public URL (a public URL goes straight to `addImage` as `imageUrl`).
+
+        **Input** `fileName`, `contentType` (`image/png`, `image/jpeg`, `image/gif`, `image/webp`, `image/avif`, `image/tiff` or `image/svg+xml`) and `size` in bytes (at most 20,000,000; 2,097,152 for SVG).
+
+        **Returns** `201` with `{ uploadId, uploadUrl, expiresAt, maxBytes }`. Within 15 minutes, send the bytes: `curl -X POST --data-binary @logo.png "<uploadUrl>"` answers `200` with `{ uploadId, status: "uploaded", size, expiresAt }`; call `addImage` before that `expiresAt` (15 minutes from when the bytes land) (`404 UPLOAD_NOT_FOUND` for an unknown or expired URL, `413 PAYLOAD_TOO_LARGE` over `maxBytes`). The URL carries its own credential; keep it private. Sending again never replaces the first file.
+
+        **Errors** `400 INVALID_REQUEST` for an unsupported `contentType` or a `size` over the cap; `429 RATE_LIMITED` also when the brand already has 20 uploads open (its message says so, and `Retry-After` is when the oldest expires).
+
+        **See also** `addImage`, `getBrandImages`.
+      requestBody:
+        required: true
+        description: "The file to upload: its name, type and size in bytes."
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ContentImageUploadCreateRequest"
+      responses:
+        "201":
+          description: The upload is open. POST the raw file bytes to `uploadUrl`, then call `POST /v1/content/add-image` with `uploadId`.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+            X-RateLimit-Limit:
+              schema:
+                type: integer
+                description: Requests allowed in the current rolling rate limit window.
+                example: 100
+              required: true
+              description: Requests allowed in the current rolling rate limit window.
+            X-RateLimit-Remaining:
+              schema:
+                type: integer
+                description: Requests remaining in the current rolling rate limit window.
+                example: 99
+              required: true
+              description: Requests remaining in the current rolling rate limit window.
+            X-RateLimit-Reset:
+              schema:
+                type: integer
+                description: Unix timestamp in seconds for when the rolling window fully resets.
+                example: 1712592360
+              required: true
+              description: Unix timestamp in seconds for when the rolling window fully resets.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContentImageUploadCreateResponse"
+              example:
+                uploadId: imgup_V1StGXR8_Z5jdHi6B-myT
+                uploadUrl: https://example-deployment-123.convex.site/uploads/brand-image?uploadId=imgup_V1StGXR8_Z5jdHi6B-myT&token=9b1c4f6e2a7d8e3f0a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f
+                expiresAt: '2026-10-01T18:15:00.000Z'
+                maxBytes: 20000000
+        "400":
+          description: |-
+            `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+
+            `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                brandIdRequired:
+                  summary: BRAND_ID_REQUIRED
+                  value:
+                    error:
+                      code: BRAND_ID_REQUIRED
+                      type: invalid_request
+                      message: An organization-scoped credential called a brand-scoped operation without naming the brand.
+                      suggestion: List brands with GET /v1/brands, then name one with the X-Brand-Id header. There is no default brand.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                invalidRequest:
+                  summary: INVALID_REQUEST
+                  value:
+                    error:
+                      code: INVALID_REQUEST
+                      type: invalid_request
+                      message: "The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender."
+                      suggestion: Fix the field reported in `param` and retry.
+                      docs: https://docs.brew.new/api-reference/api/errors
+        "401":
+          description: |-
+            `API_KEY_REVOKED`: The API key was revoked.
+
+            `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+
+            `INVALID_API_KEY`: The API key is malformed or unknown.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                apiKeyRevoked:
+                  summary: API_KEY_REVOKED
+                  value:
+                    error:
+                      code: API_KEY_REVOKED
+                      type: authentication_error
+                      message: The API key was revoked.
+                      suggestion: Create a new active API key and retry.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                authenticationRequired:
+                  summary: AUTHENTICATION_REQUIRED
+                  value:
+                    error:
+                      code: AUTHENTICATION_REQUIRED
+                      type: authentication_error
+                      message: No API key or session accompanied the request.
+                      suggestion: Provide a valid API key or sign in with an organization session.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                invalidApiKey:
+                  summary: INVALID_API_KEY
+                  value:
+                    error:
+                      code: INVALID_API_KEY
+                      type: authentication_error
+                      message: The API key is malformed or unknown.
+                      suggestion: Check the API key format and retry with a valid active key.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+        "403":
+          description: |-
+            `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+
+            `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+
+            `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+
+            `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                accountSuspended:
+                  summary: ACCOUNT_SUSPENDED
+                  value:
+                    error:
+                      code: ACCOUNT_SUSPENDED
+                      type: authorization_error
+                      message: The organization behind the credential is suspended.
+                      suggestion: The organization behind this credential is suspended. Contact support@brew.new; do not retry.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                brandScopeMismatch:
+                  summary: BRAND_SCOPE_MISMATCH
+                  value:
+                    error:
+                      code: BRAND_SCOPE_MISMATCH
+                      type: authorization_error
+                      message: A brand-scoped credential named a brand other than the one it is bound to.
+                      suggestion: Omit the brand to use the one this credential is bound to, or use an organization-scoped credential to reach other brands.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                insufficientPermissions:
+                  summary: INSUFFICIENT_PERMISSIONS
+                  value:
+                    error:
+                      code: INSUFFICIENT_PERMISSIONS
+                      type: authorization_error
+                      message: The credential lacks the permission scope the operation needs.
+                      suggestion: Use an API key or session with the required permission.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                insufficientRole:
+                  summary: INSUFFICIENT_ROLE
+                  value:
+                    error:
+                      code: INSUFFICIENT_ROLE
+                      type: authorization_error
+                      message: "The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role)."
+                      suggestion: Ask an organization admin to run this, to add you to the brand, or to make you an admin.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+        "404":
+          description: "`BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization)."
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                brandNotFound:
+                  summary: BRAND_NOT_FOUND
+                  value:
+                    error:
+                      code: BRAND_NOT_FOUND
+                      type: not_found
+                      message: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+                      suggestion: List the brands this credential can reach with GET /v1/brands.
+                      docs: https://docs.brew.new/api-reference/api/errors
+        "429":
+          description: "`RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens."
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+            X-RateLimit-Limit:
+              schema:
+                type: integer
+                description: Requests allowed in the current rolling rate limit window.
+                example: 100
+              required: true
+              description: Requests allowed in the current rolling rate limit window.
+            X-RateLimit-Remaining:
+              schema:
+                type: integer
+                description: Requests remaining in the current rolling rate limit window.
+                example: 99
+              required: true
+              description: Requests remaining in the current rolling rate limit window.
+            X-RateLimit-Reset:
+              schema:
+                type: integer
+                description: Unix timestamp in seconds for when the rolling window fully resets.
+                example: 1712592360
+              required: true
+              description: Unix timestamp in seconds for when the rolling window fully resets.
+            Retry-After:
+              schema:
+                type: integer
+                description: Seconds to wait before retrying the request.
+                example: 42
+              required: true
+              description: Seconds to wait before retrying the request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                rateLimited:
+                  summary: RATE_LIMITED
+                  value:
+                    error:
+                      code: RATE_LIMITED
+                      type: rate_limit
+                      message: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens.
+                      suggestion: Wait for the retry window before sending another request.
+                      docs: https://docs.brew.new/api-reference/api/rate-limits
+                      retryAfter: 42
+        "500":
+          description: "`INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it."
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                internalError:
+                  summary: INTERNAL_ERROR
+                  value:
+                    error:
+                      code: INTERNAL_ERROR
+                      type: internal_error
+                      message: An unexpected failure; the x-request-id header identifies it.
+                      suggestion: Retry the request. If it keeps failing, contact support with the x-request-id header.
+                      docs: https://docs.brew.new/api-reference/api/errors
+      parameters:
+        - name: X-Brand-Id
+          in: header
+          required: false
+          description: The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 64
+          example: kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+      x-brew-scope: emails
+      x-brew-brand-scope: brand
+      x-brew-idempotency: disabled
       x-brew-credited: false
       x-brew-rate-policy: content.transform
   /v1/usage:
