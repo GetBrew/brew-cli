@@ -496,7 +496,7 @@ describe('content html-to-png', () => {
 })
 
 describe('content add-image', () => {
-  it('mirrors the image URL', async () => {
+  it('adds the image URL to the brand library', async () => {
     let body: unknown
     server.use(
       http.post(`${API}/v1/content/add-image`, async ({ request }) => {
@@ -506,6 +506,7 @@ describe('content add-image', () => {
           width: 800,
           height: 600,
           aspectRatio: '4:3',
+          assetId: '5bc912f9',
         })
       })
     )

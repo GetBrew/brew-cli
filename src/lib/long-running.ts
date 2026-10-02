@@ -1,4 +1,5 @@
 import {
+  ADD_IMAGE_DEFAULT_TIMEOUT_MS,
   AUDIT_EMAIL_DEFAULT_TIMEOUT_MS,
   EDIT_EMAIL_DEFAULT_TIMEOUT_MS,
   GENERATE_EMAIL_DEFAULT_TIMEOUT_MS,
@@ -63,6 +64,11 @@ export const LONG_RUNNING_ROUTES: ReadonlyArray<{
     method: 'POST',
     path: '/v1/content/generate-image',
     timeoutMs: GENERATE_IMAGE_DEFAULT_TIMEOUT_MS,
+  },
+  {
+    method: 'POST',
+    path: '/v1/content/add-image',
+    timeoutMs: ADD_IMAGE_DEFAULT_TIMEOUT_MS,
   },
 ]
 

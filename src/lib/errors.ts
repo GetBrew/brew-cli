@@ -388,7 +388,7 @@ function withReplayAdvice(
   if (context.replays !== true || key === undefined) {
     return {
       ...envelope,
-      suggestion: `${pathOnly(context.request.path)} may already have been changed, and this route does not replay a request: check its current state before running it again.`,
+      suggestion: `${pathOnly(context.request.path)} may already have been changed, and this command does not replay a request: check its current state before running it again.`,
     }
   }
   const retryCommand = context.retryCommand?.(key)
