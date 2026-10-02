@@ -48,8 +48,8 @@ a `confirmCommand` otherwise, `--yes` to proceed).
 | `brew-cli emails list` | read | `GET /v1/emails` | List email designs; one design is `emails get` |
 | `brew-cli emails groups list` | read | `GET /v1/email-groups` | List email groups in display order, including Ungrouped |
 | `brew-cli emails groups get` | read | `GET /v1/email-groups/{groupId}` | Fetch one email group by id — the bare row |
-| `brew-cli emails groups create` | write | `POST /v1/email-groups` | Create a named email folder (group) |
-| `brew-cli emails groups update` | write | `PATCH /v1/email-groups/{groupId}` | Rename an email folder (group) |
+| `brew-cli emails groups create` | write | `POST /v1/email-groups` | Create a named email folder (group), optionally moving designs into it |
+| `brew-cli emails groups update` | write | `PATCH /v1/email-groups/{groupId}` | Rename an email folder (group), move designs into it, or both |
 | `brew-cli emails groups delete` | destructive | `DELETE /v1/email-groups/{groupId}` | Delete an email folder (group); its emails move to Ungrouped |
 | `brew-cli emails get` | read | `GET /v1/emails/{emailId}` | Fetch one email design by id — the bare row |
 | `brew-cli emails generate` | write ($) | `POST /v1/emails` | Generate a new on-brand email design from a prompt |
@@ -581,32 +581,36 @@ brew-cli emails groups get ungrouped
 
 ### brew-cli emails groups create
 
-Create a named email folder (group)
+Create a named email folder (group), optionally moving designs into it
 
 - Route: `POST /v1/email-groups`
 - Class: write
 - SDK: `brew.emailGroups.create(...)`
 - `--name <name>` — Folder label, 1-60 chars (Ungrouped is reserved)
+- `--email-ids <ids>` — Comma-separated design ids to move into the folder (up to 50); answers moved / notMoved
 - `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
 - `--idempotency-key <key>` — Idempotency-Key for safe retries (auto-generated otherwise)
 
 ```bash
 brew-cli emails groups create --name Welcome
+brew-cli emails groups create --name Launches --email-ids eml_1,eml_2
 ```
 
 ### brew-cli emails groups update
 
-Rename an email folder (group)
+Rename an email folder (group), move designs into it, or both
 
 - Route: `PATCH /v1/email-groups/{groupId}`
 - Class: write
 - SDK: `brew.emailGroups.update(...)`
 - Argument `groupId` — Named group id (grp_*); Ungrouped cannot be renamed
 - `--name <name>` — New folder label, 1-60 chars
+- `--email-ids <ids>` — Comma-separated design ids to move into the folder (up to 50); answers moved / notMoved
 - `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
 
 ```bash
 brew-cli emails groups update grp_welcome --name "Welcome series"
+brew-cli emails groups update grp_welcome --email-ids eml_1,eml_2
 ```
 
 ### brew-cli emails groups delete

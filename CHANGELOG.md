@@ -21,6 +21,12 @@
   switch) now fails with the API's `503 SERVICE_UNAVAILABLE` envelope
   ("Retry without `semantic`") instead of printing an empty table.
 
+- **`emails groups create` / `update --email-ids`** move up to 50 designs
+  into a folder in the same call, and `update` no longer requires `--name`, so
+  a move alone is one command (GetBrew/brew-v2#1814). The result carries
+  `moved` and `notMoved` (each design left where it was, with a reason).
+  `update` with neither `--name` nor `--email-ids` exits 2 before sending.
+
 ### Spec sync
 
 - The vendored OpenAPI spec and generated types catch up with the API:

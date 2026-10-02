@@ -399,7 +399,7 @@ export interface paths {
         put?: never;
         /**
          * Create an email group
-         * @description Creates a named email folder. Returns `201` with `{ groupId, groupName, emailCount: 0 }`. Reserved names (`Ungrouped` / `ungrouped` / `__ungrouped__`) are `400`. Duplicate names are `409 EMAIL_GROUP_NAME_CONFLICT`. Pass the returned `groupId` as `groupId` on create/import/clone.
+         * @description Creates a named email folder. Returns `201` with `{ groupId, groupName, emailCount }`. Pass `emailIds` (up to 50) to move existing designs in, in the same transaction as the create; the response then adds `moved` and `notMoved` (`not_found`, `generating`, `not_movable`, `folder_full` or `retry`; resend `retry` ids in a follow-up `PATCH`). Reserved names (`Ungrouped` / `ungrouped` / `__ungrouped__`) are `400`. Duplicate names are `409 EMAIL_GROUP_NAME_CONFLICT`. Pass the returned `groupId` as `groupId` on create/import/clone.
          */
         post: operations["createEmailGroup"];
         delete?: never;
@@ -440,8 +440,8 @@ export interface paths {
         options?: never;
         head?: never;
         /**
-         * Rename an email group
-         * @description Renames a named folder. Ungrouped cannot be renamed (`400`). Unknown / cross-brand ids are `404`. Duplicate names are `409 EMAIL_GROUP_NAME_CONFLICT`.
+         * Update an email group
+         * @description Renames a named folder (`name`), moves existing designs into it (`emailIds`, up to 50, one request against the rate limit), or both, in one transaction. A move adds `moved` and `notMoved` (`not_found`, `generating`, `not_movable`, `folder_full` or `retry`; resend `retry` ids) to the response. Ungrouped is not a target (`400`). Unknown / cross-brand ids are `404`. Duplicate names are `409 EMAIL_GROUP_NAME_CONFLICT`.
          */
         patch: operations["updateEmailGroup"];
         trace?: never;
@@ -2440,6 +2440,25 @@ export interface components {
             /** @description Creator user id; absent for an organization API key. */
             createdByUserId?: string;
         };
+        EmailGroupWriteResponse: {
+            groupId: string;
+            groupName: string;
+            emailCount: number;
+            /** @description Group creator as Brew shows it: a name or "Former member"; absent for an organization API key or when the creator cannot be named. */
+            createdBy?: string;
+            /** @description Creator user id; absent for an organization API key. */
+            createdByUserId?: string;
+            /** @description Listed designs now in the group, counting any that were already there. */
+            moved?: number;
+            notMoved?: {
+                emailId: string;
+                /**
+                 * @description `not_found`: no such design in this brand. `generating`: a generation is still running; move it after. `not_movable`: an older design stored in a format the folder move does not support. `folder_full`: the folder holds the 200 designs a move can place. `retry`: this call reached its read budget (large designs fit fewer per call); send these ids again.
+                 * @enum {string}
+                 */
+                reason: "not_found" | "generating" | "not_movable" | "folder_full" | "retry";
+            }[];
+        };
         Send: {
             sendId: string;
             /** @enum {string} */
@@ -4213,10 +4232,14 @@ export interface components {
         EmailGroupCreateRequest: {
             /** @description Named folder label (1–60 chars). Reserved names `Ungrouped` / `ungrouped` / `__ungrouped__` are rejected. */
             name: string;
+            /** @description Designs (`emailId`) to move into this group; up to 50 in one call, which is one request against the rate limit. They land at the top in this order; designs already in the group keep their place. Designs that cannot move come back in `notMoved` — send the `retry` ones again. */
+            emailIds?: string[];
         };
         EmailGroupPatchRequest: {
             /** @description Named folder label (1–60 chars). Reserved names `Ungrouped` / `ungrouped` / `__ungrouped__` are rejected. */
-            name: string;
+            name?: string;
+            /** @description Designs (`emailId`) to move into this group; up to 50 in one call, which is one request against the rate limit. They land at the top in this order; designs already in the group keep their place. Designs that cannot move come back in `notMoved` — send the `retry` ones again. */
+            emailIds?: string[];
         };
         EmailGroupDeleteResponse: {
             groupId: string;
@@ -11350,14 +11373,18 @@ export interface operations {
             content: {
                 /**
                  * @example {
-                 *       "name": "Welcome"
+                 *       "name": "Welcome",
+                 *       "emailIds": [
+                 *         "V1StGXR8_Z5jdHi6B-myT",
+                 *         "qkE3pWv2xN9dLmR4tYbZ7"
+                 *       ]
                  *     }
                  */
                 "application/json": components["schemas"]["EmailGroupCreateRequest"];
             };
         };
         responses: {
-            /** @description Created. */
+            /** @description Created, with any designs moved in. */
             201: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -11375,10 +11402,12 @@ export interface operations {
                      * @example {
                      *       "groupId": "grp_welcome",
                      *       "groupName": "Welcome",
-                     *       "emailCount": 0
+                     *       "emailCount": 2,
+                     *       "moved": 2,
+                     *       "notMoved": []
                      *     }
                      */
-                    "application/json": components["schemas"]["EmailGroupSummary"];
+                    "application/json": components["schemas"]["EmailGroupWriteResponse"];
                 };
             };
             /**
@@ -11840,7 +11869,7 @@ export interface operations {
                      *       "emailCount": 3
                      *     }
                      */
-                    "application/json": components["schemas"]["EmailGroupSummary"];
+                    "application/json": components["schemas"]["EmailGroupWriteResponse"];
                 };
             };
             /**
