@@ -15,13 +15,18 @@ const PENDING_BUILD: readonly string[] = []
  * SDK publishing without the method, so a retargeted command does not have
  * to wait on the SDK.
  *
- * Empty since 10.0.0: that window has closed. SDK 10 removed
- * `analytics.campaigns`, `analytics.sends.*`, `analytics.triggerInstances.*`,
+ * SDK 10 closed the previous window: it removed `analytics.campaigns`,
+ * `analytics.sends.*`, `analytics.triggerInstances.*`,
  * `automations.triggers.ready` and `automations.audienceRuns.control`, the
  * staleness test below fired on every sentinel, and each was retired — the
  * ratchet working exactly as designed.
+ *
+ * `data.run`: `POST /v1/data` is retired (GetBrew/brew-v2#TBD) and the CLI
+ * dropped `data run`, but the SDK release that deletes the method is not on
+ * npm yet. Delete this entry when the staleness test below fires on the SDK
+ * upgrade that drops it.
  */
-const REMOVED_SDK_LEAVES: readonly string[] = []
+const REMOVED_SDK_LEAVES: readonly string[] = ['data.run']
 
 function walkSdkLeaves(): readonly string[] {
   const client = createBrewClient({ apiKey: 'brew_parity_walk' })

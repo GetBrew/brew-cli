@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+### Breaking
+
+- **`brew-cli data run` is removed; `POST /v1/data` is retired**
+  (GetBrew/brew-v2#TBD). Use the typed commands instead: `emails`,
+  `contacts` (`contacts search`, `contacts count`, `contacts count-by`),
+  `audiences`, `automations`, `domains` and `analytics` (`analytics events`,
+  `analytics event-counts`). The vendored spec and generated types drop the
+  route and its `DataCommandResponse` schema. The `@brew.new/sdk` pin is
+  unchanged; the CLI no longer calls `data.run`.
+
 ## 0.11.0
 
 Moves to `@brew.new/sdk` `^11.4.0` (typed `total` / `isTotalExact` on

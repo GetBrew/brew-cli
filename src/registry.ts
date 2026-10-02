@@ -80,7 +80,6 @@ import { contentGifCommand } from './commands/content/gif'
 import { contentHtmlToPngCommand } from './commands/content/html-to-png'
 import { contentTransformCommand } from './commands/content/transform'
 import { contractsInferCommand } from './commands/contracts/infer'
-import { dataRunCommand } from './commands/data/run'
 import { docsApiCommand, docsCommand } from './commands/docs'
 import { doctorCommand } from './commands/doctor'
 import { domainsAddCommand } from './commands/domains/add'
@@ -221,7 +220,6 @@ export const ALL_COMMANDS: readonly CommandSpec[] = [
   automationsTriggersContractPutCommand,
   automationsTriggersContractValidateCommand,
   contractsInferCommand,
-  dataRunCommand,
   automationsTriggersCreateCommand,
   automationsTriggersUpdateCommand,
   automationsTriggersDeleteCommand,
