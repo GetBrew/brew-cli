@@ -123,7 +123,7 @@ export const flowsListCommand = defineCommand({
           pagination: { cursor: null, hasMore: false },
           ...count,
         },
-        human: renderFlows(rows, count, { isSemantic }),
+        human: renderFlows(rows, count, { isSemantic, isAllPages: true }),
       }
     }
     const result = await flows.list(asSdkInput<ListFlowsInput>(input))
@@ -176,28 +176,42 @@ function partialEmptyMessage({ isSemantic }: { isSemantic: boolean }): string {
     : 'No flows found among the newest 500 flows the API reads, so that is not a definitive none: older matches are not listed.'
 }
 
-/** "167 flows in total; 25 on this page", or "at least …" for a floor. */
-function countLine(count: FlowCount, onPage: number): string | undefined {
+/**
+ * "167 flows in total; 25 on this page", or "at least …" for a floor. `--all`
+ * merges every page from its cursor on, so its rows are what it LISTED, never
+ * one page.
+ */
+function countLine(
+  count: FlowCount,
+  shown: number,
+  { isAllPages }: { isAllPages: boolean }
+): string | undefined {
   if (count.total === undefined) {
     return undefined
   }
   const floor = count.isTotalExact === false ? 'at least ' : ''
   const noun = count.total === 1 ? 'flow' : 'flows'
   const total = `${floor}${count.total} ${noun} in total`
-  return count.total === onPage ? total : `${total}; ${onPage} on this page`
+  if (count.total === shown) {
+    return total
+  }
+  return `${total}; ${shown} ${isAllPages ? 'listed' : 'on this page'}`
 }
 
 function renderFlows(
   rows: ReadonlyArray<Flow>,
   count: FlowCount,
-  { isSemantic }: { isSemantic: boolean }
+  {
+    isSemantic,
+    isAllPages = false,
+  }: { isSemantic: boolean; isAllPages?: boolean }
 ): string {
   if (rows.length === 0) {
     return count.isTotalExact === false
       ? partialEmptyMessage({ isSemantic })
       : 'No flows found.'
   }
-  const line = countLine(count, rows.length)
+  const line = countLine(count, rows.length, { isAllPages })
   const table = renderTable(
     rows.map((row) => ({
       slug: row.slug,

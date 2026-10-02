@@ -11,7 +11,8 @@
   "how many" in one call. When `isTotalExact` is false — the read was cut at
   500 flows — the line says
   `at least …`, and an empty partial read says why instead of `No flows
-  found.`: the API reads at most 500 flows (the newest, or the 500 nearest
+  found.`, and `--all` counts what it listed (`3 flows in total; 2
+  listed`), never "on this page": the API reads at most 500 flows (the newest, or the 500 nearest
   your `--semantic` query) before the filters apply, so matches past those
   are not listed. `--json` passes `total` and `isTotalExact` through, and `--all`
   keeps them on its merged envelope (GetBrew/brew-v2#1805). Against a
@@ -26,8 +27,10 @@
   `total` / `isTotalExact` and the `503` on the flows list, `pauseReason:
   'domain_unsendable'`, the `EMAIL_IMAGES_MISSING` error code (`422` on an
   automation run), the trigger update's `409
-  CONTRACT_LOCKED_BY_PUBLISHED_AUTOMATIONS`, and the payload issue code
-  `invalid_email`.
+  CONTRACT_LOCKED_BY_PUBLISHED_AUTOMATIONS`, the payload issue code
+  `invalid_email`, and creator attribution on emails, email groups and
+  automations (`createdBy` / `createdByUserId`, `publishedBy` /
+  `publishedByUserId`; GetBrew/brew-v2#1816).
 
 ## 0.10.0
 

@@ -11,13 +11,13 @@ export interface paths {
         };
         /**
          * List email designs
-         * @description Lists the brand’s designs, newest first on the `sortBy` timestamp, as `{ data, pagination }`. Each row carries `emailId`, the latest `emailVersionId`, `title`, `status`, `previewImage` (when captured), `updatedAt` and `group` (`{ groupId, groupName }` or `null` when Ungrouped).
+         * @description Lists the brand’s designs, newest first on the `sortBy` timestamp, as `{ data, pagination }`. Each row carries `emailId`, the latest `emailVersionId`, `title`, `status`, `previewImage` (when captured), `updatedAt`, `group` (`{ groupId, groupName }` or `null` when Ungrouped) and its creator.
          *
          *     **Use when** browsing designs or finding the `emailId` to send, edit or inspect. One design with its HTML or version history is `getEmail`.
          *
          *     **Input** `status` (`generating`, `ready`, `failed`), `groupId` (`grp_…` or `ungrouped`), `sortBy` (`updatedAt` default, or `createdAt`) with an inclusive `from`/`to` ISO 8601 window on that timestamp, `limit` and `cursor`.
          *
-         *     **Returns** `200` with a page of `EmailSummary` rows and a `pagination` envelope (`cursor` is `null` on the last page).
+         *     **Returns** `200` with a page of `EmailSummary` rows and a `pagination` envelope (`cursor` is `null` on the last page). `createdBy` is the creator exactly as the Brew emails list shows it: a person’s name, `API` or `MCP` for a credential with no person, or `Name · MCP` for a person working through MCP; `createdByUserId` is that person’s stable user id.
          *
          *     **Errors** `400 INVALID_REQUEST` for an unknown query key, an invalid status or a reversed window.
          *
@@ -55,7 +55,7 @@ export interface paths {
         };
         /**
          * Get an email design
-         * @description Reads one design as the bare `EmailDetail` row: `emailId`, the `emailVersionId` (the pin for `POST /v1/sends` and sendEmail nodes), `title`, `status`, `previewStatus`, `subjectLine`, `previewText`, `previewImage`, `updatedAt` and `group`, plus `errorMessage` when a generation failed.
+         * @description Reads one design as the bare `EmailDetail` row: `emailId`, the `emailVersionId` (the pin for `POST /v1/sends` and sendEmail nodes), `title`, `status`, `previewStatus`, `subjectLine`, `previewText`, `previewImage`, `updatedAt`, `group` and `createdBy` / `createdByUserId` (the design’s creator, shared by every version), plus `errorMessage` when a generation failed.
          *
          *     **Use when** inspecting a design before sending it, pinning a version, polling a generation you started, or pulling rendered HTML or version history.
          *
@@ -383,7 +383,7 @@ export interface paths {
         };
         /**
          * List email groups
-         * @description Lists the brand’s email folders under `{ data, pagination }`. Named groups use `grp_*` ids; Ungrouped is always included as `{ groupId: "ungrouped", groupName: "Ungrouped" }`. `emailCount` is capped at 100.
+         * @description Lists the brand’s email folders under `{ data, pagination }`. Named groups use `grp_*` ids; Ungrouped is always included as `{ groupId: "ungrouped", groupName: "Ungrouped" }`. `emailCount` is capped at 100. A named group carries `createdBy` (the creator’s name) and `createdByUserId` when a person created it; older groups and groups made by an organization API key have neither.
          *
          *     **Use when** picking the `groupId` to file a design under or to filter `listEmails` by.
          *
@@ -417,7 +417,7 @@ export interface paths {
         };
         /**
          * Get an email group
-         * @description Reads one email folder as the bare `EmailGroupSummary` (`groupId`, `groupName`, `emailCount`).
+         * @description Reads one email folder as the bare `EmailGroupSummary` (`groupId`, `groupName`, `emailCount`, plus `createdBy` and `createdByUserId` when a person created it).
          *
          *     **Use when** confirming a group before filing designs under it, or reading the `ungrouped` catalog row.
          *
@@ -671,13 +671,13 @@ export interface paths {
         };
         /**
          * List automations
-         * @description Lists the brand’s automations under `{ data, pagination }` as LEAN rows: identity, `name`, `version`, `published`, `paused` and live-version state, `emailIds` and `updatedAt`; the graph is omitted.
+         * @description Lists the brand’s automations under `{ data, pagination }` as LEAN rows: identity, `name`, `version`, `published`, `paused` and live-version state, `emailIds`, `updatedAt` and attribution; the graph is omitted.
          *
          *     **Use when** browsing automations or finding the `automationId` to update, run or inspect.
          *
          *     **Input** `limit` and `cursor` (an opaque native cursor).
          *
-         *     **Returns** `200` with a page of lean automation rows.
+         *     **Returns** `200` with a page of lean automation rows. `createdBy` / `createdByUserId` name the creator (`createdBy: "API"` when an organization API key made it); while live, `publishedBy` / `publishedByUserId` name whoever published the live version.
          *
          *     **Errors** `400 INVALID_REQUEST` for an unknown query key or a malformed cursor.
          *
@@ -715,7 +715,7 @@ export interface paths {
         };
         /**
          * Get an automation
-         * @description Reads one automation as the bare row, LEAN by default (graph omitted), with `published`, `paused`, `pausedAt` and the live version it serves.
+         * @description Reads one automation as the bare row, LEAN by default (graph omitted), with `published`, `paused`, `pausedAt`, the live version it serves, its creator (`createdBy`, `createdByUserId`) and, while live, the live version’s publisher (`publishedBy`, `publishedByUserId`).
          *
          *     **Use when** reading a flow before editing or publishing it, pinning `liveAutomationVersionId`, or inspecting its graph.
          *
@@ -2362,6 +2362,10 @@ export interface components {
                 groupId: string;
                 groupName: string;
             } | null;
+            /** @description Creator as Brew shows it: a name, "API", "MCP" or "Name · MCP". */
+            createdBy?: string;
+            /** @description Creator user id; absent for an organization API key. */
+            createdByUserId?: string;
         };
         EmailDetail: {
             emailId: string;
@@ -2389,6 +2393,10 @@ export interface components {
                 groupId: string;
                 groupName: string;
             } | null;
+            /** @description Creator as Brew shows it: a name, "API", "MCP" or "Name · MCP". */
+            createdBy?: string;
+            /** @description Creator user id; absent for an organization API key. */
+            createdByUserId?: string;
             /** @description The version that was read: its number, or `latest` for the current head. */
             version?: number | "latest";
             /** @description Echoes the `runId` query parameter when one was passed. */
@@ -2427,6 +2435,10 @@ export interface components {
             groupId: string;
             groupName: string;
             emailCount: number;
+            /** @description Creator as Brew shows it: a name, "API", "MCP" or "Name · MCP". */
+            createdBy?: string;
+            /** @description Creator user id; absent for an organization API key. */
+            createdByUserId?: string;
         };
         Send: {
             sendId: string;
@@ -3046,7 +3058,14 @@ export interface components {
                 branch?: string;
             }[];
             emailIds: string[];
+            /** @description Creator as Brew shows it: a name, "API", "MCP" or "Name · MCP". */
             createdBy?: string;
+            /** @description Creator user id; absent for an organization API key. */
+            createdByUserId?: string;
+            /** @description Who published the live version; absent while not live. */
+            publishedBy?: string;
+            /** @description Publisher user id of the live version. */
+            publishedByUserId?: string;
             /** Format: date-time */
             createdAt?: string;
             /** Format: date-time */
@@ -3604,6 +3623,10 @@ export interface components {
                     groupId: string;
                     groupName: string;
                 } | null;
+                /** @description Creator as Brew shows it: a name, "API", "MCP" or "Name · MCP". */
+                createdBy?: string;
+                /** @description Creator user id; absent for an organization API key. */
+                createdByUserId?: string;
             }[];
             pagination: {
                 limit: number;
@@ -4176,6 +4199,10 @@ export interface components {
                 groupId: string;
                 groupName: string;
                 emailCount: number;
+                /** @description Creator as Brew shows it: a name, "API", "MCP" or "Name · MCP". */
+                createdBy?: string;
+                /** @description Creator user id; absent for an organization API key. */
+                createdByUserId?: string;
             }[];
             pagination: {
                 limit: number;
@@ -5124,7 +5151,14 @@ export interface components {
                     branch?: string;
                 }[];
                 emailIds: string[];
+                /** @description Creator as Brew shows it: a name, "API", "MCP" or "Name · MCP". */
                 createdBy?: string;
+                /** @description Creator user id; absent for an organization API key. */
+                createdByUserId?: string;
+                /** @description Who published the live version; absent while not live. */
+                publishedBy?: string;
+                /** @description Publisher user id of the live version. */
+                publishedByUserId?: string;
                 /** Format: date-time */
                 createdAt?: string;
                 /** Format: date-time */
@@ -11180,7 +11214,9 @@ export interface operations {
                      *         {
                      *           "groupId": "grp_welcome",
                      *           "groupName": "Welcome",
-                     *           "emailCount": 3
+                     *           "emailCount": 3,
+                     *           "createdBy": "Sam Rivera",
+                     *           "createdByUserId": "user_2xK9mPq4Rt7Vw1Yb"
                      *         },
                      *         {
                      *           "groupId": "ungrouped",
@@ -11498,7 +11534,9 @@ export interface operations {
                      * @example {
                      *       "groupId": "grp_welcome",
                      *       "groupName": "Welcome",
-                     *       "emailCount": 3
+                     *       "emailCount": 3,
+                     *       "createdBy": "Sam Rivera",
+                     *       "createdByUserId": "user_2xK9mPq4Rt7Vw1Yb"
                      *     }
                      */
                     "application/json": components["schemas"]["EmailGroupSummary"];
@@ -13810,6 +13848,8 @@ export interface operations {
                      *       "emailIds": [
                      *         "V1StGXR8_Z5jdHi6B-myT"
                      *       ],
+                     *       "createdBy": "Sam Rivera",
+                     *       "createdByUserId": "user_2xK9mPq4Rt7Vw1Yb",
                      *       "createdAt": "2026-04-08T12:00:00.000Z",
                      *       "updatedAt": "2026-04-08T12:00:00.000Z"
                      *     }

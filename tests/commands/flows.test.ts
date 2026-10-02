@@ -331,6 +331,35 @@ describe('flows list, paging', () => {
     ])
   })
 
+  it('--all from a cursor counts what it listed, never "on this page"', async () => {
+    server.use(
+      http.get(`${API}/v1/flows`, ({ request }) => {
+        const cursor = new URL(request.url).searchParams.get('cursor')
+        return cursor === 'page-2'
+          ? HttpResponse.json({
+              data: [{ ...CARD, slug: 'linear.app' }],
+              pagination: { limit: 1, cursor: 'page-3', hasMore: true },
+              total: 3,
+              isTotalExact: true,
+            })
+          : HttpResponse.json({
+              data: [{ ...CARD, slug: 'figma.com' }],
+              pagination: { limit: 1, cursor: null, hasMore: false },
+              total: 3,
+              isTotalExact: true,
+            })
+      })
+    )
+    const result = await cli(
+      ['flows', 'list', '--all', '--limit', '1', '--cursor', 'page-2'],
+      { ttyOut: true }
+    )
+    expect(result.code).toBe(0)
+    // Two pages merged: "2 on this page" would misstate what was fetched.
+    expect(result.stdout).toContain('3 flows in total; 2 listed')
+    expect(result.stdout).not.toContain('on this page')
+  })
+
   it('--all keeps the total the API reported', async () => {
     server.use(
       http.get(`${API}/v1/flows`, ({ request }) => {
