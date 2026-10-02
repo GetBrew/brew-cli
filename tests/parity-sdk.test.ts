@@ -21,7 +21,7 @@ const PENDING_BUILD: readonly string[] = []
  * staleness test below fired on every sentinel, and each was retired — the
  * ratchet working exactly as designed.
  *
- * `data.run`: `POST /v1/data` is retired (GetBrew/brew-v2#TBD) and the CLI
+ * `data.run`: `POST /v1/data` is retired (GetBrew/brew-v2#1825) and the CLI
  * dropped `data run`, but the SDK release that deletes the method is not on
  * npm yet. Delete this entry when the staleness test below fires on the SDK
  * upgrade that drops it.

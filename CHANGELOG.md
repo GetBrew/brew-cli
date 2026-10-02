@@ -5,7 +5,7 @@
 ### Breaking
 
 - **`brew-cli data run` is removed; `POST /v1/data` is retired**
-  (GetBrew/brew-v2#TBD). Use the typed commands instead: `emails list`,
+  (GetBrew/brew-v2#1825). Use the typed commands instead: `emails list`,
   `emails groups list`, `contacts search`, `contacts count`,
   `contacts count-by`, `audiences list`, `audiences get`, `automations list`,
   `automations runs list`, `domains list`, `sends list`, and
