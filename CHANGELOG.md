@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.12.0
+
+`emails audit` takes every source the rebuilt audit accepts (GetBrew/brew-v2
+email audit PR). Picks up `@brew.new/sdk` 11.6.0's audit types and its 40 s
+audit deadline once that release is installed.
+
+### Added
+
+- **`--jsx <path>`** audits a React Email module (or `-` for stdin); Brew
+  renders it with the renderer it sends with, and a module that does not
+  render is `422`.
+- **`--email-id <id>`** audits a saved design, its latest version or the one
+  `--email-version-id <id>` pins; the design's subject and preview fill any
+  you omit.
+
+### Changed
+
+- `emails audit` refuses before calling the API when it names no source, two
+  sources, or `--email-version-id` without `--email-id`. `--file` is no
+  longer the only way in.
+- `--sending-purpose` help now says what an omitted purpose does: the audit
+  infers it (`policy.source: "inferred"`), instead of "default: marketing".
+- The spec mirror carries the audit's request union, `evidence` and the
+  `inferred` policy source.
+
 ## 0.11.0
 
 Moves to `@brew.new/sdk` `^11.4.0` (typed `total` / `isTotalExact` on

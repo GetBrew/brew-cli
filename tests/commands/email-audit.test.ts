@@ -65,11 +65,87 @@ describe('emails audit', () => {
       sendingPurpose: 'marketing',
     })
     expect(idempotencyKey).toBe('audit-1')
-    // The 65 s audit deadline is the command's own whole-command default.
-    expect(AUDIT_EMAIL_DEFAULT_TIMEOUT_MS).toBe(65_000)
+    // The SDK's audit deadline (above the 25 s server budget) is the
+    // command's own whole-command default.
+    expect(AUDIT_EMAIL_DEFAULT_TIMEOUT_MS).toBeGreaterThan(25_000)
     expect(emailsAuditCommand.defaultTimeoutMs).toBe(
       AUDIT_EMAIL_DEFAULT_TIMEOUT_MS
     )
+  })
+
+  it('audits a React Email module from --jsx and leaves the purpose to the audit', async () => {
+    const directory = mkdtempSync(join(tmpdir(), 'brew-email-audit-'))
+    const file = join(directory, 'welcome.tsx')
+    writeFileSync(file, '<Html><Text>Hi</Text></Html>')
+    let body: unknown
+    server.use(
+      http.post(`${API}/v1/emails/audit`, async ({ request }) => {
+        body = await request.json()
+        return HttpResponse.json({
+          schemaVersion: 1,
+          completion: { status: 'complete', readiness: 'ready', score: 100 },
+        })
+      })
+    )
+
+    const result = await runCli(
+      ['emails', 'audit', '--jsx', file, '--subject', 'Welcome'],
+      { env: env(), extraCommands: [emailsAuditCommand] }
+    )
+
+    expect(result.code).toBe(0)
+    expect(body).toEqual({
+      emailJsx: '<Html><Text>Hi</Text></Html>',
+      subject: 'Welcome',
+    })
+  })
+
+  it('audits a saved design version by id', async () => {
+    let body: unknown
+    server.use(
+      http.post(`${API}/v1/emails/audit`, async ({ request }) => {
+        body = await request.json()
+        return HttpResponse.json({
+          schemaVersion: 1,
+          completion: { status: 'complete', readiness: 'ready', score: 100 },
+        })
+      })
+    )
+
+    const result = await runCli(
+      [
+        'emails',
+        'audit',
+        '--email-id',
+        'email_1',
+        '--email-version-id',
+        'version_1',
+      ],
+      { env: env(), extraCommands: [emailsAuditCommand] }
+    )
+
+    expect(result.code).toBe(0)
+    expect(body).toEqual({ emailId: 'email_1', emailVersionId: 'version_1' })
+  })
+
+  it.each([
+    [['--input', '{"subject":"Hi"}'], 'Name the email to audit'],
+    [
+      ['--email-id', 'email_1', '--input', '{"emailHtml":"<p>Hi</p>"}'],
+      'Audit one source at a time (got emailHtml and emailId).',
+    ],
+    [
+      ['--input', '{"emailHtml":"<p>Hi</p>","emailVersionId":"version_1"}'],
+      '--email-version-id needs --email-id.',
+    ],
+  ])('refuses %j before calling the API', async (args, message) => {
+    const result = await runCli(['emails', 'audit', ...args], {
+      env: env(),
+      extraCommands: [emailsAuditCommand],
+    })
+
+    expect(result.code).not.toBe(0)
+    expect(result.stderr).toContain(message)
   })
 
   it('accepts the full request as JSON from stdin', async () => {

@@ -223,13 +223,13 @@ export interface paths {
         put?: never;
         /**
          * Audit an email
-         * @description Lints raw email HTML for production readiness: unsubscribe compliance, links and images, total loaded size, accessibility, markup, subject line and preview text, checked in parallel.
+         * @description Audits an email for production readiness in parallel: links, images, compliance, loaded size, client support, accessibility and judged copy, plus markup checks.
          *
-         *     **Use when** a design is about to ship, or to score imported HTML before a send. For a stored design, audit the rendered HTML from `listEmails` with `?include=html`.
+         *     **Use when** a design is about to ship, or to score imported HTML or JSX before a send. A saved design is addressed by `emailId` and rendered exactly as a send renders it.
          *
-         *     **Input** `emailHtml` (up to 5,000,000 UTF-8 bytes; the JSON body up to 6 MiB), optional `subject` and `previewText` (each up to 1,000 characters; an omitted preview is extracted from the authored preheader, an explicit empty string stays empty), optional `sendingPurpose` (defaults to marketing and is reported as defaulted).
+         *     **Input** exactly one of `emailHtml`, `emailJsx` (React Email, rendered by Brew) or `emailId` (+ optional `emailVersionId`), each up to 5,000,000 UTF-8 bytes (the JSON body up to 6 MiB); optional `subject` and `previewText` (each up to 1,000 characters; an omitted subject is not judged, an omitted preview is extracted from the authored preheader, an explicit empty string stays empty); optional `sendingPurpose` (when omitted, the audit infers it from the content and reports it as `inferred`, or as defaulted to marketing when unsure).
          *
-         *     **Returns** `200` with a stable versioned `{ findings, checks, metrics, summary, completion }`: every check, up to 100 normalized findings, exact totals. `completion.status: 'complete'` carries a 0 to 100 score and costs 5 credits (`X-Credit-Cost: 5`); `'partial'` (a required lane was unavailable) has `score: null`, never establishes readiness, costs 0 credits (`X-Credit-Cost: 0`) and releases the idempotency key so the same key can retry.
+         *     **Returns** `200` with a stable versioned `{ findings, checks, metrics, summary, completion }`: every check, up to 100 normalized findings (each with optional `evidence`: an HTTP status, the clients that drop a feature, or a judgment probability), exact totals. `completion.status: 'complete'` carries a 0 to 100 score and costs 5 credits (`X-Credit-Cost: 5`); `'partial'` (a required lane was unavailable) has `score: null`, never establishes readiness, costs 0 credits (`X-Credit-Cost: 0`) and releases the idempotency key so the same key can retry.
          *
          *     **Errors** `429 RATE_LIMITED` with `Retry-After` when admission is exhausted: 6 requests per minute per credential or session and 20 per minute across the organization (shared by public API, MCP and agent calls), and at most 4 audits concurrently per organization and 16 globally; a capacity rejection never runs or charges the audit. `404 EMAIL_NOT_FOUND` or `EMAIL_VERSION_NOT_FOUND` when a stored design is named and does not exist; `422 CONTENT_OPERATION_FAILED` when the HTML cannot be processed.
          *
@@ -3886,7 +3886,8 @@ export interface components {
                 /** @enum {string} */
                 purpose: "marketing" | "transactional" | "unknown";
                 /** @enum {string} */
-                source: "provided" | "defaulted" | "trusted_adapter";
+                source: "provided" | "defaulted" | "trusted_adapter" | "inferred";
+                confidence?: number;
                 /** @enum {string} */
                 unsubscribe: "required" | "not_required" | "not_evaluated";
             };
@@ -3964,6 +3965,22 @@ export interface components {
                     id: string;
                     url?: string;
                 }[];
+                evidence?: {
+                    /** @enum {string} */
+                    kind: "http";
+                    status: number | null;
+                    /** @enum {string} */
+                    failure?: "dns" | "tls" | "connect" | "timeout" | "private_host" | "redirects";
+                } | {
+                    /** @enum {string} */
+                    kind: "clients";
+                    unsupported: string[];
+                } | {
+                    /** @enum {string} */
+                    kind: "judgment";
+                    question: string;
+                    probability: number;
+                };
                 target: {
                     /** @enum {string} */
                     kind: "email";
@@ -4006,10 +4023,42 @@ export interface components {
             };
         };
         EmailAuditRequest: {
+            /** @description Rendered email HTML. */
             emailHtml: string;
+            /** @description Subject line to judge. Omit it and the subject is not evaluated; an empty string is reported as a missing subject. */
             subject?: string;
+            /** @description Inbox preview text. Omit it to read the preheader from the email. */
             previewText?: string;
-            /** @enum {string} */
+            /**
+             * @description marketing (unsubscribe link and postal address required) or transactional. Omit it and the audit infers the purpose from the content.
+             * @enum {string}
+             */
+            sendingPurpose?: "marketing" | "transactional";
+        } | {
+            /** @description React Email JSX, rendered by Brew before the audit. */
+            emailJsx: string;
+            /** @description Subject line to judge. Omit it and the subject is not evaluated; an empty string is reported as a missing subject. */
+            subject?: string;
+            /** @description Inbox preview text. Omit it to read the preheader from the email. */
+            previewText?: string;
+            /**
+             * @description marketing (unsubscribe link and postal address required) or transactional. Omit it and the audit infers the purpose from the content.
+             * @enum {string}
+             */
+            sendingPurpose?: "marketing" | "transactional";
+        } | {
+            /** @description A saved email design, rendered exactly as a send renders it. */
+            emailId: string;
+            /** @description The exact design version; omit for the latest version. */
+            emailVersionId?: string;
+            /** @description Subject line to judge. Omit it and the subject is not evaluated; an empty string is reported as a missing subject. */
+            subject?: string;
+            /** @description Inbox preview text. Omit it to read the preheader from the email. */
+            previewText?: string;
+            /**
+             * @description marketing (unsubscribe link and postal address required) or transactional. Omit it and the audit infers the purpose from the content.
+             * @enum {string}
+             */
             sendingPurpose?: "marketing" | "transactional";
         };
         EmailClientPreviewResponse: {
@@ -9699,7 +9748,7 @@ export interface operations {
                     /**
                      * @example {
                      *       "schemaVersion": 1,
-                     *       "rulesetVersion": "2026-08-28.1",
+                     *       "rulesetVersion": "2026-10-02.1",
                      *       "auditId": "00000000-0000-4000-8000-000000000001",
                      *       "contentHash": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
                      *       "auditedAt": "2026-08-23T00:00:00.000Z",
@@ -10802,7 +10851,8 @@ export interface operations {
                             /** @enum {string} */
                             purpose: "marketing" | "transactional" | "unknown";
                             /** @enum {string} */
-                            source: "provided" | "defaulted" | "trusted_adapter";
+                            source: "provided" | "defaulted" | "trusted_adapter" | "inferred";
+                            confidence?: number;
                             /** @enum {string} */
                             unsubscribe: "required" | "not_required" | "not_evaluated";
                         };
@@ -10880,6 +10930,22 @@ export interface operations {
                                 id: string;
                                 url?: string;
                             }[];
+                            evidence?: {
+                                /** @enum {string} */
+                                kind: "http";
+                                status: number | null;
+                                /** @enum {string} */
+                                failure?: "dns" | "tls" | "connect" | "timeout" | "private_host" | "redirects";
+                            } | {
+                                /** @enum {string} */
+                                kind: "clients";
+                                unsupported: string[];
+                            } | {
+                                /** @enum {string} */
+                                kind: "judgment";
+                                question: string;
+                                probability: number;
+                            };
                             target: {
                                 /** @enum {string} */
                                 kind: "email";
