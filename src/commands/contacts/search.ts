@@ -1,5 +1,6 @@
 import type { SearchContactsInput } from '@brew.new/sdk'
 import { defineCommand } from '../../lib/define-command'
+import { CliUsageError } from '../../lib/errors'
 import {
   asSdkInput,
   flagInt,
@@ -62,6 +63,7 @@ export const contactsSearchCommand = defineCommand({
       limit: flagInt(flags.limit, '--limit'),
       cursor: flagString(flags.cursor),
     })
+    refuseCountMode(input)
     const contacts = ctx.client().contacts
     if (flags.all === true) {
       const rows = await collectAll(ctx, (cursor) =>
@@ -81,6 +83,23 @@ export const contactsSearchCommand = defineCommand({
     return { data: result, human: renderContacts(result.data) }
   },
 })
+
+/**
+ * The search route's count mode belongs to `contacts count` and `contacts
+ * count-by`. The SDK's `search` always sends `count: false`, so a `count`
+ * riding --input was dropped and the command printed a page of rows as if it
+ * had counted; `groupBy` / `bucket` only mean anything beside it.
+ */
+function refuseCountMode(input: Readonly<Record<string, unknown>>): void {
+  const keys = ['count', 'groupBy', 'bucket'].filter(
+    (key) => input[key] !== undefined && input[key] !== false
+  )
+  if (keys.length > 0) {
+    throw new CliUsageError(
+      `contacts search returns rows; --input ${keys.join(', ')} asks for a count. Use \`brew-cli contacts count\` for the total or \`brew-cli contacts count-by --group-by <fields> | --bucket <period>\` for groups.`
+    )
+  }
+}
 
 /** The body takes `include` as an array; the flag is comma-separated. */
 function includeTokens(value: unknown): readonly string[] | undefined {

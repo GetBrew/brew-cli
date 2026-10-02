@@ -34,11 +34,13 @@ answer from its tables. `data run` itself is unchanged in this release.
   mentions; at most 3 threads a page). `--comment-id <cmt_…>` reads one
   thread, `--messages-cursor` its next older messages, and `--comment-id …
   --all` follows that cursor to the first message and prints the whole thread,
-  oldest first. A stop mid-walk prints nothing and reports in
-  `progress.resumeCursor` the `--messages-cursor` to resume at.
-  `--messages-cursor` without `--comment-id`, or `--cursor` with it, exits 2
-  before sending. An email the brand does not have is an empty page, not a
-  404. Free.
+  oldest first. A stop mid-walk, a thread resolved under it included (`404
+  COMMENT_NOT_FOUND`), prints nothing and reports in `progress.resumeCursor`
+  the `--messages-cursor` to resume at. `--messages-cursor` without
+  `--comment-id`, or `--cursor` with it, exits 2 before sending. A design
+  with no open threads is an empty page; one the brand does not have is `404
+  EMAIL_NOT_FOUND`, and a `--comment-id` that is not an open thread `404
+  COMMENT_NOT_FOUND`. Free.
 - **`chats list`**: the brand's Brew chats, most recently active first, with
   title (an untitled chat shows its opening prompt on a TTY), status, origin
   and link; `chats get <chatId>` reads one (GetBrew/brew-v2#1831). `--limit`,
@@ -62,15 +64,18 @@ answer from its tables. `data run` itself is unchanged in this release.
   body's `include` array; a page then holds at most 10 contacts, and a TTY adds
   `OPENS` and `BEST SEND (UTC)` columns.
 
+### Fixed
+
+- **`contacts search --input '{"count":true}'`** (or with `groupBy` /
+  `bucket`) exits 2 and names `contacts count` and `contacts count-by`. The
+  SDK's search always sends `count: false`, so the count was dropped and the
+  command printed a page of rows as if it had counted.
+
 ### Spec sync
 
-- The vendored OpenAPI spec and generated types catch up with the API: the five
-  operations above, `include` on `getDomainHealth`, `getContact` and
-  `searchContacts`, and `INSIGHT_NOT_FOUND`. They also carry what reached the
-  API's main since 0.12.0: the rebuilt email audit (GetBrew/brew-v2#1851:
-  `emailJsx` / `emailId` sources, finding `evidence`, an inferred
-  `sendingPurpose`) and add-image's `0` / `unknown` answer for an image it
-  could not measure (GetBrew/brew-v2#1849).
+- The vendored OpenAPI spec and generated types take only the typed-reads
+  hunks: the five operations above, `include` on `getDomainHealth`,
+  `getContact` and `searchContacts`, and `INSIGHT_NOT_FOUND`.
 
 ## 0.12.0
 

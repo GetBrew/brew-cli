@@ -705,10 +705,27 @@ describe('emails comments list', () => {
     expect(body.pagination).toEqual({ cursor: null, hasMore: false })
   })
 
-  it('--comment-id --all on a thread that is not open prints an empty page', async () => {
+  it('exits 1 with EMAIL_NOT_FOUND for a design the brand does not have', async () => {
     server.use(
       http.get(`${API}/v1/emails/:emailId/comments`, () =>
-        HttpResponse.json({ data: [], pagination: PAGE_DONE })
+        apiError(404, 'EMAIL_NOT_FOUND', 'No email matches that id.', 'emailId')
+      )
+    )
+    const result = await cli(['emails', 'comments', 'list', 'em_nope'])
+    expect(result.code).toBe(1)
+    expect(result.stdout).toBe('')
+    expect(errorCode(result)).toBe('EMAIL_NOT_FOUND')
+  })
+
+  it('--comment-id --all on a thread that is not open exits 1 with COMMENT_NOT_FOUND and prints nothing', async () => {
+    server.use(
+      http.get(`${API}/v1/emails/:emailId/comments`, () =>
+        apiError(
+          404,
+          'COMMENT_NOT_FOUND',
+          'No open comment thread matches that id.',
+          'commentId'
+        )
       )
     )
     const result = await cli([
@@ -720,14 +737,17 @@ describe('emails comments list', () => {
       'cmt_gone',
       '--all',
     ])
-    expect(result.code).toBe(0)
-    expect(result.json).toEqual({
-      data: [],
-      pagination: { cursor: null, hasMore: false },
-    })
+    expect(result.code).toBe(1)
+    expect(result.stdout).toBe('')
+    const envelope = JSON.parse(result.stderr) as {
+      error: { code: string; progress?: unknown }
+    }
+    expect(envelope.error.code).toBe('COMMENT_NOT_FOUND')
+    // Nothing was read yet, so there is no walk to resume.
+    expect(envelope.error.progress).toBeUndefined()
   })
 
-  it('a failed read mid-walk prints no partial thread and reports the --messages-cursor to resume at', async () => {
+  it('a thread resolved mid-walk (COMMENT_NOT_FOUND) prints no partial thread and reports the --messages-cursor it stopped at', async () => {
     server.use(
       http.get(`${API}/v1/emails/:emailId/comments`, ({ request }) => {
         const params = new URL(request.url).searchParams
@@ -743,10 +763,10 @@ describe('emails comments list', () => {
           })
         }
         return apiError(
-          400,
-          'INVALID_REQUEST',
-          'Invalid messagesCursor.',
-          'messagesCursor'
+          404,
+          'COMMENT_NOT_FOUND',
+          'No open comment thread matches that id.',
+          'commentId'
         )
       })
     )
@@ -767,7 +787,7 @@ describe('emails comments list', () => {
     const envelope = JSON.parse(envelopeLine ?? '') as {
       error: { code: string; progress?: Record<string, unknown> }
     }
-    expect(envelope.error.code).toBe('INVALID_REQUEST')
+    expect(envelope.error.code).toBe('COMMENT_NOT_FOUND')
     expect(envelope.error.progress).toEqual({
       rowsFetched: 1,
       pagesFetched: 1,
@@ -1163,6 +1183,57 @@ describe('contacts search --include', () => {
     )
     expect(jane).toMatch(/jane@example.com\s+Jane\s+true\s+14\s+15:00$/)
     expect(sam).toMatch(/sam@example.com\s+Sam\s+true$/)
+  })
+
+  it('refuses a count in --input before sending, and names the count commands', async () => {
+    // The SDK's `search` always sends `count: false`, so a count riding
+    // --input used to be dropped and the command printed rows as a count.
+    let calls = 0
+    server.use(
+      http.post(`${API}/v1/contacts/search`, () => {
+        calls += 1
+        return HttpResponse.json({ count: 167 })
+      })
+    )
+    for (const body of [
+      '{"count":true}',
+      '{"count":true,"groupBy":["emailDomain"]}',
+      '{"count":true,"bucket":"month"}',
+    ]) {
+      const result = await cli(['contacts', 'search', '--input', body])
+      expect(result.code, body).toBe(2)
+      expect(result.stderr).toContain('contacts count')
+      expect(result.stderr).toContain('contacts count-by')
+    }
+    const withInclude = await cli([
+      'contacts',
+      'search',
+      '--input',
+      '{"count":true}',
+      '--include',
+      'openProfile',
+    ])
+    expect(withInclude.code).toBe(2)
+    expect(calls).toBe(0)
+  })
+
+  it('still searches when --input says count: false', async () => {
+    let body: Record<string, unknown> | undefined
+    server.use(
+      http.post(`${API}/v1/contacts/search`, async ({ request }) => {
+        body = (await request.json()) as Record<string, unknown>
+        return HttpResponse.json({ data: [], pagination: PAGE_DONE })
+      })
+    )
+    const result = await cli([
+      'contacts',
+      'search',
+      '--input',
+      '{"count":false,"search":"jane"}',
+    ])
+    expect(result.code).toBe(0)
+    expect(body?.search).toBe('jane')
+    expect(body?.count).toBe(false)
   })
 
   it('sends no include and keeps the plain table without the flag', async () => {

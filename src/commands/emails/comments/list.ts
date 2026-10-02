@@ -22,7 +22,9 @@ type Message = EmailCommentMessage
  * fixed size budget; a thread with older messages carries a
  * `messagesCursor`, which `--comment-id` + `--messages-cursor` follows one
  * older slice at a time, and `--comment-id` + `--all` follows to the start.
- * An email with no threads, or one the brand does not have, is an empty page.
+ * A design with no open threads is an empty page; an unknown or other-brand
+ * design is `404 EMAIL_NOT_FOUND`, and a `--comment-id` that is not an open
+ * thread of it `404 COMMENT_NOT_FOUND`.
  */
 export const emailsCommentsListCommand = defineCommand({
   path: ['emails', 'comments', 'list'],
@@ -125,7 +127,8 @@ export const emailsCommentsListCommand = defineCommand({
  * read returns the slice older than the cursor it was given (at least one
  * message) and the cursor for the slice before it, null at the start. A stop
  * mid-walk prints nothing, as `--all` never does, and reports how far it got
- * and the `--messages-cursor` to resume at.
+ * and the `--messages-cursor` to resume at. That includes a thread resolved
+ * mid-walk, which the API answers with `404 COMMENT_NOT_FOUND`.
  */
 async function readWholeThread(
   ctx: CliContext,
@@ -157,7 +160,8 @@ async function readWholeThread(
     reads += 1
     const slice = page.data[0]
     if (slice === undefined) {
-      // Not an open thread of this design (or resolved mid-walk).
+      // A thread that is not open is a 404, which ends the walk above; only
+      // a deployment that predates COMMENT_NOT_FOUND answers an empty page.
       return thread === undefined
         ? undefined
         : { ...thread, messages, messagesCursor: null }
