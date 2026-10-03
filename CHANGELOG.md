@@ -18,7 +18,8 @@ answer from its tables. `data run` itself is unchanged in this release.
   `--all`. `--include pulse,report,suggestions,memo` adds what the Insights
   page shows beside the findings: the last 7 days against the 7 before, the
   latest intelligence report, its suggestions (up to 25) and the analysis
-  agent's memo, each `null` until it exists. `--all` asks for them on the first
+  agent's memo (`pulse`, `report` and `memo` are `null` until they exist;
+  `suggestions` is `[]` when there are none). `--all` asks for them on the first
   page only and keeps them, with `freshness`, beside the merged rows. A TTY
   leads with how current the findings are, says when the latest run failed
   (the findings may be stale), and prints each expansion it asked for under
@@ -35,8 +36,10 @@ answer from its tables. `data run` itself is unchanged in this release.
   thread, `--messages-cursor` its next older messages, and `--comment-id …
   --all` follows that cursor to the first message and prints the whole thread,
   oldest first. A stop mid-walk, a thread resolved under it included (`404
-  COMMENT_NOT_FOUND`), prints nothing and reports in `progress.resumeCursor`
-  the `--messages-cursor` to resume at. `--messages-cursor` without
+  COMMENT_NOT_FOUND`), prints nothing and reports the `--messages-cursor` it
+  stopped at in `progress.resumeCursor`, and in `progress.resumeWith` the flags
+  that resume it (`--comment-id <id> --messages-cursor <cursor> --all`, which a
+  TTY prints). `--messages-cursor` without
   `--comment-id`, or `--cursor` with it, exits 2 before sending. A design
   with no open threads is an empty page; one the brand does not have is `404
   EMAIL_NOT_FOUND`, and a `--comment-id` that is not an open thread `404
@@ -82,7 +85,8 @@ answer from its tables. `data run` itself is unchanged in this release.
 
 - The vendored OpenAPI spec and generated types take only the typed-reads
   hunks: the five operations above, `include` on `getDomainHealth`,
-  `getContact` and `searchContacts`, and `INSIGHT_NOT_FOUND`.
+  `getContact` and `searchContacts`, and the error codes `INSIGHT_NOT_FOUND`
+  and `COMMENT_NOT_FOUND`.
 
 ## 0.12.0
 

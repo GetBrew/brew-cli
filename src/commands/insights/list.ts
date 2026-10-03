@@ -23,7 +23,8 @@ type InsightsPage = ListInsightsResponse
 
 /**
  * What a page says beside its rows: the engine's `freshness` on every page,
- * and each expansion `--include` asked for (`null` until it exists).
+ * and each expansion `--include` asked for (`pulse`, `report` and `memo` are
+ * `null` until they exist; `suggestions` is `[]` when there are none).
  */
 type PageExtras = Partial<Omit<InsightsPage, 'data' | 'pagination'>>
 

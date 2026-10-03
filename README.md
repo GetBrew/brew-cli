@@ -112,14 +112,17 @@ The full generated reference lives in
 `templates`, `flows`, `chats`, `notifications`, plus
 `login`/`logout`/`whoami`/`config`/`usage`/`health`/`docs`/`api`.
 
-Every collection has a real detail read — `<group> get <id>` returns the
-bare row, and an unknown id surfaces the API's own typed `404`.
+Every collection with ids to look up has a real detail read — `<group> get
+<id>` returns the bare row, and an unknown id surfaces the API's own typed
+`404`. `notifications list` and `emails comments list` are list-only (one
+comment thread is `emails comments list <emailId> --comment-id <id>`).
 
 ## How this repo stays in sync with the API, MCP, and SDK
 
 The app repo's Zod contracts generate the OpenAPI spec, which is mirrored
-byte-identically into this repo (`openapi/public-api-v1.yaml`) and the
-SDK. Two parity tests gate CI here:
+into this repo (`openapi/public-api-v1.yaml`) and the SDK: byte-identically,
+except that a release can leave out blocks another open PR owns (0.13.0
+keeps `main`'s email-audit and add-image blocks for the PR that ships them). Two parity tests gate CI here:
 
 - **SDK parity** walks the installed `@brew.new/sdk` client and fails if
   any method lacks a command or a reviewed skip entry — so an SDK upgrade

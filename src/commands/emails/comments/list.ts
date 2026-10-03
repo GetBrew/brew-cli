@@ -152,7 +152,12 @@ async function readWholeThread(
         ctx.transport.setDrain({
           rowsFetched: messages.length,
           pagesFetched: reads,
-          ...(next === undefined ? {} : { resumeCursor: next }),
+          ...(next === undefined
+            ? {}
+            : {
+                resumeCursor: next,
+                resumeWith: `--comment-id ${String(input.commentId)} --messages-cursor ${next} --all`,
+              }),
         })
       }
       throw error

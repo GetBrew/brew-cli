@@ -471,12 +471,16 @@ export function printError(
     lines.push(`Re-run: ${envelope.retryCommand}`)
   }
   if (envelope.progress) {
-    const { rowsFetched, pagesFetched, resumeCursor } = envelope.progress
+    const { rowsFetched, pagesFetched, resumeCursor, resumeWith } =
+      envelope.progress
+    const resume =
+      resumeWith ??
+      (resumeCursor === undefined
+        ? undefined
+        : `--cursor ${resumeCursor} --all`)
     lines.push(
       `Fetched ${rowsFetched} rows in ${pagesFetched} pages before stopping${
-        resumeCursor === undefined
-          ? '.'
-          : `; resume with --cursor ${resumeCursor} --all.`
+        resume === undefined ? '.' : `; resume with ${resume}.`
       }`
     )
   }

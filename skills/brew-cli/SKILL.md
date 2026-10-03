@@ -51,8 +51,9 @@ this build lacks (update the CLI); auth/reachability failures name the fix.
   positional ids always win over `--input`. `--all` drains pagination.
   `--idempotency-key` makes POST retries safe (except `api-keys create`,
   whose route never replays).
-- Every collection has a real detail read (`<group> get <id>`) returning the
-  BARE row; list routes reject id filters. Runs, sends, audience builds and
+- Every collection with ids to look up has a real detail read (`<group> get
+  <id>`) returning the BARE row; list routes reject id filters
+  (`notifications list` and `emails comments list` are list-only). Runs, sends, audience builds and
   inbox-placement tests share ONE status vocabulary: `queued | scheduled |
   running | paused | completed | partially_completed | failed | canceled`.
 

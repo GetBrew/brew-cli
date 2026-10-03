@@ -799,7 +799,42 @@ describe('emails comments list', () => {
       rowsFetched: 1,
       pagesFetched: 1,
       resumeCursor: 'mc_a',
+      resumeWith: '--comment-id cmt_1 --messages-cursor mc_a --all',
     })
+  })
+
+  it('on a TTY, a stopped thread walk says to resume with --comment-id and --messages-cursor, never --cursor', async () => {
+    server.use(
+      http.get(`${API}/v1/emails/:emailId/comments`, ({ request }) => {
+        if (new URL(request.url).searchParams.get('messagesCursor') === null) {
+          return HttpResponse.json({
+            data: [
+              thread('cmt_1', {
+                messages: [message('cmm_4', 'four', 4)],
+                messagesCursor: 'mc_a',
+              }),
+            ],
+            pagination: PAGE_DONE,
+          })
+        }
+        return apiError(
+          404,
+          'COMMENT_NOT_FOUND',
+          'No open comment thread matches that id.',
+          'commentId'
+        )
+      })
+    )
+    const result = await cli(
+      ['emails', 'comments', 'list', 'em_1', '--comment-id', 'cmt_1', '--all'],
+      { ttyOut: true }
+    )
+    expect(result.code).toBe(1)
+    expect(result.stdout).toBe('')
+    expect(result.stderr).toContain(
+      'Fetched 1 rows in 1 pages before stopping; resume with --comment-id cmt_1 --messages-cursor mc_a --all.'
+    )
+    expect(result.stderr).not.toContain('--cursor mc_a')
   })
 })
 
@@ -866,6 +901,25 @@ describe('chats list', () => {
     expect(second).toContain('Write a welcome series for new trial users')
     expect(second).toContain('…')
     expect(second).toMatch(/streaming\s+slack/)
+  })
+
+  it('on a TTY, a stopped --all still says to resume with --cursor', async () => {
+    server.use(
+      http.get(`${API}/v1/chats`, ({ request }) =>
+        new URL(request.url).searchParams.get('cursor') === null
+          ? HttpResponse.json({
+              data: [CHAT],
+              pagination: { limit: 1, cursor: 'native_1', hasMore: true },
+            })
+          : apiError(400, 'INVALID_REQUEST', 'Invalid cursor.', 'cursor')
+      )
+    )
+    const result = await cli(['chats', 'list', '--all'], { ttyOut: true })
+    expect(result.code).toBe(1)
+    expect(result.stdout).toBe('')
+    expect(result.stderr).toContain(
+      'Fetched 1 rows in 1 pages before stopping; resume with --cursor native_1 --all.'
+    )
   })
 
   it('--all drains every page', async () => {
