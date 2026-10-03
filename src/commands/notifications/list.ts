@@ -11,9 +11,14 @@ import {
 
 /**
  * The brand's notifications, newest first, as the app's bell shows them.
- * Each row is shown only when its feature is within the key's scopes, and a
- * personal one (a comment mention or reply) never reaches an API key. Reading
- * marks nothing read.
+ * Each row is shown only when the key may read its feature: `emails` for chats
+ * and previews, `sends` for sends (`emails` implies it), `domains` for domain
+ * checks (`emails` implies it), `contacts` for imports and validations,
+ * `automations` for pause windows; brand extraction and image imports reach
+ * every key, `api_key_created` needs the `all` scope, `send_limit_reached`
+ * reaches organization admins only, and a comment mention or reply never
+ * reaches an API key. So an empty page can mean this key cannot see that
+ * kind of row. Reading marks nothing read.
  */
 export const notificationsListCommand = defineCommand({
   path: ['notifications', 'list'],
@@ -26,7 +31,7 @@ export const notificationsListCommand = defineCommand({
     {
       flag: '--type <type>',
       summary:
-        'Only this notification type (e.g. email_sent, email_send_failed, import_job, domain_score_run)',
+        'Only this notification type (e.g. email_sent, email_send_failed, import_job, domain_score_run); a type this key cannot see is an empty page, not an error',
     },
     LIMIT_FLAG,
     CURSOR_FLAG,
@@ -84,12 +89,13 @@ function renderNotifications(
     nextCursor === null ? undefined : `More follow: --cursor ${nextCursor}`
   if (rows.length === 0) {
     return more === undefined
-      ? 'No notifications found.'
+      ? 'No notifications this key can see.'
       : `No notifications on this page. ${more}`
   }
   const table = renderTable(
     rows.map((row) => ({ ...row })),
     [
+      { key: 'notificationId', header: 'NOTIFICATION' },
       { key: 'type', header: 'TYPE' },
       { key: 'status', header: 'STATUS' },
       { key: 'title', header: 'TITLE' },

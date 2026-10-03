@@ -2511,7 +2511,7 @@ List the brand's notifications (generations, sends, imports, domain checks), new
 - Route: `GET /v1/notifications`
 - Class: read
 - SDK: `brew.notifications.list(...)`
-- `--type <type>` — Only this notification type (e.g. email_sent, email_send_failed, import_job, domain_score_run)
+- `--type <type>` — Only this notification type (e.g. email_sent, email_send_failed, import_job, domain_score_run); a type this key cannot see is an empty page, not an error
 - `--limit <n>` — Page size, 1-100 (default 100)
 - `--cursor <cursor>` — Opaque pagination cursor from a previous page
 - `--all` — Follow the cursor and return every page as one result

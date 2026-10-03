@@ -1851,7 +1851,7 @@ export interface paths {
         };
         /**
          * Get domain health
-         * @description The domain's deliverability health in one FREE read: a `verdict` (`healthy` / `at_risk` / `critical`) with actionable `signals`, DNS/auth state incl. DMARC, active percentage-based gradual sends, general bounce/complaint reporting, workspace reputation, and inbox-placement history. No bounce or complaint threshold is attached to a gradual-send configuration. `include=history` adds `scoreHistory`: up to 50 saved score snapshots, newest first (score, grade, confidence, the event that saved it, and each pillar's score and weight); only snapshots saved under this brand count, searched among the domain's newest 500, so a domain that moved between brands can show fewer. `include=runs` adds `scoreRuns`: the last 5 automated domain score runs (the 5-variant seed check), each with its status in the shared run vocabulary, the score it ended on, the credits it cost and every variant's placement test.
+         * @description The domain's deliverability health in one FREE read: a `verdict` (`healthy` / `at_risk` / `critical`) with actionable `signals`, DNS/auth state incl. DMARC, active percentage-based gradual sends, general bounce/complaint reporting, workspace reputation, and inbox-placement history. No bounce or complaint threshold is attached to a gradual-send configuration. `include=scoreHistory` adds `scoreHistory`: up to 50 saved score snapshots, newest first (score, grade, confidence, the event that saved it, and each pillar's score and weight); only snapshots saved under this brand count, searched among the domain's newest 500, so a domain that moved between brands can show fewer. `include=scoreRuns` adds `scoreRuns`: the last 5 automated domain score runs (the 5-variant seed check), each with its status in the shared run vocabulary, the score it ended on, the credits it cost and every variant's placement test.
          */
         get: operations["getDomainHealth"];
         put?: never;
@@ -2505,13 +2505,23 @@ export interface paths {
          * List notifications
          * @description Lists the brand's notifications, newest first, under `{ data, pagination }`, as the app's bell shows them: generations, sends, imports, domain checks and score runs finishing or failing, plus comment mentions and replies. Each row has `type`, `status`, `title`, `subtitle`, a `url` into the app and the ids it concerns (`chatId`, `emailId`, `domainId`). Reading marks nothing read. Free.
          *
-         *     **Access** each row is shown only when its feature is within the credential's scopes: a `contacts` key sees import and validation rows, an `emails` key sees chats, sends and domains. Brand-wide rows (brand extraction, image imports) need no scope. A comment mention or reply (`isPersonal: true`) reaches only the person it is addressed to, so an API key never sees one.
+         *     **Access** each row is shown only when the credential may read its feature, scopes included, so an empty page can mean nothing happened or that this credential cannot see that kind of row (a `type` it cannot see is an empty page, not an error). By type:
+         *
+         *     - `chat_stream`, `preview_email`: the `emails` scope.
+         *     - `email_sent`, `email_scheduled`, `email_send_failed`, `gradual_send_paused`, `gradual_send_completed`, `send_review_rejected`: `sends` (`emails` implies it).
+         *     - `domain_status`, `domain_score_run`: `domains` (`emails` implies it).
+         *     - `import_job`, `validation_job`: `contacts`.
+         *     - `automation_pause_window_closed`: `automations`.
+         *     - `brand_extracted`, `brand_image_import`: every credential on the brand.
+         *     - `api_key_created`: the `all` scope (a signed-in member, or a key or connection holding `all`).
+         *     - `send_limit_reached`: organization admins only (a signed-in admin, an admin’s organization-wide connection, or an organization-wide key holding `all`); never a brand key.
+         *     - `comment_mention`, `comment_reply` (`isPersonal: true`): only the person addressed, signed in or on a personal connection; never an API key.
          *
          *     **Use when** checking what finished or failed since you last looked.
          *
          *     **Input** `type` keeps one notification type; `limit` and `cursor` (an opaque native cursor; a page can hold fewer rows than `limit` while `hasMore` is true).
          *
-         *     **Returns** `200` with a page of `Notification` rows; `id` (`ntf_…`) is stable for the row’s life.
+         *     **Returns** `200` with a page of `Notification` rows; `notificationId` (`ntf_…`) is stable for the row’s life.
          *
          *     **Errors** `400 INVALID_REQUEST` for an unknown query key or `type`, or a malformed cursor.
          *
@@ -2541,9 +2551,9 @@ export interface paths {
          *
          *     **Input** `emailId` in the path; `limit` and `cursor`. `include=messages` adds each thread's newest messages (author, body, mentions), oldest first, and caps the page at 3 threads sharing a fixed size budget. A thread with older messages returns `messagesCursor`: send it back with that thread's `commentId` to read the next older slice (the whole budget, at least one message), until it comes back null. `commentId` alone reads one thread.
          *
-         *     **Returns** `200` with a page of `EmailCommentThread` rows. An email with no threads, or one the brand does not have, is an empty page.
+         *     **Returns** `200` with a page of `EmailCommentThread` rows. A design with no threads is an empty page.
          *
-         *     **Errors** `400 INVALID_REQUEST` for an unknown query key, an unknown `include` token, a malformed cursor, a `messagesCursor` without its `commentId` or from another thread, or `cursor` with `commentId`.
+         *     **Errors** `400 INVALID_REQUEST` for an unknown query key, an unknown `include` token, a malformed cursor, a `messagesCursor` without its `commentId` or from another thread, or `cursor` with `commentId`. `404 EMAIL_NOT_FOUND` for an `emailId` the brand does not have: unknown, malformed or another brand’s design, one identical error as `getEmail` answers. `404 COMMENT_NOT_FOUND` for a `commentId` that is not an open thread on that design (resolving deletes a thread, so a resolved one is the same case).
          *
          *     **See also** `getEmail`.
          */
@@ -3602,16 +3612,6 @@ export interface components {
             customFields?: {
                 [key: string]: unknown;
             };
-            /** @description With `include` openProfile: the contact's smart-send open-time profile (48 UTC half-hour open counts and the best send time derived from them), or null when they have no opens folded yet. Not bot detection: machine opens cannot be told apart here. */
-            openProfile?: {
-                totalOpens: number;
-                /** Format: date-time */
-                lastOpenedAt: string;
-                bestOpenMinuteUtc?: number;
-                bestSendMinuteUtc?: number;
-                confidence?: number;
-                histogram: number[];
-            } | null;
         };
         ContactFieldDefinition: {
             fieldName: string;
@@ -3849,6 +3849,425 @@ export interface components {
             previewImage?: string;
             html?: string;
         };
+        ChatListRow: {
+            /** @description Resume the chat with the chat-context read. */
+            chatId: string;
+            title: string | null;
+            /** @description The opening prompt, cut at 80 characters. */
+            firstUserPrompt: string | null;
+            /** @description Brew's latest reply, cut at 140 characters. */
+            lastAssistantPreview: string | null;
+            /**
+             * @description `streaming` or `background_finalizing` while a run is still going; null before the first run.
+             * @enum {string|null}
+             */
+            status: "idle" | "streaming" | "background_finalizing" | "completed" | "failed" | "interrupted" | "stopped" | "persistence_failed" | null;
+            /**
+             * @description The chat app the conversation started in; null for the Brew web app.
+             * @enum {string|null}
+             */
+            origin: "slack" | null;
+            /** Format: date-time */
+            updatedAt: string;
+            /** @description Opens the chat in the Brew app. */
+            url: string;
+        };
+        InsightListRow: {
+            insightId: string;
+            /** @description What the finding is about. */
+            title: string;
+            /** @description The detector’s deterministic headline; quote it, never restate its numbers. */
+            description: string;
+            /** @enum {string} */
+            severity: "critical" | "warning" | "opportunity" | "info";
+            /** @enum {string} */
+            confidence: "high" | "medium" | "low";
+            /**
+             * @description `answer` reports what happened, `insight` a change that passed its statistical test, `strategy` a recommended next step.
+             * @enum {string}
+             */
+            kind: "answer" | "insight" | "strategy";
+            category: string;
+            detectorId: string;
+            /**
+             * @description A snooze that has ended reads as `active`.
+             * @enum {string}
+             */
+            state: "active" | "snoozed" | "cleared" | "dismissed" | "resolved" | "stale";
+            /** Format: date-time */
+            firstSeenAt: string;
+            /** Format: date-time */
+            lastSeenAt: string;
+            recurrenceCount: number;
+            action?: {
+                /** @enum {string} */
+                kind: "navigate";
+                label: string;
+                /** @description Absolute link to the page in Brew. */
+                url: string;
+            } | {
+                /** @enum {string} */
+                kind: "assistant";
+                label: string;
+                /** @enum {string} */
+                intent: "review_domain_health" | "validate_contacts" | "create_campaign" | "repeat_campaign" | "review_recommendation";
+                /** @description The request the Insights page sends to Brew’s assistant. */
+                prompt: string;
+            };
+            /** @description The finding’s page in Brew. */
+            url: string;
+        };
+        InsightList: {
+            data: components["schemas"]["InsightListRow"][];
+            pagination: {
+                limit: number;
+                cursor: string | null;
+                hasMore: boolean;
+            };
+            freshness: {
+                /**
+                 * Format: date-time
+                 * @description How current the data behind the findings is; null before the first successful run.
+                 */
+                dataAsOf: string | null;
+                /** Format: date-time */
+                lastSuccessfulRunAt: string | null;
+                /** @description The newest engine run and its outcome; `failed` means the findings may be stale. */
+                latestAttempt: {
+                    /** @enum {string} */
+                    status: "succeeded" | "failed" | "running" | "unknown";
+                    /** Format: date-time */
+                    at: string;
+                } | null;
+            };
+            /** @description With `include` pulse: the weekly pulse, or null before the first run. */
+            pulse?: {
+                /**
+                 * Format: date-time
+                 * @description Exclusive end of the 7-day window: the start of the newest incomplete day.
+                 */
+                windowEnd: string;
+                delivered: number;
+                priorDelivered: number;
+                uniqueOpens: number;
+                priorUniqueOpens: number;
+                uniqueClicks: number;
+                priorUniqueClicks: number;
+                unsubscribed: number;
+                priorUnsubscribed: number;
+                /** @description Percent, one decimal; null when counts-only or not measured. */
+                openRatePct: number | null;
+                priorOpenRatePct: number | null;
+                clickRatePct: number | null;
+                priorClickRatePct: number | null;
+                /**
+                 * @description `up` or `down` only when the change is statistically real.
+                 * @enum {string}
+                 */
+                openDirection: "up" | "down" | "steady";
+                /** @enum {string} */
+                clickDirection: "up" | "down" | "steady";
+                /** @description Too few deliveries for rates; read the counts. */
+                countsOnly: boolean;
+                /** @description False when engagement tracking is off: opens are unknown. */
+                measured: boolean;
+            } | null;
+            /** @description With `include` report: the latest intelligence report, or null when none was published. */
+            report?: {
+                reportId: string;
+                /** @description The Brew chat whose analysis run wrote the report. */
+                chatId: string;
+                /** @enum {string} */
+                runTrigger: "manual" | "scheduled";
+                /** Format: date-time */
+                createdAt: string;
+                insights: {
+                    key: string;
+                    /** @enum {string} */
+                    kind: "performance" | "audience" | "trend" | "risk" | "content" | "setup";
+                    title: string;
+                    body: string;
+                    impact: string | null;
+                    /** @description The suggestion this insight proposes, if any. */
+                    suggestionId: string | null;
+                }[];
+            } | null;
+            /** @description With `include` suggestions: proposed and launched suggestions, most recently updated first. */
+            suggestions?: {
+                suggestionId: string;
+                title: string;
+                /** @description Exactly what launching the suggestion asks Brew to do. */
+                prompt: string;
+                /** @enum {string} */
+                kind: "audience" | "campaign" | "automation" | "deliverability" | "schedule";
+                /** @enum {string} */
+                status: "proposed" | "launched" | "dismissed" | "concluded";
+                rationale: string | null;
+                /** @description The report insight keys that motivated it. */
+                sourceInsightKeys: string[];
+                /** @description The chat a launched suggestion runs in. */
+                executionChatId: string | null;
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
+            }[];
+            /** @description With `include` memo: the memo, or null before the first run. */
+            memo?: {
+                /** @description Learnings, Watchlist, Experiments and History sections; at most 8192 bytes. */
+                markdown: string;
+                version: number;
+                /** Format: date-time */
+                updatedAt: string;
+                updatedByChatId: string | null;
+            } | null;
+        };
+        Insight: {
+            insightId: string;
+            /** @description What the finding is about. */
+            title: string;
+            /** @description The detector’s deterministic headline; quote it, never restate its numbers. */
+            description: string;
+            /** @enum {string} */
+            severity: "critical" | "warning" | "opportunity" | "info";
+            /** @enum {string} */
+            confidence: "high" | "medium" | "low";
+            /**
+             * @description `answer` reports what happened, `insight` a change that passed its statistical test, `strategy` a recommended next step.
+             * @enum {string}
+             */
+            kind: "answer" | "insight" | "strategy";
+            category: string;
+            detectorId: string;
+            /**
+             * @description A snooze that has ended reads as `active`.
+             * @enum {string}
+             */
+            state: "active" | "snoozed" | "cleared" | "dismissed" | "resolved" | "stale";
+            /** Format: date-time */
+            firstSeenAt: string;
+            /** Format: date-time */
+            lastSeenAt: string;
+            recurrenceCount: number;
+            action?: {
+                /** @enum {string} */
+                kind: "navigate";
+                label: string;
+                /** @description Absolute link to the page in Brew. */
+                url: string;
+            } | {
+                /** @enum {string} */
+                kind: "assistant";
+                label: string;
+                /** @enum {string} */
+                intent: "review_domain_health" | "validate_contacts" | "create_campaign" | "repeat_campaign" | "review_recommendation";
+                /** @description The request the Insights page sends to Brew’s assistant. */
+                prompt: string;
+            };
+            /** @description The finding’s page in Brew. */
+            url: string;
+            rationale: string | null;
+            closedReason: string | null;
+            /** Format: date-time */
+            closedAt: string | null;
+            /** Format: date-time */
+            lastActedAt: string | null;
+            /** @description How often the finding has closed and reopened. */
+            churnCount: number;
+            /** @description Frozen when the finding was computed: the only numbers to quote about it. */
+            metrics: {
+                [key: string]: {
+                    /** @enum {string} */
+                    kind: "count";
+                    value: number;
+                    noun: string;
+                } | {
+                    /** @enum {string} */
+                    kind: "rate";
+                    value: number | null;
+                    numerator: number;
+                    denominator: number;
+                    /** @enum {string} */
+                    basis: "delivered" | "sent" | "uniqueOpened" | "recipients";
+                    anomalous?: boolean;
+                } | {
+                    /** @enum {string} */
+                    kind: "share";
+                    value: number | null;
+                    part: number;
+                    whole: number;
+                    wholeNoun: string;
+                } | {
+                    /** @enum {string} */
+                    kind: "duration";
+                    ms: number;
+                    bucketIndex?: number;
+                } | {
+                    /** @enum {string} */
+                    kind: "delta";
+                    value: number;
+                    /** @enum {string} */
+                    unit: "pp" | "pct" | "abs";
+                    from: number;
+                    to: number;
+                } | {
+                    /** @enum {string} */
+                    kind: "hourOfDay";
+                    hour: number;
+                    slot?: number;
+                    /** @enum {string} */
+                    basis: "utc" | "brand_zone";
+                    timeZone?: string;
+                } | {
+                    /** @enum {string} */
+                    kind: "multiple";
+                    value: number;
+                    referenceLabel: string;
+                } | {
+                    /** @enum {string} */
+                    kind: "rank";
+                    position: number;
+                    outOf: number;
+                } | {
+                    /** @enum {string} */
+                    kind: "interval";
+                    lo: number;
+                    hi: number;
+                    confidenceLevel: 0.9 | 0.95;
+                    /** @enum {string} */
+                    as: "rate" | "delta" | "count";
+                } | {
+                    /** @enum {string} */
+                    kind: "label";
+                    text: string;
+                };
+            };
+            evidence: {
+                label: string;
+                url?: string;
+            }[];
+            /** @description What the finding is about: a send, an automation, a domain. */
+            subject: {
+                kind: string;
+                id: string;
+                label: string;
+            };
+            /** @description How the detector works; null when none is recorded. */
+            method: {
+                what: string;
+                how: string;
+                comparedAgainst: string;
+                resolvesWhen: string;
+                caveat?: string;
+            } | null;
+            /** @description The engine run that last produced the finding. */
+            generatedBy: {
+                /** @enum {string} */
+                trigger: "cron_daily" | "send_settled" | "lifecycle_event" | "manual_refresh";
+                /** Format: date-time */
+                startedAt: string;
+                /** Format: date-time */
+                completedAt: string | null;
+                /** @description What that run could not see. */
+                blindSpots: string[];
+            } | null;
+            freshness: {
+                /**
+                 * Format: date-time
+                 * @description How current the data behind the findings is; null before the first successful run.
+                 */
+                dataAsOf: string | null;
+                /** Format: date-time */
+                lastSuccessfulRunAt: string | null;
+                /** @description The newest engine run and its outcome; `failed` means the findings may be stale. */
+                latestAttempt: {
+                    /** @enum {string} */
+                    status: "succeeded" | "failed" | "running" | "unknown";
+                    /** Format: date-time */
+                    at: string;
+                } | null;
+            };
+        };
+        Notification: {
+            /** @description `ntf_` + 20 hex characters: a one-way hash, stable for the row’s life. */
+            notificationId: string;
+            /** @enum {string} */
+            type: "chat_stream" | "import_job" | "brand_image_import" | "validation_job" | "email_sent" | "email_scheduled" | "preview_email" | "brand_extracted" | "domain_status" | "domain_score_run" | "api_key_created" | "email_send_failed" | "gradual_send_paused" | "gradual_send_completed" | "send_limit_reached" | "automation_pause_window_closed" | "send_review_rejected" | "comment_mention" | "comment_reply";
+            /** @enum {string} */
+            status: "uploading" | "preparing" | "processing" | "finalizing" | "streaming" | "background_finalizing" | "completed" | "partial" | "failed" | "interrupted" | "stopped" | "persistence_failed";
+            title: string;
+            subtitle: string;
+            /** @description 0-100 while work is running, where it reports progress. */
+            progressPercent?: number;
+            /** @description Where the bell opens it in the Brew app. */
+            url?: string;
+            chatId?: string;
+            emailId?: string;
+            domainId?: string;
+            domainName?: string;
+            /** @description Addressed to the caller alone: a comment mention or reply, shown only on a personal connection. */
+            isPersonal: boolean;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            /** Format: date-time */
+            completedAt?: string;
+        };
+        EmailCommentThread: {
+            /** @description `cmt_…`; the app opens it with `?commentId=`. */
+            commentId: string;
+            emailId: string;
+            /** @enum {string} */
+            status: "open";
+            /** @description Whether the thread is on the whole design or one element of it. */
+            target: {
+                /** @enum {string} */
+                kind: "email";
+            } | {
+                /** @enum {string} */
+                kind: "element";
+                /** @description The element the thread is pinned to (`elm_…`). */
+                elementId?: string;
+                /** @description What the element is: `button`, `image`, `heading`, … */
+                nodeType?: string;
+            };
+            /** @description Who started, replied to, or was mentioned in the thread: the 12 most recent. */
+            participants: {
+                userId: string;
+                name: string;
+            }[];
+            /** @description How many people are in the thread; `participants` lists at most 12. */
+            participantCount: number;
+            messageCount: number;
+            /** Format: date-time */
+            lastMessageAt: string;
+            /** @description The latest message, shortened to 140 characters; mentions read as in `body`. */
+            lastMessagePreview: string;
+            /** @description Opens the thread on the design in the Brew app. */
+            url: string;
+            /** @description Only with messages: the thread's newest messages (or, after a `messagesCursor`, the next older ones) that fit the page's size budget, oldest first. */
+            messages?: {
+                /** @description `cmm_…` */
+                messageId: string;
+                author: {
+                    userId: string;
+                    name: string;
+                };
+                /** @description The message text. Each mention reads `@` + the name `mentions` gives; other `@` text is as typed. */
+                body: string;
+                mentions: {
+                    userId: string;
+                    name: string;
+                }[];
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
+            }[];
+            /** @description Only with messages: pass it back with this thread's `commentId` to read its older messages; null when none remain. */
+            messagesCursor?: string | null;
+        };
         EmailsListResponse: {
             data: {
                 emailId: string;
@@ -3904,7 +4323,7 @@ export interface components {
             };
         };
         /** @enum {string} */
-        ApiErrorCode: "ACCOUNT_SUSPENDED" | "API_KEY_REVOKED" | "AUDIENCE_BUILD_ACTIVE" | "AUDIENCE_BUILD_ALREADY_ACTIVE" | "AUDIENCE_EDIT_CONFLICT" | "AUDIENCE_MEMBERSHIP_NOT_EXPRESSIBLE" | "AUDIENCE_NOT_FOUND" | "AUDIENCE_RUN_NOT_FOUND" | "AUDIT_NOT_FOUND" | "AUTHENTICATION_REQUIRED" | "AUTOMATION_GRAPH_INVALID" | "AUTOMATION_NOT_FOUND" | "AUTOMATION_NOT_PAUSABLE" | "AUTOMATION_NOT_PUBLISHED" | "AUTOMATION_RUN_NOT_FOUND" | "AUTOMATION_VERSION_CONFLICT" | "AUTOMATION_VERSION_NOT_FOUND" | "BATCH_TOO_LARGE" | "BRAND_DOMAIN_CONFLICT" | "BRAND_ID_REQUIRED" | "BRAND_LIMIT_REACHED" | "BRAND_NOT_FOUND" | "BRAND_NOT_READY" | "BRAND_SCOPE_MISMATCH" | "CHAT_NOT_FOUND" | "CONSENT_REQUIRED" | "CONTACT_NOT_FOUND" | "CONTENT_OPERATION_FAILED" | "CONTRACT_LOCKED_BY_PUBLISHED_AUTOMATIONS" | "CORE_FIELD_IMMUTABLE" | "DOMAIN_ALREADY_EXISTS" | "DOMAIN_CLAIMED_ELSEWHERE" | "DOMAIN_NOT_FOUND" | "DOMAIN_NOT_READY" | "DOMAIN_OTHER_BRAND" | "DOMAIN_PROVIDER_ERROR" | "DOMAIN_PURPOSE_NOT_ALLOWED" | "DOMAIN_VERIFICATION_FAILED" | "DOMAIN_VERIFIED_ELSEWHERE" | "EMAIL_GENERATION_FAILED" | "EMAIL_GROUP_NAME_CONFLICT" | "EMAIL_GROUP_NOT_FOUND" | "EMAIL_IMAGES_MISSING" | "EMAIL_IMPORT_FAILED" | "EMAIL_IN_PROGRESS" | "EMAIL_IN_USE_BY_AUTOMATION" | "EMAIL_NOT_FOUND" | "EMAIL_NOT_READY" | "EMAIL_RUN_AMBIGUOUS" | "EMAIL_TEMPLATE_INVALID" | "EMAIL_VERSION_NOT_FOUND" | "EXPORT_PROVIDER_ERROR" | "EXPORT_UNSUPPORTED" | "FIELD_NOT_FOUND" | "FIELD_TYPE_MISMATCH" | "FIGMA_ACCESS_DENIED" | "FIGMA_CONVERSION_FAILED" | "FIGMA_FRAME_NOT_FOUND" | "FIGMA_NOT_CONNECTED" | "FIGMA_UNAVAILABLE" | "FIGMA_URL_INVALID" | "FLOW_NOT_FOUND" | "IDEMPOTENCY_CONFLICT" | "IDEMPOTENCY_IN_PROGRESS" | "INSIGHT_NOT_FOUND" | "INSUFFICIENT_CREDITS" | "INSUFFICIENT_PERMISSIONS" | "INSUFFICIENT_ROLE" | "INTEGRATION_NOT_CONNECTED" | "INTERNAL_ERROR" | "INVALID_API_KEY" | "INVALID_EMAIL" | "INVALID_PAYLOAD" | "INVALID_REQUEST" | "LIQUID_RENDER_ERROR" | "METHOD_NOT_ALLOWED" | "MISSING_EMAIL" | "NO_ELIGIBLE_RECIPIENTS" | "NO_PUBLISHED_AUTOMATION" | "NOT_FOUND" | "NOT_IMPLEMENTED" | "ORG_SCOPE_REQUIRED" | "PAYLOAD_SCHEMA_EMAIL_REQUIRED" | "PAYLOAD_TOO_LARGE" | "PREVIEW_NOT_FOUND" | "PUBLISH_VALIDATION_FAILED" | "RATE_LIMITED" | "RECIPIENT_UNSUBSCRIBED" | "REFERENCE_EMAIL_NOT_FOUND" | "RESUBSCRIBE_NOT_ALLOWED" | "RUN_IN_PROGRESS" | "RUN_NOT_CANCELLABLE" | "RUN_NOT_PAUSABLE" | "RUN_NOT_PAUSED" | "RUN_NOT_RESUMABLE" | "RUN_START_FAILED" | "RUN_STOP_FAILED" | "SEND_NOT_CANCELLABLE" | "SEND_NOT_FOUND" | "SEND_NOT_PAUSABLE" | "SEND_NOT_RESUMABLE" | "SEND_QUOTA_EXCEEDED" | "SERVICE_UNAVAILABLE" | "TEMPLATE_NOT_FOUND" | "TRIGGER_ALREADY_EXISTS" | "TRIGGER_EVENT_NOT_FOUND" | "TRIGGER_HAS_DEPENDENT_AUTOMATIONS" | "TRIGGER_IMMUTABLE" | "TRIGGER_INSTANCE_NOT_FOUND" | "TRIGGER_LIMIT_REACHED" | "UPLOAD_IN_PROGRESS" | "UPLOAD_NOT_FOUND" | "UPLOAD_NOT_RECEIVED";
+        ApiErrorCode: "ACCOUNT_SUSPENDED" | "API_KEY_REVOKED" | "AUDIENCE_BUILD_ACTIVE" | "AUDIENCE_BUILD_ALREADY_ACTIVE" | "AUDIENCE_EDIT_CONFLICT" | "AUDIENCE_MEMBERSHIP_NOT_EXPRESSIBLE" | "AUDIENCE_NOT_FOUND" | "AUDIENCE_RUN_NOT_FOUND" | "AUDIT_NOT_FOUND" | "AUTHENTICATION_REQUIRED" | "AUTOMATION_GRAPH_INVALID" | "AUTOMATION_NOT_FOUND" | "AUTOMATION_NOT_PAUSABLE" | "AUTOMATION_NOT_PUBLISHED" | "AUTOMATION_RUN_NOT_FOUND" | "AUTOMATION_VERSION_CONFLICT" | "AUTOMATION_VERSION_NOT_FOUND" | "BATCH_TOO_LARGE" | "BRAND_DOMAIN_CONFLICT" | "BRAND_ID_REQUIRED" | "BRAND_LIMIT_REACHED" | "BRAND_NOT_FOUND" | "BRAND_NOT_READY" | "BRAND_SCOPE_MISMATCH" | "CHAT_NOT_FOUND" | "COMMENT_NOT_FOUND" | "CONSENT_REQUIRED" | "CONTACT_NOT_FOUND" | "CONTENT_OPERATION_FAILED" | "CONTRACT_LOCKED_BY_PUBLISHED_AUTOMATIONS" | "CORE_FIELD_IMMUTABLE" | "DOMAIN_ALREADY_EXISTS" | "DOMAIN_CLAIMED_ELSEWHERE" | "DOMAIN_NOT_FOUND" | "DOMAIN_NOT_READY" | "DOMAIN_OTHER_BRAND" | "DOMAIN_PROVIDER_ERROR" | "DOMAIN_PURPOSE_NOT_ALLOWED" | "DOMAIN_VERIFICATION_FAILED" | "DOMAIN_VERIFIED_ELSEWHERE" | "EMAIL_GENERATION_FAILED" | "EMAIL_GROUP_NAME_CONFLICT" | "EMAIL_GROUP_NOT_FOUND" | "EMAIL_IMAGES_MISSING" | "EMAIL_IMPORT_FAILED" | "EMAIL_IN_PROGRESS" | "EMAIL_IN_USE_BY_AUTOMATION" | "EMAIL_NOT_FOUND" | "EMAIL_NOT_READY" | "EMAIL_RUN_AMBIGUOUS" | "EMAIL_TEMPLATE_INVALID" | "EMAIL_VERSION_NOT_FOUND" | "EXPORT_PROVIDER_ERROR" | "EXPORT_UNSUPPORTED" | "FIELD_NOT_FOUND" | "FIELD_TYPE_MISMATCH" | "FIGMA_ACCESS_DENIED" | "FIGMA_CONVERSION_FAILED" | "FIGMA_FRAME_NOT_FOUND" | "FIGMA_NOT_CONNECTED" | "FIGMA_UNAVAILABLE" | "FIGMA_URL_INVALID" | "FLOW_NOT_FOUND" | "IDEMPOTENCY_CONFLICT" | "IDEMPOTENCY_IN_PROGRESS" | "INSIGHT_NOT_FOUND" | "INSUFFICIENT_CREDITS" | "INSUFFICIENT_PERMISSIONS" | "INSUFFICIENT_ROLE" | "INTEGRATION_NOT_CONNECTED" | "INTERNAL_ERROR" | "INVALID_API_KEY" | "INVALID_EMAIL" | "INVALID_PAYLOAD" | "INVALID_REQUEST" | "LIQUID_RENDER_ERROR" | "METHOD_NOT_ALLOWED" | "MISSING_EMAIL" | "NO_ELIGIBLE_RECIPIENTS" | "NO_PUBLISHED_AUTOMATION" | "NOT_FOUND" | "NOT_IMPLEMENTED" | "ORG_SCOPE_REQUIRED" | "PAYLOAD_SCHEMA_EMAIL_REQUIRED" | "PAYLOAD_TOO_LARGE" | "PREVIEW_NOT_FOUND" | "PUBLISH_VALIDATION_FAILED" | "RATE_LIMITED" | "RECIPIENT_UNSUBSCRIBED" | "REFERENCE_EMAIL_NOT_FOUND" | "RESUBSCRIBE_NOT_ALLOWED" | "RUN_IN_PROGRESS" | "RUN_NOT_CANCELLABLE" | "RUN_NOT_PAUSABLE" | "RUN_NOT_PAUSED" | "RUN_NOT_RESUMABLE" | "RUN_START_FAILED" | "RUN_STOP_FAILED" | "SEND_NOT_CANCELLABLE" | "SEND_NOT_FOUND" | "SEND_NOT_PAUSABLE" | "SEND_NOT_RESUMABLE" | "SEND_QUOTA_EXCEEDED" | "SERVICE_UNAVAILABLE" | "TEMPLATE_NOT_FOUND" | "TRIGGER_ALREADY_EXISTS" | "TRIGGER_EVENT_NOT_FOUND" | "TRIGGER_HAS_DEPENDENT_AUTOMATIONS" | "TRIGGER_IMMUTABLE" | "TRIGGER_INSTANCE_NOT_FOUND" | "TRIGGER_LIMIT_REACHED" | "UPLOAD_IN_PROGRESS" | "UPLOAD_NOT_FOUND" | "UPLOAD_NOT_RECEIVED";
         EmailGenerateTextResponse: {
             response: string;
         };
@@ -6498,16 +6917,6 @@ export interface components {
                 customFields?: {
                     [key: string]: unknown;
                 };
-                /** @description With `include` openProfile: the contact's smart-send open-time profile (48 UTC half-hour open counts and the best send time derived from them), or null when they have no opens folded yet. Not bot detection: machine opens cannot be told apart here. */
-                openProfile?: {
-                    totalOpens: number;
-                    /** Format: date-time */
-                    lastOpenedAt: string;
-                    bestOpenMinuteUtc?: number;
-                    bestSendMinuteUtc?: number;
-                    confidence?: number;
-                    histogram: number[];
-                } | null;
             };
             created: boolean;
             fieldsCreated: string[];
@@ -6652,16 +7061,6 @@ export interface components {
                 customFields?: {
                     [key: string]: unknown;
                 };
-                /** @description With `include` openProfile: the contact's smart-send open-time profile (48 UTC half-hour open counts and the best send time derived from them), or null when they have no opens folded yet. Not bot detection: machine opens cannot be told apart here. */
-                openProfile?: {
-                    totalOpens: number;
-                    /** Format: date-time */
-                    lastOpenedAt: string;
-                    bestOpenMinuteUtc?: number;
-                    bestSendMinuteUtc?: number;
-                    confidence?: number;
-                    histogram: number[];
-                } | null;
             };
             updated: string[];
         };
@@ -6743,6 +7142,132 @@ export interface components {
                 customFields?: {
                     [key: string]: unknown;
                 };
+            }[];
+            pagination: {
+                limit: number;
+                cursor: string | null;
+                hasMore: boolean;
+            };
+        };
+        ContactWithOpenProfile: {
+            email: string;
+            firstName?: string;
+            lastName?: string;
+            /** @default true */
+            subscribed?: boolean;
+            consent?: {
+                /**
+                 * @description Who captured it: `api` (an API caller asserted it), `form` (a signup form), `import` (a bulk import), `app` (the in-app CSV wizard checkbox).
+                 * @enum {string}
+                 */
+                source: "api" | "form" | "import" | "app";
+                /**
+                 * Format: date-time
+                 * @description When it was captured.
+                 */
+                capturedAt: string;
+                /** @description The policy or terms version in force when it was captured. */
+                policyVersion?: string;
+                /** @description Free-text evidence: a form URL, a ticket, a checkbox label. */
+                evidence?: string;
+            };
+            /**
+             * @description The latest verdict. `valid` only ever comes from a deliverability check (`validate: true` on ingest, or POST /v1/contacts/validate), which also sets `lastValidatedAt`. Without a check the free format check on ingest stores `risky` (disposable or role address) or `invalid`, and leaves the field unset otherwise: not validated.
+             * @enum {string}
+             */
+            validationStatus?: "valid" | "risky" | "invalid";
+            /** @default false */
+            suppressed?: boolean;
+            suppressedReason?: string | null;
+            /** @default [] */
+            unsubscribedDomains?: string[];
+            /** Format: date-time */
+            lastValidatedAt?: string;
+            validationDetails?: {
+                /** @enum {string} */
+                provider: "brew";
+                reason?: string;
+                didYouMean?: string;
+                risk?: string;
+                isDisposable?: boolean;
+                isRole?: boolean;
+            };
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            importId?: string | null;
+            csvFileName?: string | null;
+            /** @default {} */
+            customFields?: {
+                [key: string]: unknown;
+            };
+            /** @description With `include` openProfile: the contact's smart-send open-time profile (48 UTC half-hour open counts and the best send time derived from them), or null when they have no opens folded yet. Not bot detection: machine opens cannot be told apart here. */
+            openProfile?: {
+                totalOpens: number;
+                /** Format: date-time */
+                lastOpenedAt: string;
+                bestOpenMinuteUtc?: number;
+                bestSendMinuteUtc?: number;
+                confidence?: number;
+                histogram: number[];
+            } | null;
+        };
+        ContactsSearchSuccessResponse: components["schemas"]["ContactsListResponse"] | components["schemas"]["ContactsWithOpenProfileListResponse"] | components["schemas"]["ContactsCountResponse"];
+        ContactsWithOpenProfileListResponse: {
+            data: {
+                email: string;
+                firstName?: string;
+                lastName?: string;
+                /** @default true */
+                subscribed?: boolean;
+                consent?: {
+                    /**
+                     * @description Who captured it: `api` (an API caller asserted it), `form` (a signup form), `import` (a bulk import), `app` (the in-app CSV wizard checkbox).
+                     * @enum {string}
+                     */
+                    source: "api" | "form" | "import" | "app";
+                    /**
+                     * Format: date-time
+                     * @description When it was captured.
+                     */
+                    capturedAt: string;
+                    /** @description The policy or terms version in force when it was captured. */
+                    policyVersion?: string;
+                    /** @description Free-text evidence: a form URL, a ticket, a checkbox label. */
+                    evidence?: string;
+                };
+                /**
+                 * @description The latest verdict. `valid` only ever comes from a deliverability check (`validate: true` on ingest, or POST /v1/contacts/validate), which also sets `lastValidatedAt`. Without a check the free format check on ingest stores `risky` (disposable or role address) or `invalid`, and leaves the field unset otherwise: not validated.
+                 * @enum {string}
+                 */
+                validationStatus?: "valid" | "risky" | "invalid";
+                /** @default false */
+                suppressed?: boolean;
+                suppressedReason?: string | null;
+                /** @default [] */
+                unsubscribedDomains?: string[];
+                /** Format: date-time */
+                lastValidatedAt?: string;
+                validationDetails?: {
+                    /** @enum {string} */
+                    provider: "brew";
+                    reason?: string;
+                    didYouMean?: string;
+                    risk?: string;
+                    isDisposable?: boolean;
+                    isRole?: boolean;
+                };
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
+                importId?: string | null;
+                csvFileName?: string | null;
+                /** @default {} */
+                customFields?: {
+                    [key: string]: unknown;
+                };
                 /** @description With `include` openProfile: the contact's smart-send open-time profile (48 UTC half-hour open counts and the best send time derived from them), or null when they have no opens folded yet. Not bot detection: machine opens cannot be told apart here. */
                 openProfile?: {
                     totalOpens: number;
@@ -6760,7 +7285,6 @@ export interface components {
                 hasMore: boolean;
             };
         };
-        ContactsSearchSuccessResponse: components["schemas"]["ContactsListResponse"] | components["schemas"]["ContactsCountResponse"];
         ContactsCountResponse: {
             count: number;
             /** @description With `groupBy` or `bucket`: the largest 200 groups; `key` maps each grouped field to its value, `bucket` is the ISO period start. */
@@ -7518,7 +8042,7 @@ export interface components {
             }[];
             /** Format: date-time */
             checkedAt: string;
-            /** @description With `include=history`: up to 50 saved score snapshots, newest first. Snapshots are saved when a placement test completes, the domain is verified, or a score run finishes. Only snapshots saved under this brand count, searched among the domain's newest 500, so a domain that moved between brands can show fewer. */
+            /** @description With `include=scoreHistory`: up to 50 saved score snapshots, newest first. Snapshots are saved when a placement test completes, the domain is verified, or a score run finishes. Only snapshots saved under this brand count, searched among the domain's newest 500, so a domain that moved between brands can show fewer. */
             scoreHistory?: {
                 score: number;
                 /** @enum {string} */
@@ -7552,7 +8076,7 @@ export interface components {
                     };
                 };
             }[];
-            /** @description With `include=runs`: the last 5 automated domain score runs (the 5-variant seed check), newest first. */
+            /** @description With `include=scoreRuns`: the last 5 automated domain score runs (the 5-variant seed check), newest first. */
             scoreRuns?: {
                 runId: string;
                 /** @enum {string} */
@@ -8094,8 +8618,8 @@ export interface components {
         };
         NotificationList: {
             data: {
-                /** @description `ntf_` + 20 hex characters; stable for the row’s life. */
-                id: string;
+                /** @description `ntf_` + 20 hex characters: a one-way hash, stable for the row’s life. */
+                notificationId: string;
                 /** @enum {string} */
                 type: "chat_stream" | "import_job" | "brand_image_import" | "validation_job" | "email_sent" | "email_scheduled" | "preview_email" | "brand_extracted" | "domain_status" | "domain_score_run" | "api_key_created" | "email_send_failed" | "gradual_send_paused" | "gradual_send_completed" | "send_limit_reached" | "automation_pause_window_closed" | "send_review_rejected" | "comment_mention" | "comment_reply";
                 /** @enum {string} */
@@ -8154,6 +8678,7 @@ export interface components {
                 messageCount: number;
                 /** Format: date-time */
                 lastMessageAt: string;
+                /** @description The latest message, shortened to 140 characters; mentions read as in `body`. */
                 lastMessagePreview: string;
                 /** @description Opens the thread on the design in the Brew app. */
                 url: string;
@@ -8165,7 +8690,7 @@ export interface components {
                         userId: string;
                         name: string;
                     };
-                    /** @description The message text; a mention reads `@Name-abcd` in it. */
+                    /** @description The message text. Each mention reads `@` + the name `mentions` gives; other `@` text is as typed. */
                     body: string;
                     mentions: {
                         userId: string;
@@ -19535,7 +20060,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description The contact row. */
+            /** @description The contact row, with `openProfile` when `include=openProfile`. */
             200: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -19573,7 +20098,7 @@ export interface operations {
                      *       }
                      *     }
                      */
-                    "application/json": components["schemas"]["Contact"];
+                    "application/json": components["schemas"]["ContactWithOpenProfile"];
                 };
             };
             /**
@@ -24689,7 +25214,7 @@ export interface operations {
     getDomainHealth: {
         parameters: {
             query?: {
-                /** @description Expansions: `history` attaches up to 50 saved score snapshots, newest first; `runs` the last 5 automated domain score runs. */
+                /** @description Expansions: `scoreHistory` attaches up to 50 saved score snapshots, newest first; `scoreRuns` the last 5 automated domain score runs. */
                 include?: string;
             };
             header?: {
@@ -29062,155 +29587,7 @@ export interface operations {
                      *       }
                      *     }
                      */
-                    "application/json": {
-                        data: {
-                            insightId: string;
-                            /** @description What the finding is about. */
-                            title: string;
-                            /** @description The detector’s deterministic headline; quote it, never restate its numbers. */
-                            description: string;
-                            /** @enum {string} */
-                            severity: "critical" | "warning" | "opportunity" | "info";
-                            /** @enum {string} */
-                            confidence: "high" | "medium" | "low";
-                            /**
-                             * @description `answer` reports what happened, `insight` a change that passed its statistical test, `strategy` a recommended next step.
-                             * @enum {string}
-                             */
-                            kind: "answer" | "insight" | "strategy";
-                            category: string;
-                            detectorId: string;
-                            /**
-                             * @description A snooze that has ended reads as `active`.
-                             * @enum {string}
-                             */
-                            state: "active" | "snoozed" | "cleared" | "dismissed" | "resolved" | "stale";
-                            /** Format: date-time */
-                            firstSeenAt: string;
-                            /** Format: date-time */
-                            lastSeenAt: string;
-                            recurrenceCount: number;
-                            action?: {
-                                /** @enum {string} */
-                                kind: "navigate";
-                                label: string;
-                                /** @description Absolute link to the page in Brew. */
-                                url: string;
-                            } | {
-                                /** @enum {string} */
-                                kind: "assistant";
-                                label: string;
-                                /** @enum {string} */
-                                intent: "review_domain_health" | "validate_contacts" | "create_campaign" | "repeat_campaign" | "review_recommendation";
-                                /** @description The request the Insights page sends to Brew’s assistant. */
-                                prompt: string;
-                            };
-                            /** @description The finding’s page in Brew. */
-                            url: string;
-                        }[];
-                        pagination: {
-                            limit: number;
-                            cursor: string | null;
-                            hasMore: boolean;
-                        };
-                        freshness: {
-                            /**
-                             * Format: date-time
-                             * @description How current the data behind the findings is; null before the first successful run.
-                             */
-                            dataAsOf: string | null;
-                            /** Format: date-time */
-                            lastSuccessfulRunAt: string | null;
-                            /** @description The newest engine run and its outcome; `failed` means the findings may be stale. */
-                            latestAttempt: {
-                                /** @enum {string} */
-                                status: "succeeded" | "failed" | "running" | "unknown";
-                                /** Format: date-time */
-                                at: string;
-                            } | null;
-                        };
-                        /** @description With `include` pulse: the weekly pulse, or null before the first run. */
-                        pulse?: {
-                            /**
-                             * Format: date-time
-                             * @description Exclusive end of the 7-day window: the start of the newest incomplete day.
-                             */
-                            windowEnd: string;
-                            delivered: number;
-                            priorDelivered: number;
-                            uniqueOpens: number;
-                            priorUniqueOpens: number;
-                            uniqueClicks: number;
-                            priorUniqueClicks: number;
-                            unsubscribed: number;
-                            priorUnsubscribed: number;
-                            /** @description Percent, one decimal; null when counts-only or not measured. */
-                            openRatePct: number | null;
-                            priorOpenRatePct: number | null;
-                            clickRatePct: number | null;
-                            priorClickRatePct: number | null;
-                            /**
-                             * @description `up` or `down` only when the change is statistically real.
-                             * @enum {string}
-                             */
-                            openDirection: "up" | "down" | "steady";
-                            /** @enum {string} */
-                            clickDirection: "up" | "down" | "steady";
-                            /** @description Too few deliveries for rates; read the counts. */
-                            countsOnly: boolean;
-                            /** @description False when engagement tracking is off: opens are unknown. */
-                            measured: boolean;
-                        } | null;
-                        /** @description With `include` report: the latest intelligence report, or null when none was published. */
-                        report?: {
-                            reportId: string;
-                            /** @description The Brew chat whose analysis run wrote the report. */
-                            chatId: string;
-                            /** @enum {string} */
-                            runTrigger: "manual" | "scheduled";
-                            /** Format: date-time */
-                            createdAt: string;
-                            insights: {
-                                key: string;
-                                /** @enum {string} */
-                                kind: "performance" | "audience" | "trend" | "risk" | "content" | "setup";
-                                title: string;
-                                body: string;
-                                impact: string | null;
-                                /** @description The suggestion this insight proposes, if any. */
-                                suggestionId: string | null;
-                            }[];
-                        } | null;
-                        /** @description With `include` suggestions: proposed and launched suggestions, most recently updated first. */
-                        suggestions?: {
-                            suggestionId: string;
-                            title: string;
-                            /** @description Exactly what launching the suggestion asks Brew to do. */
-                            prompt: string;
-                            /** @enum {string} */
-                            kind: "audience" | "campaign" | "automation" | "deliverability" | "schedule";
-                            /** @enum {string} */
-                            status: "proposed" | "launched" | "dismissed" | "concluded";
-                            rationale: string | null;
-                            /** @description The report insight keys that motivated it. */
-                            sourceInsightKeys: string[];
-                            /** @description The chat a launched suggestion runs in. */
-                            executionChatId: string | null;
-                            /** Format: date-time */
-                            createdAt: string;
-                            /** Format: date-time */
-                            updatedAt: string;
-                        }[];
-                        /** @description With `include` memo: the memo, or null before the first run. */
-                        memo?: {
-                            /** @description Learnings, Watchlist, Experiments and History sections; at most 8192 bytes. */
-                            markdown: string;
-                            version: number;
-                            /** Format: date-time */
-                            updatedAt: string;
-                            updatedByChatId: string | null;
-                        } | null;
-                    };
+                    "application/json": components["schemas"]["InsightList"];
                 };
             };
             /**
@@ -29410,172 +29787,7 @@ export interface operations {
                      *       }
                      *     }
                      */
-                    "application/json": {
-                        insightId: string;
-                        /** @description What the finding is about. */
-                        title: string;
-                        /** @description The detector’s deterministic headline; quote it, never restate its numbers. */
-                        description: string;
-                        /** @enum {string} */
-                        severity: "critical" | "warning" | "opportunity" | "info";
-                        /** @enum {string} */
-                        confidence: "high" | "medium" | "low";
-                        /**
-                         * @description `answer` reports what happened, `insight` a change that passed its statistical test, `strategy` a recommended next step.
-                         * @enum {string}
-                         */
-                        kind: "answer" | "insight" | "strategy";
-                        category: string;
-                        detectorId: string;
-                        /**
-                         * @description A snooze that has ended reads as `active`.
-                         * @enum {string}
-                         */
-                        state: "active" | "snoozed" | "cleared" | "dismissed" | "resolved" | "stale";
-                        /** Format: date-time */
-                        firstSeenAt: string;
-                        /** Format: date-time */
-                        lastSeenAt: string;
-                        recurrenceCount: number;
-                        action?: {
-                            /** @enum {string} */
-                            kind: "navigate";
-                            label: string;
-                            /** @description Absolute link to the page in Brew. */
-                            url: string;
-                        } | {
-                            /** @enum {string} */
-                            kind: "assistant";
-                            label: string;
-                            /** @enum {string} */
-                            intent: "review_domain_health" | "validate_contacts" | "create_campaign" | "repeat_campaign" | "review_recommendation";
-                            /** @description The request the Insights page sends to Brew’s assistant. */
-                            prompt: string;
-                        };
-                        /** @description The finding’s page in Brew. */
-                        url: string;
-                        rationale: string | null;
-                        closedReason: string | null;
-                        /** Format: date-time */
-                        closedAt: string | null;
-                        /** Format: date-time */
-                        lastActedAt: string | null;
-                        /** @description How often the finding has closed and reopened. */
-                        churnCount: number;
-                        /** @description Frozen when the finding was computed: the only numbers to quote about it. */
-                        metrics: {
-                            [key: string]: {
-                                /** @enum {string} */
-                                kind: "count";
-                                value: number;
-                                noun: string;
-                            } | {
-                                /** @enum {string} */
-                                kind: "rate";
-                                value: number | null;
-                                numerator: number;
-                                denominator: number;
-                                /** @enum {string} */
-                                basis: "delivered" | "sent" | "uniqueOpened" | "recipients";
-                                anomalous?: boolean;
-                            } | {
-                                /** @enum {string} */
-                                kind: "share";
-                                value: number | null;
-                                part: number;
-                                whole: number;
-                                wholeNoun: string;
-                            } | {
-                                /** @enum {string} */
-                                kind: "duration";
-                                ms: number;
-                                bucketIndex?: number;
-                            } | {
-                                /** @enum {string} */
-                                kind: "delta";
-                                value: number;
-                                /** @enum {string} */
-                                unit: "pp" | "pct" | "abs";
-                                from: number;
-                                to: number;
-                            } | {
-                                /** @enum {string} */
-                                kind: "hourOfDay";
-                                hour: number;
-                                slot?: number;
-                                /** @enum {string} */
-                                basis: "utc" | "brand_zone";
-                                timeZone?: string;
-                            } | {
-                                /** @enum {string} */
-                                kind: "multiple";
-                                value: number;
-                                referenceLabel: string;
-                            } | {
-                                /** @enum {string} */
-                                kind: "rank";
-                                position: number;
-                                outOf: number;
-                            } | {
-                                /** @enum {string} */
-                                kind: "interval";
-                                lo: number;
-                                hi: number;
-                                confidenceLevel: 0.9 | 0.95;
-                                /** @enum {string} */
-                                as: "rate" | "delta" | "count";
-                            } | {
-                                /** @enum {string} */
-                                kind: "label";
-                                text: string;
-                            };
-                        };
-                        evidence: {
-                            label: string;
-                            url?: string;
-                        }[];
-                        /** @description What the finding is about: a send, an automation, a domain. */
-                        subject: {
-                            kind: string;
-                            id: string;
-                            label: string;
-                        };
-                        /** @description How the detector works; null when none is recorded. */
-                        method: {
-                            what: string;
-                            how: string;
-                            comparedAgainst: string;
-                            resolvesWhen: string;
-                            caveat?: string;
-                        } | null;
-                        /** @description The engine run that last produced the finding. */
-                        generatedBy: {
-                            /** @enum {string} */
-                            trigger: "cron_daily" | "send_settled" | "lifecycle_event" | "manual_refresh";
-                            /** Format: date-time */
-                            startedAt: string;
-                            /** Format: date-time */
-                            completedAt: string | null;
-                            /** @description What that run could not see. */
-                            blindSpots: string[];
-                        } | null;
-                        freshness: {
-                            /**
-                             * Format: date-time
-                             * @description How current the data behind the findings is; null before the first successful run.
-                             */
-                            dataAsOf: string | null;
-                            /** Format: date-time */
-                            lastSuccessfulRunAt: string | null;
-                            /** @description The newest engine run and its outcome; `failed` means the findings may be stale. */
-                            latestAttempt: {
-                                /** @enum {string} */
-                                status: "succeeded" | "failed" | "running" | "unknown";
-                                /** Format: date-time */
-                                at: string;
-                            } | null;
-                        };
-                    };
+                    "application/json": components["schemas"]["Insight"];
                 };
             };
             /**
@@ -29679,7 +29891,7 @@ export interface operations {
     listNotifications: {
         parameters: {
             query?: {
-                /** @description Only notifications of this type. */
+                /** @description Only notifications of this type. A type this credential cannot see (its scopes, or a person-only or admin-only type) is an empty page. */
                 type?: "chat_stream" | "import_job" | "brand_image_import" | "validation_job" | "email_sent" | "email_scheduled" | "preview_email" | "brand_extracted" | "domain_status" | "domain_score_run" | "api_key_created" | "email_send_failed" | "gradual_send_paused" | "gradual_send_completed" | "send_limit_reached" | "automation_pause_window_closed" | "send_review_rejected" | "comment_mention" | "comment_reply";
                 /**
                  * @description Page size (1-100). Defaults to 100.
@@ -29718,7 +29930,7 @@ export interface operations {
                      * @example {
                      *       "data": [
                      *         {
-                     *           "id": "ntf_4b8f0c2e91d7a3f65e10",
+                     *           "notificationId": "ntf_4b8f0c2e91d7a3f65e10",
                      *           "type": "email_sent",
                      *           "status": "completed",
                      *           "title": "Spring launch sent",
@@ -29901,7 +30113,7 @@ export interface operations {
                      *             }
                      *           ],
                      *           "participantCount": 2,
-                     *           "messageCount": 2,
+                     *           "messageCount": 3,
                      *           "lastMessageAt": "2026-10-01T12:05:00.000Z",
                      *           "lastMessagePreview": "Bolder works. Shipping it.",
                      *           "url": "https://brew.new/emails/ungrouped?emailIds=2SmZOWV3ZQ7W5x6g3m4pA&focusEmailIds=2SmZOWV3ZQ7W5x6g3m4pA&commentId=cmt_V1StGXR8_Z5jdHi6B-myT",
@@ -29912,7 +30124,7 @@ export interface operations {
                      *                 "userId": "user_2xK9mPq4Rt7Vw1Yb",
                      *                 "name": "Grace Hopper"
                      *               },
-                     *               "body": "@AdaLovelace-2abc can the CTA be bolder?",
+                     *               "body": "@Ada Lovelace can the CTA be bolder?",
                      *               "mentions": [
                      *                 {
                      *                   "userId": "user_2abcQ8sLm3Nd5Tz",
@@ -29933,11 +30145,12 @@ export interface operations {
                      *               "createdAt": "2026-10-01T12:05:00.000Z",
                      *               "updatedAt": "2026-10-01T12:05:00.000Z"
                      *             }
-                     *           ]
+                     *           ],
+                     *           "messagesCursor": "eyJ2IjoxLCJjIjoiY210X1YxU3RHWFI4X1o1amRIaTZCLW15VCIsImEiOiIyMDI2LTEwLTAxVDEyOjAwOjAwLjAwMFoiLCJtIjoiY21tXzlwUTJ3RXJUNXlVOGlPMWFTZEYzZyJ9"
                      *         }
                      *       ],
                      *       "pagination": {
-                     *         "limit": 100,
+                     *         "limit": 3,
                      *         "cursor": null,
                      *         "hasMore": false
                      *       }
@@ -29997,7 +30210,13 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization). */
+            /**
+             * @description `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+             *
+             *     `COMMENT_NOT_FOUND`: The design has no open comment thread with that id (resolving a thread deletes it).
+             *
+             *     `EMAIL_NOT_FOUND`: No email design with that id exists in the brand (cross-brand ids surface as 404).
+             */
             404: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */

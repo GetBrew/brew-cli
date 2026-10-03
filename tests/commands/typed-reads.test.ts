@@ -512,7 +512,14 @@ describe('emails comments list', () => {
                   thread('cmt_1', {
                     messages: [
                       message('cmm_2', 'The hero feels washed out.', 2),
-                      message('cmm_3', 'Can we try a darker hero?', 3),
+                      {
+                        ...message(
+                          'cmm_3',
+                          'Can we try a darker hero, @Jane Doe?',
+                          3
+                        ),
+                        mentions: [AUTHOR],
+                      },
                     ],
                     messagesCursor: 'mc_1',
                   }),
@@ -548,7 +555,7 @@ describe('emails comments list', () => {
       [
         'cmt_1 · element hero-image · 3 messages · https://brew.new/emails/em_1?comment=cmt_1',
         '  Jane Doe (2026-10-02T09:02:00.000Z): The hero feels washed out.',
-        '  Sam Lee (2026-10-02T09:03:00.000Z): Can we try a darker hero?',
+        '  Sam Lee (2026-10-02T09:03:00.000Z): Can we try a darker hero, @Jane Doe?',
         '  … older messages: --comment-id cmt_1 --messages-cursor mc_1',
         '',
       ].join('\n')
@@ -951,8 +958,10 @@ describe('notifications list', () => {
       ttyOut: true,
     })
     const lines = short.stdout.trimEnd().split('\n')
-    expect(lines[0]).toMatch(/^TYPE\s+STATUS\s+TITLE\s+CREATED$/)
-    expect(lines[1]).toMatch(/^email_send_failed\s+failed\s+Send failed/)
+    expect(lines[0]).toMatch(/^NOTIFICATION\s+TYPE\s+STATUS\s+TITLE\s+CREATED$/)
+    expect(lines[1]).toMatch(
+      /^ntf_0123456789abcdef0123\s+email_send_failed\s+failed\s+Send failed/
+    )
     expect(lines[2]).toBe('More follow: --cursor native_1')
 
     const empty = await cli(['notifications', 'list', '--cursor', 'native_1'], {
@@ -965,7 +974,7 @@ describe('notifications list', () => {
     const end = await cli(['notifications', 'list', '--cursor', 'native_2'], {
       ttyOut: true,
     })
-    expect(end.stdout).toBe('No notifications found.\n')
+    expect(end.stdout).toBe('No notifications this key can see.\n')
   })
 
   it('--all drains past an empty page that still has more', async () => {
@@ -1215,6 +1224,29 @@ describe('contacts search --include', () => {
     ])
     expect(withInclude.code).toBe(2)
     expect(calls).toBe(0)
+  })
+
+  it('never sends an empty include (the API takes at least one token)', async () => {
+    const bodies: Array<Record<string, unknown>> = []
+    server.use(
+      http.post(`${API}/v1/contacts/search`, async ({ request }) => {
+        bodies.push((await request.json()) as Record<string, unknown>)
+        return HttpResponse.json({ data: [], pagination: PAGE_DONE })
+      })
+    )
+    const blankFlag = await cli(['contacts', 'search', '--include', ' , '])
+    expect(blankFlag.code).toBe(0)
+    const emptyInput = await cli([
+      'contacts',
+      'search',
+      '--input',
+      '{"include":[]}',
+    ])
+    expect(emptyInput.code).toBe(0)
+    expect(bodies).toHaveLength(2)
+    for (const body of bodies) {
+      expect('include' in body).toBe(false)
+    }
   })
 
   it('still searches when --input says count: false', async () => {

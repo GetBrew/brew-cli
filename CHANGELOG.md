@@ -30,8 +30,8 @@ answer from its tables. `data run` itself is unchanged in this release.
 - **`emails comments list <emailId>`** reads a design's open comment threads,
   newest activity first, as the canvas pins show them (GetBrew/brew-v2#1831):
   where each sits, who is in it, how many messages and the latest one.
-  `--include messages` adds each thread's newest messages (author, body,
-  mentions; at most 3 threads a page). `--comment-id <cmt_…>` reads one
+  `--include messages` adds each thread's newest messages (author, body with
+  each mention as `@Name`, mentions; at most 3 threads a page). `--comment-id <cmt_…>` reads one
   thread, `--messages-cursor` its next older messages, and `--comment-id …
   --all` follows that cursor to the first message and prints the whole thread,
   oldest first. A stop mid-walk, a thread resolved under it included (`404
@@ -50,8 +50,15 @@ answer from its tables. `data run` itself is unchanged in this release.
   (GetBrew/brew-v2#1831). `--type` keeps one type. A page can hold fewer rows
   than `--limit`, even none, while more follow, so a TTY prints the next
   `--cursor` whenever there is one and `--all` drains through short pages.
-  Rows outside the key's scopes are left out, and a comment mention or reply
-  never reaches an API key. Reading marks nothing read. Free.
+  The table leads with each row's `notificationId` (`ntf_…`, stable for the
+  row's life). A row shows only when the key may read its feature: `emails`
+  for chats and previews, `sends` for sends and `domains` for domain checks
+  (`emails` implies both), `contacts` for imports and validations,
+  `automations` for pause windows; brand extraction and image imports reach
+  every key, `api_key_created` needs the `all` scope, `send_limit_reached`
+  reaches organization admins only, and a comment mention or reply never
+  reaches an API key. A type the key cannot see is an empty page, not an
+  error. Reading marks nothing read. Free.
 - **`domains health --include scoreHistory,scoreRuns`** adds up to 50 saved
   score snapshots, newest first (`scoreHistory`), and the last 5 automated
   domain score runs (`scoreRuns`) (GetBrew/brew-v2#1830).

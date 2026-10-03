@@ -2861,40 +2861,6 @@ components:
           type: object
           additionalProperties: {}
           default: {}
-        openProfile:
-          type:
-            - object
-            - "null"
-          properties:
-            totalOpens:
-              type: integer
-              minimum: 0
-            lastOpenedAt:
-              type: string
-              format: date-time
-            bestOpenMinuteUtc:
-              type: integer
-              minimum: 0
-              maximum: 1439
-            bestSendMinuteUtc:
-              type: integer
-              minimum: 0
-              maximum: 1439
-            confidence:
-              type: number
-              minimum: 0
-              maximum: 1
-            histogram:
-              type: array
-              items:
-                type: integer
-                minimum: 0
-          required:
-            - totalOpens
-            - lastOpenedAt
-            - histogram
-          additionalProperties: false
-          description: "With `include` openProfile: the contact's smart-send open-time profile (48 UTC half-hour open counts and the best send time derived from them), or null when they have no opens folded yet. Not bot detection: machine opens cannot be told apart here."
       required:
         - email
         - createdAt
@@ -3637,6 +3603,1173 @@ components:
         - categoryLabel
         - emailId
       additionalProperties: false
+    ChatListRow:
+      type: object
+      properties:
+        chatId:
+          type: string
+          description: Resume the chat with the chat-context read.
+        title:
+          type:
+            - string
+            - "null"
+        firstUserPrompt:
+          type:
+            - string
+            - "null"
+          description: The opening prompt, cut at 80 characters.
+        lastAssistantPreview:
+          type:
+            - string
+            - "null"
+          description: Brew's latest reply, cut at 140 characters.
+        status:
+          type:
+            - string
+            - "null"
+          enum:
+            - idle
+            - streaming
+            - background_finalizing
+            - completed
+            - failed
+            - interrupted
+            - stopped
+            - persistence_failed
+            - null
+          description: "`streaming` or `background_finalizing` while a run is still going; null before the first run."
+        origin:
+          type:
+            - string
+            - "null"
+          enum:
+            - slack
+            - null
+          description: The chat app the conversation started in; null for the Brew web app.
+        updatedAt:
+          type: string
+          format: date-time
+        url:
+          type: string
+          description: Opens the chat in the Brew app.
+      required:
+        - chatId
+        - title
+        - firstUserPrompt
+        - lastAssistantPreview
+        - status
+        - origin
+        - updatedAt
+        - url
+      additionalProperties: false
+    InsightListRow:
+      type: object
+      properties:
+        insightId:
+          type: string
+        title:
+          type: string
+          description: What the finding is about.
+        description:
+          type: string
+          description: The detector’s deterministic headline; quote it, never restate its numbers.
+        severity:
+          type: string
+          enum:
+            - critical
+            - warning
+            - opportunity
+            - info
+        confidence:
+          type: string
+          enum:
+            - high
+            - medium
+            - low
+        kind:
+          type: string
+          enum:
+            - answer
+            - insight
+            - strategy
+          description: "`answer` reports what happened, `insight` a change that passed its statistical test, `strategy` a recommended next step."
+        category:
+          type: string
+        detectorId:
+          type: string
+        state:
+          type: string
+          enum:
+            - active
+            - snoozed
+            - cleared
+            - dismissed
+            - resolved
+            - stale
+          description: A snooze that has ended reads as `active`.
+        firstSeenAt:
+          type: string
+          format: date-time
+        lastSeenAt:
+          type: string
+          format: date-time
+        recurrenceCount:
+          type: integer
+          minimum: 0
+        action:
+          oneOf:
+            - type: object
+              properties:
+                kind:
+                  type: string
+                  enum:
+                    - navigate
+                label:
+                  type: string
+                url:
+                  type: string
+                  description: Absolute link to the page in Brew.
+              required:
+                - kind
+                - label
+                - url
+              additionalProperties: false
+            - type: object
+              properties:
+                kind:
+                  type: string
+                  enum:
+                    - assistant
+                label:
+                  type: string
+                intent:
+                  type: string
+                  enum:
+                    - review_domain_health
+                    - validate_contacts
+                    - create_campaign
+                    - repeat_campaign
+                    - review_recommendation
+                prompt:
+                  type: string
+                  description: The request the Insights page sends to Brew’s assistant.
+              required:
+                - kind
+                - label
+                - intent
+                - prompt
+              additionalProperties: false
+        url:
+          type: string
+          description: The finding’s page in Brew.
+      required:
+        - insightId
+        - title
+        - description
+        - severity
+        - confidence
+        - kind
+        - category
+        - detectorId
+        - state
+        - firstSeenAt
+        - lastSeenAt
+        - recurrenceCount
+        - url
+      additionalProperties: false
+    InsightList:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/InsightListRow"
+        pagination:
+          type: object
+          properties:
+            limit:
+              type: integer
+              minimum: 1
+              maximum: 100
+            cursor:
+              type:
+                - string
+                - "null"
+            hasMore:
+              type: boolean
+          required:
+            - limit
+            - cursor
+            - hasMore
+          additionalProperties: false
+        freshness:
+          type: object
+          properties:
+            dataAsOf:
+              type:
+                - string
+                - "null"
+              format: date-time
+              description: How current the data behind the findings is; null before the first successful run.
+            lastSuccessfulRunAt:
+              type:
+                - string
+                - "null"
+              format: date-time
+            latestAttempt:
+              type:
+                - object
+                - "null"
+              properties:
+                status:
+                  type: string
+                  enum:
+                    - succeeded
+                    - failed
+                    - running
+                    - unknown
+                at:
+                  type: string
+                  format: date-time
+              required:
+                - status
+                - at
+              additionalProperties: false
+              description: The newest engine run and its outcome; `failed` means the findings may be stale.
+          required:
+            - dataAsOf
+            - lastSuccessfulRunAt
+            - latestAttempt
+          additionalProperties: false
+        pulse:
+          type:
+            - object
+            - "null"
+          properties:
+            windowEnd:
+              type: string
+              format: date-time
+              description: "Exclusive end of the 7-day window: the start of the newest incomplete day."
+            delivered:
+              type: number
+            priorDelivered:
+              type: number
+            uniqueOpens:
+              type: number
+            priorUniqueOpens:
+              type: number
+            uniqueClicks:
+              type: number
+            priorUniqueClicks:
+              type: number
+            unsubscribed:
+              type: number
+            priorUnsubscribed:
+              type: number
+            openRatePct:
+              type:
+                - number
+                - "null"
+              description: Percent, one decimal; null when counts-only or not measured.
+            priorOpenRatePct:
+              type:
+                - number
+                - "null"
+            clickRatePct:
+              type:
+                - number
+                - "null"
+            priorClickRatePct:
+              type:
+                - number
+                - "null"
+            openDirection:
+              type: string
+              enum:
+                - up
+                - down
+                - steady
+              description: "`up` or `down` only when the change is statistically real."
+            clickDirection:
+              type: string
+              enum:
+                - up
+                - down
+                - steady
+            countsOnly:
+              type: boolean
+              description: Too few deliveries for rates; read the counts.
+            measured:
+              type: boolean
+              description: "False when engagement tracking is off: opens are unknown."
+          required:
+            - windowEnd
+            - delivered
+            - priorDelivered
+            - uniqueOpens
+            - priorUniqueOpens
+            - uniqueClicks
+            - priorUniqueClicks
+            - unsubscribed
+            - priorUnsubscribed
+            - openRatePct
+            - priorOpenRatePct
+            - clickRatePct
+            - priorClickRatePct
+            - openDirection
+            - clickDirection
+            - countsOnly
+            - measured
+          additionalProperties: false
+          description: "With `include` pulse: the weekly pulse, or null before the first run."
+        report:
+          type:
+            - object
+            - "null"
+          properties:
+            reportId:
+              type: string
+            chatId:
+              type: string
+              description: The Brew chat whose analysis run wrote the report.
+            runTrigger:
+              type: string
+              enum:
+                - manual
+                - scheduled
+            createdAt:
+              type: string
+              format: date-time
+            insights:
+              type: array
+              items:
+                type: object
+                properties:
+                  key:
+                    type: string
+                  kind:
+                    type: string
+                    enum:
+                      - performance
+                      - audience
+                      - trend
+                      - risk
+                      - content
+                      - setup
+                  title:
+                    type: string
+                  body:
+                    type: string
+                  impact:
+                    type:
+                      - string
+                      - "null"
+                  suggestionId:
+                    type:
+                      - string
+                      - "null"
+                    description: The suggestion this insight proposes, if any.
+                required:
+                  - key
+                  - kind
+                  - title
+                  - body
+                  - impact
+                  - suggestionId
+                additionalProperties: false
+          required:
+            - reportId
+            - chatId
+            - runTrigger
+            - createdAt
+            - insights
+          additionalProperties: false
+          description: "With `include` report: the latest intelligence report, or null when none was published."
+        suggestions:
+          type: array
+          items:
+            type: object
+            properties:
+              suggestionId:
+                type: string
+              title:
+                type: string
+              prompt:
+                type: string
+                description: Exactly what launching the suggestion asks Brew to do.
+              kind:
+                type: string
+                enum:
+                  - audience
+                  - campaign
+                  - automation
+                  - deliverability
+                  - schedule
+              status:
+                type: string
+                enum:
+                  - proposed
+                  - launched
+                  - dismissed
+                  - concluded
+              rationale:
+                type:
+                  - string
+                  - "null"
+              sourceInsightKeys:
+                type: array
+                items:
+                  type: string
+                description: The report insight keys that motivated it.
+              executionChatId:
+                type:
+                  - string
+                  - "null"
+                description: The chat a launched suggestion runs in.
+              createdAt:
+                type: string
+                format: date-time
+              updatedAt:
+                type: string
+                format: date-time
+            required:
+              - suggestionId
+              - title
+              - prompt
+              - kind
+              - status
+              - rationale
+              - sourceInsightKeys
+              - executionChatId
+              - createdAt
+              - updatedAt
+            additionalProperties: false
+          maxItems: 25
+          description: "With `include` suggestions: proposed and launched suggestions, most recently updated first."
+        memo:
+          type:
+            - object
+            - "null"
+          properties:
+            markdown:
+              type: string
+              description: Learnings, Watchlist, Experiments and History sections; at most 8192 bytes.
+            version:
+              type: integer
+            updatedAt:
+              type: string
+              format: date-time
+            updatedByChatId:
+              type:
+                - string
+                - "null"
+          required:
+            - markdown
+            - version
+            - updatedAt
+            - updatedByChatId
+          additionalProperties: false
+          description: "With `include` memo: the memo, or null before the first run."
+      required:
+        - data
+        - pagination
+        - freshness
+      additionalProperties: false
+    Insight:
+      type: object
+      properties:
+        insightId:
+          type: string
+        title:
+          type: string
+          description: What the finding is about.
+        description:
+          type: string
+          description: The detector’s deterministic headline; quote it, never restate its numbers.
+        severity:
+          type: string
+          enum:
+            - critical
+            - warning
+            - opportunity
+            - info
+        confidence:
+          type: string
+          enum:
+            - high
+            - medium
+            - low
+        kind:
+          type: string
+          enum:
+            - answer
+            - insight
+            - strategy
+          description: "`answer` reports what happened, `insight` a change that passed its statistical test, `strategy` a recommended next step."
+        category:
+          type: string
+        detectorId:
+          type: string
+        state:
+          type: string
+          enum:
+            - active
+            - snoozed
+            - cleared
+            - dismissed
+            - resolved
+            - stale
+          description: A snooze that has ended reads as `active`.
+        firstSeenAt:
+          type: string
+          format: date-time
+        lastSeenAt:
+          type: string
+          format: date-time
+        recurrenceCount:
+          type: integer
+          minimum: 0
+        action:
+          oneOf:
+            - type: object
+              properties:
+                kind:
+                  type: string
+                  enum:
+                    - navigate
+                label:
+                  type: string
+                url:
+                  type: string
+                  description: Absolute link to the page in Brew.
+              required:
+                - kind
+                - label
+                - url
+              additionalProperties: false
+            - type: object
+              properties:
+                kind:
+                  type: string
+                  enum:
+                    - assistant
+                label:
+                  type: string
+                intent:
+                  type: string
+                  enum:
+                    - review_domain_health
+                    - validate_contacts
+                    - create_campaign
+                    - repeat_campaign
+                    - review_recommendation
+                prompt:
+                  type: string
+                  description: The request the Insights page sends to Brew’s assistant.
+              required:
+                - kind
+                - label
+                - intent
+                - prompt
+              additionalProperties: false
+        url:
+          type: string
+          description: The finding’s page in Brew.
+        rationale:
+          type:
+            - string
+            - "null"
+        closedReason:
+          type:
+            - string
+            - "null"
+        closedAt:
+          type:
+            - string
+            - "null"
+          format: date-time
+        lastActedAt:
+          type:
+            - string
+            - "null"
+          format: date-time
+        churnCount:
+          type: integer
+          minimum: 0
+          description: How often the finding has closed and reopened.
+        metrics:
+          type: object
+          additionalProperties:
+            oneOf:
+              - type: object
+                properties:
+                  kind:
+                    type: string
+                    enum:
+                      - count
+                  value:
+                    type: number
+                  noun:
+                    type: string
+                required:
+                  - kind
+                  - value
+                  - noun
+                additionalProperties: false
+              - type: object
+                properties:
+                  kind:
+                    type: string
+                    enum:
+                      - rate
+                  value:
+                    type:
+                      - number
+                      - "null"
+                  numerator:
+                    type: number
+                  denominator:
+                    type: number
+                  basis:
+                    type: string
+                    enum:
+                      - delivered
+                      - sent
+                      - uniqueOpened
+                      - recipients
+                  anomalous:
+                    type: boolean
+                required:
+                  - kind
+                  - value
+                  - numerator
+                  - denominator
+                  - basis
+                additionalProperties: false
+              - type: object
+                properties:
+                  kind:
+                    type: string
+                    enum:
+                      - share
+                  value:
+                    type:
+                      - number
+                      - "null"
+                  part:
+                    type: number
+                  whole:
+                    type: number
+                  wholeNoun:
+                    type: string
+                required:
+                  - kind
+                  - value
+                  - part
+                  - whole
+                  - wholeNoun
+                additionalProperties: false
+              - type: object
+                properties:
+                  kind:
+                    type: string
+                    enum:
+                      - duration
+                  ms:
+                    type: number
+                  bucketIndex:
+                    type: number
+                required:
+                  - kind
+                  - ms
+                additionalProperties: false
+              - type: object
+                properties:
+                  kind:
+                    type: string
+                    enum:
+                      - delta
+                  value:
+                    type: number
+                  unit:
+                    type: string
+                    enum:
+                      - pp
+                      - pct
+                      - abs
+                  from:
+                    type: number
+                  to:
+                    type: number
+                required:
+                  - kind
+                  - value
+                  - unit
+                  - from
+                  - to
+                additionalProperties: false
+              - type: object
+                properties:
+                  kind:
+                    type: string
+                    enum:
+                      - hourOfDay
+                  hour:
+                    type: number
+                  slot:
+                    type: number
+                  basis:
+                    type: string
+                    enum:
+                      - utc
+                      - brand_zone
+                  timeZone:
+                    type: string
+                required:
+                  - kind
+                  - hour
+                  - basis
+                additionalProperties: false
+              - type: object
+                properties:
+                  kind:
+                    type: string
+                    enum:
+                      - multiple
+                  value:
+                    type: number
+                  referenceLabel:
+                    type: string
+                required:
+                  - kind
+                  - value
+                  - referenceLabel
+                additionalProperties: false
+              - type: object
+                properties:
+                  kind:
+                    type: string
+                    enum:
+                      - rank
+                  position:
+                    type: number
+                  outOf:
+                    type: number
+                required:
+                  - kind
+                  - position
+                  - outOf
+                additionalProperties: false
+              - type: object
+                properties:
+                  kind:
+                    type: string
+                    enum:
+                      - interval
+                  lo:
+                    type: number
+                  hi:
+                    type: number
+                  confidenceLevel:
+                    anyOf:
+                      - type: number
+                        enum:
+                          - 0.9
+                      - type: number
+                        enum:
+                          - 0.95
+                  as:
+                    type: string
+                    enum:
+                      - rate
+                      - delta
+                      - count
+                required:
+                  - kind
+                  - lo
+                  - hi
+                  - confidenceLevel
+                  - as
+                additionalProperties: false
+              - type: object
+                properties:
+                  kind:
+                    type: string
+                    enum:
+                      - label
+                  text:
+                    type: string
+                required:
+                  - kind
+                  - text
+                additionalProperties: false
+          description: "Frozen when the finding was computed: the only numbers to quote about it."
+        evidence:
+          type: array
+          items:
+            type: object
+            properties:
+              label:
+                type: string
+              url:
+                type: string
+            required:
+              - label
+            additionalProperties: false
+        subject:
+          type: object
+          properties:
+            kind:
+              type: string
+            id:
+              type: string
+            label:
+              type: string
+          required:
+            - kind
+            - id
+            - label
+          additionalProperties: false
+          description: "What the finding is about: a send, an automation, a domain."
+        method:
+          type:
+            - object
+            - "null"
+          properties:
+            what:
+              type: string
+            how:
+              type: string
+            comparedAgainst:
+              type: string
+            resolvesWhen:
+              type: string
+            caveat:
+              type: string
+          required:
+            - what
+            - how
+            - comparedAgainst
+            - resolvesWhen
+          additionalProperties: false
+          description: How the detector works; null when none is recorded.
+        generatedBy:
+          type:
+            - object
+            - "null"
+          properties:
+            trigger:
+              type: string
+              enum:
+                - cron_daily
+                - send_settled
+                - lifecycle_event
+                - manual_refresh
+            startedAt:
+              type: string
+              format: date-time
+            completedAt:
+              type:
+                - string
+                - "null"
+              format: date-time
+            blindSpots:
+              type: array
+              items:
+                type: string
+              description: What that run could not see.
+          required:
+            - trigger
+            - startedAt
+            - completedAt
+            - blindSpots
+          additionalProperties: false
+          description: The engine run that last produced the finding.
+        freshness:
+          type: object
+          properties:
+            dataAsOf:
+              type:
+                - string
+                - "null"
+              format: date-time
+              description: How current the data behind the findings is; null before the first successful run.
+            lastSuccessfulRunAt:
+              type:
+                - string
+                - "null"
+              format: date-time
+            latestAttempt:
+              type:
+                - object
+                - "null"
+              properties:
+                status:
+                  type: string
+                  enum:
+                    - succeeded
+                    - failed
+                    - running
+                    - unknown
+                at:
+                  type: string
+                  format: date-time
+              required:
+                - status
+                - at
+              additionalProperties: false
+              description: The newest engine run and its outcome; `failed` means the findings may be stale.
+          required:
+            - dataAsOf
+            - lastSuccessfulRunAt
+            - latestAttempt
+          additionalProperties: false
+      required:
+        - insightId
+        - title
+        - description
+        - severity
+        - confidence
+        - kind
+        - category
+        - detectorId
+        - state
+        - firstSeenAt
+        - lastSeenAt
+        - recurrenceCount
+        - url
+        - rationale
+        - closedReason
+        - closedAt
+        - lastActedAt
+        - churnCount
+        - metrics
+        - evidence
+        - subject
+        - method
+        - generatedBy
+        - freshness
+      additionalProperties: false
+    Notification:
+      type: object
+      properties:
+        notificationId:
+          type: string
+          pattern: ^ntf_[0-9a-f]{20}$
+          description: "`ntf_` + 20 hex characters: a one-way hash, stable for the row’s life."
+        type:
+          type: string
+          enum:
+            - chat_stream
+            - import_job
+            - brand_image_import
+            - validation_job
+            - email_sent
+            - email_scheduled
+            - preview_email
+            - brand_extracted
+            - domain_status
+            - domain_score_run
+            - api_key_created
+            - email_send_failed
+            - gradual_send_paused
+            - gradual_send_completed
+            - send_limit_reached
+            - automation_pause_window_closed
+            - send_review_rejected
+            - comment_mention
+            - comment_reply
+        status:
+          type: string
+          enum:
+            - uploading
+            - preparing
+            - processing
+            - finalizing
+            - streaming
+            - background_finalizing
+            - completed
+            - partial
+            - failed
+            - interrupted
+            - stopped
+            - persistence_failed
+        title:
+          type: string
+        subtitle:
+          type: string
+        progressPercent:
+          type: number
+          description: 0-100 while work is running, where it reports progress.
+        url:
+          type: string
+          description: Where the bell opens it in the Brew app.
+        chatId:
+          type: string
+        emailId:
+          type: string
+        domainId:
+          type: string
+        domainName:
+          type: string
+        isPersonal:
+          type: boolean
+          description: "Addressed to the caller alone: a comment mention or reply, shown only on a personal connection."
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+      required:
+        - notificationId
+        - type
+        - status
+        - title
+        - subtitle
+        - isPersonal
+        - createdAt
+        - updatedAt
+      additionalProperties: false
+    EmailCommentThread:
+      type: object
+      properties:
+        commentId:
+          type: string
+          description: "`cmt_…`; the app opens it with `?commentId=`."
+        emailId:
+          type: string
+        status:
+          type: string
+          enum:
+            - open
+        target:
+          oneOf:
+            - type: object
+              properties:
+                kind:
+                  type: string
+                  enum:
+                    - email
+              required:
+                - kind
+              additionalProperties: false
+            - type: object
+              properties:
+                kind:
+                  type: string
+                  enum:
+                    - element
+                elementId:
+                  type: string
+                  description: The element the thread is pinned to (`elm_…`).
+                nodeType:
+                  type: string
+                  description: "What the element is: `button`, `image`, `heading`, …"
+              required:
+                - kind
+              additionalProperties: false
+          description: Whether the thread is on the whole design or one element of it.
+        participants:
+          type: array
+          items:
+            type: object
+            properties:
+              userId:
+                type: string
+              name:
+                type: string
+            required:
+              - userId
+              - name
+            additionalProperties: false
+          description: "Who started, replied to, or was mentioned in the thread: the 12 most recent."
+        participantCount:
+          type: integer
+          minimum: 0
+          description: How many people are in the thread; `participants` lists at most 12.
+        messageCount:
+          type: integer
+          minimum: 0
+        lastMessageAt:
+          type: string
+          format: date-time
+        lastMessagePreview:
+          type: string
+          description: The latest message, shortened to 140 characters; mentions read as in `body`.
+        url:
+          type: string
+          description: Opens the thread on the design in the Brew app.
+        messages:
+          type: array
+          items:
+            type: object
+            properties:
+              messageId:
+                type: string
+                description: "`cmm_…`"
+              author:
+                type: object
+                properties:
+                  userId:
+                    type: string
+                  name:
+                    type: string
+                required:
+                  - userId
+                  - name
+                additionalProperties: false
+              body:
+                type: string
+                description: The message text. Each mention reads `@` + the name `mentions` gives; other `@` text is as typed.
+              mentions:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    userId:
+                      type: string
+                    name:
+                      type: string
+                  required:
+                    - userId
+                    - name
+                  additionalProperties: false
+              createdAt:
+                type: string
+                format: date-time
+              updatedAt:
+                type: string
+                format: date-time
+            required:
+              - messageId
+              - author
+              - body
+              - mentions
+              - createdAt
+              - updatedAt
+            additionalProperties: false
+          description: "Only with messages: the thread's newest messages (or, after a `messagesCursor`, the next older ones) that fit the page's size budget, oldest first."
+        messagesCursor:
+          type:
+            - string
+            - "null"
+          description: "Only with messages: pass it back with this thread's `commentId` to read its older messages; null when none remain."
+      required:
+        - commentId
+        - emailId
+        - status
+        - target
+        - participants
+        - participantCount
+        - messageCount
+        - lastMessageAt
+        - lastMessagePreview
+        - url
+      additionalProperties: false
     EmailsListResponse:
       type: object
       properties:
@@ -3821,6 +4954,7 @@ components:
         - BRAND_NOT_READY
         - BRAND_SCOPE_MISMATCH
         - CHAT_NOT_FOUND
+        - COMMENT_NOT_FOUND
         - CONSENT_REQUIRED
         - CONTACT_NOT_FOUND
         - CONTENT_OPERATION_FAILED
@@ -11310,40 +12444,6 @@ components:
               type: object
               additionalProperties: {}
               default: {}
-            openProfile:
-              type:
-                - object
-                - "null"
-              properties:
-                totalOpens:
-                  type: integer
-                  minimum: 0
-                lastOpenedAt:
-                  type: string
-                  format: date-time
-                bestOpenMinuteUtc:
-                  type: integer
-                  minimum: 0
-                  maximum: 1439
-                bestSendMinuteUtc:
-                  type: integer
-                  minimum: 0
-                  maximum: 1439
-                confidence:
-                  type: number
-                  minimum: 0
-                  maximum: 1
-                histogram:
-                  type: array
-                  items:
-                    type: integer
-                    minimum: 0
-              required:
-                - totalOpens
-                - lastOpenedAt
-                - histogram
-              additionalProperties: false
-              description: "With `include` openProfile: the contact's smart-send open-time profile (48 UTC half-hour open counts and the best send time derived from them), or null when they have no opens folded yet. Not bot detection: machine opens cannot be told apart here."
           required:
             - email
             - createdAt
@@ -11646,40 +12746,6 @@ components:
               type: object
               additionalProperties: {}
               default: {}
-            openProfile:
-              type:
-                - object
-                - "null"
-              properties:
-                totalOpens:
-                  type: integer
-                  minimum: 0
-                lastOpenedAt:
-                  type: string
-                  format: date-time
-                bestOpenMinuteUtc:
-                  type: integer
-                  minimum: 0
-                  maximum: 1439
-                bestSendMinuteUtc:
-                  type: integer
-                  minimum: 0
-                  maximum: 1439
-                confidence:
-                  type: number
-                  minimum: 0
-                  maximum: 1
-                histogram:
-                  type: array
-                  items:
-                    type: integer
-                    minimum: 0
-              required:
-                - totalOpens
-                - lastOpenedAt
-                - histogram
-              additionalProperties: false
-              description: "With `include` openProfile: the contact's smart-send open-time profile (48 UTC half-hour open counts and the best send time derived from them), or null when they have no opens folded yet. Not bot detection: machine opens cannot be told apart here."
           required:
             - email
             - createdAt
@@ -11740,6 +12806,276 @@ components:
         - deleted
       additionalProperties: false
     ContactsListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              email:
+                type: string
+              firstName:
+                type: string
+              lastName:
+                type: string
+              subscribed:
+                type: boolean
+                default: true
+              consent:
+                type: object
+                properties:
+                  source:
+                    type: string
+                    enum:
+                      - api
+                      - form
+                      - import
+                      - app
+                    description: "Who captured it: `api` (an API caller asserted it), `form` (a signup form), `import` (a bulk import), `app` (the in-app CSV wizard checkbox)."
+                  capturedAt:
+                    type: string
+                    format: date-time
+                    description: When it was captured.
+                  policyVersion:
+                    type: string
+                    description: The policy or terms version in force when it was captured.
+                  evidence:
+                    type: string
+                    description: "Free-text evidence: a form URL, a ticket, a checkbox label."
+                required:
+                  - source
+                  - capturedAt
+                additionalProperties: false
+              validationStatus:
+                type: string
+                enum:
+                  - valid
+                  - risky
+                  - invalid
+                description: "The latest verdict. `valid` only ever comes from a deliverability check (`validate: true` on ingest, or POST /v1/contacts/validate), which also sets `lastValidatedAt`. Without a check the free format check on ingest stores `risky` (disposable or role address) or `invalid`, and leaves the field unset otherwise: not validated."
+              suppressed:
+                type: boolean
+                default: false
+              suppressedReason:
+                type:
+                  - string
+                  - "null"
+              unsubscribedDomains:
+                type: array
+                items:
+                  type: string
+                default: []
+              lastValidatedAt:
+                type: string
+                format: date-time
+              validationDetails:
+                type: object
+                properties:
+                  provider:
+                    type: string
+                    enum:
+                      - brew
+                  reason:
+                    type: string
+                  didYouMean:
+                    type: string
+                  risk:
+                    type: string
+                  isDisposable:
+                    type: boolean
+                  isRole:
+                    type: boolean
+                required:
+                  - provider
+                additionalProperties: false
+              createdAt:
+                type: string
+                format: date-time
+              updatedAt:
+                type: string
+                format: date-time
+              importId:
+                type:
+                  - string
+                  - "null"
+              csvFileName:
+                type:
+                  - string
+                  - "null"
+              customFields:
+                type: object
+                additionalProperties: {}
+                default: {}
+            required:
+              - email
+              - createdAt
+              - updatedAt
+            additionalProperties: false
+        pagination:
+          type: object
+          properties:
+            limit:
+              type: integer
+              minimum: 1
+              maximum: 100
+            cursor:
+              type:
+                - string
+                - "null"
+            hasMore:
+              type: boolean
+          required:
+            - limit
+            - cursor
+            - hasMore
+          additionalProperties: false
+      required:
+        - data
+        - pagination
+      additionalProperties: false
+    ContactWithOpenProfile:
+      type: object
+      properties:
+        email:
+          type: string
+        firstName:
+          type: string
+        lastName:
+          type: string
+        subscribed:
+          type: boolean
+          default: true
+        consent:
+          type: object
+          properties:
+            source:
+              type: string
+              enum:
+                - api
+                - form
+                - import
+                - app
+              description: "Who captured it: `api` (an API caller asserted it), `form` (a signup form), `import` (a bulk import), `app` (the in-app CSV wizard checkbox)."
+            capturedAt:
+              type: string
+              format: date-time
+              description: When it was captured.
+            policyVersion:
+              type: string
+              description: The policy or terms version in force when it was captured.
+            evidence:
+              type: string
+              description: "Free-text evidence: a form URL, a ticket, a checkbox label."
+          required:
+            - source
+            - capturedAt
+          additionalProperties: false
+        validationStatus:
+          type: string
+          enum:
+            - valid
+            - risky
+            - invalid
+          description: "The latest verdict. `valid` only ever comes from a deliverability check (`validate: true` on ingest, or POST /v1/contacts/validate), which also sets `lastValidatedAt`. Without a check the free format check on ingest stores `risky` (disposable or role address) or `invalid`, and leaves the field unset otherwise: not validated."
+        suppressed:
+          type: boolean
+          default: false
+        suppressedReason:
+          type:
+            - string
+            - "null"
+        unsubscribedDomains:
+          type: array
+          items:
+            type: string
+          default: []
+        lastValidatedAt:
+          type: string
+          format: date-time
+        validationDetails:
+          type: object
+          properties:
+            provider:
+              type: string
+              enum:
+                - brew
+            reason:
+              type: string
+            didYouMean:
+              type: string
+            risk:
+              type: string
+            isDisposable:
+              type: boolean
+            isRole:
+              type: boolean
+          required:
+            - provider
+          additionalProperties: false
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        importId:
+          type:
+            - string
+            - "null"
+        csvFileName:
+          type:
+            - string
+            - "null"
+        customFields:
+          type: object
+          additionalProperties: {}
+          default: {}
+        openProfile:
+          type:
+            - object
+            - "null"
+          properties:
+            totalOpens:
+              type: integer
+              minimum: 0
+            lastOpenedAt:
+              type: string
+              format: date-time
+            bestOpenMinuteUtc:
+              type: integer
+              minimum: 0
+              maximum: 1439
+            bestSendMinuteUtc:
+              type: integer
+              minimum: 0
+              maximum: 1439
+            confidence:
+              type: number
+              minimum: 0
+              maximum: 1
+            histogram:
+              type: array
+              items:
+                type: integer
+                minimum: 0
+          required:
+            - totalOpens
+            - lastOpenedAt
+            - histogram
+          additionalProperties: false
+          description: "With `include` openProfile: the contact's smart-send open-time profile (48 UTC half-hour open counts and the best send time derived from them), or null when they have no opens folded yet. Not bot detection: machine opens cannot be told apart here."
+      required:
+        - email
+        - createdAt
+        - updatedAt
+      additionalProperties: false
+    ContactsSearchSuccessResponse:
+      anyOf:
+        - $ref: "#/components/schemas/ContactsListResponse"
+        - $ref: "#/components/schemas/ContactsWithOpenProfileListResponse"
+        - $ref: "#/components/schemas/ContactsCountResponse"
+    ContactsWithOpenProfileListResponse:
       type: object
       properties:
         data:
@@ -11902,10 +13238,6 @@ components:
         - data
         - pagination
       additionalProperties: false
-    ContactsSearchSuccessResponse:
-      anyOf:
-        - $ref: "#/components/schemas/ContactsListResponse"
-        - $ref: "#/components/schemas/ContactsCountResponse"
     ContactsCountResponse:
       type: object
       properties:
@@ -14421,7 +15753,7 @@ components:
               - components
             additionalProperties: false
           maxItems: 50
-          description: "With `include=history`: up to 50 saved score snapshots, newest first. Snapshots are saved when a placement test completes, the domain is verified, or a score run finishes. Only snapshots saved under this brand count, searched among the domain's newest 500, so a domain that moved between brands can show fewer."
+          description: "With `include=scoreHistory`: up to 50 saved score snapshots, newest first. Snapshots are saved when a placement test completes, the domain is verified, or a score run finishes. Only snapshots saved under this brand count, searched among the domain's newest 500, so a domain that moved between brands can show fewer."
         scoreRuns:
           type: array
           items:
@@ -14548,7 +15880,7 @@ components:
               - updatedAt
             additionalProperties: false
           maxItems: 5
-          description: "With `include=runs`: the last 5 automated domain score runs (the 5-variant seed check), newest first."
+          description: "With `include=scoreRuns`: the last 5 automated domain score runs (the 5-variant seed check), newest first."
       required:
         - domainId
         - name
@@ -16088,10 +17420,10 @@ components:
           items:
             type: object
             properties:
-              id:
+              notificationId:
                 type: string
                 pattern: ^ntf_[0-9a-f]{20}$
-                description: "`ntf_` + 20 hex characters; stable for the row’s life."
+                description: "`ntf_` + 20 hex characters: a one-way hash, stable for the row’s life."
               type:
                 type: string
                 enum:
@@ -16160,7 +17492,7 @@ components:
                 type: string
                 format: date-time
             required:
-              - id
+              - notificationId
               - type
               - status
               - title
@@ -16261,6 +17593,7 @@ components:
                 format: date-time
               lastMessagePreview:
                 type: string
+                description: The latest message, shortened to 140 characters; mentions read as in `body`.
               url:
                 type: string
                 description: Opens the thread on the design in the Brew app.
@@ -16285,7 +17618,7 @@ components:
                       additionalProperties: false
                     body:
                       type: string
-                      description: The message text; a mention reads `@Name-abcd` in it.
+                      description: The message text. Each mention reads `@` + the name `mentions` gives; other `@` text is as typed.
                     mentions:
                       type: array
                       items:
@@ -43346,7 +44679,7 @@ paths:
           example: kx7b3s7fapqz8mjm12ekz1kxdx87yceg
       responses:
         "200":
-          description: The contact row.
+          description: The contact row, with `openProfile` when `include=openProfile`.
           headers:
             x-request-id:
               schema:
@@ -43379,7 +44712,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Contact"
+                $ref: "#/components/schemas/ContactWithOpenProfile"
               example:
                 email: jane@example.com
                 firstName: Jane
@@ -54110,7 +55443,7 @@ paths:
       tags:
         - Domains
       summary: Get domain health
-      description: "The domain's deliverability health in one FREE read: a `verdict` (`healthy` / `at_risk` / `critical`) with actionable `signals`, DNS/auth state incl. DMARC, active percentage-based gradual sends, general bounce/complaint reporting, workspace reputation, and inbox-placement history. No bounce or complaint threshold is attached to a gradual-send configuration. `include=history` adds `scoreHistory`: up to 50 saved score snapshots, newest first (score, grade, confidence, the event that saved it, and each pillar's score and weight); only snapshots saved under this brand count, searched among the domain's newest 500, so a domain that moved between brands can show fewer. `include=runs` adds `scoreRuns`: the last 5 automated domain score runs (the 5-variant seed check), each with its status in the shared run vocabulary, the score it ended on, the credits it cost and every variant's placement test."
+      description: "The domain's deliverability health in one FREE read: a `verdict` (`healthy` / `at_risk` / `critical`) with actionable `signals`, DNS/auth state incl. DMARC, active percentage-based gradual sends, general bounce/complaint reporting, workspace reputation, and inbox-placement history. No bounce or complaint threshold is attached to a gradual-send configuration. `include=scoreHistory` adds `scoreHistory`: up to 50 saved score snapshots, newest first (score, grade, confidence, the event that saved it, and each pillar's score and weight); only snapshots saved under this brand count, searched among the domain's newest 500, so a domain that moved between brands can show fewer. `include=scoreRuns` adds `scoreRuns`: the last 5 automated domain score runs (the 5-variant seed check), each with its status in the shared run vocabulary, the score it ended on, the credits it cost and every variant's placement test."
       parameters:
         - schema:
             type: string
@@ -54124,12 +55457,12 @@ paths:
           in: path
         - schema:
             type: string
-            description: "Expansions: `history` attaches up to 50 saved score snapshots, newest first; `runs` the last 5 automated domain score runs."
+            description: "Expansions: `scoreHistory` attaches up to 50 saved score snapshots, newest first; `scoreRuns` the last 5 automated domain score runs."
             x-brew-include-tokens:
-              - history
-              - runs
+              - scoreHistory
+              - scoreRuns
           required: false
-          description: "Expansions: `history` attaches up to 50 saved score snapshots, newest first; `runs` the last 5 automated domain score runs."
+          description: "Expansions: `scoreHistory` attaches up to 50 saved score snapshots, newest first; `scoreRuns` the last 5 automated domain score runs."
           name: include
           in: query
         - name: X-Brand-Id
@@ -63620,416 +64953,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  data:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        insightId:
-                          type: string
-                        title:
-                          type: string
-                          description: What the finding is about.
-                        description:
-                          type: string
-                          description: The detector’s deterministic headline; quote it, never restate its numbers.
-                        severity:
-                          type: string
-                          enum:
-                            - critical
-                            - warning
-                            - opportunity
-                            - info
-                        confidence:
-                          type: string
-                          enum:
-                            - high
-                            - medium
-                            - low
-                        kind:
-                          type: string
-                          enum:
-                            - answer
-                            - insight
-                            - strategy
-                          description: "`answer` reports what happened, `insight` a change that passed its statistical test, `strategy` a recommended next step."
-                        category:
-                          type: string
-                        detectorId:
-                          type: string
-                        state:
-                          type: string
-                          enum:
-                            - active
-                            - snoozed
-                            - cleared
-                            - dismissed
-                            - resolved
-                            - stale
-                          description: A snooze that has ended reads as `active`.
-                        firstSeenAt:
-                          type: string
-                          format: date-time
-                        lastSeenAt:
-                          type: string
-                          format: date-time
-                        recurrenceCount:
-                          type: integer
-                          minimum: 0
-                        action:
-                          oneOf:
-                            - type: object
-                              properties:
-                                kind:
-                                  type: string
-                                  enum:
-                                    - navigate
-                                label:
-                                  type: string
-                                url:
-                                  type: string
-                                  description: Absolute link to the page in Brew.
-                              required:
-                                - kind
-                                - label
-                                - url
-                              additionalProperties: false
-                            - type: object
-                              properties:
-                                kind:
-                                  type: string
-                                  enum:
-                                    - assistant
-                                label:
-                                  type: string
-                                intent:
-                                  type: string
-                                  enum:
-                                    - review_domain_health
-                                    - validate_contacts
-                                    - create_campaign
-                                    - repeat_campaign
-                                    - review_recommendation
-                                prompt:
-                                  type: string
-                                  description: The request the Insights page sends to Brew’s assistant.
-                              required:
-                                - kind
-                                - label
-                                - intent
-                                - prompt
-                              additionalProperties: false
-                        url:
-                          type: string
-                          description: The finding’s page in Brew.
-                      required:
-                        - insightId
-                        - title
-                        - description
-                        - severity
-                        - confidence
-                        - kind
-                        - category
-                        - detectorId
-                        - state
-                        - firstSeenAt
-                        - lastSeenAt
-                        - recurrenceCount
-                        - url
-                      additionalProperties: false
-                  pagination:
-                    type: object
-                    properties:
-                      limit:
-                        type: integer
-                        minimum: 1
-                        maximum: 100
-                      cursor:
-                        type:
-                          - string
-                          - "null"
-                      hasMore:
-                        type: boolean
-                    required:
-                      - limit
-                      - cursor
-                      - hasMore
-                    additionalProperties: false
-                  freshness:
-                    type: object
-                    properties:
-                      dataAsOf:
-                        type:
-                          - string
-                          - "null"
-                        format: date-time
-                        description: How current the data behind the findings is; null before the first successful run.
-                      lastSuccessfulRunAt:
-                        type:
-                          - string
-                          - "null"
-                        format: date-time
-                      latestAttempt:
-                        type:
-                          - object
-                          - "null"
-                        properties:
-                          status:
-                            type: string
-                            enum:
-                              - succeeded
-                              - failed
-                              - running
-                              - unknown
-                          at:
-                            type: string
-                            format: date-time
-                        required:
-                          - status
-                          - at
-                        additionalProperties: false
-                        description: The newest engine run and its outcome; `failed` means the findings may be stale.
-                    required:
-                      - dataAsOf
-                      - lastSuccessfulRunAt
-                      - latestAttempt
-                    additionalProperties: false
-                  pulse:
-                    type:
-                      - object
-                      - "null"
-                    properties:
-                      windowEnd:
-                        type: string
-                        format: date-time
-                        description: "Exclusive end of the 7-day window: the start of the newest incomplete day."
-                      delivered:
-                        type: number
-                      priorDelivered:
-                        type: number
-                      uniqueOpens:
-                        type: number
-                      priorUniqueOpens:
-                        type: number
-                      uniqueClicks:
-                        type: number
-                      priorUniqueClicks:
-                        type: number
-                      unsubscribed:
-                        type: number
-                      priorUnsubscribed:
-                        type: number
-                      openRatePct:
-                        type:
-                          - number
-                          - "null"
-                        description: Percent, one decimal; null when counts-only or not measured.
-                      priorOpenRatePct:
-                        type:
-                          - number
-                          - "null"
-                      clickRatePct:
-                        type:
-                          - number
-                          - "null"
-                      priorClickRatePct:
-                        type:
-                          - number
-                          - "null"
-                      openDirection:
-                        type: string
-                        enum:
-                          - up
-                          - down
-                          - steady
-                        description: "`up` or `down` only when the change is statistically real."
-                      clickDirection:
-                        type: string
-                        enum:
-                          - up
-                          - down
-                          - steady
-                      countsOnly:
-                        type: boolean
-                        description: Too few deliveries for rates; read the counts.
-                      measured:
-                        type: boolean
-                        description: "False when engagement tracking is off: opens are unknown."
-                    required:
-                      - windowEnd
-                      - delivered
-                      - priorDelivered
-                      - uniqueOpens
-                      - priorUniqueOpens
-                      - uniqueClicks
-                      - priorUniqueClicks
-                      - unsubscribed
-                      - priorUnsubscribed
-                      - openRatePct
-                      - priorOpenRatePct
-                      - clickRatePct
-                      - priorClickRatePct
-                      - openDirection
-                      - clickDirection
-                      - countsOnly
-                      - measured
-                    additionalProperties: false
-                    description: "With `include` pulse: the weekly pulse, or null before the first run."
-                  report:
-                    type:
-                      - object
-                      - "null"
-                    properties:
-                      reportId:
-                        type: string
-                      chatId:
-                        type: string
-                        description: The Brew chat whose analysis run wrote the report.
-                      runTrigger:
-                        type: string
-                        enum:
-                          - manual
-                          - scheduled
-                      createdAt:
-                        type: string
-                        format: date-time
-                      insights:
-                        type: array
-                        items:
-                          type: object
-                          properties:
-                            key:
-                              type: string
-                            kind:
-                              type: string
-                              enum:
-                                - performance
-                                - audience
-                                - trend
-                                - risk
-                                - content
-                                - setup
-                            title:
-                              type: string
-                            body:
-                              type: string
-                            impact:
-                              type:
-                                - string
-                                - "null"
-                            suggestionId:
-                              type:
-                                - string
-                                - "null"
-                              description: The suggestion this insight proposes, if any.
-                          required:
-                            - key
-                            - kind
-                            - title
-                            - body
-                            - impact
-                            - suggestionId
-                          additionalProperties: false
-                    required:
-                      - reportId
-                      - chatId
-                      - runTrigger
-                      - createdAt
-                      - insights
-                    additionalProperties: false
-                    description: "With `include` report: the latest intelligence report, or null when none was published."
-                  suggestions:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        suggestionId:
-                          type: string
-                        title:
-                          type: string
-                        prompt:
-                          type: string
-                          description: Exactly what launching the suggestion asks Brew to do.
-                        kind:
-                          type: string
-                          enum:
-                            - audience
-                            - campaign
-                            - automation
-                            - deliverability
-                            - schedule
-                        status:
-                          type: string
-                          enum:
-                            - proposed
-                            - launched
-                            - dismissed
-                            - concluded
-                        rationale:
-                          type:
-                            - string
-                            - "null"
-                        sourceInsightKeys:
-                          type: array
-                          items:
-                            type: string
-                          description: The report insight keys that motivated it.
-                        executionChatId:
-                          type:
-                            - string
-                            - "null"
-                          description: The chat a launched suggestion runs in.
-                        createdAt:
-                          type: string
-                          format: date-time
-                        updatedAt:
-                          type: string
-                          format: date-time
-                      required:
-                        - suggestionId
-                        - title
-                        - prompt
-                        - kind
-                        - status
-                        - rationale
-                        - sourceInsightKeys
-                        - executionChatId
-                        - createdAt
-                        - updatedAt
-                      additionalProperties: false
-                    maxItems: 25
-                    description: "With `include` suggestions: proposed and launched suggestions, most recently updated first."
-                  memo:
-                    type:
-                      - object
-                      - "null"
-                    properties:
-                      markdown:
-                        type: string
-                        description: Learnings, Watchlist, Experiments and History sections; at most 8192 bytes.
-                      version:
-                        type: integer
-                      updatedAt:
-                        type: string
-                        format: date-time
-                      updatedByChatId:
-                        type:
-                          - string
-                          - "null"
-                    required:
-                      - markdown
-                      - version
-                      - updatedAt
-                      - updatedByChatId
-                    additionalProperties: false
-                    description: "With `include` memo: the memo, or null before the first run."
-                required:
-                  - data
-                  - pagination
-                  - freshness
-                additionalProperties: false
+                $ref: "#/components/schemas/InsightList"
               example:
                 data:
                   - insightId: k17a8m2v4w5x6y7z8a9b0c1d2e3f4g5h
@@ -64395,480 +65319,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  insightId:
-                    type: string
-                  title:
-                    type: string
-                    description: What the finding is about.
-                  description:
-                    type: string
-                    description: The detector’s deterministic headline; quote it, never restate its numbers.
-                  severity:
-                    type: string
-                    enum:
-                      - critical
-                      - warning
-                      - opportunity
-                      - info
-                  confidence:
-                    type: string
-                    enum:
-                      - high
-                      - medium
-                      - low
-                  kind:
-                    type: string
-                    enum:
-                      - answer
-                      - insight
-                      - strategy
-                    description: "`answer` reports what happened, `insight` a change that passed its statistical test, `strategy` a recommended next step."
-                  category:
-                    type: string
-                  detectorId:
-                    type: string
-                  state:
-                    type: string
-                    enum:
-                      - active
-                      - snoozed
-                      - cleared
-                      - dismissed
-                      - resolved
-                      - stale
-                    description: A snooze that has ended reads as `active`.
-                  firstSeenAt:
-                    type: string
-                    format: date-time
-                  lastSeenAt:
-                    type: string
-                    format: date-time
-                  recurrenceCount:
-                    type: integer
-                    minimum: 0
-                  action:
-                    oneOf:
-                      - type: object
-                        properties:
-                          kind:
-                            type: string
-                            enum:
-                              - navigate
-                          label:
-                            type: string
-                          url:
-                            type: string
-                            description: Absolute link to the page in Brew.
-                        required:
-                          - kind
-                          - label
-                          - url
-                        additionalProperties: false
-                      - type: object
-                        properties:
-                          kind:
-                            type: string
-                            enum:
-                              - assistant
-                          label:
-                            type: string
-                          intent:
-                            type: string
-                            enum:
-                              - review_domain_health
-                              - validate_contacts
-                              - create_campaign
-                              - repeat_campaign
-                              - review_recommendation
-                          prompt:
-                            type: string
-                            description: The request the Insights page sends to Brew’s assistant.
-                        required:
-                          - kind
-                          - label
-                          - intent
-                          - prompt
-                        additionalProperties: false
-                  url:
-                    type: string
-                    description: The finding’s page in Brew.
-                  rationale:
-                    type:
-                      - string
-                      - "null"
-                  closedReason:
-                    type:
-                      - string
-                      - "null"
-                  closedAt:
-                    type:
-                      - string
-                      - "null"
-                    format: date-time
-                  lastActedAt:
-                    type:
-                      - string
-                      - "null"
-                    format: date-time
-                  churnCount:
-                    type: integer
-                    minimum: 0
-                    description: How often the finding has closed and reopened.
-                  metrics:
-                    type: object
-                    additionalProperties:
-                      oneOf:
-                        - type: object
-                          properties:
-                            kind:
-                              type: string
-                              enum:
-                                - count
-                            value:
-                              type: number
-                            noun:
-                              type: string
-                          required:
-                            - kind
-                            - value
-                            - noun
-                          additionalProperties: false
-                        - type: object
-                          properties:
-                            kind:
-                              type: string
-                              enum:
-                                - rate
-                            value:
-                              type:
-                                - number
-                                - "null"
-                            numerator:
-                              type: number
-                            denominator:
-                              type: number
-                            basis:
-                              type: string
-                              enum:
-                                - delivered
-                                - sent
-                                - uniqueOpened
-                                - recipients
-                            anomalous:
-                              type: boolean
-                          required:
-                            - kind
-                            - value
-                            - numerator
-                            - denominator
-                            - basis
-                          additionalProperties: false
-                        - type: object
-                          properties:
-                            kind:
-                              type: string
-                              enum:
-                                - share
-                            value:
-                              type:
-                                - number
-                                - "null"
-                            part:
-                              type: number
-                            whole:
-                              type: number
-                            wholeNoun:
-                              type: string
-                          required:
-                            - kind
-                            - value
-                            - part
-                            - whole
-                            - wholeNoun
-                          additionalProperties: false
-                        - type: object
-                          properties:
-                            kind:
-                              type: string
-                              enum:
-                                - duration
-                            ms:
-                              type: number
-                            bucketIndex:
-                              type: number
-                          required:
-                            - kind
-                            - ms
-                          additionalProperties: false
-                        - type: object
-                          properties:
-                            kind:
-                              type: string
-                              enum:
-                                - delta
-                            value:
-                              type: number
-                            unit:
-                              type: string
-                              enum:
-                                - pp
-                                - pct
-                                - abs
-                            from:
-                              type: number
-                            to:
-                              type: number
-                          required:
-                            - kind
-                            - value
-                            - unit
-                            - from
-                            - to
-                          additionalProperties: false
-                        - type: object
-                          properties:
-                            kind:
-                              type: string
-                              enum:
-                                - hourOfDay
-                            hour:
-                              type: number
-                            slot:
-                              type: number
-                            basis:
-                              type: string
-                              enum:
-                                - utc
-                                - brand_zone
-                            timeZone:
-                              type: string
-                          required:
-                            - kind
-                            - hour
-                            - basis
-                          additionalProperties: false
-                        - type: object
-                          properties:
-                            kind:
-                              type: string
-                              enum:
-                                - multiple
-                            value:
-                              type: number
-                            referenceLabel:
-                              type: string
-                          required:
-                            - kind
-                            - value
-                            - referenceLabel
-                          additionalProperties: false
-                        - type: object
-                          properties:
-                            kind:
-                              type: string
-                              enum:
-                                - rank
-                            position:
-                              type: number
-                            outOf:
-                              type: number
-                          required:
-                            - kind
-                            - position
-                            - outOf
-                          additionalProperties: false
-                        - type: object
-                          properties:
-                            kind:
-                              type: string
-                              enum:
-                                - interval
-                            lo:
-                              type: number
-                            hi:
-                              type: number
-                            confidenceLevel:
-                              anyOf:
-                                - type: number
-                                  enum:
-                                    - 0.9
-                                - type: number
-                                  enum:
-                                    - 0.95
-                            as:
-                              type: string
-                              enum:
-                                - rate
-                                - delta
-                                - count
-                          required:
-                            - kind
-                            - lo
-                            - hi
-                            - confidenceLevel
-                            - as
-                          additionalProperties: false
-                        - type: object
-                          properties:
-                            kind:
-                              type: string
-                              enum:
-                                - label
-                            text:
-                              type: string
-                          required:
-                            - kind
-                            - text
-                          additionalProperties: false
-                    description: "Frozen when the finding was computed: the only numbers to quote about it."
-                  evidence:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        label:
-                          type: string
-                        url:
-                          type: string
-                      required:
-                        - label
-                      additionalProperties: false
-                  subject:
-                    type: object
-                    properties:
-                      kind:
-                        type: string
-                      id:
-                        type: string
-                      label:
-                        type: string
-                    required:
-                      - kind
-                      - id
-                      - label
-                    additionalProperties: false
-                    description: "What the finding is about: a send, an automation, a domain."
-                  method:
-                    type:
-                      - object
-                      - "null"
-                    properties:
-                      what:
-                        type: string
-                      how:
-                        type: string
-                      comparedAgainst:
-                        type: string
-                      resolvesWhen:
-                        type: string
-                      caveat:
-                        type: string
-                    required:
-                      - what
-                      - how
-                      - comparedAgainst
-                      - resolvesWhen
-                    additionalProperties: false
-                    description: How the detector works; null when none is recorded.
-                  generatedBy:
-                    type:
-                      - object
-                      - "null"
-                    properties:
-                      trigger:
-                        type: string
-                        enum:
-                          - cron_daily
-                          - send_settled
-                          - lifecycle_event
-                          - manual_refresh
-                      startedAt:
-                        type: string
-                        format: date-time
-                      completedAt:
-                        type:
-                          - string
-                          - "null"
-                        format: date-time
-                      blindSpots:
-                        type: array
-                        items:
-                          type: string
-                        description: What that run could not see.
-                    required:
-                      - trigger
-                      - startedAt
-                      - completedAt
-                      - blindSpots
-                    additionalProperties: false
-                    description: The engine run that last produced the finding.
-                  freshness:
-                    type: object
-                    properties:
-                      dataAsOf:
-                        type:
-                          - string
-                          - "null"
-                        format: date-time
-                        description: How current the data behind the findings is; null before the first successful run.
-                      lastSuccessfulRunAt:
-                        type:
-                          - string
-                          - "null"
-                        format: date-time
-                      latestAttempt:
-                        type:
-                          - object
-                          - "null"
-                        properties:
-                          status:
-                            type: string
-                            enum:
-                              - succeeded
-                              - failed
-                              - running
-                              - unknown
-                          at:
-                            type: string
-                            format: date-time
-                        required:
-                          - status
-                          - at
-                        additionalProperties: false
-                        description: The newest engine run and its outcome; `failed` means the findings may be stale.
-                    required:
-                      - dataAsOf
-                      - lastSuccessfulRunAt
-                      - latestAttempt
-                    additionalProperties: false
-                required:
-                  - insightId
-                  - title
-                  - description
-                  - severity
-                  - confidence
-                  - kind
-                  - category
-                  - detectorId
-                  - state
-                  - firstSeenAt
-                  - lastSeenAt
-                  - recurrenceCount
-                  - url
-                  - rationale
-                  - closedReason
-                  - closedAt
-                  - lastActedAt
-                  - churnCount
-                  - metrics
-                  - evidence
-                  - subject
-                  - method
-                  - generatedBy
-                  - freshness
-                additionalProperties: false
+                $ref: "#/components/schemas/Insight"
               example:
                 insightId: k17a8m2v4w5x6y7z8a9b0c1d2e3f4g5h
                 title: Spring sale
@@ -65193,13 +65644,23 @@ paths:
       description: |-
         Lists the brand's notifications, newest first, under `{ data, pagination }`, as the app's bell shows them: generations, sends, imports, domain checks and score runs finishing or failing, plus comment mentions and replies. Each row has `type`, `status`, `title`, `subtitle`, a `url` into the app and the ids it concerns (`chatId`, `emailId`, `domainId`). Reading marks nothing read. Free.
 
-        **Access** each row is shown only when its feature is within the credential's scopes: a `contacts` key sees import and validation rows, an `emails` key sees chats, sends and domains. Brand-wide rows (brand extraction, image imports) need no scope. A comment mention or reply (`isPersonal: true`) reaches only the person it is addressed to, so an API key never sees one.
+        **Access** each row is shown only when the credential may read its feature, scopes included, so an empty page can mean nothing happened or that this credential cannot see that kind of row (a `type` it cannot see is an empty page, not an error). By type:
+
+        - `chat_stream`, `preview_email`: the `emails` scope.
+        - `email_sent`, `email_scheduled`, `email_send_failed`, `gradual_send_paused`, `gradual_send_completed`, `send_review_rejected`: `sends` (`emails` implies it).
+        - `domain_status`, `domain_score_run`: `domains` (`emails` implies it).
+        - `import_job`, `validation_job`: `contacts`.
+        - `automation_pause_window_closed`: `automations`.
+        - `brand_extracted`, `brand_image_import`: every credential on the brand.
+        - `api_key_created`: the `all` scope (a signed-in member, or a key or connection holding `all`).
+        - `send_limit_reached`: organization admins only (a signed-in admin, an admin’s organization-wide connection, or an organization-wide key holding `all`); never a brand key.
+        - `comment_mention`, `comment_reply` (`isPersonal: true`): only the person addressed, signed in or on a personal connection; never an API key.
 
         **Use when** checking what finished or failed since you last looked.
 
         **Input** `type` keeps one notification type; `limit` and `cursor` (an opaque native cursor; a page can hold fewer rows than `limit` while `hasMore` is true).
 
-        **Returns** `200` with a page of `Notification` rows; `id` (`ntf_…`) is stable for the row’s life.
+        **Returns** `200` with a page of `Notification` rows; `notificationId` (`ntf_…`) is stable for the row’s life.
 
         **Errors** `400 INVALID_REQUEST` for an unknown query key or `type`, or a malformed cursor.
 
@@ -65227,9 +65688,9 @@ paths:
               - send_review_rejected
               - comment_mention
               - comment_reply
-            description: Only notifications of this type.
+            description: Only notifications of this type. A type this credential cannot see (its scopes, or a person-only or admin-only type) is an empty page.
           required: false
-          description: Only notifications of this type.
+          description: Only notifications of this type. A type this credential cannot see (its scopes, or a person-only or admin-only type) is an empty page.
           name: type
           in: query
         - schema:
@@ -65297,7 +65758,7 @@ paths:
                 $ref: "#/components/schemas/NotificationList"
               example:
                 data:
-                  - id: ntf_4b8f0c2e91d7a3f65e10
+                  - notificationId: ntf_4b8f0c2e91d7a3f65e10
                     type: email_sent
                     status: completed
                     title: Spring launch sent
@@ -65561,9 +66022,9 @@ paths:
 
         **Input** `emailId` in the path; `limit` and `cursor`. `include=messages` adds each thread's newest messages (author, body, mentions), oldest first, and caps the page at 3 threads sharing a fixed size budget. A thread with older messages returns `messagesCursor`: send it back with that thread's `commentId` to read the next older slice (the whole budget, at least one message), until it comes back null. `commentId` alone reads one thread.
 
-        **Returns** `200` with a page of `EmailCommentThread` rows. An email with no threads, or one the brand does not have, is an empty page.
+        **Returns** `200` with a page of `EmailCommentThread` rows. A design with no threads is an empty page.
 
-        **Errors** `400 INVALID_REQUEST` for an unknown query key, an unknown `include` token, a malformed cursor, a `messagesCursor` without its `commentId` or from another thread, or `cursor` with `commentId`.
+        **Errors** `400 INVALID_REQUEST` for an unknown query key, an unknown `include` token, a malformed cursor, a `messagesCursor` without its `commentId` or from another thread, or `cursor` with `commentId`. `404 EMAIL_NOT_FOUND` for an `emailId` the brand does not have: unknown, malformed or another brand’s design, one identical error as `getEmail` answers. `404 COMMENT_NOT_FOUND` for a `commentId` that is not an open thread on that design (resolving deletes a thread, so a resolved one is the same case).
 
         **See also** `getEmail`.
       parameters:
@@ -65682,7 +66143,7 @@ paths:
                       - userId: user_2abcQ8sLm3Nd5Tz
                         name: Ada Lovelace
                     participantCount: 2
-                    messageCount: 2
+                    messageCount: 3
                     lastMessageAt: '2026-10-01T12:05:00.000Z'
                     lastMessagePreview: Bolder works. Shipping it.
                     url: https://brew.new/emails/ungrouped?emailIds=2SmZOWV3ZQ7W5x6g3m4pA&focusEmailIds=2SmZOWV3ZQ7W5x6g3m4pA&commentId=cmt_V1StGXR8_Z5jdHi6B-myT
@@ -65691,7 +66152,7 @@ paths:
                         author:
                           userId: user_2xK9mPq4Rt7Vw1Yb
                           name: Grace Hopper
-                        body: "@AdaLovelace-2abc can the CTA be bolder?"
+                        body: "@Ada Lovelace can the CTA be bolder?"
                         mentions:
                           - userId: user_2abcQ8sLm3Nd5Tz
                             name: Ada Lovelace
@@ -65705,8 +66166,9 @@ paths:
                         mentions: []
                         createdAt: '2026-10-01T12:05:00.000Z'
                         updatedAt: '2026-10-01T12:05:00.000Z'
+                    messagesCursor: eyJ2IjoxLCJjIjoiY210X1YxU3RHWFI4X1o1amRIaTZCLW15VCIsImEiOiIyMDI2LTEwLTAxVDEyOjAwOjAwLjAwMFoiLCJtIjoiY21tXzlwUTJ3RXJUNXlVOGlPMWFTZEYzZyJ9
                 pagination:
-                  limit: 100
+                  limit: 3
                   cursor: null
                   hasMore: false
         "400":
@@ -65851,7 +66313,12 @@ paths:
                       suggestion: Ask an organization admin to run this, to add you to the brand, or to make you an admin.
                       docs: https://docs.brew.new/api-reference/api/authentication
         "404":
-          description: "`BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization)."
+          description: |-
+            `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+
+            `COMMENT_NOT_FOUND`: The design has no open comment thread with that id (resolving a thread deletes it).
+
+            `EMAIL_NOT_FOUND`: No email design with that id exists in the brand (cross-brand ids surface as 404).
           headers:
             x-request-id:
               schema:
@@ -65873,6 +66340,24 @@ paths:
                       type: not_found
                       message: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
                       suggestion: List the brands this credential can reach with GET /v1/brands.
+                      docs: https://docs.brew.new/api-reference/api/errors
+                commentNotFound:
+                  summary: COMMENT_NOT_FOUND
+                  value:
+                    error:
+                      code: COMMENT_NOT_FOUND
+                      type: not_found
+                      message: The design has no open comment thread with that id (resolving a thread deletes it).
+                      suggestion: List the design’s threads with GET /v1/emails/{emailId}/comments and use a returned commentId.
+                      docs: https://docs.brew.new/api-reference/api/errors
+                emailNotFound:
+                  summary: EMAIL_NOT_FOUND
+                  value:
+                    error:
+                      code: EMAIL_NOT_FOUND
+                      type: not_found
+                      message: No email design with that id exists in the brand (cross-brand ids surface as 404).
+                      suggestion: List designs with GET /v1/emails.
                       docs: https://docs.brew.new/api-reference/api/errors
         "429":
           description: "`RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens."
