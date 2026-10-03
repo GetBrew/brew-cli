@@ -1367,11 +1367,11 @@ export interface paths {
          *
          *     **Use when** checking whether an address exists, reading its consent record, or inspecting its custom fields before a send.
          *
-         *     **Input** `email` in the path (URL-encoded; matched case-insensitively).
+         *     **Input** `email` in the path (URL-encoded; matched case-insensitively). `include=openProfile` attaches `openProfile`: the smart-send open-time profile, 48 UTC half-hour open counts (`histogram`), `totalOpens`, `lastOpenedAt`, and once there is enough history `bestOpenMinuteUtc`, `bestSendMinuteUtc` and `confidence`; `null` when the contact has no opens folded yet. It is not bot detection: machine opens cannot be told apart in it (per-event classification is on `getEventsAnalytics`). It needs the `emails` scope as well as `contacts`.
          *
          *     **Returns** `200` with the row.
          *
-         *     **Errors** `404 CONTACT_NOT_FOUND` when no contact carries that address.
+         *     **Errors** `404 CONTACT_NOT_FOUND` when no contact carries that address; `403 INSUFFICIENT_PERMISSIONS` when `include=openProfile` is asked for without the `emails` scope; `400 INVALID_REQUEST` for an unknown `include` token.
          *
          *     **See also** `listContacts`, `updateContact`, `deleteContact`, `upsertContacts`.
          */
@@ -1410,6 +1410,8 @@ export interface paths {
          *     Pass an optional `audienceId` to scope the search to a saved audience’s members — its stored filter set is evaluated as one unit with its own `logicalOperator` (an OR audience stays an OR) and then ANDed with `filters`, so the page is exactly who a send to that audience reaches (an unknown / cross-brand id, or an audience a send would refuse → `400`).
          *
          *     Set `count: true` to get `{ count }` instead of a page.
+         *
+         *     `include: ["openProfile"]` attaches each returned contact’s smart-send open-time profile (`openProfile`, as on `getContact`; `null` when they have no opens yet). Each row costs one profile read, so a page then holds at most 10 contacts (`pagination.limit` reports the size read); it needs the `emails` scope as well (`403 INSUFFICIENT_PERMISSIONS` without it) and is refused with `count: true`.
          */
         post: operations["searchContacts"];
         delete?: never;
@@ -1849,7 +1851,7 @@ export interface paths {
         };
         /**
          * Get domain health
-         * @description The domain's deliverability health in one FREE read: a `verdict` (`healthy` / `at_risk` / `critical`) with actionable `signals`, DNS/auth state incl. DMARC, active percentage-based gradual sends, general bounce/complaint reporting, workspace reputation, and inbox-placement history. No bounce or complaint threshold is attached to a gradual-send configuration.
+         * @description The domain's deliverability health in one FREE read: a `verdict` (`healthy` / `at_risk` / `critical`) with actionable `signals`, DNS/auth state incl. DMARC, active percentage-based gradual sends, general bounce/complaint reporting, workspace reputation, and inbox-placement history. No bounce or complaint threshold is attached to a gradual-send configuration. `include=scoreHistory` adds `scoreHistory`: up to 50 saved score snapshots, newest first (score, grade, confidence, the event that saved it, and each pillar's score and weight); only snapshots saved under this brand count, searched among the domain's newest 500, so a domain that moved between brands can show fewer. `include=scoreRuns` adds `scoreRuns`: the last 5 automated domain score runs (the 5-variant seed check), each with its status in the shared run vocabulary, the score it ended on, the credits it cost and every variant's placement test.
          */
         get: operations["getDomainHealth"];
         put?: never;
@@ -2382,6 +2384,36 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/chats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List chats
+         * @description Lists the brand's Brew chats, most recently active first, under `{ data, pagination }`, as the app's chat list shows them: `chatId`, `title`, the opening prompt, Brew's latest reply, `status` (still streaming or not), `origin` (the chat app it started in; null for the Brew web app) and a link. No transcript and no participants. Free.
+         *
+         *     **Use when** finding a chat to resume, or seeing what was worked on recently.
+         *
+         *     **Input** `limit` and `cursor` (an opaque native cursor).
+         *
+         *     **Returns** `200` with a page of `ChatListRow` rows.
+         *
+         *     **Errors** `400 INVALID_REQUEST` for an unknown query key or a malformed cursor.
+         *
+         *     **See also** `getChatContext` (one chat, with its artifacts and recent messages).
+         */
+        get: operations["listChats"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/chats/{chatId}": {
         parameters: {
             query?: never;
@@ -2394,6 +2426,138 @@ export interface paths {
          * @description Read a brand-scoped digest of a Brew chat for resuming the conversation in an external agent: the emails + automations it created/referenced (latest version, with preview), the trigger events it touched, and a trimmed tail of the transcript. Read-only and free. `404 CHAT_NOT_FOUND` for an unknown id OR a chat owned by a different brand (the two are indistinguishable).
          */
         get: operations["getChatContext"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/insights": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List insights
+         * @description The brand’s Brew Insights as the Insights page ranks them, most severe first and then by score, under `{ data, pagination, freshness }`. Each row is one deterministic finding of the insight engine; the engine keeps at most 200 findings in view.
+         *
+         *     **Use when** reporting what Brew found about the brand’s email: deliverability problems, campaigns that under- or over-performed, timing, audience and automation opportunities.
+         *
+         *     **Input** `state` (`open`, the default: active findings and snoozes that have ended; or `all`, which adds resolved, cleared, dismissed and stale findings), `severity` to read one severity (up to 200 of its own, however many more severe findings exist), `limit`/`cursor` to page. `include` adds the intelligence layer the page shows beside the findings: `pulse` (the last 7 days against the 7 before), `report` (the latest report the analysis agent published), `suggestions` (its proposed and launched suggestions, up to 25) and `memo` (the agent’s memory across runs).
+         *
+         *     **Returns** `200`. Each row carries `insightId`, `title`, `description` (the detector’s headline), `severity`, `confidence`, `kind`, `category`, `detectorId`, `state`, `firstSeenAt`, `lastSeenAt`, `recurrenceCount`, an optional `action` and the finding’s `url` in Brew. `freshness` is on every page: `dataAsOf` is how current the data behind the findings is, and `latestAttempt.status: failed` means they may be stale. An expansion that does not exist yet answers `null`. Read-only and free.
+         *
+         *     **Errors** `400 INVALID_REQUEST` for an unknown query key, value or `include` token, or a malformed `cursor`.
+         *
+         *     **See also** `getInsight`, `getAnalyticsOverview`.
+         */
+        get: operations["listInsights"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/insights/{insightId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get an insight
+         * @description One finding in full, as its page in Brew reads it: the list row’s fields plus `rationale`, `closedReason`, `closedAt`, `lastActedAt`, `churnCount`, the frozen `metrics`, `evidence` links, its `subject`, the detector’s `method` (what it measures, how, against what, and what resolves it), `generatedBy` (the engine run that produced it and what that run could not see) and `freshness`.
+         *
+         *     **Use when** explaining why a finding exists or what would resolve it. `metrics` were frozen when the finding was computed and are the only numbers to quote about it.
+         *
+         *     **Input** `insightId` in the path, as a `listInsights` row carries it.
+         *
+         *     **Returns** `200` with the finding. Read-only and free.
+         *
+         *     **Errors** `404 INSIGHT_NOT_FOUND` for an unknown, malformed or over-long id OR a finding of another brand: one identical error, so the cases are indistinguishable.
+         *
+         *     **See also** `listInsights`.
+         */
+        get: operations["getInsight"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/notifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List notifications
+         * @description Lists the brand's notifications, newest first, under `{ data, pagination }`, as the app's bell shows them: generations, sends, imports, domain checks and score runs finishing or failing, plus comment mentions and replies. Each row has `type`, `status`, `title`, `subtitle`, a `url` into the app and the ids it concerns (`chatId`, `emailId`, `domainId`). Reading marks nothing read. Free.
+         *
+         *     **Access** each row is shown only when the credential may read its feature, scopes included, so an empty page can mean nothing happened or that this credential cannot see that kind of row (a `type` it cannot see is an empty page, not an error). By type:
+         *
+         *     - `chat_stream`, `preview_email`: the `emails` scope.
+         *     - `email_sent`, `email_scheduled`, `email_send_failed`, `gradual_send_paused`, `gradual_send_completed`, `send_review_rejected`: `sends` (`emails` implies it).
+         *     - `domain_status`, `domain_score_run`: `domains` (`emails` implies it).
+         *     - `import_job`, `validation_job`: `contacts`.
+         *     - `automation_pause_window_closed`: `automations`.
+         *     - `brand_extracted`, `brand_image_import`: every credential on the brand.
+         *     - `api_key_created`: the `all` scope (a signed-in member, or a key or connection holding `all`).
+         *     - `send_limit_reached`: organization admins only (a signed-in admin, an admin’s organization-wide connection, or an organization-wide key holding `all`); never a brand key.
+         *     - `comment_mention`, `comment_reply` (`isPersonal: true`): only the person addressed, signed in or on a personal connection; never an API key.
+         *
+         *     **Use when** checking what finished or failed since you last looked.
+         *
+         *     **Input** `type` keeps one notification type; `limit` and `cursor` (an opaque native cursor; a page can hold fewer rows than `limit` while `hasMore` is true).
+         *
+         *     **Returns** `200` with a page of `Notification` rows; `notificationId` (`ntf_…`) is stable for the row’s life.
+         *
+         *     **Errors** `400 INVALID_REQUEST` for an unknown query key or `type`, or a malformed cursor.
+         *
+         *     **See also** `getChatContext`, `getEmail`, `getDomainHealth`.
+         */
+        get: operations["listNotifications"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/emails/{emailId}/comments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List email comments
+         * @description Lists one design's open comment threads, newest activity first, under `{ data, pagination }`, as the canvas pins show them: `commentId`, `target` (whole email or one element), the 12 most recent `participants` with `participantCount`, `messageCount`, the latest message preview and a link to the thread. People are `{ userId, name }`; resolving deletes a thread. Free.
+         *
+         *     **Use when** reading what teammates asked for on a design before editing it.
+         *
+         *     **Input** `emailId` in the path; `limit` and `cursor`. `include=messages` adds each thread's newest messages (author, body, mentions), oldest first, and caps the page at 3 threads sharing a fixed size budget. A thread with older messages returns `messagesCursor`: send it back with that thread's `commentId` to read the next older slice (the whole budget, at least one message), until it comes back null. `commentId` alone reads one thread.
+         *
+         *     **Returns** `200` with a page of `EmailCommentThread` rows. A design with no threads is an empty page.
+         *
+         *     **Errors** `400 INVALID_REQUEST` for an unknown query key, an unknown `include` token, a malformed cursor, a `messagesCursor` without its `commentId` or from another thread, or `cursor` with `commentId`. `404 EMAIL_NOT_FOUND` for an `emailId` the brand does not have: unknown, malformed or another brand’s design, one identical error as `getEmail` answers. `404 COMMENT_NOT_FOUND` for a `commentId` that is not an open thread on that design (resolving deletes a thread, so a resolved one is the same case).
+         *
+         *     **See also** `getEmail`.
+         */
+        get: operations["listEmailComments"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3685,6 +3849,425 @@ export interface components {
             previewImage?: string;
             html?: string;
         };
+        ChatListRow: {
+            /** @description Resume the chat with the chat-context read. */
+            chatId: string;
+            title: string | null;
+            /** @description The opening prompt, cut at 80 characters. */
+            firstUserPrompt: string | null;
+            /** @description Brew's latest reply, cut at 140 characters. */
+            lastAssistantPreview: string | null;
+            /**
+             * @description `streaming` or `background_finalizing` while a run is still going; null before the first run.
+             * @enum {string|null}
+             */
+            status: "idle" | "streaming" | "background_finalizing" | "completed" | "failed" | "interrupted" | "stopped" | "persistence_failed" | null;
+            /**
+             * @description The chat app the conversation started in; null for the Brew web app.
+             * @enum {string|null}
+             */
+            origin: "slack" | null;
+            /** Format: date-time */
+            updatedAt: string;
+            /** @description Opens the chat in the Brew app. */
+            url: string;
+        };
+        InsightListRow: {
+            insightId: string;
+            /** @description What the finding is about. */
+            title: string;
+            /** @description The detector’s deterministic headline; quote it, never restate its numbers. */
+            description: string;
+            /** @enum {string} */
+            severity: "critical" | "warning" | "opportunity" | "info";
+            /** @enum {string} */
+            confidence: "high" | "medium" | "low";
+            /**
+             * @description `answer` reports what happened, `insight` a change that passed its statistical test, `strategy` a recommended next step.
+             * @enum {string}
+             */
+            kind: "answer" | "insight" | "strategy";
+            category: string;
+            detectorId: string;
+            /**
+             * @description A snooze that has ended reads as `active`.
+             * @enum {string}
+             */
+            state: "active" | "snoozed" | "cleared" | "dismissed" | "resolved" | "stale";
+            /** Format: date-time */
+            firstSeenAt: string;
+            /** Format: date-time */
+            lastSeenAt: string;
+            recurrenceCount: number;
+            action?: {
+                /** @enum {string} */
+                kind: "navigate";
+                label: string;
+                /** @description Absolute link to the page in Brew. */
+                url: string;
+            } | {
+                /** @enum {string} */
+                kind: "assistant";
+                label: string;
+                /** @enum {string} */
+                intent: "review_domain_health" | "validate_contacts" | "create_campaign" | "repeat_campaign" | "review_recommendation";
+                /** @description The request the Insights page sends to Brew’s assistant. */
+                prompt: string;
+            };
+            /** @description The finding’s page in Brew. */
+            url: string;
+        };
+        InsightList: {
+            data: components["schemas"]["InsightListRow"][];
+            pagination: {
+                limit: number;
+                cursor: string | null;
+                hasMore: boolean;
+            };
+            freshness: {
+                /**
+                 * Format: date-time
+                 * @description How current the data behind the findings is; null before the first successful run.
+                 */
+                dataAsOf: string | null;
+                /** Format: date-time */
+                lastSuccessfulRunAt: string | null;
+                /** @description The newest engine run and its outcome; `failed` means the findings may be stale. */
+                latestAttempt: {
+                    /** @enum {string} */
+                    status: "succeeded" | "failed" | "running" | "unknown";
+                    /** Format: date-time */
+                    at: string;
+                } | null;
+            };
+            /** @description With `include` pulse: the weekly pulse, or null before the first run. */
+            pulse?: {
+                /**
+                 * Format: date-time
+                 * @description Exclusive end of the 7-day window: the start of the newest incomplete day.
+                 */
+                windowEnd: string;
+                delivered: number;
+                priorDelivered: number;
+                uniqueOpens: number;
+                priorUniqueOpens: number;
+                uniqueClicks: number;
+                priorUniqueClicks: number;
+                unsubscribed: number;
+                priorUnsubscribed: number;
+                /** @description Percent, one decimal; null when counts-only or not measured. */
+                openRatePct: number | null;
+                priorOpenRatePct: number | null;
+                clickRatePct: number | null;
+                priorClickRatePct: number | null;
+                /**
+                 * @description `up` or `down` only when the change is statistically real.
+                 * @enum {string}
+                 */
+                openDirection: "up" | "down" | "steady";
+                /** @enum {string} */
+                clickDirection: "up" | "down" | "steady";
+                /** @description Too few deliveries for rates; read the counts. */
+                countsOnly: boolean;
+                /** @description False when engagement tracking is off: opens are unknown. */
+                measured: boolean;
+            } | null;
+            /** @description With `include` report: the latest intelligence report, or null when none was published. */
+            report?: {
+                reportId: string;
+                /** @description The Brew chat whose analysis run wrote the report. */
+                chatId: string;
+                /** @enum {string} */
+                runTrigger: "manual" | "scheduled";
+                /** Format: date-time */
+                createdAt: string;
+                insights: {
+                    key: string;
+                    /** @enum {string} */
+                    kind: "performance" | "audience" | "trend" | "risk" | "content" | "setup";
+                    title: string;
+                    body: string;
+                    impact: string | null;
+                    /** @description The suggestion this insight proposes, if any. */
+                    suggestionId: string | null;
+                }[];
+            } | null;
+            /** @description With `include` suggestions: proposed and launched suggestions, most recently updated first. */
+            suggestions?: {
+                suggestionId: string;
+                title: string;
+                /** @description Exactly what launching the suggestion asks Brew to do. */
+                prompt: string;
+                /** @enum {string} */
+                kind: "audience" | "campaign" | "automation" | "deliverability" | "schedule";
+                /** @enum {string} */
+                status: "proposed" | "launched" | "dismissed" | "concluded";
+                rationale: string | null;
+                /** @description The report insight keys that motivated it. */
+                sourceInsightKeys: string[];
+                /** @description The chat a launched suggestion runs in. */
+                executionChatId: string | null;
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
+            }[];
+            /** @description With `include` memo: the memo, or null before the first run. */
+            memo?: {
+                /** @description Learnings, Watchlist, Experiments and History sections; at most 8192 bytes. */
+                markdown: string;
+                version: number;
+                /** Format: date-time */
+                updatedAt: string;
+                updatedByChatId: string | null;
+            } | null;
+        };
+        Insight: {
+            insightId: string;
+            /** @description What the finding is about. */
+            title: string;
+            /** @description The detector’s deterministic headline; quote it, never restate its numbers. */
+            description: string;
+            /** @enum {string} */
+            severity: "critical" | "warning" | "opportunity" | "info";
+            /** @enum {string} */
+            confidence: "high" | "medium" | "low";
+            /**
+             * @description `answer` reports what happened, `insight` a change that passed its statistical test, `strategy` a recommended next step.
+             * @enum {string}
+             */
+            kind: "answer" | "insight" | "strategy";
+            category: string;
+            detectorId: string;
+            /**
+             * @description A snooze that has ended reads as `active`.
+             * @enum {string}
+             */
+            state: "active" | "snoozed" | "cleared" | "dismissed" | "resolved" | "stale";
+            /** Format: date-time */
+            firstSeenAt: string;
+            /** Format: date-time */
+            lastSeenAt: string;
+            recurrenceCount: number;
+            action?: {
+                /** @enum {string} */
+                kind: "navigate";
+                label: string;
+                /** @description Absolute link to the page in Brew. */
+                url: string;
+            } | {
+                /** @enum {string} */
+                kind: "assistant";
+                label: string;
+                /** @enum {string} */
+                intent: "review_domain_health" | "validate_contacts" | "create_campaign" | "repeat_campaign" | "review_recommendation";
+                /** @description The request the Insights page sends to Brew’s assistant. */
+                prompt: string;
+            };
+            /** @description The finding’s page in Brew. */
+            url: string;
+            rationale: string | null;
+            closedReason: string | null;
+            /** Format: date-time */
+            closedAt: string | null;
+            /** Format: date-time */
+            lastActedAt: string | null;
+            /** @description How often the finding has closed and reopened. */
+            churnCount: number;
+            /** @description Frozen when the finding was computed: the only numbers to quote about it. */
+            metrics: {
+                [key: string]: {
+                    /** @enum {string} */
+                    kind: "count";
+                    value: number;
+                    noun: string;
+                } | {
+                    /** @enum {string} */
+                    kind: "rate";
+                    value: number | null;
+                    numerator: number;
+                    denominator: number;
+                    /** @enum {string} */
+                    basis: "delivered" | "sent" | "uniqueOpened" | "recipients";
+                    anomalous?: boolean;
+                } | {
+                    /** @enum {string} */
+                    kind: "share";
+                    value: number | null;
+                    part: number;
+                    whole: number;
+                    wholeNoun: string;
+                } | {
+                    /** @enum {string} */
+                    kind: "duration";
+                    ms: number;
+                    bucketIndex?: number;
+                } | {
+                    /** @enum {string} */
+                    kind: "delta";
+                    value: number;
+                    /** @enum {string} */
+                    unit: "pp" | "pct" | "abs";
+                    from: number;
+                    to: number;
+                } | {
+                    /** @enum {string} */
+                    kind: "hourOfDay";
+                    hour: number;
+                    slot?: number;
+                    /** @enum {string} */
+                    basis: "utc" | "brand_zone";
+                    timeZone?: string;
+                } | {
+                    /** @enum {string} */
+                    kind: "multiple";
+                    value: number;
+                    referenceLabel: string;
+                } | {
+                    /** @enum {string} */
+                    kind: "rank";
+                    position: number;
+                    outOf: number;
+                } | {
+                    /** @enum {string} */
+                    kind: "interval";
+                    lo: number;
+                    hi: number;
+                    confidenceLevel: 0.9 | 0.95;
+                    /** @enum {string} */
+                    as: "rate" | "delta" | "count";
+                } | {
+                    /** @enum {string} */
+                    kind: "label";
+                    text: string;
+                };
+            };
+            evidence: {
+                label: string;
+                url?: string;
+            }[];
+            /** @description What the finding is about: a send, an automation, a domain. */
+            subject: {
+                kind: string;
+                id: string;
+                label: string;
+            };
+            /** @description How the detector works; null when none is recorded. */
+            method: {
+                what: string;
+                how: string;
+                comparedAgainst: string;
+                resolvesWhen: string;
+                caveat?: string;
+            } | null;
+            /** @description The engine run that last produced the finding. */
+            generatedBy: {
+                /** @enum {string} */
+                trigger: "cron_daily" | "send_settled" | "lifecycle_event" | "manual_refresh";
+                /** Format: date-time */
+                startedAt: string;
+                /** Format: date-time */
+                completedAt: string | null;
+                /** @description What that run could not see. */
+                blindSpots: string[];
+            } | null;
+            freshness: {
+                /**
+                 * Format: date-time
+                 * @description How current the data behind the findings is; null before the first successful run.
+                 */
+                dataAsOf: string | null;
+                /** Format: date-time */
+                lastSuccessfulRunAt: string | null;
+                /** @description The newest engine run and its outcome; `failed` means the findings may be stale. */
+                latestAttempt: {
+                    /** @enum {string} */
+                    status: "succeeded" | "failed" | "running" | "unknown";
+                    /** Format: date-time */
+                    at: string;
+                } | null;
+            };
+        };
+        Notification: {
+            /** @description `ntf_` + 20 hex characters: a one-way hash, stable for the row’s life. */
+            notificationId: string;
+            /** @enum {string} */
+            type: "chat_stream" | "import_job" | "brand_image_import" | "validation_job" | "email_sent" | "email_scheduled" | "preview_email" | "brand_extracted" | "domain_status" | "domain_score_run" | "api_key_created" | "email_send_failed" | "gradual_send_paused" | "gradual_send_completed" | "send_limit_reached" | "automation_pause_window_closed" | "send_review_rejected" | "comment_mention" | "comment_reply";
+            /** @enum {string} */
+            status: "uploading" | "preparing" | "processing" | "finalizing" | "streaming" | "background_finalizing" | "completed" | "partial" | "failed" | "interrupted" | "stopped" | "persistence_failed";
+            title: string;
+            subtitle: string;
+            /** @description 0-100 while work is running, where it reports progress. */
+            progressPercent?: number;
+            /** @description Where the bell opens it in the Brew app. */
+            url?: string;
+            chatId?: string;
+            emailId?: string;
+            domainId?: string;
+            domainName?: string;
+            /** @description Addressed to the caller alone: a comment mention or reply, shown only on a personal connection. */
+            isPersonal: boolean;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            /** Format: date-time */
+            completedAt?: string;
+        };
+        EmailCommentThread: {
+            /** @description `cmt_…`; the app opens it with `?commentId=`. */
+            commentId: string;
+            emailId: string;
+            /** @enum {string} */
+            status: "open";
+            /** @description Whether the thread is on the whole design or one element of it. */
+            target: {
+                /** @enum {string} */
+                kind: "email";
+            } | {
+                /** @enum {string} */
+                kind: "element";
+                /** @description The element the thread is pinned to (`elm_…`). */
+                elementId?: string;
+                /** @description What the element is: `button`, `image`, `heading`, … */
+                nodeType?: string;
+            };
+            /** @description Who started, replied to, or was mentioned in the thread: the 12 most recent. */
+            participants: {
+                userId: string;
+                name: string;
+            }[];
+            /** @description How many people are in the thread; `participants` lists at most 12. */
+            participantCount: number;
+            messageCount: number;
+            /** Format: date-time */
+            lastMessageAt: string;
+            /** @description The latest message, shortened to 140 characters; mentions read as in `body`. */
+            lastMessagePreview: string;
+            /** @description Opens the thread on the design in the Brew app. */
+            url: string;
+            /** @description Only with messages: the thread's newest messages (or, after a `messagesCursor`, the next older ones) that fit the page's size budget, oldest first. */
+            messages?: {
+                /** @description `cmm_…` */
+                messageId: string;
+                author: {
+                    userId: string;
+                    name: string;
+                };
+                /** @description The message text. Each mention reads `@` + the name `mentions` gives; other `@` text is as typed. */
+                body: string;
+                mentions: {
+                    userId: string;
+                    name: string;
+                }[];
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
+            }[];
+            /** @description Only with messages: pass it back with this thread's `commentId` to read its older messages; null when none remain. */
+            messagesCursor?: string | null;
+        };
         EmailsListResponse: {
             data: {
                 emailId: string;
@@ -3740,7 +4323,7 @@ export interface components {
             };
         };
         /** @enum {string} */
-        ApiErrorCode: "ACCOUNT_SUSPENDED" | "API_KEY_REVOKED" | "AUDIENCE_BUILD_ACTIVE" | "AUDIENCE_BUILD_ALREADY_ACTIVE" | "AUDIENCE_EDIT_CONFLICT" | "AUDIENCE_MEMBERSHIP_NOT_EXPRESSIBLE" | "AUDIENCE_NOT_FOUND" | "AUDIENCE_RUN_NOT_FOUND" | "AUDIT_NOT_FOUND" | "AUTHENTICATION_REQUIRED" | "AUTOMATION_GRAPH_INVALID" | "AUTOMATION_NOT_FOUND" | "AUTOMATION_NOT_PAUSABLE" | "AUTOMATION_NOT_PUBLISHED" | "AUTOMATION_RUN_NOT_FOUND" | "AUTOMATION_VERSION_CONFLICT" | "AUTOMATION_VERSION_NOT_FOUND" | "BATCH_TOO_LARGE" | "BRAND_DOMAIN_CONFLICT" | "BRAND_ID_REQUIRED" | "BRAND_LIMIT_REACHED" | "BRAND_NOT_FOUND" | "BRAND_NOT_READY" | "BRAND_SCOPE_MISMATCH" | "CHAT_NOT_FOUND" | "CONSENT_REQUIRED" | "CONTACT_NOT_FOUND" | "CONTENT_OPERATION_FAILED" | "CONTRACT_LOCKED_BY_PUBLISHED_AUTOMATIONS" | "CORE_FIELD_IMMUTABLE" | "DOMAIN_ALREADY_EXISTS" | "DOMAIN_CLAIMED_ELSEWHERE" | "DOMAIN_NOT_FOUND" | "DOMAIN_NOT_READY" | "DOMAIN_OTHER_BRAND" | "DOMAIN_PROVIDER_ERROR" | "DOMAIN_PURPOSE_NOT_ALLOWED" | "DOMAIN_VERIFICATION_FAILED" | "DOMAIN_VERIFIED_ELSEWHERE" | "EMAIL_GENERATION_FAILED" | "EMAIL_GROUP_NAME_CONFLICT" | "EMAIL_GROUP_NOT_FOUND" | "EMAIL_IMAGES_MISSING" | "EMAIL_IMPORT_FAILED" | "EMAIL_IN_PROGRESS" | "EMAIL_IN_USE_BY_AUTOMATION" | "EMAIL_NOT_FOUND" | "EMAIL_NOT_READY" | "EMAIL_RUN_AMBIGUOUS" | "EMAIL_TEMPLATE_INVALID" | "EMAIL_VERSION_NOT_FOUND" | "EXPORT_PROVIDER_ERROR" | "EXPORT_UNSUPPORTED" | "FIELD_NOT_FOUND" | "FIELD_TYPE_MISMATCH" | "FIGMA_ACCESS_DENIED" | "FIGMA_CONVERSION_FAILED" | "FIGMA_FRAME_NOT_FOUND" | "FIGMA_NOT_CONNECTED" | "FIGMA_UNAVAILABLE" | "FIGMA_URL_INVALID" | "FLOW_NOT_FOUND" | "IDEMPOTENCY_CONFLICT" | "IDEMPOTENCY_IN_PROGRESS" | "INSUFFICIENT_CREDITS" | "INSUFFICIENT_PERMISSIONS" | "INSUFFICIENT_ROLE" | "INTEGRATION_NOT_CONNECTED" | "INTERNAL_ERROR" | "INVALID_API_KEY" | "INVALID_EMAIL" | "INVALID_PAYLOAD" | "INVALID_REQUEST" | "LIQUID_RENDER_ERROR" | "METHOD_NOT_ALLOWED" | "MISSING_EMAIL" | "NO_ELIGIBLE_RECIPIENTS" | "NO_PUBLISHED_AUTOMATION" | "NOT_FOUND" | "NOT_IMPLEMENTED" | "ORG_SCOPE_REQUIRED" | "PAYLOAD_SCHEMA_EMAIL_REQUIRED" | "PAYLOAD_TOO_LARGE" | "PREVIEW_NOT_FOUND" | "PUBLISH_VALIDATION_FAILED" | "RATE_LIMITED" | "RECIPIENT_UNSUBSCRIBED" | "REFERENCE_EMAIL_NOT_FOUND" | "RESUBSCRIBE_NOT_ALLOWED" | "RUN_IN_PROGRESS" | "RUN_NOT_CANCELLABLE" | "RUN_NOT_PAUSABLE" | "RUN_NOT_PAUSED" | "RUN_NOT_RESUMABLE" | "RUN_START_FAILED" | "RUN_STOP_FAILED" | "SEND_NOT_CANCELLABLE" | "SEND_NOT_FOUND" | "SEND_NOT_PAUSABLE" | "SEND_NOT_RESUMABLE" | "SEND_QUOTA_EXCEEDED" | "SERVICE_UNAVAILABLE" | "TEMPLATE_NOT_FOUND" | "TRIGGER_ALREADY_EXISTS" | "TRIGGER_EVENT_NOT_FOUND" | "TRIGGER_HAS_DEPENDENT_AUTOMATIONS" | "TRIGGER_IMMUTABLE" | "TRIGGER_INSTANCE_NOT_FOUND" | "TRIGGER_LIMIT_REACHED" | "UPLOAD_IN_PROGRESS" | "UPLOAD_NOT_FOUND" | "UPLOAD_NOT_RECEIVED";
+        ApiErrorCode: "ACCOUNT_SUSPENDED" | "API_KEY_REVOKED" | "AUDIENCE_BUILD_ACTIVE" | "AUDIENCE_BUILD_ALREADY_ACTIVE" | "AUDIENCE_EDIT_CONFLICT" | "AUDIENCE_MEMBERSHIP_NOT_EXPRESSIBLE" | "AUDIENCE_NOT_FOUND" | "AUDIENCE_RUN_NOT_FOUND" | "AUDIT_NOT_FOUND" | "AUTHENTICATION_REQUIRED" | "AUTOMATION_GRAPH_INVALID" | "AUTOMATION_NOT_FOUND" | "AUTOMATION_NOT_PAUSABLE" | "AUTOMATION_NOT_PUBLISHED" | "AUTOMATION_RUN_NOT_FOUND" | "AUTOMATION_VERSION_CONFLICT" | "AUTOMATION_VERSION_NOT_FOUND" | "BATCH_TOO_LARGE" | "BRAND_DOMAIN_CONFLICT" | "BRAND_ID_REQUIRED" | "BRAND_LIMIT_REACHED" | "BRAND_NOT_FOUND" | "BRAND_NOT_READY" | "BRAND_SCOPE_MISMATCH" | "CHAT_NOT_FOUND" | "COMMENT_NOT_FOUND" | "CONSENT_REQUIRED" | "CONTACT_NOT_FOUND" | "CONTENT_OPERATION_FAILED" | "CONTRACT_LOCKED_BY_PUBLISHED_AUTOMATIONS" | "CORE_FIELD_IMMUTABLE" | "DOMAIN_ALREADY_EXISTS" | "DOMAIN_CLAIMED_ELSEWHERE" | "DOMAIN_NOT_FOUND" | "DOMAIN_NOT_READY" | "DOMAIN_OTHER_BRAND" | "DOMAIN_PROVIDER_ERROR" | "DOMAIN_PURPOSE_NOT_ALLOWED" | "DOMAIN_VERIFICATION_FAILED" | "DOMAIN_VERIFIED_ELSEWHERE" | "EMAIL_GENERATION_FAILED" | "EMAIL_GROUP_NAME_CONFLICT" | "EMAIL_GROUP_NOT_FOUND" | "EMAIL_IMAGES_MISSING" | "EMAIL_IMPORT_FAILED" | "EMAIL_IN_PROGRESS" | "EMAIL_IN_USE_BY_AUTOMATION" | "EMAIL_NOT_FOUND" | "EMAIL_NOT_READY" | "EMAIL_RUN_AMBIGUOUS" | "EMAIL_TEMPLATE_INVALID" | "EMAIL_VERSION_NOT_FOUND" | "EXPORT_PROVIDER_ERROR" | "EXPORT_UNSUPPORTED" | "FIELD_NOT_FOUND" | "FIELD_TYPE_MISMATCH" | "FIGMA_ACCESS_DENIED" | "FIGMA_CONVERSION_FAILED" | "FIGMA_FRAME_NOT_FOUND" | "FIGMA_NOT_CONNECTED" | "FIGMA_UNAVAILABLE" | "FIGMA_URL_INVALID" | "FLOW_NOT_FOUND" | "IDEMPOTENCY_CONFLICT" | "IDEMPOTENCY_IN_PROGRESS" | "INSIGHT_NOT_FOUND" | "INSUFFICIENT_CREDITS" | "INSUFFICIENT_PERMISSIONS" | "INSUFFICIENT_ROLE" | "INTEGRATION_NOT_CONNECTED" | "INTERNAL_ERROR" | "INVALID_API_KEY" | "INVALID_EMAIL" | "INVALID_PAYLOAD" | "INVALID_REQUEST" | "LIQUID_RENDER_ERROR" | "METHOD_NOT_ALLOWED" | "MISSING_EMAIL" | "NO_ELIGIBLE_RECIPIENTS" | "NO_PUBLISHED_AUTOMATION" | "NOT_FOUND" | "NOT_IMPLEMENTED" | "ORG_SCOPE_REQUIRED" | "PAYLOAD_SCHEMA_EMAIL_REQUIRED" | "PAYLOAD_TOO_LARGE" | "PREVIEW_NOT_FOUND" | "PUBLISH_VALIDATION_FAILED" | "RATE_LIMITED" | "RECIPIENT_UNSUBSCRIBED" | "REFERENCE_EMAIL_NOT_FOUND" | "RESUBSCRIBE_NOT_ALLOWED" | "RUN_IN_PROGRESS" | "RUN_NOT_CANCELLABLE" | "RUN_NOT_PAUSABLE" | "RUN_NOT_PAUSED" | "RUN_NOT_RESUMABLE" | "RUN_START_FAILED" | "RUN_STOP_FAILED" | "SEND_NOT_CANCELLABLE" | "SEND_NOT_FOUND" | "SEND_NOT_PAUSABLE" | "SEND_NOT_RESUMABLE" | "SEND_QUOTA_EXCEEDED" | "SERVICE_UNAVAILABLE" | "TEMPLATE_NOT_FOUND" | "TRIGGER_ALREADY_EXISTS" | "TRIGGER_EVENT_NOT_FOUND" | "TRIGGER_HAS_DEPENDENT_AUTOMATIONS" | "TRIGGER_IMMUTABLE" | "TRIGGER_INSTANCE_NOT_FOUND" | "TRIGGER_LIMIT_REACHED" | "UPLOAD_IN_PROGRESS" | "UPLOAD_NOT_FOUND" | "UPLOAD_NOT_RECEIVED";
         EmailGenerateTextResponse: {
             response: string;
         };
@@ -6566,7 +7149,142 @@ export interface components {
                 hasMore: boolean;
             };
         };
-        ContactsSearchSuccessResponse: components["schemas"]["ContactsListResponse"] | components["schemas"]["ContactsCountResponse"];
+        ContactWithOpenProfile: {
+            email: string;
+            firstName?: string;
+            lastName?: string;
+            /** @default true */
+            subscribed?: boolean;
+            consent?: {
+                /**
+                 * @description Who captured it: `api` (an API caller asserted it), `form` (a signup form), `import` (a bulk import), `app` (the in-app CSV wizard checkbox).
+                 * @enum {string}
+                 */
+                source: "api" | "form" | "import" | "app";
+                /**
+                 * Format: date-time
+                 * @description When it was captured.
+                 */
+                capturedAt: string;
+                /** @description The policy or terms version in force when it was captured. */
+                policyVersion?: string;
+                /** @description Free-text evidence: a form URL, a ticket, a checkbox label. */
+                evidence?: string;
+            };
+            /**
+             * @description The latest verdict. `valid` only ever comes from a deliverability check (`validate: true` on ingest, or POST /v1/contacts/validate), which also sets `lastValidatedAt`. Without a check the free format check on ingest stores `risky` (disposable or role address) or `invalid`, and leaves the field unset otherwise: not validated.
+             * @enum {string}
+             */
+            validationStatus?: "valid" | "risky" | "invalid";
+            /** @default false */
+            suppressed?: boolean;
+            suppressedReason?: string | null;
+            /** @default [] */
+            unsubscribedDomains?: string[];
+            /** Format: date-time */
+            lastValidatedAt?: string;
+            validationDetails?: {
+                /** @enum {string} */
+                provider: "brew";
+                reason?: string;
+                didYouMean?: string;
+                risk?: string;
+                isDisposable?: boolean;
+                isRole?: boolean;
+            };
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            importId?: string | null;
+            csvFileName?: string | null;
+            /** @default {} */
+            customFields?: {
+                [key: string]: unknown;
+            };
+            /** @description With `include` openProfile: the contact's smart-send open-time profile (48 UTC half-hour open counts and the best send time derived from them), or null when they have no opens folded yet. Not bot detection: machine opens cannot be told apart here. */
+            openProfile?: {
+                totalOpens: number;
+                /** Format: date-time */
+                lastOpenedAt: string;
+                bestOpenMinuteUtc?: number;
+                bestSendMinuteUtc?: number;
+                confidence?: number;
+                histogram: number[];
+            } | null;
+        };
+        ContactsSearchSuccessResponse: components["schemas"]["ContactsListResponse"] | components["schemas"]["ContactsWithOpenProfileListResponse"] | components["schemas"]["ContactsCountResponse"];
+        ContactsWithOpenProfileListResponse: {
+            data: {
+                email: string;
+                firstName?: string;
+                lastName?: string;
+                /** @default true */
+                subscribed?: boolean;
+                consent?: {
+                    /**
+                     * @description Who captured it: `api` (an API caller asserted it), `form` (a signup form), `import` (a bulk import), `app` (the in-app CSV wizard checkbox).
+                     * @enum {string}
+                     */
+                    source: "api" | "form" | "import" | "app";
+                    /**
+                     * Format: date-time
+                     * @description When it was captured.
+                     */
+                    capturedAt: string;
+                    /** @description The policy or terms version in force when it was captured. */
+                    policyVersion?: string;
+                    /** @description Free-text evidence: a form URL, a ticket, a checkbox label. */
+                    evidence?: string;
+                };
+                /**
+                 * @description The latest verdict. `valid` only ever comes from a deliverability check (`validate: true` on ingest, or POST /v1/contacts/validate), which also sets `lastValidatedAt`. Without a check the free format check on ingest stores `risky` (disposable or role address) or `invalid`, and leaves the field unset otherwise: not validated.
+                 * @enum {string}
+                 */
+                validationStatus?: "valid" | "risky" | "invalid";
+                /** @default false */
+                suppressed?: boolean;
+                suppressedReason?: string | null;
+                /** @default [] */
+                unsubscribedDomains?: string[];
+                /** Format: date-time */
+                lastValidatedAt?: string;
+                validationDetails?: {
+                    /** @enum {string} */
+                    provider: "brew";
+                    reason?: string;
+                    didYouMean?: string;
+                    risk?: string;
+                    isDisposable?: boolean;
+                    isRole?: boolean;
+                };
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
+                importId?: string | null;
+                csvFileName?: string | null;
+                /** @default {} */
+                customFields?: {
+                    [key: string]: unknown;
+                };
+                /** @description With `include` openProfile: the contact's smart-send open-time profile (48 UTC half-hour open counts and the best send time derived from them), or null when they have no opens folded yet. Not bot detection: machine opens cannot be told apart here. */
+                openProfile?: {
+                    totalOpens: number;
+                    /** Format: date-time */
+                    lastOpenedAt: string;
+                    bestOpenMinuteUtc?: number;
+                    bestSendMinuteUtc?: number;
+                    confidence?: number;
+                    histogram: number[];
+                } | null;
+            }[];
+            pagination: {
+                limit: number;
+                cursor: string | null;
+                hasMore: boolean;
+            };
+        };
         ContactsCountResponse: {
             count: number;
             /** @description With `groupBy` or `bucket`: the largest 200 groups; `key` maps each grouped field to its value, `bucket` is the ISO period start. */
@@ -6618,6 +7336,8 @@ export interface components {
             /** @default 50 */
             limit?: number;
             cursor?: string;
+            /** @description `openProfile` attaches each returned contact's smart-send open-time profile (needs the `emails` permission as well). A page then holds at most 10 contacts; not with `count: true`. */
+            include?: "openProfile"[];
         };
         ContactsValidateResponse: {
             data: {
@@ -7322,6 +8042,78 @@ export interface components {
             }[];
             /** Format: date-time */
             checkedAt: string;
+            /** @description With `include=scoreHistory`: up to 50 saved score snapshots, newest first. Snapshots are saved when a placement test completes, the domain is verified, or a score run finishes. Only snapshots saved under this brand count, searched among the domain's newest 500, so a domain that moved between brands can show fewer. */
+            scoreHistory?: {
+                score: number;
+                /** @enum {string} */
+                grade: "excellent" | "good" | "fair" | "poor" | "critical";
+                /** @enum {string} */
+                confidence: "high" | "medium" | "low";
+                /** @enum {string} */
+                trigger: "placement_test" | "domain_verified" | "domain_score_run" | "health_read";
+                /** Format: date-time */
+                computedAt: string;
+                components: {
+                    placement: {
+                        score: number;
+                        weight: number;
+                    };
+                    authentication: {
+                        score: number;
+                        weight: number;
+                    };
+                    reputation: {
+                        score: number;
+                        weight: number;
+                    };
+                    content: {
+                        score: number;
+                        weight: number;
+                    };
+                    posture: {
+                        score: number;
+                        weight: number;
+                    };
+                };
+            }[];
+            /** @description With `include=scoreRuns`: the last 5 automated domain score runs (the 5-variant seed check), newest first. */
+            scoreRuns?: {
+                runId: string;
+                /** @enum {string} */
+                trigger: "domain_verified" | "manual";
+                /** @enum {string} */
+                status: "queued" | "running" | "completed" | "partially_completed" | "failed";
+                /** @enum {string} */
+                phase?: "preparing" | "collecting";
+                scoreAfter: {
+                    score: number;
+                    /** @enum {string} */
+                    grade: "excellent" | "good" | "fair" | "poor" | "critical";
+                } | null;
+                creditsCharged: number;
+                variants: {
+                    /** @enum {string} */
+                    variant: "plain_text" | "text_forward" | "balanced" | "image_heavy" | "promotional";
+                    /** @enum {string} */
+                    status?: "queued" | "running" | "completed" | "partially_completed" | "failed";
+                    /** @enum {string} */
+                    phase?: "sending" | "collecting";
+                    testId?: string;
+                    emailId?: string;
+                    overall?: {
+                        total: number;
+                        inbox: number;
+                        spam: number;
+                        missing: number;
+                        pending: number;
+                    };
+                }[];
+                errorMessage?: string;
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
+            }[];
         };
         TemplatesListResponse: {
             data: {
@@ -7793,6 +8585,130 @@ export interface components {
         };
         HelpResponse: {
             [key: string]: unknown;
+        };
+        ChatList: {
+            data: {
+                /** @description Resume the chat with the chat-context read. */
+                chatId: string;
+                title: string | null;
+                /** @description The opening prompt, cut at 80 characters. */
+                firstUserPrompt: string | null;
+                /** @description Brew's latest reply, cut at 140 characters. */
+                lastAssistantPreview: string | null;
+                /**
+                 * @description `streaming` or `background_finalizing` while a run is still going; null before the first run.
+                 * @enum {string|null}
+                 */
+                status: "idle" | "streaming" | "background_finalizing" | "completed" | "failed" | "interrupted" | "stopped" | "persistence_failed" | null;
+                /**
+                 * @description The chat app the conversation started in; null for the Brew web app.
+                 * @enum {string|null}
+                 */
+                origin: "slack" | null;
+                /** Format: date-time */
+                updatedAt: string;
+                /** @description Opens the chat in the Brew app. */
+                url: string;
+            }[];
+            pagination: {
+                limit: number;
+                cursor: string | null;
+                hasMore: boolean;
+            };
+        };
+        NotificationList: {
+            data: {
+                /** @description `ntf_` + 20 hex characters: a one-way hash, stable for the row’s life. */
+                notificationId: string;
+                /** @enum {string} */
+                type: "chat_stream" | "import_job" | "brand_image_import" | "validation_job" | "email_sent" | "email_scheduled" | "preview_email" | "brand_extracted" | "domain_status" | "domain_score_run" | "api_key_created" | "email_send_failed" | "gradual_send_paused" | "gradual_send_completed" | "send_limit_reached" | "automation_pause_window_closed" | "send_review_rejected" | "comment_mention" | "comment_reply";
+                /** @enum {string} */
+                status: "uploading" | "preparing" | "processing" | "finalizing" | "streaming" | "background_finalizing" | "completed" | "partial" | "failed" | "interrupted" | "stopped" | "persistence_failed";
+                title: string;
+                subtitle: string;
+                /** @description 0-100 while work is running, where it reports progress. */
+                progressPercent?: number;
+                /** @description Where the bell opens it in the Brew app. */
+                url?: string;
+                chatId?: string;
+                emailId?: string;
+                domainId?: string;
+                domainName?: string;
+                /** @description Addressed to the caller alone: a comment mention or reply, shown only on a personal connection. */
+                isPersonal: boolean;
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
+                /** Format: date-time */
+                completedAt?: string;
+            }[];
+            pagination: {
+                limit: number;
+                cursor: string | null;
+                hasMore: boolean;
+            };
+        };
+        EmailCommentThreadList: {
+            data: {
+                /** @description `cmt_…`; the app opens it with `?commentId=`. */
+                commentId: string;
+                emailId: string;
+                /** @enum {string} */
+                status: "open";
+                /** @description Whether the thread is on the whole design or one element of it. */
+                target: {
+                    /** @enum {string} */
+                    kind: "email";
+                } | {
+                    /** @enum {string} */
+                    kind: "element";
+                    /** @description The element the thread is pinned to (`elm_…`). */
+                    elementId?: string;
+                    /** @description What the element is: `button`, `image`, `heading`, … */
+                    nodeType?: string;
+                };
+                /** @description Who started, replied to, or was mentioned in the thread: the 12 most recent. */
+                participants: {
+                    userId: string;
+                    name: string;
+                }[];
+                /** @description How many people are in the thread; `participants` lists at most 12. */
+                participantCount: number;
+                messageCount: number;
+                /** Format: date-time */
+                lastMessageAt: string;
+                /** @description The latest message, shortened to 140 characters; mentions read as in `body`. */
+                lastMessagePreview: string;
+                /** @description Opens the thread on the design in the Brew app. */
+                url: string;
+                /** @description Only with messages: the thread's newest messages (or, after a `messagesCursor`, the next older ones) that fit the page's size budget, oldest first. */
+                messages?: {
+                    /** @description `cmm_…` */
+                    messageId: string;
+                    author: {
+                        userId: string;
+                        name: string;
+                    };
+                    /** @description The message text. Each mention reads `@` + the name `mentions` gives; other `@` text is as typed. */
+                    body: string;
+                    mentions: {
+                        userId: string;
+                        name: string;
+                    }[];
+                    /** Format: date-time */
+                    createdAt: string;
+                    /** Format: date-time */
+                    updatedAt: string;
+                }[];
+                /** @description Only with messages: pass it back with this thread's `commentId` to read its older messages; null when none remain. */
+                messagesCursor?: string | null;
+            }[];
+            pagination: {
+                limit: number;
+                cursor: string | null;
+                hasMore: boolean;
+            };
         };
     };
     responses: never;
@@ -19125,7 +20041,10 @@ export interface operations {
     };
     getContact: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Expansions: `openProfile` attaches the contact's smart-send open-time profile (needs the `emails` permission as well). */
+                include?: string;
+            };
             header?: {
                 /**
                  * @description The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
@@ -19141,7 +20060,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description The contact row. */
+            /** @description The contact row, with `openProfile` when `include=openProfile`. */
             200: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -19179,7 +20098,7 @@ export interface operations {
                      *       }
                      *     }
                      */
-                    "application/json": components["schemas"]["Contact"];
+                    "application/json": components["schemas"]["ContactWithOpenProfile"];
                 };
             };
             /**
@@ -24294,7 +25213,10 @@ export interface operations {
     };
     getDomainHealth: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Expansions: `scoreHistory` attaches up to 50 saved score snapshots, newest first; `scoreRuns` the last 5 automated domain score runs. */
+                include?: string;
+            };
             header?: {
                 /**
                  * @description The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
@@ -28210,6 +29132,160 @@ export interface operations {
             };
         };
     };
+    listChats: {
+        parameters: {
+            query?: {
+                /**
+                 * @description Page size (1-100). Defaults to 100.
+                 * @example 50
+                 */
+                limit?: number;
+                cursor?: string;
+            };
+            header?: {
+                /**
+                 * @description The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+                 * @example kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+                 */
+                "X-Brand-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page of chats. */
+            200: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    "X-RateLimit-Reset": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": [
+                     *         {
+                     *           "chatId": "Hk2mZ8t9QbY3sW1vR0pLd",
+                     *           "title": "Spring launch campaign",
+                     *           "firstUserPrompt": "Draft a launch email for the spring collection",
+                     *           "lastAssistantPreview": "Updated the hero and added a \"Shop now\" button.",
+                     *           "status": "completed",
+                     *           "origin": null,
+                     *           "updatedAt": "2026-06-30T12:34:56.789Z",
+                     *           "url": "https://brew.new/chat/Hk2mZ8t9QbY3sW1vR0pLd"
+                     *         }
+                     *       ],
+                     *       "pagination": {
+                     *         "limit": 100,
+                     *         "cursor": null,
+                     *         "hasMore": false
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ChatList"];
+                };
+            };
+            /**
+             * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+             *
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             */
+            400: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `API_KEY_REVOKED`: The API key was revoked.
+             *
+             *     `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+             *
+             *     `INVALID_API_KEY`: The API key is malformed or unknown.
+             */
+            401: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+             *
+             *     `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+             *
+             *     `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+             *
+             *     `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+             */
+            403: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization). */
+            404: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            429: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    "X-RateLimit-Reset": number;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it. */
+            500: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+        };
+    };
     getChatContext: {
         parameters: {
             query?: never;
@@ -28403,6 +29479,778 @@ export interface operations {
                     "x-request-id": string;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listInsights: {
+        parameters: {
+            query?: {
+                /** @description `open` (default) lists active findings and snoozes that have ended. `all` adds resolved, cleared, dismissed and stale findings and snoozes still in effect. */
+                state?: "open" | "all";
+                /** @description Only findings of this severity: `critical`, `warning`, `opportunity` or `info`, up to 200 of its own. */
+                severity?: "critical" | "warning" | "opportunity" | "info";
+                /** @description Comma-separated expansions: `pulse` adds the weekly pulse, `report` the latest intelligence report, `suggestions` its open suggestions (up to 25), `memo` the analysis agent’s memo. */
+                include?: string;
+                /**
+                 * @description Page size (1-100). Defaults to 100.
+                 * @example 50
+                 */
+                limit?: number;
+                cursor?: string;
+            };
+            header?: {
+                /**
+                 * @description The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+                 * @example kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+                 */
+                "X-Brand-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page of findings, the engine’s freshness and any expansions asked for. */
+            200: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    "X-RateLimit-Reset": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": [
+                     *         {
+                     *           "insightId": "k17a8m2v4w5x6y7z8a9b0c1d2e3f4g5h",
+                     *           "title": "Spring sale",
+                     *           "description": "Spring sale bounced 6.2% of sends, above the 6% line.",
+                     *           "severity": "critical",
+                     *           "confidence": "high",
+                     *           "kind": "insight",
+                     *           "category": "deliverability",
+                     *           "detectorId": "deliv.bounce_rate_breach",
+                     *           "state": "active",
+                     *           "firstSeenAt": "2026-10-01T12:00:00.000Z",
+                     *           "lastSeenAt": "2026-10-02T06:04:12.000Z",
+                     *           "recurrenceCount": 1,
+                     *           "action": {
+                     *             "kind": "navigate",
+                     *             "label": "Open campaign analytics",
+                     *             "url": "https://brew.new/analytics/sends/Vx2mZ8t9QbY3sW1vR0pLd"
+                     *           },
+                     *           "url": "https://brew.new/insights/k17a8m2v4w5x6y7z8a9b0c1d2e3f4g5h"
+                     *         }
+                     *       ],
+                     *       "pagination": {
+                     *         "limit": 100,
+                     *         "cursor": null,
+                     *         "hasMore": false
+                     *       },
+                     *       "freshness": {
+                     *         "dataAsOf": "2026-10-02T06:00:00.000Z",
+                     *         "lastSuccessfulRunAt": "2026-10-02T06:04:12.000Z",
+                     *         "latestAttempt": {
+                     *           "status": "succeeded",
+                     *           "at": "2026-10-02T06:04:12.000Z"
+                     *         }
+                     *       },
+                     *       "pulse": {
+                     *         "windowEnd": "2026-10-02T00:00:00.000Z",
+                     *         "delivered": 12400,
+                     *         "priorDelivered": 11900,
+                     *         "uniqueOpens": 4960,
+                     *         "priorUniqueOpens": 4400,
+                     *         "uniqueClicks": 620,
+                     *         "priorUniqueClicks": 590,
+                     *         "unsubscribed": 18,
+                     *         "priorUnsubscribed": 21,
+                     *         "openRatePct": 40,
+                     *         "priorOpenRatePct": 37,
+                     *         "clickRatePct": 5,
+                     *         "priorClickRatePct": 5,
+                     *         "openDirection": "up",
+                     *         "clickDirection": "steady",
+                     *         "countsOnly": false,
+                     *         "measured": true
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["InsightList"];
+                };
+            };
+            /**
+             * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+             *
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             */
+            400: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `API_KEY_REVOKED`: The API key was revoked.
+             *
+             *     `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+             *
+             *     `INVALID_API_KEY`: The API key is malformed or unknown.
+             */
+            401: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+             *
+             *     `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+             *
+             *     `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+             *
+             *     `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+             */
+            403: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization). */
+            404: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            429: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    "X-RateLimit-Reset": number;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it. */
+            500: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getInsight: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+                 * @example kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+                 */
+                "X-Brand-Id"?: string;
+            };
+            path: {
+                /** @description The `insightId` a `GET /v1/insights` row carries. */
+                insightId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The finding. */
+            200: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    "X-RateLimit-Reset": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "insightId": "k17a8m2v4w5x6y7z8a9b0c1d2e3f4g5h",
+                     *       "title": "Spring sale",
+                     *       "description": "Spring sale bounced 6.2% of sends, above the 6% line.",
+                     *       "severity": "critical",
+                     *       "confidence": "high",
+                     *       "kind": "insight",
+                     *       "category": "deliverability",
+                     *       "detectorId": "deliv.bounce_rate_breach",
+                     *       "state": "active",
+                     *       "firstSeenAt": "2026-10-01T12:00:00.000Z",
+                     *       "lastSeenAt": "2026-10-02T06:04:12.000Z",
+                     *       "recurrenceCount": 1,
+                     *       "action": {
+                     *         "kind": "navigate",
+                     *         "label": "Open campaign analytics",
+                     *         "url": "https://brew.new/analytics/sends/Vx2mZ8t9QbY3sW1vR0pLd"
+                     *       },
+                     *       "url": "https://brew.new/insights/k17a8m2v4w5x6y7z8a9b0c1d2e3f4g5h",
+                     *       "rationale": "Mailbox providers start filtering a sender whose campaigns bounce above 6%.",
+                     *       "closedReason": null,
+                     *       "closedAt": null,
+                     *       "lastActedAt": null,
+                     *       "churnCount": 0,
+                     *       "metrics": {
+                     *         "bounceRate": {
+                     *           "kind": "rate",
+                     *           "value": 0.062,
+                     *           "numerator": 62,
+                     *           "denominator": 1000,
+                     *           "basis": "sent"
+                     *         },
+                     *         "bounced": {
+                     *           "kind": "count",
+                     *           "value": 62,
+                     *           "noun": "bounces"
+                     *         }
+                     *       },
+                     *       "evidence": [
+                     *         {
+                     *           "label": "62 bounced, 3 unsubscribed"
+                     *         }
+                     *       ],
+                     *       "subject": {
+                     *         "kind": "campaign",
+                     *         "id": "Vx2mZ8t9QbY3sW1vR0pLd",
+                     *         "label": "Spring sale"
+                     *       },
+                     *       "method": {
+                     *         "what": "A campaign whose bounce rate crosses the level mailbox providers act on.",
+                     *         "how": "Bounced ÷ sent, compared against fixed thresholds: 3% is a warning, 6% is critical.",
+                     *         "comparedAgainst": "Absolute industry thresholds, not your own history: providers do not grade on a curve.",
+                     *         "resolvesWhen": "A later send of the same campaign stays under 3%, usually after cleaning the list."
+                     *       },
+                     *       "generatedBy": {
+                     *         "trigger": "send_settled",
+                     *         "startedAt": "2026-10-02T06:00:03.000Z",
+                     *         "completedAt": "2026-10-02T06:04:12.000Z",
+                     *         "blindSpots": []
+                     *       },
+                     *       "freshness": {
+                     *         "dataAsOf": "2026-10-02T06:00:00.000Z",
+                     *         "lastSuccessfulRunAt": "2026-10-02T06:04:12.000Z",
+                     *         "latestAttempt": {
+                     *           "status": "succeeded",
+                     *           "at": "2026-10-02T06:04:12.000Z"
+                     *         }
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["Insight"];
+                };
+            };
+            /**
+             * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+             *
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             */
+            400: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `API_KEY_REVOKED`: The API key was revoked.
+             *
+             *     `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+             *
+             *     `INVALID_API_KEY`: The API key is malformed or unknown.
+             */
+            401: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+             *
+             *     `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+             *
+             *     `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+             *
+             *     `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+             */
+            403: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+             *
+             *     `INSIGHT_NOT_FOUND`: No insight with that id is visible to this credential’s brand.
+             */
+            404: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            429: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    "X-RateLimit-Reset": number;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it. */
+            500: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listNotifications: {
+        parameters: {
+            query?: {
+                /** @description Only notifications of this type. A type this credential cannot see (its scopes, or a person-only or admin-only type) is an empty page. */
+                type?: "chat_stream" | "import_job" | "brand_image_import" | "validation_job" | "email_sent" | "email_scheduled" | "preview_email" | "brand_extracted" | "domain_status" | "domain_score_run" | "api_key_created" | "email_send_failed" | "gradual_send_paused" | "gradual_send_completed" | "send_limit_reached" | "automation_pause_window_closed" | "send_review_rejected" | "comment_mention" | "comment_reply";
+                /**
+                 * @description Page size (1-100). Defaults to 100.
+                 * @example 50
+                 */
+                limit?: number;
+                cursor?: string;
+            };
+            header?: {
+                /**
+                 * @description The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+                 * @example kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+                 */
+                "X-Brand-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page of notifications. */
+            200: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    "X-RateLimit-Reset": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": [
+                     *         {
+                     *           "notificationId": "ntf_4b8f0c2e91d7a3f65e10",
+                     *           "type": "email_sent",
+                     *           "status": "completed",
+                     *           "title": "Spring launch sent",
+                     *           "subtitle": "12,480 recipients",
+                     *           "url": "https://brew.new/emails?emailIds=2SmZOWV3ZQ7W5x6g3m4pA",
+                     *           "emailId": "2SmZOWV3ZQ7W5x6g3m4pA",
+                     *           "isPersonal": false,
+                     *           "createdAt": "2026-10-01T12:00:00.000Z",
+                     *           "updatedAt": "2026-10-01T12:20:00.000Z",
+                     *           "completedAt": "2026-10-01T12:20:00.000Z"
+                     *         }
+                     *       ],
+                     *       "pagination": {
+                     *         "limit": 100,
+                     *         "cursor": null,
+                     *         "hasMore": false
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["NotificationList"];
+                };
+            };
+            /**
+             * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+             *
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             */
+            400: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `API_KEY_REVOKED`: The API key was revoked.
+             *
+             *     `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+             *
+             *     `INVALID_API_KEY`: The API key is malformed or unknown.
+             */
+            401: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+             *
+             *     `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+             *
+             *     `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+             */
+            403: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization). */
+            404: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            429: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    "X-RateLimit-Reset": number;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it. */
+            500: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listEmailComments: {
+        parameters: {
+            query?: {
+                /** @description Comma-separated expansions: `messages` adds each thread's newest messages (author, body, mentions), oldest first, with a `messagesCursor` for older ones, and caps the page at 3 threads. */
+                include?: string;
+                /** @description Read this one thread (`cmt_…`) instead of the page; not with `cursor`. */
+                commentId?: string;
+                /** @description A thread's `messagesCursor` from a previous response, with that thread's `commentId`: returns the thread with its next older messages and the next `messagesCursor`. Implies `include=messages`. */
+                messagesCursor?: string;
+                /**
+                 * @description Page size (1-100). Defaults to 100.
+                 * @example 50
+                 */
+                limit?: number;
+                cursor?: string;
+            };
+            header?: {
+                /**
+                 * @description The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+                 * @example kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+                 */
+                "X-Brand-Id"?: string;
+            };
+            path: {
+                /** @description Design id returned by `POST /v1/emails` and listed by `GET /v1/emails`. */
+                emailId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page of the design's open comment threads. */
+            200: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    "X-RateLimit-Reset": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": [
+                     *         {
+                     *           "commentId": "cmt_V1StGXR8_Z5jdHi6B-myT",
+                     *           "emailId": "2SmZOWV3ZQ7W5x6g3m4pA",
+                     *           "status": "open",
+                     *           "target": {
+                     *             "kind": "element",
+                     *             "elementId": "elm_4f9Kq",
+                     *             "nodeType": "button"
+                     *           },
+                     *           "participants": [
+                     *             {
+                     *               "userId": "user_2xK9mPq4Rt7Vw1Yb",
+                     *               "name": "Grace Hopper"
+                     *             },
+                     *             {
+                     *               "userId": "user_2abcQ8sLm3Nd5Tz",
+                     *               "name": "Ada Lovelace"
+                     *             }
+                     *           ],
+                     *           "participantCount": 2,
+                     *           "messageCount": 3,
+                     *           "lastMessageAt": "2026-10-01T12:05:00.000Z",
+                     *           "lastMessagePreview": "Bolder works. Shipping it.",
+                     *           "url": "https://brew.new/emails/ungrouped?emailIds=2SmZOWV3ZQ7W5x6g3m4pA&focusEmailIds=2SmZOWV3ZQ7W5x6g3m4pA&commentId=cmt_V1StGXR8_Z5jdHi6B-myT",
+                     *           "messages": [
+                     *             {
+                     *               "messageId": "cmm_9pQ2wErT5yU8iO1aSdF3g",
+                     *               "author": {
+                     *                 "userId": "user_2xK9mPq4Rt7Vw1Yb",
+                     *                 "name": "Grace Hopper"
+                     *               },
+                     *               "body": "@Ada Lovelace can the CTA be bolder?",
+                     *               "mentions": [
+                     *                 {
+                     *                   "userId": "user_2abcQ8sLm3Nd5Tz",
+                     *                   "name": "Ada Lovelace"
+                     *                 }
+                     *               ],
+                     *               "createdAt": "2026-10-01T12:00:00.000Z",
+                     *               "updatedAt": "2026-10-01T12:00:00.000Z"
+                     *             },
+                     *             {
+                     *               "messageId": "cmm_3hJ6kL9zX2cV5bN8mQ1wE",
+                     *               "author": {
+                     *                 "userId": "user_2abcQ8sLm3Nd5Tz",
+                     *                 "name": "Ada Lovelace"
+                     *               },
+                     *               "body": "Bolder works. Shipping it.",
+                     *               "mentions": [],
+                     *               "createdAt": "2026-10-01T12:05:00.000Z",
+                     *               "updatedAt": "2026-10-01T12:05:00.000Z"
+                     *             }
+                     *           ],
+                     *           "messagesCursor": "eyJ2IjoxLCJjIjoiY210X1YxU3RHWFI4X1o1amRIaTZCLW15VCIsImEiOiIyMDI2LTEwLTAxVDEyOjAwOjAwLjAwMFoiLCJtIjoiY21tXzlwUTJ3RXJUNXlVOGlPMWFTZEYzZyJ9"
+                     *         }
+                     *       ],
+                     *       "pagination": {
+                     *         "limit": 3,
+                     *         "cursor": null,
+                     *         "hasMore": false
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["EmailCommentThreadList"];
+                };
+            };
+            /**
+             * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+             *
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             */
+            400: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `API_KEY_REVOKED`: The API key was revoked.
+             *
+             *     `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+             *
+             *     `INVALID_API_KEY`: The API key is malformed or unknown.
+             */
+            401: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+             *
+             *     `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+             *
+             *     `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+             *
+             *     `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+             */
+            403: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+             *
+             *     `COMMENT_NOT_FOUND`: The design has no open comment thread with that id (resolving a thread deletes it).
+             *
+             *     `EMAIL_NOT_FOUND`: No email design with that id exists in the brand (cross-brand ids surface as 404).
+             */
+            404: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            429: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    "X-RateLimit-Reset": number;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it. */
+            500: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
                     [name: string]: unknown;
                 };
                 content: {

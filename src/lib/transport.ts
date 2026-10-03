@@ -30,6 +30,12 @@ export type DrainProgress = {
   readonly rowsFetched: number
   readonly pagesFetched: number
   readonly resumeCursor?: string
+  /**
+   * The flags that resume the drain when they are not `--cursor
+   * <resumeCursor> --all`: a comment-thread walk resumes with
+   * `--comment-id <id> --messages-cursor <cursor> --all`.
+   */
+  readonly resumeWith?: string
 }
 
 export type TransportState = {

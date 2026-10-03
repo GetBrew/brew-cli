@@ -52,7 +52,11 @@ tags:
   - name: Brand
     description: The single brand bound to the API key.
   - name: Chats
-    description: Read a brand-scoped digest of a Brew chat — referenced emails/automations/triggers + a trimmed transcript — so an external agent can resume the conversation.
+    description: List the brand's Brew chats, and read a brand-scoped digest of one — referenced emails/automations/triggers + a trimmed transcript — so an external agent can resume the conversation.
+  - name: Notifications
+    description: The brand's notification feed, as the app's bell shows it. Each row is gated by the credential's access to its feature, and a comment mention reaches only the person it names.
+  - name: Insights
+    description: "Brew Insights, read-only: the insight engine’s deterministic findings about the brand, ranked as the Insights page shows them, one finding in full with its frozen metrics and evidence, and the intelligence layer beside them (weekly pulse, latest report, open suggestions, agent memo)."
   - name: Integrations
     description: Brand-scoped catalog of connectable providers plus which ones are already connected. Connect itself stays in Settings (`/integrations/{provider}`).
   - name: API Keys
@@ -3599,6 +3603,1173 @@ components:
         - categoryLabel
         - emailId
       additionalProperties: false
+    ChatListRow:
+      type: object
+      properties:
+        chatId:
+          type: string
+          description: Resume the chat with the chat-context read.
+        title:
+          type:
+            - string
+            - "null"
+        firstUserPrompt:
+          type:
+            - string
+            - "null"
+          description: The opening prompt, cut at 80 characters.
+        lastAssistantPreview:
+          type:
+            - string
+            - "null"
+          description: Brew's latest reply, cut at 140 characters.
+        status:
+          type:
+            - string
+            - "null"
+          enum:
+            - idle
+            - streaming
+            - background_finalizing
+            - completed
+            - failed
+            - interrupted
+            - stopped
+            - persistence_failed
+            - null
+          description: "`streaming` or `background_finalizing` while a run is still going; null before the first run."
+        origin:
+          type:
+            - string
+            - "null"
+          enum:
+            - slack
+            - null
+          description: The chat app the conversation started in; null for the Brew web app.
+        updatedAt:
+          type: string
+          format: date-time
+        url:
+          type: string
+          description: Opens the chat in the Brew app.
+      required:
+        - chatId
+        - title
+        - firstUserPrompt
+        - lastAssistantPreview
+        - status
+        - origin
+        - updatedAt
+        - url
+      additionalProperties: false
+    InsightListRow:
+      type: object
+      properties:
+        insightId:
+          type: string
+        title:
+          type: string
+          description: What the finding is about.
+        description:
+          type: string
+          description: The detector’s deterministic headline; quote it, never restate its numbers.
+        severity:
+          type: string
+          enum:
+            - critical
+            - warning
+            - opportunity
+            - info
+        confidence:
+          type: string
+          enum:
+            - high
+            - medium
+            - low
+        kind:
+          type: string
+          enum:
+            - answer
+            - insight
+            - strategy
+          description: "`answer` reports what happened, `insight` a change that passed its statistical test, `strategy` a recommended next step."
+        category:
+          type: string
+        detectorId:
+          type: string
+        state:
+          type: string
+          enum:
+            - active
+            - snoozed
+            - cleared
+            - dismissed
+            - resolved
+            - stale
+          description: A snooze that has ended reads as `active`.
+        firstSeenAt:
+          type: string
+          format: date-time
+        lastSeenAt:
+          type: string
+          format: date-time
+        recurrenceCount:
+          type: integer
+          minimum: 0
+        action:
+          oneOf:
+            - type: object
+              properties:
+                kind:
+                  type: string
+                  enum:
+                    - navigate
+                label:
+                  type: string
+                url:
+                  type: string
+                  description: Absolute link to the page in Brew.
+              required:
+                - kind
+                - label
+                - url
+              additionalProperties: false
+            - type: object
+              properties:
+                kind:
+                  type: string
+                  enum:
+                    - assistant
+                label:
+                  type: string
+                intent:
+                  type: string
+                  enum:
+                    - review_domain_health
+                    - validate_contacts
+                    - create_campaign
+                    - repeat_campaign
+                    - review_recommendation
+                prompt:
+                  type: string
+                  description: The request the Insights page sends to Brew’s assistant.
+              required:
+                - kind
+                - label
+                - intent
+                - prompt
+              additionalProperties: false
+        url:
+          type: string
+          description: The finding’s page in Brew.
+      required:
+        - insightId
+        - title
+        - description
+        - severity
+        - confidence
+        - kind
+        - category
+        - detectorId
+        - state
+        - firstSeenAt
+        - lastSeenAt
+        - recurrenceCount
+        - url
+      additionalProperties: false
+    InsightList:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/InsightListRow"
+        pagination:
+          type: object
+          properties:
+            limit:
+              type: integer
+              minimum: 1
+              maximum: 100
+            cursor:
+              type:
+                - string
+                - "null"
+            hasMore:
+              type: boolean
+          required:
+            - limit
+            - cursor
+            - hasMore
+          additionalProperties: false
+        freshness:
+          type: object
+          properties:
+            dataAsOf:
+              type:
+                - string
+                - "null"
+              format: date-time
+              description: How current the data behind the findings is; null before the first successful run.
+            lastSuccessfulRunAt:
+              type:
+                - string
+                - "null"
+              format: date-time
+            latestAttempt:
+              type:
+                - object
+                - "null"
+              properties:
+                status:
+                  type: string
+                  enum:
+                    - succeeded
+                    - failed
+                    - running
+                    - unknown
+                at:
+                  type: string
+                  format: date-time
+              required:
+                - status
+                - at
+              additionalProperties: false
+              description: The newest engine run and its outcome; `failed` means the findings may be stale.
+          required:
+            - dataAsOf
+            - lastSuccessfulRunAt
+            - latestAttempt
+          additionalProperties: false
+        pulse:
+          type:
+            - object
+            - "null"
+          properties:
+            windowEnd:
+              type: string
+              format: date-time
+              description: "Exclusive end of the 7-day window: the start of the newest incomplete day."
+            delivered:
+              type: number
+            priorDelivered:
+              type: number
+            uniqueOpens:
+              type: number
+            priorUniqueOpens:
+              type: number
+            uniqueClicks:
+              type: number
+            priorUniqueClicks:
+              type: number
+            unsubscribed:
+              type: number
+            priorUnsubscribed:
+              type: number
+            openRatePct:
+              type:
+                - number
+                - "null"
+              description: Percent, one decimal; null when counts-only or not measured.
+            priorOpenRatePct:
+              type:
+                - number
+                - "null"
+            clickRatePct:
+              type:
+                - number
+                - "null"
+            priorClickRatePct:
+              type:
+                - number
+                - "null"
+            openDirection:
+              type: string
+              enum:
+                - up
+                - down
+                - steady
+              description: "`up` or `down` only when the change is statistically real."
+            clickDirection:
+              type: string
+              enum:
+                - up
+                - down
+                - steady
+            countsOnly:
+              type: boolean
+              description: Too few deliveries for rates; read the counts.
+            measured:
+              type: boolean
+              description: "False when engagement tracking is off: opens are unknown."
+          required:
+            - windowEnd
+            - delivered
+            - priorDelivered
+            - uniqueOpens
+            - priorUniqueOpens
+            - uniqueClicks
+            - priorUniqueClicks
+            - unsubscribed
+            - priorUnsubscribed
+            - openRatePct
+            - priorOpenRatePct
+            - clickRatePct
+            - priorClickRatePct
+            - openDirection
+            - clickDirection
+            - countsOnly
+            - measured
+          additionalProperties: false
+          description: "With `include` pulse: the weekly pulse, or null before the first run."
+        report:
+          type:
+            - object
+            - "null"
+          properties:
+            reportId:
+              type: string
+            chatId:
+              type: string
+              description: The Brew chat whose analysis run wrote the report.
+            runTrigger:
+              type: string
+              enum:
+                - manual
+                - scheduled
+            createdAt:
+              type: string
+              format: date-time
+            insights:
+              type: array
+              items:
+                type: object
+                properties:
+                  key:
+                    type: string
+                  kind:
+                    type: string
+                    enum:
+                      - performance
+                      - audience
+                      - trend
+                      - risk
+                      - content
+                      - setup
+                  title:
+                    type: string
+                  body:
+                    type: string
+                  impact:
+                    type:
+                      - string
+                      - "null"
+                  suggestionId:
+                    type:
+                      - string
+                      - "null"
+                    description: The suggestion this insight proposes, if any.
+                required:
+                  - key
+                  - kind
+                  - title
+                  - body
+                  - impact
+                  - suggestionId
+                additionalProperties: false
+          required:
+            - reportId
+            - chatId
+            - runTrigger
+            - createdAt
+            - insights
+          additionalProperties: false
+          description: "With `include` report: the latest intelligence report, or null when none was published."
+        suggestions:
+          type: array
+          items:
+            type: object
+            properties:
+              suggestionId:
+                type: string
+              title:
+                type: string
+              prompt:
+                type: string
+                description: Exactly what launching the suggestion asks Brew to do.
+              kind:
+                type: string
+                enum:
+                  - audience
+                  - campaign
+                  - automation
+                  - deliverability
+                  - schedule
+              status:
+                type: string
+                enum:
+                  - proposed
+                  - launched
+                  - dismissed
+                  - concluded
+              rationale:
+                type:
+                  - string
+                  - "null"
+              sourceInsightKeys:
+                type: array
+                items:
+                  type: string
+                description: The report insight keys that motivated it.
+              executionChatId:
+                type:
+                  - string
+                  - "null"
+                description: The chat a launched suggestion runs in.
+              createdAt:
+                type: string
+                format: date-time
+              updatedAt:
+                type: string
+                format: date-time
+            required:
+              - suggestionId
+              - title
+              - prompt
+              - kind
+              - status
+              - rationale
+              - sourceInsightKeys
+              - executionChatId
+              - createdAt
+              - updatedAt
+            additionalProperties: false
+          maxItems: 25
+          description: "With `include` suggestions: proposed and launched suggestions, most recently updated first."
+        memo:
+          type:
+            - object
+            - "null"
+          properties:
+            markdown:
+              type: string
+              description: Learnings, Watchlist, Experiments and History sections; at most 8192 bytes.
+            version:
+              type: integer
+            updatedAt:
+              type: string
+              format: date-time
+            updatedByChatId:
+              type:
+                - string
+                - "null"
+          required:
+            - markdown
+            - version
+            - updatedAt
+            - updatedByChatId
+          additionalProperties: false
+          description: "With `include` memo: the memo, or null before the first run."
+      required:
+        - data
+        - pagination
+        - freshness
+      additionalProperties: false
+    Insight:
+      type: object
+      properties:
+        insightId:
+          type: string
+        title:
+          type: string
+          description: What the finding is about.
+        description:
+          type: string
+          description: The detector’s deterministic headline; quote it, never restate its numbers.
+        severity:
+          type: string
+          enum:
+            - critical
+            - warning
+            - opportunity
+            - info
+        confidence:
+          type: string
+          enum:
+            - high
+            - medium
+            - low
+        kind:
+          type: string
+          enum:
+            - answer
+            - insight
+            - strategy
+          description: "`answer` reports what happened, `insight` a change that passed its statistical test, `strategy` a recommended next step."
+        category:
+          type: string
+        detectorId:
+          type: string
+        state:
+          type: string
+          enum:
+            - active
+            - snoozed
+            - cleared
+            - dismissed
+            - resolved
+            - stale
+          description: A snooze that has ended reads as `active`.
+        firstSeenAt:
+          type: string
+          format: date-time
+        lastSeenAt:
+          type: string
+          format: date-time
+        recurrenceCount:
+          type: integer
+          minimum: 0
+        action:
+          oneOf:
+            - type: object
+              properties:
+                kind:
+                  type: string
+                  enum:
+                    - navigate
+                label:
+                  type: string
+                url:
+                  type: string
+                  description: Absolute link to the page in Brew.
+              required:
+                - kind
+                - label
+                - url
+              additionalProperties: false
+            - type: object
+              properties:
+                kind:
+                  type: string
+                  enum:
+                    - assistant
+                label:
+                  type: string
+                intent:
+                  type: string
+                  enum:
+                    - review_domain_health
+                    - validate_contacts
+                    - create_campaign
+                    - repeat_campaign
+                    - review_recommendation
+                prompt:
+                  type: string
+                  description: The request the Insights page sends to Brew’s assistant.
+              required:
+                - kind
+                - label
+                - intent
+                - prompt
+              additionalProperties: false
+        url:
+          type: string
+          description: The finding’s page in Brew.
+        rationale:
+          type:
+            - string
+            - "null"
+        closedReason:
+          type:
+            - string
+            - "null"
+        closedAt:
+          type:
+            - string
+            - "null"
+          format: date-time
+        lastActedAt:
+          type:
+            - string
+            - "null"
+          format: date-time
+        churnCount:
+          type: integer
+          minimum: 0
+          description: How often the finding has closed and reopened.
+        metrics:
+          type: object
+          additionalProperties:
+            oneOf:
+              - type: object
+                properties:
+                  kind:
+                    type: string
+                    enum:
+                      - count
+                  value:
+                    type: number
+                  noun:
+                    type: string
+                required:
+                  - kind
+                  - value
+                  - noun
+                additionalProperties: false
+              - type: object
+                properties:
+                  kind:
+                    type: string
+                    enum:
+                      - rate
+                  value:
+                    type:
+                      - number
+                      - "null"
+                  numerator:
+                    type: number
+                  denominator:
+                    type: number
+                  basis:
+                    type: string
+                    enum:
+                      - delivered
+                      - sent
+                      - uniqueOpened
+                      - recipients
+                  anomalous:
+                    type: boolean
+                required:
+                  - kind
+                  - value
+                  - numerator
+                  - denominator
+                  - basis
+                additionalProperties: false
+              - type: object
+                properties:
+                  kind:
+                    type: string
+                    enum:
+                      - share
+                  value:
+                    type:
+                      - number
+                      - "null"
+                  part:
+                    type: number
+                  whole:
+                    type: number
+                  wholeNoun:
+                    type: string
+                required:
+                  - kind
+                  - value
+                  - part
+                  - whole
+                  - wholeNoun
+                additionalProperties: false
+              - type: object
+                properties:
+                  kind:
+                    type: string
+                    enum:
+                      - duration
+                  ms:
+                    type: number
+                  bucketIndex:
+                    type: number
+                required:
+                  - kind
+                  - ms
+                additionalProperties: false
+              - type: object
+                properties:
+                  kind:
+                    type: string
+                    enum:
+                      - delta
+                  value:
+                    type: number
+                  unit:
+                    type: string
+                    enum:
+                      - pp
+                      - pct
+                      - abs
+                  from:
+                    type: number
+                  to:
+                    type: number
+                required:
+                  - kind
+                  - value
+                  - unit
+                  - from
+                  - to
+                additionalProperties: false
+              - type: object
+                properties:
+                  kind:
+                    type: string
+                    enum:
+                      - hourOfDay
+                  hour:
+                    type: number
+                  slot:
+                    type: number
+                  basis:
+                    type: string
+                    enum:
+                      - utc
+                      - brand_zone
+                  timeZone:
+                    type: string
+                required:
+                  - kind
+                  - hour
+                  - basis
+                additionalProperties: false
+              - type: object
+                properties:
+                  kind:
+                    type: string
+                    enum:
+                      - multiple
+                  value:
+                    type: number
+                  referenceLabel:
+                    type: string
+                required:
+                  - kind
+                  - value
+                  - referenceLabel
+                additionalProperties: false
+              - type: object
+                properties:
+                  kind:
+                    type: string
+                    enum:
+                      - rank
+                  position:
+                    type: number
+                  outOf:
+                    type: number
+                required:
+                  - kind
+                  - position
+                  - outOf
+                additionalProperties: false
+              - type: object
+                properties:
+                  kind:
+                    type: string
+                    enum:
+                      - interval
+                  lo:
+                    type: number
+                  hi:
+                    type: number
+                  confidenceLevel:
+                    anyOf:
+                      - type: number
+                        enum:
+                          - 0.9
+                      - type: number
+                        enum:
+                          - 0.95
+                  as:
+                    type: string
+                    enum:
+                      - rate
+                      - delta
+                      - count
+                required:
+                  - kind
+                  - lo
+                  - hi
+                  - confidenceLevel
+                  - as
+                additionalProperties: false
+              - type: object
+                properties:
+                  kind:
+                    type: string
+                    enum:
+                      - label
+                  text:
+                    type: string
+                required:
+                  - kind
+                  - text
+                additionalProperties: false
+          description: "Frozen when the finding was computed: the only numbers to quote about it."
+        evidence:
+          type: array
+          items:
+            type: object
+            properties:
+              label:
+                type: string
+              url:
+                type: string
+            required:
+              - label
+            additionalProperties: false
+        subject:
+          type: object
+          properties:
+            kind:
+              type: string
+            id:
+              type: string
+            label:
+              type: string
+          required:
+            - kind
+            - id
+            - label
+          additionalProperties: false
+          description: "What the finding is about: a send, an automation, a domain."
+        method:
+          type:
+            - object
+            - "null"
+          properties:
+            what:
+              type: string
+            how:
+              type: string
+            comparedAgainst:
+              type: string
+            resolvesWhen:
+              type: string
+            caveat:
+              type: string
+          required:
+            - what
+            - how
+            - comparedAgainst
+            - resolvesWhen
+          additionalProperties: false
+          description: How the detector works; null when none is recorded.
+        generatedBy:
+          type:
+            - object
+            - "null"
+          properties:
+            trigger:
+              type: string
+              enum:
+                - cron_daily
+                - send_settled
+                - lifecycle_event
+                - manual_refresh
+            startedAt:
+              type: string
+              format: date-time
+            completedAt:
+              type:
+                - string
+                - "null"
+              format: date-time
+            blindSpots:
+              type: array
+              items:
+                type: string
+              description: What that run could not see.
+          required:
+            - trigger
+            - startedAt
+            - completedAt
+            - blindSpots
+          additionalProperties: false
+          description: The engine run that last produced the finding.
+        freshness:
+          type: object
+          properties:
+            dataAsOf:
+              type:
+                - string
+                - "null"
+              format: date-time
+              description: How current the data behind the findings is; null before the first successful run.
+            lastSuccessfulRunAt:
+              type:
+                - string
+                - "null"
+              format: date-time
+            latestAttempt:
+              type:
+                - object
+                - "null"
+              properties:
+                status:
+                  type: string
+                  enum:
+                    - succeeded
+                    - failed
+                    - running
+                    - unknown
+                at:
+                  type: string
+                  format: date-time
+              required:
+                - status
+                - at
+              additionalProperties: false
+              description: The newest engine run and its outcome; `failed` means the findings may be stale.
+          required:
+            - dataAsOf
+            - lastSuccessfulRunAt
+            - latestAttempt
+          additionalProperties: false
+      required:
+        - insightId
+        - title
+        - description
+        - severity
+        - confidence
+        - kind
+        - category
+        - detectorId
+        - state
+        - firstSeenAt
+        - lastSeenAt
+        - recurrenceCount
+        - url
+        - rationale
+        - closedReason
+        - closedAt
+        - lastActedAt
+        - churnCount
+        - metrics
+        - evidence
+        - subject
+        - method
+        - generatedBy
+        - freshness
+      additionalProperties: false
+    Notification:
+      type: object
+      properties:
+        notificationId:
+          type: string
+          pattern: ^ntf_[0-9a-f]{20}$
+          description: "`ntf_` + 20 hex characters: a one-way hash, stable for the row’s life."
+        type:
+          type: string
+          enum:
+            - chat_stream
+            - import_job
+            - brand_image_import
+            - validation_job
+            - email_sent
+            - email_scheduled
+            - preview_email
+            - brand_extracted
+            - domain_status
+            - domain_score_run
+            - api_key_created
+            - email_send_failed
+            - gradual_send_paused
+            - gradual_send_completed
+            - send_limit_reached
+            - automation_pause_window_closed
+            - send_review_rejected
+            - comment_mention
+            - comment_reply
+        status:
+          type: string
+          enum:
+            - uploading
+            - preparing
+            - processing
+            - finalizing
+            - streaming
+            - background_finalizing
+            - completed
+            - partial
+            - failed
+            - interrupted
+            - stopped
+            - persistence_failed
+        title:
+          type: string
+        subtitle:
+          type: string
+        progressPercent:
+          type: number
+          description: 0-100 while work is running, where it reports progress.
+        url:
+          type: string
+          description: Where the bell opens it in the Brew app.
+        chatId:
+          type: string
+        emailId:
+          type: string
+        domainId:
+          type: string
+        domainName:
+          type: string
+        isPersonal:
+          type: boolean
+          description: "Addressed to the caller alone: a comment mention or reply, shown only on a personal connection."
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+      required:
+        - notificationId
+        - type
+        - status
+        - title
+        - subtitle
+        - isPersonal
+        - createdAt
+        - updatedAt
+      additionalProperties: false
+    EmailCommentThread:
+      type: object
+      properties:
+        commentId:
+          type: string
+          description: "`cmt_…`; the app opens it with `?commentId=`."
+        emailId:
+          type: string
+        status:
+          type: string
+          enum:
+            - open
+        target:
+          oneOf:
+            - type: object
+              properties:
+                kind:
+                  type: string
+                  enum:
+                    - email
+              required:
+                - kind
+              additionalProperties: false
+            - type: object
+              properties:
+                kind:
+                  type: string
+                  enum:
+                    - element
+                elementId:
+                  type: string
+                  description: The element the thread is pinned to (`elm_…`).
+                nodeType:
+                  type: string
+                  description: "What the element is: `button`, `image`, `heading`, …"
+              required:
+                - kind
+              additionalProperties: false
+          description: Whether the thread is on the whole design or one element of it.
+        participants:
+          type: array
+          items:
+            type: object
+            properties:
+              userId:
+                type: string
+              name:
+                type: string
+            required:
+              - userId
+              - name
+            additionalProperties: false
+          description: "Who started, replied to, or was mentioned in the thread: the 12 most recent."
+        participantCount:
+          type: integer
+          minimum: 0
+          description: How many people are in the thread; `participants` lists at most 12.
+        messageCount:
+          type: integer
+          minimum: 0
+        lastMessageAt:
+          type: string
+          format: date-time
+        lastMessagePreview:
+          type: string
+          description: The latest message, shortened to 140 characters; mentions read as in `body`.
+        url:
+          type: string
+          description: Opens the thread on the design in the Brew app.
+        messages:
+          type: array
+          items:
+            type: object
+            properties:
+              messageId:
+                type: string
+                description: "`cmm_…`"
+              author:
+                type: object
+                properties:
+                  userId:
+                    type: string
+                  name:
+                    type: string
+                required:
+                  - userId
+                  - name
+                additionalProperties: false
+              body:
+                type: string
+                description: The message text. Each mention reads `@` + the name `mentions` gives; other `@` text is as typed.
+              mentions:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    userId:
+                      type: string
+                    name:
+                      type: string
+                  required:
+                    - userId
+                    - name
+                  additionalProperties: false
+              createdAt:
+                type: string
+                format: date-time
+              updatedAt:
+                type: string
+                format: date-time
+            required:
+              - messageId
+              - author
+              - body
+              - mentions
+              - createdAt
+              - updatedAt
+            additionalProperties: false
+          description: "Only with messages: the thread's newest messages (or, after a `messagesCursor`, the next older ones) that fit the page's size budget, oldest first."
+        messagesCursor:
+          type:
+            - string
+            - "null"
+          description: "Only with messages: pass it back with this thread's `commentId` to read its older messages; null when none remain."
+      required:
+        - commentId
+        - emailId
+        - status
+        - target
+        - participants
+        - participantCount
+        - messageCount
+        - lastMessageAt
+        - lastMessagePreview
+        - url
+      additionalProperties: false
     EmailsListResponse:
       type: object
       properties:
@@ -3783,6 +4954,7 @@ components:
         - BRAND_NOT_READY
         - BRAND_SCOPE_MISMATCH
         - CHAT_NOT_FOUND
+        - COMMENT_NOT_FOUND
         - CONSENT_REQUIRED
         - CONTACT_NOT_FOUND
         - CONTENT_OPERATION_FAILED
@@ -3822,6 +4994,7 @@ components:
         - FLOW_NOT_FOUND
         - IDEMPOTENCY_CONFLICT
         - IDEMPOTENCY_IN_PROGRESS
+        - INSIGHT_NOT_FOUND
         - INSUFFICIENT_CREDITS
         - INSUFFICIENT_PERMISSIONS
         - INSUFFICIENT_ROLE
@@ -11761,10 +12934,310 @@ components:
         - data
         - pagination
       additionalProperties: false
+    ContactWithOpenProfile:
+      type: object
+      properties:
+        email:
+          type: string
+        firstName:
+          type: string
+        lastName:
+          type: string
+        subscribed:
+          type: boolean
+          default: true
+        consent:
+          type: object
+          properties:
+            source:
+              type: string
+              enum:
+                - api
+                - form
+                - import
+                - app
+              description: "Who captured it: `api` (an API caller asserted it), `form` (a signup form), `import` (a bulk import), `app` (the in-app CSV wizard checkbox)."
+            capturedAt:
+              type: string
+              format: date-time
+              description: When it was captured.
+            policyVersion:
+              type: string
+              description: The policy or terms version in force when it was captured.
+            evidence:
+              type: string
+              description: "Free-text evidence: a form URL, a ticket, a checkbox label."
+          required:
+            - source
+            - capturedAt
+          additionalProperties: false
+        validationStatus:
+          type: string
+          enum:
+            - valid
+            - risky
+            - invalid
+          description: "The latest verdict. `valid` only ever comes from a deliverability check (`validate: true` on ingest, or POST /v1/contacts/validate), which also sets `lastValidatedAt`. Without a check the free format check on ingest stores `risky` (disposable or role address) or `invalid`, and leaves the field unset otherwise: not validated."
+        suppressed:
+          type: boolean
+          default: false
+        suppressedReason:
+          type:
+            - string
+            - "null"
+        unsubscribedDomains:
+          type: array
+          items:
+            type: string
+          default: []
+        lastValidatedAt:
+          type: string
+          format: date-time
+        validationDetails:
+          type: object
+          properties:
+            provider:
+              type: string
+              enum:
+                - brew
+            reason:
+              type: string
+            didYouMean:
+              type: string
+            risk:
+              type: string
+            isDisposable:
+              type: boolean
+            isRole:
+              type: boolean
+          required:
+            - provider
+          additionalProperties: false
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        importId:
+          type:
+            - string
+            - "null"
+        csvFileName:
+          type:
+            - string
+            - "null"
+        customFields:
+          type: object
+          additionalProperties: {}
+          default: {}
+        openProfile:
+          type:
+            - object
+            - "null"
+          properties:
+            totalOpens:
+              type: integer
+              minimum: 0
+            lastOpenedAt:
+              type: string
+              format: date-time
+            bestOpenMinuteUtc:
+              type: integer
+              minimum: 0
+              maximum: 1439
+            bestSendMinuteUtc:
+              type: integer
+              minimum: 0
+              maximum: 1439
+            confidence:
+              type: number
+              minimum: 0
+              maximum: 1
+            histogram:
+              type: array
+              items:
+                type: integer
+                minimum: 0
+          required:
+            - totalOpens
+            - lastOpenedAt
+            - histogram
+          additionalProperties: false
+          description: "With `include` openProfile: the contact's smart-send open-time profile (48 UTC half-hour open counts and the best send time derived from them), or null when they have no opens folded yet. Not bot detection: machine opens cannot be told apart here."
+      required:
+        - email
+        - createdAt
+        - updatedAt
+      additionalProperties: false
     ContactsSearchSuccessResponse:
       anyOf:
         - $ref: "#/components/schemas/ContactsListResponse"
+        - $ref: "#/components/schemas/ContactsWithOpenProfileListResponse"
         - $ref: "#/components/schemas/ContactsCountResponse"
+    ContactsWithOpenProfileListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              email:
+                type: string
+              firstName:
+                type: string
+              lastName:
+                type: string
+              subscribed:
+                type: boolean
+                default: true
+              consent:
+                type: object
+                properties:
+                  source:
+                    type: string
+                    enum:
+                      - api
+                      - form
+                      - import
+                      - app
+                    description: "Who captured it: `api` (an API caller asserted it), `form` (a signup form), `import` (a bulk import), `app` (the in-app CSV wizard checkbox)."
+                  capturedAt:
+                    type: string
+                    format: date-time
+                    description: When it was captured.
+                  policyVersion:
+                    type: string
+                    description: The policy or terms version in force when it was captured.
+                  evidence:
+                    type: string
+                    description: "Free-text evidence: a form URL, a ticket, a checkbox label."
+                required:
+                  - source
+                  - capturedAt
+                additionalProperties: false
+              validationStatus:
+                type: string
+                enum:
+                  - valid
+                  - risky
+                  - invalid
+                description: "The latest verdict. `valid` only ever comes from a deliverability check (`validate: true` on ingest, or POST /v1/contacts/validate), which also sets `lastValidatedAt`. Without a check the free format check on ingest stores `risky` (disposable or role address) or `invalid`, and leaves the field unset otherwise: not validated."
+              suppressed:
+                type: boolean
+                default: false
+              suppressedReason:
+                type:
+                  - string
+                  - "null"
+              unsubscribedDomains:
+                type: array
+                items:
+                  type: string
+                default: []
+              lastValidatedAt:
+                type: string
+                format: date-time
+              validationDetails:
+                type: object
+                properties:
+                  provider:
+                    type: string
+                    enum:
+                      - brew
+                  reason:
+                    type: string
+                  didYouMean:
+                    type: string
+                  risk:
+                    type: string
+                  isDisposable:
+                    type: boolean
+                  isRole:
+                    type: boolean
+                required:
+                  - provider
+                additionalProperties: false
+              createdAt:
+                type: string
+                format: date-time
+              updatedAt:
+                type: string
+                format: date-time
+              importId:
+                type:
+                  - string
+                  - "null"
+              csvFileName:
+                type:
+                  - string
+                  - "null"
+              customFields:
+                type: object
+                additionalProperties: {}
+                default: {}
+              openProfile:
+                type:
+                  - object
+                  - "null"
+                properties:
+                  totalOpens:
+                    type: integer
+                    minimum: 0
+                  lastOpenedAt:
+                    type: string
+                    format: date-time
+                  bestOpenMinuteUtc:
+                    type: integer
+                    minimum: 0
+                    maximum: 1439
+                  bestSendMinuteUtc:
+                    type: integer
+                    minimum: 0
+                    maximum: 1439
+                  confidence:
+                    type: number
+                    minimum: 0
+                    maximum: 1
+                  histogram:
+                    type: array
+                    items:
+                      type: integer
+                      minimum: 0
+                required:
+                  - totalOpens
+                  - lastOpenedAt
+                  - histogram
+                additionalProperties: false
+                description: "With `include` openProfile: the contact's smart-send open-time profile (48 UTC half-hour open counts and the best send time derived from them), or null when they have no opens folded yet. Not bot detection: machine opens cannot be told apart here."
+            required:
+              - email
+              - createdAt
+              - updatedAt
+            additionalProperties: false
+        pagination:
+          type: object
+          properties:
+            limit:
+              type: integer
+              minimum: 1
+              maximum: 100
+            cursor:
+              type:
+                - string
+                - "null"
+            hasMore:
+              type: boolean
+          required:
+            - limit
+            - cursor
+            - hasMore
+          additionalProperties: false
+      required:
+        - data
+        - pagination
+      additionalProperties: false
     ContactsCountResponse:
       type: object
       properties:
@@ -11880,6 +13353,15 @@ components:
         cursor:
           type: string
           minLength: 1
+        include:
+          type: array
+          items:
+            type: string
+            enum:
+              - openProfile
+          minItems: 1
+          maxItems: 1
+          description: "`openProfile` attaches each returned contact's smart-send open-time profile (needs the `emails` permission as well). A page then holds at most 10 contacts; not with `count: true`."
       additionalProperties: false
     ContactsValidateResponse:
       type: object
@@ -14144,6 +15626,261 @@ components:
         checkedAt:
           type: string
           format: date-time
+        scoreHistory:
+          type: array
+          items:
+            type: object
+            properties:
+              score:
+                type: number
+                minimum: 0
+                maximum: 100
+              grade:
+                type: string
+                enum:
+                  - excellent
+                  - good
+                  - fair
+                  - poor
+                  - critical
+              confidence:
+                type: string
+                enum:
+                  - high
+                  - medium
+                  - low
+              trigger:
+                type: string
+                enum:
+                  - placement_test
+                  - domain_verified
+                  - domain_score_run
+                  - health_read
+              computedAt:
+                type: string
+                format: date-time
+              components:
+                type: object
+                properties:
+                  placement:
+                    type: object
+                    properties:
+                      score:
+                        type: number
+                        minimum: 0
+                        maximum: 100
+                      weight:
+                        type: number
+                        minimum: 0
+                        maximum: 1
+                    required:
+                      - score
+                      - weight
+                    additionalProperties: false
+                  authentication:
+                    type: object
+                    properties:
+                      score:
+                        type: number
+                        minimum: 0
+                        maximum: 100
+                      weight:
+                        type: number
+                        minimum: 0
+                        maximum: 1
+                    required:
+                      - score
+                      - weight
+                    additionalProperties: false
+                  reputation:
+                    type: object
+                    properties:
+                      score:
+                        type: number
+                        minimum: 0
+                        maximum: 100
+                      weight:
+                        type: number
+                        minimum: 0
+                        maximum: 1
+                    required:
+                      - score
+                      - weight
+                    additionalProperties: false
+                  content:
+                    type: object
+                    properties:
+                      score:
+                        type: number
+                        minimum: 0
+                        maximum: 100
+                      weight:
+                        type: number
+                        minimum: 0
+                        maximum: 1
+                    required:
+                      - score
+                      - weight
+                    additionalProperties: false
+                  posture:
+                    type: object
+                    properties:
+                      score:
+                        type: number
+                        minimum: 0
+                        maximum: 100
+                      weight:
+                        type: number
+                        minimum: 0
+                        maximum: 1
+                    required:
+                      - score
+                      - weight
+                    additionalProperties: false
+                required:
+                  - placement
+                  - authentication
+                  - reputation
+                  - content
+                  - posture
+                additionalProperties: false
+            required:
+              - score
+              - grade
+              - confidence
+              - trigger
+              - computedAt
+              - components
+            additionalProperties: false
+          maxItems: 50
+          description: "With `include=scoreHistory`: up to 50 saved score snapshots, newest first. Snapshots are saved when a placement test completes, the domain is verified, or a score run finishes. Only snapshots saved under this brand count, searched among the domain's newest 500, so a domain that moved between brands can show fewer."
+        scoreRuns:
+          type: array
+          items:
+            type: object
+            properties:
+              runId:
+                type: string
+              trigger:
+                type: string
+                enum:
+                  - domain_verified
+                  - manual
+              status:
+                type: string
+                enum:
+                  - queued
+                  - running
+                  - completed
+                  - partially_completed
+                  - failed
+              phase:
+                type: string
+                enum:
+                  - preparing
+                  - collecting
+              scoreAfter:
+                type:
+                  - object
+                  - "null"
+                properties:
+                  score:
+                    type: number
+                    minimum: 0
+                    maximum: 100
+                  grade:
+                    type: string
+                    enum:
+                      - excellent
+                      - good
+                      - fair
+                      - poor
+                      - critical
+                required:
+                  - score
+                  - grade
+                additionalProperties: false
+              creditsCharged:
+                type: number
+                minimum: 0
+              variants:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    variant:
+                      type: string
+                      enum:
+                        - plain_text
+                        - text_forward
+                        - balanced
+                        - image_heavy
+                        - promotional
+                    status:
+                      type: string
+                      enum:
+                        - queued
+                        - running
+                        - completed
+                        - partially_completed
+                        - failed
+                    phase:
+                      type: string
+                      enum:
+                        - sending
+                        - collecting
+                    testId:
+                      type: string
+                    emailId:
+                      type: string
+                    overall:
+                      type: object
+                      properties:
+                        total:
+                          type: integer
+                          minimum: 0
+                        inbox:
+                          type: integer
+                          minimum: 0
+                        spam:
+                          type: integer
+                          minimum: 0
+                        missing:
+                          type: integer
+                          minimum: 0
+                        pending:
+                          type: integer
+                          minimum: 0
+                      required:
+                        - total
+                        - inbox
+                        - spam
+                        - missing
+                        - pending
+                      additionalProperties: false
+                  required:
+                    - variant
+                  additionalProperties: false
+              errorMessage:
+                type: string
+              createdAt:
+                type: string
+                format: date-time
+              updatedAt:
+                type: string
+                format: date-time
+            required:
+              - runId
+              - trigger
+              - status
+              - scoreAfter
+              - creditsCharged
+              - variants
+              - createdAt
+              - updatedAt
+            additionalProperties: false
+          maxItems: 5
+          description: "With `include=scoreRuns`: the last 5 automated domain score runs (the 5-variant seed check), newest first."
       required:
         - domainId
         - name
@@ -15589,6 +17326,366 @@ components:
     HelpResponse:
       type: object
       additionalProperties: {}
+    ChatList:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              chatId:
+                type: string
+                description: Resume the chat with the chat-context read.
+              title:
+                type:
+                  - string
+                  - "null"
+              firstUserPrompt:
+                type:
+                  - string
+                  - "null"
+                description: The opening prompt, cut at 80 characters.
+              lastAssistantPreview:
+                type:
+                  - string
+                  - "null"
+                description: Brew's latest reply, cut at 140 characters.
+              status:
+                type:
+                  - string
+                  - "null"
+                enum:
+                  - idle
+                  - streaming
+                  - background_finalizing
+                  - completed
+                  - failed
+                  - interrupted
+                  - stopped
+                  - persistence_failed
+                  - null
+                description: "`streaming` or `background_finalizing` while a run is still going; null before the first run."
+              origin:
+                type:
+                  - string
+                  - "null"
+                enum:
+                  - slack
+                  - null
+                description: The chat app the conversation started in; null for the Brew web app.
+              updatedAt:
+                type: string
+                format: date-time
+              url:
+                type: string
+                description: Opens the chat in the Brew app.
+            required:
+              - chatId
+              - title
+              - firstUserPrompt
+              - lastAssistantPreview
+              - status
+              - origin
+              - updatedAt
+              - url
+            additionalProperties: false
+        pagination:
+          type: object
+          properties:
+            limit:
+              type: integer
+              minimum: 1
+              maximum: 100
+            cursor:
+              type:
+                - string
+                - "null"
+            hasMore:
+              type: boolean
+          required:
+            - limit
+            - cursor
+            - hasMore
+          additionalProperties: false
+      required:
+        - data
+        - pagination
+      additionalProperties: false
+    NotificationList:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              notificationId:
+                type: string
+                pattern: ^ntf_[0-9a-f]{20}$
+                description: "`ntf_` + 20 hex characters: a one-way hash, stable for the row’s life."
+              type:
+                type: string
+                enum:
+                  - chat_stream
+                  - import_job
+                  - brand_image_import
+                  - validation_job
+                  - email_sent
+                  - email_scheduled
+                  - preview_email
+                  - brand_extracted
+                  - domain_status
+                  - domain_score_run
+                  - api_key_created
+                  - email_send_failed
+                  - gradual_send_paused
+                  - gradual_send_completed
+                  - send_limit_reached
+                  - automation_pause_window_closed
+                  - send_review_rejected
+                  - comment_mention
+                  - comment_reply
+              status:
+                type: string
+                enum:
+                  - uploading
+                  - preparing
+                  - processing
+                  - finalizing
+                  - streaming
+                  - background_finalizing
+                  - completed
+                  - partial
+                  - failed
+                  - interrupted
+                  - stopped
+                  - persistence_failed
+              title:
+                type: string
+              subtitle:
+                type: string
+              progressPercent:
+                type: number
+                description: 0-100 while work is running, where it reports progress.
+              url:
+                type: string
+                description: Where the bell opens it in the Brew app.
+              chatId:
+                type: string
+              emailId:
+                type: string
+              domainId:
+                type: string
+              domainName:
+                type: string
+              isPersonal:
+                type: boolean
+                description: "Addressed to the caller alone: a comment mention or reply, shown only on a personal connection."
+              createdAt:
+                type: string
+                format: date-time
+              updatedAt:
+                type: string
+                format: date-time
+              completedAt:
+                type: string
+                format: date-time
+            required:
+              - notificationId
+              - type
+              - status
+              - title
+              - subtitle
+              - isPersonal
+              - createdAt
+              - updatedAt
+            additionalProperties: false
+        pagination:
+          type: object
+          properties:
+            limit:
+              type: integer
+              minimum: 1
+              maximum: 100
+            cursor:
+              type:
+                - string
+                - "null"
+            hasMore:
+              type: boolean
+          required:
+            - limit
+            - cursor
+            - hasMore
+          additionalProperties: false
+      required:
+        - data
+        - pagination
+      additionalProperties: false
+    EmailCommentThreadList:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              commentId:
+                type: string
+                description: "`cmt_…`; the app opens it with `?commentId=`."
+              emailId:
+                type: string
+              status:
+                type: string
+                enum:
+                  - open
+              target:
+                oneOf:
+                  - type: object
+                    properties:
+                      kind:
+                        type: string
+                        enum:
+                          - email
+                    required:
+                      - kind
+                    additionalProperties: false
+                  - type: object
+                    properties:
+                      kind:
+                        type: string
+                        enum:
+                          - element
+                      elementId:
+                        type: string
+                        description: The element the thread is pinned to (`elm_…`).
+                      nodeType:
+                        type: string
+                        description: "What the element is: `button`, `image`, `heading`, …"
+                    required:
+                      - kind
+                    additionalProperties: false
+                description: Whether the thread is on the whole design or one element of it.
+              participants:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    userId:
+                      type: string
+                    name:
+                      type: string
+                  required:
+                    - userId
+                    - name
+                  additionalProperties: false
+                description: "Who started, replied to, or was mentioned in the thread: the 12 most recent."
+              participantCount:
+                type: integer
+                minimum: 0
+                description: How many people are in the thread; `participants` lists at most 12.
+              messageCount:
+                type: integer
+                minimum: 0
+              lastMessageAt:
+                type: string
+                format: date-time
+              lastMessagePreview:
+                type: string
+                description: The latest message, shortened to 140 characters; mentions read as in `body`.
+              url:
+                type: string
+                description: Opens the thread on the design in the Brew app.
+              messages:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    messageId:
+                      type: string
+                      description: "`cmm_…`"
+                    author:
+                      type: object
+                      properties:
+                        userId:
+                          type: string
+                        name:
+                          type: string
+                      required:
+                        - userId
+                        - name
+                      additionalProperties: false
+                    body:
+                      type: string
+                      description: The message text. Each mention reads `@` + the name `mentions` gives; other `@` text is as typed.
+                    mentions:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          userId:
+                            type: string
+                          name:
+                            type: string
+                        required:
+                          - userId
+                          - name
+                        additionalProperties: false
+                    createdAt:
+                      type: string
+                      format: date-time
+                    updatedAt:
+                      type: string
+                      format: date-time
+                  required:
+                    - messageId
+                    - author
+                    - body
+                    - mentions
+                    - createdAt
+                    - updatedAt
+                  additionalProperties: false
+                description: "Only with messages: the thread's newest messages (or, after a `messagesCursor`, the next older ones) that fit the page's size budget, oldest first."
+              messagesCursor:
+                type:
+                  - string
+                  - "null"
+                description: "Only with messages: pass it back with this thread's `commentId` to read its older messages; null when none remain."
+            required:
+              - commentId
+              - emailId
+              - status
+              - target
+              - participants
+              - participantCount
+              - messageCount
+              - lastMessageAt
+              - lastMessagePreview
+              - url
+            additionalProperties: false
+        pagination:
+          type: object
+          properties:
+            limit:
+              type: integer
+              minimum: 1
+              maximum: 100
+            cursor:
+              type:
+                - string
+                - "null"
+            hasMore:
+              type: boolean
+          required:
+            - limit
+            - cursor
+            - hasMore
+          additionalProperties: false
+      required:
+        - data
+        - pagination
+      additionalProperties: false
   parameters: {}
 paths:
   /v1/emails:
@@ -42544,11 +44641,11 @@ paths:
 
         **Use when** checking whether an address exists, reading its consent record, or inspecting its custom fields before a send.
 
-        **Input** `email` in the path (URL-encoded; matched case-insensitively).
+        **Input** `email` in the path (URL-encoded; matched case-insensitively). `include=openProfile` attaches `openProfile`: the smart-send open-time profile, 48 UTC half-hour open counts (`histogram`), `totalOpens`, `lastOpenedAt`, and once there is enough history `bestOpenMinuteUtc`, `bestSendMinuteUtc` and `confidence`; `null` when the contact has no opens folded yet. It is not bot detection: machine opens cannot be told apart in it (per-event classification is on `getEventsAnalytics`). It needs the `emails` scope as well as `contacts`.
 
         **Returns** `200` with the row.
 
-        **Errors** `404 CONTACT_NOT_FOUND` when no contact carries that address.
+        **Errors** `404 CONTACT_NOT_FOUND` when no contact carries that address; `403 INSUFFICIENT_PERMISSIONS` when `include=openProfile` is asked for without the `emails` scope; `400 INVALID_REQUEST` for an unknown `include` token.
 
         **See also** `listContacts`, `updateContact`, `deleteContact`, `upsertContacts`.
       parameters:
@@ -42562,6 +44659,15 @@ paths:
           description: The contact’s email address (URL-encoded). Email is the contact primary key.
           name: email
           in: path
+        - schema:
+            type: string
+            description: "Expansions: `openProfile` attaches the contact's smart-send open-time profile (needs the `emails` permission as well)."
+            x-brew-include-tokens:
+              - openProfile
+          required: false
+          description: "Expansions: `openProfile` attaches the contact's smart-send open-time profile (needs the `emails` permission as well)."
+          name: include
+          in: query
         - name: X-Brand-Id
           in: header
           required: false
@@ -42573,7 +44679,7 @@ paths:
           example: kx7b3s7fapqz8mjm12ekz1kxdx87yceg
       responses:
         "200":
-          description: The contact row.
+          description: The contact row, with `openProfile` when `include=openProfile`.
           headers:
             x-request-id:
               schema:
@@ -42606,7 +44712,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Contact"
+                $ref: "#/components/schemas/ContactWithOpenProfile"
               example:
                 email: jane@example.com
                 firstName: Jane
@@ -42899,6 +45005,8 @@ paths:
         Pass an optional `audienceId` to scope the search to a saved audience’s members — its stored filter set is evaluated as one unit with its own `logicalOperator` (an OR audience stays an OR) and then ANDed with `filters`, so the page is exactly who a send to that audience reaches (an unknown / cross-brand id, or an audience a send would refuse → `400`).
 
         Set `count: true` to get `{ count }` instead of a page.
+
+        `include: ["openProfile"]` attaches each returned contact’s smart-send open-time profile (`openProfile`, as on `getContact`; `null` when they have no opens yet). Each row costs one profile read, so a page then holds at most 10 contacts (`pagination.limit` reports the size read); it needs the `emails` scope as well (`403 INSUFFICIENT_PERMISSIONS` without it) and is refused with `count: true`.
       requestBody:
         required: true
         content:
@@ -53335,7 +55443,7 @@ paths:
       tags:
         - Domains
       summary: Get domain health
-      description: "The domain's deliverability health in one FREE read: a `verdict` (`healthy` / `at_risk` / `critical`) with actionable `signals`, DNS/auth state incl. DMARC, active percentage-based gradual sends, general bounce/complaint reporting, workspace reputation, and inbox-placement history. No bounce or complaint threshold is attached to a gradual-send configuration."
+      description: "The domain's deliverability health in one FREE read: a `verdict` (`healthy` / `at_risk` / `critical`) with actionable `signals`, DNS/auth state incl. DMARC, active percentage-based gradual sends, general bounce/complaint reporting, workspace reputation, and inbox-placement history. No bounce or complaint threshold is attached to a gradual-send configuration. `include=scoreHistory` adds `scoreHistory`: up to 50 saved score snapshots, newest first (score, grade, confidence, the event that saved it, and each pillar's score and weight); only snapshots saved under this brand count, searched among the domain's newest 500, so a domain that moved between brands can show fewer. `include=scoreRuns` adds `scoreRuns`: the last 5 automated domain score runs (the 5-variant seed check), each with its status in the shared run vocabulary, the score it ended on, the credits it cost and every variant's placement test."
       parameters:
         - schema:
             type: string
@@ -53347,6 +55455,16 @@ paths:
           description: Domain id (opaque Convex document id) returned by `POST /v1/domains` and listed by `GET /v1/domains`.
           name: domainId
           in: path
+        - schema:
+            type: string
+            description: "Expansions: `scoreHistory` attaches up to 50 saved score snapshots, newest first; `scoreRuns` the last 5 automated domain score runs."
+            x-brew-include-tokens:
+              - scoreHistory
+              - scoreRuns
+          required: false
+          description: "Expansions: `scoreHistory` attaches up to 50 saved score snapshots, newest first; `scoreRuns` the last 5 automated domain score runs."
+          name: include
+          in: query
         - name: X-Brand-Id
           in: header
           required: false
@@ -61936,6 +64054,349 @@ paths:
       x-brew-brand-scope: public
       x-brew-idempotency: none
       x-brew-credited: false
+  /v1/chats:
+    get:
+      operationId: listChats
+      tags:
+        - Chats
+      summary: List chats
+      description: |-
+        Lists the brand's Brew chats, most recently active first, under `{ data, pagination }`, as the app's chat list shows them: `chatId`, `title`, the opening prompt, Brew's latest reply, `status` (still streaming or not), `origin` (the chat app it started in; null for the Brew web app) and a link. No transcript and no participants. Free.
+
+        **Use when** finding a chat to resume, or seeing what was worked on recently.
+
+        **Input** `limit` and `cursor` (an opaque native cursor).
+
+        **Returns** `200` with a page of `ChatListRow` rows.
+
+        **Errors** `400 INVALID_REQUEST` for an unknown query key or a malformed cursor.
+
+        **See also** `getChatContext` (one chat, with its artifacts and recent messages).
+      parameters:
+        - schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            description: Page size (1-100). Defaults to 100.
+            example: 50
+          required: false
+          description: Page size (1-100). Defaults to 100.
+          name: limit
+          in: query
+          example: 50
+        - schema:
+            type: string
+            minLength: 1
+            maxLength: 8192
+          required: false
+          name: cursor
+          in: query
+        - name: X-Brand-Id
+          in: header
+          required: false
+          description: The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 64
+          example: kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+      responses:
+        "200":
+          description: A page of chats.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+            X-RateLimit-Limit:
+              schema:
+                type: integer
+                description: Requests allowed in the current rolling rate limit window.
+                example: 100
+              required: true
+              description: Requests allowed in the current rolling rate limit window.
+            X-RateLimit-Remaining:
+              schema:
+                type: integer
+                description: Requests remaining in the current rolling rate limit window.
+                example: 99
+              required: true
+              description: Requests remaining in the current rolling rate limit window.
+            X-RateLimit-Reset:
+              schema:
+                type: integer
+                description: Unix timestamp in seconds for when the rolling window fully resets.
+                example: 1712592360
+              required: true
+              description: Unix timestamp in seconds for when the rolling window fully resets.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatList"
+              example:
+                data:
+                  - chatId: Hk2mZ8t9QbY3sW1vR0pLd
+                    title: Spring launch campaign
+                    firstUserPrompt: Draft a launch email for the spring collection
+                    lastAssistantPreview: Updated the hero and added a "Shop now" button.
+                    status: completed
+                    origin: null
+                    updatedAt: '2026-06-30T12:34:56.789Z'
+                    url: https://brew.new/chat/Hk2mZ8t9QbY3sW1vR0pLd
+                pagination:
+                  limit: 100
+                  cursor: null
+                  hasMore: false
+        "400":
+          description: |-
+            `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+
+            `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                brandIdRequired:
+                  summary: BRAND_ID_REQUIRED
+                  value:
+                    error:
+                      code: BRAND_ID_REQUIRED
+                      type: invalid_request
+                      message: An organization-scoped credential called a brand-scoped operation without naming the brand.
+                      suggestion: List brands with GET /v1/brands, then name one with the X-Brand-Id header. There is no default brand.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                invalidRequest:
+                  summary: INVALID_REQUEST
+                  value:
+                    error:
+                      code: INVALID_REQUEST
+                      type: invalid_request
+                      message: "The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender."
+                      suggestion: Fix the field reported in `param` and retry.
+                      docs: https://docs.brew.new/api-reference/api/errors
+        "401":
+          description: |-
+            `API_KEY_REVOKED`: The API key was revoked.
+
+            `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+
+            `INVALID_API_KEY`: The API key is malformed or unknown.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                apiKeyRevoked:
+                  summary: API_KEY_REVOKED
+                  value:
+                    error:
+                      code: API_KEY_REVOKED
+                      type: authentication_error
+                      message: The API key was revoked.
+                      suggestion: Create a new active API key and retry.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                authenticationRequired:
+                  summary: AUTHENTICATION_REQUIRED
+                  value:
+                    error:
+                      code: AUTHENTICATION_REQUIRED
+                      type: authentication_error
+                      message: No API key or session accompanied the request.
+                      suggestion: Provide a valid API key or sign in with an organization session.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                invalidApiKey:
+                  summary: INVALID_API_KEY
+                  value:
+                    error:
+                      code: INVALID_API_KEY
+                      type: authentication_error
+                      message: The API key is malformed or unknown.
+                      suggestion: Check the API key format and retry with a valid active key.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+        "403":
+          description: |-
+            `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+
+            `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+
+            `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+
+            `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                accountSuspended:
+                  summary: ACCOUNT_SUSPENDED
+                  value:
+                    error:
+                      code: ACCOUNT_SUSPENDED
+                      type: authorization_error
+                      message: The organization behind the credential is suspended.
+                      suggestion: The organization behind this credential is suspended. Contact support@brew.new; do not retry.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                brandScopeMismatch:
+                  summary: BRAND_SCOPE_MISMATCH
+                  value:
+                    error:
+                      code: BRAND_SCOPE_MISMATCH
+                      type: authorization_error
+                      message: A brand-scoped credential named a brand other than the one it is bound to.
+                      suggestion: Omit the brand to use the one this credential is bound to, or use an organization-scoped credential to reach other brands.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                insufficientPermissions:
+                  summary: INSUFFICIENT_PERMISSIONS
+                  value:
+                    error:
+                      code: INSUFFICIENT_PERMISSIONS
+                      type: authorization_error
+                      message: The credential lacks the permission scope the operation needs.
+                      suggestion: Use an API key or session with the required permission.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                insufficientRole:
+                  summary: INSUFFICIENT_ROLE
+                  value:
+                    error:
+                      code: INSUFFICIENT_ROLE
+                      type: authorization_error
+                      message: "The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role)."
+                      suggestion: Ask an organization admin to run this, to add you to the brand, or to make you an admin.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+        "404":
+          description: "`BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization)."
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                brandNotFound:
+                  summary: BRAND_NOT_FOUND
+                  value:
+                    error:
+                      code: BRAND_NOT_FOUND
+                      type: not_found
+                      message: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+                      suggestion: List the brands this credential can reach with GET /v1/brands.
+                      docs: https://docs.brew.new/api-reference/api/errors
+        "429":
+          description: "`RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens."
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+            X-RateLimit-Limit:
+              schema:
+                type: integer
+                description: Requests allowed in the current rolling rate limit window.
+                example: 100
+              required: true
+              description: Requests allowed in the current rolling rate limit window.
+            X-RateLimit-Remaining:
+              schema:
+                type: integer
+                description: Requests remaining in the current rolling rate limit window.
+                example: 99
+              required: true
+              description: Requests remaining in the current rolling rate limit window.
+            X-RateLimit-Reset:
+              schema:
+                type: integer
+                description: Unix timestamp in seconds for when the rolling window fully resets.
+                example: 1712592360
+              required: true
+              description: Unix timestamp in seconds for when the rolling window fully resets.
+            Retry-After:
+              schema:
+                type: integer
+                description: Seconds to wait before retrying the request.
+                example: 42
+              required: true
+              description: Seconds to wait before retrying the request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                rateLimited:
+                  summary: RATE_LIMITED
+                  value:
+                    error:
+                      code: RATE_LIMITED
+                      type: rate_limit
+                      message: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens.
+                      suggestion: Wait for the retry window before sending another request.
+                      docs: https://docs.brew.new/api-reference/api/rate-limits
+                      retryAfter: 42
+        "500":
+          description: "`INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it."
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                internalError:
+                  summary: INTERNAL_ERROR
+                  value:
+                    error:
+                      code: INTERNAL_ERROR
+                      type: internal_error
+                      message: An unexpected failure; the x-request-id header identifies it.
+                      suggestion: Retry the request. If it keeps failing, contact support with the x-request-id header.
+                      docs: https://docs.brew.new/api-reference/api/errors
+      x-brew-scope: emails
+      x-brew-brand-scope: brand
+      x-brew-idempotency: none
+      x-brew-credited: false
+      x-brew-rate-policy: emails.read
   /v1/chats/{chatId}:
     get:
       operationId: getChatContext
@@ -62371,6 +64832,1609 @@ paths:
                       type: service_unavailable
                       message: A dependency the operation must consult (billing, the idempotency store) is temporarily unavailable, so the request was refused rather than run unmetered.
                       suggestion: Retry the request after a short delay.
+                      docs: https://docs.brew.new/api-reference/api/errors
+      x-brew-scope: emails
+      x-brew-brand-scope: brand
+      x-brew-idempotency: none
+      x-brew-credited: false
+      x-brew-rate-policy: emails.read
+  /v1/insights:
+    get:
+      operationId: listInsights
+      tags:
+        - Insights
+      summary: List insights
+      description: |-
+        The brand’s Brew Insights as the Insights page ranks them, most severe first and then by score, under `{ data, pagination, freshness }`. Each row is one deterministic finding of the insight engine; the engine keeps at most 200 findings in view.
+
+        **Use when** reporting what Brew found about the brand’s email: deliverability problems, campaigns that under- or over-performed, timing, audience and automation opportunities.
+
+        **Input** `state` (`open`, the default: active findings and snoozes that have ended; or `all`, which adds resolved, cleared, dismissed and stale findings), `severity` to read one severity (up to 200 of its own, however many more severe findings exist), `limit`/`cursor` to page. `include` adds the intelligence layer the page shows beside the findings: `pulse` (the last 7 days against the 7 before), `report` (the latest report the analysis agent published), `suggestions` (its proposed and launched suggestions, up to 25) and `memo` (the agent’s memory across runs).
+
+        **Returns** `200`. Each row carries `insightId`, `title`, `description` (the detector’s headline), `severity`, `confidence`, `kind`, `category`, `detectorId`, `state`, `firstSeenAt`, `lastSeenAt`, `recurrenceCount`, an optional `action` and the finding’s `url` in Brew. `freshness` is on every page: `dataAsOf` is how current the data behind the findings is, and `latestAttempt.status: failed` means they may be stale. An expansion that does not exist yet answers `null`. Read-only and free.
+
+        **Errors** `400 INVALID_REQUEST` for an unknown query key, value or `include` token, or a malformed `cursor`.
+
+        **See also** `getInsight`, `getAnalyticsOverview`.
+      parameters:
+        - schema:
+            type: string
+            enum:
+              - open
+              - all
+            description: "`open` (default) lists active findings and snoozes that have ended. `all` adds resolved, cleared, dismissed and stale findings and snoozes still in effect."
+          required: false
+          description: "`open` (default) lists active findings and snoozes that have ended. `all` adds resolved, cleared, dismissed and stale findings and snoozes still in effect."
+          name: state
+          in: query
+        - schema:
+            type: string
+            enum:
+              - critical
+              - warning
+              - opportunity
+              - info
+            description: "Only findings of this severity: `critical`, `warning`, `opportunity` or `info`, up to 200 of its own."
+          required: false
+          description: "Only findings of this severity: `critical`, `warning`, `opportunity` or `info`, up to 200 of its own."
+          name: severity
+          in: query
+        - schema:
+            type: string
+            description: "Comma-separated expansions: `pulse` adds the weekly pulse, `report` the latest intelligence report, `suggestions` its open suggestions (up to 25), `memo` the analysis agent’s memo."
+            x-brew-include-tokens:
+              - pulse
+              - report
+              - suggestions
+              - memo
+          required: false
+          description: "Comma-separated expansions: `pulse` adds the weekly pulse, `report` the latest intelligence report, `suggestions` its open suggestions (up to 25), `memo` the analysis agent’s memo."
+          name: include
+          in: query
+        - schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            description: Page size (1-100). Defaults to 100.
+            example: 50
+          required: false
+          description: Page size (1-100). Defaults to 100.
+          name: limit
+          in: query
+          example: 50
+        - schema:
+            type: string
+            minLength: 1
+            maxLength: 512
+          required: false
+          name: cursor
+          in: query
+        - name: X-Brand-Id
+          in: header
+          required: false
+          description: The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 64
+          example: kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+      responses:
+        "200":
+          description: A page of findings, the engine’s freshness and any expansions asked for.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+            X-RateLimit-Limit:
+              schema:
+                type: integer
+                description: Requests allowed in the current rolling rate limit window.
+                example: 100
+              required: true
+              description: Requests allowed in the current rolling rate limit window.
+            X-RateLimit-Remaining:
+              schema:
+                type: integer
+                description: Requests remaining in the current rolling rate limit window.
+                example: 99
+              required: true
+              description: Requests remaining in the current rolling rate limit window.
+            X-RateLimit-Reset:
+              schema:
+                type: integer
+                description: Unix timestamp in seconds for when the rolling window fully resets.
+                example: 1712592360
+              required: true
+              description: Unix timestamp in seconds for when the rolling window fully resets.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InsightList"
+              example:
+                data:
+                  - insightId: k17a8m2v4w5x6y7z8a9b0c1d2e3f4g5h
+                    title: Spring sale
+                    description: Spring sale bounced 6.2% of sends, above the 6% line.
+                    severity: critical
+                    confidence: high
+                    kind: insight
+                    category: deliverability
+                    detectorId: deliv.bounce_rate_breach
+                    state: active
+                    firstSeenAt: '2026-10-01T12:00:00.000Z'
+                    lastSeenAt: '2026-10-02T06:04:12.000Z'
+                    recurrenceCount: 1
+                    action:
+                      kind: navigate
+                      label: Open campaign analytics
+                      url: https://brew.new/analytics/sends/Vx2mZ8t9QbY3sW1vR0pLd
+                    url: https://brew.new/insights/k17a8m2v4w5x6y7z8a9b0c1d2e3f4g5h
+                pagination:
+                  limit: 100
+                  cursor: null
+                  hasMore: false
+                freshness:
+                  dataAsOf: '2026-10-02T06:00:00.000Z'
+                  lastSuccessfulRunAt: '2026-10-02T06:04:12.000Z'
+                  latestAttempt:
+                    status: succeeded
+                    at: '2026-10-02T06:04:12.000Z'
+                pulse:
+                  windowEnd: '2026-10-02T00:00:00.000Z'
+                  delivered: 12400
+                  priorDelivered: 11900
+                  uniqueOpens: 4960
+                  priorUniqueOpens: 4400
+                  uniqueClicks: 620
+                  priorUniqueClicks: 590
+                  unsubscribed: 18
+                  priorUnsubscribed: 21
+                  openRatePct: 40
+                  priorOpenRatePct: 37
+                  clickRatePct: 5
+                  priorClickRatePct: 5
+                  openDirection: up
+                  clickDirection: steady
+                  countsOnly: false
+                  measured: true
+        "400":
+          description: |-
+            `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+
+            `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                brandIdRequired:
+                  summary: BRAND_ID_REQUIRED
+                  value:
+                    error:
+                      code: BRAND_ID_REQUIRED
+                      type: invalid_request
+                      message: An organization-scoped credential called a brand-scoped operation without naming the brand.
+                      suggestion: List brands with GET /v1/brands, then name one with the X-Brand-Id header. There is no default brand.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                invalidRequest:
+                  summary: INVALID_REQUEST
+                  value:
+                    error:
+                      code: INVALID_REQUEST
+                      type: invalid_request
+                      message: "The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender."
+                      suggestion: Fix the field reported in `param` and retry.
+                      docs: https://docs.brew.new/api-reference/api/errors
+        "401":
+          description: |-
+            `API_KEY_REVOKED`: The API key was revoked.
+
+            `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+
+            `INVALID_API_KEY`: The API key is malformed or unknown.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                apiKeyRevoked:
+                  summary: API_KEY_REVOKED
+                  value:
+                    error:
+                      code: API_KEY_REVOKED
+                      type: authentication_error
+                      message: The API key was revoked.
+                      suggestion: Create a new active API key and retry.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                authenticationRequired:
+                  summary: AUTHENTICATION_REQUIRED
+                  value:
+                    error:
+                      code: AUTHENTICATION_REQUIRED
+                      type: authentication_error
+                      message: No API key or session accompanied the request.
+                      suggestion: Provide a valid API key or sign in with an organization session.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                invalidApiKey:
+                  summary: INVALID_API_KEY
+                  value:
+                    error:
+                      code: INVALID_API_KEY
+                      type: authentication_error
+                      message: The API key is malformed or unknown.
+                      suggestion: Check the API key format and retry with a valid active key.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+        "403":
+          description: |-
+            `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+
+            `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+
+            `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+
+            `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                accountSuspended:
+                  summary: ACCOUNT_SUSPENDED
+                  value:
+                    error:
+                      code: ACCOUNT_SUSPENDED
+                      type: authorization_error
+                      message: The organization behind the credential is suspended.
+                      suggestion: The organization behind this credential is suspended. Contact support@brew.new; do not retry.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                brandScopeMismatch:
+                  summary: BRAND_SCOPE_MISMATCH
+                  value:
+                    error:
+                      code: BRAND_SCOPE_MISMATCH
+                      type: authorization_error
+                      message: A brand-scoped credential named a brand other than the one it is bound to.
+                      suggestion: Omit the brand to use the one this credential is bound to, or use an organization-scoped credential to reach other brands.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                insufficientPermissions:
+                  summary: INSUFFICIENT_PERMISSIONS
+                  value:
+                    error:
+                      code: INSUFFICIENT_PERMISSIONS
+                      type: authorization_error
+                      message: The credential lacks the permission scope the operation needs.
+                      suggestion: Use an API key or session with the required permission.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                insufficientRole:
+                  summary: INSUFFICIENT_ROLE
+                  value:
+                    error:
+                      code: INSUFFICIENT_ROLE
+                      type: authorization_error
+                      message: "The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role)."
+                      suggestion: Ask an organization admin to run this, to add you to the brand, or to make you an admin.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+        "404":
+          description: "`BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization)."
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                brandNotFound:
+                  summary: BRAND_NOT_FOUND
+                  value:
+                    error:
+                      code: BRAND_NOT_FOUND
+                      type: not_found
+                      message: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+                      suggestion: List the brands this credential can reach with GET /v1/brands.
+                      docs: https://docs.brew.new/api-reference/api/errors
+        "429":
+          description: "`RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens."
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+            X-RateLimit-Limit:
+              schema:
+                type: integer
+                description: Requests allowed in the current rolling rate limit window.
+                example: 100
+              required: true
+              description: Requests allowed in the current rolling rate limit window.
+            X-RateLimit-Remaining:
+              schema:
+                type: integer
+                description: Requests remaining in the current rolling rate limit window.
+                example: 99
+              required: true
+              description: Requests remaining in the current rolling rate limit window.
+            X-RateLimit-Reset:
+              schema:
+                type: integer
+                description: Unix timestamp in seconds for when the rolling window fully resets.
+                example: 1712592360
+              required: true
+              description: Unix timestamp in seconds for when the rolling window fully resets.
+            Retry-After:
+              schema:
+                type: integer
+                description: Seconds to wait before retrying the request.
+                example: 42
+              required: true
+              description: Seconds to wait before retrying the request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                rateLimited:
+                  summary: RATE_LIMITED
+                  value:
+                    error:
+                      code: RATE_LIMITED
+                      type: rate_limit
+                      message: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens.
+                      suggestion: Wait for the retry window before sending another request.
+                      docs: https://docs.brew.new/api-reference/api/rate-limits
+                      retryAfter: 42
+        "500":
+          description: "`INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it."
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                internalError:
+                  summary: INTERNAL_ERROR
+                  value:
+                    error:
+                      code: INTERNAL_ERROR
+                      type: internal_error
+                      message: An unexpected failure; the x-request-id header identifies it.
+                      suggestion: Retry the request. If it keeps failing, contact support with the x-request-id header.
+                      docs: https://docs.brew.new/api-reference/api/errors
+      x-brew-scope: emails
+      x-brew-brand-scope: brand
+      x-brew-idempotency: none
+      x-brew-credited: false
+      x-brew-rate-policy: analytics.read
+  /v1/insights/{insightId}:
+    get:
+      operationId: getInsight
+      tags:
+        - Insights
+      summary: Get an insight
+      description: |-
+        One finding in full, as its page in Brew reads it: the list row’s fields plus `rationale`, `closedReason`, `closedAt`, `lastActedAt`, `churnCount`, the frozen `metrics`, `evidence` links, its `subject`, the detector’s `method` (what it measures, how, against what, and what resolves it), `generatedBy` (the engine run that produced it and what that run could not see) and `freshness`.
+
+        **Use when** explaining why a finding exists or what would resolve it. `metrics` were frozen when the finding was computed and are the only numbers to quote about it.
+
+        **Input** `insightId` in the path, as a `listInsights` row carries it.
+
+        **Returns** `200` with the finding. Read-only and free.
+
+        **Errors** `404 INSIGHT_NOT_FOUND` for an unknown, malformed or over-long id OR a finding of another brand: one identical error, so the cases are indistinguishable.
+
+        **See also** `listInsights`.
+      parameters:
+        - schema:
+            type: string
+            description: The `insightId` a `GET /v1/insights` row carries.
+            example: k17a8m2v4w5x6y7z8a9b0c1d2e3f4g5h
+          required: true
+          description: The `insightId` a `GET /v1/insights` row carries.
+          name: insightId
+          in: path
+        - name: X-Brand-Id
+          in: header
+          required: false
+          description: The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 64
+          example: kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+      responses:
+        "200":
+          description: The finding.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+            X-RateLimit-Limit:
+              schema:
+                type: integer
+                description: Requests allowed in the current rolling rate limit window.
+                example: 100
+              required: true
+              description: Requests allowed in the current rolling rate limit window.
+            X-RateLimit-Remaining:
+              schema:
+                type: integer
+                description: Requests remaining in the current rolling rate limit window.
+                example: 99
+              required: true
+              description: Requests remaining in the current rolling rate limit window.
+            X-RateLimit-Reset:
+              schema:
+                type: integer
+                description: Unix timestamp in seconds for when the rolling window fully resets.
+                example: 1712592360
+              required: true
+              description: Unix timestamp in seconds for when the rolling window fully resets.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Insight"
+              example:
+                insightId: k17a8m2v4w5x6y7z8a9b0c1d2e3f4g5h
+                title: Spring sale
+                description: Spring sale bounced 6.2% of sends, above the 6% line.
+                severity: critical
+                confidence: high
+                kind: insight
+                category: deliverability
+                detectorId: deliv.bounce_rate_breach
+                state: active
+                firstSeenAt: '2026-10-01T12:00:00.000Z'
+                lastSeenAt: '2026-10-02T06:04:12.000Z'
+                recurrenceCount: 1
+                action:
+                  kind: navigate
+                  label: Open campaign analytics
+                  url: https://brew.new/analytics/sends/Vx2mZ8t9QbY3sW1vR0pLd
+                url: https://brew.new/insights/k17a8m2v4w5x6y7z8a9b0c1d2e3f4g5h
+                rationale: Mailbox providers start filtering a sender whose campaigns bounce above 6%.
+                closedReason: null
+                closedAt: null
+                lastActedAt: null
+                churnCount: 0
+                metrics:
+                  bounceRate:
+                    kind: rate
+                    value: 0.062
+                    numerator: 62
+                    denominator: 1000
+                    basis: sent
+                  bounced:
+                    kind: count
+                    value: 62
+                    noun: bounces
+                evidence:
+                  - label: 62 bounced, 3 unsubscribed
+                subject:
+                  kind: campaign
+                  id: Vx2mZ8t9QbY3sW1vR0pLd
+                  label: Spring sale
+                method:
+                  what: A campaign whose bounce rate crosses the level mailbox providers act on.
+                  how: "Bounced ÷ sent, compared against fixed thresholds: 3% is a warning, 6% is critical."
+                  comparedAgainst: "Absolute industry thresholds, not your own history: providers do not grade on a curve."
+                  resolvesWhen: A later send of the same campaign stays under 3%, usually after cleaning the list.
+                generatedBy:
+                  trigger: send_settled
+                  startedAt: '2026-10-02T06:00:03.000Z'
+                  completedAt: '2026-10-02T06:04:12.000Z'
+                  blindSpots: []
+                freshness:
+                  dataAsOf: '2026-10-02T06:00:00.000Z'
+                  lastSuccessfulRunAt: '2026-10-02T06:04:12.000Z'
+                  latestAttempt:
+                    status: succeeded
+                    at: '2026-10-02T06:04:12.000Z'
+        "400":
+          description: |-
+            `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+
+            `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                brandIdRequired:
+                  summary: BRAND_ID_REQUIRED
+                  value:
+                    error:
+                      code: BRAND_ID_REQUIRED
+                      type: invalid_request
+                      message: An organization-scoped credential called a brand-scoped operation without naming the brand.
+                      suggestion: List brands with GET /v1/brands, then name one with the X-Brand-Id header. There is no default brand.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                invalidRequest:
+                  summary: INVALID_REQUEST
+                  value:
+                    error:
+                      code: INVALID_REQUEST
+                      type: invalid_request
+                      message: "The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender."
+                      suggestion: Fix the field reported in `param` and retry.
+                      docs: https://docs.brew.new/api-reference/api/errors
+        "401":
+          description: |-
+            `API_KEY_REVOKED`: The API key was revoked.
+
+            `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+
+            `INVALID_API_KEY`: The API key is malformed or unknown.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                apiKeyRevoked:
+                  summary: API_KEY_REVOKED
+                  value:
+                    error:
+                      code: API_KEY_REVOKED
+                      type: authentication_error
+                      message: The API key was revoked.
+                      suggestion: Create a new active API key and retry.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                authenticationRequired:
+                  summary: AUTHENTICATION_REQUIRED
+                  value:
+                    error:
+                      code: AUTHENTICATION_REQUIRED
+                      type: authentication_error
+                      message: No API key or session accompanied the request.
+                      suggestion: Provide a valid API key or sign in with an organization session.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                invalidApiKey:
+                  summary: INVALID_API_KEY
+                  value:
+                    error:
+                      code: INVALID_API_KEY
+                      type: authentication_error
+                      message: The API key is malformed or unknown.
+                      suggestion: Check the API key format and retry with a valid active key.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+        "403":
+          description: |-
+            `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+
+            `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+
+            `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+
+            `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                accountSuspended:
+                  summary: ACCOUNT_SUSPENDED
+                  value:
+                    error:
+                      code: ACCOUNT_SUSPENDED
+                      type: authorization_error
+                      message: The organization behind the credential is suspended.
+                      suggestion: The organization behind this credential is suspended. Contact support@brew.new; do not retry.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                brandScopeMismatch:
+                  summary: BRAND_SCOPE_MISMATCH
+                  value:
+                    error:
+                      code: BRAND_SCOPE_MISMATCH
+                      type: authorization_error
+                      message: A brand-scoped credential named a brand other than the one it is bound to.
+                      suggestion: Omit the brand to use the one this credential is bound to, or use an organization-scoped credential to reach other brands.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                insufficientPermissions:
+                  summary: INSUFFICIENT_PERMISSIONS
+                  value:
+                    error:
+                      code: INSUFFICIENT_PERMISSIONS
+                      type: authorization_error
+                      message: The credential lacks the permission scope the operation needs.
+                      suggestion: Use an API key or session with the required permission.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                insufficientRole:
+                  summary: INSUFFICIENT_ROLE
+                  value:
+                    error:
+                      code: INSUFFICIENT_ROLE
+                      type: authorization_error
+                      message: "The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role)."
+                      suggestion: Ask an organization admin to run this, to add you to the brand, or to make you an admin.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+        "404":
+          description: |-
+            `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+
+            `INSIGHT_NOT_FOUND`: No insight with that id is visible to this credential’s brand.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                brandNotFound:
+                  summary: BRAND_NOT_FOUND
+                  value:
+                    error:
+                      code: BRAND_NOT_FOUND
+                      type: not_found
+                      message: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+                      suggestion: List the brands this credential can reach with GET /v1/brands.
+                      docs: https://docs.brew.new/api-reference/api/errors
+                insightNotFound:
+                  summary: INSIGHT_NOT_FOUND
+                  value:
+                    error:
+                      code: INSIGHT_NOT_FOUND
+                      type: not_found
+                      message: No insight with that id is visible to this credential’s brand.
+                      suggestion: Use an insightId from the brand’s insight list, and check that your key or connector is bound to that insight’s brand.
+                      docs: https://docs.brew.new/api-reference/api/errors
+        "429":
+          description: "`RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens."
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+            X-RateLimit-Limit:
+              schema:
+                type: integer
+                description: Requests allowed in the current rolling rate limit window.
+                example: 100
+              required: true
+              description: Requests allowed in the current rolling rate limit window.
+            X-RateLimit-Remaining:
+              schema:
+                type: integer
+                description: Requests remaining in the current rolling rate limit window.
+                example: 99
+              required: true
+              description: Requests remaining in the current rolling rate limit window.
+            X-RateLimit-Reset:
+              schema:
+                type: integer
+                description: Unix timestamp in seconds for when the rolling window fully resets.
+                example: 1712592360
+              required: true
+              description: Unix timestamp in seconds for when the rolling window fully resets.
+            Retry-After:
+              schema:
+                type: integer
+                description: Seconds to wait before retrying the request.
+                example: 42
+              required: true
+              description: Seconds to wait before retrying the request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                rateLimited:
+                  summary: RATE_LIMITED
+                  value:
+                    error:
+                      code: RATE_LIMITED
+                      type: rate_limit
+                      message: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens.
+                      suggestion: Wait for the retry window before sending another request.
+                      docs: https://docs.brew.new/api-reference/api/rate-limits
+                      retryAfter: 42
+        "500":
+          description: "`INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it."
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                internalError:
+                  summary: INTERNAL_ERROR
+                  value:
+                    error:
+                      code: INTERNAL_ERROR
+                      type: internal_error
+                      message: An unexpected failure; the x-request-id header identifies it.
+                      suggestion: Retry the request. If it keeps failing, contact support with the x-request-id header.
+                      docs: https://docs.brew.new/api-reference/api/errors
+      x-brew-scope: emails
+      x-brew-brand-scope: brand
+      x-brew-idempotency: none
+      x-brew-credited: false
+      x-brew-rate-policy: analytics.read
+  /v1/notifications:
+    get:
+      operationId: listNotifications
+      tags:
+        - Notifications
+      summary: List notifications
+      description: |-
+        Lists the brand's notifications, newest first, under `{ data, pagination }`, as the app's bell shows them: generations, sends, imports, domain checks and score runs finishing or failing, plus comment mentions and replies. Each row has `type`, `status`, `title`, `subtitle`, a `url` into the app and the ids it concerns (`chatId`, `emailId`, `domainId`). Reading marks nothing read. Free.
+
+        **Access** each row is shown only when the credential may read its feature, scopes included, so an empty page can mean nothing happened or that this credential cannot see that kind of row (a `type` it cannot see is an empty page, not an error). By type:
+
+        - `chat_stream`, `preview_email`: the `emails` scope.
+        - `email_sent`, `email_scheduled`, `email_send_failed`, `gradual_send_paused`, `gradual_send_completed`, `send_review_rejected`: `sends` (`emails` implies it).
+        - `domain_status`, `domain_score_run`: `domains` (`emails` implies it).
+        - `import_job`, `validation_job`: `contacts`.
+        - `automation_pause_window_closed`: `automations`.
+        - `brand_extracted`, `brand_image_import`: every credential on the brand.
+        - `api_key_created`: the `all` scope (a signed-in member, or a key or connection holding `all`).
+        - `send_limit_reached`: organization admins only (a signed-in admin, an admin’s organization-wide connection, or an organization-wide key holding `all`); never a brand key.
+        - `comment_mention`, `comment_reply` (`isPersonal: true`): only the person addressed, signed in or on a personal connection; never an API key.
+
+        **Use when** checking what finished or failed since you last looked.
+
+        **Input** `type` keeps one notification type; `limit` and `cursor` (an opaque native cursor; a page can hold fewer rows than `limit` while `hasMore` is true).
+
+        **Returns** `200` with a page of `Notification` rows; `notificationId` (`ntf_…`) is stable for the row’s life.
+
+        **Errors** `400 INVALID_REQUEST` for an unknown query key or `type`, or a malformed cursor.
+
+        **See also** `getChatContext`, `getEmail`, `getDomainHealth`.
+      parameters:
+        - schema:
+            type: string
+            enum:
+              - chat_stream
+              - import_job
+              - brand_image_import
+              - validation_job
+              - email_sent
+              - email_scheduled
+              - preview_email
+              - brand_extracted
+              - domain_status
+              - domain_score_run
+              - api_key_created
+              - email_send_failed
+              - gradual_send_paused
+              - gradual_send_completed
+              - send_limit_reached
+              - automation_pause_window_closed
+              - send_review_rejected
+              - comment_mention
+              - comment_reply
+            description: Only notifications of this type. A type this credential cannot see (its scopes, or a person-only or admin-only type) is an empty page.
+          required: false
+          description: Only notifications of this type. A type this credential cannot see (its scopes, or a person-only or admin-only type) is an empty page.
+          name: type
+          in: query
+        - schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            description: Page size (1-100). Defaults to 100.
+            example: 50
+          required: false
+          description: Page size (1-100). Defaults to 100.
+          name: limit
+          in: query
+          example: 50
+        - schema:
+            type: string
+            minLength: 1
+            maxLength: 8192
+          required: false
+          name: cursor
+          in: query
+        - name: X-Brand-Id
+          in: header
+          required: false
+          description: The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 64
+          example: kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+      responses:
+        "200":
+          description: A page of notifications.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+            X-RateLimit-Limit:
+              schema:
+                type: integer
+                description: Requests allowed in the current rolling rate limit window.
+                example: 100
+              required: true
+              description: Requests allowed in the current rolling rate limit window.
+            X-RateLimit-Remaining:
+              schema:
+                type: integer
+                description: Requests remaining in the current rolling rate limit window.
+                example: 99
+              required: true
+              description: Requests remaining in the current rolling rate limit window.
+            X-RateLimit-Reset:
+              schema:
+                type: integer
+                description: Unix timestamp in seconds for when the rolling window fully resets.
+                example: 1712592360
+              required: true
+              description: Unix timestamp in seconds for when the rolling window fully resets.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotificationList"
+              example:
+                data:
+                  - notificationId: ntf_4b8f0c2e91d7a3f65e10
+                    type: email_sent
+                    status: completed
+                    title: Spring launch sent
+                    subtitle: 12,480 recipients
+                    url: https://brew.new/emails?emailIds=2SmZOWV3ZQ7W5x6g3m4pA
+                    emailId: 2SmZOWV3ZQ7W5x6g3m4pA
+                    isPersonal: false
+                    createdAt: '2026-10-01T12:00:00.000Z'
+                    updatedAt: '2026-10-01T12:20:00.000Z'
+                    completedAt: '2026-10-01T12:20:00.000Z'
+                pagination:
+                  limit: 100
+                  cursor: null
+                  hasMore: false
+        "400":
+          description: |-
+            `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+
+            `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                brandIdRequired:
+                  summary: BRAND_ID_REQUIRED
+                  value:
+                    error:
+                      code: BRAND_ID_REQUIRED
+                      type: invalid_request
+                      message: An organization-scoped credential called a brand-scoped operation without naming the brand.
+                      suggestion: List brands with GET /v1/brands, then name one with the X-Brand-Id header. There is no default brand.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                invalidRequest:
+                  summary: INVALID_REQUEST
+                  value:
+                    error:
+                      code: INVALID_REQUEST
+                      type: invalid_request
+                      message: "The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender."
+                      suggestion: Fix the field reported in `param` and retry.
+                      docs: https://docs.brew.new/api-reference/api/errors
+        "401":
+          description: |-
+            `API_KEY_REVOKED`: The API key was revoked.
+
+            `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+
+            `INVALID_API_KEY`: The API key is malformed or unknown.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                apiKeyRevoked:
+                  summary: API_KEY_REVOKED
+                  value:
+                    error:
+                      code: API_KEY_REVOKED
+                      type: authentication_error
+                      message: The API key was revoked.
+                      suggestion: Create a new active API key and retry.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                authenticationRequired:
+                  summary: AUTHENTICATION_REQUIRED
+                  value:
+                    error:
+                      code: AUTHENTICATION_REQUIRED
+                      type: authentication_error
+                      message: No API key or session accompanied the request.
+                      suggestion: Provide a valid API key or sign in with an organization session.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                invalidApiKey:
+                  summary: INVALID_API_KEY
+                  value:
+                    error:
+                      code: INVALID_API_KEY
+                      type: authentication_error
+                      message: The API key is malformed or unknown.
+                      suggestion: Check the API key format and retry with a valid active key.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+        "403":
+          description: |-
+            `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+
+            `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+
+            `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                accountSuspended:
+                  summary: ACCOUNT_SUSPENDED
+                  value:
+                    error:
+                      code: ACCOUNT_SUSPENDED
+                      type: authorization_error
+                      message: The organization behind the credential is suspended.
+                      suggestion: The organization behind this credential is suspended. Contact support@brew.new; do not retry.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                brandScopeMismatch:
+                  summary: BRAND_SCOPE_MISMATCH
+                  value:
+                    error:
+                      code: BRAND_SCOPE_MISMATCH
+                      type: authorization_error
+                      message: A brand-scoped credential named a brand other than the one it is bound to.
+                      suggestion: Omit the brand to use the one this credential is bound to, or use an organization-scoped credential to reach other brands.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                insufficientRole:
+                  summary: INSUFFICIENT_ROLE
+                  value:
+                    error:
+                      code: INSUFFICIENT_ROLE
+                      type: authorization_error
+                      message: "The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role)."
+                      suggestion: Ask an organization admin to run this, to add you to the brand, or to make you an admin.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+        "404":
+          description: "`BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization)."
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                brandNotFound:
+                  summary: BRAND_NOT_FOUND
+                  value:
+                    error:
+                      code: BRAND_NOT_FOUND
+                      type: not_found
+                      message: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+                      suggestion: List the brands this credential can reach with GET /v1/brands.
+                      docs: https://docs.brew.new/api-reference/api/errors
+        "429":
+          description: "`RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens."
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+            X-RateLimit-Limit:
+              schema:
+                type: integer
+                description: Requests allowed in the current rolling rate limit window.
+                example: 100
+              required: true
+              description: Requests allowed in the current rolling rate limit window.
+            X-RateLimit-Remaining:
+              schema:
+                type: integer
+                description: Requests remaining in the current rolling rate limit window.
+                example: 99
+              required: true
+              description: Requests remaining in the current rolling rate limit window.
+            X-RateLimit-Reset:
+              schema:
+                type: integer
+                description: Unix timestamp in seconds for when the rolling window fully resets.
+                example: 1712592360
+              required: true
+              description: Unix timestamp in seconds for when the rolling window fully resets.
+            Retry-After:
+              schema:
+                type: integer
+                description: Seconds to wait before retrying the request.
+                example: 42
+              required: true
+              description: Seconds to wait before retrying the request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                rateLimited:
+                  summary: RATE_LIMITED
+                  value:
+                    error:
+                      code: RATE_LIMITED
+                      type: rate_limit
+                      message: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens.
+                      suggestion: Wait for the retry window before sending another request.
+                      docs: https://docs.brew.new/api-reference/api/rate-limits
+                      retryAfter: 42
+        "500":
+          description: "`INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it."
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                internalError:
+                  summary: INTERNAL_ERROR
+                  value:
+                    error:
+                      code: INTERNAL_ERROR
+                      type: internal_error
+                      message: An unexpected failure; the x-request-id header identifies it.
+                      suggestion: Retry the request. If it keeps failing, contact support with the x-request-id header.
+                      docs: https://docs.brew.new/api-reference/api/errors
+      x-brew-scope: none
+      x-brew-brand-scope: brand
+      x-brew-idempotency: none
+      x-brew-credited: false
+      x-brew-rate-policy: brand.read
+  /v1/emails/{emailId}/comments:
+    get:
+      operationId: listEmailComments
+      tags:
+        - Emails
+      summary: List email comments
+      description: |-
+        Lists one design's open comment threads, newest activity first, under `{ data, pagination }`, as the canvas pins show them: `commentId`, `target` (whole email or one element), the 12 most recent `participants` with `participantCount`, `messageCount`, the latest message preview and a link to the thread. People are `{ userId, name }`; resolving deletes a thread. Free.
+
+        **Use when** reading what teammates asked for on a design before editing it.
+
+        **Input** `emailId` in the path; `limit` and `cursor`. `include=messages` adds each thread's newest messages (author, body, mentions), oldest first, and caps the page at 3 threads sharing a fixed size budget. A thread with older messages returns `messagesCursor`: send it back with that thread's `commentId` to read the next older slice (the whole budget, at least one message), until it comes back null. `commentId` alone reads one thread.
+
+        **Returns** `200` with a page of `EmailCommentThread` rows. A design with no threads is an empty page.
+
+        **Errors** `400 INVALID_REQUEST` for an unknown query key, an unknown `include` token, a malformed cursor, a `messagesCursor` without its `commentId` or from another thread, or `cursor` with `commentId`. `404 EMAIL_NOT_FOUND` for an `emailId` the brand does not have: unknown, malformed or another brand’s design, one identical error as `getEmail` answers. `404 COMMENT_NOT_FOUND` for a `commentId` that is not an open thread on that design (resolving deletes a thread, so a resolved one is the same case).
+
+        **See also** `getEmail`.
+      parameters:
+        - schema:
+            type: string
+            minLength: 1
+            maxLength: 64
+            description: Design id returned by `POST /v1/emails` and listed by `GET /v1/emails`.
+            example: 2SmZOWV3ZQ7W5x6g3m4pA
+          required: true
+          description: Design id returned by `POST /v1/emails` and listed by `GET /v1/emails`.
+          name: emailId
+          in: path
+        - schema:
+            type: string
+            description: "Comma-separated expansions: `messages` adds each thread's newest messages (author, body, mentions), oldest first, with a `messagesCursor` for older ones, and caps the page at 3 threads."
+            x-brew-include-tokens:
+              - messages
+          required: false
+          description: "Comma-separated expansions: `messages` adds each thread's newest messages (author, body, mentions), oldest first, with a `messagesCursor` for older ones, and caps the page at 3 threads."
+          name: include
+          in: query
+        - schema:
+            type: string
+            minLength: 5
+            maxLength: 64
+            description: Read this one thread (`cmt_…`) instead of the page; not with `cursor`.
+          required: false
+          description: Read this one thread (`cmt_…`) instead of the page; not with `cursor`.
+          name: commentId
+          in: query
+        - schema:
+            type: string
+            minLength: 1
+            maxLength: 512
+            description: "A thread's `messagesCursor` from a previous response, with that thread's `commentId`: returns the thread with its next older messages and the next `messagesCursor`. Implies `include=messages`."
+          required: false
+          description: "A thread's `messagesCursor` from a previous response, with that thread's `commentId`: returns the thread with its next older messages and the next `messagesCursor`. Implies `include=messages`."
+          name: messagesCursor
+          in: query
+        - schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            description: Page size (1-100). Defaults to 100.
+            example: 50
+          required: false
+          description: Page size (1-100). Defaults to 100.
+          name: limit
+          in: query
+          example: 50
+        - schema:
+            type: string
+            minLength: 1
+            maxLength: 512
+          required: false
+          name: cursor
+          in: query
+        - name: X-Brand-Id
+          in: header
+          required: false
+          description: The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 64
+          example: kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+      responses:
+        "200":
+          description: A page of the design's open comment threads.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+            X-RateLimit-Limit:
+              schema:
+                type: integer
+                description: Requests allowed in the current rolling rate limit window.
+                example: 100
+              required: true
+              description: Requests allowed in the current rolling rate limit window.
+            X-RateLimit-Remaining:
+              schema:
+                type: integer
+                description: Requests remaining in the current rolling rate limit window.
+                example: 99
+              required: true
+              description: Requests remaining in the current rolling rate limit window.
+            X-RateLimit-Reset:
+              schema:
+                type: integer
+                description: Unix timestamp in seconds for when the rolling window fully resets.
+                example: 1712592360
+              required: true
+              description: Unix timestamp in seconds for when the rolling window fully resets.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmailCommentThreadList"
+              example:
+                data:
+                  - commentId: cmt_V1StGXR8_Z5jdHi6B-myT
+                    emailId: 2SmZOWV3ZQ7W5x6g3m4pA
+                    status: open
+                    target:
+                      kind: element
+                      elementId: elm_4f9Kq
+                      nodeType: button
+                    participants:
+                      - userId: user_2xK9mPq4Rt7Vw1Yb
+                        name: Grace Hopper
+                      - userId: user_2abcQ8sLm3Nd5Tz
+                        name: Ada Lovelace
+                    participantCount: 2
+                    messageCount: 3
+                    lastMessageAt: '2026-10-01T12:05:00.000Z'
+                    lastMessagePreview: Bolder works. Shipping it.
+                    url: https://brew.new/emails/ungrouped?emailIds=2SmZOWV3ZQ7W5x6g3m4pA&focusEmailIds=2SmZOWV3ZQ7W5x6g3m4pA&commentId=cmt_V1StGXR8_Z5jdHi6B-myT
+                    messages:
+                      - messageId: cmm_9pQ2wErT5yU8iO1aSdF3g
+                        author:
+                          userId: user_2xK9mPq4Rt7Vw1Yb
+                          name: Grace Hopper
+                        body: "@Ada Lovelace can the CTA be bolder?"
+                        mentions:
+                          - userId: user_2abcQ8sLm3Nd5Tz
+                            name: Ada Lovelace
+                        createdAt: '2026-10-01T12:00:00.000Z'
+                        updatedAt: '2026-10-01T12:00:00.000Z'
+                      - messageId: cmm_3hJ6kL9zX2cV5bN8mQ1wE
+                        author:
+                          userId: user_2abcQ8sLm3Nd5Tz
+                          name: Ada Lovelace
+                        body: Bolder works. Shipping it.
+                        mentions: []
+                        createdAt: '2026-10-01T12:05:00.000Z'
+                        updatedAt: '2026-10-01T12:05:00.000Z'
+                    messagesCursor: eyJ2IjoxLCJjIjoiY210X1YxU3RHWFI4X1o1amRIaTZCLW15VCIsImEiOiIyMDI2LTEwLTAxVDEyOjAwOjAwLjAwMFoiLCJtIjoiY21tXzlwUTJ3RXJUNXlVOGlPMWFTZEYzZyJ9
+                pagination:
+                  limit: 3
+                  cursor: null
+                  hasMore: false
+        "400":
+          description: |-
+            `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+
+            `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                brandIdRequired:
+                  summary: BRAND_ID_REQUIRED
+                  value:
+                    error:
+                      code: BRAND_ID_REQUIRED
+                      type: invalid_request
+                      message: An organization-scoped credential called a brand-scoped operation without naming the brand.
+                      suggestion: List brands with GET /v1/brands, then name one with the X-Brand-Id header. There is no default brand.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                invalidRequest:
+                  summary: INVALID_REQUEST
+                  value:
+                    error:
+                      code: INVALID_REQUEST
+                      type: invalid_request
+                      message: "The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender."
+                      suggestion: Fix the field reported in `param` and retry.
+                      docs: https://docs.brew.new/api-reference/api/errors
+        "401":
+          description: |-
+            `API_KEY_REVOKED`: The API key was revoked.
+
+            `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+
+            `INVALID_API_KEY`: The API key is malformed or unknown.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                apiKeyRevoked:
+                  summary: API_KEY_REVOKED
+                  value:
+                    error:
+                      code: API_KEY_REVOKED
+                      type: authentication_error
+                      message: The API key was revoked.
+                      suggestion: Create a new active API key and retry.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                authenticationRequired:
+                  summary: AUTHENTICATION_REQUIRED
+                  value:
+                    error:
+                      code: AUTHENTICATION_REQUIRED
+                      type: authentication_error
+                      message: No API key or session accompanied the request.
+                      suggestion: Provide a valid API key or sign in with an organization session.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                invalidApiKey:
+                  summary: INVALID_API_KEY
+                  value:
+                    error:
+                      code: INVALID_API_KEY
+                      type: authentication_error
+                      message: The API key is malformed or unknown.
+                      suggestion: Check the API key format and retry with a valid active key.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+        "403":
+          description: |-
+            `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+
+            `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+
+            `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+
+            `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                accountSuspended:
+                  summary: ACCOUNT_SUSPENDED
+                  value:
+                    error:
+                      code: ACCOUNT_SUSPENDED
+                      type: authorization_error
+                      message: The organization behind the credential is suspended.
+                      suggestion: The organization behind this credential is suspended. Contact support@brew.new; do not retry.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                brandScopeMismatch:
+                  summary: BRAND_SCOPE_MISMATCH
+                  value:
+                    error:
+                      code: BRAND_SCOPE_MISMATCH
+                      type: authorization_error
+                      message: A brand-scoped credential named a brand other than the one it is bound to.
+                      suggestion: Omit the brand to use the one this credential is bound to, or use an organization-scoped credential to reach other brands.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                insufficientPermissions:
+                  summary: INSUFFICIENT_PERMISSIONS
+                  value:
+                    error:
+                      code: INSUFFICIENT_PERMISSIONS
+                      type: authorization_error
+                      message: The credential lacks the permission scope the operation needs.
+                      suggestion: Use an API key or session with the required permission.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                insufficientRole:
+                  summary: INSUFFICIENT_ROLE
+                  value:
+                    error:
+                      code: INSUFFICIENT_ROLE
+                      type: authorization_error
+                      message: "The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role)."
+                      suggestion: Ask an organization admin to run this, to add you to the brand, or to make you an admin.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+        "404":
+          description: |-
+            `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+
+            `COMMENT_NOT_FOUND`: The design has no open comment thread with that id (resolving a thread deletes it).
+
+            `EMAIL_NOT_FOUND`: No email design with that id exists in the brand (cross-brand ids surface as 404).
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                brandNotFound:
+                  summary: BRAND_NOT_FOUND
+                  value:
+                    error:
+                      code: BRAND_NOT_FOUND
+                      type: not_found
+                      message: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+                      suggestion: List the brands this credential can reach with GET /v1/brands.
+                      docs: https://docs.brew.new/api-reference/api/errors
+                commentNotFound:
+                  summary: COMMENT_NOT_FOUND
+                  value:
+                    error:
+                      code: COMMENT_NOT_FOUND
+                      type: not_found
+                      message: The design has no open comment thread with that id (resolving a thread deletes it).
+                      suggestion: List the design’s threads with GET /v1/emails/{emailId}/comments and use a returned commentId.
+                      docs: https://docs.brew.new/api-reference/api/errors
+                emailNotFound:
+                  summary: EMAIL_NOT_FOUND
+                  value:
+                    error:
+                      code: EMAIL_NOT_FOUND
+                      type: not_found
+                      message: No email design with that id exists in the brand (cross-brand ids surface as 404).
+                      suggestion: List designs with GET /v1/emails.
+                      docs: https://docs.brew.new/api-reference/api/errors
+        "429":
+          description: "`RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens."
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+            X-RateLimit-Limit:
+              schema:
+                type: integer
+                description: Requests allowed in the current rolling rate limit window.
+                example: 100
+              required: true
+              description: Requests allowed in the current rolling rate limit window.
+            X-RateLimit-Remaining:
+              schema:
+                type: integer
+                description: Requests remaining in the current rolling rate limit window.
+                example: 99
+              required: true
+              description: Requests remaining in the current rolling rate limit window.
+            X-RateLimit-Reset:
+              schema:
+                type: integer
+                description: Unix timestamp in seconds for when the rolling window fully resets.
+                example: 1712592360
+              required: true
+              description: Unix timestamp in seconds for when the rolling window fully resets.
+            Retry-After:
+              schema:
+                type: integer
+                description: Seconds to wait before retrying the request.
+                example: 42
+              required: true
+              description: Seconds to wait before retrying the request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                rateLimited:
+                  summary: RATE_LIMITED
+                  value:
+                    error:
+                      code: RATE_LIMITED
+                      type: rate_limit
+                      message: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens.
+                      suggestion: Wait for the retry window before sending another request.
+                      docs: https://docs.brew.new/api-reference/api/rate-limits
+                      retryAfter: 42
+        "500":
+          description: "`INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it."
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                internalError:
+                  summary: INTERNAL_ERROR
+                  value:
+                    error:
+                      code: INTERNAL_ERROR
+                      type: internal_error
+                      message: An unexpected failure; the x-request-id header identifies it.
+                      suggestion: Retry the request. If it keeps failing, contact support with the x-request-id header.
                       docs: https://docs.brew.new/api-reference/api/errors
       x-brew-scope: emails
       x-brew-brand-scope: brand
