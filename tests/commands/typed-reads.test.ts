@@ -144,6 +144,9 @@ const SUGGESTION = {
   updatedAt: '2026-10-01T07:00:00.000Z',
 }
 
+const STALE_CURSOR =
+  'The findings changed since this cursor was issued, so its next page would skip or repeat some. Read the list again from the first page, without cursor.'
+
 const MEMO = {
   markdown: '## What we watch\n- bounce rate on news.acme.com',
   version: 4,
@@ -426,6 +429,126 @@ describe('insights list', () => {
       freshness: FRESHNESS,
       memo: MEMO,
     })
+  })
+
+  it('--all reads the list again from the start, once, when the findings change under its cursor', async () => {
+    const seen: Array<URLSearchParams> = []
+    let staleAnswers = 1
+    server.use(
+      http.get(`${API}/v1/insights`, ({ request }) => {
+        const params = new URL(request.url).searchParams
+        seen.push(params)
+        if (params.get('cursor') === null) {
+          return HttpResponse.json({
+            data: [FINDING],
+            pagination: { limit: 1, cursor: 'ofs_1', hasMore: true },
+            freshness: FRESHNESS,
+            memo: MEMO,
+          })
+        }
+        if (staleAnswers > 0) {
+          staleAnswers -= 1
+          return apiError(400, 'INVALID_REQUEST', STALE_CURSOR, 'cursor')
+        }
+        return HttpResponse.json({
+          data: [SECOND_FINDING],
+          pagination: { limit: 1, cursor: null, hasMore: false },
+          freshness: FRESHNESS,
+        })
+      })
+    )
+    const result = await cli([
+      'insights',
+      'list',
+      '--all',
+      '--limit',
+      '1',
+      '--include',
+      'memo',
+    ])
+    expect(result.code).toBe(0)
+    expect(seen.map((params) => params.get('cursor'))).toEqual([
+      null,
+      'ofs_1',
+      null,
+      'ofs_1',
+    ])
+    // The restart's first page asks for the expansions again; no other does.
+    expect(seen.map((params) => params.get('include'))).toEqual([
+      'memo',
+      null,
+      'memo',
+      null,
+    ])
+    expect(result.stderr).toContain(
+      'The findings changed while paging; reading them again from the start…'
+    )
+    expect(result.json).toEqual({
+      data: [FINDING, SECOND_FINDING],
+      pagination: { cursor: null, hasMore: false },
+      freshness: FRESHNESS,
+      memo: MEMO,
+    })
+  })
+
+  it("--all surfaces a second stale-cursor answer as the error, with the second walk's progress", async () => {
+    let requests = 0
+    server.use(
+      http.get(`${API}/v1/insights`, ({ request }) => {
+        requests += 1
+        if (new URL(request.url).searchParams.get('cursor') === null) {
+          return HttpResponse.json({
+            data: [FINDING],
+            pagination: { limit: 1, cursor: 'ofs_1', hasMore: true },
+            freshness: FRESHNESS,
+          })
+        }
+        return apiError(400, 'INVALID_REQUEST', STALE_CURSOR, 'cursor')
+      })
+    )
+    const result = await cli(['insights', 'list', '--all', '--limit', '1'])
+    expect(result.code).toBe(1)
+    expect(result.stdout).toBe('')
+    expect(requests).toBe(4)
+    const envelope = JSON.parse(
+      result.stderr.trimEnd().split('\n').at(-1) ?? ''
+    ) as {
+      error: { code: string; param?: string; progress?: unknown }
+    }
+    expect(envelope.error.code).toBe('INVALID_REQUEST')
+    expect(envelope.error.param).toBe('cursor')
+    expect(envelope.error.progress).toEqual({
+      rowsFetched: 1,
+      pagesFetched: 1,
+      resumeCursor: 'ofs_1',
+    })
+  })
+
+  it('--all does not restart when its very first page refuses the --cursor it was given', async () => {
+    let requests = 0
+    server.use(
+      http.get(`${API}/v1/insights`, () => {
+        requests += 1
+        return apiError(
+          400,
+          'INVALID_REQUEST',
+          'This cursor does not continue this list: it was issued for a different state or severity.',
+          'cursor'
+        )
+      })
+    )
+    const result = await cli([
+      'insights',
+      'list',
+      '--all',
+      '--severity',
+      'critical',
+      '--cursor',
+      'ofs_from_warning',
+    ])
+    expect(result.code).toBe(1)
+    expect(requests).toBe(1)
+    expect(errorCode(result)).toBe('INVALID_REQUEST')
   })
 
   it("surfaces the API's 400 for an unknown include token", async () => {

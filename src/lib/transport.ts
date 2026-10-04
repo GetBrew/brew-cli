@@ -45,7 +45,8 @@ export type TransportState = {
   readonly attempts: () => number
   readonly record: (request: RecordedRequest) => void
   readonly drain: () => DrainProgress | undefined
-  readonly setDrain: (progress: DrainProgress) => void
+  /** Records how far a drain got; `undefined` clears it (a restarted walk). */
+  readonly setDrain: (progress: DrainProgress | undefined) => void
 }
 
 export function createTransportState(): TransportState {

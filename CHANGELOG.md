@@ -20,7 +20,11 @@ answer from its tables. `data run` itself is unchanged in this release.
   latest intelligence report, its suggestions (up to 25) and the analysis
   agent's memo (`pulse`, `report` and `memo` are `null` until they exist;
   `suggestions` is `[]` when there are none). `--all` asks for them on the first
-  page only and keeps them, with `freshness`, beside the merged rows. A TTY
+  page only and keeps them, with `freshness`, beside the merged rows. The list
+  is ranked live, so when the findings change between pages the API refuses the
+  next cursor (`400 INVALID_REQUEST`, `param: cursor`; GetBrew/brew-v2#1860)
+  rather than skip or repeat rows: `--all` then reads the list again from
+  where it started, once, and a second refusal is the error. A TTY
   leads with how current the findings are, says when the latest run failed
   (the findings may be stale), and prints each expansion it asked for under
   the table; a pulse taken with engagement tracking off says opens are not

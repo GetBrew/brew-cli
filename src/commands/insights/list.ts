@@ -1,4 +1,8 @@
-import type { ListInsightsInput, ListInsightsResponse } from '@brew.new/sdk'
+import {
+  BrewApiError,
+  type ListInsightsInput,
+  type ListInsightsResponse,
+} from '@brew.new/sdk'
 import type { BrewClient } from '../../lib/client'
 import { defineCommand } from '../../lib/define-command'
 import {
@@ -9,7 +13,7 @@ import {
   mergeInput,
   readJsonFlag,
 } from '../../lib/input'
-import { renderTable } from '../../lib/output'
+import { progress, renderTable } from '../../lib/output'
 import {
   ALL_FLAG,
   CURSOR_FLAG,
@@ -98,6 +102,12 @@ export const insightsListCommand = defineCommand({
  * `--all`: every finding as one page. The expansions are page-level and the
  * same on every page, so only the first page asks for them; the merged
  * envelope carries that page's `freshness` and expansions beside the rows.
+ *
+ * The list is ranked live (at most 200 findings), so the findings can change
+ * between pages: the API then refuses the next cursor with `400
+ * INVALID_REQUEST` (`param: cursor`) rather than skip or repeat rows. The
+ * walk reads the list again from where it started, once; a second refusal is
+ * the error.
  */
 async function listEveryInsight(
   ctx: CliContext,
@@ -105,18 +115,37 @@ async function listEveryInsight(
   input: Readonly<Record<string, unknown>>
 ): Promise<{ data: unknown; human: string }> {
   const { include: _include, ...rest } = input
+  let rows: ReadonlyArray<InsightRow> = []
   let extras: PageExtras | undefined
-  const rows = await collectAll(ctx, async (cursor) => {
-    const page = await insights.list(
-      asSdkInput<ListInsightsInput>(
-        extras === undefined
-          ? { ...input, ...(cursor === undefined ? {} : { cursor }) }
-          : { ...rest, ...(cursor === undefined ? {} : { cursor }) }
+  for (let attempt = 1; ; attempt += 1) {
+    let pages = 0
+    extras = undefined
+    try {
+      rows = await collectAll(ctx, async (cursor) => {
+        const page = await insights.list(
+          asSdkInput<ListInsightsInput>(
+            extras === undefined
+              ? { ...input, ...(cursor === undefined ? {} : { cursor }) }
+              : { ...rest, ...(cursor === undefined ? {} : { cursor }) }
+          )
+        )
+        pages += 1
+        extras ??= readExtras(page)
+        return page
+      })
+      break
+    } catch (error) {
+      if (attempt > 1 || pages === 0 || !isStaleCursor(error)) {
+        throw error
+      }
+      // The first walk's progress no longer describes where to resume.
+      ctx.transport.setDrain(undefined)
+      progress(
+        ctx,
+        'The findings changed while paging; reading them again from the start…'
       )
-    )
-    extras ??= readExtras(page)
-    return page
-  })
+    }
+  }
   const kept = extras ?? {}
   return {
     data: {
@@ -126,6 +155,16 @@ async function listEveryInsight(
     },
     human: renderInsights(rows, kept),
   }
+}
+
+/** The API's refusal of a cursor whose list changed under it. */
+function isStaleCursor(error: unknown): boolean {
+  return (
+    error instanceof BrewApiError &&
+    error.status === 400 &&
+    error.code === 'INVALID_REQUEST' &&
+    error.param === 'cursor'
+  )
 }
 
 /** The page-level keys a page carries, verbatim. */
