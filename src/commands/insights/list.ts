@@ -103,11 +103,11 @@ export const insightsListCommand = defineCommand({
  * same on every page, so only the first page asks for them; the merged
  * envelope carries that page's `freshness` and expansions beside the rows.
  *
- * The list is ranked live (at most 200 findings), so the findings can change
- * between pages: the API then refuses the next cursor with `400
- * INVALID_REQUEST` (`param: cursor`) rather than skip or repeat rows. The
- * walk reads the list again from where it started, once; a second refusal is
- * the error.
+ * The list is ranked live (at most 200 findings): when a finding the walk
+ * already returned leaves the list or moves, or a new one ranks among them,
+ * the API refuses the next cursor with `400 INVALID_REQUEST` (`param:
+ * cursor`) rather than skip or repeat rows. The walk reads the list again
+ * from where it started, once; a second refusal is the error.
  */
 async function listEveryInsight(
   ctx: CliContext,
