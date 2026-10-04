@@ -593,6 +593,78 @@ describe('insights list', () => {
     expect(tty.stderr).not.toContain('resume with')
   })
 
+  it('--all from a cursor given in --input JSON that goes stale mid-walk does not retry either', async () => {
+    const cursors: Array<string | null> = []
+    server.use(
+      http.get(`${API}/v1/insights`, ({ request }) => {
+        const cursor = new URL(request.url).searchParams.get('cursor')
+        cursors.push(cursor)
+        if (cursor === 'ofs_5') {
+          return HttpResponse.json({
+            data: [FINDING],
+            pagination: { limit: 5, cursor: 'ofs_10', hasMore: true },
+            freshness: FRESHNESS,
+          })
+        }
+        return apiError(400, 'INVALID_REQUEST', STALE_CURSOR, 'cursor')
+      })
+    )
+    const result = await cli([
+      'insights',
+      'list',
+      '--all',
+      '--input',
+      '{"cursor":"ofs_5","severity":"critical","limit":5}',
+    ])
+    expect(result.code).toBe(1)
+    expect(result.stdout).toBe('')
+    expect(cursors).toEqual(['ofs_5', 'ofs_10'])
+    expect(result.stderr).not.toContain('reading them again')
+    const envelope = JSON.parse(
+      result.stderr.trimEnd().split('\n').at(-1) ?? ''
+    ) as { error: { param?: string; suggestion?: string; progress?: unknown } }
+    expect(envelope.error.param).toBe('cursor')
+    expect(envelope.error.suggestion).toContain(
+      'without --cursor and with the same --state and --severity: brew-cli insights list --all --severity critical'
+    )
+    expect(envelope.error.suggestion).not.toContain('ofs_')
+    expect(envelope.error.progress).toBeUndefined()
+  })
+
+  it('the re-read command keeps the --brand and --api-url the caller chose, and never the API key', async () => {
+    let brandHeader: string | null = null
+    server.use(
+      http.get(`${API}/v1/insights`, ({ request }) => {
+        brandHeader = request.headers.get('x-brand-id')
+        return apiError(400, 'INVALID_REQUEST', STALE_CURSOR, 'cursor')
+      })
+    )
+    const result = await cli([
+      'insights',
+      'list',
+      '--all',
+      '--brand',
+      'kx_other_brand',
+      '--api-url',
+      API,
+      '--api-key',
+      'brew_secretsecretsecretsecretsecret00',
+      '--severity',
+      'warning',
+      '--cursor',
+      'ofs_5',
+    ])
+    expect(result.code).toBe(1)
+    expect(brandHeader).toBe('kx_other_brand')
+    const envelope = JSON.parse(result.stderr) as {
+      error: { suggestion?: string }
+    }
+    expect(envelope.error.suggestion).toContain(
+      `brew-cli insights list --all --severity warning --brand kx_other_brand --api-url ${API}`
+    )
+    expect(result.stderr).not.toContain('brew_secret')
+  })
+
   it('--all does not restart when its very first page refuses the --cursor it was given', async () => {
     let requests = 0
     server.use(

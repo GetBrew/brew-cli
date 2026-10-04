@@ -11,8 +11,11 @@
   begun at `--cursor` now does not restart (reading from the first page
   would return rows it was not asked for). It exits 1 with the API's `400
   INVALID_REQUEST` (`param: cursor`), and its suggestion gives the command
-  that reads the list again without `--cursor`, with the same `--state` and
-  `--severity`. A walk from the first page still restarts once.
+  that reads the same list again without `--cursor`: the same `--state`,
+  `--severity` and `--include` (from flags or `--input`), and the `--brand`
+  and `--api-url` it was given (never the API key). A cursor given in
+  `--input` is treated the same way. A walk from the first page still
+  restarts once.
 - Whenever a refused cursor ends an `insights list --all`, its error no
   longer offers that cursor to resume at (`progress` is left out, and a TTY
   prints no "resume with --cursor" line): the API refuses it.

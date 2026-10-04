@@ -4,6 +4,7 @@ import {
   type ListInsightsResponse,
 } from '@brew.new/sdk'
 import type { BrewClient } from '../../lib/client'
+import { shellQuote } from '../../lib/confirm'
 import { defineCommand } from '../../lib/define-command'
 import { CliApiError } from '../../lib/errors'
 import {
@@ -146,7 +147,7 @@ async function listEveryInsight(
       // A refused cursor is no place to resume: drop the walk's progress.
       ctx.transport.setDrain(undefined)
       if (startCursor !== undefined || attempt > 1) {
-        throw staleCursorGuidance(error, input, startCursor !== undefined)
+        throw staleCursorGuidance(ctx, error, input, startCursor !== undefined)
       }
       progress(
         ctx,
@@ -168,9 +169,13 @@ async function listEveryInsight(
 /**
  * The API's refusal, with the way to read the list again. The message stays
  * the API's own (it says whether the findings changed or the cursor belongs
- * to another state or severity); the suggestion names the command.
+ * to another state or severity); the suggestion names the command. It keeps
+ * what chose the list (the state, severity and include, from flags or
+ * --input) and its target (the `--brand` and `--api-url` given), so it reads
+ * the same list; never the API key, which the re-run resolves itself.
  */
 function staleCursorGuidance(
+  ctx: CliContext,
   error: BrewApiError,
   input: Readonly<Record<string, unknown>>,
   fromCallerCursor: boolean
@@ -179,8 +184,15 @@ function staleCursorGuidance(
   for (const key of ['state', 'severity', 'include'] as const) {
     const value = input[key]
     if (typeof value === 'string' && value !== '') {
-      again.push(`--${key} ${value}`)
+      again.push(`--${key}`, shellQuote(value))
     }
+  }
+  const { brand, apiUrl } = ctx.globals
+  if (brand !== undefined) {
+    again.push('--brand', shellQuote(brand))
+  }
+  if (apiUrl !== undefined) {
+    again.push('--api-url', shellQuote(apiUrl))
   }
   const suggestion = fromCallerCursor
     ? `This --cursor cannot continue the list any more, and a later one would not either. Read the list again from the first page, without --cursor and with the same --state and --severity: ${again.join(' ')}`
