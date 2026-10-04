@@ -53,7 +53,7 @@
     "smoke:signals": "bun run scripts/signal-smoke.ts"
   },
   "dependencies": {
-    "@brew.new/sdk": "^11.6.0",
+    "@brew.new/sdk": "^12.0.0",
     "commander": "^14.0.0"
   },
   "devDependencies": {

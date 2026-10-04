@@ -15,18 +15,16 @@ const PENDING_BUILD: readonly string[] = []
  * SDK publishing without the method, so a retargeted command does not have
  * to wait on the SDK.
  *
- * SDK 10 closed the previous window: it removed `analytics.campaigns`,
- * `analytics.sends.*`, `analytics.triggerInstances.*`,
+ * Empty since 12.0.0. SDK 10 closed an earlier window: it removed
+ * `analytics.campaigns`, `analytics.sends.*`, `analytics.triggerInstances.*`,
  * `automations.triggers.ready` and `automations.audienceRuns.control`, the
- * staleness test below fired on every sentinel, and each was retired — the
+ * staleness test below fired on every sentinel, and each was retired. The
+ * last was `data.run`: `POST /v1/data` is retired (GetBrew/brew-v2#1825),
+ * the CLI dropped `data run` while `@brew.new/sdk` 11.6.0 still had the
+ * method, and SDK 12.0.0 (GetBrew/typescript-sdk#45) deleted it — the
  * ratchet working exactly as designed.
- *
- * `data.run`: `POST /v1/data` is retired (GetBrew/brew-v2#1825) and the CLI
- * dropped `data run`, but the installed `@brew.new/sdk` 11.6.0 still has the
- * method. SDK 12.0.0 (GetBrew/typescript-sdk#45) deletes it. Delete this
- * entry when the staleness test below fires on the bump to `^12.0.0`.
  */
-const REMOVED_SDK_LEAVES: readonly string[] = ['data.run']
+const REMOVED_SDK_LEAVES: readonly string[] = []
 
 function walkSdkLeaves(): readonly string[] {
   const client = createBrewClient({ apiKey: 'brew_parity_walk' })

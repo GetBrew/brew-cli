@@ -2,6 +2,9 @@
 
 ## 0.14.0
 
+Needs `@brew.new/sdk` `^12.0.0`, which removes `data.run`
+(GetBrew/typescript-sdk#45).
+
 Removing a command is breaking. Under 0.x this repo ships a breaking
 release as the next minor, as 0.5.0 (the `transactional` group removed), 0.7.0
 and 0.8.0 did, and a `^0.13.0` range never resolves to it.
@@ -40,8 +43,6 @@ and 0.8.0 did, and a `^0.13.0` range never resolves to it.
   (GetBrew/brew-v2#1827): `smartSend` on the `POST /v1/sends` body (send it
   in `emails send --input`) and on send rows. The spec is byte-identical to
   `@brew.new/sdk` 12.0.0's.
-- The CLI no longer calls `data.run`, so it runs on `@brew.new/sdk` 11.6.0 or
-  12.0.0.
 
 ## 0.13.1
 
