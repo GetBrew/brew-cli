@@ -491,7 +491,7 @@ describe('insights list', () => {
     })
   })
 
-  it("--all surfaces a second stale-cursor answer as the error, with the second walk's progress", async () => {
+  it('--all surfaces a second stale-cursor answer as the error, with how to read again and no cursor to resume at', async () => {
     let requests = 0
     server.use(
       http.get(`${API}/v1/insights`, ({ request }) => {
@@ -513,15 +513,84 @@ describe('insights list', () => {
     const envelope = JSON.parse(
       result.stderr.trimEnd().split('\n').at(-1) ?? ''
     ) as {
-      error: { code: string; param?: string; progress?: unknown }
+      error: {
+        code: string
+        param?: string
+        message: string
+        suggestion?: string
+        progress?: unknown
+      }
     }
     expect(envelope.error.code).toBe('INVALID_REQUEST')
     expect(envelope.error.param).toBe('cursor')
-    expect(envelope.error.progress).toEqual({
-      rowsFetched: 1,
-      pagesFetched: 1,
-      resumeCursor: 'ofs_1',
-    })
+    expect(envelope.error.message).toBe(STALE_CURSOR)
+    expect(envelope.error.suggestion).toBe(
+      'The findings changed again while the list was read a second time. Run it again: brew-cli insights list --all'
+    )
+    // ofs_1 is the cursor the API refused: it is no place to resume.
+    expect(envelope.error.progress).toBeUndefined()
+  })
+
+  it('--all from a caller --cursor that goes stale mid-walk does not retry, and says to read again without --cursor', async () => {
+    const cursors: Array<string | null> = []
+    server.use(
+      http.get(`${API}/v1/insights`, ({ request }) => {
+        const cursor = new URL(request.url).searchParams.get('cursor')
+        cursors.push(cursor)
+        if (cursor === 'ofs_5') {
+          return HttpResponse.json({
+            data: [FINDING],
+            pagination: { limit: 5, cursor: 'ofs_10', hasMore: true },
+            freshness: FRESHNESS,
+          })
+        }
+        return apiError(400, 'INVALID_REQUEST', STALE_CURSOR, 'cursor')
+      })
+    )
+    const argv = [
+      'insights',
+      'list',
+      '--all',
+      '--state',
+      'all',
+      '--severity',
+      'critical',
+      '--limit',
+      '5',
+      '--cursor',
+      'ofs_5',
+    ]
+    const result = await cli(argv)
+    expect(result.code).toBe(1)
+    expect(result.stdout).toBe('')
+    // No restart: neither from ofs_5 (stale too) nor from the first page.
+    expect(cursors).toEqual(['ofs_5', 'ofs_10'])
+    expect(result.stderr).not.toContain('reading them again')
+    const envelope = JSON.parse(
+      result.stderr.trimEnd().split('\n').at(-1) ?? ''
+    ) as {
+      error: {
+        code: string
+        param?: string
+        suggestion?: string
+        progress?: unknown
+      }
+    }
+    expect(envelope.error.code).toBe('INVALID_REQUEST')
+    expect(envelope.error.param).toBe('cursor')
+    expect(envelope.error.suggestion).toBe(
+      'This --cursor cannot continue the list any more, and a later one would not either. Read the list again from the first page, without --cursor and with the same --state and --severity: brew-cli insights list --all --state all --severity critical'
+    )
+    expect(envelope.error.progress).toBeUndefined()
+
+    cursors.length = 0
+    const tty = await cli(argv, { ttyOut: true })
+    expect(tty.code).toBe(1)
+    expect(cursors).toEqual(['ofs_5', 'ofs_10'])
+    expect(tty.stderr).toContain(
+      'without --cursor and with the same --state and --severity: brew-cli insights list --all --state all --severity critical'
+    )
+    expect(tty.stderr).not.toContain('resume with')
   })
 
   it('--all does not restart when its very first page refuses the --cursor it was given', async () => {
@@ -548,7 +617,14 @@ describe('insights list', () => {
     ])
     expect(result.code).toBe(1)
     expect(requests).toBe(1)
-    expect(errorCode(result)).toBe('INVALID_REQUEST')
+    const envelope = JSON.parse(result.stderr) as {
+      error: { code: string; message: string; suggestion?: string }
+    }
+    expect(envelope.error.code).toBe('INVALID_REQUEST')
+    expect(envelope.error.message).toContain('different state or severity')
+    expect(envelope.error.suggestion).toContain(
+      'without --cursor and with the same --state and --severity: brew-cli insights list --all --severity critical'
+    )
   })
 
   it("surfaces the API's 400 for an unknown include token", async () => {

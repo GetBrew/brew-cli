@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.13.1
+
+### Fixed
+
+- **`insights list --all --cursor <c>` no longer retries from a cursor the
+  API refused.** When the findings changed mid-walk, `--all` read the list
+  again from where it started, so a walk begun at `--cursor` asked for that
+  cursor again, was refused again, and failed after a wasted walk. A walk
+  begun at `--cursor` now does not restart (reading from the first page
+  would return rows it was not asked for). It exits 1 with the API's `400
+  INVALID_REQUEST` (`param: cursor`), and its suggestion gives the command
+  that reads the list again without `--cursor`, with the same `--state` and
+  `--severity`. A walk from the first page still restarts once.
+- Whenever a refused cursor ends an `insights list --all`, its error no
+  longer offers that cursor to resume at (`progress` is left out, and a TTY
+  prints no "resume with --cursor" line): the API refuses it.
+
 ## 0.13.0
 
 Needs `@brew.new/sdk` `^11.6.0` (`insights.list` / `insights.get`,

@@ -5,6 +5,7 @@ import {
 } from '@brew.new/sdk'
 import type { BrewClient } from '../../lib/client'
 import { defineCommand } from '../../lib/define-command'
+import { CliApiError } from '../../lib/errors'
 import {
   asSdkInput,
   flagInt,
@@ -106,8 +107,12 @@ export const insightsListCommand = defineCommand({
  * The list is ranked live (at most 200 findings): when a finding the walk
  * already returned leaves the list or moves, or a new one ranks among them,
  * the API refuses the next cursor with `400 INVALID_REQUEST` (`param:
- * cursor`) rather than skip or repeat rows. The walk reads the list again
- * from where it started, once; a second refusal is the error.
+ * cursor`) rather than skip or repeat rows. A walk from the first page reads
+ * the list again from the first page, once. A walk from the caller's
+ * `--cursor` does not: that cursor is the one going stale, and reading from
+ * the first page would return rows the caller did not ask for. Either way a
+ * refusal that ends the walk says how to read the list again, and offers no
+ * `--cursor` to resume at, since the API refuses it.
  */
 async function listEveryInsight(
   ctx: CliContext,
@@ -115,10 +120,11 @@ async function listEveryInsight(
   input: Readonly<Record<string, unknown>>
 ): Promise<{ data: unknown; human: string }> {
   const { include: _include, ...rest } = input
+  const startCursor =
+    typeof input.cursor === 'string' ? input.cursor : undefined
   let rows: ReadonlyArray<InsightRow> = []
   let extras: PageExtras | undefined
   for (let attempt = 1; ; attempt += 1) {
-    let pages = 0
     extras = undefined
     try {
       rows = await collectAll(ctx, async (cursor) => {
@@ -129,17 +135,19 @@ async function listEveryInsight(
               : { ...rest, ...(cursor === undefined ? {} : { cursor }) }
           )
         )
-        pages += 1
         extras ??= readExtras(page)
         return page
       })
       break
     } catch (error) {
-      if (attempt > 1 || pages === 0 || !isStaleCursor(error)) {
+      if (!isStaleCursor(error)) {
         throw error
       }
-      // The first walk's progress no longer describes where to resume.
+      // A refused cursor is no place to resume: drop the walk's progress.
       ctx.transport.setDrain(undefined)
+      if (startCursor !== undefined || attempt > 1) {
+        throw staleCursorGuidance(error, input, startCursor !== undefined)
+      }
       progress(
         ctx,
         'The findings changed while paging; reading them again from the start…'
@@ -157,8 +165,42 @@ async function listEveryInsight(
   }
 }
 
+/**
+ * The API's refusal, with the way to read the list again. The message stays
+ * the API's own (it says whether the findings changed or the cursor belongs
+ * to another state or severity); the suggestion names the command.
+ */
+function staleCursorGuidance(
+  error: BrewApiError,
+  input: Readonly<Record<string, unknown>>,
+  fromCallerCursor: boolean
+): CliApiError {
+  const again = ['brew-cli insights list --all']
+  for (const key of ['state', 'severity', 'include'] as const) {
+    const value = input[key]
+    if (typeof value === 'string' && value !== '') {
+      again.push(`--${key} ${value}`)
+    }
+  }
+  const suggestion = fromCallerCursor
+    ? `This --cursor cannot continue the list any more, and a later one would not either. Read the list again from the first page, without --cursor and with the same --state and --severity: ${again.join(' ')}`
+    : `The findings changed again while the list was read a second time. Run it again: ${again.join(' ')}`
+  return new CliApiError({
+    status: error.status,
+    code: error.code,
+    type: error.type,
+    message: error.message,
+    ...(error.param === undefined ? {} : { param: error.param }),
+    suggestion,
+    docs: error.docs,
+    ...(error.requestId === undefined ? {} : { requestId: error.requestId }),
+    ...(error.details === undefined ? {} : { details: error.details }),
+    body: error.body,
+  })
+}
+
 /** The API's refusal of a cursor whose list changed under it. */
-function isStaleCursor(error: unknown): boolean {
+function isStaleCursor(error: unknown): error is BrewApiError {
   return (
     error instanceof BrewApiError &&
     error.status === 400 &&
