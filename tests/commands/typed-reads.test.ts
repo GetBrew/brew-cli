@@ -309,6 +309,77 @@ describe('insights list', () => {
     expect(empty.stdout).toContain('Memo: none yet.')
   })
 
+  it('on a TTY, an unmeasured pulse says opens are not measured instead of printing them, and a counts-only one says why it has no rates', async () => {
+    const pulses = {
+      unmeasured: {
+        ...PULSE,
+        uniqueOpens: 0,
+        priorUniqueOpens: 0,
+        openRatePct: null,
+        priorOpenRatePct: null,
+        openDirection: 'steady',
+        measured: false,
+      },
+      countsOnly: {
+        ...PULSE,
+        delivered: 12,
+        priorDelivered: 9,
+        openRatePct: null,
+        priorOpenRatePct: null,
+        clickRatePct: null,
+        priorClickRatePct: null,
+        openDirection: 'steady',
+        clickDirection: 'steady',
+        countsOnly: true,
+      },
+    } as const
+    let which: keyof typeof pulses = 'unmeasured'
+    server.use(
+      http.get(`${API}/v1/insights`, () =>
+        HttpResponse.json({
+          data: [],
+          pagination: PAGE_DONE,
+          freshness: FRESHNESS,
+          pulse: pulses[which],
+        })
+      )
+    )
+    const unmeasured = await cli(['insights', 'list', '--include', 'pulse'], {
+      ttyOut: true,
+    })
+    expect(unmeasured.code).toBe(0)
+    expect(unmeasured.stdout).toContain(
+      [
+        'Pulse, 7 days to 2026-10-01T00:00:00.000Z:',
+        '  delivered 1200 (prior 1100)',
+        '  opens not measured (engagement tracking is off)',
+        '  unique clicks 60 (prior 66)',
+        '  click rate 5% (prior -, steady)',
+        '  unsubscribed 3 (prior 4)',
+      ].join('\n')
+    )
+    expect(unmeasured.stdout).not.toContain('unique opens')
+    expect(unmeasured.stdout).not.toContain('open rate')
+    // JSON stays the API's answer, verbatim.
+    const json = await cli(['insights', 'list', '--include', 'pulse'])
+    expect((json.json as { pulse: unknown }).pulse).toEqual(pulses.unmeasured)
+
+    which = 'countsOnly'
+    const countsOnly = await cli(['insights', 'list', '--include', 'pulse'], {
+      ttyOut: true,
+    })
+    expect(countsOnly.stdout).toContain(
+      [
+        '  delivered 12 (prior 9)',
+        '  unique opens 420 (prior 400)',
+        '  unique clicks 60 (prior 66)',
+        '  unsubscribed 3 (prior 4)',
+        '  too few deliveries for rates; read the counts',
+      ].join('\n')
+    )
+    expect(countsOnly.stdout).not.toContain('rate ')
+  })
+
   it('--all merges every page, asks for the expansions once and keeps them beside the rows', async () => {
     const seen: Array<URLSearchParams> = []
     server.use(

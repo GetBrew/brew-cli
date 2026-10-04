@@ -23,7 +23,9 @@ answer from its tables. `data run` itself is unchanged in this release.
   page only and keeps them, with `freshness`, beside the merged rows. A TTY
   leads with how current the findings are, says when the latest run failed
   (the findings may be stale), and prints each expansion it asked for under
-  the table. Free.
+  the table; a pulse taken with engagement tracking off says opens are not
+  measured instead of printing them, and a counts-only one says it has too
+  few deliveries for rates. Free.
 - **`insights get <insightId>`**: one finding in full, with its rationale, the
   frozen `metrics` (the only numbers to quote about it), `evidence` links, the
   detector's `method` and the run that produced it. An unknown id and another
