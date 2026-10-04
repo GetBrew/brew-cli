@@ -475,7 +475,9 @@ export interface paths {
          *
          *     **Use when** a design is ready to go out. For per-recipient event-driven delivery, publish an automation and fire its trigger (`fireTrigger`).
          *
-         *     **Input** Campaign (`test` omitted or `false`): `emailId` (optionally pinned to `emailVersionId`), a verified `domainId`, `subject`, and exactly one of `audienceId` (a saved audience, or `"all"` for every contact in the brand) or `to` (one address or an array of up to 50). Optional `from` (`{ email, name? }`, an address on the send domain), `previewText`, `replyTo`, `scheduledAt`, `gradualSend`, and `consent` provenance (`source`, optional `capturedAt`, `policyVersion`, `evidence`) for inline recipients that are not yet contacts: each is created as a subscribed contact carrying that record. An existing opt-out is never re-subscribed. Inline recipients face the same unsubscribe and suppression gate and per-recipient quota as audience sends. Test (`test: true`): `emailId`, `subject`, one `to` address, optional `emailVersionId`, `previewText`, `replyTo`, `domainId` (a verified org-owned domain; otherwise the Brew default sender, and an unverified or foreign domain is rejected, never downgraded), `from` (`{ email, name? }`, an address on that domain), `variables` (example values for `{{ var | fallback }}` merge tags; a value wins over the fallback) and `payload` (template data; nested JSON renders via Liquid as `trigger.*`); the subject carries a `[TEST]` prefix. The same design can be sent unlimited times; every campaign call mints a new send.
+         *     **Input** Campaign (`test` omitted or `false`): `emailId` (optionally pinned to `emailVersionId`), a verified `domainId`, `subject`, and exactly one of `audienceId` (a saved audience, or `"all"` for every contact in the brand) or `to` (one address or an array of up to 50). Optional `from` (`{ email, name? }`, an address on the send domain), `previewText`, `replyTo`, `scheduledAt`, one delivery mode (`gradualSend`, or `smartSend: true` for Intelligent Send: each recipient with past opens or clicks gets it at the upcoming hour, within 24 hours, their own history makes them most likely to open, and the rest right away; it composes with `scheduledAt`), and `consent` provenance (`source`, optional `capturedAt`, `policyVersion`, `evidence`) for inline recipients that are not yet contacts: each is created as a subscribed contact carrying that record. An existing opt-out is never re-subscribed. Inline recipients face the same unsubscribe and suppression gate and per-recipient quota as audience sends.
+         *
+         *     Test (`test: true`): `emailId`, `subject`, one `to` address, optional `emailVersionId`, `previewText`, `replyTo`, `domainId` (a verified org-owned domain; otherwise the Brew default sender, and an unverified or foreign domain is rejected, never downgraded), `from` (`{ email, name? }`, an address on that domain), `variables` (example values for `{{ var | fallback }}` merge tags; a value wins over the fallback) and `payload` (template data; nested JSON renders via Liquid as `trigger.*`); the subject carries a `[TEST]` prefix. The same design can be sent unlimited times; every campaign call mints a new send.
          *
          *     **Returns** campaign `202 { status: 'queued' | 'scheduled', sendId, scheduledAt?, warnings? }` (poll `getSend`; `warnings[]` carries one `CONSENT_RECORD_MISSING` per inline recipient that is a subscribed contact with no consent record, and one `RECIPIENTS_EXCLUDED` with the counts when unsubscribed, suppressed or undeliverable contacts will be skipped); test `200 { status: 'completed', recipient }`.
          *
@@ -2250,36 +2252,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/v1/data": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Run a data command
-         * @description One surface over the brand's data: runs a sandboxed bash command with the `db` verbs (`db ls`, `db schema <table>`, `db find`, `db agg`, `db get`, `db insert`, `db set`, `db del`) plus `jq`, `grep`, `sort` and `head` pipes. The same engine serves the in-app agent and, read-only, the MCP `query_brew_data` tool.
-         *
-         *     **Use when** a question spans tables or needs a filter the REST reads do not offer. Start with `db ls` (the tables your credential may touch) and `db schema <table>`.
-         *
-         *     **Input** `command`. `find` and `agg` take `--since` and `--until` (epoch ms, ISO, or relative such as `7d`) on every table; `agg` aggregates server-side (`--fn count|sum:f|avg:f|min:f|max:f`, `--group-by`, `--bucket hour|day|week|month`). `find` prints NDJSON on stdout; counts and the next-page cursor arrive on stderr. Tables are permission-scoped per credential; writes are policy-gated, and a refusal names the endpoint that owns the operation.
-         *
-         *     **Returns** `200 { exitCode, output, truncated }`. A failed command is still `200` with `exitCode != 0` and the message in `output`: read it, adjust, retry.
-         *
-         *     **Errors** `400 INVALID_REQUEST` for a malformed body; per-table refusals surface inside `output`.
-         *
-         *     **See also** `searchContacts`, `getEventsAnalytics`.
-         */
-        post: operations["runDataCommand"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/v1/integrations": {
         parameters: {
             query?: never;
@@ -2789,6 +2761,19 @@ export interface components {
                 pauseReason?: "manual";
                 /** Format: date-time */
                 resumedAt?: string;
+            };
+            smartSend?: {
+                /**
+                 * Format: date-time
+                 * @description Every recipient is sent by then: 24 hours after timing starts.
+                 */
+                windowEndsAt?: string;
+                /** @description Recipients timed from their own opens and clicks. */
+                assignedViaModel?: number;
+                /** @description Recipients with no opens or clicks, sent right away. */
+                assignedImmediately?: number;
+                /** @description Recipients with history that could not be timed, sent right away. */
+                modelFallbacks?: number;
             };
             /** Format: date-time */
             createdAt: string;
@@ -4996,6 +4981,19 @@ export interface components {
                     /** Format: date-time */
                     resumedAt?: string;
                 };
+                smartSend?: {
+                    /**
+                     * Format: date-time
+                     * @description Every recipient is sent by then: 24 hours after timing starts.
+                     */
+                    windowEndsAt?: string;
+                    /** @description Recipients timed from their own opens and clicks. */
+                    assignedViaModel?: number;
+                    /** @description Recipients with no opens or clicks, sent right away. */
+                    assignedImmediately?: number;
+                    /** @description Recipients with history that could not be timed, sent right away. */
+                    modelFallbacks?: number;
+                };
                 /** Format: date-time */
                 createdAt: string;
                 /** Format: date-time */
@@ -5124,6 +5122,8 @@ export interface components {
                 /** @description IANA timezone used to preserve local wall-clock time for day intervals. */
                 timeZone: string;
             };
+            /** @description Intelligent Send: true sends each recipient with past opens or clicks at the upcoming hour (within 24 hours) their own history makes them most likely to open, and everyone else right away. Composes with scheduledAt; not with gradualSend. */
+            smartSend?: boolean;
         };
         SendPayloadValue: SendPayloadValue;
         SendCancelResponse: {
@@ -8508,21 +8508,6 @@ export interface components {
                 /** Format: date-time */
                 end: string | null;
             };
-        };
-        DataCommandResponse: {
-            /** @description 0 = success; non-zero = the command failed (see output) */
-            exitCode: number;
-            /** @description stdout, then stderr under a `[stderr]` marker when present. Row contents are customer data. */
-            output: string;
-            /** @description true when the output was cut at the size budget */
-            truncated: boolean;
-            stdout?: string;
-            stderr?: string;
-            pagination?: {
-                incomplete: boolean;
-                continuations: string[];
-            };
-            retryCommand?: string;
         };
         IntegrationsListResponse: {
             data: {
@@ -28320,164 +28305,6 @@ export interface operations {
             };
             /** @description `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended. */
             403: {
-                headers: {
-                    /** @description Unique request identifier. Share this with support when debugging a request. */
-                    "x-request-id": string;
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiErrorEnvelope"];
-                };
-            };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
-            429: {
-                headers: {
-                    /** @description Unique request identifier. Share this with support when debugging a request. */
-                    "x-request-id": string;
-                    /** @description Requests allowed in the current rolling rate limit window. */
-                    "X-RateLimit-Limit": number;
-                    /** @description Requests remaining in the current rolling rate limit window. */
-                    "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
-                    "X-RateLimit-Reset": number;
-                    /** @description Seconds to wait before retrying the request. */
-                    "Retry-After": number;
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiErrorEnvelope"];
-                };
-            };
-            /** @description `INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it. */
-            500: {
-                headers: {
-                    /** @description Unique request identifier. Share this with support when debugging a request. */
-                    "x-request-id": string;
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiErrorEnvelope"];
-                };
-            };
-        };
-    };
-    runDataCommand: {
-        parameters: {
-            query?: never;
-            header?: {
-                /**
-                 * @description The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
-                 * @example kx7b3s7fapqz8mjm12ekz1kxdx87yceg
-                 */
-                "X-Brand-Id"?: string;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                /**
-                 * @example {
-                 *       "command": "db find audiences --fields name,cachedCount --limit 10 | jq -r '.name'"
-                 *     }
-                 */
-                "application/json": {
-                    /** @description Bash command line, e.g.: db find audiences name=vip --fields name | jq -r '.name' */
-                    command: string;
-                };
-            };
-        };
-        responses: {
-            /** @description Command result. `exitCode` 0 = success; non-zero = the command failed (message in `output`). */
-            200: {
-                headers: {
-                    /** @description Unique request identifier. Share this with support when debugging a request. */
-                    "x-request-id": string;
-                    /** @description Requests allowed in the current rolling rate limit window. */
-                    "X-RateLimit-Limit": number;
-                    /** @description Requests remaining in the current rolling rate limit window. */
-                    "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
-                    "X-RateLimit-Reset": number;
-                    [name: string]: unknown;
-                };
-                content: {
-                    /**
-                     * @example {
-                     *       "exitCode": 0,
-                     *       "output": "Newsletter VIPs\nChurn risks\n\n[stderr]\n# 2 row(s)",
-                     *       "truncated": false
-                     *     }
-                     */
-                    "application/json": components["schemas"]["DataCommandResponse"];
-                };
-            };
-            /**
-             * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
-             *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
-             */
-            400: {
-                headers: {
-                    /** @description Unique request identifier. Share this with support when debugging a request. */
-                    "x-request-id": string;
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiErrorEnvelope"];
-                };
-            };
-            /**
-             * @description `API_KEY_REVOKED`: The API key was revoked.
-             *
-             *     `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
-             *
-             *     `INVALID_API_KEY`: The API key is malformed or unknown.
-             */
-            401: {
-                headers: {
-                    /** @description Unique request identifier. Share this with support when debugging a request. */
-                    "x-request-id": string;
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiErrorEnvelope"];
-                };
-            };
-            /**
-             * @description `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
-             *
-             *     `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
-             *
-             *     `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
-             */
-            403: {
-                headers: {
-                    /** @description Unique request identifier. Share this with support when debugging a request. */
-                    "x-request-id": string;
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiErrorEnvelope"];
-                };
-            };
-            /** @description `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization). */
-            404: {
-                headers: {
-                    /** @description Unique request identifier. Share this with support when debugging a request. */
-                    "x-request-id": string;
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiErrorEnvelope"];
-                };
-            };
-            /**
-             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
-             *
-             *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
-             */
-            409: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
                     "x-request-id": string;

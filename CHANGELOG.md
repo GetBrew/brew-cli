@@ -1,5 +1,49 @@
 # Changelog
 
+## 0.14.0
+
+Needs `@brew.new/sdk` `^12.0.0`, which removes `data.run`
+(GetBrew/typescript-sdk#45).
+
+Removing a command is breaking. Under 0.x this repo ships a breaking
+release as the next minor, as 0.5.0 (the `transactional` group removed), 0.7.0
+and 0.8.0 did, and a `^0.13.0` range never resolves to it.
+
+### Breaking
+
+- **`brew-cli data run` is removed; `POST /v1/data` is retired**
+  (GetBrew/brew-v2#1825). It now exits 2 with `unknown command 'data'`. Use
+  the typed commands instead: `emails list`, `emails groups list`,
+  `contacts search`, `contacts count`, `contacts count-by`, `audiences list`,
+  `audiences get`, `automations list`, `automations runs list`,
+  `domains list`, `sends list`, `analytics overview`, `analytics events` and
+  `analytics event-counts`. The full question-by-question mapping is in the
+  API changelog (https://docs.brew.new/changelog/api).
+- The tables only the data command used to read have typed commands since
+  0.13.0:
+  - design comments: `emails comments list <emailId>` (`--include messages`
+    adds the messages);
+  - brand insights and intelligence: `insights list`, whose
+    `--include pulse,report,suggestions,memo` adds the page-level reads, and
+    `insights get <insightId>`;
+  - notifications: `notifications list`;
+  - chats: `chats list`, then `chats get <chatId>` for one;
+  - domain-score history:
+    `domains health <domainId> --include scoreHistory,scoreRuns`;
+  - contact open profiles: `contacts get <email> --include openProfile` and
+    `contacts search --include openProfile`.
+- No equivalent: table discovery (`db ls`, `db schema`) and `jq` pipelines.
+  Read the typed command's `--json` and filter it; writes go through each
+  resource's own commands. `brew-cli api` still sends any raw request.
+
+### Spec sync
+
+- The vendored spec and generated types drop `POST /v1/data` and its
+  `DataCommandResponse` schema, and take Intelligent Send from the app spec
+  (GetBrew/brew-v2#1827): `smartSend` on the `POST /v1/sends` body (send it
+  in `emails send --input`) and on send rows. The spec is byte-identical to
+  `@brew.new/sdk` 12.0.0's.
+
 ## 0.13.1
 
 ### Fixed
