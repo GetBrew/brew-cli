@@ -22,9 +22,9 @@ const PENDING_BUILD: readonly string[] = []
  * ratchet working exactly as designed.
  *
  * `data.run`: `POST /v1/data` is retired (GetBrew/brew-v2#1825) and the CLI
- * dropped `data run`, but the SDK release that deletes the method is not on
- * npm yet. Delete this entry when the staleness test below fires on the SDK
- * upgrade that drops it.
+ * dropped `data run`, but the installed `@brew.new/sdk` 11.6.0 still has the
+ * method. SDK 12.0.0 (GetBrew/typescript-sdk#45) deletes it. Delete this
+ * entry when the staleness test below fires on the bump to `^12.0.0`.
  */
 const REMOVED_SDK_LEAVES: readonly string[] = ['data.run']
 

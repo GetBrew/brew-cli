@@ -28,7 +28,8 @@ const GROUP_SUMMARIES: Readonly<Record<string, string>> = {
   automations: 'Manage automation graphs, triggers, and runs',
   brand: "Read and update the active brand's design context",
   brands: 'Organization-level brand lifecycle',
-  chats: 'Read Brew chat context for hand-offs',
+  chats: 'List Brew chats, and read one for a hand-off',
+  comments: "Read a design's comment threads",
   config: 'Read and write stored CLI configuration',
   contacts: 'Manage contacts',
   content:
@@ -39,8 +40,12 @@ const GROUP_SUMMARIES: Readonly<Record<string, string>> = {
   fields: 'Manage custom contact fields',
   flows: 'Browse public email flows (real multi-step sequences by brand)',
   groups: 'Manage email folders (groups)',
+  insights:
+    "Brew Insights: findings about the brand's email, plus its pulse, report, suggestions and memo",
   integrations: 'Read the connected-integration catalog',
   'inbox-placement-tests': 'Inbox placement (seed) test results',
+  notifications:
+    'What finished or failed: generations, sends, imports, domain checks',
   sends: 'Read sends, and control one in flight or scheduled',
   templates: 'Browse the template gallery',
   contract: 'Stored payload contracts (get, put, validate)',
