@@ -31,6 +31,10 @@ The workflow then:
 The user-visible version comes from `package.json` at build time (tsup
 `__CLI_VERSION__` define) — never hand-edit a version constant.
 
+The release job uses GitHub-hosted `ubuntu-latest`: npm rejects provenance
+from self-hosted runners. `CI_RUNNER_SMALL` controls CI and the spec sentinel;
+it must not select the publishing runner.
+
 ## Install channels (what users get)
 
 ```bash

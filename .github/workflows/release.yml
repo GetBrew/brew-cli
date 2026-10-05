@@ -10,7 +10,9 @@ permissions:
 
 jobs:
   release:
-    runs-on: ${{ vars.CI_RUNNER_SMALL || 'ubuntu-latest' }}
+    # npm rejects provenance from self-hosted runners, including Blacksmith.
+    # Keep publishing independent of CI_RUNNER_SMALL.
+    runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
