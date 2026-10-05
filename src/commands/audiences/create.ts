@@ -21,7 +21,7 @@ export const audiencesCreateCommand = defineCommand({
     { flag: '--name <name>', summary: 'Audience name' },
     {
       ...INPUT_FLAG,
-      summary: 'Filter definition; omitted types use the brand field registry',
+      summary: `${INPUT_FLAG.summary}. Omitted filter types use the brand field registry.`,
     },
     IDEMPOTENCY_FLAG,
   ],

@@ -61,7 +61,7 @@ a `confirmCommand` otherwise, `--yes` to proceed).
 | `brew-cli emails restore` | write | `POST /v1/emails/{emailId}/restore` | Restore a previous version as the new latest (non-destructive) |
 | `brew-cli emails delete` | destructive | `DELETE /v1/emails/{emailId}` | Hard-delete an email design and all its versions (idempotent) |
 | `brew-cli emails export` | write | `POST /v1/emails/{emailId}/export` | Export a design to a connected ESP as a template (not a send) |
-| `brew-cli emails audit` | write ($) | `POST /v1/emails/audit` | Audit raw email content for production readiness (5 credits when complete) |
+| `brew-cli emails audit` | write ($) | `POST /v1/emails/audit` | Audit HTML, JSX, or a saved email for production readiness (5 credits when complete) |
 | `brew-cli emails get-audit` | read | `GET /v1/emails/audits/{auditId}` | Read a saved email audit: one page of its findings (free; never reruns the audit) |
 | `brew-cli emails preview-clients` | write ($) | `POST /v1/emails/{emailId}/client-previews` | Start a rendering job across real email clients (10 credits); poll it with `emails get-client-preview` |
 | `brew-cli emails get-client-preview` | read | `GET /v1/emails/client-previews/{previewId}` | Poll a client-preview rendering job: per-client screenshot links once it settles (free; never re-renders) |
@@ -835,16 +835,19 @@ brew-cli emails export eml_2SmZOWV3ZQ7W5x6g3m4p --provider mailchimp --template-
 
 ### brew-cli emails audit
 
-Audit raw email content for production readiness (5 credits when complete)
+Audit HTML, JSX, or a saved email for production readiness (5 credits when complete)
 
 - Route: `POST /v1/emails/audit`
 - Class: write
 - Consumes Brew credits
 - SDK: `brew.emails.auditEmail(...)`
 - `--file <path>` — Email HTML file to audit, or - for stdin
+- `--jsx-file <path>` — React Email JSX file to audit, or - for stdin
+- `--email-id <id>` — Saved email to audit (latest version by default)
+- `--email-version-id <id>` — Saved email version ID; requires emailId
 - `--subject <text>` — Inbox subject line
 - `--preview-text <text>` — Inbox preview text; an explicit empty value stays empty
-- `--sending-purpose <purpose>` — marketing | transactional (default: marketing)
+- `--sending-purpose <purpose>` — marketing | transactional (omitted: inferred; marketing if unclear)
 - `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
 - `--idempotency-key <key>` — Idempotency-Key for safe retries (auto-generated otherwise)
 
@@ -852,6 +855,8 @@ Audit raw email content for production readiness (5 credits when complete)
 brew-cli emails audit --file newsletter.html --subject "August update" --sending-purpose marketing
 cat email.html | brew-cli emails audit --file - --subject "Receipt" --sending-purpose transactional
 brew-cli emails audit --input '{"emailHtml":"<p>Hello</p>","subject":"Hello"}'
+brew-cli emails audit --jsx-file newsletter.tsx
+brew-cli emails audit --email-id email_123 --email-version-id version_123
 ```
 
 ### brew-cli emails get-audit
@@ -1122,7 +1127,7 @@ Create an audience segment from a filter definition
 - Class: write
 - SDK: `brew.audiences.create(...)`
 - `--name <name>` — Audience name
-- `--input <json>` — Filter definition; omitted types use the brand field registry
+- `--input <json>` — Full JSON request body, or - to read stdin (flags override it). Omitted filter types use the brand field registry.
 - `--idempotency-key <key>` — Idempotency-Key for safe retries (auto-generated otherwise)
 
 ```bash

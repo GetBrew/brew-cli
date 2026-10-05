@@ -26,7 +26,7 @@ function optionalText(value: unknown): string | undefined {
 export const emailsAuditCommand = defineCommand({
   path: ['emails', 'audit'],
   summary:
-    'Audit raw email content for production readiness (5 credits when complete)',
+    'Audit HTML, JSX, or a saved email for production readiness (5 credits when complete)',
   sdkMethod: 'emails.auditEmail',
   route: { method: 'POST', path: '/v1/emails/audit' },
   commandClass: 'write',
@@ -37,6 +37,18 @@ export const emailsAuditCommand = defineCommand({
       flag: '--file <path>',
       summary: 'Email HTML file to audit, or - for stdin',
     },
+    {
+      flag: '--jsx-file <path>',
+      summary: 'React Email JSX file to audit, or - for stdin',
+    },
+    {
+      flag: '--email-id <id>',
+      summary: 'Saved email to audit (latest version by default)',
+    },
+    {
+      flag: '--email-version-id <id>',
+      summary: 'Saved email version ID; requires emailId',
+    },
     { flag: '--subject <text>', summary: 'Inbox subject line' },
     {
       flag: '--preview-text <text>',
@@ -44,7 +56,8 @@ export const emailsAuditCommand = defineCommand({
     },
     {
       flag: '--sending-purpose <purpose>',
-      summary: 'marketing | transactional (default: marketing)',
+      summary:
+        'marketing | transactional (omitted: inferred; marketing if unclear)',
     },
     INPUT_FLAG,
     IDEMPOTENCY_FLAG,
@@ -53,10 +66,13 @@ export const emailsAuditCommand = defineCommand({
     'brew-cli emails audit --file newsletter.html --subject "August update" --sending-purpose marketing',
     'cat email.html | brew-cli emails audit --file - --subject "Receipt" --sending-purpose transactional',
     `brew-cli emails audit --input '{"emailHtml":"<p>Hello</p>","subject":"Hello"}'`,
+    'brew-cli emails audit --jsx-file newsletter.tsx',
+    'brew-cli emails audit --email-id email_123 --email-version-id version_123',
   ],
   run: async ({ ctx, flags }) => {
     const base = await readJsonFlag(ctx, flags.input, '--input')
     const emailHtml = await readTextFlag(ctx, flags.file, '--file')
+    const emailJsx = await readTextFlag(ctx, flags.jsxFile, '--jsx-file')
     const sendingPurpose = flagString(flags.sendingPurpose)
     if (sendingPurpose !== undefined && !SENDING_PURPOSES.has(sendingPurpose)) {
       throw new CliUsageError(
@@ -65,14 +81,29 @@ export const emailsAuditCommand = defineCommand({
     }
     const input = mergeInput(base, {
       emailHtml,
+      emailJsx,
+      emailId: flagString(flags.emailId),
+      emailVersionId: flagString(flags.emailVersionId),
       subject: optionalText(flags.subject),
       previewText: optionalText(flags.previewText),
       sendingPurpose,
     })
-    if (typeof input.emailHtml !== 'string' || input.emailHtml.trim() === '') {
+    const sources = ['emailHtml', 'emailJsx', 'emailId'].filter(
+      (field) => input[field] !== undefined
+    )
+    const source = sources[0]
+    const content = source === undefined ? undefined : input[source]
+    if (
+      sources.length !== 1 ||
+      typeof content !== 'string' ||
+      content.trim() === ''
+    ) {
       throw new CliUsageError(
-        '--file is required (a path, or - for stdin), or emailHtml via --input.'
+        'Choose exactly one nonblank source: --file, --jsx-file, --email-id, or emailHtml/emailJsx/emailId via --input.'
       )
+    }
+    if (input.emailVersionId !== undefined && source !== 'emailId') {
+      throw new CliUsageError('emailVersionId requires a saved emailId.')
     }
     // The 65 s audit deadline is the command's `defaultTimeoutMs`: the
     // whole command, body read included, and `--timeout` overrides it.
