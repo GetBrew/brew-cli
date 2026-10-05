@@ -3627,7 +3627,7 @@ export interface components {
                     /** @enum {string} */
                     operator: "equals" | "not_equals" | "contains" | "not_contains" | "contains_any" | "not_contains_any" | "starts_with" | "ends_with" | "gt" | "gte" | "lt" | "lte" | "between" | "is_true" | "is_false" | "in" | "not_in" | "is_empty" | "not_exists" | "is_not_empty" | "exists" | "is_set" | "before" | "after" | "on_date";
                     value?: unknown;
-                    /** @description The field's value type: `string`, `number`, `date`, or `boolean`. Saved audiences resolve an omitted type from the brand's field registry, including core fields, before counting and saving. Unknown fields retain string comparisons; declare their type explicitly. For date range operands use `type: "date"` so request validation can parse them. */
+                    /** @description Saved audiences infer omitted types from the field registry. Unknown fields compare as strings. Date ranges require type: "date". */
                     type?: string;
                 }[];
                 /** @enum {string} */
@@ -7517,7 +7517,7 @@ export interface components {
                         /** @enum {string} */
                         operator: "equals" | "not_equals" | "contains" | "not_contains" | "contains_any" | "not_contains_any" | "starts_with" | "ends_with" | "gt" | "gte" | "lt" | "lte" | "between" | "is_true" | "is_false" | "in" | "not_in" | "is_empty" | "not_exists" | "is_not_empty" | "exists" | "is_set" | "before" | "after" | "on_date";
                         value?: unknown;
-                        /** @description The field's value type: `string`, `number`, `date`, or `boolean`. Saved audiences resolve an omitted type from the brand's field registry, including core fields, before counting and saving. Unknown fields retain string comparisons; declare their type explicitly. For date range operands use `type: "date"` so request validation can parse them. */
+                        /** @description Saved audiences infer omitted types from the field registry. Unknown fields compare as strings. Date ranges require type: "date". */
                         type?: string;
                     }[];
                     /** @enum {string} */
@@ -7591,7 +7591,7 @@ export interface components {
                     /** @enum {string} */
                     operator: "equals" | "not_equals" | "contains" | "not_contains" | "contains_any" | "not_contains_any" | "starts_with" | "ends_with" | "gt" | "gte" | "lt" | "lte" | "between" | "is_true" | "is_false" | "in" | "not_in" | "is_empty" | "not_exists" | "is_not_empty" | "exists" | "is_set" | "before" | "after" | "on_date";
                     value?: unknown;
-                    /** @description The field's value type: `string`, `number`, `date`, or `boolean`. Saved audiences resolve an omitted type from the brand's field registry, including core fields, before counting and saving. Unknown fields retain string comparisons; declare their type explicitly. For date range operands use `type: "date"` so request validation can parse them. */
+                    /** @description Saved audiences infer omitted types from the field registry. Unknown fields compare as strings. Date ranges require type: "date". */
                     type?: string;
                 }[];
                 /** @enum {string} */
@@ -7682,7 +7682,7 @@ export interface components {
                     operator: "equals" | "not_equals" | "contains" | "not_contains" | "contains_any" | "not_contains_any" | "starts_with" | "ends_with" | "gt" | "gte" | "lt" | "lte" | "between" | "is_true" | "is_false" | "in" | "not_in" | "is_empty" | "not_exists" | "is_not_empty" | "exists" | "is_set" | "before" | "after" | "on_date";
                     /** @description Operator-dependent: `between` takes `[min, max]` or `{min, max}`; `in`/`not_in`/`contains_any`/`not_contains_any` take a list; unary operators (`is_empty`, `is_not_empty`, `exists`, `is_true`, …) omit it. */
                     value?: unknown;
-                    /** @description The field's value type: `string`, `number`, `date`, or `boolean`. Saved audiences resolve an omitted type from the brand's field registry, including core fields, before counting and saving. Unknown fields retain string comparisons; declare their type explicitly. For date range operands use `type: "date"` so request validation can parse them. */
+                    /** @description Saved audiences infer omitted types from the field registry. Unknown fields compare as strings. Date ranges require type: "date". */
                     type?: string;
                 }[];
                 /** @enum {string} */
@@ -7698,7 +7698,7 @@ export interface components {
                     /** @enum {string} */
                     operator: "equals" | "not_equals" | "contains" | "not_contains" | "contains_any" | "not_contains_any" | "starts_with" | "ends_with" | "gt" | "gte" | "lt" | "lte" | "between" | "is_true" | "is_false" | "in" | "not_in" | "is_empty" | "not_exists" | "is_not_empty" | "exists" | "is_set" | "before" | "after" | "on_date";
                     value?: unknown;
-                    /** @description The field's value type: `string`, `number`, `date`, or `boolean`. Saved audiences resolve an omitted type from the brand's field registry, including core fields, before counting and saving. Unknown fields retain string comparisons; declare their type explicitly. For date range operands use `type: "date"` so request validation can parse them. */
+                    /** @description Saved audiences infer omitted types from the field registry. Unknown fields compare as strings. Date ranges require type: "date". */
                     type?: string;
                 }[];
                 /** @enum {string} */
@@ -7796,7 +7796,7 @@ export interface components {
                     operator: "equals" | "not_equals" | "contains" | "not_contains" | "contains_any" | "not_contains_any" | "starts_with" | "ends_with" | "gt" | "gte" | "lt" | "lte" | "between" | "is_true" | "is_false" | "in" | "not_in" | "is_empty" | "not_exists" | "is_not_empty" | "exists" | "is_set" | "before" | "after" | "on_date";
                     /** @description Operator-dependent: `between` takes `[min, max]` or `{min, max}`; `in`/`not_in`/`contains_any`/`not_contains_any` take a list; unary operators (`is_empty`, `is_not_empty`, `exists`, `is_true`, …) omit it. */
                     value?: unknown;
-                    /** @description The field's value type: `string`, `number`, `date`, or `boolean`. Saved audiences resolve an omitted type from the brand's field registry, including core fields, before counting and saving. Unknown fields retain string comparisons; declare their type explicitly. For date range operands use `type: "date"` so request validation can parse them. */
+                    /** @description Saved audiences infer omitted types from the field registry. Unknown fields compare as strings. Date ranges require type: "date". */
                     type?: string;
                 }[];
                 /** @enum {string} */
@@ -8034,7 +8034,7 @@ export interface components {
                 day: string;
                 sent: number;
             }[];
-            /** @description Bounce and complaint totals from the newest 25 sends on this domain, selected from the brand's newest 100 campaign and 100 automation sends. Placement seed sends are excluded. Event automation rows can represent individual recipients; campaign and audience-run automation rows can cover many recipients. This is a bounded sample, not a time-window total. Null when the sample has no sent recipients for this domain. */
+            /** @description Campaign and automation activity, excluding placement seeds. A bounded sample, not a time-window total. Null when no sampled recipients were sent. */
             domainActivity: {
                 /** @enum {boolean} */
                 sampled: true;
