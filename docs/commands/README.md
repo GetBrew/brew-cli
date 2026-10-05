@@ -1122,11 +1122,12 @@ Create an audience segment from a filter definition
 - Class: write
 - SDK: `brew.audiences.create(...)`
 - `--name <name>` — Audience name
-- `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
+- `--input <json>` — Filter definition; omitted types use the brand field registry
 - `--idempotency-key <key>` — Idempotency-Key for safe retries (auto-generated otherwise)
 
 ```bash
 brew-cli audiences create --name VIP --input '{"filters":{"filters":[{"field":"plan","operator":"equals","value":"vip"}],"logicalOperator":"and"}}'
+brew-cli audiences create --name "Except tier 10" --input '{"filters":{"filters":[{"field":"tier","operator":"not_equals","value":10,"type":"number"}],"logicalOperator":"and"}}'
 ```
 
 ### brew-cli audiences update
@@ -2377,6 +2378,8 @@ List public templates (each row carries the rendered html)
 - `--brand-name <name>` — Filter by gallery brand name
 - `--category <category>` — Filter by category
 - `--semantic <text>` — Semantic search over the gallery
+- `--count` — Return matching template counts instead of rows
+- `--group-by <field>` — Group counts by brand or category (requires --count)
 - `--limit <n>` — Page size, 1-100 (default 100)
 - `--cursor <cursor>` — Opaque pagination cursor from a previous page
 - `--all` — Follow the cursor and return every page as one result
@@ -2384,6 +2387,7 @@ List public templates (each row carries the rendered html)
 
 ```bash
 brew-cli templates list --category welcome
+brew-cli templates list --count --group-by category --json
 brew-cli templates list --semantic "minimal product launch" --json
 ```
 
