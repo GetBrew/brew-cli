@@ -1,5 +1,8 @@
-import type { ListTemplatesInput } from '@brew.new/sdk'
-import type { operations } from '../../generated/openapi-types'
+import type {
+  ListTemplateRowsInput,
+  ListTemplatesInput,
+  TemplatesCountResponse,
+} from '@brew.new/sdk'
 import { defineCommand } from '../../lib/define-command'
 import { CliUsageError } from '../../lib/errors'
 import {
@@ -17,20 +20,6 @@ import {
   collectAll,
   LIMIT_FLAG,
 } from '../../lib/paginate'
-
-/**
- * The API's count mode (`count: true`, optionally `groupBy`; brew-v2#1821):
- * `{ count, groups? }` instead of rows. The SDK does not type it yet.
- */
-type TemplateRowsInput = Omit<
-  NonNullable<operations['listTemplates']['parameters']['query']>,
-  'count' | 'groupBy'
->
-
-type TemplatesCount = Extract<
-  operations['listTemplates']['responses'][200]['content']['application/json'],
-  { count: number }
->
 
 export const templatesListCommand = defineCommand({
   path: ['templates', 'list'],
@@ -93,7 +82,7 @@ export const templatesListCommand = defineCommand({
       // type is the full-or-summary union; rows pass through verbatim.
       const rows = await collectAll<unknown>(ctx, (cursor) =>
         templates.list(
-          asSdkInput<TemplateRowsInput>({
+          asSdkInput<ListTemplateRowsInput>({
             ...input,
             ...(cursor === undefined ? {} : { cursor }),
           })
@@ -113,12 +102,12 @@ export const templatesListCommand = defineCommand({
       data: result,
       human: Array.isArray(page.data)
         ? renderTemplates(page.data)
-        : renderCount(result as TemplatesCount),
+        : renderCount(result as TemplatesCountResponse),
     }
   },
 })
 
-function renderCount(body: TemplatesCount): string {
+function renderCount(body: TemplatesCountResponse): string {
   const total = `${body.count} template${body.count === 1 ? '' : 's'}`
   const groups = body.groups ?? []
   if (body.groupBy === undefined && groups.length === 0) {
