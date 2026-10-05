@@ -22,6 +22,63 @@ function env(): Record<string, string | undefined> {
 }
 
 describe('emails audit', () => {
+  it.each([
+    {
+      base: { emailHtml: '<p>Old</p>', subject: 'From JSON' },
+      flag: '--jsx-file',
+      expected: { emailJsx: '<Text>New</Text>', subject: 'From JSON' },
+    },
+    {
+      base: {
+        emailId: 'email_old',
+        emailVersionId: 'version_old',
+        subject: 'From JSON',
+      },
+      flag: '--file',
+      expected: { emailHtml: '<p>New</p>', subject: 'From JSON' },
+    },
+    {
+      base: { emailJsx: '<Text>Old</Text>', sendingPurpose: 'transactional' },
+      flag: '--email-id',
+      expected: { emailId: 'email_new', sendingPurpose: 'transactional' },
+    },
+  ])(
+    'source flags replace the JSON source: $flag',
+    async ({ base, flag, expected }) => {
+      const directory = mkdtempSync(join(tmpdir(), 'brew-audit-source-'))
+      const file = join(directory, 'content.txt')
+      writeFileSync(
+        file,
+        flag === '--jsx-file' ? '<Text>New</Text>' : '<p>New</p>'
+      )
+      let body: unknown
+      server.use(
+        http.post(`${API}/v1/emails/audit`, async ({ request }) => {
+          body = await request.json()
+          return HttpResponse.json({
+            completion: { status: 'complete', readiness: 'ready', score: 100 },
+          })
+        })
+      )
+      const result = await runCli(
+        [
+          'emails',
+          'audit',
+          '--input',
+          JSON.stringify(base),
+          flag,
+          flag === '--email-id' ? 'email_new' : file,
+        ],
+        {
+          env: env(),
+          extraCommands: [emailsAuditCommand],
+        }
+      )
+      expect(result.code).toBe(0)
+      expect(body).toEqual(expected)
+    }
+  )
+
   it('accepts a JSX file and forwards saved-email flags', async () => {
     const directory = mkdtempSync(join(tmpdir(), 'brew-jsx-audit-'))
     const file = join(directory, 'email.tsx')

@@ -16,6 +16,7 @@ import {
 } from '../../lib/input'
 
 const SENDING_PURPOSES = new Set(['marketing', 'transactional'])
+const AUDIT_SOURCE_FIELDS = ['emailHtml', 'emailJsx', 'emailId'] as const
 
 export { AUDIT_EMAIL_DEFAULT_TIMEOUT_MS }
 
@@ -70,7 +71,29 @@ export const emailsAuditCommand = defineCommand({
     'brew-cli emails audit --email-id email_123 --email-version-id version_123',
   ],
   run: async ({ ctx, flags }) => {
-    const base = await readJsonFlag(ctx, flags.input, '--input')
+    const sourceFlags = {
+      emailHtml: flags.file,
+      emailJsx: flags.jsxFile,
+      emailId: flags.emailId,
+    }
+    const flaggedSources = AUDIT_SOURCE_FIELDS.filter(
+      (field) => sourceFlags[field] !== undefined
+    )
+    if (flaggedSources.length > 1) {
+      throw new CliUsageError(
+        'Choose one source flag: --file, --jsx-file, or --email-id.'
+      )
+    }
+    const base = mergeInput(await readJsonFlag(ctx, flags.input, '--input'), {})
+    // Source flags replace the exclusive source group; other JSON fields stay.
+    if (flaggedSources.length === 1) {
+      for (const field of AUDIT_SOURCE_FIELDS) {
+        delete base[field]
+      }
+      if (flaggedSources[0] !== 'emailId') {
+        delete base.emailVersionId
+      }
+    }
     const emailHtml = await readTextFlag(ctx, flags.file, '--file')
     const emailJsx = await readTextFlag(ctx, flags.jsxFile, '--jsx-file')
     const sendingPurpose = flagString(flags.sendingPurpose)
@@ -88,7 +111,7 @@ export const emailsAuditCommand = defineCommand({
       previewText: optionalText(flags.previewText),
       sendingPurpose,
     })
-    const sources = ['emailHtml', 'emailJsx', 'emailId'].filter(
+    const sources = AUDIT_SOURCE_FIELDS.filter(
       (field) => input[field] !== undefined
     )
     const source = sources[0]
