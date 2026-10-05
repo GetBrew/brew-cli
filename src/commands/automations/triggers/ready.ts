@@ -20,8 +20,8 @@ export const automationsTriggersReadyCommand = defineCommand({
   examples: ['brew-cli automations triggers ready tri_signup'],
   // 200 `ready: true` means the exact credential in use can fire this
   // trigger. A `NO_PUBLISHED_AUTOMATION` blocker with `ready: false` means
-  // fires are accepted and logged but start no runs until a wired
-  // automation is published — still a 200, because a probe has to say why.
+  // fires are refused with 422 NO_PUBLISHED_AUTOMATION until a wired
+  // automation is published. The readiness probe returns 200 with the blocker.
   run: async ({ ctx, args }) => ({
     data: await ctx
       .client()

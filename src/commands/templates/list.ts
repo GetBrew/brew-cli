@@ -22,6 +22,11 @@ import {
  * The API's count mode (`count: true`, optionally `groupBy`; brew-v2#1821):
  * `{ count, groups? }` instead of rows. The SDK does not type it yet.
  */
+type TemplateRowsInput = Omit<
+  NonNullable<operations['listTemplates']['parameters']['query']>,
+  'count' | 'groupBy'
+>
+
 type TemplatesCount = Extract<
   operations['listTemplates']['responses'][200]['content']['application/json'],
   { count: number }
@@ -44,6 +49,14 @@ export const templatesListCommand = defineCommand({
       flag: '--semantic <text>',
       summary: 'Semantic search over the gallery',
     },
+    {
+      flag: '--count',
+      summary: 'Return matching template counts instead of rows',
+    },
+    {
+      flag: '--group-by <field>',
+      summary: 'Group counts by brand or category (requires --count)',
+    },
     LIMIT_FLAG,
     CURSOR_FLAG,
     ALL_FLAG,
@@ -51,6 +64,7 @@ export const templatesListCommand = defineCommand({
   ],
   examples: [
     'brew-cli templates list --category welcome',
+    'brew-cli templates list --count --group-by category --json',
     'brew-cli templates list --semantic "minimal product launch" --json',
   ],
   run: async ({ ctx, flags }) => {
@@ -59,6 +73,8 @@ export const templatesListCommand = defineCommand({
       brand: flagString(flags.brandName),
       category: flagString(flags.category),
       semantic: flagString(flags.semantic),
+      count: flags.count === true ? true : undefined,
+      groupBy: flagString(flags.groupBy),
       limit: flagInt(flags.limit, '--limit'),
       cursor: flagString(flags.cursor),
     })
@@ -77,7 +93,7 @@ export const templatesListCommand = defineCommand({
       // type is the full-or-summary union; rows pass through verbatim.
       const rows = await collectAll<unknown>(ctx, (cursor) =>
         templates.list(
-          asSdkInput<ListTemplatesInput>({
+          asSdkInput<TemplateRowsInput>({
             ...input,
             ...(cursor === undefined ? {} : { cursor }),
           })

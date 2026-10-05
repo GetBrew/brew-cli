@@ -22,6 +22,156 @@ function env(): Record<string, string | undefined> {
 }
 
 describe('emails audit', () => {
+  it.each([
+    {
+      base: { emailHtml: '<p>Old</p>', subject: 'From JSON' },
+      flag: '--jsx-file',
+      expected: { emailJsx: '<Text>New</Text>', subject: 'From JSON' },
+    },
+    {
+      base: {
+        emailId: 'email_old',
+        emailVersionId: 'version_old',
+        subject: 'From JSON',
+      },
+      flag: '--file',
+      expected: { emailHtml: '<p>New</p>', subject: 'From JSON' },
+    },
+    {
+      base: { emailJsx: '<Text>Old</Text>', sendingPurpose: 'transactional' },
+      flag: '--email-id',
+      expected: { emailId: 'email_new', sendingPurpose: 'transactional' },
+    },
+  ])(
+    'source flags replace the JSON source: $flag',
+    async ({ base, flag, expected }) => {
+      const directory = mkdtempSync(join(tmpdir(), 'brew-audit-source-'))
+      const file = join(directory, 'content.txt')
+      writeFileSync(
+        file,
+        flag === '--jsx-file' ? '<Text>New</Text>' : '<p>New</p>'
+      )
+      let body: unknown
+      server.use(
+        http.post(`${API}/v1/emails/audit`, async ({ request }) => {
+          body = await request.json()
+          return HttpResponse.json({
+            completion: { status: 'complete', readiness: 'ready', score: 100 },
+          })
+        })
+      )
+      const result = await runCli(
+        [
+          'emails',
+          'audit',
+          '--input',
+          JSON.stringify(base),
+          flag,
+          flag === '--email-id' ? 'email_new' : file,
+        ],
+        {
+          env: env(),
+          extraCommands: [emailsAuditCommand],
+        }
+      )
+      expect(result.code).toBe(0)
+      expect(body).toEqual(expected)
+    }
+  )
+
+  it('accepts a JSX file and forwards saved-email flags', async () => {
+    const directory = mkdtempSync(join(tmpdir(), 'brew-jsx-audit-'))
+    const file = join(directory, 'email.tsx')
+    writeFileSync(file, '<Text>Hello</Text>')
+    const bodies: Array<unknown> = []
+    server.use(
+      http.post(`${API}/v1/emails/audit`, async ({ request }) => {
+        bodies.push(await request.json())
+        return HttpResponse.json({
+          completion: { status: 'complete', readiness: 'ready', score: 100 },
+        })
+      })
+    )
+    const jsx = await runCli(['emails', 'audit', '--jsx-file', file], {
+      env: env(),
+      extraCommands: [emailsAuditCommand],
+    })
+    const saved = await runCli(
+      [
+        'emails',
+        'audit',
+        '--email-id',
+        'email_123',
+        '--email-version-id',
+        'version_123',
+      ],
+      {
+        env: env(),
+        extraCommands: [emailsAuditCommand],
+      }
+    )
+    expect(jsx.code).toBe(0)
+    expect(saved.code).toBe(0)
+    expect(bodies).toEqual([
+      { emailJsx: '<Text>Hello</Text>' },
+      { emailId: 'email_123', emailVersionId: 'version_123' },
+    ])
+  })
+
+  it.each([
+    { emailJsx: '<Text>Hello</Text>' },
+    { emailId: 'email_123' },
+    { emailId: 'email_123', emailVersionId: 'version_123' },
+  ])('forwards the documented content source: %j', async (input) => {
+    let body: unknown
+    server.use(
+      http.post(`${API}/v1/emails/audit`, async ({ request }) => {
+        body = await request.json()
+        return HttpResponse.json({
+          completion: { status: 'complete', readiness: 'ready', score: 100 },
+        })
+      })
+    )
+    const result = await runCli(
+      ['emails', 'audit', '--input', JSON.stringify(input)],
+      {
+        env: env(),
+        extraCommands: [emailsAuditCommand],
+      }
+    )
+    expect(result.code).toBe(0)
+    expect(body).toEqual(input)
+  })
+
+  it.each([
+    { emailHtml: '<p>Hello</p>', emailJsx: '<Text>Hello</Text>' },
+    { emailHtml: '<p>Hello</p>', emailId: 'email_123' },
+    { emailHtml: '<p>Hello</p>', emailVersionId: 'version_123' },
+    { emailJsx: ' ' },
+    { emailId: '' },
+    {},
+  ])(
+    'rejects an invalid source combination before transport: %j',
+    async (input) => {
+      let requests = 0
+      server.use(
+        http.post(`${API}/v1/emails/audit`, () => {
+          requests += 1
+          return HttpResponse.json({})
+        })
+      )
+      const result = await runCli(
+        ['emails', 'audit', '--input', JSON.stringify(input)],
+        {
+          env: env(),
+          extraCommands: [emailsAuditCommand],
+        }
+      )
+      expect(result.code).toBe(2)
+      expect(requests).toBe(0)
+    }
+  )
+
   it('audits a file with the exact copy and purpose fields', async () => {
     const directory = mkdtempSync(join(tmpdir(), 'brew-email-audit-'))
     const file = join(directory, 'email.html')
