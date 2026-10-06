@@ -93,7 +93,7 @@ a `confirmCommand` otherwise, `--yes` to proceed).
 | `brew-cli automations run` | destructive | `POST /v1/automations/{automationId}/run` | Run a manual-audience automation (live send; --dry-run previews) |
 | `brew-cli automations triggers list` | read | `GET /v1/automations/triggers` | List trigger events (their payload schemas drive fires); one trigger is `automations triggers get` |
 | `brew-cli automations triggers get` | read | `GET /v1/automations/triggers/{triggerEventId}` | Fetch one trigger by id — the bare row with its payload schema |
-| `brew-cli automations triggers ready` | read | `GET /v1/automations/triggers/{triggerEventId}/readiness` | Preflight a trigger without firing: key + scope + permissions pass/fail, the payload contract, and what a fire would start |
+| `brew-cli automations triggers ready` | read | `GET /v1/automations/triggers/{triggerEventId}/readiness` | Preflight a trigger without firing: key + scope + permissions pass/fail, the payload contract, what a fire would start, and (integration triggers) whether Brew has received the event |
 | `brew-cli automations triggers contract get` | read | `GET /v1/automations/triggers/{triggerEventId}/contract` | Read a trigger payload contract: stored when declared, derived otherwise; --format renders ts/zod/jsonschema/skill |
 | `brew-cli automations triggers contract put` | write | `PUT /v1/automations/triggers/{triggerEventId}/contract` | Declare (or replace) the stored payload contract for a trigger — tree-validated before any write; omitting --enforcement leaves the stored setting unchanged |
 | `brew-cli automations triggers contract validate` | read | `POST /v1/automations/triggers/{triggerEventId}/contract/validate` | Dry-run a payload against a trigger's contract (the fire path's validator) — never fires; invalid payloads still exit 0 |
@@ -1381,7 +1381,7 @@ brew-cli automations triggers get tri_signup --include skill
 
 ### brew-cli automations triggers ready
 
-Preflight a trigger without firing: key + scope + permissions pass/fail, the payload contract, and what a fire would start
+Preflight a trigger without firing: key + scope + permissions pass/fail, the payload contract, what a fire would start, and (integration triggers) whether Brew has received the event
 
 - Route: `GET /v1/automations/triggers/{triggerEventId}/readiness`
 - Class: read
@@ -1390,6 +1390,7 @@ Preflight a trigger without firing: key + scope + permissions pass/fail, the pay
 
 ```bash
 brew-cli automations triggers ready tri_signup
+brew-cli automations triggers ready shopify:customers/update --json
 ```
 
 ### brew-cli automations triggers contract get
