@@ -21,6 +21,7 @@ import { automationsTriggersListCommand } from '../../src/commands/automations/t
 import { automationsTriggersUpdateCommand } from '../../src/commands/automations/triggers/update'
 import { automationsUnpublishCommand } from '../../src/commands/automations/unpublish'
 import { automationsUpdateCommand } from '../../src/commands/automations/update'
+import type { components } from '../../src/generated/openapi-types'
 import { server } from '../helpers/msw-server'
 import { type RunCliResult, runCli } from '../helpers/run-cli'
 
@@ -198,6 +199,32 @@ describe('automations publish/unpublish', () => {
     const result = await cli(['automations', 'publish', 'am_1'])
     expect(result.code).toBe(0)
     expect(body).toEqual({ published: true })
+  })
+
+  it('publish prints the TRIGGER_EVENT_NOT_RECEIVED warning verbatim and still exits 0 (brew-v2#1897)', async () => {
+    const row = {
+      automationId: 'am_1',
+      automationVersionId: 'amv_1',
+      triggerEventId: 'shopify:customers/update',
+      name: 'Welcome',
+      version: 'latest',
+      published: true,
+      emailIds: [],
+      warnings: [
+        {
+          code: 'TRIGGER_EVENT_NOT_RECEIVED',
+          message:
+            'Brew has not received Customer update from Shopify. In Shopify, add a webhook for Customer update.',
+          field: 'triggerEventId',
+        },
+      ],
+    } satisfies components['schemas']['AutomationRow']
+    server.use(
+      http.patch(`${API}/v1/automations/am_1`, () => HttpResponse.json(row))
+    )
+    const result = await cli(['automations', 'publish', 'am_1', '--json'])
+    expect(result.code).toBe(0)
+    expect(JSON.parse(result.stdout)).toEqual(row)
   })
 
   it('publish pins a version when asked', async () => {

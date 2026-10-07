@@ -5,6 +5,7 @@ import { HttpResponse, http } from 'msw'
 import { describe, expect, it } from 'vitest'
 import { automationsTriggersReadyCommand } from '../../src/commands/automations/triggers/ready'
 import { typesCommand } from '../../src/commands/types'
+import type { components } from '../../src/generated/openapi-types'
 import { server } from '../helpers/msw-server'
 import { runCli } from '../helpers/run-cli'
 
@@ -344,5 +345,42 @@ describe('automations triggers ready', () => {
       '/api/v1/automations/triggers/tri_signup/readiness'
     )
     expect(result.stdout).toContain('ready')
+  })
+
+  it('passes an integration trigger delivery status through verbatim (brew-v2#1897)', async () => {
+    const readiness = {
+      triggerEventId: 'shopify:customers/update',
+      ready: true,
+      blockers: [],
+      publishedAutomations: [{ automationId: 'am_1' }],
+      counts: { automations: 1, skipped: 0 },
+      delivery: {
+        status: 'never_received',
+        sourceEvent: 'Customer update',
+        message:
+          'Brew has not received this event. In Shopify, add a webhook for Customer update.',
+      },
+    } satisfies components['schemas']['TriggerReadiness']
+    server.use(
+      http.get(
+        `${API}/v1/automations/triggers/shopify%3Acustomers%2Fupdate/readiness`,
+        () => HttpResponse.json(readiness)
+      )
+    )
+    const result = await runCli(
+      [
+        'automations',
+        'triggers',
+        'ready',
+        'shopify:customers/update',
+        '--json',
+      ],
+      {
+        env: env(),
+        extraCommands: [automationsTriggersReadyCommand],
+      }
+    )
+    expect(result.code).toBe(0)
+    expect(JSON.parse(result.stdout)).toEqual(readiness)
   })
 })

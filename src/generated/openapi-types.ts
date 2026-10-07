@@ -747,7 +747,7 @@ export interface paths {
          *
          *     **Input** Update: one or more of `name`, `description`, `nodes`, `connections`, `triggerEventId`, under the same typed condition contract as create (explicit `type`, canonical snake_case `operator`, no `value` for unary operators, type-correct values elsewhere); `dryRun: true` validates without persisting. Lifecycle: `published: true` promotes the stored latest version live (optionally pin `automationVersionId`; the graph is validated first), `published: false` unpublishes, `paused: true` or `false` freezes or resumes future send steps (`stopInFlight` also stops runs already in progress).
          *
-         *     **Returns** the bare automation row, or with `dryRun: true` a `200 AutomationDryRunReport` `{ valid, blockers[], warnings[], blockingIssues[], nodeCounts }`: `blockingIssues[]` lists per-node references the effective trigger or contact catalog cannot provide, and publish refuses every one of them, fallback or not (`fatal` says what the reference would do: `true` for filter or split conditions and triple-brace `{{{ }}}` body tokens would break the run, `false` for subject, previewText, fromName, replyTo and double-brace body tags would render empty); `valid` is false when any blocker or blocking issue is present. Updating a LIVE automation saves a draft and does not go live: the previously published version keeps serving until you republish, `published` describes the returned row, `isLive`, `liveVersion` and `liveAutomationVersionId` describe the automation, and `warnings[]` carries `DRAFT_SAVED_NOT_LIVE`.
+         *     **Returns** the bare automation row, or with `dryRun: true` a `200 AutomationDryRunReport` `{ valid, blockers[], warnings[], blockingIssues[], nodeCounts }`: `blockingIssues[]` lists per-node references the effective trigger or contact catalog cannot provide, and publish refuses every one of them, fallback or not (`fatal` says what the reference would do: `true` for filter or split conditions and triple-brace `{{{ }}}` body tokens would break the run, `false` for subject, previewText, fromName, replyTo and double-brace body tags would render empty); `valid` is false when any blocker or blocking issue is present. Updating a LIVE automation saves a draft and does not go live: the previously published version keeps serving until you republish, `published` describes the returned row, `isLive`, `liveVersion` and `liveAutomationVersionId` describe the automation, and `warnings[]` carries `DRAFT_SAVED_NOT_LIVE`. Publishing an automation whose integration trigger has not received its event on the current connection (a Shopify topic with no webhook) still succeeds, and `warnings[]` carries `TRIGGER_EVENT_NOT_RECEIVED` saying what to set up.
          *
          *     **Errors** `404 AUTOMATION_NOT_FOUND`, `AUTOMATION_VERSION_NOT_FOUND` (pin `liveAutomationVersionId`, a `versions[]` id, or a run row's `automationVersionId`), `TRIGGER_EVENT_NOT_FOUND`; `400 AUTOMATION_GRAPH_INVALID` (`details.issues[]`); `409 AUTOMATION_VERSION_CONFLICT` (re-read, reapply, retry); `422 PUBLISH_VALIDATION_FAILED` (`details.blockers[]`; a cdn.brew.new image a step would send that does not exist is a blocker, listed in `details.missingImages[]`, and a dead icon whose real file sits elsewhere in its pack is moved there instead when the key has `emails` access), `AUTOMATION_NOT_PUBLISHED` (nothing to unpublish), `AUTOMATION_NOT_PAUSABLE` (a manual-audience automation pauses through its runs).
          *
@@ -1123,7 +1123,9 @@ export interface paths {
          *
          *     **Use when** wiring an external service, before sending a live event.
          *
-         *     **Returns** `200 { ready, blockers[], payloadSchema, endpoint, publishedAutomations, counts }`. A `NO_PUBLISHED_AUTOMATION` blocker with `ready: false` means the trigger resolves and the credential passes, but nothing published listens for it yet, so a fire would start no runs. That stays a 200 because a probe has to report why a fire would not work.
+         *     **Returns** `200 { ready, blockers[], payloadSchema, endpoint, publishedAutomations, counts, delivery? }`. A `NO_PUBLISHED_AUTOMATION` blocker with `ready: false` means the trigger resolves and the credential passes, but nothing published listens for it yet, so a fire would start no runs. That stays a 200 because a probe has to report why a fire would not work.
+         *
+         *     `delivery` appears for an integration trigger whose source sends only the events set up at its end (a Shopify shop sends a topic only to its own webhook): whether Brew has received that event, and what to set up when it has not. It never changes `ready`.
          *
          *     **Errors** `404 TRIGGER_EVENT_NOT_FOUND` for an unknown or cross-brand id.
          *
@@ -3317,7 +3319,7 @@ export interface components {
         };
         ApiWarning: {
             /** @enum {string} */
-            code: "DRAFT_SAVED_NOT_LIVE" | "ENFORCEMENT_LOOSENED_WHILE_PUBLISHED" | "REQUIRED_FIELD_SATISFIED_BY_FALLBACK" | "RESUBSCRIBE_SKIPPED" | "CORE_FIELD_IGNORED" | "DATE_ORDER_ASSUMED" | "CSV_COLUMN_IGNORED" | "RECIPIENTS_EXCLUDED" | "CONSENT_RECORD_MISSING";
+            code: "DRAFT_SAVED_NOT_LIVE" | "TRIGGER_EVENT_NOT_RECEIVED" | "ENFORCEMENT_LOOSENED_WHILE_PUBLISHED" | "REQUIRED_FIELD_SATISFIED_BY_FALLBACK" | "RESUBSCRIBE_SKIPPED" | "CORE_FIELD_IGNORED" | "DATE_ORDER_ASSUMED" | "CSV_COLUMN_IGNORED" | "RECIPIENTS_EXCLUDED" | "CONSENT_RECORD_MISSING";
             message: string;
             field?: string;
         };
@@ -6702,6 +6704,16 @@ export interface components {
             counts: {
                 automations: number;
                 skipped: number;
+            };
+            /** @description Integration triggers only: whether Brew has received this event from its source (`none_recent`: not in the 90-day receipt window). Never affects `ready`. */
+            delivery?: {
+                /** @enum {string} */
+                status: "received" | "never_received" | "none_recent" | "waiting_for_test_event";
+                /** Format: date-time */
+                lastReceivedAt?: string;
+                /** @description The provider dashboard name (Shopify Admin: "Customer update"). */
+                sourceEvent?: string;
+                message: string;
             };
         };
         TriggerFireAccepted: {
