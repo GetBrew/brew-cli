@@ -2125,7 +2125,7 @@ export interface paths {
         put?: never;
         /**
          * Generate a GIF
-         * @description Produces a looping animated GIF (5-second source clip), routed by the `from` discriminator: `prompt` generates an on-brand still then animates it, `image` animates a source image (both via the AI gif workflow), and `video` converts a source MP4. Aspect ratio is one of `16:9`, `9:16`, `1:1`. Returns CDN-hosted `gifUrl` (plus `videoUrl` and motion metadata for the AI sources). Credit-metered (fixed cost: prompt 20, image 10, video 10).
+         * @description Produces a looping animated GIF (5-second source clip), routed by the `from` discriminator: `prompt` generates an on-brand still then animates it, `image` animates a source image (both via the AI gif workflow), and `video` converts a source MP4. For `prompt` and `image` sources, aspect ratio is one of `16:9`, `9:16`, `1:1` (default `16:9`), and the GIF has that shape: a source image of another shape is centre-cropped when that keeps at least 75% of it, otherwise padded in its own edge colour, never stretched. `imageUrl` takes any public PNG, JPEG, WebP, GIF (first frame), AVIF or TIFF up to 50 MB and 268 megapixels, of any size or shape; SVG, HEIC and BMP return `422 CONTENT_OPERATION_FAILED`. For `video`, aspectRatio is not accepted; use width and fps for conversion. Returns CDN-hosted `gifUrl` (plus `videoUrl`, `width`/`height` and motion metadata for the AI sources). Credit-metered (fixed cost: prompt 20, image 10, video 10).
          */
         post: operations["createGif"];
         delete?: never;
@@ -6349,6 +6349,7 @@ export interface components {
             sendNodeCount: number;
             /** Format: date-time */
             scheduledAt?: string;
+            warnings?: components["schemas"]["ApiWarning"][];
         };
         AudienceAutomationRunStartedResponse: {
             audienceRunId: string;
@@ -6356,6 +6357,7 @@ export interface components {
             /** @enum {string} */
             status: "queued" | "scheduled";
             totalRecipients: number;
+            warnings?: components["schemas"]["ApiWarning"][];
             workflowRunId?: string;
             /**
              * @description Present when org-level send approval holds the run for admin review: no workflow starts until an admin approves; rejection cancels the run with zero deliveries.
@@ -6366,7 +6368,7 @@ export interface components {
             receivedAt: string;
         };
         AutomationRunRequest: {
-            /** @description Preview the recipient count + flow without launching a run (no sends, no side effects). */
+            /** @description Preview who will receive the email, and the flow, without launching a run (no sends, no side effects). recipientCount already excludes unsubscribed, suppressed and undeliverable contacts. */
             dryRun?: boolean;
             /** Format: date-time */
             scheduledAt?: string;
@@ -8437,6 +8439,8 @@ export interface components {
             duration?: number;
             fps?: number;
             aspectRatio?: string;
+            width?: number;
+            height?: number;
             loop?: boolean;
         };
         ContentGifRequest: {
@@ -10758,7 +10762,7 @@ export interface operations {
                     /**
                      * @example {
                      *       "schemaVersion": 1,
-                     *       "rulesetVersion": "2026-10-02.1",
+                     *       "rulesetVersion": "2026-10-09.1",
                      *       "auditId": "00000000-0000-4000-8000-000000000001",
                      *       "contentHash": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
                      *       "auditedAt": "2026-08-23T00:00:00.000Z",
@@ -15746,7 +15750,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Dry-run preview (no run started). */
+            /** @description Dry-run preview (no run started). recipientCount is who will receive the email. warnings carries RECIPIENTS_EXCLUDED when unsubscribed, suppressed or undeliverable contacts are skipped. */
             200: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -25416,7 +25420,7 @@ export interface operations {
                      *           "id": "dmarc_missing",
                      *           "severity": "warning",
                      *           "summary": "No DMARC record is configured for this domain.",
-                     *           "suggestion": "Add a TXT record: _dmarc TXT \"v=DMARC1; p=reject; rua=mailto:dmarc@send.example.com\" — Gmail/Yahoo bulk-sender rules require DMARC, and it blocks spoofing."
+                     *           "suggestion": "Add a TXT record: _dmarc.send.example.com TXT \"v=DMARC1; p=reject; rua=mailto:dmarc@send.example.com\" — Gmail/Yahoo bulk-sender rules require DMARC. This policy blocks spoofing. Then re-verify the domain to pick it up."
                      *         }
                      *       ],
                      *       "checkedAt": "2026-07-13T18:00:00.000Z"
