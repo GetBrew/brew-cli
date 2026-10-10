@@ -8813,7 +8813,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -8923,7 +8923,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -8980,7 +8980,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -9002,7 +9002,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -9133,7 +9133,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -9214,7 +9214,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -9338,7 +9338,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -9401,7 +9401,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -9497,7 +9497,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -9552,7 +9552,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -9672,7 +9672,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -9752,7 +9752,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -9892,7 +9892,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -9948,7 +9948,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -10095,7 +10095,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -10166,7 +10166,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -10290,7 +10290,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -10354,7 +10354,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -10463,7 +10463,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -10528,7 +10528,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -10554,7 +10554,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -10675,7 +10675,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -10750,7 +10750,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Credits charged for this completed operation. */
                     "X-Credit-Cost": number;
@@ -10954,7 +10954,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -11026,7 +11026,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -11079,7 +11079,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -11199,7 +11199,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -11269,7 +11269,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -11381,7 +11381,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -11440,7 +11440,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -11585,7 +11585,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -11649,7 +11649,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -11789,7 +11789,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -11845,7 +11845,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -12084,7 +12084,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -12133,7 +12133,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -12252,7 +12252,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -12306,7 +12306,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -12408,7 +12408,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -12473,7 +12473,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -12584,7 +12584,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -12634,7 +12634,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -12726,7 +12726,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -12776,7 +12776,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -12878,7 +12878,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -12937,7 +12937,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -13040,7 +13040,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -13107,7 +13107,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -13226,7 +13226,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -13282,7 +13282,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -13305,7 +13305,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -13462,7 +13462,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -13528,7 +13528,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -13636,7 +13636,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -13691,7 +13691,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -13797,7 +13797,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -13852,7 +13852,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -13958,7 +13958,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -14013,7 +14013,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -14119,7 +14119,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -14183,7 +14183,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -14308,7 +14308,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -14364,7 +14364,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -14484,7 +14484,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -14580,7 +14580,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -14659,7 +14659,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -14715,7 +14715,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -14817,7 +14817,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -14873,7 +14873,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -14909,7 +14909,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -15058,7 +15058,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -15111,7 +15111,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -15208,7 +15208,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -15258,7 +15258,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -15347,7 +15347,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -15401,7 +15401,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -15518,7 +15518,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -15586,7 +15586,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -15695,7 +15695,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -15759,7 +15759,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -15786,7 +15786,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -15919,7 +15919,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -15994,7 +15994,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -16097,7 +16097,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -16147,7 +16147,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -16245,7 +16245,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -16295,7 +16295,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -16401,7 +16401,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -16451,7 +16451,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -16573,7 +16573,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -16638,7 +16638,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -16744,7 +16744,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -16818,7 +16818,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -16920,7 +16920,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -16972,7 +16972,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -17082,7 +17082,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -17140,7 +17140,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -17247,7 +17247,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -17301,7 +17301,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -17414,7 +17414,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -17491,7 +17491,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -17627,7 +17627,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -17680,7 +17680,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -17788,7 +17788,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -17838,7 +17838,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -17938,7 +17938,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -17997,7 +17997,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -18127,7 +18127,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -18177,7 +18177,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -18295,7 +18295,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -18323,7 +18323,7 @@ export interface operations {
             query?: never;
             header?: {
                 /**
-                 * @description Optional idempotency key for safe retries. Reusing the same key with the same request body returns the original response for 24 hours.
+                 * @description Optional idempotency key for safe retries of the same trigger fire and request body. The shared response cache defaults to 24 hours; the trigger receipt replays the original run ids for as long as it is stored (90 days). Use one key per business action and never reuse it for a different fire.
                  * @example api-request-2026-04-08-001
                  */
                 "Idempotency-Key"?: string;
@@ -18362,7 +18362,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -18401,7 +18401,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -18534,7 +18534,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -18600,7 +18600,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -18724,7 +18724,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -18812,7 +18812,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -18953,7 +18953,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -19015,7 +19015,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -19120,7 +19120,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -19182,7 +19182,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -19288,7 +19288,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -19343,7 +19343,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -19449,7 +19449,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -19498,7 +19498,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -19599,7 +19599,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -19659,7 +19659,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -19792,7 +19792,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -19848,7 +19848,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -19877,7 +19877,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -20071,7 +20071,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -20137,7 +20137,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -20244,7 +20244,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -20294,7 +20294,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -20379,7 +20379,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -20433,7 +20433,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -20577,7 +20577,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -20628,7 +20628,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -20733,7 +20733,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -20793,7 +20793,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -20928,7 +20928,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -21002,7 +21002,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -21032,7 +21032,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -21188,7 +21188,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -21265,7 +21265,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -21378,7 +21378,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -21437,7 +21437,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -21566,7 +21566,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -21628,7 +21628,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -21744,7 +21744,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -21794,7 +21794,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -21883,7 +21883,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -21933,7 +21933,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -22040,7 +22040,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -22096,7 +22096,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -22203,7 +22203,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -22274,7 +22274,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -22400,7 +22400,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -22453,7 +22453,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -22555,7 +22555,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -22605,7 +22605,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -22701,7 +22701,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -22760,7 +22760,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -22892,7 +22892,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -22959,7 +22959,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -23095,7 +23095,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -23150,7 +23150,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -23271,7 +23271,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -23329,7 +23329,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -23441,7 +23441,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -23502,7 +23502,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -23647,7 +23647,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -23697,7 +23697,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -23804,7 +23804,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -23854,7 +23854,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -23977,7 +23977,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -24037,7 +24037,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -24178,7 +24178,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -24233,7 +24233,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -24379,7 +24379,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -24441,7 +24441,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -24555,7 +24555,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -24622,7 +24622,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -24745,7 +24745,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -24797,7 +24797,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -24900,7 +24900,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -24964,7 +24964,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -25100,7 +25100,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -25153,7 +25153,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -25256,7 +25256,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -25309,7 +25309,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -25504,7 +25504,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -25566,7 +25566,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -25683,7 +25683,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -25729,7 +25729,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -25817,7 +25817,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -25875,7 +25875,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -25965,7 +25965,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -26025,7 +26025,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -26139,7 +26139,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -26189,7 +26189,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -26280,7 +26280,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -26331,7 +26331,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -26422,7 +26422,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -26482,7 +26482,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -26603,7 +26603,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -26666,7 +26666,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -26751,7 +26751,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -26800,7 +26800,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -26885,7 +26885,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -26942,7 +26942,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -27054,7 +27054,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -27111,7 +27111,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -27190,7 +27190,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -27247,7 +27247,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -27363,7 +27363,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -27433,7 +27433,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -27549,7 +27549,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -27619,7 +27619,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -27735,7 +27735,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -27805,7 +27805,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -27921,7 +27921,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -27991,7 +27991,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -28017,7 +28017,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -28148,7 +28148,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -28200,7 +28200,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -28287,7 +28287,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -28328,7 +28328,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -28406,7 +28406,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -28460,7 +28460,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -28567,7 +28567,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -28616,7 +28616,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -28710,7 +28710,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -28765,7 +28765,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -28845,7 +28845,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -28889,7 +28889,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -28969,7 +28969,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -29073,7 +29073,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -29173,7 +29173,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -29223,7 +29223,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -29361,7 +29361,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -29434,7 +29434,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -29571,7 +29571,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -29621,7 +29621,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -29775,7 +29775,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -29831,7 +29831,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -29932,7 +29932,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -29995,7 +29995,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -30146,7 +30146,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
