@@ -8,6 +8,7 @@ import {
   requestOptions,
   toStringArray,
 } from '../../lib/input'
+import { getInvocationPrefix } from '../../lib/invocation'
 import { progress } from '../../lib/output'
 
 export const emailsPreviewClientsCommand = defineCommand({
@@ -56,7 +57,7 @@ export const emailsPreviewClientsCommand = defineCommand({
       }),
       requestOptions(flags)
     )
-    const hint = pollHint(job)
+    const hint = pollHint(job, getInvocationPrefix(ctx.io.env))
     if (hint !== undefined) {
       progress(ctx, hint)
     }
@@ -69,7 +70,7 @@ export const emailsPreviewClientsCommand = defineCommand({
  * (no `previewId`, `ready | partial`), so the job fields are read
  * defensively until the CLI adopts SDK 11.
  */
-function pollHint(job: unknown): string | undefined {
+function pollHint(job: unknown, prefix: string): string | undefined {
   if (
     typeof job !== 'object' ||
     job === null ||
@@ -85,5 +86,5 @@ function pollHint(job: unknown): string | undefined {
   ) {
     return
   }
-  return `Rendering job ${previewId} is ${status}. Poll it with: brew-cli emails get-client-preview ${previewId}`
+  return `Rendering job ${previewId} is ${status}. Poll it with: ${prefix} emails get-client-preview ${previewId}`
 }
