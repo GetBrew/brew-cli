@@ -1,7 +1,7 @@
 import { PassThrough } from 'node:stream'
 import { run } from '../../src/cli'
 import type { CommandSpec } from '../../src/lib/define-command'
-import type { CliIo } from '../../src/lib/types'
+import type { CliIo, SpawnFn } from '../../src/lib/types'
 import { ALL_COMMANDS } from '../../src/registry'
 
 export type RunCliOptions = {
@@ -25,6 +25,12 @@ export type RunCliOptions = {
    * `CliInterruptError` to simulate SIGINT/SIGTERM at an exact moment.
    */
   readonly signal?: AbortSignal
+  /** Working directory for project commands (`mcp install`, `init`). */
+  readonly cwd?: string
+  /** Stands in for child processes (git, package managers). */
+  readonly spawn?: SpawnFn
+  /** Records URLs a command asks to open. */
+  readonly openUrl?: (url: string) => Promise<void>
 }
 
 export type RunCliResult = {
@@ -58,6 +64,9 @@ export async function runCli(
     readStdin: options.readStdin ?? (async () => options.stdin ?? ''),
     readLine: async () => options.promptAnswer ?? '',
     ...(options.signal === undefined ? {} : { signal: options.signal }),
+    ...(options.cwd === undefined ? {} : { cwd: options.cwd }),
+    ...(options.spawn === undefined ? {} : { spawn: options.spawn }),
+    ...(options.openUrl === undefined ? {} : { openUrl: options.openUrl }),
   }
   const code = await run(
     argv,
