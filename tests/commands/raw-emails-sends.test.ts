@@ -40,6 +40,40 @@ function env(): Record<string, string | undefined> {
 
 const API = 'https://brew.new/api'
 
+it('imports Figma using the full shared JSON contract with scalar flag overrides', async () => {
+  let body: unknown
+  server.use(
+    http.post(`${API}/v1/emails/figma`, async ({ request }) => {
+      body = await request.json()
+      return HttpResponse.json(
+        { emailId: 'eml_figma', emailVersionId: 'emv_1', format: 'html' },
+        { status: 201 }
+      )
+    })
+  )
+  const input = {
+    figmaUrl: 'https://www.figma.com/design/abc123/Launch?node-id=1-2',
+    hrefMap: { '1:3': 'https://example.com/buy' },
+    title: 'Original',
+    groupName: 'Launch',
+  }
+  const result = await runCli(
+    [
+      'emails',
+      'import-figma',
+      '--input',
+      JSON.stringify(input),
+      '--title',
+      'Override',
+      '--format',
+      'html',
+    ],
+    { env: env(), extraCommands: EXTRA }
+  )
+  expect(result.code).toBe(0)
+  expect(body).toEqual({ ...input, title: 'Override', format: 'html' })
+})
+
 describe('sends pause / resume', () => {
   it('pauses a send with POST /v1/sends/{sendId}/pause', async () => {
     server.use(

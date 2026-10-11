@@ -4409,6 +4409,10 @@ export interface components {
             subjectLine?: string;
         };
         FigmaToEmailRequest: {
+            /** @description Optional Figma node-id to destination map (at most 100 entries). Overrides authored text/CTA links and prevents linked content being flattened into artwork. */
+            hrefMap?: {
+                [key: string]: string;
+            };
             /**
              * Format: uri
              * @description A figma.com design, file, or prototype URL for a specific frame. The URL must include a node-id query parameter.
