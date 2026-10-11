@@ -44,6 +44,39 @@ data on stdout and progress on stderr, and documents itself:
 brew-cli emails send --help
 ```
 
+## Connect your AI editor to Brew (MCP)
+
+```bash
+brew-cli mcp install                               # the editors this project uses
+brew-cli mcp install --client cursor claude-code   # or name them
+brew-cli mcp install --client all --dry-run --json # plan only
+```
+
+`mcp install` adds the Brew MCP server (`https://brew.new/api/mcp`, or the
+origin of `--api-url` + `/api/mcp`) to each client's config, merging a
+`brew` entry and keeping every other server:
+
+| Client | `--client` | Project file (`--scope project`, default) | User file (`--scope user`) |
+| --- | --- | --- | --- |
+| Cursor | `cursor` | `.cursor/mcp.json` | `~/.cursor/mcp.json` |
+| VS Code | `vscode` | `.vscode/mcp.json` | the profile's `mcp.json` |
+| Claude Code | `claude-code` | `.mcp.json` | prints `claude mcp add --scope user …` |
+| Gemini CLI | `gemini` | `.gemini/settings.json` | `~/.gemini/settings.json` |
+| Windsurf | `windsurf` | (user only) | `~/.codeium/windsurf/mcp_config.json` |
+| Codex | `codex` | (user only) | `~/.codex/config.toml` (`$CODEX_HOME`) |
+
+Without `--client` it configures the clients it detects (`.cursor/`,
+`.vscode/`, `.claude/` or `CLAUDECODE=1`, `.gemini/`); a detected Windsurf
+or Codex is reported with its snippet but only written when you name it,
+since its config lives in your home directory. `--auth oauth` (default)
+writes the URL only and the client signs in on first use; `--auth env`
+adds an `Authorization` header that the client fills from `BREW_API_KEY`
+at connect time. A literal key is never written. A config file with
+comments is left alone and reported `manual` with the snippet to paste.
+`--print` prints the snippets and writes nothing. Each result is
+`created`, `updated`, `unchanged`, `manual` or `printed`; Cursor and
+VS Code results carry a one-click install `deeplink`.
+
 ## Authentication
 
 | Precedence | Source |
@@ -90,7 +123,10 @@ Designed for AI agents as first-class users:
   trigger fires) never hang waiting for input: non-interactive callers
   get exit `4` plus a JSON envelope containing a ready-to-run
   `confirmCommand`; pass `--yes` to proceed. Humans on a TTY get a y/N
-  prompt. Test sends (`emails send --test`) skip the gate.
+  prompt. Test sends (`emails send --test`) skip the gate. Printed
+  commands (`confirmCommand`, `retryCommand`, "run … login") start the
+  way the CLI was invoked: a launcher such as `npx -y brew.new@<version>`
+  sets `BREW_CLI_INVOKED_AS`, so they re-run through it.
 - **Saved email recovery** — `409 EMAIL_RESULT_UNAVAILABLE` means the
   generation or edit committed. Do not repeat the write. Read the exact
   saved result using `error.details.emailId` and `emailVersionId`:
@@ -121,7 +157,7 @@ The full generated reference lives in
 `contacts`, `fields`, `emails` (+ `groups`, `comments`), `sends`,
 `audiences`, `automations` (+ `triggers`, `runs`, `audience-runs`,
 `trigger-instances`), `analytics`, `insights`, `brand`, `brands`, `content`,
-`templates`, `flows`, `chats`, `notifications`, plus
+`templates`, `flows`, `chats`, `notifications`, `mcp`, plus
 `canvas sessions` and `login`/`logout`/`whoami`/`config`/`usage`/`health`/`docs`/`api`.
 
 For an embedded editor, create brands with an organization-scoped key,
