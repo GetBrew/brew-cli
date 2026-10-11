@@ -261,6 +261,53 @@ function listDirs(dir: string): string[] {
   }
 }
 
+/**
+ * `{apps,packages}/*` → `apps/*`, `packages/*` (nested and repeated braces
+ * included), as the glob libraries behind every workspace tool expand them.
+ */
+export function expandBraces(pattern: string): string[] {
+  const open = pattern.indexOf('{')
+  if (open === -1) {
+    return [pattern]
+  }
+  let depth = 0
+  const commas: number[] = []
+  let close = -1
+  for (let index = open; index < pattern.length; index += 1) {
+    const char = pattern[index]
+    if (char === '{') {
+      depth += 1
+    } else if (char === '}') {
+      depth -= 1
+      if (depth === 0) {
+        close = index
+        break
+      }
+    } else if (char === ',' && depth === 1) {
+      commas.push(index)
+    }
+  }
+  if (close === -1 || commas.length === 0) {
+    // Unbalanced or a single alternative: a literal brace.
+    const rest = close === -1 ? '' : pattern.slice(open + 1)
+    return close === -1
+      ? [pattern]
+      : expandBraces(rest).map((tail) => `${pattern.slice(0, open + 1)}${tail}`)
+  }
+  const head = pattern.slice(0, open)
+  const tail = pattern.slice(close + 1)
+  const bounds = [open, ...commas, close]
+  const alternatives: string[] = []
+  for (let index = 0; index < bounds.length - 1; index += 1) {
+    alternatives.push(
+      pattern.slice((bounds[index] ?? 0) + 1, bounds[index + 1] ?? 0)
+    )
+  }
+  return alternatives.flatMap((alternative) =>
+    expandBraces(`${head}${alternative}${tail}`)
+  )
+}
+
 /** Workspace packages under a monorepo root (dirs that hold a package.json). */
 export function listWorkspacePackages(
   root: string,
@@ -271,8 +318,10 @@ export function listWorkspacePackages(
   for (const pattern of patterns) {
     const negated = pattern.startsWith('!')
     const target = negated ? exclude : include
-    for (const dir of expandGlob(root, negated ? pattern.slice(1) : pattern)) {
-      target.add(dir)
+    for (const glob of expandBraces(negated ? pattern.slice(1) : pattern)) {
+      for (const dir of expandGlob(root, glob)) {
+        target.add(dir)
+      }
     }
   }
   const packages: WorkspacePackage[] = []

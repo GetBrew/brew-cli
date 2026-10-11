@@ -207,11 +207,17 @@ function vendorMessage(
   secrets: readonly string[]
 ): string {
   const detail = vendorDetail(response.json)
-  const text =
-    detail === undefined
-      ? `${vendor} answered ${response.status}.`
-      : `${vendor} answered ${response.status}: ${detail.slice(0, MAX_DETAIL_LENGTH)}`
-  return redact(text, secrets)
+  if (detail === undefined) {
+    return `${vendor} answered ${response.status}.`
+  }
+  // Redact BEFORE cutting: a secret straddling the cut would otherwise
+  // survive as a fragment no pattern recognizes.
+  const clean = redact(detail, secrets)
+  const cut =
+    clean.length > MAX_DETAIL_LENGTH
+      ? `${clean.slice(0, MAX_DETAIL_LENGTH)}…`
+      : clean
+  return `${vendor} answered ${response.status}: ${cut}`
 }
 
 /** The human part of common vendor error bodies. */

@@ -1,6 +1,7 @@
 import { join } from 'node:path'
 import type { SpawnFn } from '../types'
 import {
+  applyBlock,
   HASH_BLOCK_MARKERS,
   type PlannedChange,
   type ProjectWriter,
@@ -174,30 +175,38 @@ export function matchesGitignore(text: string, path: string): boolean {
 /**
  * Adds every path git would not ignore to a `# brew:start` / `# brew:end`
  * block in the root `.gitignore` (created when missing). Lines outside
- * the block are never touched. Returns what it added, and the change when
- * it had to write.
+ * the block are never touched.
+ *
+ * Then it checks the result: a rule after the block (`!.env.local`), or one
+ * in a nested `.gitignore`, can still win. Such a path is a `conflict` —
+ * never reported as added. A real run asks git again; a dry run evaluates
+ * the planned `.gitignore` with the fallback parser.
  */
 export async function ensureIgnored(
   writer: ProjectWriter,
   paths: readonly string[],
   options: { readonly spawn?: SpawnFn; readonly signal?: AbortSignal } = {}
 ): Promise<{
+  /** Paths the block now makes git ignore. */
   readonly added: readonly string[]
+  /** Paths still not ignored after the edit: the user must resolve them. */
+  readonly conflicts: readonly string[]
   readonly change?: PlannedChange
 }> {
-  const added: string[] = []
-  for (const path of paths) {
-    const ignored = await isIgnored(path, {
+  const check = (path: string): Promise<boolean> =>
+    isIgnored(path, {
       cwd: writer.root,
       ...(options.spawn === undefined ? {} : { spawn: options.spawn }),
       ...(options.signal === undefined ? {} : { signal: options.signal }),
     })
-    if (!ignored) {
-      added.push(path)
+  const missing: string[] = []
+  for (const path of paths) {
+    if (!(await check(path))) {
+      missing.push(path)
     }
   }
-  if (added.length === 0) {
-    return { added }
+  if (missing.length === 0) {
+    return { added: [], conflicts: [] }
   }
   const current = writer.read('.gitignore')
   const existing =
@@ -206,10 +215,27 @@ export async function ensureIgnored(
       : (readBlock(current, HASH_BLOCK_MARKERS) ?? '').split('\n')
   const lines = [
     ...existing.filter((line) => line.trim() !== ''),
-    ...added.filter((path) => !existing.includes(path)),
+    ...missing.filter((path) => !existing.includes(path)),
   ]
-  const change = writer.upsertBlock('.gitignore', lines.join('\n'), {
+  const content = lines.join('\n')
+  const planned = applyBlock(current ?? '', content, HASH_BLOCK_MARKERS)
+  const change = writer.upsertBlock('.gitignore', content, {
     markers: HASH_BLOCK_MARKERS,
   })
-  return { added, change }
+  const added: string[] = []
+  const conflicts: string[] = []
+  for (const path of missing) {
+    const isNowIgnored =
+      change.action === 'kept-user-version' || planned === 'unbalanced'
+        ? false
+        : writer.dryRun
+          ? matchesGitignore(planned, path)
+          : await check(path)
+    if (isNowIgnored) {
+      added.push(path)
+    } else {
+      conflicts.push(path)
+    }
+  }
+  return { added, conflicts, change }
 }
