@@ -170,6 +170,7 @@ a `confirmCommand` otherwise, `--yes` to proceed).
 | `brew-cli doctor` | read | — | Trust check: auth, API reachability, and installed-CLI vs live-API drift |
 | `brew-cli docs` | read | — | Documentation pointers; --agent prints the command manifest |
 | `brew-cli docs api` | read | `GET /v1/help` | Fetch the live machine-readable API catalog (GET /v1/help) |
+| `brew-cli mcp install` | write | — | Add the Brew MCP server to your AI editors' config (Cursor, VS Code, Claude Code, Gemini CLI, Windsurf, Codex) |
 | `brew-cli api` | destructive | — | Raw authenticated request against the Brew public API |
 
 ## Details
@@ -2693,6 +2694,25 @@ Fetch the live machine-readable API catalog (GET /v1/help)
 
 ```bash
 brew-cli docs api --json
+```
+
+### brew-cli mcp install
+
+Add the Brew MCP server to your AI editors' config (Cursor, VS Code, Claude Code, Gemini CLI, Windsurf, Codex)
+
+- Class: write
+- `--client <ids...>` — Clients to configure: cursor, vscode, claude-code, gemini, windsurf, codex, all (default: the ones this project uses; Windsurf and Codex only when named)
+- `--scope <scope>` — project (files in this repo) or user (your home directory)
+- `--auth <mode>` — oauth (URL only; sign in from the client) or env (a header the client fills from BREW_API_KEY; never a literal key)
+- `--print` — Print each config snippet instead of writing files
+- `--dry-run` — Report what would change without writing anything
+
+```bash
+brew-cli mcp install
+brew-cli mcp install --client cursor claude-code
+brew-cli mcp install --client codex --auth env
+brew-cli mcp install --client all --dry-run --json
+brew-cli mcp install --client vscode --print
 ```
 
 ### brew-cli api

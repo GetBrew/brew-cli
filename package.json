@@ -19,7 +19,16 @@
     "email",
     "marketing",
     "agent",
-    "api"
+    "api",
+    "mcp",
+    "model-context-protocol",
+    "transactional-email",
+    "resend",
+    "resend-alternative",
+    "react-email",
+    "ai-agent",
+    "agents",
+    "auth-emails"
   ],
   "type": "module",
   "bin": {
@@ -27,6 +36,7 @@
   },
   "files": [
     "dist",
+    "schemas",
     "README.md",
     "LICENSE"
   ],
@@ -45,11 +55,13 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "parity": "vitest run tests/parity-sdk.test.ts tests/parity-spec.test.ts",
-    "check": "bun run tsc && bun run lint && bun run test",
+    "check": "bun run tsc && bun run lint && bun run test && bun run docs:commands:check && bun run generate:skills:check",
     "docs:commands": "bun run scripts/generate-command-docs.ts",
     "docs:commands:check": "bun run scripts/generate-command-docs.ts --check",
     "generate:types": "node scripts/generate-types.mjs",
-    "prepublishOnly": "bun run clean && bun run tsc && bun run lint && bun run test && bun run build",
+    "generate:skills": "bun run scripts/generate-skills.ts",
+    "generate:skills:check": "bun run scripts/generate-skills.ts --check",
+    "prepublishOnly": "bun run clean && bun run tsc && bun run lint && bun run test && bun run generate:skills:check && bun run build",
     "smoke:signals": "bun run scripts/signal-smoke.ts",
     "smoke:regressions": "bun run scripts/regression-smoke.ts"
   },
