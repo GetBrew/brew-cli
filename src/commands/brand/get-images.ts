@@ -100,7 +100,9 @@ export const brandGetImagesCommand = defineCommand({
           )
         )
     if (flags.all === true) {
-      const rows = await collectAll(ctx, page)
+      const rows = await collectAll(ctx, page, {
+        cursor: flagString(input.cursor),
+      })
       return {
         data: { data: rows, pagination: { cursor: null, hasMore: false } },
         human: renderAssets(rows),

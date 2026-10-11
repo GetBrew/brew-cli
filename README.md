@@ -105,7 +105,8 @@ Designed for AI agents as first-class users:
 When `--all` receives a repeated or cyclic cursor, it exits with code 1 and
 `CLI_PAGINATION` on stderr. It emits no truncated success payload. Error details
 include the fetched page and item counts; a cyclic cursor is not offered as a
-resume point. Empty pages with an advancing cursor continue normally.
+resume point. This also covers resumed lists and a comment thread's older
+message slices. Empty pages with an advancing cursor continue normally.
 
 ## Command reference
 
