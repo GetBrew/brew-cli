@@ -18,6 +18,8 @@ export function buildManifest(): Record<string, unknown> {
       BREW_BRAND_ID: 'Brand id for organization-scoped keys',
       BREW_API_URL: 'API base URL',
       BREW_CLI_CONFIG_DIR: 'Config directory (default ~/.config/brew-cli)',
+      BREW_CLI_INVOKED_AS:
+        'Command prefix for printed re-run commands (set by launchers such as `npx -y brew.new@<version>`; default brew-cli)',
     },
     exitCodes: {
       '0': 'success',

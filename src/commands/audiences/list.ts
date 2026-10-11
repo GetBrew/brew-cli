@@ -48,7 +48,7 @@ export const audiencesListCommand = defineCommand({
     if (
       (flagString(flags.include) ?? inputField(base, 'include')) !== undefined
     ) {
-      throw includeRidesDetailRead('audiences get')
+      throw includeRidesDetailRead(ctx.io.env, 'audiences get')
     }
     const input = mergeInput(base, {
       search: flagString(flags.search),
