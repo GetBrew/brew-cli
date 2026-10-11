@@ -7,6 +7,7 @@ import {
 } from '../lib/config-store'
 import { defineCommand } from '../lib/define-command'
 import { CliUsageError } from '../lib/errors'
+import { getInvocationPrefix } from '../lib/invocation'
 import type { CliContext } from '../lib/types'
 
 const SETTABLE_KEYS = ['brandId', 'apiUrl'] as const
@@ -47,7 +48,7 @@ export const configSetCommand = defineCommand({
   ],
   examples: ['brew-cli config set brandId bd_123'],
   run: async ({ ctx, args }) => {
-    const key = requireSettableKey(args.key)
+    const key = requireSettableKey(args.key, ctx)
     const value = args.value ?? ''
     if (value === '') {
       throw new CliUsageError('A non-empty value is required.')
@@ -65,7 +66,7 @@ export const configUnsetCommand = defineCommand({
   args: [{ name: 'key', summary: 'brandId | apiUrl', isRequired: true }],
   examples: ['brew-cli config unset brandId'],
   run: async ({ ctx, args }) => {
-    const key = requireSettableKey(args.key)
+    const key = requireSettableKey(args.key, ctx)
     const path = updateConfig(ctx.io.env, { [key]: undefined })
     return { data: { [key]: null, configPath: path } }
   },
@@ -91,10 +92,14 @@ function requireKnownKey(
   throw new CliUsageError('Unknown key. Expected brandId, apiUrl, or apiKey.')
 }
 
-function requireSettableKey(value: string | undefined): 'apiUrl' | 'brandId' {
+function requireSettableKey(
+  value: string | undefined,
+  ctx: CliContext
+): 'apiUrl' | 'brandId' {
   if (value === 'apiKey') {
+    const prefix = getInvocationPrefix(ctx.io.env)
     throw new CliUsageError(
-      'The API key is managed by `brew-cli login` / `brew-cli logout`.'
+      `The API key is managed by \`${prefix} login\` / \`${prefix} logout\`.`
     )
   }
   const key = requireKnownKey(value)
