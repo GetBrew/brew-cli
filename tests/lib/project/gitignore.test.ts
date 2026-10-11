@@ -111,7 +111,7 @@ describe('ensureIgnored', () => {
     const again = await ensureIgnored(writer, ['.env', '.env.local'], {
       spawn: enoent,
     })
-    expect(again).toEqual({ added: [] })
+    expect(again).toEqual({ added: [], conflicts: [] })
   })
 
   it('extends an existing block and creates a missing .gitignore', async () => {
@@ -124,6 +124,23 @@ describe('ensureIgnored', () => {
     )
   })
 
+  it('reports a path a later rule re-includes as a conflict, not added', async () => {
+    const root = tempProject()
+    writeFileSync(
+      join(root, '.gitignore'),
+      '# brew:start\n# brew:end\n!.env.local\n'
+    )
+    for (const dryRun of [true, false]) {
+      const result = await ensureIgnored(
+        new ProjectWriter({ root, dryRun }),
+        ['.env.local'],
+        { spawn: enoent }
+      )
+      expect(result.added).toEqual([])
+      expect(result.conflicts).toEqual(['.env.local'])
+    }
+  })
+
   it('plans without writing in dry-run mode', async () => {
     const root = tempProject()
     const writer = new ProjectWriter({ root, dryRun: true })
@@ -131,6 +148,7 @@ describe('ensureIgnored', () => {
       spawn: fakeGit({}),
     })
     expect(result.change?.action).toBe('created')
+    expect(result.added).toEqual(['.env.local'])
     expect(() => readFileSync(join(root, '.gitignore'))).toThrow()
   })
 })

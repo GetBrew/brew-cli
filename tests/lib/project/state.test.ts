@@ -5,6 +5,7 @@ import {
   BREW_STATE_SCHEMA_URL,
   BrewStateError,
   createBrewState,
+  isSafeRelativePath,
   parseBrewState,
   readBrewState,
   serializeBrewState,
@@ -160,5 +161,41 @@ describe('brew.json state', () => {
         )
       )
     )
+  })
+
+  it('checks paths in the schema exactly as the CLI does', () => {
+    const schema = JSON.parse(
+      readFileSync(
+        new URL('../../../schemas/brew.json', import.meta.url),
+        'utf8'
+      )
+    ) as {
+      properties: {
+        contractsPath: { pattern: string }
+        files: { propertyNames: { pattern: string } }
+      }
+    }
+    const pattern = new RegExp(schema.properties.contractsPath.pattern, 'u')
+    expect(schema.properties.files.propertyNames.pattern).toBe(
+      schema.properties.contractsPath.pattern
+    )
+    for (const path of [
+      'lib/brew.ts',
+      '.env.example',
+      'a/b/c.ts',
+      './x.ts',
+      '..foo/bar',
+      '../outside.ts',
+      'a/../b',
+      'a/..',
+      '/abs.ts',
+      'C:/x.ts',
+      'a\\b.ts',
+      'a//b',
+      'dir/',
+      '',
+    ]) {
+      expect(pattern.test(path), path).toBe(isSafeRelativePath(path))
+    }
   })
 })

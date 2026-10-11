@@ -270,8 +270,28 @@ function installJson(
   return fromWriter(writer.writeFile(path, text, { overwrite: true }).action)
 }
 
-const CODEX_TABLE =
-  /^\s*\[\s*mcp_servers\s*\.\s*(?:brew|"brew"|'brew')\s*\]\s*(?:#.*)?$/
+/** A TOML key segment, bare or quoted: `mcp_servers`, `"mcp_servers"`. */
+const seg = (name: string): string => `(?:${name}|"${name}"|'${name}')`
+const CODEX_TABLE = new RegExp(
+  `^\\s*\\[\\s*${seg('mcp_servers')}\\s*\\.\\s*${seg('brew')}\\s*\\]\\s*(?:#.*)?$`
+)
+/**
+ * Any other way a TOML file can already define `mcp_servers.brew`: a
+ * dotted key (`mcp_servers.brew.url = …`), a sub-table
+ * (`[mcp_servers.brew.env]`), or a `brew = {…}` inline table. Appending a
+ * second definition would make the whole config fail to load.
+ */
+const CODEX_OTHER_BREW = new RegExp(
+  `${seg('mcp_servers')}\\s*\\.\\s*${seg('brew')}\\s*[.=\\]]`
+)
+const CODEX_SERVERS_TABLE = new RegExp(
+  `^\\s*\\[\\s*${seg('mcp_servers')}\\s*\\]`,
+  'm'
+)
+const BREW_KEY_LINE = new RegExp(`^\\s*${seg('brew')}\\s*=`, 'm')
+const CODEX_INLINE_SERVERS = new RegExp(
+  `${seg('mcp_servers')}\\s*=\\s*\\{[^\\n]*${seg('brew')}\\s*=`
+)
 
 function installCodex(
   writer: ProjectWriter,
@@ -311,6 +331,16 @@ function installCodex(
           action: 'manual',
           note: `A [mcp_servers.${MCP_SERVER_NAME}] table with other settings exists: edit it by hand.`,
         }
+  }
+  if (
+    CODEX_OTHER_BREW.test(existing) ||
+    CODEX_INLINE_SERVERS.test(existing) ||
+    (CODEX_SERVERS_TABLE.test(existing) && BREW_KEY_LINE.test(existing))
+  ) {
+    return {
+      action: 'manual',
+      note: `${MCP_SERVER_NAME} is already defined in a form this command does not edit: check it by hand.`,
+    }
   }
   const normalized = existing.replaceAll('\r\n', '\n')
   const separator =
