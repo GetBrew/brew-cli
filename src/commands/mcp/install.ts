@@ -293,6 +293,65 @@ const CODEX_INLINE_SERVERS = new RegExp(
   `${seg('mcp_servers')}\\s*=\\s*\\{[^\\n]*${seg('brew')}\\s*=`
 )
 
+/**
+ * TOML with comments removed and string VALUES blanked (newlines kept, so
+ * line numbers still match): what is left is keys, headers and
+ * punctuation. Quoted keys stay — a string before `=`, or one followed by
+ * `=` / `.` / `]`, is a key. A value context opened by `[` or `{` after
+ * `=` spans lines until it closes.
+ */
+export function tomlStructure(text: string): string {
+  let out = ''
+  let isValue = false
+  let depth = 0
+  let index = 0
+  while (index < text.length) {
+    const char = text[index] ?? ''
+    if (char === '\n') {
+      out += char
+      isValue = depth > 0
+      index += 1
+      continue
+    }
+    if (char === '#') {
+      while (index < text.length && text[index] !== '\n') {
+        index += 1
+      }
+      continue
+    }
+    if (char === '"' || char === "'") {
+      const delimiter = text.startsWith(char.repeat(3), index)
+        ? char.repeat(3)
+        : char
+      let end = index + delimiter.length
+      while (end < text.length && !text.startsWith(delimiter, end)) {
+        if (char === '"' && text[end] === '\\') {
+          end += 1
+        } else if (delimiter.length === 1 && text[end] === '\n') {
+          break
+        }
+        end += 1
+      }
+      end = Math.min(text.length, end + delimiter.length)
+      const literal = text.slice(index, end)
+      const isKey = !isValue || /^[ \t]*[=.\]]/.test(text.slice(end, end + 64))
+      out += isKey ? literal : literal.replace(/[^\n]/g, ' ')
+      index = end
+      continue
+    }
+    if (char === '=') {
+      isValue = true
+    } else if (isValue && (char === '[' || char === '{')) {
+      depth += 1
+    } else if (isValue && depth > 0 && (char === ']' || char === '}')) {
+      depth -= 1
+    }
+    out += char
+    index += 1
+  }
+  return out
+}
+
 function installCodex(
   writer: ProjectWriter,
   path: string,
@@ -305,11 +364,14 @@ function installCodex(
     return fromWriter(writer.writeFile(path, block).action)
   }
   const lines = existing.replaceAll('\r\n', '\n').split('\n')
-  const start = lines.findIndex((line) => CODEX_TABLE.test(line))
+  // Comments and string values hidden: only real TOML structure counts.
+  const structure = tomlStructure(existing.replaceAll('\r\n', '\n'))
+  const structureLines = structure.split('\n')
+  const start = structureLines.findIndex((line) => CODEX_TABLE.test(line))
   if (start !== -1) {
     const body: string[] = []
-    for (const line of lines.slice(start + 1)) {
-      if (/^\s*\[/.test(line)) {
+    for (const [offset, line] of lines.slice(start + 1).entries()) {
+      if (/^\s*\[/.test(structureLines[start + 1 + offset] ?? '')) {
         break
       }
       const trimmed = line.replace(/\s+#.*$/, '').trim()
@@ -333,9 +395,9 @@ function installCodex(
         }
   }
   if (
-    CODEX_OTHER_BREW.test(existing) ||
-    CODEX_INLINE_SERVERS.test(existing) ||
-    (CODEX_SERVERS_TABLE.test(existing) && BREW_KEY_LINE.test(existing))
+    CODEX_OTHER_BREW.test(structure) ||
+    CODEX_INLINE_SERVERS.test(structure) ||
+    (CODEX_SERVERS_TABLE.test(structure) && BREW_KEY_LINE.test(structure))
   ) {
     return {
       action: 'manual',

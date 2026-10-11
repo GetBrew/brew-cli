@@ -313,6 +313,22 @@ describe('mcp install', () => {
         text
       )
     }
+    // Comments and string values that only mention it are not definitions.
+    for (const text of [
+      '# mcp_servers.brew.url was removed\n',
+      '# [mcp_servers.brew]\nmodel = "x"\n',
+      'notes = "mcp_servers.brew = old"\n',
+      'args = [\n  "mcp_servers.brew.url",\n]\n',
+      "doc = '''\n[mcp_servers.brew]\n'''\n",
+    ]) {
+      writeFileSync(join(home, '.codex/config.toml'), text)
+      const { output } = await install(['--client', 'codex'], { root, env })
+      expect(output.clients[0]?.action, text).toBe('updated')
+      expect(
+        readFileSync(join(home, '.codex/config.toml'), 'utf8'),
+        text
+      ).toContain('\n[mcp_servers.brew]\nurl = "https://brew.new/api/mcp"\n')
+    }
     // A different server whose name starts with brew is not ours.
     writeFileSync(
       join(home, '.codex/config.toml'),
