@@ -3,6 +3,7 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import {
   detectFramework,
+  expandBraces,
   findMonorepo,
   listWorkspacePackages,
   parsePnpmWorkspaceYaml,
@@ -116,6 +117,19 @@ describe('workspace helpers', () => {
       { name: 'deep', dir: 'packages/nested/deep' },
       { name: '@acme/ui', dir: 'packages/ui' },
     ])
+  })
+
+  it('expands brace patterns', () => {
+    expect(expandBraces('{apps,packages}/*')).toEqual(['apps/*', 'packages/*'])
+    expect(expandBraces('a/{b,{c,d}}/e')).toEqual(['a/b/e', 'a/c/e', 'a/d/e'])
+    expect(expandBraces('{x,y}/{1,2}')).toEqual(['x/1', 'x/2', 'y/1', 'y/2'])
+    expect(expandBraces('plain/*')).toEqual(['plain/*'])
+    expect(expandBraces('odd/{one}/x')).toEqual(['odd/{one}/x'])
+    expect(expandBraces('open/{a,b')).toEqual(['open/{a,b'])
+    const root = copyFixture('pnpm-turbo')
+    expect(
+      listWorkspacePackages(root, ['{apps,packages}/*']).map((pkg) => pkg.dir)
+    ).toEqual(['apps/api', 'apps/web', 'packages/ui'])
   })
 
   it('names a framework by its most specific dependency', () => {

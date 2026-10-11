@@ -6,16 +6,33 @@
   "type": "object",
   "required": ["version", "projectId", "emails", "files"],
   "properties": {
-    "$schema": { "type": "string", "minLength": 1 },
-    "version": { "const": 1 },
+    "$schema": {
+      "type": "string",
+      "minLength": 1
+    },
+    "version": {
+      "const": 1
+    },
     "projectId": {
       "type": "string",
       "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
     },
-    "brandId": { "type": "string", "minLength": 1 },
-    "framework": { "type": "string", "minLength": 1 },
-    "auth": { "type": "string", "minLength": 1 },
-    "contractsPath": { "type": "string", "minLength": 1 },
+    "brandId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "framework": {
+      "type": "string",
+      "minLength": 1
+    },
+    "auth": {
+      "type": "string",
+      "minLength": 1
+    },
+    "contractsPath": {
+      "type": "string",
+      "pattern": "^(?![A-Za-z]:)(?!/)(?!.*\\\\)(?!(?:.*/)?\\.\\.(?:/|$))(?!.*//)(?!.*/$).+$"
+    },
     "emails": {
       "type": "object",
       "propertyNames": {
@@ -25,26 +42,46 @@
         "type": "object",
         "required": ["triggerEventId", "automationId"],
         "properties": {
-          "triggerEventId": { "type": "string", "minLength": 1 },
-          "automationId": { "type": "string", "minLength": 1 }
+          "triggerEventId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "automationId": {
+            "type": "string",
+            "minLength": 1
+          }
         }
       }
     },
     "files": {
       "type": "object",
+      "propertyNames": {
+        "pattern": "^(?![A-Za-z]:)(?!/)(?!.*\\\\)(?!(?:.*/)?\\.\\.(?:/|$))(?!.*//)(?!.*/$).+$"
+      },
       "additionalProperties": {
         "type": "object",
         "required": ["sha256", "generator"],
         "properties": {
-          "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
-          "generator": { "type": "string", "minLength": 1 }
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "generator": {
+            "type": "string",
+            "minLength": 1
+          }
         }
       }
     },
-    "providerConfig": { "type": "object" },
+    "providerConfig": {
+      "type": "object"
+    },
     "mcp": {
       "type": "array",
-      "items": { "type": "string", "minLength": 1 },
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
       "uniqueItems": true
     }
   }

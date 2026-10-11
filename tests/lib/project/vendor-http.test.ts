@@ -107,6 +107,29 @@ describe('vendorFetch', () => {
     expect(toExitCode(error)).toBe(1)
   })
 
+  it('redacts before truncating, so no fragment survives the cut', async () => {
+    server.use(
+      http.get(URL_BASE, () =>
+        HttpResponse.json(
+          { message: `${' '.repeat(291)}${TOKEN} trailing text` },
+          { status: 400 }
+        )
+      )
+    )
+    const error = await failure(
+      vendorFetch(context(), {
+        vendor: 'Supabase',
+        method: 'GET',
+        url: URL_BASE,
+        headers: { Authorization: `Bearer ${TOKEN}` },
+      })
+    )
+    const message = (error as Error).message
+    expect(message).not.toContain('sbp_')
+    expect(message).not.toContain('0123456789')
+    expect(message).toMatch(/\[redacted…$/)
+  })
+
   it('reads Clerk-style error arrays', async () => {
     server.use(
       http.get('https://api.clerk.com/v1/instance', () =>

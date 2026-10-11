@@ -1,9 +1,11 @@
 import {
   existsSync,
+  lstatSync,
   mkdirSync,
   readdirSync,
   readFileSync,
   statSync,
+  symlinkSync,
   writeFileSync,
 } from 'node:fs'
 import { join } from 'node:path'
@@ -98,6 +100,38 @@ describe('ProjectWriter.writeFile (create-only)', () => {
     expect(writer.changes[1]?.diff).toContain('+{"a":1,"b":2}')
     expect(existsSync(join(root, 'new.ts'))).toBe(false)
     expect(readFileSync(join(root, 'merged.json'), 'utf8')).toBe('{"a":1}\n')
+  })
+
+  it('writes through a symbolic link instead of replacing it', () => {
+    const root = tempProject()
+    const dotfiles = tempProject('brew-cli-dotfiles-')
+    writeFileSync(join(dotfiles, 'mcp.json'), '{"a":1}\n')
+    symlinkSync(join(dotfiles, 'mcp.json'), join(root, 'mcp.json'))
+    symlinkSync(join(dotfiles, 'missing.json'), join(root, 'dangling.json'))
+    const writer = new ProjectWriter({ root })
+    expect(
+      writer.writeFile('mcp.json', '{"a":2}\n', { overwrite: true }).action
+    ).toBe('updated')
+    expect(lstatSync(join(root, 'mcp.json')).isSymbolicLink()).toBe(true)
+    expect(readFileSync(join(dotfiles, 'mcp.json'), 'utf8')).toBe('{"a":2}\n')
+    expect(writer.writeFile('dangling.json', 'x\n').action).toBe('created')
+    expect(lstatSync(join(root, 'dangling.json')).isSymbolicLink()).toBe(true)
+    expect(readFileSync(join(dotfiles, 'missing.json'), 'utf8')).toBe('x\n')
+  })
+
+  it('never puts sensitive content in a diff', () => {
+    const root = tempProject()
+    const writer = new ProjectWriter({ root, dryRun: true })
+    const secret = writer.writeFile('.env.local', 'KEY=brew_secret\n', {
+      sensitive: true,
+    })
+    const block = writer.upsertBlock('.env', 'KEY=brew_secret', {
+      markers: HASH_BLOCK_MARKERS,
+      sensitive: true,
+    })
+    expect(secret.diff).toBeUndefined()
+    expect(block.diff).toBeUndefined()
+    expect(JSON.stringify(writer.changes)).not.toContain('brew_secret')
   })
 
   it('refuses relative paths that escape the root', () => {
