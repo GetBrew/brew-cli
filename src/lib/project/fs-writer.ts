@@ -1,8 +1,11 @@
 import { createHash, randomBytes } from 'node:crypto'
 import {
   chmodSync,
+  lstatSync,
   mkdirSync,
   readFileSync,
+  readlinkSync,
+  realpathSync,
   renameSync,
   rmSync,
   statSync,
@@ -95,16 +98,38 @@ export function readTextFile(path: string): string | null {
 }
 
 /**
+ * The file a write to `path` must land in: a symbolic link (a config kept
+ * in a dotfiles repo) is followed to its target, so the rename replaces the
+ * target's content and the link survives. A dangling link resolves to the
+ * path it names.
+ */
+export function resolveWriteTarget(path: string): string {
+  try {
+    if (!lstatSync(path).isSymbolicLink()) {
+      return path
+    }
+  } catch {
+    return path
+  }
+  try {
+    return realpathSync(path)
+  } catch {
+    return resolve(dirname(path), readlinkSync(path))
+  }
+}
+
+/**
  * Writes `content` to `path` atomically: a temp file beside it, then a
  * rename, so a crash or Ctrl-C never leaves a half-written config. `mode`
  * applies to the new file (0o600 for secrets); without it an existing
- * file keeps its mode.
+ * file keeps its mode. A symbolic link is written through, never replaced.
  */
 export function writeFileAtomic(
-  path: string,
+  linkOrPath: string,
   content: string,
   options: { readonly mode?: number } = {}
 ): void {
+  const path = resolveWriteTarget(linkOrPath)
   mkdirSync(dirname(path), { recursive: true })
   let mode = options.mode
   if (mode === undefined) {
@@ -140,6 +165,11 @@ export type WriteFileOptions = {
    */
   readonly managedSha256?: string
   /**
+   * The content is secret (`.env.local`): the change carries no diff, so a
+   * dry-run plan or report can never print a value.
+   */
+  readonly sensitive?: boolean
+  /**
    * Replace whatever is there. Only for files whose new content the caller
    * derived FROM the current content (a JSON merge), so nothing is lost.
    */
@@ -149,6 +179,8 @@ export type WriteFileOptions = {
 export type UpsertBlockOptions = {
   readonly markers?: BlockMarkers
   readonly mode?: number
+  /** As `WriteFileOptions.sensitive`: no diff in the change. */
+  readonly sensitive?: boolean
   /** Create the file when it does not exist (default true). */
   readonly createIfMissing?: boolean
 }
@@ -209,6 +241,7 @@ export class ProjectWriter {
         content,
         before: '',
         mode: options.mode,
+        sensitive: options.sensitive === true,
       })
     }
     if (normalizeEol(existing) === normalizeEol(content)) {
@@ -236,6 +269,7 @@ export class ProjectWriter {
       content: withEol(content, usesCrlf(existing)),
       before: existing,
       mode: options.mode,
+      sensitive: options.sensitive === true,
     })
   }
 
@@ -253,13 +287,15 @@ export class ProjectWriter {
     const markers = options.markers ?? HTML_BLOCK_MARKERS
     const absolute = this.resolvePath(path)
     const existing = readTextFile(absolute)
-    const body = normalizeEol(content).replace(/\n+$/, '')
-    const block = `${markers.start}\n${body}\n${markers.end}`
+    const sensitive = options.sensitive === true
     if (existing === null) {
       if (options.createIfMissing === false) {
         return this.#record({ path, action: 'missing' })
       }
-      const created = `${block}\n`
+      const created = applyBlock('', content, markers)
+      if (created === 'unbalanced') {
+        throw new Error('unreachable: an empty file has no markers')
+      }
       return this.#commit(absolute, {
         path,
         action: 'created',
@@ -267,12 +303,11 @@ export class ProjectWriter {
         content: created,
         before: '',
         mode: options.mode,
+        sensitive,
       })
     }
-    const crlf = usesCrlf(existing)
-    const text = normalizeEol(existing)
-    const located = locateBlock(text, markers)
-    if (located === 'unbalanced') {
+    const next = applyBlock(existing, content, markers)
+    if (next === 'unbalanced') {
       return this.#record({
         path,
         action: 'kept-user-version',
@@ -280,27 +315,14 @@ export class ProjectWriter {
         note: `unbalanced ${markers.start} / ${markers.end} markers`,
       })
     }
-    let next: string
-    if (located === null) {
-      const separator =
-        text === ''
-          ? ''
-          : text.endsWith('\n\n')
-            ? ''
-            : text.endsWith('\n')
-              ? '\n'
-              : '\n\n'
-      next = `${text}${separator}${block}\n`
-    } else {
-      next = `${text.slice(0, located.start)}${block}${text.slice(located.end)}`
-    }
-    if (next === text) {
+    if (next === normalizeEol(existing)) {
       return this.#record({
         path,
         action: 'unchanged',
         sha256: sha256Hex(existing),
       })
     }
+    const crlf = usesCrlf(existing)
     return this.#commit(absolute, {
       path,
       action: 'updated',
@@ -308,6 +330,7 @@ export class ProjectWriter {
       content: withEol(next, crlf),
       before: existing,
       mode: options.mode,
+      sensitive,
     })
   }
 
@@ -346,6 +369,7 @@ export class ProjectWriter {
       readonly content: string
       readonly before: string
       readonly mode: number | undefined
+      readonly sensitive: boolean
     }
   ): PlannedChange {
     if (!this.dryRun) {
@@ -359,11 +383,44 @@ export class ProjectWriter {
       path: input.path,
       action: input.action,
       sha256: input.sha256,
-      diff: unifiedDiff(input.before, input.content, {
-        fromPath: input.path,
-      }),
+      ...(input.sensitive
+        ? {}
+        : {
+            diff: unifiedDiff(input.before, input.content, {
+              fromPath: input.path,
+            }),
+          }),
     })
   }
+}
+
+/**
+ * `text` (LF-normalized) with its marked block set to `content`: replaced
+ * in place, or appended after a blank line when the text has none.
+ * `'unbalanced'` when the markers do not pair up exactly once.
+ */
+export function applyBlock(
+  text: string,
+  content: string,
+  markers: BlockMarkers = HTML_BLOCK_MARKERS
+): string | 'unbalanced' {
+  const normalized = normalizeEol(text)
+  const body = normalizeEol(content).replace(/\n+$/, '')
+  const block = `${markers.start}\n${body}\n${markers.end}`
+  const located = locateBlock(normalized, markers)
+  if (located === 'unbalanced') {
+    return located
+  }
+  if (located !== null) {
+    return `${normalized.slice(0, located.start)}${block}${normalized.slice(located.end)}`
+  }
+  const separator =
+    normalized === '' || normalized.endsWith('\n\n')
+      ? ''
+      : normalized.endsWith('\n')
+        ? '\n'
+        : '\n\n'
+  return `${normalized}${separator}${block}\n`
 }
 
 /**

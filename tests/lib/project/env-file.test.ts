@@ -75,6 +75,32 @@ describe('ensureVar', () => {
     expect(results[0]?.action).toBe('filled')
   })
 
+  it('fills a key whose only content is a comment', () => {
+    const file = parseEnv('BREW_API_KEY= # TODO\nB=x #note\nC=a#b\n')
+    expect(getEnvValue(file, 'BREW_API_KEY')).toBe('')
+    expect(getEnvValue(file, 'B')).toBe('x')
+    expect(getEnvValue(file, 'C')).toBe('a#b')
+    const { results } = ensureEnvVars('BREW_API_KEY= # TODO\n', [
+      { name: 'BREW_API_KEY', value: SECRET },
+    ])
+    expect(results[0]?.action).toBe('filled')
+  })
+
+  it('round-trips mixed line endings untouched, and matches them when adding', () => {
+    const mixed = 'A=1\r\nB=2\nC=3\r\n'
+    expect(serializeEnv(parseEnv(mixed))).toBe(mixed)
+    expect(ensureEnvVars(mixed, [{ name: 'B', value: 'x' }]).text).toBe(mixed)
+    expect(ensureEnvVars(mixed, [{ name: 'D', value: '4' }]).text).toBe(
+      `${mixed}D=4\r\n`
+    )
+    expect(
+      ensureEnvVars('A=\r\nB=2\r\n', [{ name: 'A', value: '1' }]).text
+    ).toBe('A=1\r\nB=2\r\n')
+    expect(ensureEnvVars('X=1\r\nY=2', [{ name: 'A', value: '1' }]).text).toBe(
+      'X=1\r\nY=2\r\nA=1\r\n'
+    )
+  })
+
   it('creates a file from nothing, and adds a final newline when missing', () => {
     expect(ensureEnvVars(null, [{ name: 'A', value: '1' }]).text).toBe('A=1\n')
     expect(ensureEnvVars('X=1', [{ name: 'A', value: '1' }]).text).toBe(

@@ -5,7 +5,9 @@
  * when present but empty), never replaced.
  *
  * Values are secrets. Nothing here returns or prints one: results name the
- * variable and what happened to it, never its value.
+ * variable and what happened to it, never its value. Write the result with
+ * `ProjectWriter.writeFile(path, text, { overwrite: true, mode: 0o600,
+ * sensitive: true })` so no dry-run diff carries it either.
  */
 
 export type EnvLine =
@@ -71,18 +73,20 @@ const VALID_NAME = /^[A-Za-z_][A-Za-z0-9_]*$/
 
 export function parseEnv(text: string): EnvFile {
   const eol = text.includes('\r\n') ? '\r\n' : '\n'
-  const normalized = text.replaceAll('\r\n', '\n')
-  const trailingNewline = normalized.endsWith('\n')
-  const source = normalized === '' ? [] : normalized.split('\n')
+  const trailingNewline = text.endsWith('\n')
+  // Split on LF only: a line keeps its own `\r`, so a file that mixes
+  // endings serializes back exactly as it was read.
+  const source = text === '' ? [] : text.split('\n')
   if (trailingNewline) {
     source.pop()
   }
   const lines: EnvLine[] = []
   for (let index = 0; index < source.length; index += 1) {
-    const line = source[index] ?? ''
+    const raw = source[index] ?? ''
+    const line = raw.replace(/\r$/, '')
     const match = VAR_LINE.exec(line)
     if (match === null) {
-      lines.push({ kind: 'other', raw: line })
+      lines.push({ kind: 'other', raw })
       continue
     }
     const key = match[1] ?? ''
@@ -90,14 +94,14 @@ export function parseEnv(text: string): EnvFile {
     const quote = rest[0]
     if (quote === '"' || quote === "'" || quote === '`') {
       // A quoted value may continue over the following lines.
-      const rawLines = [line]
+      const rawLines = [raw]
       let body = rest.slice(1)
       let close = findClosingQuote(body, quote)
       while (close === -1 && index + 1 < source.length) {
         index += 1
         const next = source[index] ?? ''
         rawLines.push(next)
-        body = `${body}\n${next}`
+        body = `${body}\n${next.replace(/\r$/, '')}`
         close = findClosingQuote(body, quote)
       }
       const inner = close === -1 ? body : body.slice(0, close)
@@ -105,11 +109,12 @@ export function parseEnv(text: string): EnvFile {
       lines.push({ kind: 'var', key, value, raw: rawLines.join('\n') })
       continue
     }
-    const comment = rest.search(/\s#/)
+    // An unquoted value ends at a ` #` comment, or is one (`KEY= # todo`).
+    const comment = rest.search(/(?:^|\s)#/)
     if (comment !== -1) {
       rest = rest.slice(0, comment)
     }
-    lines.push({ kind: 'var', key, value: rest.trim(), raw: line })
+    lines.push({ kind: 'var', key, value: rest.trim(), raw })
   }
   return { lines, eol, trailingNewline }
 }
@@ -143,13 +148,13 @@ function unescapeDouble(value: string): string {
   })
 }
 
+/** Each line's own ending (`raw` carries its `\r`); new lines use `eol`. */
 export function serializeEnv(file: EnvFile): string {
   if (file.lines.length === 0) {
     return ''
   }
   const body = file.lines.map((line) => line.raw).join('\n')
-  const text = file.trailingNewline ? `${body}\n` : body
-  return file.eol === '\r\n' ? text.replaceAll('\n', '\r\n') : text
+  return file.trailingNewline ? `${body}\n` : body
 }
 
 /** The LAST assignment wins, as every dotenv loader reads it. */
@@ -216,23 +221,32 @@ export function ensureVar(
         return line
       }
       const exported = /^\s*export\s/.test(line.raw)
+      const cr = line.raw.endsWith('\r') ? '\r' : ''
       return {
         kind: 'var' as const,
         key: name,
         value,
-        raw: `${exported ? 'export ' : ''}${assignment}`,
+        raw: `${exported ? 'export ' : ''}${assignment}${cr}`,
       }
     })
     return { file: { ...file, lines }, result: { name, action: 'filled' } }
   }
+  const cr = file.eol === '\r\n' ? '\r' : ''
+  const previous = file.lines.map((line, index) =>
+    // A file without a final newline gets one before the new line.
+    !file.trailingNewline &&
+    index === file.lines.length - 1 &&
+    !line.raw.endsWith('\r')
+      ? { ...line, raw: `${line.raw}${cr}` }
+      : line
+  )
   return {
     file: {
       ...file,
-      // A file without a final newline gets one, so the new line stands alone.
       trailingNewline: true,
       lines: [
-        ...file.lines,
-        { kind: 'var', key: name, value, raw: assignment },
+        ...previous,
+        { kind: 'var', key: name, value, raw: `${assignment}${cr}` },
       ],
     },
     result: { name, action: 'added' },

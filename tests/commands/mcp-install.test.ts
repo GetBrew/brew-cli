@@ -289,6 +289,39 @@ describe('mcp install', () => {
     })
   })
 
+  it('never appends a second brew table to a Codex config that has one', async () => {
+    const { root, home, env } = setup()
+    mkdirSync(join(home, '.codex'))
+    const configs = {
+      quotedHeader: '["mcp_servers".brew]\nurl = "https://brew.new/api/mcp"\n',
+      quotedBoth:
+        '[\'mcp_servers\'."brew"]\nurl = "https://brew.new/api/mcp"\n',
+      dottedKey: 'mcp_servers.brew.url = "https://brew.new/api/mcp"\n',
+      subTable: '[mcp_servers.brew.env]\nX = "1"\n',
+      serversTable:
+        '[mcp_servers]\nbrew = { url = "https://brew.new/api/mcp" }\n',
+      inline: 'mcp_servers = { brew = { url = "https://x" } }\n',
+    }
+    for (const [name, text] of Object.entries(configs)) {
+      writeFileSync(join(home, '.codex/config.toml'), text)
+      const { output } = await install(['--client', 'codex'], { root, env })
+      expect(
+        ['unchanged', 'manual'].includes(output.clients[0]?.action ?? ''),
+        name
+      ).toBe(true)
+      expect(readFileSync(join(home, '.codex/config.toml'), 'utf8'), name).toBe(
+        text
+      )
+    }
+    // A different server whose name starts with brew is not ours.
+    writeFileSync(
+      join(home, '.codex/config.toml'),
+      '[mcp_servers.brew-staging]\nurl = "https://staging.example/api/mcp"\n'
+    )
+    const { output } = await install(['--client', 'codex'], { root, env })
+    expect(output.clients[0]?.action).toBe('updated')
+  })
+
   it('honours CODEX_HOME', async () => {
     const { root, home, env } = setup()
     const codexHome = join(home, 'custom-codex')
