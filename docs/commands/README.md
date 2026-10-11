@@ -728,6 +728,7 @@ Convert one Figma frame into an editable design (deterministic, free)
 - Route: `POST /v1/emails/figma`
 - Class: write
 - SDK: `brew.emails.importFigma(...)`
+- `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
 - `--url <figmaUrl>` — Figma frame link; must include a node-id query parameter
 - `--title <title>` — Design title (default: the Figma frame name)
 - `--format <format>` — Representation returned in content: jsx (default) or html
