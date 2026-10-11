@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process'
 import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -116,6 +117,63 @@ describe('automation test delivery boundary', () => {
     expect(result.code).toBe(0)
     expect(bodies).toEqual([input])
   })
+
+  it.each([['--input', '-'], ['--input=-']])(
+    'replays the stdin confirmation command without stdin (%j)',
+    async (...inputArgs) => {
+      const bodies = observeRequests()
+      const input = {
+        testRecipient: 'qa@example.com',
+        payload: { name: "Operator's example", userId: 'u_1' },
+        scenario,
+      }
+      const idempotencyKey = 'stdin-test-retry'
+      const env = {
+        BREW_CLI_CONFIG_DIR: mkdtempSync(join(tmpdir(), 'brew-cli-test-')),
+        BREW_API_KEY: 'brew_abcdefghijklmnopqrstuvwxyz012345',
+      }
+      let key: string | null | undefined
+      server.use(
+        http.post(API, async ({ request }) => {
+          key = request.headers.get('Idempotency-Key')
+          bodies.push(await request.json())
+          return HttpResponse.json({
+            automationRunIds: ['arun_1'],
+            status: 'test_started',
+          })
+        })
+      )
+      const unconfirmed = await runCli(
+        [
+          'automations',
+          'test',
+          'am_1',
+          ...inputArgs,
+          '--idempotency-key',
+          idempotencyKey,
+        ],
+        { env, stdin: JSON.stringify(input) }
+      )
+      expect(unconfirmed.code).toBe(4)
+      expect(bodies).toEqual([])
+      const { confirmCommand } = unconfirmed.json as {
+        confirmCommand: string
+      }
+      // Let the shell parse its quoting without executing the CLI or an API call.
+      const argv = execFileSync(
+        'sh',
+        ['-c', `set -- ${confirmCommand}; printf '%s\\0' "$@"`],
+        { encoding: 'utf8' }
+      )
+        .split('\0')
+        .slice(0, -1)
+      expect(argv[0]).toBe('brew-cli')
+      const confirmed = await runCli(argv.slice(1), { env })
+      expect(confirmed.code).toBe(0)
+      expect(bodies).toEqual([input])
+      expect(key).toBe(idempotencyKey)
+    }
+  )
 
   it('keeps a nested testRecipient in trigger payload as a dry run', async () => {
     const bodies = observeRequests()

@@ -10,7 +10,8 @@ import { CommandAbortedError, ConfirmationRequiredError } from './errors'
  */
 export async function enforceConfirmation(
   spec: CommandSpec,
-  invocation: CommandInvocation
+  invocation: CommandInvocation,
+  options: { readonly confirmationArgv?: readonly string[] } = {}
 ): Promise<void> {
   if (!spec.confirmSummary) {
     return
@@ -38,7 +39,9 @@ export async function enforceConfirmation(
     confirmationRequired: true,
     command: ['brew-cli', ...spec.path].join(' '),
     summary,
-    confirmCommand: buildConfirmCommand(ctx.rawArgv),
+    confirmCommand: buildConfirmCommand(
+      options.confirmationArgv ?? ctx.rawArgv
+    ),
   })
 }
 

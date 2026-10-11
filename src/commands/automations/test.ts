@@ -53,11 +53,21 @@ export const automationsTestCommand = defineCommand({
     const base = await readJsonFlag(ctx, flags.input, '--input')
     const body = automationTestBody(base)
     if (flags.input === '-') {
-      await enforceConfirmation(automationsTestCommand, {
-        ctx,
-        args,
-        flags: { ...flags, input: JSON.stringify(body) },
-      })
+      const input = JSON.stringify(body)
+      await enforceConfirmation(
+        automationsTestCommand,
+        { ctx, args, flags: { ...flags, input } },
+        {
+          // Stdin is already consumed; the confirmation must carry its body.
+          confirmationArgv: ctx.rawArgv.map((token, index) =>
+            token === '--input=-'
+              ? `--input=${input}`
+              : token === '-' && ctx.rawArgv[index - 1] === '--input'
+                ? input
+                : token
+          ),
+        }
+      )
     }
     const result = await ctx.client().automations.test(
       asSdkInput<TestAutomationInput>({

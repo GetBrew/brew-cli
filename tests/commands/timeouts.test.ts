@@ -116,6 +116,34 @@ describe('--timeout', () => {
     }
   )
 
+  it.each([['--input', '-'], ['--input=-']])(
+    'requires the same stdin to retry a timed-out automation test (%j)',
+    STALL,
+    async (...inputArgs) => {
+      server.use(http.post(`${API}/v1/automations/am_1/test`, neverAnswers))
+      const result = await runCli(
+        [
+          'automations',
+          'test',
+          'am_1',
+          ...inputArgs,
+          '--yes',
+          '--idempotency-key',
+          'stdin-test-retry',
+          '--timeout',
+          '200ms',
+        ],
+        { env: env(), stdin: '{"testRecipient":"qa@example.com"}' }
+      )
+      expect(result.code).toBe(1)
+      const error = envelopeOf(result.stderr)
+      expect(error.code).toBe('CLI_TIMEOUT')
+      expect(error.idempotencyKey).toBe('stdin-test-retry')
+      expect(error.suggestion).toContain('pipe the same input to it again')
+      expect(error.retryCommand).toContain(inputArgs.join(' '))
+    }
+  )
+
   it.each(['abc', '0', '25h'])(
     'refuses --timeout %s as a usage error',
     async (value) => {
