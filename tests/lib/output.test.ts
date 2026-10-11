@@ -45,6 +45,31 @@ describe('renderTable', () => {
     expect(result.code).toBe(0)
     expect(result.json).toEqual({ ok: true })
   })
+  it('evaluates human rendering exactly once on a terminal', async () => {
+    let calls = 0
+    const result = await runCli(['lazy-output'], {
+      ttyOut: true,
+      extraCommands: [
+        {
+          path: ['lazy-output'],
+          summary: 'Test lazy output',
+          commandClass: 'read',
+          sdkMethod: null,
+          examples: ['brew-cli lazy-output'],
+          run: async () => ({
+            data: { ok: true },
+            human: () => {
+              calls += 1
+              return 'Rendered table'
+            },
+          }),
+        },
+      ],
+    })
+    expect(result.code).toBe(0)
+    expect(result.stdout).toBe('Rendered table\n')
+    expect(calls).toBe(1)
+  })
   it('aligns columns and stringifies non-scalar cells', () => {
     const table = renderTable(
       [

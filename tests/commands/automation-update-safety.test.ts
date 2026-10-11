@@ -36,6 +36,30 @@ describe('resolved automation update confirmation', () => {
       expect(bodies).toEqual([])
     }
   })
+  it('returns confirmation-required after consuming interactive stdin', async () => {
+    const result = await runCli(
+      ['automations', 'update', 'am_1', '--input', '-'],
+      {
+        env,
+        stdin: JSON.stringify({ published: true }),
+        ttyIn: true,
+        ttyOut: true,
+        promptAnswer: 'yes',
+      }
+    )
+    expect(result.code).toBe(4)
+    expect(result.json).toMatchObject({ confirmationRequired: true })
+    expect(bodies).toEqual([])
+  })
+  it('can confirm inline input interactively', async () => {
+    const input = { published: true }
+    const result = await runCli(
+      ['automations', 'update', 'am_1', '--input', JSON.stringify(input)],
+      { env, ttyIn: true, ttyOut: true, promptAnswer: 'yes' }
+    )
+    expect(result.code).toBe(0)
+    expect(bodies).toEqual([input])
+  })
   it('sends the exact resolved stdin payload after confirmation', async () => {
     const input = { published: false, stopInFlight: true }
     const result = await runCli(
