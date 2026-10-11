@@ -44,6 +44,7 @@ const GROUP_SUMMARIES: Readonly<Record<string, string>> = {
   insights:
     "Brew Insights: findings about the brand's email, plus its pulse, report, suggestions and memo",
   integrations: 'Read the connected-integration catalog',
+  mcp: 'Connect AI editors and agents to the Brew MCP server',
   'inbox-placement-tests': 'Inbox placement (seed) test results',
   notifications:
     'What finished or failed: generations, sends, imports, domain checks',
