@@ -1,3 +1,4 @@
+import { CliPaginationError } from './errors'
 import { progress } from './output'
 import type { CliContext } from './types'
 
@@ -25,6 +26,7 @@ export async function collectAll<T>(
   const rows: T[] = []
   let cursor: string | undefined
   let pageCount = 0
+  const fetched = new Set<string>()
   for (;;) {
     let page: Page<T>
     try {
@@ -42,9 +44,19 @@ export async function collectAll<T>(
     }
     rows.push(...page.data)
     pageCount += 1
+    if (cursor !== undefined) {
+      fetched.add(cursor)
+    }
     const next = page.pagination?.cursor ?? null
-    if (next === null || next === cursor) {
+    if (next === null) {
       return rows
+    }
+    if (fetched.has(next)) {
+      ctx.transport.setDrain({
+        rowsFetched: rows.length,
+        pagesFetched: pageCount,
+      })
+      throw new CliPaginationError(next)
     }
     cursor = next
     progress(ctx, `Fetched ${rows.length} rows (page ${pageCount})…`)

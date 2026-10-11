@@ -145,3 +145,13 @@ Contributor guide: [`AGENTS.md`](./AGENTS.md) · Release process:
 ## License
 
 MIT
+
+
+When `--all` receives a repeated or cyclic cursor, it exits with code 1 and
+`CLI_PAGINATION` on stderr. It emits no truncated success payload. Error details
+include the fetched page and item counts; a cyclic cursor is not offered as a
+resume point. Empty pages with an advancing cursor continue normally.
+
+Development and release checks use Bun 1.3.10, pinned in every workflow.
+Command metadata is supplied by CLI composition to `docs` and `doctor`; these
+handlers do not import the live registry.

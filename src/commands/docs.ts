@@ -21,9 +21,9 @@ export const docsCommand = defineCommand({
     },
   ],
   examples: ['brew-cli docs', 'brew-cli docs --agent'],
-  run: async ({ flags }) => {
+  run: async ({ flags, ctx }) => {
     if (flags.agent === true) {
-      return { data: buildManifest() }
+      return { data: buildManifest({ commands: ctx.commands }) }
     }
     return {
       data: DOCS_POINTERS,

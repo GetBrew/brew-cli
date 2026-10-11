@@ -1,4 +1,5 @@
 import type { BrewClient } from './client'
+import type { CommandMetadata } from './define-command'
 import type { Budget, TransportState } from './transport'
 
 /**
@@ -59,6 +60,7 @@ export type ClientOptions = {
 }
 
 export type CliContext = {
+  readonly commands: readonly CommandMetadata[]
   readonly io: CliIo
   readonly mode: OutputMode
   readonly globals: GlobalFlags
