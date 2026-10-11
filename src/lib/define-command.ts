@@ -28,13 +28,15 @@ export type CommandInvocation = {
   readonly ctx: CliContext
   readonly args: Readonly<Record<string, string>>
   readonly flags: Readonly<Record<string, unknown>>
+  /** Resolved once before confirmation; stdin must not be consumed twice. */
+  readonly input?: Readonly<Record<string, unknown>>
 }
 
 export type CommandOutcome = {
   /** The payload printed to stdout (verbatim in JSON mode). */
   readonly data: unknown
   /** Optional human rendering (tables, summaries) for TTY output. */
-  readonly human?: string
+  readonly human?: string | (() => string)
   /**
    * Optional non-zero exit code for commands whose payload IS the result
    * of a check (e.g. doctor): the report prints normally, then the
@@ -82,6 +84,10 @@ export type CommandSpec = {
   readonly flags?: readonly FlagSpec[]
   /** At least one realistic invocation; shown in help and the manifest. */
   readonly examples: readonly string[]
+  /** Resolve a payload for both confirmation and execution, without API calls. */
+  readonly prepareInput?: (
+    invocation: CommandInvocation
+  ) => Promise<Readonly<Record<string, unknown>>>
   /**
    * Destructive commands describe what is about to happen. Returning
    * undefined skips the gate for the given invocation (e.g. a dry run).

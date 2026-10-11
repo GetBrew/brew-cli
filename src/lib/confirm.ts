@@ -18,6 +18,7 @@ export async function enforceConfirmation(
   const summary = spec.confirmSummary({
     args: invocation.args,
     flags: invocation.flags,
+    ...(invocation.input === undefined ? {} : { input: invocation.input }),
   })
   if (summary === undefined) {
     return

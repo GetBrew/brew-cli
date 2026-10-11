@@ -325,7 +325,12 @@ function registerCommand(
     )
     const ctx = makeContext({ io, flags, rawArgv, traits: traitsOf(spec) })
     onContext?.(ctx)
-    const invocation = { ctx, args: positional, flags }
+    const baseInvocation = { ctx, args: positional, flags }
+    const input = await spec.prepareInput?.(baseInvocation)
+    const invocation = {
+      ...baseInvocation,
+      ...(input === undefined ? {} : { input }),
+    }
     await enforceConfirmation(spec, invocation)
     // Armed only now: time a human spends at the y/N prompt is not the
     // request's.
