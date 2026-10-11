@@ -15,7 +15,7 @@ export type CliIo = {
   readonly readLine: (prompt: string) => Promise<string>
   /**
    * Aborts on SIGINT/SIGTERM with a `CliInterruptError` (see
-   * `lib/interrupt.ts`). Absent in tests that do not exercise cancellation.
+   * `src/lib/interrupt.ts`). Absent in tests that do not exercise cancellation.
    */
   readonly signal?: AbortSignal
 }

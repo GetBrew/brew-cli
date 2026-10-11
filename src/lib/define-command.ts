@@ -69,7 +69,7 @@ export type CommandSpec = {
   /**
    * A long-running command's whole-command deadline when `--timeout` is not
    * given: the SDK's own per-call default for the same method (see
-   * `lib/long-running.ts`). An explicit `--timeout` always wins.
+   * `src/lib/long-running.ts`). An explicit `--timeout` always wins.
    */
   readonly defaultTimeoutMs?: number
   /**
