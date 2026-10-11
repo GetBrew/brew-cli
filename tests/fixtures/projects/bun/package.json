@@ -1,0 +1,6 @@
+{
+  "name": "bun-worker",
+  "dependencies": {
+    "hono": "4.6.0"
+  }
+}
