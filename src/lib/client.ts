@@ -2,6 +2,7 @@ import { createBrewClient } from '@brew.new/sdk'
 import { CLI_NAME, CLI_VERSION } from '../version'
 import { readConfig } from './config-store'
 import { CliAuthError } from './errors'
+import { getInvocationPrefix } from './invocation'
 import type { GlobalFlags } from './types'
 
 export type BrewClient = ReturnType<typeof createBrewClient>
@@ -70,7 +71,7 @@ export function resolveAuth(input: {
     }
     throw new CliAuthError(
       'No API key found.',
-      `Run \`brew-cli login\`, set BREW_API_KEY, or pass --api-key. Create keys at ${LOGIN_KEYS_URL}`
+      `Run \`${getInvocationPrefix(env)} login\`, set BREW_API_KEY, or pass --api-key. Create keys at ${LOGIN_KEYS_URL}`
     )
   }
   const apiKeySource: AuthSource = keyFromFlag

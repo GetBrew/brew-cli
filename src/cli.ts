@@ -14,6 +14,7 @@ import {
   toExitCode,
 } from './lib/errors'
 import { IDEMPOTENCY_FLAG } from './lib/input'
+import { getInvocationPrefix } from './lib/invocation'
 import { matchesTemplate } from './lib/long-running'
 import { printData } from './lib/output'
 import type { CliContext, CliIo, CommandTraits } from './lib/types'
@@ -161,7 +162,8 @@ function errorContextFor(
         ? ctx.traits?.replays === true
         : (bound.flags ?? []).includes(IDEMPOTENCY_FLAG),
     readsStdin: readsStdin(ctx.rawArgv),
-    retryCommand: (key) => buildRetryCommand(ctx.rawArgv, key),
+    retryCommand: (key) =>
+      buildRetryCommand(ctx.rawArgv, key, getInvocationPrefix(ctx.io.env)),
   }
 }
 
