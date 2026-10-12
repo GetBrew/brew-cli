@@ -1,13 +1,23 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import {
+  existsSync,
+  lstatSync,
+  mkdirSync,
+  readFileSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import {
   buildCursorInstallUrl,
   buildVsCodeInstallUrl,
+  claudeMcpAddCommand,
   configTarget,
+  devinConfigDir,
   mcpUrlFromApiUrl,
   vscodeUserDir,
 } from '../../src/lib/mcp-clients'
+import type { SpawnFn } from '../../src/lib/types'
 import { copyFixture, tempProject } from '../helpers/fixtures'
 import { runCli } from '../helpers/run-cli'
 
@@ -18,6 +28,7 @@ type Result = {
   deeplink?: string
   snippet?: string
   note?: string
+  nextStep?: string
 }
 type Output = { mcpUrl: string; dryRun: boolean; clients: Result[] }
 
@@ -48,11 +59,16 @@ function setup(dirs: readonly string[] = []): {
 
 async function install(
   argv: readonly string[],
-  options: { root: string; env: Record<string, string | undefined> }
+  options: {
+    root: string
+    env: Record<string, string | undefined>
+    spawn?: SpawnFn
+  }
 ): Promise<{ code: number; output: Output; stderr: string }> {
   const result = await runCli(['mcp', 'install', ...argv, '--json'], {
     cwd: options.root,
     env: options.env,
+    ...(options.spawn === undefined ? {} : { spawn: options.spawn }),
   })
   return {
     code: result.code,
@@ -140,27 +156,101 @@ describe('mcp install', () => {
     })
   })
 
-  it('replaces a stale brew entry in place', async () => {
+  it('never replaces a customised brew entry: unchanged when equal, else manual', async () => {
     const { root, env } = setup()
-    writeFileSync(
-      join(root, '.mcp.json'),
-      JSON.stringify({
+    const custom = `${JSON.stringify(
+      {
         mcpServers: {
-          brew: { type: 'http', url: 'https://old.example/api/mcp' },
+          brew: {
+            type: 'http',
+            url: 'https://brew.new/api/mcp',
+            headers: { Authorization: PLAIN_ENV_HEADER },
+          },
           other: { command: 'x' },
         },
-      })
-    )
-    const { output } = await install(['--client', 'claude-code'], {
+      },
+      null,
+      2
+    )}\n`
+    writeFileSync(join(root, '.mcp.json'), custom)
+    // Default --auth oauth would drop the header: the entry is the user's.
+    const oauth = await install(['--client', 'claude-code'], { root, env })
+    expect(oauth.output.clients[0]).toMatchObject({
+      action: 'manual',
+      note: expect.stringMatching(/other settings/),
+    })
+    expect(JSON.parse(oauth.output.clients[0]?.snippet ?? '')).toEqual({
+      mcpServers: { brew: { type: 'http', url: 'https://brew.new/api/mcp' } },
+    })
+    expect(readFileSync(join(root, '.mcp.json'), 'utf8')).toBe(custom)
+    // The same settings again: nothing to do.
+    const same = await install(['--client', 'claude-code', '--auth', 'env'], {
       root,
       env,
     })
-    expect(output.clients[0]?.action).toBe('updated')
-    expect(
-      Object.keys(
-        (readJson(join(root, '.mcp.json')) as { mcpServers: object }).mcpServers
-      )
-    ).toEqual(['brew', 'other'])
+    expect(same.output.clients[0]?.action).toBe('unchanged')
+    // A stale URL is still the user's entry, never silently rewritten.
+    writeFileSync(
+      join(root, '.mcp.json'),
+      JSON.stringify({
+        mcpServers: { brew: { type: 'http', url: 'https://old.example/mcp' } },
+      })
+    )
+    const stale = await install(['--client', 'claude-code'], { root, env })
+    expect(stale.output.clients[0]?.action).toBe('manual')
+    expect(readFileSync(join(root, '.mcp.json'), 'utf8')).toContain(
+      'https://old.example/mcp'
+    )
+  })
+
+  it('reads a config that starts with a byte order mark, and keeps the mark', async () => {
+    const { root, env } = setup()
+    mkdirSync(join(root, '.cursor'))
+    writeFileSync(
+      join(root, '.cursor/mcp.json'),
+      `\uFEFF${JSON.stringify({ mcpServers: { other: { url: 'https://x.example/mcp' } } }, null, 2)}\n`
+    )
+    const first = await install(['--client', 'cursor'], { root, env })
+    expect(first.output.clients[0]?.action).toBe('updated')
+    const text = readFileSync(join(root, '.cursor/mcp.json'), 'utf8')
+    expect(text.startsWith('\uFEFF')).toBe(true)
+    expect(JSON.parse(text.slice(1))).toEqual({
+      mcpServers: {
+        other: { url: 'https://x.example/mcp' },
+        brew: { url: 'https://brew.new/api/mcp' },
+      },
+    })
+    const second = await install(['--client', 'cursor'], { root, env })
+    expect(second.output.clients[0]?.action).toBe('unchanged')
+  })
+
+  it('never writes through a link that leaves the project; a home link into dotfiles still works', async () => {
+    const { root, home, env } = setup(['.cursor'])
+    const outside = tempProject('brew-cli-outside-')
+    writeFileSync(join(outside, 'mcp.json'), '{}\n')
+    symlinkSync(join(outside, 'mcp.json'), join(root, '.cursor/mcp.json'))
+    const project = await install(['--client', 'cursor'], { root, env })
+    expect(project.output.clients[0]).toMatchObject({
+      action: 'manual',
+      note: expect.stringMatching(/^Not written: .*outside/),
+    })
+    expect(readFileSync(join(outside, 'mcp.json'), 'utf8')).toBe('{}\n')
+
+    mkdirSync(join(home, 'dotfiles'))
+    mkdirSync(join(home, '.cursor'))
+    writeFileSync(join(home, 'dotfiles/mcp.json'), '{}\n')
+    symlinkSync(join(home, 'dotfiles/mcp.json'), join(home, '.cursor/mcp.json'))
+    const user = await install(['--client', 'cursor', '--scope', 'user'], {
+      root,
+      env,
+    })
+    expect(user.output.clients[0]?.action).toBe('updated')
+    expect(lstatSync(join(home, '.cursor/mcp.json')).isSymbolicLink()).toBe(
+      true
+    )
+    expect(readJson(join(home, 'dotfiles/mcp.json'))).toEqual({
+      mcpServers: { brew: { url: 'https://brew.new/api/mcp' } },
+    })
   })
 
   it('hands back a snippet instead of rewriting a config with comments', async () => {
@@ -224,14 +314,14 @@ describe('mcp install', () => {
     expect(existsSync(join(home, '.codex'))).toBe(false)
   })
 
-  it('writes Windsurf and Codex user configs only when named', async () => {
+  it('writes Devin Desktop (Windsurf) and Codex user configs only when named', async () => {
     const { root, home, env } = setup(['.windsurf', '.codex'])
     const detected = await install([], { root, env })
     expect(detected.output.clients.map((result) => result.action)).toEqual([
       'manual',
       'manual',
     ])
-    expect(existsSync(join(home, '.codeium'))).toBe(false)
+    expect(existsSync(join(home, '.config'))).toBe(false)
 
     const named = await install(
       ['--client', 'windsurf,codex', '--auth', 'env'],
@@ -243,7 +333,7 @@ describe('mcp install', () => {
     expect(named.output.clients).toMatchObject([
       {
         client: 'windsurf',
-        path: join(home, '.codeium/windsurf/mcp_config.json'),
+        path: join(home, '.config/devin/mcp_config.json'),
         action: 'created',
       },
       {
@@ -252,10 +342,12 @@ describe('mcp install', () => {
         action: 'created',
       },
     ])
-    expect(readJson(join(home, '.codeium/windsurf/mcp_config.json'))).toEqual({
+    expect(existsSync(join(home, '.codeium'))).toBe(false)
+    // `url`: read by both of Devin Desktop's agents (Cascade and Devin Local).
+    expect(readJson(join(home, '.config/devin/mcp_config.json'))).toEqual({
       mcpServers: {
         brew: {
-          serverUrl: 'https://brew.new/api/mcp',
+          url: 'https://brew.new/api/mcp',
           headers: { Authorization: ENV_HEADER },
         },
       },
@@ -263,6 +355,40 @@ describe('mcp install', () => {
     expect(readFileSync(join(home, '.codex/config.toml'), 'utf8')).toBe(
       '[mcp_servers.brew]\nurl = "https://brew.new/api/mcp"\nbearer_token_env_var = "BREW_API_KEY"\n'
     )
+    // The env-header entry needs no sign-in step.
+    expect(named.output.clients[1]?.nextStep).toBeUndefined()
+  })
+
+  it('writes Devin Desktop under $XDG_CONFIG_HOME, and detects a .devin/ project', async () => {
+    const { root, home, env } = setup(['.devin'])
+    const xdg = join(home, 'xdg')
+    const detected = await install([], { root, env })
+    expect(detected.output.clients).toMatchObject([
+      { client: 'windsurf', action: 'manual' },
+    ])
+    const { output } = await install(['--client', 'windsurf'], {
+      root,
+      env: { ...env, XDG_CONFIG_HOME: xdg },
+    })
+    expect(output.clients[0]).toMatchObject({
+      path: join(xdg, 'devin/mcp_config.json'),
+      action: 'created',
+    })
+  })
+
+  it('tells Codex to sign in after an OAuth entry', async () => {
+    const { root, env } = setup()
+    const { output } = await install(['--client', 'codex'], { root, env })
+    expect(output.clients[0]).toMatchObject({
+      action: 'created',
+      nextStep: 'codex mcp login brew',
+    })
+    const human = await runCli(['mcp', 'install', '--client', 'codex'], {
+      cwd: root,
+      env,
+      ttyOut: true,
+    })
+    expect(human.stdout).toContain('Then sign in: codex mcp login brew')
   })
 
   it('appends to an existing Codex config once, then reports unchanged', async () => {
@@ -301,6 +427,19 @@ describe('mcp install', () => {
       serversTable:
         '[mcp_servers]\nbrew = { url = "https://brew.new/api/mcp" }\n',
       inline: 'mcp_servers = { brew = { url = "https://x" } }\n',
+      // Appending [mcp_servers.brew] to these breaks the file (each checked
+      // against `codex mcp list`): an inline table cannot be extended, a
+      // dotted `brew.url` already defines the table, `[[…]]` is not a map.
+      inlineOthers:
+        'mcp_servers = { docs = { url = "https://docs.example" } }\n',
+      inlineEmpty: 'model = "x"\nmcp_servers = {}\n',
+      dottedUnderTable:
+        '[mcp_servers]\nbrew.url = "https://brew.new/api/mcp"\n',
+      quotedDottedUnderTable: '[mcp_servers]\n"brew" . url = "https://x"\n',
+      arrayOfTables: '[[mcp_servers]]\nname = "docs"\n',
+      bracketInValue: 'tags = ["[a"]\nmcp_servers = {}\n',
+      subTableBesideTable:
+        '[mcp_servers.brew]\nurl = "https://brew.new/api/mcp"\n\n[mcp_servers.brew.http_headers]\nX = "1"\n',
     }
     for (const [name, text] of Object.entries(configs)) {
       writeFileSync(join(home, '.codex/config.toml'), text)
@@ -328,6 +467,17 @@ describe('mcp install', () => {
         readFileSync(join(home, '.codex/config.toml'), 'utf8'),
         text
       ).toContain('\n[mcp_servers.brew]\nurl = "https://brew.new/api/mcp"\n')
+    }
+    // A table defined by dotted keys can take a new sub-table (codex
+    // accepts the result), and an inline table under another table is not
+    // the root mcp_servers.
+    for (const text of [
+      'mcp_servers.docs.url = "https://docs.example/mcp"\n',
+      '[profiles.work]\nmcp_servers = { docs = { url = "https://d" } }\n',
+    ]) {
+      writeFileSync(join(home, '.codex/config.toml'), text)
+      const { output } = await install(['--client', 'codex'], { root, env })
+      expect(output.clients[0]?.action, text).toBe('updated')
     }
     // A different server whose name starts with brew is not ours.
     writeFileSync(
@@ -393,6 +543,22 @@ describe('mcp install', () => {
     })
   })
 
+  it('puts the variadic --header after the name and URL in the Claude Code command', async () => {
+    const { root, env } = setup()
+    const { output } = await install(
+      ['--client', 'claude-code', '--scope', 'user', '--auth', 'env'],
+      { root, env }
+    )
+    // `-H, --header <header...>` swallows every word after it, so before
+    // the name it fails with "missing required argument 'name'".
+    expect(output.clients[0]?.snippet).toBe(
+      `claude mcp add --transport http --scope user brew https://brew.new/api/mcp --header 'Authorization: ${PLAIN_ENV_HEADER}'`
+    )
+    expect(claudeMcpAddCommand('https://x.example/mcp', 'env')).toMatch(
+      / brew https:\/\/x\.example\/mcp --header '[^']+'$/
+    )
+  })
+
   it('derives the MCP URL from --api-url', async () => {
     const { root, env } = setup(['.cursor'])
     const { output } = await install(
@@ -415,6 +581,32 @@ describe('mcp install', () => {
     })
     expect((result.json as Output).clients[0]?.path).toBe('.cursor/mcp.json')
     expect(existsSync(join(root, '.cursor/mcp.json'))).toBe(true)
+  })
+
+  it('acts on the git repository root when no package.json is found', async () => {
+    const { root, env } = setup(['.cursor'])
+    mkdirSync(join(root, 'docs/guides'), { recursive: true })
+    const calls: Array<{ command: string; args: readonly string[] }> = []
+    const spawn: SpawnFn = async (command, args) => {
+      calls.push({ command, args })
+      return { code: 0, stdout: `${root}\n`, stderr: '' }
+    }
+    const { code, output } = await install([], {
+      root: join(root, 'docs/guides'),
+      env,
+      spawn,
+    })
+    expect(code).toBe(0)
+    expect(calls).toEqual([
+      { command: 'git', args: ['rev-parse', '--show-toplevel'] },
+    ])
+    expect(output.clients[0]).toMatchObject({
+      client: 'cursor',
+      path: '.cursor/mcp.json',
+      action: 'created',
+    })
+    expect(existsSync(join(root, '.cursor/mcp.json'))).toBe(true)
+    expect(existsSync(join(root, 'docs/guides/.cursor'))).toBe(false)
   })
 
   it('fails as a usage error when nothing is detected or a client is unknown', async () => {
@@ -492,6 +684,35 @@ describe('MCP client builders', () => {
       kind: 'file',
       path: '/h/.config/Code/User/mcp.json',
       scope: 'user',
+      within: '/h',
+    })
+  })
+
+  it('finds the Devin Desktop (Windsurf) config directory per platform', () => {
+    // docs.devin.ai/desktop/cascade/mcp: ~/.config/devin on macOS and
+    // Linux ($XDG_CONFIG_HOME first), %APPDATA%\devin on Windows.
+    expect(devinConfigDir('/h', {}, 'darwin')).toBe('/h/.config/devin')
+    expect(devinConfigDir('/h', {}, 'linux')).toBe('/h/.config/devin')
+    expect(devinConfigDir('/h', { XDG_CONFIG_HOME: '/x' }, 'darwin')).toBe(
+      '/x/devin'
+    )
+    expect(devinConfigDir('/h', { APPDATA: '/appdata' }, 'win32')).toBe(
+      '/appdata/devin'
+    )
+    expect(
+      configTarget('windsurf', 'project', {
+        projectRoot: '/p',
+        home: '/h',
+        env: {},
+        url: 'https://brew.new/api/mcp',
+        auth: 'oauth',
+        platform: 'linux',
+      })
+    ).toEqual({
+      kind: 'file',
+      path: '/h/.config/devin/mcp_config.json',
+      scope: 'user',
+      within: '/h',
     })
   })
 })

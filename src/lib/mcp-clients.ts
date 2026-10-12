@@ -1,5 +1,5 @@
 import { existsSync } from 'node:fs'
-import { join } from 'node:path'
+import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
 
 /**
  * Where each MCP client keeps its server list, and the Brew entry it needs.
@@ -33,7 +33,7 @@ export const MCP_CLIENT_LABELS: Readonly<Record<McpClientId, string>> = {
   vscode: 'VS Code',
   'claude-code': 'Claude Code',
   gemini: 'Gemini CLI',
-  windsurf: 'Windsurf',
+  windsurf: 'Devin Desktop (Windsurf)',
   codex: 'Codex',
 }
 
@@ -52,7 +52,13 @@ export function mcpUrlFromApiUrl(apiUrl: string): string {
   return `${new URL(apiUrl).origin}/api/mcp`
 }
 
-/** `Authorization` in the client's own env-interpolation syntax. */
+/**
+ * `Authorization` in the client's own env-interpolation syntax. Cursor,
+ * VS Code and Devin Desktop expand `${env:NAME}` (VS Code resolves every
+ * predefined variable, `env:` included, across the whole server entry);
+ * Claude Code and Gemini CLI expand `${NAME}`. Each reads the environment
+ * the client itself was started with.
+ */
 function authHeader(client: McpClientId): string {
   switch (client) {
     case 'cursor':
@@ -80,15 +86,16 @@ export function serverEntry(
   const headers =
     auth === 'env' ? { headers: { Authorization: authHeader(client) } } : {}
   switch (client) {
+    // Devin Desktop (`windsurf`): both its agents read `url` from the same
+    // file (legacy Cascade also takes `serverUrl`; Devin Local only `url`).
     case 'cursor':
+    case 'windsurf':
       return { url, ...headers }
     case 'vscode':
     case 'claude-code':
       return { type: 'http', url, ...headers }
     case 'gemini':
       return { httpUrl: url, ...headers }
-    case 'windsurf':
-      return { serverUrl: url, ...headers }
   }
 }
 
@@ -117,13 +124,22 @@ export function codexTomlBlock(url: string, auth: McpAuthMode): string {
   return `${lines.join('\n')}\n`
 }
 
-/** Claude Code's own command for a user-scope server (it owns ~/.claude.json). */
+/**
+ * Claude Code's own command for a user-scope server (it owns ~/.claude.json).
+ * `--header` is variadic (`-H, --header <header...>`), so it comes after the
+ * name and URL: before them it would swallow both.
+ */
 export function claudeMcpAddCommand(url: string, auth: McpAuthMode): string {
   const header =
     auth === 'env'
       ? ` --header 'Authorization: ${authHeader('claude-code')}'`
       : ''
-  return `claude mcp add --transport http --scope user${header} ${MCP_SERVER_NAME} ${url}`
+  return `claude mcp add --transport http --scope user ${MCP_SERVER_NAME} ${url}${header}`
+}
+
+/** What Codex needs after an OAuth entry is written: its own login. */
+export function codexLoginCommand(): string {
+  return `codex mcp login ${MCP_SERVER_NAME}`
 }
 
 /**
@@ -194,19 +210,53 @@ export function vscodeUserDir(
   )
 }
 
+/**
+ * Devin Desktop's (formerly Windsurf) config directory, per
+ * docs.devin.ai/desktop/cascade/mcp: `$XDG_CONFIG_HOME/devin` or
+ * `~/.config/devin` on macOS and Linux, `%APPDATA%\devin` on Windows. Its
+ * legacy Cascade agent and its default Devin Local agent read the same
+ * `mcp_config.json` there.
+ */
+export function devinConfigDir(
+  home: string,
+  env: Readonly<Record<string, string | undefined>>,
+  platform: NodeJS.Platform = process.platform
+): string {
+  if (platform === 'win32') {
+    const appData = env.APPDATA
+    return join(
+      appData !== undefined && appData !== ''
+        ? appData
+        : join(home, 'AppData', 'Roaming'),
+      'devin'
+    )
+  }
+  const xdg = env.XDG_CONFIG_HOME
+  return join(
+    xdg !== undefined && xdg !== '' ? xdg : join(home, '.config'),
+    'devin'
+  )
+}
+
 export type ConfigTarget =
   | {
       readonly kind: 'file'
       /** Absolute path. */
       readonly path: string
       readonly scope: McpScope
+      /**
+       * The directory the write must land in once symbolic links are
+       * resolved: the project root, or the home directory (the client's own
+       * config directory when it lives elsewhere, e.g. `$CODEX_HOME`).
+       */
+      readonly within: string
     }
   /** No file this CLI should edit: print the client's own command. */
   | { readonly kind: 'command'; readonly command: string }
 
 /**
- * Where a client's Brew entry goes. Windsurf and Codex only have a user
- * config, whatever `scope` says.
+ * Where a client's Brew entry goes. Devin Desktop (Windsurf) and Codex
+ * only have a user config, whatever `scope` says.
  */
 export function configTarget(
   client: McpClientId,
@@ -225,15 +275,19 @@ export function configTarget(
     kind: 'file',
     path,
     scope: 'user',
+    within: isInsideDir(path, home) ? home : dirname(path),
   })
   const project = (path: string): ConfigTarget => ({
     kind: 'file',
     path: join(projectRoot, path),
     scope: 'project',
+    within: projectRoot,
   })
   switch (client) {
     case 'windsurf':
-      return user(join(home, '.codeium', 'windsurf', 'mcp_config.json'))
+      return user(
+        join(devinConfigDir(home, env, input.platform), 'mcp_config.json')
+      )
     case 'codex': {
       const codexHome = env.CODEX_HOME
       return user(
@@ -267,10 +321,21 @@ export function configTarget(
   }
 }
 
+function isInsideDir(path: string, dir: string): boolean {
+  const rel = relative(resolve(dir), resolve(path))
+  return (
+    rel !== '' &&
+    rel !== '..' &&
+    !rel.startsWith(`..${sep}`) &&
+    !isAbsolute(rel)
+  )
+}
+
 /**
  * The clients this project (or the agent running us) already uses: their
- * config directories in the project root, Claude Code's `CLAUDECODE=1`,
- * Codex's `CODEX_*` environment.
+ * config directories in the project root (`.windsurf/` or Devin's
+ * `.devin/` for Devin Desktop), Claude Code's `CLAUDECODE=1`, Codex's
+ * `CODEX_*` environment.
  */
 export function detectMcpClients(
   projectRoot: string,
@@ -290,7 +355,7 @@ export function detectMcpClients(
   if (has('.gemini')) {
     detected.push('gemini')
   }
-  if (has('.windsurf')) {
+  if (has('.windsurf') || has('.devin')) {
     detected.push('windsurf')
   }
   if (

@@ -1,4 +1,5 @@
 import {
+  chmodSync,
   existsSync,
   lstatSync,
   mkdirSync,
@@ -102,21 +103,134 @@ describe('ProjectWriter.writeFile (create-only)', () => {
     expect(readFileSync(join(root, 'merged.json'), 'utf8')).toBe('{"a":1}\n')
   })
 
-  it('writes through a symbolic link instead of replacing it', () => {
+  it('writes through a symbolic link that stays inside its directory', () => {
     const root = tempProject()
-    const dotfiles = tempProject('brew-cli-dotfiles-')
-    writeFileSync(join(dotfiles, 'mcp.json'), '{"a":1}\n')
-    symlinkSync(join(dotfiles, 'mcp.json'), join(root, 'mcp.json'))
-    symlinkSync(join(dotfiles, 'missing.json'), join(root, 'dangling.json'))
+    mkdirSync(join(root, 'shared'))
+    writeFileSync(join(root, 'shared/mcp.json'), '{"a":1}\n')
+    symlinkSync(join(root, 'shared/mcp.json'), join(root, 'mcp.json'))
     const writer = new ProjectWriter({ root })
     expect(
       writer.writeFile('mcp.json', '{"a":2}\n', { overwrite: true }).action
     ).toBe('updated')
     expect(lstatSync(join(root, 'mcp.json')).isSymbolicLink()).toBe(true)
-    expect(readFileSync(join(dotfiles, 'mcp.json'), 'utf8')).toBe('{"a":2}\n')
-    expect(writer.writeFile('dangling.json', 'x\n').action).toBe('created')
-    expect(lstatSync(join(root, 'dangling.json')).isSymbolicLink()).toBe(true)
-    expect(readFileSync(join(dotfiles, 'missing.json'), 'utf8')).toBe('x\n')
+    expect(readFileSync(join(root, 'shared/mcp.json'), 'utf8')).toBe(
+      '{"a":2}\n'
+    )
+
+    // A user config linked into ~/dotfiles: `within` is the home directory.
+    const home = tempProject('brew-cli-home-')
+    mkdirSync(join(home, 'dotfiles'))
+    mkdirSync(join(home, '.cursor'))
+    writeFileSync(join(home, 'dotfiles/mcp.json'), '{"a":1}\n')
+    symlinkSync(join(home, 'dotfiles/mcp.json'), join(home, '.cursor/mcp.json'))
+    expect(
+      writer.writeFile(join(home, '.cursor/mcp.json'), '{"a":3}\n', {
+        overwrite: true,
+        within: home,
+      }).action
+    ).toBe('updated')
+    expect(lstatSync(join(home, '.cursor/mcp.json')).isSymbolicLink()).toBe(
+      true
+    )
+    expect(readFileSync(join(home, 'dotfiles/mcp.json'), 'utf8')).toBe(
+      '{"a":3}\n'
+    )
+  })
+
+  it('refuses a link that leaves the root, or dangles', () => {
+    const root = tempProject()
+    const outside = tempProject('brew-cli-outside-')
+    writeFileSync(join(outside, 'mcp.json'), '{"a":1}\n')
+    symlinkSync(join(outside, 'mcp.json'), join(root, 'mcp.json'))
+    symlinkSync(join(root, 'public/missing.json'), join(root, 'dangling.json'))
+    mkdirSync(join(outside, 'cfg'))
+    symlinkSync(join(outside, 'cfg'), join(root, '.cursor'))
+    for (const dryRun of [true, false]) {
+      const writer = new ProjectWriter({ root, dryRun })
+      expect(
+        writer.writeFile('mcp.json', '{"a":2}\n', { overwrite: true })
+      ).toMatchObject({
+        action: 'refused',
+        note: expect.stringMatching(/outside/),
+      })
+      expect(writer.writeFile('dangling.json', 'x\n')).toMatchObject({
+        action: 'refused',
+        note: expect.stringMatching(/does not exist/),
+      })
+      // A linked parent directory counts too.
+      expect(writer.writeFile('.cursor/mcp.json', '{}\n').action).toBe(
+        'refused'
+      )
+      expect(
+        writer.upsertBlock('mcp.json', 'x', { markers: HASH_BLOCK_MARKERS })
+          .action
+      ).toBe('refused')
+    }
+    expect(readFileSync(join(outside, 'mcp.json'), 'utf8')).toBe('{"a":1}\n')
+    expect(existsSync(join(root, 'public'))).toBe(false)
+    expect(existsSync(join(outside, 'cfg/mcp.json'))).toBe(false)
+  })
+
+  it('never writes a secret through a symbolic link, even inside the root', () => {
+    const root = tempProject()
+    // `.env.local -> public/leak.txt`: a dangling link into a served folder.
+    symlinkSync(join(root, 'public/leak.txt'), join(root, '.env.local'))
+    mkdirSync(join(root, 'config'))
+    writeFileSync(join(root, 'config/env'), 'A=1\n')
+    symlinkSync(join(root, 'config/env'), join(root, '.env'))
+    const writer = new ProjectWriter({ root })
+    const secret = 'BREW_API_KEY=brew_secret\n'
+    expect(
+      writer.writeFile('.env.local', secret, {
+        sensitive: true,
+        mode: 0o600,
+        overwrite: true,
+      })
+    ).toMatchObject({ action: 'refused', note: expect.stringMatching(/link/) })
+    expect(
+      writer.upsertBlock('.env', 'BREW_API_KEY=brew_secret', {
+        markers: HASH_BLOCK_MARKERS,
+        sensitive: true,
+      }).action
+    ).toBe('refused')
+    expect(existsSync(join(root, 'public'))).toBe(false)
+    expect(lstatSync(join(root, '.env.local')).isSymbolicLink()).toBe(true)
+    expect(readFileSync(join(root, 'config/env'), 'utf8')).toBe('A=1\n')
+    expect(JSON.stringify(writer.changes)).not.toContain('brew_secret')
+  })
+
+  it('tightens a looser mode on an unchanged secret file, and reports it', () => {
+    const root = tempProject()
+    const text = 'BREW_API_KEY=brew_secret\n'
+    writeFileSync(join(root, '.env.local'), text, { mode: 0o644 })
+    chmodSync(join(root, '.env.local'), 0o644)
+    const options = { mode: 0o600, sensitive: true, overwrite: true }
+
+    const plan = new ProjectWriter({ root, dryRun: true })
+    expect(plan.writeFile('.env.local', text, options)).toMatchObject({
+      action: 'unchanged',
+      permissions: { from: '0644', to: '0600' },
+    })
+    expect(statSync(join(root, '.env.local')).mode & 0o777).toBe(0o644)
+
+    const writer = new ProjectWriter({ root })
+    const change = writer.writeFile('.env.local', text, options)
+    expect(change).toMatchObject({
+      action: 'unchanged',
+      permissions: { from: '0644', to: '0600' },
+      note: 'permissions tightened from 0644 to 0600',
+    })
+    expect(statSync(join(root, '.env.local')).mode & 0o777).toBe(0o600)
+    expect(JSON.stringify(change)).not.toContain('brew_secret')
+    // Already tight (or tighter): nothing to report, never loosened.
+    expect(writer.writeFile('.env.local', text, options).permissions).toBe(
+      undefined
+    )
+    chmodSync(join(root, '.env.local'), 0o400)
+    expect(writer.writeFile('.env.local', text, options).permissions).toBe(
+      undefined
+    )
+    expect(statSync(join(root, '.env.local')).mode & 0o777).toBe(0o400)
   })
 
   it('never puts sensitive content in a diff', () => {

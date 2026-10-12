@@ -1,6 +1,7 @@
-import { existsSync, readdirSync, statSync } from 'node:fs'
-import { dirname, join, relative, resolve, sep } from 'node:path'
-import { readTextFile } from './fs-writer'
+import { existsSync, readdirSync, realpathSync, statSync } from 'node:fs'
+import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
+import type { SpawnFn } from '../types'
+import { readTextFile, stripBom } from './fs-writer'
 
 /**
  * Where a project command should act: the app the user is standing in,
@@ -80,7 +81,7 @@ export function readJsonObject(path: string): Record<string, unknown> | null {
     return null
   }
   try {
-    const parsed: unknown = JSON.parse(text)
+    const parsed: unknown = JSON.parse(stripBom(text))
     return typeof parsed === 'object' &&
       parsed !== null &&
       !Array.isArray(parsed)
@@ -119,7 +120,11 @@ export function detectFramework(
 export function parsePnpmWorkspaceYaml(text: string): string[] {
   const patterns: string[] = []
   let inPackages = false
-  for (const raw of text.replaceAll('\r\n', '\n').split('\n')) {
+  for (const raw of stripBom(text).replaceAll('\r\n', '\n').split('\n')) {
+    if (/^\s*#/.test(raw)) {
+      // A whole-line comment, at any column, never ends the list.
+      continue
+    }
     const line = raw.replace(/\s+#.*$/, '')
     if (/^packages\s*:/.test(line)) {
       inPackages = true
@@ -446,4 +451,69 @@ export function resolveProjectRoot(cwd: string): ResolvedProject {
     }
   }
   return { root: resolve(cwd), monorepo: null, candidates: [] }
+}
+
+/**
+ * The repository `cwd` is in, from `git rev-parse --show-toplevel` (through
+ * the injectable spawn seam). `null` when git is missing, `cwd` is not in a
+ * repository, or git names a directory that does not contain `cwd`.
+ */
+export async function findGitRoot(
+  cwd: string,
+  spawn: SpawnFn,
+  signal?: AbortSignal
+): Promise<string | null> {
+  let stdout: string
+  try {
+    const result = await spawn('git', ['rev-parse', '--show-toplevel'], {
+      cwd,
+      ...(signal === undefined ? {} : { signal }),
+    })
+    if (result.code !== 0) {
+      return null
+    }
+    stdout = result.stdout
+  } catch {
+    signal?.throwIfAborted()
+    return null
+  }
+  const top = stdout.trim()
+  if (top === '' || top.includes('\n')) {
+    return null
+  }
+  const root = resolve(top)
+  const rel = relative(realPathOr(root), realPathOr(resolve(cwd)))
+  return rel === '..' || rel.startsWith(`..${sep}`) || isAbsolute(rel)
+    ? null
+    : root
+}
+
+function realPathOr(path: string): string {
+  try {
+    return realpathSync(path)
+  } catch {
+    return path
+  }
+}
+
+/**
+ * `resolveProjectRoot`, except that with no package.json up to the
+ * repository (and no monorepo) the project is the git repository root
+ * (`git rev-parse --show-toplevel`), not the cwd: running from `docs/`
+ * still acts on the repo.
+ */
+export async function resolveProjectRootWithGit(
+  cwd: string,
+  spawn: SpawnFn,
+  signal?: AbortSignal
+): Promise<ResolvedProject> {
+  const resolved = resolveProjectRoot(cwd)
+  if (
+    resolved.monorepo !== null ||
+    readJsonObject(join(resolved.root, 'package.json')) !== null
+  ) {
+    return resolved
+  }
+  const gitRoot = await findGitRoot(cwd, spawn, signal)
+  return gitRoot === null ? resolved : { ...resolved, root: gitRoot }
 }
