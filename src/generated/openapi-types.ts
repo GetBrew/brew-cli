@@ -3554,10 +3554,10 @@ export interface components {
             subscribed?: boolean;
             consent?: {
                 /**
-                 * @description Who captured it: `api` (an API caller asserted it), `form` (a signup form), `import` (a bulk import), `app` (the in-app CSV wizard checkbox).
+                 * @description Who captured it: `api` (an API caller asserted it), `form` (a signup form), `import` (a bulk import), `app` (the in-app CSV wizard checkbox), `integration` (an integration sync such as Stripe created the contact; provenance only, not an opt-in).
                  * @enum {string}
                  */
-                source: "api" | "form" | "import" | "app";
+                source: "api" | "form" | "import" | "app" | "integration";
                 /**
                  * Format: date-time
                  * @description When it was captured.
@@ -6939,10 +6939,10 @@ export interface components {
                 subscribed?: boolean;
                 consent?: {
                     /**
-                     * @description Who captured it: `api` (an API caller asserted it), `form` (a signup form), `import` (a bulk import), `app` (the in-app CSV wizard checkbox).
+                     * @description Who captured it: `api` (an API caller asserted it), `form` (a signup form), `import` (a bulk import), `app` (the in-app CSV wizard checkbox), `integration` (an integration sync such as Stripe created the contact; provenance only, not an opt-in).
                      * @enum {string}
                      */
-                    source: "api" | "form" | "import" | "app";
+                    source: "api" | "form" | "import" | "app" | "integration";
                     /**
                      * Format: date-time
                      * @description When it was captured.
@@ -7083,10 +7083,10 @@ export interface components {
                 subscribed?: boolean;
                 consent?: {
                     /**
-                     * @description Who captured it: `api` (an API caller asserted it), `form` (a signup form), `import` (a bulk import), `app` (the in-app CSV wizard checkbox).
+                     * @description Who captured it: `api` (an API caller asserted it), `form` (a signup form), `import` (a bulk import), `app` (the in-app CSV wizard checkbox), `integration` (an integration sync such as Stripe created the contact; provenance only, not an opt-in).
                      * @enum {string}
                      */
-                    source: "api" | "form" | "import" | "app";
+                    source: "api" | "form" | "import" | "app" | "integration";
                     /**
                      * Format: date-time
                      * @description When it was captured.
@@ -7164,10 +7164,10 @@ export interface components {
                 subscribed?: boolean;
                 consent?: {
                     /**
-                     * @description Who captured it: `api` (an API caller asserted it), `form` (a signup form), `import` (a bulk import), `app` (the in-app CSV wizard checkbox).
+                     * @description Who captured it: `api` (an API caller asserted it), `form` (a signup form), `import` (a bulk import), `app` (the in-app CSV wizard checkbox), `integration` (an integration sync such as Stripe created the contact; provenance only, not an opt-in).
                      * @enum {string}
                      */
-                    source: "api" | "form" | "import" | "app";
+                    source: "api" | "form" | "import" | "app" | "integration";
                     /**
                      * Format: date-time
                      * @description When it was captured.
@@ -7224,10 +7224,10 @@ export interface components {
             subscribed?: boolean;
             consent?: {
                 /**
-                 * @description Who captured it: `api` (an API caller asserted it), `form` (a signup form), `import` (a bulk import), `app` (the in-app CSV wizard checkbox).
+                 * @description Who captured it: `api` (an API caller asserted it), `form` (a signup form), `import` (a bulk import), `app` (the in-app CSV wizard checkbox), `integration` (an integration sync such as Stripe created the contact; provenance only, not an opt-in).
                  * @enum {string}
                  */
-                source: "api" | "form" | "import" | "app";
+                source: "api" | "form" | "import" | "app" | "integration";
                 /**
                  * Format: date-time
                  * @description When it was captured.
@@ -7290,10 +7290,10 @@ export interface components {
                 subscribed?: boolean;
                 consent?: {
                     /**
-                     * @description Who captured it: `api` (an API caller asserted it), `form` (a signup form), `import` (a bulk import), `app` (the in-app CSV wizard checkbox).
+                     * @description Who captured it: `api` (an API caller asserted it), `form` (a signup form), `import` (a bulk import), `app` (the in-app CSV wizard checkbox), `integration` (an integration sync such as Stripe created the contact; provenance only, not an opt-in).
                      * @enum {string}
                      */
-                    source: "api" | "form" | "import" | "app";
+                    source: "api" | "form" | "import" | "app" | "integration";
                     /**
                      * Format: date-time
                      * @description When it was captured.
