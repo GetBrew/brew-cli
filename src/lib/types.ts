@@ -76,5 +76,7 @@ export type CliContext = {
   readonly traits: CommandTraits | undefined
   /** Start the whole-command deadline, after any confirmation prompt. */
   readonly startDeadline: () => void
+  /** Pause an active clock; the returned callback resumes its remaining budget. */
+  readonly pauseDeadline: () => () => void
   readonly stopDeadline: () => void
 }

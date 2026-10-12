@@ -24,16 +24,27 @@ export async function enforceConfirmation(
     return
   }
   const { ctx } = invocation
+  ctx.signal.throwIfAborted()
   if (ctx.globals.yes) {
     return
   }
   if (ctx.mode === 'human' && ctx.io.isTtyIn) {
-    const answer = await ctx.io.readLine(`${summary}\nProceed? [y/N] `)
-    const normalized = answer.trim().toLowerCase()
-    if (normalized === 'y' || normalized === 'yes') {
-      return
+    const resumeDeadline = ctx.pauseDeadline()
+    try {
+      ctx.signal.throwIfAborted()
+      const answer = await ctx.io.readLine(`${summary}\nProceed? [y/N] `)
+      ctx.signal.throwIfAborted()
+      const normalized = answer.trim().toLowerCase()
+      if (normalized === 'y' || normalized === 'yes') {
+        return
+      }
+      throw new CommandAbortedError('Aborted.')
+    } catch (error) {
+      ctx.signal.throwIfAborted()
+      throw error
+    } finally {
+      resumeDeadline()
     }
-    throw new CommandAbortedError('Aborted.')
   }
   throw new ConfirmationRequiredError({
     confirmationRequired: true,
