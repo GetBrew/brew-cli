@@ -39,11 +39,16 @@ brew-cli mcp install --client vscode --print     # print the snippet, write noth
 
 It merges a `brew` entry into each client's config and keeps every other
 server. `--auth oauth` (default) writes the URL only; `--auth env` adds an
-`Authorization` header the client expands from `BREW_API_KEY`, never a
-literal key. A config with comments comes back `manual` with the snippet to
-paste. Windsurf and Codex live in your home directory: only written when
-named with `--client`. Results: `created | updated | unchanged | manual |
-printed`, plus one-click `deeplink`s for Cursor and VS Code.
+`Authorization` header the client expands from `BREW_API_KEY` in its own
+environment (`${env:…}` in Cursor, VS Code, Devin Desktop), never a
+literal key. An existing `brew` entry with other settings, a config with
+comments, or a symbolic link leaving the project comes back `manual` with
+the snippet to paste. Devin Desktop (`--client windsurf`,
+`~/.config/devin/mcp_config.json`) and Codex live in your home directory:
+only written when named with `--client`. After a Codex OAuth entry, run
+the result's `nextStep` (`codex mcp login brew`). Results: `created |
+updated | unchanged | manual | printed`, plus one-click `deeplink`s for
+Cursor and VS Code.
 
 ## The contract you can rely on
 

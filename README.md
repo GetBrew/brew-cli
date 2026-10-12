@@ -62,18 +62,28 @@ origin of `--api-url` + `/api/mcp`) to each client's config, merging a
 | VS Code | `vscode` | `.vscode/mcp.json` | the profile's `mcp.json` |
 | Claude Code | `claude-code` | `.mcp.json` | prints `claude mcp add --scope user …` |
 | Gemini CLI | `gemini` | `.gemini/settings.json` | `~/.gemini/settings.json` |
-| Windsurf | `windsurf` | (user only) | `~/.codeium/windsurf/mcp_config.json` |
+| Devin Desktop (Windsurf) | `windsurf` | (user only) | `~/.config/devin/mcp_config.json` (`$XDG_CONFIG_HOME/devin/`, Windows `%APPDATA%\devin\`) |
 | Codex | `codex` | (user only) | `~/.codex/config.toml` (`$CODEX_HOME`) |
 
 Without `--client` it configures the clients it detects (`.cursor/`,
-`.vscode/`, `.claude/` or `CLAUDECODE=1`, `.gemini/`); a detected Windsurf
-or Codex is reported with its snippet but only written when you name it,
-since its config lives in your home directory. `--auth oauth` (default)
-writes the URL only and the client signs in on first use; `--auth env`
-adds an `Authorization` header that the client fills from `BREW_API_KEY`
-at connect time. A literal key is never written. A config file with
-comments is left alone and reported `manual` with the snippet to paste.
-`--print` prints the snippets and writes nothing. Each result is
+`.vscode/`, `.claude/` or `CLAUDECODE=1`, `.gemini/`); a detected Devin
+Desktop (`.windsurf/` or `.devin/`) or Codex is reported with its snippet
+but only written when you name it, since its config lives in your home
+directory. `--auth oauth` (default) writes the URL only and the client
+signs in on first use; Codex signs in only through its own command, so its
+result carries `nextStep: "codex mcp login brew"`. `--auth env` adds an
+`Authorization` header that the client fills from `BREW_API_KEY` at
+connect time: `${env:BREW_API_KEY}` for Cursor, VS Code and Devin Desktop,
+`${BREW_API_KEY}` for Claude Code and Gemini CLI, `bearer_token_env_var`
+for Codex. The client reads the variable from the environment it was
+started with, so an editor opened from the Dock or Start menu may not see
+a variable your shell exports. A literal key is never written.
+
+An existing `brew` entry is never replaced: the same settings report
+`unchanged`, other settings come back `manual` with the snippet to paste.
+So does a config with comments, and a config that is a symbolic link
+whose target leaves the project (or your home directory, for user
+files). `--print` prints the snippets and writes nothing. Each result is
 `created`, `updated`, `unchanged`, `manual` or `printed`; Cursor and
 VS Code results carry a one-click install `deeplink`.
 

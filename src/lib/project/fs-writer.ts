@@ -4,14 +4,21 @@ import {
   lstatSync,
   mkdirSync,
   readFileSync,
-  readlinkSync,
   realpathSync,
   renameSync,
   rmSync,
   statSync,
   writeFileSync,
 } from 'node:fs'
-import { dirname, isAbsolute, relative, resolve } from 'node:path'
+import {
+  basename,
+  dirname,
+  isAbsolute,
+  join,
+  relative,
+  resolve,
+  sep,
+} from 'node:path'
 import { unifiedDiff } from './diff'
 
 /**
@@ -40,6 +47,11 @@ export type ChangeAction =
   | 'kept-user-version'
   /** The file does not exist and was not created (inspection, opt-out). */
   | 'missing'
+  /**
+   * Not written: the path is a symbolic link a secret must not go through,
+   * a dangling link, or one whose target leaves the allowed directory.
+   */
+  | 'refused'
 
 export type PlannedChange = {
   /** The path as the caller named it (relative to the root, or absolute). */
@@ -49,8 +61,13 @@ export type PlannedChange = {
   readonly sha256?: string
   /** Unified diff of a change that writes (dry-run previews and reports). */
   readonly diff?: string
-  /** Why a file was left alone. */
+  /** Why a file was left alone, or what else changed about it. */
   readonly note?: string
+  /**
+   * An unchanged file whose permissions were (or would be) tightened to
+   * the requested mode: octal strings, e.g. `{ from: '0644', to: '0600' }`.
+   */
+  readonly permissions?: { readonly from: string; readonly to: string }
 }
 
 export type BlockMarkers = { readonly start: string; readonly end: string }
@@ -97,39 +114,140 @@ export function readTextFile(path: string): string | null {
   }
 }
 
+/** A UTF-8 byte order mark some Windows editors put at the start of a file. */
+export const UTF8_BOM = '\uFEFF'
+
+/** `text` without a leading byte order mark (`JSON.parse` rejects one). */
+export function stripBom(text: string): string {
+  return text.startsWith(UTF8_BOM) ? text.slice(UTF8_BOM.length) : text
+}
+
+/** A write the CLI refuses: where it would land is not the CLI's to write. */
+export class UnsafeWriteTargetError extends Error {
+  readonly path: string
+  readonly reason: string
+
+  constructor(path: string, reason: string) {
+    super(`Refusing to write ${path}: ${reason}.`)
+    this.name = 'UnsafeWriteTargetError'
+    this.path = path
+    this.reason = reason
+  }
+}
+
+export type WriteTargetOptions = {
+  /**
+   * The directory the write must land in once every symbolic link (the
+   * file's and its parent directories') is resolved. Absent: no check.
+   */
+  readonly within?: string
+  /** A secret (`.env.local`): never written through a symbolic link. */
+  readonly sensitive?: boolean
+}
+
+function isInside(path: string, dir: string): boolean {
+  const rel = relative(dir, path)
+  return (
+    rel === '' ||
+    (rel !== '..' && !rel.startsWith(`..${sep}`) && !isAbsolute(rel))
+  )
+}
+
 /**
- * The file a write to `path` must land in: a symbolic link (a config kept
- * in a dotfiles repo) is followed to its target, so the rename replaces the
- * target's content and the link survives. A dangling link resolves to the
- * path it names.
+ * `path` with the symbolic links of its existing part resolved (the part
+ * that does not exist yet is appended as named). `null` when a component
+ * is a dangling link: where the write would land cannot be known.
  */
-export function resolveWriteTarget(path: string): string {
-  try {
-    if (!lstatSync(path).isSymbolicLink()) {
-      return path
+function realLocation(path: string): string | null {
+  const missing: string[] = []
+  let current = resolve(path)
+  for (;;) {
+    try {
+      return join(realpathSync(current), ...missing.reverse())
+    } catch {
+      try {
+        lstatSync(current)
+        return null
+      } catch {
+        // Does not exist: resolve its parent.
+      }
+      const parent = dirname(current)
+      if (parent === current) {
+        return resolve(path)
+      }
+      missing.push(basename(current))
+      current = parent
     }
-  } catch {
-    return path
   }
+}
+
+/**
+ * The file a write to `path` must land in. A symbolic link (a config kept
+ * in a dotfiles directory) is followed to its target, so the rename
+ * replaces the target's content and the link survives. Throws
+ * `UnsafeWriteTargetError` instead of writing when the path is a link and
+ * the content is a secret, when the link dangles, or when the real
+ * location (links in parent directories included) leaves `within`.
+ */
+export function resolveWriteTarget(
+  path: string,
+  options: WriteTargetOptions = {}
+): string {
+  let isLink = false
   try {
-    return realpathSync(path)
+    isLink = lstatSync(path).isSymbolicLink()
   } catch {
-    return resolve(dirname(path), readlinkSync(path))
+    isLink = false
   }
+  if (isLink && options.sensitive === true) {
+    throw new UnsafeWriteTargetError(
+      path,
+      'it is a symbolic link, and a secret is never written through one'
+    )
+  }
+  let target = path
+  if (isLink) {
+    try {
+      target = realpathSync(path)
+    } catch {
+      throw new UnsafeWriteTargetError(
+        path,
+        'it is a symbolic link to a file that does not exist'
+      )
+    }
+  }
+  if (options.within !== undefined) {
+    const real = realLocation(target)
+    if (real === null) {
+      throw new UnsafeWriteTargetError(
+        path,
+        'a directory on its path is a symbolic link to nothing'
+      )
+    }
+    const base = realLocation(options.within) ?? resolve(options.within)
+    if (!isInside(real, base)) {
+      throw new UnsafeWriteTargetError(
+        path,
+        `it resolves to ${real}, outside ${options.within}`
+      )
+    }
+  }
+  return target
 }
 
 /**
  * Writes `content` to `path` atomically: a temp file beside it, then a
  * rename, so a crash or Ctrl-C never leaves a half-written config. `mode`
  * applies to the new file (0o600 for secrets); without it an existing
- * file keeps its mode. A symbolic link is written through, never replaced.
+ * file keeps its mode. A symbolic link is written through, never replaced,
+ * within the limits of `resolveWriteTarget`.
  */
 export function writeFileAtomic(
   linkOrPath: string,
   content: string,
-  options: { readonly mode?: number } = {}
+  options: WriteTargetOptions & { readonly mode?: number } = {}
 ): void {
-  const path = resolveWriteTarget(linkOrPath)
+  const path = resolveWriteTarget(linkOrPath, options)
   mkdirSync(dirname(path), { recursive: true })
   let mode = options.mode
   if (mode === undefined) {
@@ -156,7 +274,10 @@ export function writeFileAtomic(
 }
 
 export type WriteFileOptions = {
-  /** File mode for a created (or rewritten) file, e.g. 0o600. */
+  /**
+   * File mode for a created (or rewritten) file, e.g. 0o600. An existing
+   * file that stays unchanged loses any permission bit outside it.
+   */
   readonly mode?: number
   /**
    * sha256 of what the CLI last wrote here (from `brew.json#files`). When
@@ -166,9 +287,16 @@ export type WriteFileOptions = {
   readonly managedSha256?: string
   /**
    * The content is secret (`.env.local`): the change carries no diff, so a
-   * dry-run plan or report can never print a value.
+   * dry-run plan or report can never print a value, and the file is never
+   * written through a symbolic link (`refused`).
    */
   readonly sensitive?: boolean
+  /**
+   * The directory the write must land in, symbolic links resolved
+   * (default: the project root). A user-scope config passes the home
+   * directory, so a link into `~/dotfiles` still works.
+   */
+  readonly within?: string
   /**
    * Replace whatever is there. Only for files whose new content the caller
    * derived FROM the current content (a JSON merge), so nothing is lost.
@@ -179,8 +307,10 @@ export type WriteFileOptions = {
 export type UpsertBlockOptions = {
   readonly markers?: BlockMarkers
   readonly mode?: number
-  /** As `WriteFileOptions.sensitive`: no diff in the change. */
+  /** As `WriteFileOptions.sensitive`: no diff, never through a link. */
   readonly sensitive?: boolean
+  /** As `WriteFileOptions.within`. */
+  readonly within?: string
   /** Create the file when it does not exist (default true). */
   readonly createIfMissing?: boolean
 }
@@ -231,6 +361,10 @@ export class ProjectWriter {
     options: WriteFileOptions = {}
   ): PlannedChange {
     const absolute = this.resolvePath(path)
+    const guard = this.#guard(absolute, path, options)
+    if (guard !== null) {
+      return this.#record(guard)
+    }
     const existing = readTextFile(absolute)
     const sha256 = sha256Hex(content)
     if (existing === null) {
@@ -242,10 +376,16 @@ export class ProjectWriter {
         before: '',
         mode: options.mode,
         sensitive: options.sensitive === true,
+        within: this.#within(options),
       })
     }
     if (normalizeEol(existing) === normalizeEol(content)) {
-      return this.#record({ path, action: 'unchanged', sha256 })
+      return this.#record({
+        path,
+        action: 'unchanged',
+        sha256,
+        ...this.#tighten(absolute, options.mode),
+      })
     }
     const isOurs =
       options.overwrite === true ||
@@ -270,6 +410,7 @@ export class ProjectWriter {
       before: existing,
       mode: options.mode,
       sensitive: options.sensitive === true,
+      within: this.#within(options),
     })
   }
 
@@ -286,8 +427,13 @@ export class ProjectWriter {
   ): PlannedChange {
     const markers = options.markers ?? HTML_BLOCK_MARKERS
     const absolute = this.resolvePath(path)
+    const guard = this.#guard(absolute, path, options)
+    if (guard !== null) {
+      return this.#record(guard)
+    }
     const existing = readTextFile(absolute)
     const sensitive = options.sensitive === true
+    const within = this.#within(options)
     if (existing === null) {
       if (options.createIfMissing === false) {
         return this.#record({ path, action: 'missing' })
@@ -304,6 +450,7 @@ export class ProjectWriter {
         before: '',
         mode: options.mode,
         sensitive,
+        within,
       })
     }
     const next = applyBlock(existing, content, markers)
@@ -320,6 +467,7 @@ export class ProjectWriter {
         path,
         action: 'unchanged',
         sha256: sha256Hex(existing),
+        ...this.#tighten(absolute, options.mode),
       })
     }
     const crlf = usesCrlf(existing)
@@ -331,6 +479,7 @@ export class ProjectWriter {
       before: existing,
       mode: options.mode,
       sensitive,
+      within,
     })
   }
 
@@ -355,6 +504,61 @@ export class ProjectWriter {
         }
   }
 
+  #within(options: { readonly within?: string }): string {
+    return options.within ?? this.root
+  }
+
+  /** A `refused` change when the write must not happen, else `null`. */
+  #guard(
+    absolute: string,
+    path: string,
+    options: { readonly within?: string; readonly sensitive?: boolean }
+  ): PlannedChange | null {
+    try {
+      resolveWriteTarget(absolute, {
+        within: this.#within(options),
+        sensitive: options.sensitive === true,
+      })
+      return null
+    } catch (error) {
+      if (!(error instanceof UnsafeWriteTargetError)) {
+        throw error
+      }
+      return { path, action: 'refused', note: error.reason }
+    }
+  }
+
+  /**
+   * Drops the permission bits of an existing file that `mode` does not
+   * grant (0644 → 0600 for a secret). Never loosens; dry runs only report.
+   */
+  #tighten(
+    absolute: string,
+    mode: number | undefined
+  ): Pick<PlannedChange, 'permissions' | 'note'> {
+    if (mode === undefined) {
+      return {}
+    }
+    let current: number
+    try {
+      current = statSync(absolute).mode & 0o777
+    } catch {
+      return {}
+    }
+    const next = current & mode
+    if (next === current) {
+      return {}
+    }
+    if (!this.dryRun) {
+      chmodSync(absolute, next)
+    }
+    const permissions = { from: octalMode(current), to: octalMode(next) }
+    return {
+      permissions,
+      note: `permissions tightened from ${permissions.from} to ${permissions.to}`,
+    }
+  }
+
   #record(change: PlannedChange): PlannedChange {
     this.#changes.push(change)
     return change
@@ -370,14 +574,15 @@ export class ProjectWriter {
       readonly before: string
       readonly mode: number | undefined
       readonly sensitive: boolean
+      readonly within: string
     }
   ): PlannedChange {
     if (!this.dryRun) {
-      writeFileAtomic(
-        absolute,
-        input.content,
-        input.mode === undefined ? {} : { mode: input.mode }
-      )
+      writeFileAtomic(absolute, input.content, {
+        within: input.within,
+        sensitive: input.sensitive,
+        ...(input.mode === undefined ? {} : { mode: input.mode }),
+      })
     }
     return this.#record({
       path: input.path,
@@ -392,6 +597,10 @@ export class ProjectWriter {
           }),
     })
   }
+}
+
+function octalMode(mode: number): string {
+  return `0${mode.toString(8).padStart(3, '0')}`
 }
 
 /**

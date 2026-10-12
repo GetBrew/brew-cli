@@ -4,6 +4,7 @@ import { defineCommand } from '../../lib/define-command'
 import { CliUsageError } from '../../lib/errors'
 import { flagString } from '../../lib/input'
 import {
+  codexLoginCommand,
   codexTomlBlock,
   configDocument,
   configTarget,
@@ -21,9 +22,18 @@ import {
   serverEntry,
   USER_SCOPE_ONLY,
 } from '../../lib/mcp-clients'
-import { ProjectWriter } from '../../lib/project/fs-writer'
-import { resolveProjectRoot } from '../../lib/project/monorepo'
-import { resolveCwd, resolveHomeDir } from '../../lib/project/process'
+import {
+  type PlannedChange,
+  ProjectWriter,
+  stripBom,
+  UTF8_BOM,
+} from '../../lib/project/fs-writer'
+import { resolveProjectRootWithGit } from '../../lib/project/monorepo'
+import {
+  resolveCwd,
+  resolveHomeDir,
+  resolveSpawn,
+} from '../../lib/project/process'
 
 export type McpInstallAction =
   | 'created'
@@ -43,6 +53,8 @@ export type McpInstallResult = {
   readonly snippet?: string
   /** Why a result is `manual`. */
   readonly note?: string
+  /** A command to run once the entry is in place (Codex OAuth sign-in). */
+  readonly nextStep?: string
 }
 
 const CLIENT_LIST = `${MCP_CLIENT_IDS.join(', ')}, all`
@@ -50,13 +62,13 @@ const CLIENT_LIST = `${MCP_CLIENT_IDS.join(', ')}, all`
 export const mcpInstallCommand = defineCommand({
   path: ['mcp', 'install'],
   summary:
-    "Add the Brew MCP server to your AI editors' config (Cursor, VS Code, Claude Code, Gemini CLI, Windsurf, Codex)",
+    "Add the Brew MCP server to your AI editors' config (Cursor, VS Code, Claude Code, Gemini CLI, Devin Desktop/Windsurf, Codex)",
   sdkMethod: null,
   commandClass: 'write',
   flags: [
     {
       flag: '--client <ids...>',
-      summary: `Clients to configure: ${CLIENT_LIST} (default: the ones this project uses; Windsurf and Codex only when named)`,
+      summary: `Clients to configure: ${CLIENT_LIST} (default: the ones this project uses; windsurf (Devin Desktop) and codex only when named)`,
     },
     {
       flag: '--scope <scope>',
@@ -90,7 +102,11 @@ export const mcpInstallCommand = defineCommand({
     const auth = parseAuth(flags.auth)
     const isPrint = flags.print === true
     const isDryRun = flags.dryRun === true
-    const resolved = resolveProjectRoot(resolveCwd(ctx.io))
+    const resolved = await resolveProjectRootWithGit(
+      resolveCwd(ctx.io),
+      resolveSpawn(ctx.io),
+      ctx.signal
+    )
     const projectRoot = resolved.monorepo?.root ?? resolved.root
     const env = ctx.io.env
     const home = resolveHomeDir(env)
@@ -113,7 +129,7 @@ export const mcpInstallCommand = defineCommand({
       clients = MCP_CLIENT_IDS
     } else {
       throw new CliUsageError(
-        `No MCP client detected in ${projectRoot} (.cursor/, .vscode/, .claude/, .gemini/, .windsurf/, .codex/). Pass --client with any of: ${CLIENT_LIST}.`
+        `No MCP client detected in ${projectRoot} (.cursor/, .vscode/, .claude/, .gemini/, .windsurf/ or .devin/, .codex/). Pass --client with any of: ${CLIENT_LIST}.`
       )
     }
 
@@ -151,7 +167,13 @@ function installOne(input: {
 }): McpInstallResult {
   const { client, auth, mcpUrl, writer } = input
   const deeplink = deeplinkFor(client, mcpUrl, auth)
-  const withLink = deeplink === undefined ? {} : { deeplink }
+  const withLink = {
+    ...(deeplink === undefined ? {} : { deeplink }),
+    // Codex signs in to an OAuth server only through its own command.
+    ...(client === 'codex' && auth === 'oauth'
+      ? { nextStep: codexLoginCommand() }
+      : {}),
+  }
   const target = configTarget(client, input.scope, {
     projectRoot: input.projectRoot,
     home: input.home,
@@ -189,8 +211,8 @@ function installOne(input: {
   }
   const outcome =
     client === 'codex'
-      ? installCodex(writer, target.path, mcpUrl, auth)
-      : installJson(writer, target.path, client, mcpUrl, auth)
+      ? installCodex(writer, target.path, target.within, mcpUrl, auth)
+      : installJson(writer, target.path, target.within, client, mcpUrl, auth)
   return {
     client,
     path,
@@ -206,20 +228,29 @@ type Outcome = {
   readonly note?: string
 }
 
-function fromWriter(action: string): Outcome {
-  switch (action) {
+function fromWriter(change: PlannedChange): Outcome {
+  switch (change.action) {
     case 'created':
     case 'updated':
     case 'unchanged':
-      return { action }
+      return { action: change.action }
+    case 'refused':
+      return {
+        action: 'manual',
+        note: `Not written: ${change.note ?? 'the path is not safe to write'}. Add this entry by hand.`,
+      }
     default:
       return { action: 'manual', note: 'The file could not be updated safely.' }
   }
 }
 
+/** A different `brew` entry is the user's: never replaced silently. */
+const CUSTOMISED_NOTE = `A ${MCP_SERVER_NAME} entry with other settings is already there and was left as it is. Edit it to match this snippet if you want these settings.`
+
 function installJson(
   writer: ProjectWriter,
   path: string,
+  within: string,
   client: Exclude<McpClientId, 'codex'>,
   url: string,
   auth: McpAuthMode
@@ -228,17 +259,20 @@ function installJson(
   if (existing === null || existing.trim() === '') {
     const text = `${JSON.stringify(configDocument(client, url, auth), null, 2)}\n`
     return fromWriter(
-      writer.writeFile(path, text, { overwrite: existing !== null }).action
+      writer.writeFile(path, text, { overwrite: existing !== null, within })
     )
   }
+  // A byte order mark (some Windows editors write one) is kept, not parsed.
+  const bom = existing.startsWith(UTF8_BOM) ? UTF8_BOM : ''
+  const body = stripBom(existing)
   let root: unknown
   try {
-    root = JSON.parse(existing)
+    root = JSON.parse(body)
   } catch {
     return {
       action: 'manual',
       note:
-        parseJsonc(existing) === undefined
+        parseJsonc(body) === undefined
           ? 'Not valid JSON: fix the file, then add this entry.'
           : 'Has comments, which a rewrite would drop: add this entry by hand.',
     }
@@ -258,40 +292,19 @@ function installJson(
     }
   }
   const entry = serverEntry(client, url, auth)
-  if (container !== undefined && deepEqual(container[MCP_SERVER_NAME], entry)) {
-    return { action: 'unchanged' }
+  if (container !== undefined && Object.hasOwn(container, MCP_SERVER_NAME)) {
+    return deepEqual(container[MCP_SERVER_NAME], entry)
+      ? { action: 'unchanged' }
+      : { action: 'manual', note: CUSTOMISED_NOTE }
   }
   // Every other server and setting stays, in its original order.
   const merged = {
     ...root,
     [key]: { ...(container ?? {}), [MCP_SERVER_NAME]: entry },
   }
-  const text = `${JSON.stringify(merged, null, detectIndent(existing))}\n`
-  return fromWriter(writer.writeFile(path, text, { overwrite: true }).action)
+  const text = `${bom}${JSON.stringify(merged, null, detectIndent(body))}\n`
+  return fromWriter(writer.writeFile(path, text, { overwrite: true, within }))
 }
-
-/** A TOML key segment, bare or quoted: `mcp_servers`, `"mcp_servers"`. */
-const seg = (name: string): string => `(?:${name}|"${name}"|'${name}')`
-const CODEX_TABLE = new RegExp(
-  `^\\s*\\[\\s*${seg('mcp_servers')}\\s*\\.\\s*${seg('brew')}\\s*\\]\\s*(?:#.*)?$`
-)
-/**
- * Any other way a TOML file can already define `mcp_servers.brew`: a
- * dotted key (`mcp_servers.brew.url = …`), a sub-table
- * (`[mcp_servers.brew.env]`), or a `brew = {…}` inline table. Appending a
- * second definition would make the whole config fail to load.
- */
-const CODEX_OTHER_BREW = new RegExp(
-  `${seg('mcp_servers')}\\s*\\.\\s*${seg('brew')}\\s*[.=\\]]`
-)
-const CODEX_SERVERS_TABLE = new RegExp(
-  `^\\s*\\[\\s*${seg('mcp_servers')}\\s*\\]`,
-  'm'
-)
-const BREW_KEY_LINE = new RegExp(`^\\s*${seg('brew')}\\s*=`, 'm')
-const CODEX_INLINE_SERVERS = new RegExp(
-  `${seg('mcp_servers')}\\s*=\\s*\\{[^\\n]*${seg('brew')}\\s*=`
-)
 
 /**
  * TOML with comments removed and string VALUES blanked (newlines kept, so
@@ -334,7 +347,9 @@ export function tomlStructure(text: string): string {
       }
       end = Math.min(text.length, end + delimiter.length)
       const literal = text.slice(index, end)
-      const isKey = !isValue || /^[ \t]*[=.\]]/.test(text.slice(end, end + 64))
+      // A value string is followed by `,` `]` `}` or the line's end; a key
+      // (an inline table's, or a dotted one) by `=` or `.`.
+      const isKey = !isValue || /^[ \t]*[=.]/.test(text.slice(end, end + 64))
       out += isKey ? literal : literal.replace(/[^\n]/g, ' ')
       index = end
       continue
@@ -352,33 +367,210 @@ export function tomlStructure(text: string): string {
   return out
 }
 
+/** One definition in a TOML file, by its full dotted key. */
+export type TomlDefinition = {
+  /** `[table]`, `[[array-of-tables]]`, or a `key = value` line. */
+  readonly kind: 'table' | 'array-table' | 'key'
+  /** The full key: the enclosing table's path, then the key's own. */
+  readonly path: readonly string[]
+  /** The `[table]` the definition sits under (`[]` = the root). */
+  readonly table: readonly string[]
+  /** Its 0-based line number. */
+  readonly line: number
+}
+
+/**
+ * The tables and keys a TOML file defines, read from `tomlStructure` text
+ * (comments gone, string values blanked, so brackets that are left are
+ * structure). `null` when a line is neither a header nor `key = value`:
+ * TOML this reader does not understand, so nothing may be appended.
+ */
+export function tomlDefinitions(structure: string): TomlDefinition[] | null {
+  const definitions: TomlDefinition[] = []
+  let table: readonly string[] = []
+  let depth = 0
+  const lines = structure.split('\n')
+  for (const [line, text] of lines.entries()) {
+    if (depth > 0) {
+      depth += bracketDepth(text)
+      continue
+    }
+    const trimmed = text.trim()
+    if (trimmed === '') {
+      continue
+    }
+    if (trimmed.startsWith('[')) {
+      const isArray = trimmed.startsWith('[[')
+      const key = parseTomlKey(trimmed, isArray ? 2 : 1)
+      const close = isArray ? ']]' : ']'
+      if (key === null || trimmed.slice(key.end).trim() !== close) {
+        return null
+      }
+      table = key.segments
+      definitions.push({
+        kind: isArray ? 'array-table' : 'table',
+        path: table,
+        table: [],
+        line,
+      })
+      continue
+    }
+    const key = parseTomlKey(trimmed, 0)
+    if (key === null || trimmed[key.end] !== '=') {
+      return null
+    }
+    definitions.push({
+      kind: 'key',
+      path: [...table, ...key.segments],
+      table,
+      line,
+    })
+    depth = Math.max(0, bracketDepth(trimmed.slice(key.end + 1)))
+  }
+  return definitions
+}
+
+/**
+ * Net `[`/`{` minus `]`/`}` on a structure line. Values are blanked there;
+ * the quoted text left is keys, skipped so a bracket in a key never counts.
+ */
+function bracketDepth(text: string): number {
+  let depth = 0
+  let quote: string | null = null
+  for (let index = 0; index < text.length; index += 1) {
+    const char = text[index]
+    if (quote !== null) {
+      if (quote === '"' && char === '\\') {
+        index += 1
+      } else if (char === quote) {
+        quote = null
+      }
+    } else if (char === '"' || char === "'") {
+      quote = char
+    } else if (char === '[' || char === '{') {
+      depth += 1
+    } else if (char === ']' || char === '}') {
+      depth -= 1
+    }
+  }
+  return depth
+}
+
+/**
+ * A dotted TOML key starting at `start`: bare, "basic" or 'literal'
+ * segments joined by dots. Returns the segments and the index after the
+ * key (and the whitespace after it), or `null` when there is none.
+ */
+function parseTomlKey(
+  text: string,
+  start: number
+): { readonly segments: string[]; readonly end: number } | null {
+  const segments: string[] = []
+  let index = start
+  const skipSpace = (): void => {
+    while (text[index] === ' ' || text[index] === '\t') {
+      index += 1
+    }
+  }
+  for (;;) {
+    skipSpace()
+    const char = text[index]
+    if (char === '"' || char === "'") {
+      let end = index + 1
+      let value = ''
+      while (end < text.length && text[end] !== char) {
+        if (char === '"' && text[end] === '\\') {
+          value += text[end + 1] ?? ''
+          end += 2
+          continue
+        }
+        value += text[end]
+        end += 1
+      }
+      if (end >= text.length) {
+        return null
+      }
+      segments.push(value)
+      index = end + 1
+    } else {
+      const bare = /^[A-Za-z0-9_-]+/.exec(text.slice(index))
+      if (bare === null) {
+        return null
+      }
+      segments.push(bare[0])
+      index += bare[0].length
+    }
+    skipSpace()
+    if (text[index] !== '.') {
+      return { segments, end: index }
+    }
+    index += 1
+  }
+}
+
+const startsWith = (
+  path: readonly string[],
+  prefix: readonly string[]
+): boolean => prefix.every((segment, index) => path[index] === segment)
+
+const sameKey = (a: readonly string[], b: readonly string[]): boolean =>
+  a.length === b.length && startsWith(a, b)
+
 function installCodex(
   writer: ProjectWriter,
   path: string,
+  within: string,
   url: string,
   auth: McpAuthMode
 ): Outcome {
   const block = codexTomlBlock(url, auth)
   const existing = writer.read(path)
   if (existing === null) {
-    return fromWriter(writer.writeFile(path, block).action)
+    return fromWriter(writer.writeFile(path, block, { within }))
   }
-  const lines = existing.replaceAll('\r\n', '\n').split('\n')
+  const normalized = existing.replaceAll('\r\n', '\n')
+  const lines = normalized.split('\n')
   // Comments and string values hidden: only real TOML structure counts.
-  const structure = tomlStructure(existing.replaceAll('\r\n', '\n'))
-  const structureLines = structure.split('\n')
-  const start = structureLines.findIndex((line) => CODEX_TABLE.test(line))
-  if (start !== -1) {
-    const body: string[] = []
-    for (const [offset, line] of lines.slice(start + 1).entries()) {
-      if (/^\s*\[/.test(structureLines[start + 1 + offset] ?? '')) {
-        break
-      }
-      const trimmed = line.replace(/\s+#.*$/, '').trim()
-      if (trimmed !== '') {
-        body.push(trimmed.replace(/\s*=\s*/, ' = '))
-      }
+  const definitions = tomlDefinitions(tomlStructure(normalized))
+  if (definitions === null) {
+    return {
+      action: 'manual',
+      note: 'The file has TOML this command cannot check safely: add this table by hand.',
     }
+  }
+  const servers = ['mcp_servers']
+  const brew = [...servers, MCP_SERVER_NAME]
+  const brewTables = definitions.filter(
+    (definition) =>
+      definition.kind === 'table' && sameKey(definition.path, brew)
+  )
+  const blocksAppend = definitions.some(
+    (definition) =>
+      // `mcp_servers = { … }` (an inline table cannot be extended),
+      // `[[mcp_servers]]` (not a map of servers).
+      (definition.kind === 'key' && sameKey(definition.path, servers)) ||
+      (definition.kind === 'array-table' &&
+        startsWith(definition.path, servers)) ||
+      // brew defined any way but its own `[mcp_servers.brew]` table: a
+      // `brew = {…}` or `brew.url = …` key, a dotted key elsewhere, a
+      // `[mcp_servers.brew.env]` sub-table.
+      (startsWith(definition.path, brew) &&
+        !(definition.kind === 'table' && sameKey(definition.path, brew)) &&
+        !(definition.kind === 'key' && sameKey(definition.table, brew)))
+  )
+  const [table] = brewTables
+  if (table !== undefined && !blocksAppend && brewTables.length === 1) {
+    const body = definitions
+      .filter(
+        (definition) =>
+          definition.kind === 'key' && sameKey(definition.table, brew)
+      )
+      .map((definition) =>
+        (lines[definition.line] ?? '')
+          .replace(/\s+#.*$/, '')
+          .trim()
+          .replace(/\s*=\s*/, ' = ')
+      )
     const wanted = block
       .trim()
       .split('\n')
@@ -391,20 +583,15 @@ function installCodex(
       ? { action: 'unchanged' }
       : {
           action: 'manual',
-          note: `A [mcp_servers.${MCP_SERVER_NAME}] table with other settings exists: edit it by hand.`,
+          note: `A [mcp_servers.${MCP_SERVER_NAME}] table with other settings exists and was left as it is. Edit it to match this snippet if you want these settings.`,
         }
   }
-  if (
-    CODEX_OTHER_BREW.test(structure) ||
-    CODEX_INLINE_SERVERS.test(structure) ||
-    (CODEX_SERVERS_TABLE.test(structure) && BREW_KEY_LINE.test(structure))
-  ) {
+  if (table !== undefined || blocksAppend) {
     return {
       action: 'manual',
-      note: `${MCP_SERVER_NAME} is already defined in a form this command does not edit: check it by hand.`,
+      note: `mcp_servers or ${MCP_SERVER_NAME} is already defined in a form this command does not edit: check it by hand.`,
     }
   }
-  const normalized = existing.replaceAll('\r\n', '\n')
   const separator =
     normalized === '' || normalized.endsWith('\n\n')
       ? ''
@@ -414,7 +601,8 @@ function installCodex(
   return fromWriter(
     writer.writeFile(path, `${normalized}${separator}${block}`, {
       overwrite: true,
-    }).action
+      within,
+    })
   )
 }
 
@@ -568,6 +756,9 @@ function renderHuman(
     }
     if (result.deeplink !== undefined) {
       lines.push(`  One-click install: ${result.deeplink}`)
+    }
+    if (result.nextStep !== undefined) {
+      lines.push(`  Then sign in: ${result.nextStep}`)
     }
   }
   return lines.join('\n')

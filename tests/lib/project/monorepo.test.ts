@@ -4,12 +4,31 @@ import { describe, expect, it } from 'vitest'
 import {
   detectFramework,
   expandBraces,
+  findGitRoot,
   findMonorepo,
   listWorkspacePackages,
   parsePnpmWorkspaceYaml,
+  readJsonObject,
   resolveProjectRoot,
+  resolveProjectRootWithGit,
 } from '../../../src/lib/project/monorepo'
-import { copyFixture } from '../../helpers/fixtures'
+import type { SpawnFn } from '../../../src/lib/types'
+import { copyFixture, tempProject } from '../../helpers/fixtures'
+
+/** A spawn that answers `git rev-parse --show-toplevel` with `stdout`. */
+function gitSpawn(
+  stdout: string,
+  code = 0
+): { spawn: SpawnFn; calls: Array<readonly [string, readonly string[]]> } {
+  const calls: Array<readonly [string, readonly string[]]> = []
+  return {
+    calls,
+    spawn: async (command, args) => {
+      calls.push([command, args])
+      return { code, stdout, stderr: '' }
+    },
+  }
+}
 
 describe('resolveProjectRoot', () => {
   it('resolves a pnpm + Turborepo workspace app from deep inside it', () => {
@@ -83,6 +102,37 @@ describe('resolveProjectRoot', () => {
     })
   })
 
+  it('falls back to the git root (not the cwd) when no package.json is found', async () => {
+    const root = copyFixture('no-package-json')
+    mkdirSync(join(root, 'docs/guides'), { recursive: true })
+    const { spawn, calls } = gitSpawn(`${root}\n`)
+    const resolved = await resolveProjectRootWithGit(
+      join(root, 'docs/guides'),
+      spawn
+    )
+    expect(resolved).toEqual({ root, monorepo: null, candidates: [] })
+    expect(calls).toEqual([['git', ['rev-parse', '--show-toplevel']]])
+    // A package.json wins without asking git.
+    const app = copyFixture('next-app')
+    const quiet = gitSpawn('/elsewhere\n')
+    expect((await resolveProjectRootWithGit(app, quiet.spawn)).root).toBe(app)
+    expect(quiet.calls).toEqual([])
+  })
+
+  it('ignores a git answer it cannot use, keeping the cwd', async () => {
+    const root = tempProject()
+    const cwd = join(root, 'sub')
+    mkdirSync(cwd)
+    const outside = tempProject('brew-cli-elsewhere-')
+    expect(await findGitRoot(cwd, gitSpawn(`${outside}\n`).spawn)).toBeNull()
+    expect(await findGitRoot(cwd, gitSpawn('', 128).spawn)).toBeNull()
+    const missing: SpawnFn = async () => {
+      throw Object.assign(new Error('spawn git ENOENT'), { code: 'ENOENT' })
+    }
+    expect(await findGitRoot(cwd, missing)).toBeNull()
+    expect((await resolveProjectRootWithGit(cwd, missing)).root).toBe(cwd)
+  })
+
   it('never mistakes a package-level turbo.json for the root', () => {
     const root = copyFixture('pnpm-turbo')
     expect(findMonorepo(join(root, 'apps/web'))?.root).toBe(root)
@@ -99,6 +149,28 @@ describe('workspace helpers', () => {
     expect(parsePnpmWorkspaceYaml('packages: [\'a/*\', "b"]\n')).toEqual([
       'a/*',
       'b',
+    ])
+  })
+
+  it('keeps reading the package list past comments at column 0', () => {
+    expect(
+      parsePnpmWorkspaceYaml(
+        'packages:\n# apps first\n  - apps/*\n#  - old/*\n  - packages/*\n    # nested\n  - tools/*\ncatalog:\n  react: 19\n'
+      )
+    ).toEqual(['apps/*', 'packages/*', 'tools/*'])
+  })
+
+  it('reads a package.json that starts with a byte order mark', () => {
+    const root = tempProject()
+    writeFileSync(
+      join(root, 'package.json'),
+      '\uFEFF{"name":"bom-app","dependencies":{"next":"16"}}'
+    )
+    expect(readJsonObject(join(root, 'package.json'))).toMatchObject({
+      name: 'bom-app',
+    })
+    expect(resolveProjectRoot(root).candidates).toEqual([
+      { name: 'bom-app', dir: '.', framework: 'next' },
     ])
   })
 
