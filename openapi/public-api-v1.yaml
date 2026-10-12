@@ -35396,7 +35396,7 @@ paths:
         - schema:
             type: string
             minLength: 1
-            maxLength: 512
+            maxLength: 8192
           required: false
           name: cursor
           in: query
