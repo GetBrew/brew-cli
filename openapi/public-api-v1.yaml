@@ -24265,7 +24265,7 @@ paths:
                       docs: https://docs.brew.new/api-reference/api/errors
       x-brew-scope: emails
       x-brew-brand-scope: brand
-      x-brew-idempotency: replay
+      x-brew-idempotency: fail_closed
       x-brew-credited: true
       x-brew-rate-policy: content.transform
     get:
