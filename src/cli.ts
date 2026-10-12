@@ -178,12 +178,13 @@ function commandFor(
   )
 }
 
-/** `--input -`, `--file -` or `--data -`: the re-run needs the same stdin. */
+/** Split or equals-form stdin flags require the same input on a re-run. */
 function readsStdin(rawArgv: readonly string[]): boolean {
   return rawArgv.some(
     (token, index) =>
-      token === '-' &&
-      ['--input', '--file', '--data'].includes(rawArgv[index - 1] ?? '')
+      ['--input=-', '--file=-', '--data=-'].includes(token) ||
+      (token === '-' &&
+        ['--input', '--file', '--data'].includes(rawArgv[index - 1] ?? ''))
   )
 }
 

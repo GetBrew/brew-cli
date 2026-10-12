@@ -2807,7 +2807,8 @@ components:
                 - form
                 - import
                 - app
-              description: "Who captured it: `api` (an API caller asserted it), `form` (a signup form), `import` (a bulk import), `app` (the in-app CSV wizard checkbox)."
+                - integration
+              description: "Who captured it: `api` (an API caller asserted it), `form` (a signup form), `import` (a bulk import), `app` (the in-app CSV wizard checkbox), `integration` (an integration sync such as Stripe created the contact; provenance only, not an opt-in)."
             capturedAt:
               type: string
               format: date-time
@@ -12578,7 +12579,8 @@ components:
                     - form
                     - import
                     - app
-                  description: "Who captured it: `api` (an API caller asserted it), `form` (a signup form), `import` (a bulk import), `app` (the in-app CSV wizard checkbox)."
+                    - integration
+                  description: "Who captured it: `api` (an API caller asserted it), `form` (a signup form), `import` (a bulk import), `app` (the in-app CSV wizard checkbox), `integration` (an integration sync such as Stripe created the contact; provenance only, not an opt-in)."
                 capturedAt:
                   type: string
                   format: date-time
@@ -12880,7 +12882,8 @@ components:
                     - form
                     - import
                     - app
-                  description: "Who captured it: `api` (an API caller asserted it), `form` (a signup form), `import` (a bulk import), `app` (the in-app CSV wizard checkbox)."
+                    - integration
+                  description: "Who captured it: `api` (an API caller asserted it), `form` (a signup form), `import` (a bulk import), `app` (the in-app CSV wizard checkbox), `integration` (an integration sync such as Stripe created the contact; provenance only, not an opt-in)."
                 capturedAt:
                   type: string
                   format: date-time
@@ -13041,7 +13044,8 @@ components:
                       - form
                       - import
                       - app
-                    description: "Who captured it: `api` (an API caller asserted it), `form` (a signup form), `import` (a bulk import), `app` (the in-app CSV wizard checkbox)."
+                      - integration
+                    description: "Who captured it: `api` (an API caller asserted it), `form` (a signup form), `import` (a bulk import), `app` (the in-app CSV wizard checkbox), `integration` (an integration sync such as Stripe created the contact; provenance only, not an opt-in)."
                   capturedAt:
                     type: string
                     format: date-time
@@ -13165,7 +13169,8 @@ components:
                 - form
                 - import
                 - app
-              description: "Who captured it: `api` (an API caller asserted it), `form` (a signup form), `import` (a bulk import), `app` (the in-app CSV wizard checkbox)."
+                - integration
+              description: "Who captured it: `api` (an API caller asserted it), `form` (a signup form), `import` (a bulk import), `app` (the in-app CSV wizard checkbox), `integration` (an integration sync such as Stripe created the contact; provenance only, not an opt-in)."
             capturedAt:
               type: string
               format: date-time
@@ -13311,7 +13316,8 @@ components:
                       - form
                       - import
                       - app
-                    description: "Who captured it: `api` (an API caller asserted it), `form` (a signup form), `import` (a bulk import), `app` (the in-app CSV wizard checkbox)."
+                      - integration
+                    description: "Who captured it: `api` (an API caller asserted it), `form` (a signup form), `import` (a bulk import), `app` (the in-app CSV wizard checkbox), `integration` (an integration sync such as Stripe created the contact; provenance only, not an opt-in)."
                   capturedAt:
                     type: string
                     format: date-time
@@ -24259,7 +24265,7 @@ paths:
                       docs: https://docs.brew.new/api-reference/api/errors
       x-brew-scope: emails
       x-brew-brand-scope: brand
-      x-brew-idempotency: replay
+      x-brew-idempotency: fail_closed
       x-brew-credited: true
       x-brew-rate-policy: content.transform
     get:
@@ -34362,7 +34368,7 @@ paths:
       tags:
         - Automations
       summary: Test an automation
-      description: Runs the saved automation END-TO-END through the real workflow in TEST mode — works on drafts and for both event and manual-audience automations; every node executes (filters/splits evaluate against `payload`, and `contact.<name>` conditions read the test recipient’s contact unless `payload` supplies that field — a flat `contact.<name>` key or a `contact` object — and the trigger’s contract keeps extra keys; wait nodes fast-forward). Pass `testRecipient` to DELIVER each send-email node’s email for real to that address (real subject/preview/sender name via the Brew test domain; customer addresses are never hit) — omit it for a silent dry-run with no mail. Test runs never count against analytics rollups or send quotas. Returns `202` with the started run id; follow per-node status via `GET /v1/automations/runs/{automationRunId}&include=logs`. Optional `scenario` controls simulate timed opens/clicks at engagement-filter nodes and force left/right percentage-split choices (waits use a virtual clock; controls stay separate from `payload`, and simulated events never enter live analytics or send quotas); the run row’s `testCoverage` reports visited nodes, traversed connections, evaluated or forced decisions, uncovered paths and simulation limitations.
+      description: Runs the saved automation END-TO-END through the real workflow in TEST mode — works on drafts and for both event and manual-audience automations; every node executes (filters/splits evaluate against `payload`, and `contact.<name>` conditions read the test recipient’s contact unless `payload` supplies that field — a flat `contact.<name>` key or a `contact` object — and the trigger’s contract keeps extra keys; wait nodes fast-forward). Pass `testRecipient` to DELIVER each send-email node’s email for real to that address (real subject/preview/sender name; verified configured sender domains are preserved, otherwise delivery uses the Brew test domain; customer addresses are never hit) — omit it for a silent dry-run with no mail. Test runs are excluded from live analytics rollups. Real test deliveries consume send usage; dry runs do not. Test payloads never update real contact records. Returns `202` with the started run id; follow per-node status via `GET /v1/automations/runs/{automationRunId}?include=logs`. Optional `scenario` controls simulate timed opens/clicks at engagement-filter nodes and force left/right percentage-split choices (waits use a virtual clock; controls stay separate from `payload`, and simulated events never enter live analytics or send quotas); the run row’s `testCoverage` reports visited nodes, traversed connections, evaluated or forced decisions, uncovered paths and simulation limitations.
       parameters:
         - name: Idempotency-Key
           in: header
@@ -34751,9 +34757,40 @@ paths:
                       message: An unexpected failure; the x-request-id header identifies it.
                       suggestion: Retry the request. If it keeps failing, contact support with the x-request-id header.
                       docs: https://docs.brew.new/api-reference/api/errors
+        "503":
+          description: "`SERVICE_UNAVAILABLE`: A dependency the operation must consult (billing, the idempotency store) is temporarily unavailable, so the request was refused rather than run unmetered."
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+            Retry-After:
+              schema:
+                type: integer
+                description: Seconds to wait before retrying the request.
+                example: 42
+              required: true
+              description: Seconds to wait before retrying the request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                serviceUnavailable:
+                  summary: SERVICE_UNAVAILABLE
+                  value:
+                    error:
+                      code: SERVICE_UNAVAILABLE
+                      type: service_unavailable
+                      message: A dependency the operation must consult (billing, the idempotency store) is temporarily unavailable, so the request was refused rather than run unmetered.
+                      suggestion: Retry the request after a short delay.
+                      docs: https://docs.brew.new/api-reference/api/errors
       x-brew-scope: automations
       x-brew-brand-scope: brand
-      x-brew-idempotency: replay
+      x-brew-idempotency: fail_closed
       x-brew-credited: false
       x-brew-rate-policy: automation.runs.write
   /v1/automations/{automationId}/run:
@@ -35359,7 +35396,7 @@ paths:
         - schema:
             type: string
             minLength: 1
-            maxLength: 512
+            maxLength: 8192
           required: false
           name: cursor
           in: query

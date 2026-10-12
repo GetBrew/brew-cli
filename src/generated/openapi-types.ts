@@ -767,7 +767,7 @@ export interface paths {
         put?: never;
         /**
          * Test an automation
-         * @description Runs the saved automation END-TO-END through the real workflow in TEST mode — works on drafts and for both event and manual-audience automations; every node executes (filters/splits evaluate against `payload`, and `contact.<name>` conditions read the test recipient’s contact unless `payload` supplies that field — a flat `contact.<name>` key or a `contact` object — and the trigger’s contract keeps extra keys; wait nodes fast-forward). Pass `testRecipient` to DELIVER each send-email node’s email for real to that address (real subject/preview/sender name via the Brew test domain; customer addresses are never hit) — omit it for a silent dry-run with no mail. Test runs never count against analytics rollups or send quotas. Returns `202` with the started run id; follow per-node status via `GET /v1/automations/runs/{automationRunId}&include=logs`. Optional `scenario` controls simulate timed opens/clicks at engagement-filter nodes and force left/right percentage-split choices (waits use a virtual clock; controls stay separate from `payload`, and simulated events never enter live analytics or send quotas); the run row’s `testCoverage` reports visited nodes, traversed connections, evaluated or forced decisions, uncovered paths and simulation limitations.
+         * @description Runs the saved automation END-TO-END through the real workflow in TEST mode — works on drafts and for both event and manual-audience automations; every node executes (filters/splits evaluate against `payload`, and `contact.<name>` conditions read the test recipient’s contact unless `payload` supplies that field — a flat `contact.<name>` key or a `contact` object — and the trigger’s contract keeps extra keys; wait nodes fast-forward). Pass `testRecipient` to DELIVER each send-email node’s email for real to that address (real subject/preview/sender name; verified configured sender domains are preserved, otherwise delivery uses the Brew test domain; customer addresses are never hit) — omit it for a silent dry-run with no mail. Test runs are excluded from live analytics rollups. Real test deliveries consume send usage; dry runs do not. Test payloads never update real contact records. Returns `202` with the started run id; follow per-node status via `GET /v1/automations/runs/{automationRunId}?include=logs`. Optional `scenario` controls simulate timed opens/clicks at engagement-filter nodes and force left/right percentage-split choices (waits use a virtual clock; controls stay separate from `payload`, and simulated events never enter live analytics or send quotas); the run row’s `testCoverage` reports visited nodes, traversed connections, evaluated or forced decisions, uncovered paths and simulation limitations.
          */
         post: operations["testAutomation"];
         delete?: never;
@@ -3554,10 +3554,10 @@ export interface components {
             subscribed?: boolean;
             consent?: {
                 /**
-                 * @description Who captured it: `api` (an API caller asserted it), `form` (a signup form), `import` (a bulk import), `app` (the in-app CSV wizard checkbox).
+                 * @description Who captured it: `api` (an API caller asserted it), `form` (a signup form), `import` (a bulk import), `app` (the in-app CSV wizard checkbox), `integration` (an integration sync such as Stripe created the contact; provenance only, not an opt-in).
                  * @enum {string}
                  */
-                source: "api" | "form" | "import" | "app";
+                source: "api" | "form" | "import" | "app" | "integration";
                 /**
                  * Format: date-time
                  * @description When it was captured.
@@ -6939,10 +6939,10 @@ export interface components {
                 subscribed?: boolean;
                 consent?: {
                     /**
-                     * @description Who captured it: `api` (an API caller asserted it), `form` (a signup form), `import` (a bulk import), `app` (the in-app CSV wizard checkbox).
+                     * @description Who captured it: `api` (an API caller asserted it), `form` (a signup form), `import` (a bulk import), `app` (the in-app CSV wizard checkbox), `integration` (an integration sync such as Stripe created the contact; provenance only, not an opt-in).
                      * @enum {string}
                      */
-                    source: "api" | "form" | "import" | "app";
+                    source: "api" | "form" | "import" | "app" | "integration";
                     /**
                      * Format: date-time
                      * @description When it was captured.
@@ -7083,10 +7083,10 @@ export interface components {
                 subscribed?: boolean;
                 consent?: {
                     /**
-                     * @description Who captured it: `api` (an API caller asserted it), `form` (a signup form), `import` (a bulk import), `app` (the in-app CSV wizard checkbox).
+                     * @description Who captured it: `api` (an API caller asserted it), `form` (a signup form), `import` (a bulk import), `app` (the in-app CSV wizard checkbox), `integration` (an integration sync such as Stripe created the contact; provenance only, not an opt-in).
                      * @enum {string}
                      */
-                    source: "api" | "form" | "import" | "app";
+                    source: "api" | "form" | "import" | "app" | "integration";
                     /**
                      * Format: date-time
                      * @description When it was captured.
@@ -7164,10 +7164,10 @@ export interface components {
                 subscribed?: boolean;
                 consent?: {
                     /**
-                     * @description Who captured it: `api` (an API caller asserted it), `form` (a signup form), `import` (a bulk import), `app` (the in-app CSV wizard checkbox).
+                     * @description Who captured it: `api` (an API caller asserted it), `form` (a signup form), `import` (a bulk import), `app` (the in-app CSV wizard checkbox), `integration` (an integration sync such as Stripe created the contact; provenance only, not an opt-in).
                      * @enum {string}
                      */
-                    source: "api" | "form" | "import" | "app";
+                    source: "api" | "form" | "import" | "app" | "integration";
                     /**
                      * Format: date-time
                      * @description When it was captured.
@@ -7224,10 +7224,10 @@ export interface components {
             subscribed?: boolean;
             consent?: {
                 /**
-                 * @description Who captured it: `api` (an API caller asserted it), `form` (a signup form), `import` (a bulk import), `app` (the in-app CSV wizard checkbox).
+                 * @description Who captured it: `api` (an API caller asserted it), `form` (a signup form), `import` (a bulk import), `app` (the in-app CSV wizard checkbox), `integration` (an integration sync such as Stripe created the contact; provenance only, not an opt-in).
                  * @enum {string}
                  */
-                source: "api" | "form" | "import" | "app";
+                source: "api" | "form" | "import" | "app" | "integration";
                 /**
                  * Format: date-time
                  * @description When it was captured.
@@ -7290,10 +7290,10 @@ export interface components {
                 subscribed?: boolean;
                 consent?: {
                     /**
-                     * @description Who captured it: `api` (an API caller asserted it), `form` (a signup form), `import` (a bulk import), `app` (the in-app CSV wizard checkbox).
+                     * @description Who captured it: `api` (an API caller asserted it), `form` (a signup form), `import` (a bulk import), `app` (the in-app CSV wizard checkbox), `integration` (an integration sync such as Stripe created the contact; provenance only, not an opt-in).
                      * @enum {string}
                      */
-                    source: "api" | "form" | "import" | "app";
+                    source: "api" | "form" | "import" | "app" | "integration";
                     /**
                      * Format: date-time
                      * @description When it was captured.
@@ -15714,6 +15714,19 @@ export interface operations {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
                     "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `SERVICE_UNAVAILABLE`: A dependency the operation must consult (billing, the idempotency store) is temporarily unavailable, so the request was refused rather than run unmetered. */
+            503: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
                     [name: string]: unknown;
                 };
                 content: {
