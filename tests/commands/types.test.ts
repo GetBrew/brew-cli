@@ -2,10 +2,12 @@ import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { HttpResponse, http } from 'msw'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { automationsTriggersReadyCommand } from '../../src/commands/automations/triggers/ready'
 import { typesCommand } from '../../src/commands/types'
 import type { components } from '../../src/generated/openapi-types'
+import { defineCommand } from '../../src/lib/define-command'
+import { CliInterruptError } from '../../src/lib/errors'
 import { server } from '../helpers/msw-server'
 import { runCli } from '../helpers/run-cli'
 
@@ -218,6 +220,136 @@ describe('types — nested contracts', () => {
 })
 
 describe('types — audit hardening', () => {
+  it.each([false, true])(
+    'preserves the artifact when interrupted after the final read (check=%s)',
+    async (isCheck) => {
+      mockApi()
+      const controller = new AbortController()
+      const dir = mkdtempSync(join(tmpdir(), 'brew-types-'))
+      const out = join(dir, 'brew-contracts.ts')
+      const existing = '// Existing contracts must survive an interruption.\n'
+      writeFileSync(out, existing)
+      const command = defineCommand({
+        ...typesCommand,
+        path: ['types-final-page-fixture'],
+        run: async (invocation) => {
+          const triggers = invocation.ctx.client().automations.triggers
+          const list = triggers.list.bind(triggers)
+          vi.spyOn(triggers, 'list').mockImplementation(async (...args) => {
+            const response = await list(...args)
+            controller.abort(new CliInterruptError('SIGINT'))
+            return response
+          })
+          return typesCommand.run(invocation)
+        },
+      })
+
+      const result = await runCli(
+        [
+          'types-final-page-fixture',
+          '--out',
+          out,
+          '--quiet',
+          ...(isCheck ? ['--check'] : []),
+        ],
+        {
+          env: env(),
+          signal: controller.signal,
+          extraCommands: [command],
+        }
+      )
+
+      expect(result.code).toBe(130)
+      expect(result.stdout).toBe('')
+      expect(JSON.parse(result.stderr)).toMatchObject({
+        error: { code: 'CLI_INTERRUPTED', type: 'cancelled' },
+      })
+      expect(readFileSync(out, 'utf8')).toBe(existing)
+    }
+  )
+
+  it.each([
+    { cursors: ['a', 'a'], isCheck: false },
+    { cursors: ['a', 'b', 'a'], isCheck: false },
+    { cursors: ['a', 'a'], isCheck: true },
+    { cursors: ['a', 'b', 'a'], isCheck: true },
+  ])(
+    'rejects cursor cycles before writing or certifying a payload contract file',
+    async ({ cursors, isCheck }) => {
+      const requested: Array<string | null> = []
+      server.use(
+        http.get(`${API}/v1/automations/triggers`, ({ request }) => {
+          requested.push(new URL(request.url).searchParams.get('cursor'))
+          return HttpResponse.json({
+            data: [TRIGGER],
+            pagination: {
+              cursor: cursors[(requested.length - 1) % cursors.length],
+              hasMore: true,
+            },
+          })
+        })
+      )
+      const dir = mkdtempSync(join(tmpdir(), 'brew-types-'))
+      const out = join(dir, 'brew-contracts.ts')
+      const existing = '// Existing contracts must survive a failed read.\n'
+      writeFileSync(out, existing)
+
+      const result = await runCli(
+        ['types', '--out', out, '--quiet', ...(isCheck ? ['--check'] : [])],
+        { env: env(), extraCommands: [typesCommand] }
+      )
+
+      expect(result.code).toBe(1)
+      expect(result.stdout).toBe('')
+      expect(JSON.parse(result.stderr)).toMatchObject({
+        error: {
+          code: 'CLI_PAGINATION',
+          progress: {
+            rowsFetched: cursors.length,
+            pagesFetched: cursors.length,
+          },
+        },
+      })
+      expect(requested).toEqual([null, ...cursors.slice(0, -1)])
+      expect(readFileSync(out, 'utf8')).toBe(existing)
+    }
+  )
+
+  it('includes payload contracts after the former fifty-page ceiling', async () => {
+    let reads = 0
+    server.use(
+      http.get(`${API}/v1/automations/triggers`, ({ request }) => {
+        reads += 1
+        const cursor = new URL(request.url).searchParams.get('cursor')
+        const page = cursor === null ? 1 : Number(cursor)
+        return HttpResponse.json({
+          data: [
+            {
+              ...TRIGGER,
+              triggerEventId: `tri_page_${page}`,
+              title: page === 51 ? 'Tail Trigger' : `Page ${page}`,
+            },
+          ],
+          pagination: {
+            cursor: page === 51 ? null : String(page + 1),
+            hasMore: page < 51,
+          },
+        })
+      })
+    )
+    const dir = mkdtempSync(join(tmpdir(), 'brew-types-'))
+    const out = join(dir, 'brew-contracts.ts')
+    const result = await runCli(['types', '--out', out, '--quiet'], {
+      env: env(),
+      extraCommands: [typesCommand],
+    })
+
+    expect(result.code).toBe(0)
+    expect(readFileSync(out, 'utf8')).toContain('TailTriggerPayload')
+    expect(result.json).toMatchObject({ triggers: 51 })
+    expect(reads).toBe(51)
+  })
+
   it('follows the pagination cursor instead of capping at one page', async () => {
     const pageOne = Array.from({ length: 100 }, (_, i) => ({
       ...TRIGGER,

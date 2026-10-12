@@ -1,7 +1,25 @@
 import { describe, expect, it } from 'vitest'
+import { defineCommand } from '../src/lib/define-command'
+import { buildManifest } from '../src/lib/manifest'
 import { runCli } from './helpers/run-cli'
 
 describe('docs --agent manifest', () => {
+  it('builds the manifest from supplied metadata rather than importing the handler registry', () => {
+    const command = defineCommand({
+      path: ['fixture'],
+      summary: 'Fixture',
+      sdkMethod: null,
+      commandClass: 'read',
+      examples: ['brew-cli fixture'],
+      run: async () => ({ data: null }),
+    })
+    const manifest = buildManifest({
+      commands: [{ ...command, confirmation: false }],
+    })
+    expect(manifest.commands).toEqual([
+      expect.objectContaining({ command: 'brew-cli fixture' }),
+    ])
+  })
   it('prints a complete machine-readable manifest', async () => {
     const result = await runCli(['docs', '--agent'])
     expect(result.code).toBe(0)
