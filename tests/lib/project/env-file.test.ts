@@ -111,6 +111,51 @@ describe('ensureVar', () => {
     )
   })
 
+  it('never appends a second BREW_API_KEY next to one it cannot parse cleanly', () => {
+    const existing = 'brew_existing_key_0123456789'
+    for (const before of [
+      // An unterminated quote: dotenv reads it as one unquoted line, and
+      // the next line as its own assignment.
+      `NOTE="unterminated\nBREW_API_KEY=${existing}\n`,
+      // dotenv's YAML-ish form.
+      `BREW_API_KEY: ${existing}\n`,
+      `export BREW_API_KEY: ${existing}\n`,
+      `  export   BREW_API_KEY = ${existing}\n`,
+    ]) {
+      const { text, results } = ensureEnvVars(before, [
+        { name: 'BREW_API_KEY', value: SECRET },
+      ])
+      expect(results, before).toEqual([
+        { name: 'BREW_API_KEY', action: 'kept-existing' },
+      ])
+      expect(text, before).toBe(before)
+    }
+    // A quote another line closes swallows the assignment: still never a
+    // second copy, and a human is told to look.
+    for (const before of [
+      `NOTE="starts here\nBREW_API_KEY="${existing}"\n`,
+      'BREW_API_KEY:\n',
+    ]) {
+      const { text, results } = ensureEnvVars(before, [
+        { name: 'BREW_API_KEY', value: SECRET },
+      ])
+      expect(results, before).toEqual([
+        { name: 'BREW_API_KEY', action: 'needs-review' },
+      ])
+      expect(text, before).toBe(before)
+      expect(JSON.stringify(results)).not.toContain(existing)
+      expect(JSON.stringify(results)).not.toContain(SECRET)
+    }
+  })
+
+  it('reads an unterminated quote as dotenv does, one line', () => {
+    const file = parseEnv('A="open\nB=2\n')
+    expect(getEnvValue(file, 'A')).toBe('"open')
+    expect(getEnvValue(file, 'B')).toBe('2')
+    expect(serializeEnv(file)).toBe('A="open\nB=2\n')
+    expect(getEnvValue(parseEnv('C: three # note\n'), 'C')).toBe('three')
+  })
+
   it('refuses secrets under browser-exposed names', () => {
     for (const name of [
       'NEXT_PUBLIC_BREW_API_KEY',

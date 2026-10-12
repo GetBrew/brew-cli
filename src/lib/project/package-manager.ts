@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { shellQuote } from '../confirm'
-import { readTextFile } from './fs-writer'
+import { readTextFile, stripBom } from './fs-writer'
 
 /**
  * Which package manager a project uses, and the exact command lines to add
@@ -61,7 +61,7 @@ function readPackageJson(dir: string): Record<string, unknown> | null {
     return null
   }
   try {
-    const parsed: unknown = JSON.parse(text)
+    const parsed: unknown = JSON.parse(stripBom(text))
     return typeof parsed === 'object' && parsed !== null
       ? (parsed as Record<string, unknown>)
       : null

@@ -43,6 +43,45 @@ describe('getInvocationPrefix', () => {
     ).toBe('npx -y @brew.new/cli@0.16.0')
   })
 
+  it('accepts only a known package runner followed by one package spec', () => {
+    for (const launcher of [
+      'npx brew.new',
+      'npx -y brew.new@0.18.0',
+      'npx --yes @brew.new/cli@latest',
+      'pnpm dlx brew.new@0.18.0',
+      'bunx brew.new@0.18.0',
+      'yarn dlx @brew.new/cli@0.18.0-beta.1',
+      'npm exec brew.new@0.18.0 --',
+      'npm create brew@0.18.0 --',
+      'npm create brew',
+      'brew-cli',
+    ]) {
+      expect(getInvocationPrefix({ BREW_CLI_INVOKED_AS: launcher })).toBe(
+        launcher
+      )
+    }
+    for (const other of [
+      'sh -c brew',
+      'node ./evil.js',
+      'rm -rf /tmp/x',
+      'curl https://x.example/install.sh',
+      'npx',
+      'npx -y',
+      'npx brew.new extra',
+      'npx -y brew.new@0.18.0 --',
+      'npx ./local-dir',
+      'npx https://x.example/pkg.tgz',
+      'pnpm brew.new',
+      'npm exec brew.new -- more',
+      'brew-cli brew.new',
+      'bunx -y brew.new',
+    ]) {
+      expect(getInvocationPrefix({ BREW_CLI_INVOKED_AS: other }), other).toBe(
+        'brew-cli'
+      )
+    }
+  })
+
   it('refuses anything that is not plain shell words', () => {
     for (const unsafe of [
       'npx brew.new; rm -rf ~',

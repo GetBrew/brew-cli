@@ -33,6 +33,12 @@ export type EnsureVarAction =
   | 'filled'
   /** The variable already had a value: left exactly as it was. */
   | 'kept-existing'
+  /**
+   * A line names the variable, but the file does not parse cleanly around
+   * it (a quote another line closes): left exactly as it was, never
+   * appended a second time. A human should look at the file.
+   */
+  | 'needs-review'
 
 export type EnsureVarResult = {
   readonly name: string
@@ -68,8 +74,20 @@ export class EnvSecretExposureError extends Error {
   }
 }
 
-const VAR_LINE = /^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_.-]*)\s*=\s*(.*)$/
+/** `KEY=value`, `export KEY=value`, and dotenv's YAML-ish `KEY: value`. */
+const VAR_LINE =
+  /^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_.-]*)(?:\s*=\s*|:\s+)(.*)$/
 const VALID_NAME = /^[A-Za-z_][A-Za-z0-9_]*$/
+
+/**
+ * Whether any physical line of `text` assigns `name` (`=` or `:`, with or
+ * without `export`), however the lines around it parse. `name` is a
+ * validated variable name (`VALID_NAME`): no regex metacharacters.
+ */
+function mentionsAssignment(text: string, name: string): boolean {
+  const pattern = new RegExp(`^\\s*(?:export\\s+)?${name}\\s*[=:]`)
+  return text.split('\n').some((line) => pattern.test(line))
+}
 
 export function parseEnv(text: string): EnvFile {
   const eol = text.includes('\r\n') ? '\r\n' : '\n'
@@ -97,17 +115,23 @@ export function parseEnv(text: string): EnvFile {
       const rawLines = [raw]
       let body = rest.slice(1)
       let close = findClosingQuote(body, quote)
-      while (close === -1 && index + 1 < source.length) {
-        index += 1
-        const next = source[index] ?? ''
+      let end = index
+      while (close === -1 && end + 1 < source.length) {
+        end += 1
+        const next = source[end] ?? ''
         rawLines.push(next)
         body = `${body}\n${next.replace(/\r$/, '')}`
         close = findClosingQuote(body, quote)
       }
-      const inner = close === -1 ? body : body.slice(0, close)
-      const value = quote === '"' ? unescapeDouble(inner) : inner
-      lines.push({ kind: 'var', key, value, raw: rawLines.join('\n') })
-      continue
+      if (close !== -1) {
+        index = end
+        const inner = body.slice(0, close)
+        const value = quote === '"' ? unescapeDouble(inner) : inner
+        lines.push({ kind: 'var', key, value, raw: rawLines.join('\n') })
+        continue
+      }
+      // Never closed: dotenv reads this one line as an unquoted value, and
+      // the lines after it as their own assignments.
     }
     // An unquoted value ends at a ` #` comment, or is one (`KEY= # todo`).
     const comment = rest.search(/(?:^|\s)#/)
@@ -189,8 +213,10 @@ export function formatEnvAssignment(name: string, value: string): string {
 /**
  * Makes sure `name` has a value, without ever replacing one: absent →
  * appended (`added`), present but empty → set in place (`filled`),
- * present → untouched (`kept-existing`). Secrets (the default) refuse a
- * browser-exposed name before anything changes.
+ * present → untouched (`kept-existing`), named on a line the parser could
+ * not read as an assignment → untouched (`needs-review`), never a second
+ * copy. Secrets (the default) refuse a browser-exposed name before
+ * anything changes.
  */
 export function ensureVar(
   file: EnvFile,
@@ -230,6 +256,9 @@ export function ensureVar(
       }
     })
     return { file: { ...file, lines }, result: { name, action: 'filled' } }
+  }
+  if (mentionsAssignment(serializeEnv(file), name)) {
+    return { file, result: { name, action: 'needs-review' } }
   }
   const cr = file.eol === '\r\n' ? '\r' : ''
   const previous = file.lines.map((line, index) =>

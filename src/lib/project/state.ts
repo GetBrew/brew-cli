@@ -1,5 +1,5 @@
 import { join } from 'node:path'
-import { readTextFile } from './fs-writer'
+import { readTextFile, stripBom } from './fs-writer'
 
 /**
  * `brew.json`: the project file `init` writes and commits, so re-running it
@@ -214,7 +214,7 @@ export function validateBrewState(value: unknown): ParsedBrewState {
 export function parseBrewState(text: string): ParsedBrewState {
   let value: unknown
   try {
-    value = JSON.parse(text)
+    value = JSON.parse(stripBom(text))
   } catch (error) {
     return {
       ok: false,

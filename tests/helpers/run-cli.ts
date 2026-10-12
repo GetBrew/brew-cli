@@ -27,10 +27,21 @@ export type RunCliOptions = {
   readonly signal?: AbortSignal
   /** Working directory for project commands (`mcp install`, `init`). */
   readonly cwd?: string
-  /** Stands in for child processes (git, package managers). */
+  /**
+   * Stands in for child processes (git, package managers). Absent: every
+   * spawn fails as if the program were not installed, so a test never runs
+   * a host binary.
+   */
   readonly spawn?: SpawnFn
   /** Records URLs a command asks to open. */
   readonly openUrl?: (url: string) => Promise<void>
+}
+
+/** A spawn that finds no program, as on a host without it. */
+const noHostSpawn: SpawnFn = async (command) => {
+  const error: NodeJS.ErrnoException = new Error(`spawn ${command} ENOENT`)
+  error.code = 'ENOENT'
+  throw error
 }
 
 export type RunCliResult = {
@@ -65,7 +76,7 @@ export async function runCli(
     readLine: async () => options.promptAnswer ?? '',
     ...(options.signal === undefined ? {} : { signal: options.signal }),
     ...(options.cwd === undefined ? {} : { cwd: options.cwd }),
-    ...(options.spawn === undefined ? {} : { spawn: options.spawn }),
+    spawn: options.spawn ?? noHostSpawn,
     ...(options.openUrl === undefined ? {} : { openUrl: options.openUrl }),
   }
   const code = await run(
