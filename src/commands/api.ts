@@ -9,6 +9,7 @@ import {
   responseToApiError,
   tryParseJson,
 } from '../lib/raw-request'
+import type { CliContext } from '../lib/types'
 
 const METHODS = ['GET', 'POST', 'PATCH', 'DELETE'] as const
 
@@ -140,13 +141,13 @@ function parsePath(value: string | undefined): string {
 }
 
 async function readBody(
-  ctx: { readonly io: { readonly readStdin: () => Promise<string> } },
+  ctx: Pick<CliContext, 'io' | 'signal'>,
   data: unknown
 ): Promise<string | undefined> {
   if (typeof data !== 'string') {
     return
   }
-  const raw = data === '-' ? await ctx.io.readStdin() : data
+  const raw = data === '-' ? await ctx.io.readStdin(ctx.signal) : data
   try {
     JSON.parse(raw)
   } catch {

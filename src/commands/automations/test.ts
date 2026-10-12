@@ -1,5 +1,5 @@
 import type { AutomationsResource } from '@brew.new/sdk'
-import { enforceConfirmation } from '../../lib/confirm'
+import { enforceStdinConfirmation } from '../../lib/confirm'
 import { defineCommand } from '../../lib/define-command'
 import {
   asSdkInput,
@@ -52,23 +52,11 @@ export const automationsTestCommand = defineCommand({
   run: async ({ ctx, args, flags }) => {
     const base = await readJsonFlag(ctx, flags.input, '--input')
     const body = automationTestBody(base)
-    if (flags.input === '-') {
-      const input = JSON.stringify(body)
-      await enforceConfirmation(
-        automationsTestCommand,
-        { ctx, args, flags: { ...flags, input } },
-        {
-          // Stdin is already consumed; the confirmation must carry its body.
-          confirmationArgv: ctx.rawArgv.map((token, index) =>
-            token === '--input=-'
-              ? `--input=${input}`
-              : token === '-' && ctx.rawArgv[index - 1] === '--input'
-                ? input
-                : token
-          ),
-        }
-      )
-    }
+    await enforceStdinConfirmation(
+      automationsTestCommand,
+      { ctx, args, flags },
+      body
+    )
     const result = await ctx.client().automations.test(
       asSdkInput<TestAutomationInput>({
         ...body,

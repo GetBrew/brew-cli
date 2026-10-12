@@ -304,6 +304,55 @@ describe('automations run (confirmation protocol)', () => {
     expect(body).toEqual({ dryRun: true })
   })
 
+  it.each([['--input', '-'], ['--input=-']])(
+    'previews a complete stdin request without confirmation (%j)',
+    async (...inputArgs) => {
+      const input = { dryRun: true, scheduledAt: '2099-01-01T00:00:00Z' }
+      const bodies: unknown[] = []
+      server.use(
+        http.post(`${API}/v1/automations/auto_1/run`, async ({ request }) => {
+          bodies.push(await request.json())
+          return HttpResponse.json({
+            dryRun: true,
+            automationId: 'auto_1',
+            recipientCount: 12_400,
+          })
+        })
+      )
+      const result = await runCli(
+        ['automations', 'run', 'auto_1', ...inputArgs],
+        { env: env(), stdin: JSON.stringify(input), extraCommands: EXTRA }
+      )
+      expect(result.code).toBe(0)
+      expect(bodies).toEqual([input])
+      expect(result.json).toMatchObject({
+        dryRun: true,
+        recipientCount: 12_400,
+      })
+    }
+  )
+
+  it('keeps a live stdin run behind confirmation before requesting the API', async () => {
+    const bodies: unknown[] = []
+    server.use(
+      http.post(`${API}/v1/automations/auto_1/run`, async ({ request }) => {
+        bodies.push(await request.json())
+        return HttpResponse.json({ status: 'queued', audienceRunId: 'arun_1' })
+      })
+    )
+    const result = await runCli(
+      ['automations', 'run', 'auto_1', '--input', '-'],
+      {
+        env: env(),
+        stdin: '{"scheduledAt":"2099-01-01T00:00:00Z"}',
+        extraCommands: EXTRA,
+      }
+    )
+    expect(result.code).toBe(4)
+    expect(result.json).toMatchObject({ confirmationRequired: true })
+    expect(bodies).toEqual([])
+  })
+
   it('gates a live run with exit 4 when unconfirmed', async () => {
     const result = await runCli(['automations', 'run', 'auto_1'], {
       env: env(),

@@ -49,6 +49,44 @@ export function buildConfirmCommand(rawArgv: readonly string[]): string {
   return ['brew-cli', ...rerunTokens(rawArgv), '--yes'].join(' ')
 }
 
+/** Confirm stdin requests after parsing, carrying the merged body on a re-run. */
+export async function enforceStdinConfirmation(
+  spec: CommandSpec,
+  invocation: CommandInvocation,
+  input: Readonly<Record<string, unknown>>
+): Promise<void> {
+  if (invocation.flags.input !== '-') {
+    return
+  }
+  const serializedInput = JSON.stringify(input)
+  await enforceConfirmation(
+    spec,
+    { ...invocation, flags: { ...invocation.flags, input: serializedInput } },
+    {
+      confirmationArgv: inlineStdinInputArgv(
+        invocation.ctx.rawArgv,
+        serializedInput
+      ),
+    }
+  )
+}
+
+/** Consumed JSON stdin must travel inline when confirmation reruns a command. */
+function inlineStdinInputArgv(
+  rawArgv: readonly string[],
+  input: string
+): readonly string[] {
+  return rawArgv.map((token, index) => {
+    if (token === '--input=-') {
+      return `--input=${input}`
+    }
+    if (token === '-' && rawArgv[index - 1] === '--input') {
+      return input
+    }
+    return token
+  })
+}
+
 /**
  * The command line that replays an interrupted or timed-out write: the same
  * argv with the idempotency key its request carried, so the API returns the

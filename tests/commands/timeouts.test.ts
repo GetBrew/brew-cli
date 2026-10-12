@@ -2,7 +2,7 @@ import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { HttpResponse, http } from 'msw'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { server } from '../helpers/msw-server'
 import { runCli } from '../helpers/run-cli'
 
@@ -48,6 +48,67 @@ function stalledBody(): Response {
 }
 
 describe('--timeout', () => {
+  it(
+    'bounds open stdin before an automation test makes an API request',
+    STALL,
+    async () => {
+      const bodies: unknown[] = []
+      server.use(
+        http.post(`${API}/v1/automations/am_1/test`, async ({ request }) => {
+          bodies.push(await request.json())
+          return HttpResponse.json({
+            status: 'test_started',
+            automationRunIds: [],
+          })
+        })
+      )
+      let releaseInput: ((input: string) => void) | undefined
+      const readStdin = vi.fn(
+        (signal?: AbortSignal) =>
+          new Promise<string>((resolve, reject) => {
+            releaseInput = resolve
+            const abort = () => {
+              signal?.removeEventListener('abort', abort)
+              reject(signal?.reason)
+            }
+            if (signal?.aborted) {
+              abort()
+            } else {
+              signal?.addEventListener('abort', abort, { once: true })
+            }
+          })
+      )
+      const pending = runCli(
+        ['automations', 'test', 'am_1', '--input', '-', '--timeout', '50ms'],
+        { env: env(), readStdin }
+      )
+      let guardTimer: ReturnType<typeof setTimeout> | undefined
+      try {
+        const result = await Promise.race([
+          pending,
+          new Promise<undefined>((resolve) => {
+            guardTimer = setTimeout(() => resolve(undefined), 300)
+          }),
+        ])
+        expect(
+          result,
+          'stdin must stop when the command deadline passes'
+        ).toBeDefined()
+        if (result === undefined) {
+          return
+        }
+        expect(result.code).toBe(1)
+        expect(envelopeOf(result.stderr).code).toBe('CLI_TIMEOUT')
+        expect(readStdin.mock.calls[0]?.[0]?.aborted).toBe(true)
+        expect(bodies).toEqual([])
+      } finally {
+        clearTimeout(guardTimer)
+        releaseInput?.('{}')
+        await pending
+      }
+    }
+  )
+
   it('bounds a request that never answers', STALL, async () => {
     server.use(http.get(`${API}/v1/domains`, neverAnswers))
     const started = performance.now()

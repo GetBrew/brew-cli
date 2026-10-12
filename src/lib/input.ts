@@ -21,7 +21,7 @@ export async function readJsonFlag(
   if (typeof value !== 'string') {
     return
   }
-  const raw = value === '-' ? await ctx.io.readStdin() : value
+  const raw = value === '-' ? await ctx.io.readStdin(ctx.signal) : value
   try {
     return JSON.parse(raw) as unknown
   } catch {
@@ -41,7 +41,7 @@ export async function readTextFlag(
     return
   }
   if (value === '-') {
-    return await ctx.io.readStdin()
+    return await ctx.io.readStdin(ctx.signal)
   }
   try {
     return readFileSync(value, 'utf8')

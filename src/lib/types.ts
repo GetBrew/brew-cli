@@ -11,7 +11,8 @@ export type CliIo = {
   readonly isTtyOut: boolean
   readonly isTtyIn: boolean
   readonly env: Readonly<Record<string, string | undefined>>
-  readonly readStdin: () => Promise<string>
+  /** When supplied, the command signal closes input on interrupt or timeout. */
+  readonly readStdin: (signal?: AbortSignal) => Promise<string>
   readonly readLine: (prompt: string) => Promise<string>
   /**
    * Aborts on SIGINT/SIGTERM with a `CliInterruptError` (see
