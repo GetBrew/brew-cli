@@ -55,14 +55,17 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "parity": "vitest run tests/parity-sdk.test.ts tests/parity-spec.test.ts",
-    "check": "bun run tsc && bun run lint && bun run test && bun run docs:commands:check && bun run generate:skills:check",
+    "check": "bun run tsc && bun run lint && bun run test && bun run docs:commands:check && bun run generate:skills:check && bun run sync:launchers:check",
     "docs:commands": "bun run scripts/generate-command-docs.ts",
     "docs:commands:check": "bun run scripts/generate-command-docs.ts --check",
     "generate:types": "node scripts/generate-types.mjs",
     "generate:skills": "bun run scripts/generate-skills.ts",
     "generate:skills:check": "bun run scripts/generate-skills.ts --check",
     "prepublishOnly": "bun run clean && bun run tsc && bun run lint && bun run test && bun run generate:skills:check && bun run build",
-    "smoke:signals": "bun run scripts/signal-smoke.ts"
+    "smoke:signals": "bun run scripts/signal-smoke.ts",
+    "sync:launchers": "bun run scripts/sync-launchers.ts",
+    "sync:launchers:check": "bun run scripts/sync-launchers.ts --check",
+    "smoke:launchers": "bun run scripts/smoke-launchers.ts"
   },
   "dependencies": {
     "@brew.new/sdk": "git+https://github.com/GetBrew/typescript-sdk.git#a5ce43d47c51793dc3fb368d744d56deb91c3368",
