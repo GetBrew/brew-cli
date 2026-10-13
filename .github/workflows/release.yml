@@ -42,7 +42,11 @@ jobs:
       - run: bun run test
       - run: bun run docs:commands:check
       - run: bun run generate:skills:check
+      # The launchers ship the CLI's own version, pinned exactly.
+      - run: bun run sync:launchers:check
       - run: bun run build
+      - name: Launcher pack smoke
+        run: bun run smoke:launchers
       - name: Compile standalone binaries
         run: bun run scripts/build-binaries.ts
       - name: Create GitHub Release
@@ -60,6 +64,26 @@ jobs:
             exit 0
           fi
           npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      # `npx brew.new` and `npm create brew`: thin launchers pinned to this
+      # CLI version, published after it. A version npm already has is
+      # skipped, so re-running the workflow is safe.
+      - name: Publish launchers (brew.new, create-brew)
+        run: |
+          if [ -z "$NODE_AUTH_TOKEN" ]; then
+            echo "NPM_TOKEN secret not set — skipping launcher publish."
+            exit 0
+          fi
+          VERSION=$(node -p "require('./package.json').version")
+          bun run scripts/smoke-launchers.ts --registry
+          for pkg in brew.new create-brew; do
+            if npm view "$pkg@$VERSION" version >/dev/null 2>&1; then
+              echo "$pkg@$VERSION is already on npm — skipping."
+              continue
+            fi
+            (cd "packages/launchers/$pkg" && npm publish --provenance --access public)
+          done
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       - name: Bump Homebrew tap
