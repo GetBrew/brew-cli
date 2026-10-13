@@ -50,6 +50,11 @@ export const SDK_SKIP_LIST: readonly SdkSkip[] = [
     reason: 'auto-pager covered by `notifications list --all`',
   },
   {
+    sdkPath: 'automations.triggers.fireByKey',
+    reason:
+      'alias of `send` (the same by-key fire route), exposed as `send <key>`',
+  },
+  {
     sdkPath: 'brand.update',
     reason: 'SDK alias of brand.patch, exposed as `brand update`',
   },

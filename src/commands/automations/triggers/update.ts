@@ -28,10 +28,16 @@ export const automationsTriggersUpdateCommand = defineCommand({
   flags: [
     { flag: '--title <title>', summary: 'New title' },
     { flag: '--description <text>', summary: 'New description' },
+    {
+      flag: '--key <key>',
+      summary:
+        'Set the trigger key your code fires by (clear it with --input \'{"key":null}\')',
+    },
     INPUT_FLAG,
   ],
   examples: [
     'brew-cli automations triggers update tev_123 --title user.signup.v2',
+    'brew-cli automations triggers update tev_123 --key user.signup',
     `brew-cli automations triggers update tev_123 --input '{"payloadSchema":{"type":"object","fields":[]}}'`,
   ],
   run: async ({ ctx, args, flags }) => {
@@ -39,6 +45,7 @@ export const automationsTriggersUpdateCommand = defineCommand({
     const input = mergeInput(base, {
       title: flagString(flags.title),
       description: flagString(flags.description),
+      key: flagString(flags.key),
     })
     if (Object.keys(input).length === 0) {
       throw new CliUsageError('Nothing to update — pass flags or --input.')
