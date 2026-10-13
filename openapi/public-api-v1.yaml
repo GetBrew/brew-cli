@@ -26779,7 +26779,7 @@ paths:
           example: kx7b3s7fapqz8mjm12ekz1kxdx87yceg
       x-brew-scope: emails
       x-brew-brand-scope: brand
-      x-brew-idempotency: none
+      x-brew-idempotency: disabled
       x-brew-credited: false
       x-brew-rate-policy: emails.edit
   /v1/canvas/sessions/{sessionId}/refresh:
@@ -27083,7 +27083,7 @@ paths:
                       docs: https://docs.brew.new/api-reference/api/errors
       x-brew-scope: emails
       x-brew-brand-scope: brand
-      x-brew-idempotency: none
+      x-brew-idempotency: disabled
       x-brew-credited: false
       x-brew-rate-policy: emails.edit
   /v1/canvas/sessions/{sessionId}:
