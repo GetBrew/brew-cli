@@ -22,9 +22,9 @@ a `confirmCommand` otherwise, `--yes` to proceed).
 
 | Command | Class | API route | Summary |
 | --- | --- | --- | --- |
-| `brew-cli login` | write | — | Store an API key for this machine (validated against the API) |
+| `brew-cli login` | write | — | Sign in through the browser, or store an API key, for this machine |
 | `brew-cli logout` | write | — | Remove the stored API key from this machine |
-| `brew-cli whoami` | read | — | Show the resolved credential, brand, and API target |
+| `brew-cli whoami` | read | — | Show the resolved credential, brand, API target, and who approved a browser sign-in |
 | `brew-cli config list` | read | — | Show the stored configuration (API key masked) |
 | `brew-cli config get` | read | — | Read one stored configuration value |
 | `brew-cli config set` | write | — | Store a configuration value (brandId or apiUrl) |
@@ -177,12 +177,21 @@ a `confirmCommand` otherwise, `--yes` to proceed).
 
 ### brew-cli login
 
-Store an API key for this machine (validated against the API)
+Sign in through the browser, or store an API key, for this machine
 
 - Class: write
+- `--browser` — Sign in through the browser (the default on an interactive terminal)
+- `--paste` — Paste an API key instead (or pipe one on stdin)
+- `--no-open` — Print the sign-in link and code without opening a browser
+- `--wait <duration>` — Wait at most this long for approval (90s, 5m), then exit 3 with a pending result to --resume
+- `--no-wait` — Print the sign-in link and code, and exit 3 at once with a pending result (agents: with --json, then --resume)
+- `--resume` — Collect the pending browser sign-in started with --no-wait
 
 ```bash
 brew-cli login
+brew-cli login --no-wait --json
+brew-cli login --resume
+brew-cli login --no-open
 brew-cli login --api-key brew_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 echo "$BREW_API_KEY" | brew-cli login
 ```
@@ -199,7 +208,7 @@ brew-cli logout
 
 ### brew-cli whoami
 
-Show the resolved credential, brand, and API target
+Show the resolved credential, brand, API target, and who approved a browser sign-in
 
 - Class: read
 
@@ -223,7 +232,7 @@ brew-cli config list
 Read one stored configuration value
 
 - Class: read
-- Argument `key` — brandId | apiUrl | apiKey
+- Argument `key` — brandId | apiUrl | apiKey | userEmail | brandName
 
 ```bash
 brew-cli config get brandId

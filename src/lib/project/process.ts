@@ -90,21 +90,63 @@ export const defaultSpawn: SpawnFn = (command, args, options = {}) =>
   })
 
 /**
+ * The program that opens `url` in the default browser, and its argv (the URL
+ * is always one entry, never shell-interpreted). WSL runs Linux with the
+ * browser on the Windows side, so `wslview` (wslu) hands the URL across.
+ * Windows uses `rundll32 url.dll,FileProtocolHandler`, which takes the URL
+ * as a single argument; `cmd /c start` would parse it again and split it at
+ * `&`.
+ */
+export function browserOpener(
+  url: string,
+  platform: NodeJS.Platform,
+  env: Readonly<Record<string, string | undefined>>
+): { readonly command: string; readonly args: readonly string[] } {
+  if (platform === 'darwin') {
+    return { command: 'open', args: [url] }
+  }
+  if (platform === 'win32') {
+    return { command: 'rundll32', args: ['url.dll,FileProtocolHandler', url] }
+  }
+  if (platform === 'linux' && isWsl(env)) {
+    return { command: 'wslview', args: [url] }
+  }
+  return { command: 'xdg-open', args: [url] }
+}
+
+/** Windows Subsystem for Linux sets these in every shell it starts. */
+export function isWsl(
+  env: Readonly<Record<string, string | undefined>>
+): boolean {
+  return Boolean(env.WSL_DISTRO_NAME) || Boolean(env.WSL_INTEROP)
+}
+
+/**
  * Hands a URL to the platform opener. Only absolute URLs with a scheme are
- * accepted, and the URL is one argv entry (never shell-interpreted).
+ * accepted. The opener runs detached: `xdg-open` can stay in the foreground
+ * as long as the browser it started, and the CLI must neither wait for it
+ * nor be kept alive by it. Resolves once the opener started; rejects when
+ * it could not be (ENOENT).
  */
 export async function defaultOpenUrl(
   url: string,
-  spawn: SpawnFn = defaultSpawn
+  env: Readonly<Record<string, string | undefined>> = process.env
 ): Promise<void> {
   if (!/^[a-z][a-z0-9+.-]*:/i.test(url)) {
     throw new Error('Refusing to open a URL without a scheme.')
   }
-  const [command, args]: readonly [string, readonly string[]] =
-    process.platform === 'darwin'
-      ? ['open', [url]]
-      : process.platform === 'win32'
-        ? ['rundll32', ['url.dll,FileProtocolHandler', url]]
-        : ['xdg-open', [url]]
-  await spawn(command, args)
+  const { command, args } = browserOpener(url, process.platform, env)
+  await new Promise<void>((resolve, reject) => {
+    const child = nodeSpawn(command, [...args], {
+      detached: true,
+      stdio: 'ignore',
+      shell: false,
+      windowsHide: true,
+    })
+    child.once('error', reject)
+    child.once('spawn', () => {
+      child.unref()
+      resolve()
+    })
+  })
 }

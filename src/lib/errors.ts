@@ -78,13 +78,19 @@ export class CliConnectionError extends Error {
 /** Bad invocation: malformed input, unusable flag combinations. */
 export class CliUsageError extends Error {}
 
-/** Missing or unusable credentials, detected before any request is sent. */
+/**
+ * Missing or unusable credentials (exit 3): none was found before any
+ * request was sent, or a browser sign-in ended without one (denied,
+ * expired). `code` names which, for agents; the default is `CLI_AUTH`.
+ */
 export class CliAuthError extends Error {
   readonly suggestion: string
+  readonly code: string
 
-  constructor(message: string, suggestion: string) {
+  constructor(message: string, suggestion: string, code = 'CLI_AUTH') {
     super(message)
     this.suggestion = suggestion
+    this.code = code
   }
 }
 
@@ -406,7 +412,7 @@ function baseEnvelope(error: unknown, context: ErrorContext): CliErrorEnvelope {
   }
   if (error instanceof CliAuthError) {
     return {
-      code: 'CLI_AUTH',
+      code: error.code,
       type: 'authentication_error',
       message: error.message,
       suggestion: error.suggestion,
@@ -511,6 +517,17 @@ function withReplayAdvice(
       ? { ...envelope, suggestion: 'Nothing was sent.' }
       : envelope
   }
+  if (isSignInPath(context.request.path)) {
+    // `login`'s session routes: a re-run starts a fresh sign-in, and
+    // nothing is stored until one is approved and collected.
+    return {
+      ...envelope,
+      suggestion:
+        envelope.code === 'CLI_INTERRUPTED'
+          ? 'Nothing was stored on this machine: run the command again.'
+          : 'Check the connection, then run the command again.',
+    }
+  }
   if (context.isRead === true || context.request.method === 'GET') {
     return envelope.code === 'CLI_INTERRUPTED'
       ? { ...envelope, suggestion: 'It only reads; nothing was changed.' }
@@ -530,6 +547,11 @@ function withReplayAdvice(
     idempotencyKey: key,
     ...(retryCommand === undefined ? {} : { retryCommand }),
   }
+}
+
+/** The browser sign-in routes (`/api/cli/sessions…`), off the public API. */
+function isSignInPath(path: string): boolean {
+  return /\/api\/cli\/sessions(?:\/|$|\?)/.test(path)
 }
 
 function isUnknownOutcome(envelope: CliErrorEnvelope): boolean {
