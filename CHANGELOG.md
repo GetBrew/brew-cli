@@ -2,7 +2,42 @@
 
 ## Unreleased
 
+Needs `@brew.new/sdk` `^12.3.0` (`brew.send`,
+`automations.triggers.fireByKey`, `appEmails`).
+
 ### Added
+
+- **`brew-cli send <key>`** sends the app email behind a trigger key: the
+  same call as `brew.send(key, payload)`
+  (`POST /v1/automations/triggers/by-key/{triggerKey}/fire`). `--to
+  <email>` sets `payload.email` (over `--data`), `--data <json|->` carries
+  the rest of the payload, `--idempotency-key` makes a retry replay.
+  Destructive like `automations triggers fire`: exit 4 without `--yes`.
+  A send with no recipient exits 2 before any request.
+  `automations.triggers.fireByKey` is the same route, so it is a reviewed
+  SDK skip (alias of `send`).
+- **`brew-cli app-emails list | get <key> | upsert <key> | kit`** bind
+  `GET /v1/app-emails`, `GET|PUT /v1/app-emails/{triggerKey}` and
+  `POST /v1/app-emails/kit`. `list` and `get` show each key's sender
+  (`domain`, `sandbox`, `none`) and readiness. `upsert` sets up one app
+  email (starter with `--starter`, or your own `--source-file` with
+  `--format` taken from `.html`, `.mjml`, `.jsx` or `.tsx`; `--title`,
+  `--subject`, `--preview-text`, `--domain`, `--overwrite`) and publishes
+  it, so it confirms; `--no-publish` saves without the gate. `kit` sets up
+  the auth and lifecycle starter kit (`--sets`, `--stack`, `--keys`,
+  `--domain`, `--overwrite`, `--idempotency-key`), confirms, prints
+  per-key results and exits 1 when a key failed (run it again to finish).
+  Both use the SDK's 5-minute defaults as their whole-command deadline.
+- `automations triggers create --key <key>` and `automations triggers
+  update --key <key>` set the stable key code fires by; `triggers list`
+  gains a `KEY` column (`get` returns `key` and `appEmail` in the row).
+- `brew-cli types` appends a `BrewTriggerKeyRegistry` augmentation for
+  every keyed trigger, so `brew.send('order.paid', …)` checks the key and
+  the payload at compile time. A workspace with no keyed triggers gets
+  the same bytes as before (no `--check` drift); `--no-registry` leaves
+  the block out.
+- The vendored spec now carries the by-key fire and the app-emails
+  routes (brew-v2 `claude/app-emails-setup`).
 
 - **`brew-cli login` signs in through the browser.** On an interactive
   terminal it starts a sign-in on brew.new, prints the link and a code
