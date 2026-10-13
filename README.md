@@ -28,7 +28,7 @@ are attached to every [GitHub Release](https://github.com/GetBrew/brew-cli/relea
 ## Quick start
 
 ```bash
-brew-cli login                       # paste an API key from https://brew.new/settings/api
+brew-cli login                       # sign in through the browser (or --paste a key)
 brew-cli doctor                      # trust check: auth, reachability, CLI-vs-API drift (exit-code gated)
 brew-cli whoami
 brew-cli contacts search --filter email:equals:jane@example.com
@@ -89,6 +89,49 @@ VS Code results carry a one-click install `deeplink`.
 
 ## Authentication
 
+### Sign in through the browser
+
+```bash
+brew-cli login            # opens brew.new, then waits for approval
+brew-cli login --no-open  # print the link instead of opening a browser
+```
+
+On an interactive terminal, `login` starts a sign-in on brew.new, prints
+the link and a code, and opens the page in your browser. Check that the
+code on the page matches the one in your terminal, pick a brand, and
+approve. The CLI then prints `Signed in as <you> to <brand>` and stores a
+new brand key, named `CLI · <computer>`, in `~/.config/brew-cli/config.json`
+(mode 0600). It is an ordinary brand key: it is listed, and can be revoked,
+under Settings, API keys.
+
+The key never passes through the browser. The CLI makes a one-time key
+pair, Brew encrypts the new key to it on approval, and the CLI collects it
+by polling, so sign-in also works from GitHub Codespaces, Replit, Gitpod,
+an SSH session or CI: there the CLI does not try to open a browser, and you
+open the link on any device.
+
+For agents and scripts, which cannot wait at a prompt:
+
+```bash
+brew-cli login --no-wait --json   # exit 3: {"status":"pending","verificationUrl":…,"userCode":…,"expiresAt":…,"resumeCommand":…}
+brew-cli login --resume           # after the person approved: collects and stores the key
+brew-cli login --resume --wait 2m # wait at most two minutes, else exit 3 pending again
+```
+
+`--no-wait` keeps the pending sign-in (its poll secret and private key) in
+`~/.config/brew-cli/pending-auth.json` (mode 0600) until it is approved,
+denied or expired. A denied or expired sign-in exits 3 with
+`CLI_LOGIN_DENIED` or `CLI_LOGIN_EXPIRED`; run `login` again. A sign-in
+lasts ten minutes.
+
+### API keys
+
+```bash
+brew-cli login --paste                        # paste a key at the prompt
+brew-cli login --api-key brew_xxxxxxxx        # or pass it
+echo "$BREW_API_KEY" | brew-cli login         # or pipe it
+```
+
 | Precedence | Source |
 | --- | --- |
 | 1 | `--api-key <key>` flag |
@@ -133,10 +176,12 @@ Designed for AI agents as first-class users:
   trigger fires) never hang waiting for input: non-interactive callers
   get exit `4` plus a JSON envelope containing a ready-to-run
   `confirmCommand`; pass `--yes` to proceed. Humans on a TTY get a y/N
-  prompt. Test sends (`emails send --test`) skip the gate. Printed
-  commands (`confirmCommand`, `retryCommand`, "run … login") start the
-  way the CLI was invoked: a wrapper that runs it through a package
-  runner sets `BREW_CLI_INVOKED_AS` (for example
+  prompt. Test sends (`emails send --test`) skip the gate. Sign-in works
+  the same way: `login --no-wait --json` exits `3` with the link and code
+  to show a person, and a `resumeCommand` to run once they approved.
+  Printed commands (`confirmCommand`, `retryCommand`, `resumeCommand`,
+  "run … login") start the way the CLI was invoked: a wrapper that runs it
+  through a package runner sets `BREW_CLI_INVOKED_AS` (for example
   `npx -y @brew.new/cli@<version>`), so they re-run through it.
 - **Saved email recovery** — `409 EMAIL_RESULT_UNAVAILABLE` means the
   generation or edit committed. Do not repeat the write. Read the exact

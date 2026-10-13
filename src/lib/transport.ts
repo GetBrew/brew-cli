@@ -142,6 +142,14 @@ const MAX_TIMEOUT_MS = 24 * 3_600_000
  * Anything else, zero, or over a day is a usage error (exit 2).
  */
 export function parseTimeoutFlag(value: unknown): number | undefined {
+  return parseDurationFlag(value, '--timeout')
+}
+
+/** A duration flag in the `--timeout` grammar, in ms (`login --wait`). */
+export function parseDurationFlag(
+  value: unknown,
+  flag: string
+): number | undefined {
   if (value === undefined) {
     return
   }
@@ -151,7 +159,7 @@ export function parseTimeoutFlag(value: unknown): number | undefined {
     match === null ? Number.NaN : Math.round(Number(match[1]) * UNIT_MS[unit])
   if (!(ms >= 1 && ms <= MAX_TIMEOUT_MS)) {
     throw new CliUsageError(
-      `--timeout takes a positive duration up to 24h: 90, 90s, 1500ms or 5m (a bare number is seconds); got "${String(value)}".`
+      `${flag} takes a positive duration up to 24h: 90, 90s, 1500ms or 5m (a bare number is seconds); got "${String(value)}".`
     )
   }
   return ms
