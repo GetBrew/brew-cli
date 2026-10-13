@@ -53,7 +53,8 @@ plus the DX delta).
 ```bash
 # on a clean main with CI green
 npm version <patch|minor|major> --no-git-tag-version
-git add package.json && git commit -m "Release vX.Y.Z"
+bun run sync:launchers          # brew.new + create-brew follow the CLI version
+git add package.json packages/launchers && git commit -m "Release vX.Y.Z"
 git push origin main
 git tag vX.Y.Z
 git push origin vX.Y.Z        # <-- triggers .github/workflows/release.yml
@@ -69,7 +70,12 @@ The workflow then:
    darwin-arm64/x64, linux-x64/arm64, windows-x64
    (`scripts/build-binaries.ts`) and attaches them + `checksums.txt` to an
    auto-generated GitHub Release.
-5. Rewrites `Formula/brew-cli.rb` in `GetBrew/homebrew-tap`
+5. Publishes the launchers `brew.new` (`npx brew.new init`) and
+   `create-brew` (`npm create brew`) from `packages/launchers/`, after a
+   registry smoke install (`scripts/smoke-launchers.ts --registry`). Each
+   is the CLI's version, depends on exactly that `@brew.new/cli`, and is
+   skipped when npm already has the version.
+6. Rewrites `Formula/brew-cli.rb` in `GetBrew/homebrew-tap`
    (`scripts/update-tap.ts`; skipped with a notice when
    `TAP_GITHUB_TOKEN` is absent).
 
@@ -89,6 +95,11 @@ brew install getbrew/tap/brew-cli
 ```
 
 ## One-time setup
+
+- **The launcher names**: `brew.new` and `create-brew` must be owned on
+  npm by the account behind `NPM_TOKEN` (reserve them with a `0.0.x`
+  placeholder first), and the token must be allowed to publish unscoped
+  packages, or the launcher step fails after the CLI is out.
 
 - **`NPM_TOKEN`** (repo secret): npm Automation token with publish access
   to the `@brew.new` org — same recipe as
