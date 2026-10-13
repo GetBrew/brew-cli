@@ -1,5 +1,6 @@
 import { maskApiKey } from '../lib/client'
 import {
+  type ConfigKey,
   configPath,
   isConfigKey,
   readConfig,
@@ -27,7 +28,11 @@ export const configGetCommand = defineCommand({
   sdkMethod: null,
   commandClass: 'read',
   args: [
-    { name: 'key', summary: 'brandId | apiUrl | apiKey', isRequired: true },
+    {
+      name: 'key',
+      summary: 'brandId | apiUrl | apiKey | userEmail | brandName',
+      isRequired: true,
+    },
   ],
   examples: ['brew-cli config get brandId'],
   run: async ({ ctx, args }) => {
@@ -83,23 +88,23 @@ function maskedConfig(ctx: CliContext): Record<string, string | undefined> {
   }
 }
 
-function requireKnownKey(
-  value: string | undefined
-): 'apiKey' | 'apiUrl' | 'brandId' {
+function requireKnownKey(value: string | undefined): ConfigKey {
   if (value !== undefined && isConfigKey(value)) {
     return value
   }
-  throw new CliUsageError('Unknown key. Expected brandId, apiUrl, or apiKey.')
+  throw new CliUsageError(
+    'Unknown key. Expected brandId, apiUrl, apiKey, userEmail, or brandName.'
+  )
 }
 
 function requireSettableKey(
   value: string | undefined,
   ctx: CliContext
 ): 'apiUrl' | 'brandId' {
-  if (value === 'apiKey') {
+  if (value === 'apiKey' || value === 'userEmail' || value === 'brandName') {
     const prefix = getInvocationPrefix(ctx.io.env)
     throw new CliUsageError(
-      `The API key is managed by \`${prefix} login\` / \`${prefix} logout\`.`
+      `${value === 'apiKey' ? 'The API key is' : `${value} is`} managed by \`${prefix} login\` / \`${prefix} logout\`.`
     )
   }
   const key = requireKnownKey(value)
