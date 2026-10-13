@@ -2704,7 +2704,8 @@ export interface components {
             /** Format: uri */
             embedUrl: string;
             bootstrapToken: string;
-            expiresAt: number;
+            /** Format: date-time */
+            expiresAt: string;
             target: {
                 /** @enum {string} */
                 type: "group";

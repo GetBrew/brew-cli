@@ -333,7 +333,8 @@ components:
         bootstrapToken:
           type: string
         expiresAt:
-          type: number
+          type: string
+          format: date-time
         target:
           oneOf:
             - type: object
