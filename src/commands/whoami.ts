@@ -1,11 +1,13 @@
 import { BrewApiError } from '@brew.new/sdk'
 import { maskApiKey, resolveAuth } from '../lib/client'
+import { readConfig } from '../lib/config-store'
 import { defineCommand } from '../lib/define-command'
 import { progress } from '../lib/output'
 
 export const whoamiCommand = defineCommand({
   path: ['whoami'],
-  summary: 'Show the resolved credential, brand, and API target',
+  summary:
+    'Show the resolved credential, brand, API target, and who approved a browser sign-in',
   sdkMethod: null,
   commandClass: 'read',
   examples: ['brew-cli whoami', 'brew-cli whoami --json'],
@@ -31,12 +33,18 @@ export const whoamiCommand = defineCommand({
         'Warning: could not reach /v1/usage — showing local credential state only.'
       )
     }
+    // Who approved the stored key's browser sign-in: it describes that key
+    // only, never one from --api-key or BREW_API_KEY.
+    const stored =
+      auth.apiKeySource === 'config' ? readConfig(ctx.io.env) : undefined
     return {
       data: {
         apiUrl: auth.apiUrl,
         apiKey: maskApiKey(auth.apiKey),
         apiKeySource: auth.apiKeySource,
         brandId: auth.brandId ?? null,
+        userEmail: stored?.userEmail ?? null,
+        brandName: stored?.brandName ?? null,
         usage,
       },
     }
