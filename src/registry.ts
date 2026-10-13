@@ -56,6 +56,9 @@ import { brandUpdateCommand } from './commands/brand/update'
 import { brandsCreateCommand } from './commands/brands/create'
 import { brandsGetCommand } from './commands/brands/get'
 import { brandsListCommand } from './commands/brands/list'
+import { canvasSessionsCreateCommand } from './commands/canvas/sessions/create'
+import { canvasSessionsRefreshCommand } from './commands/canvas/sessions/refresh'
+import { canvasSessionsRevokeCommand } from './commands/canvas/sessions/revoke'
 import { chatsGetCommand } from './commands/chats/get'
 import { chatsListCommand } from './commands/chats/list'
 import {
@@ -290,6 +293,9 @@ export const ALL_COMMANDS: readonly CommandSpec[] = [
   integrationsListCommand,
   chatsListCommand,
   chatsGetCommand,
+  canvasSessionsCreateCommand,
+  canvasSessionsRefreshCommand,
+  canvasSessionsRevokeCommand,
   notificationsListCommand,
   healthCommand,
   usageCommand,
