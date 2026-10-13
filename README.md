@@ -44,6 +44,50 @@ data on stdout and progress on stderr, and documents itself:
 brew-cli emails send --help
 ```
 
+## Set up Brew in your app: `init`
+
+```bash
+npx brew.new init            # or: npm create brew@latest, or brew-cli init
+```
+
+`init` reads the project (framework, auth library, package manager,
+monorepo, editors), signs you in through the browser, and then:
+
+1. sets up and publishes the auth and lifecycle starter kit for your auth
+   library (`app-emails kit`);
+2. installs `@brew.new/sdk` with your package manager;
+3. writes `lib/brew.ts` (a lazy `getBrew()`), `lib/brew-auth.ts` (Better
+   Auth callbacks, the Auth.js provider, or welcome/auth helpers),
+   `lib/brew-contracts.ts` (payload types and the `brew.send` key
+   registry), a Supabase Send Email Hook function when you use Supabase
+   Auth, `.env.example` and `brew.json`;
+4. puts the app key in `.env.local` (mode 0600, git-ignored, never under a
+   `NEXT_PUBLIC_`/`VITE_`/`PUBLIC_` name);
+5. prints patches for your auth config (applied with `--apply-patches`,
+   only to files unchanged since the patch was computed);
+6. adds the Brew MCP server for the editors the project uses, an
+   `AGENTS.md` block, and (in Claude Code projects) the agent skills;
+7. sends you a test email from the team sandbox.
+
+Every file is create-only: a file you changed is reported
+`kept-user-version` and left alone, and a re-run with nothing new changes
+nothing. Until a sending domain verifies, app emails reach members of
+your Brew organization only; `--domain mail.example.com` adds one and
+prints its DNS records without waiting.
+
+Agents run it in two steps and read one JSON report
+(`schemas/init-report.json`: `status`, `steps[]`, `files[]`, `patches[]`,
+`nextSteps[]` with `actor: agent | human`, `agentInstructions`):
+
+```bash
+npx brew.new init --dry-run --json   # the plan; no writes, no sign-in, no mutating requests
+npx brew.new init --yes --json       # exit 3: show the person nextSteps' link + code, then run its resume command
+```
+
+Exit codes: 0 `complete` or `action_required` (blocking `nextSteps` left),
+1 `failed`, 2 usage or a monorepo root with several apps (pick one with
+`--app apps/web`), 3 sign-in required, 4 confirmation required.
+
 ## Send app email by key
 
 An app email is a trigger with a stable key (`auth.password-reset`,
