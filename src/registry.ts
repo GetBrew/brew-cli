@@ -10,6 +10,10 @@ import { apiCommand } from './commands/api'
 import { apiKeysCreateCommand } from './commands/api-keys/create'
 import { apiKeysDeleteCommand } from './commands/api-keys/delete'
 import { apiKeysListCommand } from './commands/api-keys/list'
+import { appEmailsGetCommand } from './commands/app-emails/get'
+import { appEmailsKitCommand } from './commands/app-emails/kit'
+import { appEmailsListCommand } from './commands/app-emails/list'
+import { appEmailsUpsertCommand } from './commands/app-emails/upsert'
 import { audiencesCreateCommand } from './commands/audiences/create'
 import { audiencesDeleteCommand } from './commands/audiences/delete'
 import { audiencesDuplicateCommand } from './commands/audiences/duplicate'
@@ -141,6 +145,7 @@ import { loginCommand } from './commands/login'
 import { logoutCommand } from './commands/logout'
 import { mcpInstallCommand } from './commands/mcp/install'
 import { notificationsListCommand } from './commands/notifications/list'
+import { sendCommand } from './commands/send'
 import { sendsCancelCommand } from './commands/sends/cancel'
 import { sendsGetCommand } from './commands/sends/get'
 import { sendsListCommand } from './commands/sends/list'
@@ -241,6 +246,11 @@ export const ALL_COMMANDS: readonly CommandSpec[] = [
   automationsTriggersUpdateCommand,
   automationsTriggersDeleteCommand,
   automationsTriggersFireCommand,
+  sendCommand,
+  appEmailsListCommand,
+  appEmailsGetCommand,
+  appEmailsUpsertCommand,
+  appEmailsKitCommand,
   automationsRunsListCommand,
   automationsRunsGetCommand,
   automationsRunsCancelCommand,
