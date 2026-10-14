@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.16.0
+
+Needs `@brew.new/sdk` `^12.4.0`, which adds `triggers.ensureBrewEvent`
+(GetBrew/typescript-sdk#66), and the API from GetBrew/brew-v2#2071.
+
+### Added
+
+- **`automations triggers ensure-brew-event`**
+  (`POST /v1/automations/triggers/brew-events`). Gets or creates the brand's
+  trigger for a contact unsubscribing. `--scope domain --domain-id <id>`
+  watches one marketing domain's list (ids from `domains list`), and
+  `--scope all` watches every email the brand sends. `--event` defaults to
+  `contact.unsubscribed`, the only Brew event so far. The same scope always
+  prints the same row, and `created` says whether this call made it. A
+  missing or unknown `--scope`, a `--scope domain` without `--domain-id`, or
+  a `--domain-id` with `--scope all` exits 2 before any request.
+- Brew starts these triggers itself. `automations triggers fire` on one exits
+  1 with `409 TRIGGER_NOT_FIREABLE`, and `update` and `contract put` exit 1
+  with `422 TRIGGER_IMMUTABLE`. Try the automation with `automations test`;
+  without a payload, the test runs on the trigger's sample.
+- The bundled spec carries `provider: "brew_event"` on trigger rows (with a
+  `brewEvent` config) and `source: "brew_event"` on trigger instances.
+
 ## 0.14.0
 
 Needs `@brew.new/sdk` `^12.0.0`, which removes `data.run`

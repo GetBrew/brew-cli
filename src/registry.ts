@@ -42,6 +42,7 @@ import {
 } from './commands/automations/triggers/contract'
 import { automationsTriggersCreateCommand } from './commands/automations/triggers/create'
 import { automationsTriggersDeleteCommand } from './commands/automations/triggers/delete'
+import { automationsTriggersEnsureBrewEventCommand } from './commands/automations/triggers/ensure-brew-event'
 import { automationsTriggersFireCommand } from './commands/automations/triggers/fire'
 import { automationsTriggersGetCommand } from './commands/automations/triggers/get'
 import { automationsTriggersListCommand } from './commands/automations/triggers/list'
@@ -230,6 +231,7 @@ export const ALL_COMMANDS: readonly CommandSpec[] = [
   automationsTriggersContractValidateCommand,
   contractsInferCommand,
   automationsTriggersCreateCommand,
+  automationsTriggersEnsureBrewEventCommand,
   automationsTriggersUpdateCommand,
   automationsTriggersDeleteCommand,
   automationsTriggersFireCommand,
