@@ -2,7 +2,7 @@
 
 ## 0.16.0
 
-Needs `@brew.new/sdk` `^12.4.0`, which adds `triggers.ensureBrewEvent`
+Needs `@brew.new/sdk` `^12.2.0`, which adds `triggers.ensureBrewEvent`
 (GetBrew/typescript-sdk#66), and the API from GetBrew/brew-v2#2071.
 
 ### Added
@@ -18,8 +18,9 @@ Needs `@brew.new/sdk` `^12.4.0`, which adds `triggers.ensureBrewEvent`
   a `--domain-id` with `--scope all` exits 2 before any request.
 - Brew starts these triggers itself. `automations triggers fire` on one exits
   1 with `409 TRIGGER_NOT_FIREABLE`, and `update` and `contract put` exit 1
-  with `422 TRIGGER_IMMUTABLE`. Try the automation with `automations test`;
-  without a payload, the test runs on the trigger's sample.
+  with `422 TRIGGER_IMMUTABLE`. Try the automation with `automations test`:
+  the test runs on the trigger's sample, with any payload fields you pass laid
+  over it, and writes no contact.
 - The bundled spec carries `provider: "brew_event"` on trigger rows (with a
   `brewEvent` config) and `source: "brew_event"` on trigger instances.
 
