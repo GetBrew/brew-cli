@@ -12162,6 +12162,9 @@ components:
             - none
             - low
             - high
+        syncToContact:
+          type: boolean
+          description: "false keeps this value off the contact record: it reaches the email and nothing else. Omitted means true. The top-level email always identifies the contact."
         enumValues:
           type: array
           items:

@@ -6876,6 +6876,8 @@ export interface components {
             fallbackValue?: string | number | boolean;
             /** @enum {string} */
             pii?: "none" | "low" | "high";
+            /** @description false keeps this value off the contact record: it reaches the email and nothing else. Omitted means true. The top-level email always identifies the contact. */
+            syncToContact?: boolean;
             enumValues?: string[];
             itemType?: ("string" | "int" | "float" | "boolean" | "date" | "enum") | "unknown";
             usedIn?: ("body" | "subject" | "previewText")[];
