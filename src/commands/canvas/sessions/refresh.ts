@@ -20,9 +20,6 @@ export const canvasSessionsRefreshCommand = defineCommand({
       path: `/v1/canvas/sessions/${encodeURIComponent(args.sessionId ?? '')}/refresh`,
       idempotency: 'none',
     })
-    return {
-      data: result,
-      human: `Refreshed canvas session ${result.sessionId}.`,
-    }
+    return { data: result }
   },
 })

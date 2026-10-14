@@ -52,7 +52,8 @@ export const canvasSessionsCreateCommand = defineCommand({
     }
     const externalId = flagString(flags.userId)
     const name = flagString(flags.userName)
-    const input = mergeInput(await readJsonFlag(ctx, flags.input, '--input'), {
+    const base = mergeInput(await readJsonFlag(ctx, flags.input, '--input'), {})
+    const input = mergeInput(base, {
       target:
         groupId !== undefined
           ? { type: 'group', groupId }
@@ -62,7 +63,7 @@ export const canvasSessionsCreateCommand = defineCommand({
       parentOrigin: flagString(flags.parentOrigin),
       user:
         externalId !== undefined || name !== undefined
-          ? { externalId, name }
+          ? mergeInput(base.user, { externalId, name })
           : undefined,
       permissions: flags.readOnly === true ? ['read'] : undefined,
     })
@@ -74,9 +75,6 @@ export const canvasSessionsCreateCommand = defineCommand({
       body: asSdkInput<CreateInput>(input),
       idempotency: 'none',
     })
-    return {
-      data: result,
-      human: `Created canvas session ${result.sessionId}.`,
-    }
+    return { data: result }
   },
 })

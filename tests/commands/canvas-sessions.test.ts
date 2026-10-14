@@ -20,6 +20,63 @@ const session = {
 }
 
 describe('canvas sessions', () => {
+  it.each(['create', 'refresh'])(
+    'prints the complete %s grant in a terminal',
+    async (command) => {
+      server.use(
+        http.post('https://brew.new/api/v1/canvas/sessions*', () =>
+          HttpResponse.json(session)
+        )
+      )
+      const args =
+        command === 'create'
+          ? ['--input', JSON.stringify(input)]
+          : ['session_test']
+      const result = await runCli(['canvas', 'sessions', command, ...args], {
+        env,
+        ttyOut: true,
+      })
+      expect(result.code).toBe(0)
+      expect(result.json).toEqual(session)
+    }
+  )
+  it.each([
+    ['--user-name', 'Bob', { externalId: 'user_test', name: 'Bob' }],
+    [
+      '--user-id',
+      'user_override',
+      { externalId: 'user_override', name: 'Alice' },
+    ],
+  ])(
+    'preserves unspecified user fields when overriding %s',
+    async (flag, value, user) => {
+      server.use(
+        http.post(
+          'https://brew.new/api/v1/canvas/sessions',
+          async ({ request }) => {
+            expect(await request.json()).toEqual({ ...input, user })
+            return HttpResponse.json(session)
+          }
+        )
+      )
+      expect(
+        (
+          await runCli(
+            [
+              'canvas',
+              'sessions',
+              'create',
+              '--input',
+              JSON.stringify(input),
+              flag,
+              value,
+            ],
+            { env }
+          )
+        ).code
+      ).toBe(0)
+    }
+  )
   it('creates a brand-scoped grant from stdin without an idempotency key', async () => {
     server.use(
       http.post(
