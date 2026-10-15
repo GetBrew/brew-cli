@@ -74,7 +74,7 @@ a `confirmCommand` otherwise, `--yes` to proceed).
 | `brew-cli sends cancel` | destructive | `POST /v1/sends/{sendId}/cancel` | Cancel a scheduled or queued send before it goes out |
 | `brew-cli sends pause` | write | `POST /v1/sends/{sendId}/pause` | Pause an in-flight or scheduled send (resumable) |
 | `brew-cli sends resume` | write | `POST /v1/sends/{sendId}/resume` | Resume a paused gradual send (the unsent tail is re-spread); the send reports `running` again |
-| `brew-cli types` | read | `GET /v1/automations/triggers` | Generate TypeScript payload contracts for this workspace's triggers into your codebase; --check is the CI drift gate (exit 1 on drift). Needs the automations scope |
+| `brew-cli types` | read | — | Generate TypeScript payload contracts for this workspace's triggers into your codebase; --check is the CI drift gate (exit 1 on drift). Needs the automations scope |
 | `brew-cli audiences list` | read | `GET /v1/audiences` | List audience segments; one segment is `audiences get` |
 | `brew-cli audiences get` | read | `GET /v1/audiences/{audienceId}` | Fetch one audience segment by id — the bare row |
 | `brew-cli audiences create` | write | `POST /v1/audiences` | Create an audience segment from a filter definition |
@@ -1077,9 +1077,8 @@ brew-cli sends resume snd_123
 
 Generate TypeScript payload contracts for this workspace's triggers into your codebase; --check is the CI drift gate (exit 1 on drift). Needs the automations scope
 
-- Route: `GET /v1/automations/triggers`
 - Class: read
-- Derived from `brew.automations.triggers.list(...)`
+- Derived from `brew.automations.triggers.list(...)`, `brew.automations.triggers.getContract(...)`
 - `--out <file>` — Output file (default brew-contracts.ts)
 - `--check` — Verify the output file is up to date instead of writing; exits 1 on drift
 
@@ -2526,6 +2525,7 @@ Create an authenticated group or single-email canvas grant
 
 - Route: `POST /v1/canvas/sessions`
 - Class: write
+- SDK: `brew.canvas.sessions.create(...)`
 - `--group-id <id>` — Embed exactly this group
 - `--email-id <id>` — Embed exactly this email
 - `--parent-origin <origin>` — Exact HTTPS origin allowed to frame the canvas
@@ -2545,6 +2545,7 @@ Renew a canvas grant using its original issuing credential
 
 - Route: `POST /v1/canvas/sessions/{sessionId}/refresh`
 - Class: write
+- SDK: `brew.canvas.sessions.refresh(...)`
 - Argument `sessionId` — Canvas session ID
 
 ```bash
@@ -2557,6 +2558,7 @@ Revoke a canvas session and terminate its access
 
 - Route: `DELETE /v1/canvas/sessions/{sessionId}`
 - Class: destructive
+- SDK: `brew.canvas.sessions.revoke(...)`
 - Argument `sessionId` — Canvas session ID
 
 ```bash

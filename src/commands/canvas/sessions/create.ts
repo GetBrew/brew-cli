@@ -1,4 +1,4 @@
-import type { operations } from '../../../generated/openapi-types'
+import type { CreateCanvasSessionInput } from '@brew.new/sdk'
 import { defineCommand } from '../../../lib/define-command'
 import { CliUsageError } from '../../../lib/errors'
 import {
@@ -8,18 +8,11 @@ import {
   mergeInput,
   readJsonFlag,
 } from '../../../lib/input'
-import { rawRequest } from '../../../lib/raw-request'
-
-type CreateInput =
-  operations['createCanvasSession']['requestBody']['content']['application/json']
-type Session =
-  operations['createCanvasSession']['responses'][201]['content']['application/json']
 
 export const canvasSessionsCreateCommand = defineCommand({
   path: ['canvas', 'sessions', 'create'],
   summary: 'Create an authenticated group or single-email canvas grant',
-  sdkMethod: null,
-  isRawTransport: true,
+  sdkMethod: 'canvas.sessions.create',
   route: { method: 'POST', path: '/v1/canvas/sessions' },
   commandClass: 'write',
   flags: [
@@ -53,13 +46,14 @@ export const canvasSessionsCreateCommand = defineCommand({
     const externalId = flagString(flags.userId)
     const name = flagString(flags.userName)
     const base = mergeInput(await readJsonFlag(ctx, flags.input, '--input'), {})
+    let target: CreateCanvasSessionInput['target'] | undefined
+    if (groupId !== undefined) {
+      target = { type: 'group', groupId }
+    } else if (emailId !== undefined) {
+      target = { type: 'email', emailId }
+    }
     const input = mergeInput(base, {
-      target:
-        groupId !== undefined
-          ? { type: 'group', groupId }
-          : emailId !== undefined
-            ? { type: 'email', emailId }
-            : undefined,
+      target,
       parentOrigin: flagString(flags.parentOrigin),
       user:
         externalId !== undefined || name !== undefined
@@ -69,12 +63,9 @@ export const canvasSessionsCreateCommand = defineCommand({
     })
     if (input.permissions === undefined)
       input.permissions = ['read', 'edit', 'presence']
-    const result = await rawRequest<Session>(ctx, {
-      method: 'POST',
-      path: '/v1/canvas/sessions',
-      body: asSdkInput<CreateInput>(input),
-      idempotency: 'none',
-    })
+    const result = await ctx
+      .client()
+      .canvas.sessions.create(asSdkInput<CreateCanvasSessionInput>(input))
     return { data: result }
   },
 })
