@@ -767,7 +767,7 @@ export interface paths {
         put?: never;
         /**
          * Test an automation
-         * @description Runs the saved automation END-TO-END through the real workflow in TEST mode — works on drafts and for both event and manual-audience automations; every node executes (filters/splits evaluate against `payload`, and `contact.<name>` conditions read the test recipient’s contact unless `payload` supplies that field — a flat `contact.<name>` key or a `contact` object — and the trigger’s contract keeps extra keys; wait nodes fast-forward). Pass `testRecipient` to DELIVER each send-email node’s email for real to that address (real subject/preview/sender name via the Brew test domain; customer addresses are never hit) — omit it for a silent dry-run with no mail. Test runs never count against analytics rollups or send quotas. Returns `202` with the started run id; follow per-node status via `GET /v1/automations/runs/{automationRunId}&include=logs`. Optional `scenario` controls simulate timed opens/clicks at engagement-filter nodes and force left/right percentage-split choices (waits use a virtual clock; controls stay separate from `payload`, and simulated events never enter live analytics or send quotas); the run row’s `testCoverage` reports visited nodes, traversed connections, evaluated or forced decisions, uncovered paths and simulation limitations.
+         * @description Runs the saved automation END-TO-END through the real workflow in TEST mode — works on drafts and for both event and manual-audience automations; every node executes (filters/splits evaluate against `payload`, and `contact.<name>` conditions read the test recipient’s contact unless `payload` supplies that field — a flat `contact.<name>` key or a `contact` object — and the trigger’s contract keeps extra keys; wait nodes fast-forward). Pass `testRecipient` to DELIVER each send-email node’s email for real to that address (real subject/preview/sender name via the Brew test domain; customer addresses are never hit) — omit it for a silent dry-run with no mail. Test runs never count against analytics rollups or send quotas. Returns `202` with the started run id; follow per-node status via `GET /v1/automations/runs/{automationRunId}&include=logs`. Optional `scenario` controls simulate timed opens/clicks at engagement-filter nodes and force left/right percentage-split choices (waits use a virtual clock; controls stay separate from `payload`, and simulated events never enter live analytics or send quotas); the run row’s `testCoverage` reports visited nodes, traversed connections, evaluated or forced decisions, uncovered paths and simulation limitations. On a Brew-event (unsubscribe) trigger, omit `payload` to run on Brew’s sample event; fields you pass replace the sample’s, and the run never creates or edits a contact.
          */
         post: operations["testAutomation"];
         delete?: never;
@@ -1036,6 +1036,36 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/automations/triggers/brew-events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Get or create an unsubscribe trigger
+         * @description Returns the brand’s trigger for one Brew event scope, creating it the first time. Brew events start automations from things that happen inside Brew. The first is `contact.unsubscribed`: a contact unsubscribed with an email’s unsubscribe link or their mail app’s one-click button (never a bounce, complaint, import or API edit).
+         *
+         *     **Use when** an automation should start when a contact unsubscribes, from one marketing domain’s list or from every email the brand sends.
+         *
+         *     **Input** `{ event: "contact.unsubscribed", scope: "domain", domainId }` for one marketing domain’s list (ids from `listDomains`), or `{ event: "contact.unsubscribed", scope: "all" }` for every email. An unsubscribe from all clicked in one of a domain’s emails also starts that domain’s trigger, while the contact was still on its list.
+         *
+         *     **Returns** `201` with the new trigger row, or `200` with the existing one (`created: false`). Brew owns its title and payload, so the row is immutable and never fires over the API. The contact has just opted out, so an automation on this trigger sends only a message they need (such as confirming the unsubscribe) from a transactional domain, or mail from another marketing domain they are still on; publish refuses a flow none of whose emails could reach them.
+         *
+         *     **Errors** `400 INVALID_REQUEST` when `domainId` is missing for `scope: "domain"` or sent for `scope: "all"`; `404 DOMAIN_NOT_FOUND` for an unknown or cross-brand domain; `422 DOMAIN_PURPOSE_NOT_ALLOWED` for a transactional domain, which owns no list; `409 TRIGGER_LIMIT_REACHED` when the brand already holds the maximum number of triggers.
+         *
+         *     **See also** `createAutomation`, `fireTrigger`, `listDomains`.
+         */
+        post: operations["ensureBrewEventTrigger"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/automations/triggers": {
         parameters: {
             query?: never;
@@ -1045,7 +1075,7 @@ export interface paths {
         };
         /**
          * List triggers
-         * @description Lists every trigger the brand has under `{ data, pagination }`: `provider: "brew_api"` for API-created customs and `provider: "clerk" | "stripe" | …` for integration-provisioned triggers. Each row carries its `payloadSchema`.
+         * @description Lists every trigger the brand has under `{ data, pagination }`: `provider: "brew_api"` for API-created customs, `provider: "clerk" | "stripe" | …` for integration-provisioned triggers, and `provider: "brew_event"` for the unsubscribe triggers Brew starts itself. Each row carries its `payloadSchema`.
          *
          *     **Use when** finding the `triggerEventId` to fire, to wire an automation to, or to read the typed contract of.
          *
@@ -1127,7 +1157,7 @@ export interface paths {
          *
          *     `delivery` appears for an integration trigger whose source sends only the events set up at its end (a Shopify shop sends a topic only to its own webhook): whether Brew has received that event, and what to set up when it has not. It never changes `ready`.
          *
-         *     **Errors** `404 TRIGGER_EVENT_NOT_FOUND` for an unknown or cross-brand id.
+         *     **Errors** `404 TRIGGER_EVENT_NOT_FOUND` for an unknown or cross-brand id; `409 TRIGGER_NOT_FIREABLE` for a Brew event trigger, which Brew starts itself.
          *
          *     **See also** `fireTrigger`, `getTriggerContract`, `listTriggers`.
          */
@@ -1161,7 +1191,7 @@ export interface paths {
          *
          *     **Idempotency** send a stable `Idempotency-Key` header on every retry. A repeat answers `200` with `status: "replayed"` and the ORIGINAL run ids; nothing fires twice. A fire key is matched against the stored trigger receipt, so it replays for as long as the receipt is kept (90 days), not only the 24 hours of the shared response cache. Use one key per business action and never reuse it for a different fire.
          *
-         *     **Errors** `400 INVALID_PAYLOAD` when the payload does not satisfy the schema, or when `email` (or `user.email`) is not one plain address such as `jane@example.com`: a display name (`Jane <jane@example.com>`), a list or a line break is refused with `details.errors[].code: "invalid_email"`, and no contact is written; `404 TRIGGER_EVENT_NOT_FOUND` for an unknown or cross-brand id; `422 NO_PUBLISHED_AUTOMATION` when nothing published listens for the trigger; `409 IDEMPOTENCY_CONFLICT` when a key is reused with a different body.
+         *     **Errors** `400 INVALID_PAYLOAD` when the payload does not satisfy the schema, or when `email` (or `user.email`) is not one plain address such as `jane@example.com`: a display name (`Jane <jane@example.com>`), a list or a line break is refused with `details.errors[].code: "invalid_email"`, and no contact is written; `404 TRIGGER_EVENT_NOT_FOUND` for an unknown or cross-brand id; `422 NO_PUBLISHED_AUTOMATION` when nothing published listens for the trigger; `409 IDEMPOTENCY_CONFLICT` when a key is reused with a different body; `409 TRIGGER_NOT_FIREABLE` for a Brew event trigger, which Brew starts itself (try its automation with `testAutomation`).
          *
          *     **See also** `checkTriggerReady`, `getTriggerInstance`, `listAutomationRuns`.
          */
@@ -1198,7 +1228,7 @@ export interface paths {
          *
          *     **Returns** `200` with the same body a follow-up `getTriggerContract` returns plus `warnings[]` (always present, often empty): `ENFORCEMENT_LOOSENED_WHILE_PUBLISHED` when enforcement went down while published automations consume the trigger (tightening back is refused until they are unpublished or detached), and one `REQUIRED_FIELD_SATISFIED_BY_FALLBACK` per required field that declares a fallback (`field` is its dotted path). Ratchet while a published automation consumes the trigger: tighten `off→prune`, `off→strict`, `prune→strict` = `409`; loosen = `200` + warning; remove, retype or enum-narrow a field, or add a required field WITHOUT a fallback = `409`; add an optional field, widen a type, add an enum value, or add a required field WITH a fallback = `200` (+ warning per fallback). With no published consumer every change is `200`.
          *
-         *     **Errors** `409 CONTRACT_LOCKED_BY_PUBLISHED_AUTOMATIONS` for a change the ratchet refuses (`message` names the incompatibility; unpublish or detach the consumers, or make a compatible change); `404 TRIGGER_EVENT_NOT_FOUND`; `400 INVALID_REQUEST` (`param: "fields"`) when the tree fails structural validation, or when a body with no `fields` targets a trigger that has no stored contract yet.
+         *     **Errors** `409 CONTRACT_LOCKED_BY_PUBLISHED_AUTOMATIONS` for a change the ratchet refuses (`message` names the incompatibility; unpublish or detach the consumers, or make a compatible change); `404 TRIGGER_EVENT_NOT_FOUND`; `422 TRIGGER_IMMUTABLE` for a Brew event trigger, whose contract Brew owns; `400 INVALID_REQUEST` (`param: "fields"`) when the tree fails structural validation, or when a body with no `fields` targets a trigger that has no stored contract yet.
          *
          *     **See also** `getTriggerContract`, `validateTriggerPayload`, `inferPayloadContract`, `updateAutomation` (publishing a consumer starts the ratchet).
          */
@@ -1263,7 +1293,7 @@ export interface paths {
         };
         /**
          * List trigger instances
-         * @description Lists fired trigger-event instances, newest first, under `{ data, pagination }`: the audit log of every inbound fire, from the API (`source: "api"`) or an integration webhook (`source: "integration"`). Each row links the fire to the automations it matched and the runs it started (`automationRunIds`).
+         * @description Lists fired trigger-event instances, newest first, under `{ data, pagination }`: the audit log of every inbound fire, from the API (`source: "api"`), an integration webhook (`source: "integration"`), or Brew itself (`source: "brew_event"`, a contact unsubscribing). Each row links the fire to the automations it matched and the runs it started (`automationRunIds`).
          *
          *     **Use when** confirming that fires arrived, or following a fire to its runs and sends.
          *
@@ -3494,8 +3524,22 @@ export interface components {
             title: string;
             description?: string;
             /** @enum {string} */
-            provider: "brew_api" | "clerk" | "stripe" | "shopify" | "stytch" | "supabase" | "workos" | "framer" | "revenuecat" | "custom";
+            provider: "brew_api" | "clerk" | "stripe" | "shopify" | "stytch" | "supabase" | "workos" | "framer" | "revenuecat" | "custom" | "brew_event";
             providerEventKey?: string;
+            brewEvent?: {
+                /**
+                 * @description The Brew event this trigger starts on.
+                 * @enum {string}
+                 */
+                event: "contact.unsubscribed";
+                /**
+                 * @description `domain`: unsubscribes from one marketing sending domain (its list). `all`: unsubscribes from every email the brand sends.
+                 * @enum {string}
+                 */
+                scope: "domain" | "all";
+                /** @description The sending domain whose list this trigger watches, e.g. `news.acme.com`. Present only when `scope` is `domain`. */
+                domainHost?: string;
+            };
             payloadSchema: {
                 /** @enum {string} */
                 type: "object";
@@ -3532,7 +3576,7 @@ export interface components {
         TriggerInstance: {
             triggerInstanceId: string;
             /** @enum {string} */
-            source: "api" | "integration";
+            source: "api" | "integration" | "brew_event";
             provider?: string;
             triggerEventId?: string;
             /** @enum {string} */
@@ -4310,7 +4354,7 @@ export interface components {
             };
         };
         /** @enum {string} */
-        ApiErrorCode: "ACCOUNT_SUSPENDED" | "API_KEY_REVOKED" | "AUDIENCE_BUILD_ACTIVE" | "AUDIENCE_BUILD_ALREADY_ACTIVE" | "AUDIENCE_EDIT_CONFLICT" | "AUDIENCE_MEMBERSHIP_NOT_EXPRESSIBLE" | "AUDIENCE_NOT_FOUND" | "AUDIENCE_RUN_NOT_FOUND" | "AUDIT_NOT_FOUND" | "AUTHENTICATION_REQUIRED" | "AUTOMATION_GRAPH_INVALID" | "AUTOMATION_NOT_FOUND" | "AUTOMATION_NOT_PAUSABLE" | "AUTOMATION_NOT_PUBLISHED" | "AUTOMATION_RUN_NOT_FOUND" | "AUTOMATION_VERSION_CONFLICT" | "AUTOMATION_VERSION_NOT_FOUND" | "BATCH_TOO_LARGE" | "BRAND_DOMAIN_CONFLICT" | "BRAND_ID_REQUIRED" | "BRAND_LIMIT_REACHED" | "BRAND_NOT_FOUND" | "BRAND_NOT_READY" | "BRAND_SCOPE_MISMATCH" | "CHAT_NOT_FOUND" | "COMMENT_NOT_FOUND" | "CONSENT_REQUIRED" | "CONTACT_NOT_FOUND" | "CONTENT_OPERATION_FAILED" | "CONTRACT_LOCKED_BY_PUBLISHED_AUTOMATIONS" | "CORE_FIELD_IMMUTABLE" | "DOMAIN_ALREADY_EXISTS" | "DOMAIN_CLAIMED_ELSEWHERE" | "DOMAIN_NOT_FOUND" | "DOMAIN_NOT_READY" | "DOMAIN_OTHER_BRAND" | "DOMAIN_PROVIDER_ERROR" | "DOMAIN_PURPOSE_NOT_ALLOWED" | "DOMAIN_VERIFICATION_FAILED" | "DOMAIN_VERIFIED_ELSEWHERE" | "EMAIL_GENERATION_FAILED" | "EMAIL_GROUP_NAME_CONFLICT" | "EMAIL_GROUP_NOT_FOUND" | "EMAIL_IMAGES_MISSING" | "EMAIL_IMPORT_FAILED" | "EMAIL_IN_PROGRESS" | "EMAIL_IN_USE_BY_AUTOMATION" | "EMAIL_NOT_FOUND" | "EMAIL_NOT_READY" | "EMAIL_RUN_AMBIGUOUS" | "EMAIL_TEMPLATE_INVALID" | "EMAIL_VERSION_NOT_FOUND" | "EXPORT_PROVIDER_ERROR" | "EXPORT_UNSUPPORTED" | "FIELD_NOT_FOUND" | "FIELD_TYPE_MISMATCH" | "FIGMA_ACCESS_DENIED" | "FIGMA_CONVERSION_FAILED" | "FIGMA_FRAME_NOT_FOUND" | "FIGMA_NOT_CONNECTED" | "FIGMA_UNAVAILABLE" | "FIGMA_URL_INVALID" | "FLOW_NOT_FOUND" | "IDEMPOTENCY_CONFLICT" | "IDEMPOTENCY_IN_PROGRESS" | "INSIGHT_NOT_FOUND" | "INSUFFICIENT_CREDITS" | "INSUFFICIENT_PERMISSIONS" | "INSUFFICIENT_ROLE" | "INTEGRATION_NOT_CONNECTED" | "INTERNAL_ERROR" | "INVALID_API_KEY" | "INVALID_EMAIL" | "INVALID_PAYLOAD" | "INVALID_REQUEST" | "LIQUID_RENDER_ERROR" | "METHOD_NOT_ALLOWED" | "MISSING_EMAIL" | "NO_ELIGIBLE_RECIPIENTS" | "NO_PUBLISHED_AUTOMATION" | "NOT_FOUND" | "NOT_IMPLEMENTED" | "ORG_SCOPE_REQUIRED" | "PAYLOAD_SCHEMA_EMAIL_REQUIRED" | "PAYLOAD_TOO_LARGE" | "PREVIEW_NOT_FOUND" | "PUBLISH_VALIDATION_FAILED" | "RATE_LIMITED" | "RECIPIENT_UNSUBSCRIBED" | "REFERENCE_EMAIL_NOT_FOUND" | "RESUBSCRIBE_NOT_ALLOWED" | "RUN_IN_PROGRESS" | "RUN_NOT_CANCELLABLE" | "RUN_NOT_PAUSABLE" | "RUN_NOT_PAUSED" | "RUN_NOT_RESUMABLE" | "RUN_START_FAILED" | "RUN_STOP_FAILED" | "SEND_NOT_CANCELLABLE" | "SEND_NOT_FOUND" | "SEND_NOT_PAUSABLE" | "SEND_NOT_RESUMABLE" | "SEND_QUOTA_EXCEEDED" | "SERVICE_UNAVAILABLE" | "TEMPLATE_NOT_FOUND" | "TRIGGER_ALREADY_EXISTS" | "TRIGGER_EVENT_NOT_FOUND" | "TRIGGER_HAS_DEPENDENT_AUTOMATIONS" | "TRIGGER_IMMUTABLE" | "TRIGGER_INSTANCE_NOT_FOUND" | "TRIGGER_LIMIT_REACHED" | "UPLOAD_IN_PROGRESS" | "UPLOAD_NOT_FOUND" | "UPLOAD_NOT_RECEIVED";
+        ApiErrorCode: "ACCOUNT_SUSPENDED" | "API_KEY_REVOKED" | "AUDIENCE_BUILD_ACTIVE" | "AUDIENCE_BUILD_ALREADY_ACTIVE" | "AUDIENCE_EDIT_CONFLICT" | "AUDIENCE_MEMBERSHIP_NOT_EXPRESSIBLE" | "AUDIENCE_NOT_FOUND" | "AUDIENCE_RUN_NOT_FOUND" | "AUDIT_NOT_FOUND" | "AUTHENTICATION_REQUIRED" | "AUTOMATION_GRAPH_INVALID" | "AUTOMATION_NOT_FOUND" | "AUTOMATION_NOT_PAUSABLE" | "AUTOMATION_NOT_PUBLISHED" | "AUTOMATION_RUN_NOT_FOUND" | "AUTOMATION_VERSION_CONFLICT" | "AUTOMATION_VERSION_NOT_FOUND" | "BATCH_TOO_LARGE" | "BRAND_DOMAIN_CONFLICT" | "BRAND_ID_REQUIRED" | "BRAND_LIMIT_REACHED" | "BRAND_NOT_FOUND" | "BRAND_NOT_READY" | "BRAND_SCOPE_MISMATCH" | "CHAT_NOT_FOUND" | "COMMENT_NOT_FOUND" | "CONSENT_REQUIRED" | "CONTACT_NOT_FOUND" | "CONTENT_OPERATION_FAILED" | "CONTRACT_LOCKED_BY_PUBLISHED_AUTOMATIONS" | "CORE_FIELD_IMMUTABLE" | "DOMAIN_ALREADY_EXISTS" | "DOMAIN_CLAIMED_ELSEWHERE" | "DOMAIN_NOT_FOUND" | "DOMAIN_NOT_READY" | "DOMAIN_OTHER_BRAND" | "DOMAIN_PROVIDER_ERROR" | "DOMAIN_PURPOSE_NOT_ALLOWED" | "DOMAIN_VERIFICATION_FAILED" | "DOMAIN_VERIFIED_ELSEWHERE" | "EMAIL_GENERATION_FAILED" | "EMAIL_GROUP_NAME_CONFLICT" | "EMAIL_GROUP_NOT_FOUND" | "EMAIL_IMAGES_MISSING" | "EMAIL_IMPORT_FAILED" | "EMAIL_IN_PROGRESS" | "EMAIL_IN_USE_BY_AUTOMATION" | "EMAIL_NOT_FOUND" | "EMAIL_NOT_READY" | "EMAIL_RUN_AMBIGUOUS" | "EMAIL_TEMPLATE_INVALID" | "EMAIL_VERSION_NOT_FOUND" | "EXPORT_PROVIDER_ERROR" | "EXPORT_UNSUPPORTED" | "FIELD_NOT_FOUND" | "FIELD_TYPE_MISMATCH" | "FIGMA_ACCESS_DENIED" | "FIGMA_CONVERSION_FAILED" | "FIGMA_FRAME_NOT_FOUND" | "FIGMA_NOT_CONNECTED" | "FIGMA_UNAVAILABLE" | "FIGMA_URL_INVALID" | "FLOW_NOT_FOUND" | "IDEMPOTENCY_CONFLICT" | "IDEMPOTENCY_IN_PROGRESS" | "INSIGHT_NOT_FOUND" | "INSUFFICIENT_CREDITS" | "INSUFFICIENT_PERMISSIONS" | "INSUFFICIENT_ROLE" | "INTEGRATION_NOT_CONNECTED" | "INTERNAL_ERROR" | "INVALID_API_KEY" | "INVALID_EMAIL" | "INVALID_PAYLOAD" | "INVALID_REQUEST" | "LIQUID_RENDER_ERROR" | "METHOD_NOT_ALLOWED" | "MISSING_EMAIL" | "NO_ELIGIBLE_RECIPIENTS" | "NO_PUBLISHED_AUTOMATION" | "NOT_FOUND" | "NOT_IMPLEMENTED" | "ORG_SCOPE_REQUIRED" | "PAYLOAD_SCHEMA_EMAIL_REQUIRED" | "PAYLOAD_TOO_LARGE" | "PREVIEW_NOT_FOUND" | "PUBLISH_VALIDATION_FAILED" | "RATE_LIMITED" | "RECIPIENT_UNSUBSCRIBED" | "REFERENCE_EMAIL_NOT_FOUND" | "RESUBSCRIBE_NOT_ALLOWED" | "RUN_IN_PROGRESS" | "RUN_NOT_CANCELLABLE" | "RUN_NOT_PAUSABLE" | "RUN_NOT_PAUSED" | "RUN_NOT_RESUMABLE" | "RUN_START_FAILED" | "RUN_STOP_FAILED" | "SEND_NOT_CANCELLABLE" | "SEND_NOT_FOUND" | "SEND_NOT_PAUSABLE" | "SEND_NOT_RESUMABLE" | "SEND_QUOTA_EXCEEDED" | "SERVICE_UNAVAILABLE" | "TEMPLATE_NOT_FOUND" | "TRIGGER_ALREADY_EXISTS" | "TRIGGER_EVENT_NOT_FOUND" | "TRIGGER_HAS_DEPENDENT_AUTOMATIONS" | "TRIGGER_IMMUTABLE" | "TRIGGER_INSTANCE_NOT_FOUND" | "TRIGGER_LIMIT_REACHED" | "TRIGGER_NOT_FIREABLE" | "UPLOAD_IN_PROGRESS" | "UPLOAD_NOT_FOUND" | "UPLOAD_NOT_RECEIVED";
         EmailGenerateTextResponse: {
             response: string;
         };
@@ -6633,6 +6677,54 @@ export interface components {
             /** @description Why the run was stopped; stored on the run for the audit trail. */
             reason?: string;
         };
+        BrewEventTriggerSaved: {
+            triggerEventId: string;
+            title: string;
+            description?: string;
+            /** @enum {string} */
+            provider: "brew_api" | "clerk" | "stripe" | "shopify" | "stytch" | "supabase" | "workos" | "framer" | "revenuecat" | "custom" | "brew_event";
+            providerEventKey?: string;
+            brewEvent?: {
+                /**
+                 * @description The Brew event this trigger starts on.
+                 * @enum {string}
+                 */
+                event: "contact.unsubscribed";
+                /**
+                 * @description `domain`: unsubscribes from one marketing sending domain (its list). `all`: unsubscribes from every email the brand sends.
+                 * @enum {string}
+                 */
+                scope: "domain" | "all";
+                /** @description The sending domain whose list this trigger watches, e.g. `news.acme.com`. Present only when `scope` is `domain`. */
+                domainHost?: string;
+            };
+            payloadSchema: {
+                /** @enum {string} */
+                type: "object";
+                fields: components["schemas"]["TriggerPayloadField"][];
+            };
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            skill?: string;
+            /** @description True when this call created the trigger; false when it already existed. */
+            created: boolean;
+        };
+        BrewEventTriggersPostRequest: {
+            /**
+             * @description The Brew event. `contact.unsubscribed`: a contact unsubscribed with an email unsubscribe link or their mail app’s unsubscribe button.
+             * @enum {string}
+             */
+            event: "contact.unsubscribed";
+            /**
+             * @description `domain`: unsubscribes from one marketing sending domain (pass `domainId`). `all`: unsubscribes from every email the brand sends.
+             * @enum {string}
+             */
+            scope: "domain" | "all";
+            /** @description The marketing domain (from `GET /v1/domains`) whose unsubscribe list this trigger watches. Required when `scope` is `domain`; omit for `all`. */
+            domainId?: string;
+        };
         TriggersPostRequest: {
             title: string;
             description?: string;
@@ -6648,8 +6740,22 @@ export interface components {
                 title: string;
                 description?: string;
                 /** @enum {string} */
-                provider: "brew_api" | "clerk" | "stripe" | "shopify" | "stytch" | "supabase" | "workos" | "framer" | "revenuecat" | "custom";
+                provider: "brew_api" | "clerk" | "stripe" | "shopify" | "stytch" | "supabase" | "workos" | "framer" | "revenuecat" | "custom" | "brew_event";
                 providerEventKey?: string;
+                brewEvent?: {
+                    /**
+                     * @description The Brew event this trigger starts on.
+                     * @enum {string}
+                     */
+                    event: "contact.unsubscribed";
+                    /**
+                     * @description `domain`: unsubscribes from one marketing sending domain (its list). `all`: unsubscribes from every email the brand sends.
+                     * @enum {string}
+                     */
+                    scope: "domain" | "all";
+                    /** @description The sending domain whose list this trigger watches, e.g. `news.acme.com`. Present only when `scope` is `domain`. */
+                    domainHost?: string;
+                };
                 payloadSchema: {
                     /** @enum {string} */
                     type: "object";
@@ -6879,7 +6985,7 @@ export interface components {
             data: {
                 triggerInstanceId: string;
                 /** @enum {string} */
-                source: "api" | "integration";
+                source: "api" | "integration" | "brew_event";
                 provider?: string;
                 triggerEventId?: string;
                 /** @enum {string} */
@@ -17274,6 +17380,357 @@ export interface operations {
             };
         };
     };
+    ensureBrewEventTrigger: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Optional idempotency key for safe retries. Reusing the same key with the same request body returns the original response for 24 hours.
+                 * @example api-request-2026-04-08-001
+                 */
+                "Idempotency-Key"?: string;
+                /**
+                 * @description The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+                 * @example kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+                 */
+                "X-Brand-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "event": "contact.unsubscribed",
+                 *       "scope": "domain",
+                 *       "domainId": "jd7f0c2a8w1x9m4n6p3q5r8s2t"
+                 *     }
+                 */
+                "application/json": components["schemas"]["BrewEventTriggersPostRequest"];
+            };
+        };
+        responses: {
+            /** @description The trigger already existed for this scope. */
+            200: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "triggerEventId": "k57abc123unsub",
+                     *       "title": "Unsubscribed from news.acme.com",
+                     *       "description": "Starts when a contact unsubscribes from emails sent from news.acme.com, from an email's unsubscribe link or the mail app's unsubscribe button. Unsubscribing from all emails in one of those emails starts it too.",
+                     *       "provider": "brew_event",
+                     *       "providerEventKey": "contact.unsubscribed",
+                     *       "brewEvent": {
+                     *         "event": "contact.unsubscribed",
+                     *         "scope": "domain",
+                     *         "domainHost": "news.acme.com"
+                     *       },
+                     *       "payloadSchema": {
+                     *         "fields": [
+                     *           {
+                     *             "key": "email",
+                     *             "required": true,
+                     *             "type": "string"
+                     *           },
+                     *           {
+                     *             "children": [
+                     *               {
+                     *                 "key": "scope",
+                     *                 "required": true,
+                     *                 "type": "string"
+                     *               },
+                     *               {
+                     *                 "key": "domain",
+                     *                 "required": false,
+                     *                 "type": "string"
+                     *               },
+                     *               {
+                     *                 "key": "method",
+                     *                 "required": true,
+                     *                 "type": "string"
+                     *               },
+                     *               {
+                     *                 "key": "reasons",
+                     *                 "required": true,
+                     *                 "type": "array",
+                     *                 "itemType": "string"
+                     *               },
+                     *               {
+                     *                 "key": "reasonText",
+                     *                 "required": false,
+                     *                 "type": "string"
+                     *               },
+                     *               {
+                     *                 "key": "emailId",
+                     *                 "required": false,
+                     *                 "type": "string"
+                     *               },
+                     *               {
+                     *                 "key": "emailTitle",
+                     *                 "required": false,
+                     *                 "type": "string"
+                     *               },
+                     *               {
+                     *                 "key": "sendId",
+                     *                 "required": false,
+                     *                 "type": "string"
+                     *               },
+                     *               {
+                     *                 "key": "at",
+                     *                 "required": true,
+                     *                 "type": "string"
+                     *               }
+                     *             ],
+                     *             "key": "unsubscribe",
+                     *             "required": true,
+                     *             "type": "object"
+                     *           }
+                     *         ],
+                     *         "type": "object"
+                     *       },
+                     *       "createdAt": "2026-10-13T12:00:00.000Z",
+                     *       "updatedAt": "2026-10-13T12:00:00.000Z",
+                     *       "created": false
+                     *     }
+                     */
+                    "application/json": components["schemas"]["BrewEventTriggerSaved"];
+                };
+            };
+            /** @description Created. */
+            201: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "triggerEventId": "k57abc123unsub",
+                     *       "title": "Unsubscribed from news.acme.com",
+                     *       "description": "Starts when a contact unsubscribes from emails sent from news.acme.com, from an email's unsubscribe link or the mail app's unsubscribe button. Unsubscribing from all emails in one of those emails starts it too.",
+                     *       "provider": "brew_event",
+                     *       "providerEventKey": "contact.unsubscribed",
+                     *       "brewEvent": {
+                     *         "event": "contact.unsubscribed",
+                     *         "scope": "domain",
+                     *         "domainHost": "news.acme.com"
+                     *       },
+                     *       "payloadSchema": {
+                     *         "fields": [
+                     *           {
+                     *             "key": "email",
+                     *             "required": true,
+                     *             "type": "string"
+                     *           },
+                     *           {
+                     *             "children": [
+                     *               {
+                     *                 "key": "scope",
+                     *                 "required": true,
+                     *                 "type": "string"
+                     *               },
+                     *               {
+                     *                 "key": "domain",
+                     *                 "required": false,
+                     *                 "type": "string"
+                     *               },
+                     *               {
+                     *                 "key": "method",
+                     *                 "required": true,
+                     *                 "type": "string"
+                     *               },
+                     *               {
+                     *                 "key": "reasons",
+                     *                 "required": true,
+                     *                 "type": "array",
+                     *                 "itemType": "string"
+                     *               },
+                     *               {
+                     *                 "key": "reasonText",
+                     *                 "required": false,
+                     *                 "type": "string"
+                     *               },
+                     *               {
+                     *                 "key": "emailId",
+                     *                 "required": false,
+                     *                 "type": "string"
+                     *               },
+                     *               {
+                     *                 "key": "emailTitle",
+                     *                 "required": false,
+                     *                 "type": "string"
+                     *               },
+                     *               {
+                     *                 "key": "sendId",
+                     *                 "required": false,
+                     *                 "type": "string"
+                     *               },
+                     *               {
+                     *                 "key": "at",
+                     *                 "required": true,
+                     *                 "type": "string"
+                     *               }
+                     *             ],
+                     *             "key": "unsubscribe",
+                     *             "required": true,
+                     *             "type": "object"
+                     *           }
+                     *         ],
+                     *         "type": "object"
+                     *       },
+                     *       "createdAt": "2026-10-13T12:00:00.000Z",
+                     *       "updatedAt": "2026-10-13T12:00:00.000Z",
+                     *       "created": true
+                     *     }
+                     */
+                    "application/json": components["schemas"]["BrewEventTriggerSaved"];
+                };
+            };
+            /**
+             * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+             *
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             */
+            400: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `API_KEY_REVOKED`: The API key was revoked.
+             *
+             *     `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+             *
+             *     `INVALID_API_KEY`: The API key is malformed or unknown.
+             */
+            401: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+             *
+             *     `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+             *
+             *     `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+             *
+             *     `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+             */
+            403: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+             *
+             *     `DOMAIN_NOT_FOUND`: No domain with that id exists in the brand.
+             */
+            404: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+             *
+             *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
+             *
+             *     `TRIGGER_LIMIT_REACHED`: The brand already holds the maximum number of trigger events.
+             */
+            409: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `DOMAIN_PURPOSE_NOT_ALLOWED`: The sending domain is admitted for a different purpose than this send (marketing vs transactional). */
+            422: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
+            429: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it. */
+            500: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+        };
+    };
     listTriggers: {
         parameters: {
             query?: {
@@ -18111,7 +18568,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `TRIGGER_IMMUTABLE`: Integration-provisioned triggers cannot be changed through the API. */
+            /** @description `TRIGGER_IMMUTABLE`: Integration-provisioned and Brew-event triggers cannot be changed through the API. */
             422: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -18281,6 +18738,17 @@ export interface operations {
              *     `TRIGGER_EVENT_NOT_FOUND`: No trigger with that id exists in the brand.
              */
             404: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `TRIGGER_NOT_FIREABLE`: Brew starts this trigger itself when its event happens, so it cannot be fired over the API. */
+            409: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
                     "x-request-id": string;
@@ -18507,6 +18975,8 @@ export interface operations {
              * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
              *
              *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
+             *
+             *     `TRIGGER_NOT_FIREABLE`: Brew starts this trigger itself when its event happens, so it cannot be fired over the API.
              */
             409: {
                 headers: {
@@ -18939,6 +19409,17 @@ export interface operations {
             };
             /** @description `CONTRACT_LOCKED_BY_PUBLISHED_AUTOMATIONS`: A published automation consumes this trigger, so the contract change must stay backward compatible: enforcement cannot tighten, a referenced field cannot be removed, retyped, or made required without a fallback, and an open object or list cannot gain a shape that drops a field a published automation reads. */
             409: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `TRIGGER_IMMUTABLE`: Integration-provisioned and Brew-event triggers cannot be changed through the API. */
+            422: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
                     "x-request-id": string;

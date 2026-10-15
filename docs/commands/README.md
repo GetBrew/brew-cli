@@ -2,7 +2,7 @@
 
 <!-- GENERATED FILE — do not edit. Regenerate with `bun run docs:commands`. -->
 
-144 commands. Classes: read (always safe), write
+145 commands. Classes: read (always safe), write
 (mutating, retry-safe), destructive (irreversible — the confirmation
 protocol applies: interactive y/N on a TTY, exit 4 + JSON envelope with
 a `confirmCommand` otherwise, `--yes` to proceed).
@@ -99,6 +99,7 @@ a `confirmCommand` otherwise, `--yes` to proceed).
 | `brew-cli automations triggers contract validate` | read | `POST /v1/automations/triggers/{triggerEventId}/contract/validate` | Dry-run a payload against a trigger's contract (the fire path's validator) — never fires; invalid payloads still exit 0 |
 | `brew-cli contracts infer` | read | `POST /v1/payload-contracts/infer` | Draft a payload contract from a real example payload — nothing is saved; PUT the draft on a trigger |
 | `brew-cli automations triggers create` | write | `POST /v1/automations/triggers` | Create a trigger event (title + typed payload schema) |
+| `brew-cli automations triggers ensure-brew-event` | write | `POST /v1/automations/triggers/brew-events` | Get or create the brand's trigger for a contact unsubscribing (one domain's list, or all emails) |
 | `brew-cli automations triggers update` | write | `PATCH /v1/automations/triggers/{triggerEventId}` | Update a trigger event (title, description, payload schema) |
 | `brew-cli automations triggers delete` | destructive | `DELETE /v1/automations/triggers/{triggerEventId}` | Delete a trigger event (rejected while automations depend on it) |
 | `brew-cli automations triggers fire` | destructive | `POST /v1/automations/triggers/{triggerEventId}/fire` | Fire a trigger event with a payload (starts LIVE runs) |
@@ -1468,6 +1469,23 @@ Create a trigger event (title + typed payload schema)
 
 ```bash
 brew-cli automations triggers create --title user.signup --input '{"payloadSchema":{"type":"object","fields":[{"key":"userId","type":"string","required":true}]}}'
+```
+
+### brew-cli automations triggers ensure-brew-event
+
+Get or create the brand's trigger for a contact unsubscribing (one domain's list, or all emails)
+
+- Route: `POST /v1/automations/triggers/brew-events`
+- Class: write
+- SDK: `brew.automations.triggers.ensureBrewEvent(...)`
+- `--scope <scope>` — domain (one marketing domain's list, with --domain-id) | all (every email the brand sends)
+- `--domain-id <domainId>` — The marketing domain for --scope domain (ids from domains list)
+- `--event <event>` — The Brew event (default contact.unsubscribed)
+- `--idempotency-key <key>` — Idempotency-Key for safe retries (auto-generated otherwise)
+
+```bash
+brew-cli automations triggers ensure-brew-event --scope domain --domain-id jd7f0c2a8w1x9m4n6p3q5r8s2t
+brew-cli automations triggers ensure-brew-event --scope all
 ```
 
 ### brew-cli automations triggers update
