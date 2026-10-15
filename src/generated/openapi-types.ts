@@ -2792,7 +2792,7 @@ export interface components {
             /** @enum {string} */
             approvalState?: "pending" | "approved" | "rejected";
             /**
-             * @description Why a paused send is held. `plan_limit`: the organization ran out of monthly email sends. `domain_unsendable`: its sending domain stopped passing DNS; fails after 7 days. Both resume on their own and can be canceled. `manual`: its operator paused the gradual ramp; resume it to continue.
+             * @description Why a paused send is held. `plan_limit`: the plan has too few sends left this period. `domain_unsendable`: its sending domain stopped passing DNS; fails after 7 days. Both resume on their own and can be canceled. `manual`: its operator paused the gradual ramp; resume it to continue.
              * @enum {string}
              */
             pauseReason?: "manual" | "plan_limit" | "domain_unsendable";
@@ -3492,7 +3492,7 @@ export interface components {
             /** @enum {string} */
             approvalState?: "pending" | "approved" | "rejected";
             /**
-             * @description Why a paused run is held. `plan_limit` means the organization ran out of monthly email sends; the run resumes on its own once the allowance has room (`resumeAudienceRun` refuses it), or you can cancel it. `manual` means an operator paused it; resume it to continue.
+             * @description Why a paused run is held. `plan_limit` means the plan has too few sends left this period; the run resumes on its own once the allowance has room (`resumeAudienceRun` refuses it), or you can cancel it. `manual` means an operator paused it; resume it to continue.
              * @enum {string}
              */
             pauseReason?: "manual" | "plan_limit";
@@ -5078,7 +5078,7 @@ export interface components {
                 /** @enum {string} */
                 approvalState?: "pending" | "approved" | "rejected";
                 /**
-                 * @description Why a paused send is held. `plan_limit`: the organization ran out of monthly email sends. `domain_unsendable`: its sending domain stopped passing DNS; fails after 7 days. Both resume on their own and can be canceled. `manual`: its operator paused the gradual ramp; resume it to continue.
+                 * @description Why a paused send is held. `plan_limit`: the plan has too few sends left this period. `domain_unsendable`: its sending domain stopped passing DNS; fails after 7 days. Both resume on their own and can be canceled. `manual`: its operator paused the gradual ramp; resume it to continue.
                  * @enum {string}
                  */
                 pauseReason?: "manual" | "plan_limit" | "domain_unsendable";
@@ -6525,7 +6525,7 @@ export interface components {
                 /** @enum {string} */
                 approvalState?: "pending" | "approved" | "rejected";
                 /**
-                 * @description Why a paused run is held. `plan_limit` means the organization ran out of monthly email sends; the run resumes on its own once the allowance has room (`resumeAudienceRun` refuses it), or you can cancel it. `manual` means an operator paused it; resume it to continue.
+                 * @description Why a paused run is held. `plan_limit` means the plan has too few sends left this period; the run resumes on its own once the allowance has room (`resumeAudienceRun` refuses it), or you can cancel it. `manual` means an operator paused it; resume it to continue.
                  * @enum {string}
                  */
                 pauseReason?: "manual" | "plan_limit";
@@ -11685,7 +11685,7 @@ export interface operations {
             /**
              * @description `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed.
              *
-             *     `SEND_QUOTA_EXCEEDED`: The send or manual-audience run would exceed the plan’s monthly email volume. Admission counts sends already used plus sends reserved by sends still delivering (`details` carries `used`, `reserved`, `remaining`, `limit`, `planKey` and `requested`, and `periodEnd` when known). Reserved sends count as used as they deliver; only a canceled send returns what it has not sent yet. The window resets with the billing period.
+             *     `SEND_QUOTA_EXCEEDED`: The send or manual-audience run would exceed the plan’s monthly email volume. A send must fit at launch and draws from the allowance chunk by chunk as it delivers; `reserved` is only the batch going out right now (`details` carries `used`, `reserved`, `remaining`, `limit`, `planKey` and `requested`, and `periodEnd` when known). The window resets with the billing period.
              */
             402: {
                 headers: {
@@ -13946,7 +13946,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `SEND_QUOTA_EXCEEDED`: The send or manual-audience run would exceed the plan’s monthly email volume. Admission counts sends already used plus sends reserved by sends still delivering (`details` carries `used`, `reserved`, `remaining`, `limit`, `planKey` and `requested`, and `periodEnd` when known). Reserved sends count as used as they deliver; only a canceled send returns what it has not sent yet. The window resets with the billing period. */
+            /** @description `SEND_QUOTA_EXCEEDED`: The send or manual-audience run would exceed the plan’s monthly email volume. A send must fit at launch and draws from the allowance chunk by chunk as it delivers; `reserved` is only the batch going out right now (`details` carries `used`, `reserved`, `remaining`, `limit`, `planKey` and `requested`, and `periodEnd` when known). The window resets with the billing period. */
             402: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -16430,7 +16430,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `SEND_QUOTA_EXCEEDED`: The send or manual-audience run would exceed the plan’s monthly email volume. Admission counts sends already used plus sends reserved by sends still delivering (`details` carries `used`, `reserved`, `remaining`, `limit`, `planKey` and `requested`, and `periodEnd` when known). Reserved sends count as used as they deliver; only a canceled send returns what it has not sent yet. The window resets with the billing period. */
+            /** @description `SEND_QUOTA_EXCEEDED`: The send or manual-audience run would exceed the plan’s monthly email volume. A send must fit at launch and draws from the allowance chunk by chunk as it delivers; `reserved` is only the batch going out right now (`details` carries `used`, `reserved`, `remaining`, `limit`, `planKey` and `requested`, and `periodEnd` when known). The window resets with the billing period. */
             402: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -17093,7 +17093,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `SEND_QUOTA_EXCEEDED`: The send or manual-audience run would exceed the plan’s monthly email volume. Admission counts sends already used plus sends reserved by sends still delivering (`details` carries `used`, `reserved`, `remaining`, `limit`, `planKey` and `requested`, and `periodEnd` when known). Reserved sends count as used as they deliver; only a canceled send returns what it has not sent yet. The window resets with the billing period. */
+            /** @description `SEND_QUOTA_EXCEEDED`: The send or manual-audience run would exceed the plan’s monthly email volume. A send must fit at launch and draws from the allowance chunk by chunk as it delivers; `reserved` is only the batch going out right now (`details` carries `used`, `reserved`, `remaining`, `limit`, `planKey` and `requested`, and `periodEnd` when known). The window resets with the billing period. */
             402: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
