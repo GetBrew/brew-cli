@@ -2333,7 +2333,7 @@ export interface paths {
         };
         /**
          * Get usage
-         * @description Returns the org usage snapshot: current plan, AI credit balance (limit/used/remaining — `null` = unlimited), monthly email-send quota, and the billing-period window. Check it before a credit-metered call. Billing belongs to the ORGANIZATION, so this needs an organization-scoped credential: a key bound to one brand gets `403 ORG_SCOPE_REQUIRED` no matter which scopes it holds.
+         * @description Returns the org usage snapshot: current plan, AI credit balance (limit/used/remaining — `null` = unlimited), monthly email-send quota (`remaining` = `limit` − `used` − `reserved`, where `reserved` is held by sends still delivering), and the billing-period window. Check it before a credit-metered call. Billing belongs to the ORGANIZATION, so this needs an organization-scoped credential: a key bound to one brand gets `403 ORG_SCOPE_REQUIRED` no matter which scopes it holds.
          */
         get: operations["getUsage"];
         put?: never;
@@ -11685,7 +11685,7 @@ export interface operations {
             /**
              * @description `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed.
              *
-             *     `SEND_QUOTA_EXCEEDED`: The send or manual-audience run would exceed the plan’s monthly email volume (`details` carries `used`, `limit`, `planKey` and `requested` when known); the window resets with the billing period.
+             *     `SEND_QUOTA_EXCEEDED`: The send or manual-audience run would exceed the plan’s monthly email volume. Admission counts sends already used plus sends reserved by sends still delivering (`details` carries `used`, `reserved`, `remaining`, `limit`, `planKey` and `requested`, and `periodEnd` when known). Reserved sends count as used as they deliver; only a canceled send returns what it has not sent yet. The window resets with the billing period.
              */
             402: {
                 headers: {
@@ -13946,7 +13946,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `SEND_QUOTA_EXCEEDED`: The send or manual-audience run would exceed the plan’s monthly email volume (`details` carries `used`, `limit`, `planKey` and `requested` when known); the window resets with the billing period. */
+            /** @description `SEND_QUOTA_EXCEEDED`: The send or manual-audience run would exceed the plan’s monthly email volume. Admission counts sends already used plus sends reserved by sends still delivering (`details` carries `used`, `reserved`, `remaining`, `limit`, `planKey` and `requested`, and `periodEnd` when known). Reserved sends count as used as they deliver; only a canceled send returns what it has not sent yet. The window resets with the billing period. */
             402: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -16430,7 +16430,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `SEND_QUOTA_EXCEEDED`: The send or manual-audience run would exceed the plan’s monthly email volume (`details` carries `used`, `limit`, `planKey` and `requested` when known); the window resets with the billing period. */
+            /** @description `SEND_QUOTA_EXCEEDED`: The send or manual-audience run would exceed the plan’s monthly email volume. Admission counts sends already used plus sends reserved by sends still delivering (`details` carries `used`, `reserved`, `remaining`, `limit`, `planKey` and `requested`, and `periodEnd` when known). Reserved sends count as used as they deliver; only a canceled send returns what it has not sent yet. The window resets with the billing period. */
             402: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -17093,7 +17093,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `SEND_QUOTA_EXCEEDED`: The send or manual-audience run would exceed the plan’s monthly email volume (`details` carries `used`, `limit`, `planKey` and `requested` when known); the window resets with the billing period. */
+            /** @description `SEND_QUOTA_EXCEEDED`: The send or manual-audience run would exceed the plan’s monthly email volume. Admission counts sends already used plus sends reserved by sends still delivering (`details` carries `used`, `reserved`, `remaining`, `limit`, `planKey` and `requested`, and `periodEnd` when known). Reserved sends count as used as they deliver; only a canceled send returns what it has not sent yet. The window resets with the billing period. */
             402: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -29316,8 +29316,9 @@ export interface operations {
                      *       },
                      *       "emailSends": {
                      *         "limit": 200000,
-                     *         "used": 0,
-                     *         "remaining": 200000
+                     *         "used": 911,
+                     *         "reserved": 27880,
+                     *         "remaining": 171209
                      *       },
                      *       "period": {
                      *         "start": "2026-05-28T18:10:35.000Z",

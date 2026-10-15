@@ -24132,7 +24132,7 @@ paths:
           description: |-
             `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed.
 
-            `SEND_QUOTA_EXCEEDED`: The send or manual-audience run would exceed the plan’s monthly email volume (`details` carries `used`, `limit`, `planKey` and `requested` when known); the window resets with the billing period.
+            `SEND_QUOTA_EXCEEDED`: The send or manual-audience run would exceed the plan’s monthly email volume. Admission counts sends already used plus sends reserved by sends still delivering (`details` carries `used`, `reserved`, `remaining`, `limit`, `planKey` and `requested`, and `periodEnd` when known). Reserved sends count as used as they deliver; only a canceled send returns what it has not sent yet. The window resets with the billing period.
           headers:
             x-request-id:
               schema:
@@ -24165,8 +24165,8 @@ paths:
                     error:
                       code: SEND_QUOTA_EXCEEDED
                       type: payment_required
-                      message: The send or manual-audience run would exceed the plan’s monthly email volume (`details` carries `used`, `limit`, `planKey` and `requested` when known); the window resets with the billing period.
-                      suggestion: Upgrade your plan for a higher monthly send volume, or wait for the next billing period to reset.
+                      message: The send or manual-audience run would exceed the plan’s monthly email volume. Admission counts sends already used plus sends reserved by sends still delivering (`details` carries `used`, `reserved`, `remaining`, `limit`, `planKey` and `requested`, and `periodEnd` when known). Reserved sends count as used as they deliver; only a canceled send returns what it has not sent yet. The window resets with the billing period.
+                      suggestion: Upgrade your plan for a higher monthly send volume, send to fewer recipients, cancel a send in progress, or wait for the billing period to reset.
                       docs: https://docs.brew.new/api-reference/api/credits
         "403":
           description: |-
@@ -30118,7 +30118,7 @@ paths:
                       suggestion: Check the API key format and retry with a valid active key.
                       docs: https://docs.brew.new/api-reference/api/authentication
         "402":
-          description: "`SEND_QUOTA_EXCEEDED`: The send or manual-audience run would exceed the plan’s monthly email volume (`details` carries `used`, `limit`, `planKey` and `requested` when known); the window resets with the billing period."
+          description: "`SEND_QUOTA_EXCEEDED`: The send or manual-audience run would exceed the plan’s monthly email volume. Admission counts sends already used plus sends reserved by sends still delivering (`details` carries `used`, `reserved`, `remaining`, `limit`, `planKey` and `requested`, and `periodEnd` when known). Reserved sends count as used as they deliver; only a canceled send returns what it has not sent yet. The window resets with the billing period."
           headers:
             x-request-id:
               schema:
@@ -30138,8 +30138,8 @@ paths:
                     error:
                       code: SEND_QUOTA_EXCEEDED
                       type: payment_required
-                      message: The send or manual-audience run would exceed the plan’s monthly email volume (`details` carries `used`, `limit`, `planKey` and `requested` when known); the window resets with the billing period.
-                      suggestion: Upgrade your plan for a higher monthly send volume, or wait for the next billing period to reset.
+                      message: The send or manual-audience run would exceed the plan’s monthly email volume. Admission counts sends already used plus sends reserved by sends still delivering (`details` carries `used`, `reserved`, `remaining`, `limit`, `planKey` and `requested`, and `periodEnd` when known). Reserved sends count as used as they deliver; only a canceled send returns what it has not sent yet. The window resets with the billing period.
+                      suggestion: Upgrade your plan for a higher monthly send volume, send to fewer recipients, cancel a send in progress, or wait for the billing period to reset.
                       docs: https://docs.brew.new/api-reference/api/credits
         "403":
           description: |-
@@ -36163,7 +36163,7 @@ paths:
                       suggestion: Check the API key format and retry with a valid active key.
                       docs: https://docs.brew.new/api-reference/api/authentication
         "402":
-          description: "`SEND_QUOTA_EXCEEDED`: The send or manual-audience run would exceed the plan’s monthly email volume (`details` carries `used`, `limit`, `planKey` and `requested` when known); the window resets with the billing period."
+          description: "`SEND_QUOTA_EXCEEDED`: The send or manual-audience run would exceed the plan’s monthly email volume. Admission counts sends already used plus sends reserved by sends still delivering (`details` carries `used`, `reserved`, `remaining`, `limit`, `planKey` and `requested`, and `periodEnd` when known). Reserved sends count as used as they deliver; only a canceled send returns what it has not sent yet. The window resets with the billing period."
           headers:
             x-request-id:
               schema:
@@ -36183,8 +36183,8 @@ paths:
                     error:
                       code: SEND_QUOTA_EXCEEDED
                       type: payment_required
-                      message: The send or manual-audience run would exceed the plan’s monthly email volume (`details` carries `used`, `limit`, `planKey` and `requested` when known); the window resets with the billing period.
-                      suggestion: Upgrade your plan for a higher monthly send volume, or wait for the next billing period to reset.
+                      message: The send or manual-audience run would exceed the plan’s monthly email volume. Admission counts sends already used plus sends reserved by sends still delivering (`details` carries `used`, `reserved`, `remaining`, `limit`, `planKey` and `requested`, and `periodEnd` when known). Reserved sends count as used as they deliver; only a canceled send returns what it has not sent yet. The window resets with the billing period.
+                      suggestion: Upgrade your plan for a higher monthly send volume, send to fewer recipients, cancel a send in progress, or wait for the billing period to reset.
                       docs: https://docs.brew.new/api-reference/api/credits
         "403":
           description: |-
@@ -37775,7 +37775,7 @@ paths:
                       suggestion: Check the API key format and retry with a valid active key.
                       docs: https://docs.brew.new/api-reference/api/authentication
         "402":
-          description: "`SEND_QUOTA_EXCEEDED`: The send or manual-audience run would exceed the plan’s monthly email volume (`details` carries `used`, `limit`, `planKey` and `requested` when known); the window resets with the billing period."
+          description: "`SEND_QUOTA_EXCEEDED`: The send or manual-audience run would exceed the plan’s monthly email volume. Admission counts sends already used plus sends reserved by sends still delivering (`details` carries `used`, `reserved`, `remaining`, `limit`, `planKey` and `requested`, and `periodEnd` when known). Reserved sends count as used as they deliver; only a canceled send returns what it has not sent yet. The window resets with the billing period."
           headers:
             x-request-id:
               schema:
@@ -37795,8 +37795,8 @@ paths:
                     error:
                       code: SEND_QUOTA_EXCEEDED
                       type: payment_required
-                      message: The send or manual-audience run would exceed the plan’s monthly email volume (`details` carries `used`, `limit`, `planKey` and `requested` when known); the window resets with the billing period.
-                      suggestion: Upgrade your plan for a higher monthly send volume, or wait for the next billing period to reset.
+                      message: The send or manual-audience run would exceed the plan’s monthly email volume. Admission counts sends already used plus sends reserved by sends still delivering (`details` carries `used`, `reserved`, `remaining`, `limit`, `planKey` and `requested`, and `periodEnd` when known). Reserved sends count as used as they deliver; only a canceled send returns what it has not sent yet. The window resets with the billing period.
+                      suggestion: Upgrade your plan for a higher monthly send volume, send to fewer recipients, cancel a send in progress, or wait for the billing period to reset.
                       docs: https://docs.brew.new/api-reference/api/credits
         "403":
           description: |-
@@ -64911,7 +64911,7 @@ paths:
       tags:
         - Usage
       summary: Get usage
-      description: "Returns the org usage snapshot: current plan, AI credit balance (limit/used/remaining — `null` = unlimited), monthly email-send quota, and the billing-period window. Check it before a credit-metered call. Billing belongs to the ORGANIZATION, so this needs an organization-scoped credential: a key bound to one brand gets `403 ORG_SCOPE_REQUIRED` no matter which scopes it holds."
+      description: "Returns the org usage snapshot: current plan, AI credit balance (limit/used/remaining — `null` = unlimited), monthly email-send quota (`remaining` = `limit` − `used` − `reserved`, where `reserved` is held by sends still delivering), and the billing-period window. Check it before a credit-metered call. Billing belongs to the ORGANIZATION, so this needs an organization-scoped credential: a key bound to one brand gets `403 ORG_SCOPE_REQUIRED` no matter which scopes it holds."
       responses:
         "200":
           description: Usage snapshot — plan, credits, and email-send quota.
@@ -64958,8 +64958,9 @@ paths:
                   remaining: 49636
                 emailSends:
                   limit: 200000
-                  used: 0
-                  remaining: 200000
+                  used: 911
+                  reserved: 27880
+                  remaining: 171209
                 period:
                   start: '2026-05-28T18:10:35.000Z'
                   end: '2026-06-28T18:10:35.000Z'
