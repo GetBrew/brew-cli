@@ -5,7 +5,7 @@
     "": {
       "name": "@brew.new/cli",
       "dependencies": {
-        "@brew.new/sdk": "^12.2.0",
+        "@brew.new/sdk": "^12.3.0",
         "commander": "^14.0.0",
       },
       "devDependencies": {
@@ -43,7 +43,7 @@
 
     "@biomejs/cli-win32-x64": ["@biomejs/cli-win32-x64@2.5.7", "", { "os": "win32", "cpu": "x64" }, "sha512-V+0wu/nrj2S+MhP4EQ0uHNolP0IALEsz45pg0WoKkHfDeh0+ItHwP/p7bX5RPoMOl9NkpHYWdYPhIcy2mACHvQ=="],
 
-    "@brew.new/sdk": ["@brew.new/sdk@12.2.0", "", {}, "sha512-A1KWoXv9/oNKCJPSQOfoy7wma9R+eUK4i+ah9yGaSNAXgCALLHmWe4VUC+puOPAYNbyIAf3e9XRVSobyH4lMrA=="],
+    "@brew.new/sdk": ["@brew.new/sdk@12.3.0", "", { "peerDependencies": { "react": ">=18.2.0 <20" }, "optionalPeers": ["react"] }, "sha512-3jS1IHkTlB8tFQO7rH/NdXbgp9ZjShl2ZM7wMz/J2YpwMnrNRAU1p66KiEbtvFgmenhFcVc++FDgjCtiMyjmrQ=="],
 
     "@esbuild/aix-ppc64": ["@esbuild/aix-ppc64@0.27.7", "", { "os": "aix", "cpu": "ppc64" }, "sha512-EKX3Qwmhz1eMdEJokhALr0YiD0lhQNwDqkPYyPhiSwKrh7/4KRjQc04sZ8db+5DVVnZ1LmbNDI1uAMPEUBnQPg=="],
 

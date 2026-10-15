@@ -3145,11 +3145,9 @@ components:
                 from:
                   type: string
                   format: date-time
-                  description: Window start. Required unless `sendId` is set — then it defaults to one hour before that send was dispatched (its scheduled time for a scheduled send; a completion pass's re-stamped start is never used), and `to` to now.
                 to:
                   type: string
                   format: date-time
-                  description: Defaults to now.
                 sendId:
                   type: string
                   minLength: 1
@@ -3291,11 +3289,9 @@ components:
             from:
               type: string
               format: date-time
-              description: Window start. Required unless `sendId` is set — then it defaults to one hour before that send was dispatched (its scheduled time for a scheduled send; a completion pass's re-stamped start is never used), and `to` to now.
             to:
               type: string
               format: date-time
-              description: Defaults to now.
             sendId:
               type: string
               minLength: 1
@@ -12224,63 +12220,112 @@ components:
         - payload
       additionalProperties: false
     PayloadContractGetResponse:
-      type: object
-      properties:
-        subjectKind:
-          type: string
-          enum:
-            - trigger
-        subjectId:
-          type: string
-          minLength: 1
-        source:
-          type: string
-          enum:
-            - stored
-            - derived_from_schema
-            - derived_from_template
-        typeName:
-          type: string
-          minLength: 1
-        contractHash:
-          type: string
-          minLength: 64
-          maxLength: 64
-        version:
-          type: integer
-          minimum: 1
-        enforcement:
-          type: string
-          enum:
-            - 'off'
-            - prune
-            - strict
-        driftStatus:
-          type: string
-          enum:
-            - fresh
-            - stale
-        fields:
-          type: array
-          items:
-            $ref: "#/components/schemas/PayloadContractFieldNode"
-        format:
-          type: string
-          enum:
-            - json
-            - ts
-            - zod
-            - jsonschema
-            - skill
-        content:
-          type: string
-      required:
-        - subjectKind
-        - subjectId
-        - source
-        - typeName
-        - format
-      additionalProperties: false
+      oneOf:
+        - type: object
+          properties:
+            subjectKind:
+              type: string
+              enum:
+                - trigger
+            subjectId:
+              type: string
+              minLength: 1
+            source:
+              type: string
+              enum:
+                - stored
+                - derived_from_schema
+                - derived_from_template
+            typeName:
+              type: string
+              minLength: 1
+            contractHash:
+              type: string
+              minLength: 64
+              maxLength: 64
+            version:
+              type: integer
+              minimum: 1
+            enforcement:
+              type: string
+              enum:
+                - 'off'
+                - prune
+                - strict
+            driftStatus:
+              type: string
+              enum:
+                - fresh
+                - stale
+            format:
+              type: string
+              enum:
+                - json
+            fields:
+              type: array
+              items:
+                $ref: "#/components/schemas/PayloadContractFieldNode"
+          required:
+            - subjectKind
+            - subjectId
+            - source
+            - typeName
+            - format
+            - fields
+          additionalProperties: false
+        - type: object
+          properties:
+            subjectKind:
+              type: string
+              enum:
+                - trigger
+            subjectId:
+              type: string
+              minLength: 1
+            source:
+              type: string
+              enum:
+                - stored
+                - derived_from_schema
+                - derived_from_template
+            typeName:
+              type: string
+              minLength: 1
+            contractHash:
+              type: string
+              minLength: 64
+              maxLength: 64
+            version:
+              type: integer
+              minimum: 1
+            enforcement:
+              type: string
+              enum:
+                - 'off'
+                - prune
+                - strict
+            driftStatus:
+              type: string
+              enum:
+                - fresh
+                - stale
+            format:
+              type: string
+              enum:
+                - ts
+                - zod
+                - jsonschema
+                - skill
+            content:
+              type: string
+          required:
+            - subjectKind
+            - subjectId
+            - source
+            - typeName
+            - format
+            - content
+          additionalProperties: false
     PayloadContractFieldNode:
       type: object
       properties:
@@ -12402,20 +12447,14 @@ components:
           enum:
             - fresh
             - stale
-        fields:
-          type: array
-          items:
-            $ref: "#/components/schemas/PayloadContractFieldNode"
         format:
           type: string
           enum:
             - json
-            - ts
-            - zod
-            - jsonschema
-            - skill
-        content:
-          type: string
+        fields:
+          type: array
+          items:
+            $ref: "#/components/schemas/PayloadContractFieldNode"
         warnings:
           type: array
           items:
@@ -12426,6 +12465,7 @@ components:
         - source
         - typeName
         - format
+        - fields
         - warnings
       additionalProperties: false
     PayloadContractPutRequest:
@@ -14270,11 +14310,9 @@ components:
                       from:
                         type: string
                         format: date-time
-                        description: Window start. Required unless `sendId` is set — then it defaults to one hour before that send was dispatched (its scheduled time for a scheduled send; a completion pass's re-stamped start is never used), and `to` to now.
                       to:
                         type: string
                         format: date-time
-                        description: Defaults to now.
                       sendId:
                         type: string
                         minLength: 1
@@ -14521,11 +14559,9 @@ components:
                 from:
                   type: string
                   format: date-time
-                  description: Window start. Required unless `sendId` is set — then it defaults to one hour before that send was dispatched (its scheduled time for a scheduled send; a completion pass's re-stamped start is never used), and `to` to now.
                 to:
                   type: string
                   format: date-time
-                  description: Defaults to now.
                 sendId:
                   type: string
                   minLength: 1
@@ -14884,11 +14920,9 @@ components:
                 from:
                   type: string
                   format: date-time
-                  description: Window start. Required unless `sendId` is set — then it defaults to one hour before that send was dispatched (its scheduled time for a scheduled send; a completion pass's re-stamped start is never used), and `to` to now.
                 to:
                   type: string
                   format: date-time
-                  description: Defaults to now.
                 sendId:
                   type: string
                   minLength: 1

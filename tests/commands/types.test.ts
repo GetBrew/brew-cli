@@ -2,7 +2,7 @@ import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { HttpResponse, http } from 'msw'
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 import { automationsTriggersReadyCommand } from '../../src/commands/automations/triggers/ready'
 import { typesCommand } from '../../src/commands/types'
 import type { components } from '../../src/generated/openapi-types'
@@ -34,6 +34,55 @@ const TRIGGER = {
   createdAt: '2026-08-01T00:00:00.000Z',
   updatedAt: '2026-08-01T00:00:00.000Z',
 }
+
+const NESTED_ARTIFACT = [
+  '/** Fire: POST /v1/automations/triggers/tri_order_receipt/fire — body { payload: OrderReceiptPayload } */',
+  'export type OrderReceiptPayload = {',
+  '  email: string',
+  '  order: {',
+  '    total: number',
+  '    items: Array<{',
+  '      name: string',
+  '      qty?: number',
+  '    }>',
+  '  }',
+  '  tags?: Array<string>',
+  '  status: "paid" | "refunded"',
+  '  placedAt: string',
+  '  meta?: unknown',
+  '  note?: string',
+  '}',
+].join('\n')
+
+beforeEach(() => {
+  server.use(
+    http.get(
+      `${API}/v1/automations/triggers/:id/contract`,
+      ({ request, params }) => {
+        expect(new URL(request.url).searchParams.get('format')).toBe('ts')
+        const id = String(params.id)
+        let name = 'UserSignedUpPayload'
+        if (id === 'tri_order_receipt') name = 'OrderReceiptPayload'
+        if (id === 'tri_l') name = 'Payload2026Launch'
+        if (id === 'tri_tail') name = 'TailTriggerPayload'
+        if (id.startsWith('tri_page1_'))
+          name = `PageOne${Number(id.slice('tri_page1_'.length))}Payload`
+        const content =
+          id === 'tri_order_receipt'
+            ? NESTED_ARTIFACT
+            : `export type ${name} = {\n  email: string\n  seats?: number\n  "kebab-key"?: string\n}\n`
+        return HttpResponse.json({
+          format: 'ts',
+          typeName: name,
+          subjectKind: 'trigger',
+          subjectId: id,
+          source: 'stored',
+          content,
+        })
+      }
+    )
+  )
+})
 
 function mockApi() {
   server.use(
@@ -149,24 +198,6 @@ describe('types — nested contracts', () => {
   // emits — and the docs guide's OrderReceiptPayload example: inline
   // nested object literals, Array<{ … }> members, two-space indent per
   // level, unions from enumValues.
-  const EXPECTED = [
-    '/** Fire: POST /v1/automations/triggers/tri_order_receipt/fire — body { payload: OrderReceiptPayload } */',
-    'export type OrderReceiptPayload = {',
-    '  email: string',
-    '  order: {',
-    '    total: number',
-    '    items: Array<{',
-    '      name: string',
-    '      qty?: number',
-    '    }>',
-    '  }',
-    '  tags?: Array<string>',
-    '  status: "paid" | "refunded"',
-    '  placedAt: string',
-    '  meta?: unknown',
-    '  note?: string',
-    '}',
-  ].join('\n')
 
   function mockNestedApi() {
     server.use(
@@ -188,7 +219,7 @@ describe('types — nested contracts', () => {
       env: env(),
     })
     expect(result.code).toBe(0)
-    expect(readFileSync(out, 'utf8')).toContain(EXPECTED)
+    expect(readFileSync(out, 'utf8')).toContain(NESTED_ARTIFACT)
   })
 
   it('--check stays deterministic for nested output', async () => {
@@ -279,7 +310,7 @@ describe('types — audit hardening', () => {
     expect(text).toContain('export type UserSignedUpPayloadTriB =')
   })
 
-  it('mirrors the app naming rule: digit-led titles get the Payload prefix', async () => {
+  it('uses the server-minted identifier for a digit-led title', async () => {
     server.use(
       http.get(`${API}/v1/automations/triggers`, () =>
         HttpResponse.json({

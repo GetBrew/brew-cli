@@ -46,13 +46,14 @@ export const canvasSessionsCreateCommand = defineCommand({
     const externalId = flagString(flags.userId)
     const name = flagString(flags.userName)
     const base = mergeInput(await readJsonFlag(ctx, flags.input, '--input'), {})
+    let target: CreateCanvasSessionInput['target'] | undefined
+    if (groupId !== undefined) {
+      target = { type: 'group', groupId }
+    } else if (emailId !== undefined) {
+      target = { type: 'email', emailId }
+    }
     const input = mergeInput(base, {
-      target:
-        groupId !== undefined
-          ? { type: 'group', groupId }
-          : emailId !== undefined
-            ? { type: 'email', emailId }
-            : undefined,
+      target,
       parentOrigin: flagString(flags.parentOrigin),
       user:
         externalId !== undefined || name !== undefined

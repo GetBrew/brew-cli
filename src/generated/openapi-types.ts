@@ -3771,15 +3771,9 @@ export interface components {
                 status: "queued" | "running" | "completed" | "partially_completed" | "failed";
                 cohort: {
                     eventTypes: ("sent" | "delivered" | "delivery_delayed" | "opened" | "clicked" | "bounced" | "complained" | "failed" | "skipped" | "unsubscribed")[];
-                    /**
-                     * Format: date-time
-                     * @description Window start. Required unless `sendId` is set — then it defaults to one hour before that send was dispatched (its scheduled time for a scheduled send; a completion pass's re-stamped start is never used), and `to` to now.
-                     */
+                    /** Format: date-time */
                     from: string;
-                    /**
-                     * Format: date-time
-                     * @description Defaults to now.
-                     */
+                    /** Format: date-time */
                     to: string;
                     /** @description Scope to one send (the id in /analytics/sends/{sendId}). With `sendId` the window may be omitted. */
                     sendId?: string;
@@ -3817,15 +3811,9 @@ export interface components {
             status: "queued" | "running" | "completed" | "partially_completed" | "failed";
             cohort: {
                 eventTypes: ("sent" | "delivered" | "delivery_delayed" | "opened" | "clicked" | "bounced" | "complained" | "failed" | "skipped" | "unsubscribed")[];
-                /**
-                 * Format: date-time
-                 * @description Window start. Required unless `sendId` is set — then it defaults to one hour before that send was dispatched (its scheduled time for a scheduled send; a completion pass's re-stamped start is never used), and `to` to now.
-                 */
+                /** Format: date-time */
                 from: string;
-                /**
-                 * Format: date-time
-                 * @description Defaults to now.
-                 */
+                /** Format: date-time */
                 to: string;
                 /** @description Scope to one send (the id in /analytics/sends/{sendId}). With `sendId` the window may be omitted. */
                 sendId?: string;
@@ -6969,10 +6957,25 @@ export interface components {
             enforcement?: "off" | "prune" | "strict";
             /** @enum {string} */
             driftStatus?: "fresh" | "stale";
-            fields?: components["schemas"]["PayloadContractFieldNode"][];
             /** @enum {string} */
-            format: "json" | "ts" | "zod" | "jsonschema" | "skill";
-            content?: string;
+            format: "json";
+            fields: components["schemas"]["PayloadContractFieldNode"][];
+        } | {
+            /** @enum {string} */
+            subjectKind: "trigger";
+            subjectId: string;
+            /** @enum {string} */
+            source: "stored" | "derived_from_schema" | "derived_from_template";
+            typeName: string;
+            contractHash?: string;
+            version?: number;
+            /** @enum {string} */
+            enforcement?: "off" | "prune" | "strict";
+            /** @enum {string} */
+            driftStatus?: "fresh" | "stale";
+            /** @enum {string} */
+            format: "ts" | "zod" | "jsonschema" | "skill";
+            content: string;
         };
         PayloadContractFieldNode: {
             key: string;
@@ -7006,10 +7009,9 @@ export interface components {
             enforcement?: "off" | "prune" | "strict";
             /** @enum {string} */
             driftStatus?: "fresh" | "stale";
-            fields?: components["schemas"]["PayloadContractFieldNode"][];
             /** @enum {string} */
-            format: "json" | "ts" | "zod" | "jsonschema" | "skill";
-            content?: string;
+            format: "json";
+            fields: components["schemas"]["PayloadContractFieldNode"][];
             warnings: components["schemas"]["ApiWarning"][];
         };
         PayloadContractPutRequest: {
@@ -7743,15 +7745,9 @@ export interface components {
                     status: "queued" | "running" | "completed" | "partially_completed" | "failed";
                     cohort: {
                         eventTypes: ("sent" | "delivered" | "delivery_delayed" | "opened" | "clicked" | "bounced" | "complained" | "failed" | "skipped" | "unsubscribed")[];
-                        /**
-                         * Format: date-time
-                         * @description Window start. Required unless `sendId` is set — then it defaults to one hour before that send was dispatched (its scheduled time for a scheduled send; a completion pass's re-stamped start is never used), and `to` to now.
-                         */
+                        /** Format: date-time */
                         from: string;
-                        /**
-                         * Format: date-time
-                         * @description Defaults to now.
-                         */
+                        /** Format: date-time */
                         to: string;
                         /** @description Scope to one send (the id in /analytics/sends/{sendId}). With `sendId` the window may be omitted. */
                         sendId?: string;
@@ -7817,15 +7813,9 @@ export interface components {
                 status: "queued" | "running" | "completed" | "partially_completed" | "failed";
                 cohort: {
                     eventTypes: ("sent" | "delivered" | "delivery_delayed" | "opened" | "clicked" | "bounced" | "complained" | "failed" | "skipped" | "unsubscribed")[];
-                    /**
-                     * Format: date-time
-                     * @description Window start. Required unless `sendId` is set — then it defaults to one hour before that send was dispatched (its scheduled time for a scheduled send; a completion pass's re-stamped start is never used), and `to` to now.
-                     */
+                    /** Format: date-time */
                     from: string;
-                    /**
-                     * Format: date-time
-                     * @description Defaults to now.
-                     */
+                    /** Format: date-time */
                     to: string;
                     /** @description Scope to one send (the id in /analytics/sends/{sendId}). With `sendId` the window may be omitted. */
                     sendId?: string;
@@ -7924,15 +7914,9 @@ export interface components {
                 status: "queued" | "running" | "completed" | "partially_completed" | "failed";
                 cohort: {
                     eventTypes: ("sent" | "delivered" | "delivery_delayed" | "opened" | "clicked" | "bounced" | "complained" | "failed" | "skipped" | "unsubscribed")[];
-                    /**
-                     * Format: date-time
-                     * @description Window start. Required unless `sendId` is set — then it defaults to one hour before that send was dispatched (its scheduled time for a scheduled send; a completion pass's re-stamped start is never used), and `to` to now.
-                     */
+                    /** Format: date-time */
                     from: string;
-                    /**
-                     * Format: date-time
-                     * @description Defaults to now.
-                     */
+                    /** Format: date-time */
                     to: string;
                     /** @description Scope to one send (the id in /analytics/sends/{sendId}). With `sendId` the window may be omitted. */
                     sendId?: string;
