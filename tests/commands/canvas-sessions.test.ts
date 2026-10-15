@@ -200,22 +200,32 @@ describe('canvas sessions', () => {
     expect(result.json).toEqual({ revoked: true })
   })
 
-  it('never retries a failed credential-minting request', async () => {
-    let attempts = 0
-    server.use(
-      http.post('https://brew.new/api/v1/canvas/sessions', () => {
-        attempts += 1
-        return HttpResponse.json(
-          { error: { code: 'INTERNAL_ERROR', message: 'Unavailable' } },
-          { status: 503 }
-        )
-      })
-    )
-    const result = await runCli(
-      ['canvas', 'sessions', 'create', '--input', JSON.stringify(input)],
-      { env }
-    )
-    expect(result.code).toBe(1)
-    expect(attempts).toBe(1)
-  })
+  it.each(['create', 'refresh'])(
+    'never retries a failed %s credential request',
+    async (command) => {
+      let attempts = 0
+      server.use(
+        http.post('https://brew.new/api/v1/canvas/sessions*', () => {
+          attempts += 1
+          return HttpResponse.json(
+            { error: { code: 'INTERNAL_ERROR', message: 'Unavailable' } },
+            { status: 503 }
+          )
+        })
+      )
+      const result = await runCli(
+        [
+          'canvas',
+          'sessions',
+          command,
+          ...(command === 'create'
+            ? ['--input', JSON.stringify(input)]
+            : ['session_test']),
+        ],
+        { env }
+      )
+      expect(result.code).toBe(1)
+      expect(attempts).toBe(1)
+    }
+  )
 })

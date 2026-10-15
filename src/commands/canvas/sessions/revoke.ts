@@ -1,8 +1,4 @@
-import type { operations } from '../../../generated/openapi-types'
 import { defineCommand } from '../../../lib/define-command'
-
-type RevokeResult =
-  operations['revokeCanvasSession']['responses'][200]['content']['application/json']
 
 export const canvasSessionsRevokeCommand = defineCommand({
   path: ['canvas', 'sessions', 'revoke'],
@@ -15,9 +11,9 @@ export const canvasSessionsRevokeCommand = defineCommand({
   confirmSummary: ({ args }) =>
     `Revoke canvas session ${args.sessionId} and end its active access`,
   run: async ({ ctx, args }) => {
-    await ctx.client().canvas.sessions.revoke(args.sessionId ?? '')
-    // The SDK resolves void; retain the API's fixed JSON acknowledgement.
-    const result: RevokeResult = { revoked: true }
+    const result = await ctx
+      .client()
+      .canvas.sessions.revoke(args.sessionId ?? '')
     return { data: result, human: `Revoked canvas session ${args.sessionId}.` }
   },
 })
