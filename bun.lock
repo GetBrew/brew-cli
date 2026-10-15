@@ -5,7 +5,7 @@
     "": {
       "name": "@brew.new/cli",
       "dependencies": {
-        "@brew.new/sdk": "git+https://github.com/GetBrew/typescript-sdk.git#d83388bfdb88f45f3bb9849e07c05ffb3e694e71",
+        "@brew.new/sdk": "git+https://github.com/GetBrew/typescript-sdk.git#a5ce43d47c51793dc3fb368d744d56deb91c3368",
         "commander": "^14.0.0",
       },
       "devDependencies": {
@@ -46,7 +46,7 @@
 
     "@biomejs/cli-win32-x64": ["@biomejs/cli-win32-x64@2.5.7", "", { "os": "win32", "cpu": "x64" }, "sha512-V+0wu/nrj2S+MhP4EQ0uHNolP0IALEsz45pg0WoKkHfDeh0+ItHwP/p7bX5RPoMOl9NkpHYWdYPhIcy2mACHvQ=="],
 
-    "@brew.new/sdk": ["@brew.new/sdk@github:GetBrew/typescript-sdk#d83388b", { "peerDependencies": { "react": ">=18.2.0 <20" }, "optionalPeers": ["react"] }, "GetBrew-typescript-sdk-d83388b", "sha512-Ltr7ipSilz7sl3EXtvlgL2NScrfH2ZvbAgxNq7xZLw6KtK5qNLDwD8Dhczjm6fwAo0/tG90He5iBiU6CiSO2Rw=="],
+    "@brew.new/sdk": ["@brew.new/sdk@github:GetBrew/typescript-sdk#a5ce43d", { "peerDependencies": { "react": ">=18.2.0 <20" }, "optionalPeers": ["react"] }, "GetBrew-typescript-sdk-a5ce43d", "sha512-ygdGGCqHa/LLn4AJGtQsOCcVVQ4nTcVg+hf5+/CBOeEQD2JZ2fONv7rDO50V4oJGyJ5wNinHkjza+xmmMlPCrg=="],
 
     "@esbuild/aix-ppc64": ["@esbuild/aix-ppc64@0.27.7", "", { "os": "aix", "cpu": "ppc64" }, "sha512-EKX3Qwmhz1eMdEJokhALr0YiD0lhQNwDqkPYyPhiSwKrh7/4KRjQc04sZ8db+5DVVnZ1LmbNDI1uAMPEUBnQPg=="],
 
