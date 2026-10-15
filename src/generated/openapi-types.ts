@@ -827,7 +827,7 @@ export interface paths {
         put?: never;
         /**
          * Test an automation
-         * @description Runs the saved automation END-TO-END through the real workflow in TEST mode — works on drafts and for both event and manual-audience automations; every node executes (filters/splits evaluate against `payload`, and `contact.<name>` conditions read the test recipient’s contact unless `payload` supplies that field — a flat `contact.<name>` key or a `contact` object — and the trigger’s contract keeps extra keys; wait nodes fast-forward). Pass `testRecipient` to DELIVER each send-email node’s email for real to that address (real subject/preview/sender name via the Brew test domain; customer addresses are never hit) — omit it for a silent dry-run with no mail. Test runs never count against analytics rollups or send quotas. Returns `202` with the started run id; follow per-node status via `GET /v1/automations/runs/{automationRunId}&include=logs`. Optional `scenario` controls simulate timed opens/clicks at engagement-filter nodes and force left/right percentage-split choices (waits use a virtual clock; controls stay separate from `payload`, and simulated events never enter live analytics or send quotas); the run row’s `testCoverage` reports visited nodes, traversed connections, evaluated or forced decisions, uncovered paths and simulation limitations. On a Brew-event (unsubscribe) trigger, omit `payload` to run on Brew’s sample event; fields you pass replace the sample’s, and the run never creates or edits a contact.
+         * @description Runs the saved automation END-TO-END through the real workflow in TEST mode — works on drafts and for both event and manual-audience automations; every node executes (filters/splits evaluate against `payload`, and `contact.<name>` conditions read the test recipient’s contact unless `payload` supplies that field — a flat `contact.<name>` key or a `contact` object — and the trigger’s contract keeps extra keys; wait nodes fast-forward). Pass `testRecipient` to DELIVER each send-email node’s email for real to that address (real subject/preview/sender name; verified configured sender domains are preserved, otherwise delivery uses the Brew test domain; customer addresses are never hit) — omit it for a silent dry-run with no mail. Test runs are excluded from live analytics rollups. Real test deliveries consume send usage; dry runs do not. Test payloads never update real contact records. Returns `202` with the started run id; follow per-node status via `GET /v1/automations/runs/{automationRunId}?include=logs`. Optional `scenario` controls simulate timed opens/clicks at engagement-filter nodes and force left/right percentage-split choices (waits use a virtual clock; controls stay separate from `payload`, and simulated events never enter live analytics or send quotas); the run row’s `testCoverage` reports visited nodes, traversed connections, evaluated or forced decisions, uncovered paths and simulation limitations. On a Brew-event (unsubscribe) trigger, omit payload to use Brew’s sample event; supplied fields replace the sample’s. The run never creates or edits a contact.
          */
         post: operations["testAutomation"];
         delete?: never;
@@ -3642,6 +3642,8 @@ export interface components {
              * @enum {string}
              */
             pii?: "none" | "low" | "high";
+            /** @description True for a value such as a one-time code or sign-in link: used only to render the email; never stored on contacts, in logs or analytics; cannot be used in filters, splits or recipient fields. Scalars only, never `email`. False explicitly permits ordinary PII outside rendering; pii still controls log masking. When omitted, legacy high-PII scalar protection applies except for email and top-level firstName/lastName. */
+            secret?: boolean;
             /** @description Nested field nodes for type "object", or the element shape for an array of objects. Emails reference nested leaves as dotted paths ({{ order.total }}) and arrays via {% for %}. */
             children?: components["schemas"]["TriggerPayloadField"][];
             /**
@@ -3769,15 +3771,9 @@ export interface components {
                 status: "queued" | "running" | "completed" | "partially_completed" | "failed";
                 cohort: {
                     eventTypes: ("sent" | "delivered" | "delivery_delayed" | "opened" | "clicked" | "bounced" | "complained" | "failed" | "skipped" | "unsubscribed")[];
-                    /**
-                     * Format: date-time
-                     * @description Window start. Required unless `sendId` is set — then it defaults to one hour before that send was dispatched (its scheduled time for a scheduled send; a completion pass's re-stamped start is never used), and `to` to now.
-                     */
+                    /** Format: date-time */
                     from: string;
-                    /**
-                     * Format: date-time
-                     * @description Defaults to now.
-                     */
+                    /** Format: date-time */
                     to: string;
                     /** @description Scope to one send (the id in /analytics/sends/{sendId}). With `sendId` the window may be omitted. */
                     sendId?: string;
@@ -3815,15 +3811,9 @@ export interface components {
             status: "queued" | "running" | "completed" | "partially_completed" | "failed";
             cohort: {
                 eventTypes: ("sent" | "delivered" | "delivery_delayed" | "opened" | "clicked" | "bounced" | "complained" | "failed" | "skipped" | "unsubscribed")[];
-                /**
-                 * Format: date-time
-                 * @description Window start. Required unless `sendId` is set — then it defaults to one hour before that send was dispatched (its scheduled time for a scheduled send; a completion pass's re-stamped start is never used), and `to` to now.
-                 */
+                /** Format: date-time */
                 from: string;
-                /**
-                 * Format: date-time
-                 * @description Defaults to now.
-                 */
+                /** Format: date-time */
                 to: string;
                 /** @description Scope to one send (the id in /analytics/sends/{sendId}). With `sendId` the window may be omitted. */
                 sendId?: string;
@@ -6967,10 +6957,25 @@ export interface components {
             enforcement?: "off" | "prune" | "strict";
             /** @enum {string} */
             driftStatus?: "fresh" | "stale";
-            fields?: components["schemas"]["PayloadContractFieldNode"][];
             /** @enum {string} */
-            format: "json" | "ts" | "zod" | "jsonschema" | "skill";
-            content?: string;
+            format: "json";
+            fields: components["schemas"]["PayloadContractFieldNode"][];
+        } | {
+            /** @enum {string} */
+            subjectKind: "trigger";
+            subjectId: string;
+            /** @enum {string} */
+            source: "stored" | "derived_from_schema" | "derived_from_template";
+            typeName: string;
+            contractHash?: string;
+            version?: number;
+            /** @enum {string} */
+            enforcement?: "off" | "prune" | "strict";
+            /** @enum {string} */
+            driftStatus?: "fresh" | "stale";
+            /** @enum {string} */
+            format: "ts" | "zod" | "jsonschema" | "skill";
+            content: string;
         };
         PayloadContractFieldNode: {
             key: string;
@@ -6982,6 +6987,8 @@ export interface components {
             fallbackValue?: string | number | boolean;
             /** @enum {string} */
             pii?: "none" | "low" | "high";
+            /** @description True for a value such as a one-time code or sign-in link: used only to render the email; never stored on contacts, in logs or analytics; cannot be used in filters, splits or recipient fields. Scalars only, never `email`. False explicitly permits ordinary PII outside rendering; pii still controls log masking. When omitted, legacy high-PII scalar protection applies except for email and top-level firstName/lastName. */
+            secret?: boolean;
             /** @description false keeps this value off the contact record: it reaches the email and nothing else. Omitted means true. The top-level email always identifies the contact. */
             syncToContact?: boolean;
             enumValues?: string[];
@@ -7002,10 +7009,9 @@ export interface components {
             enforcement?: "off" | "prune" | "strict";
             /** @enum {string} */
             driftStatus?: "fresh" | "stale";
-            fields?: components["schemas"]["PayloadContractFieldNode"][];
             /** @enum {string} */
-            format: "json" | "ts" | "zod" | "jsonschema" | "skill";
-            content?: string;
+            format: "json";
+            fields: components["schemas"]["PayloadContractFieldNode"][];
             warnings: components["schemas"]["ApiWarning"][];
         };
         PayloadContractPutRequest: {
@@ -7739,15 +7745,9 @@ export interface components {
                     status: "queued" | "running" | "completed" | "partially_completed" | "failed";
                     cohort: {
                         eventTypes: ("sent" | "delivered" | "delivery_delayed" | "opened" | "clicked" | "bounced" | "complained" | "failed" | "skipped" | "unsubscribed")[];
-                        /**
-                         * Format: date-time
-                         * @description Window start. Required unless `sendId` is set — then it defaults to one hour before that send was dispatched (its scheduled time for a scheduled send; a completion pass's re-stamped start is never used), and `to` to now.
-                         */
+                        /** Format: date-time */
                         from: string;
-                        /**
-                         * Format: date-time
-                         * @description Defaults to now.
-                         */
+                        /** Format: date-time */
                         to: string;
                         /** @description Scope to one send (the id in /analytics/sends/{sendId}). With `sendId` the window may be omitted. */
                         sendId?: string;
@@ -7813,15 +7813,9 @@ export interface components {
                 status: "queued" | "running" | "completed" | "partially_completed" | "failed";
                 cohort: {
                     eventTypes: ("sent" | "delivered" | "delivery_delayed" | "opened" | "clicked" | "bounced" | "complained" | "failed" | "skipped" | "unsubscribed")[];
-                    /**
-                     * Format: date-time
-                     * @description Window start. Required unless `sendId` is set — then it defaults to one hour before that send was dispatched (its scheduled time for a scheduled send; a completion pass's re-stamped start is never used), and `to` to now.
-                     */
+                    /** Format: date-time */
                     from: string;
-                    /**
-                     * Format: date-time
-                     * @description Defaults to now.
-                     */
+                    /** Format: date-time */
                     to: string;
                     /** @description Scope to one send (the id in /analytics/sends/{sendId}). With `sendId` the window may be omitted. */
                     sendId?: string;
@@ -7920,15 +7914,9 @@ export interface components {
                 status: "queued" | "running" | "completed" | "partially_completed" | "failed";
                 cohort: {
                     eventTypes: ("sent" | "delivered" | "delivery_delayed" | "opened" | "clicked" | "bounced" | "complained" | "failed" | "skipped" | "unsubscribed")[];
-                    /**
-                     * Format: date-time
-                     * @description Window start. Required unless `sendId` is set — then it defaults to one hour before that send was dispatched (its scheduled time for a scheduled send; a completion pass's re-stamped start is never used), and `to` to now.
-                     */
+                    /** Format: date-time */
                     from: string;
-                    /**
-                     * Format: date-time
-                     * @description Defaults to now.
-                     */
+                    /** Format: date-time */
                     to: string;
                     /** @description Scope to one send (the id in /analytics/sends/{sendId}). With `sendId` the window may be omitted. */
                     sendId?: string;
@@ -16305,6 +16293,19 @@ export interface operations {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
                     "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `SERVICE_UNAVAILABLE`: A dependency the operation must consult (billing, the idempotency store) is temporarily unavailable, so the request was refused rather than run unmetered. */
+            503: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
                     [name: string]: unknown;
                 };
                 content: {

@@ -1079,7 +1079,7 @@ Generate TypeScript payload contracts for this workspace's triggers into your co
 
 - Route: `GET /v1/automations/triggers`
 - Class: read
-- Derived from `brew.automations.triggers.list(...)`
+- Derived from `brew.automations.triggers.list(...)`, `brew.automations.triggers.getContract(...)`
 - `--out <file>` — Output file (default brew-contracts.ts)
 - `--check` — Verify the output file is up to date instead of writing; exits 1 on drift
 
@@ -2526,6 +2526,7 @@ Create an authenticated group or single-email canvas grant
 
 - Route: `POST /v1/canvas/sessions`
 - Class: write
+- SDK: `brew.canvas.sessions.create(...)`
 - `--group-id <id>` — Embed exactly this group
 - `--email-id <id>` — Embed exactly this email
 - `--parent-origin <origin>` — Exact HTTPS origin allowed to frame the canvas
@@ -2545,6 +2546,7 @@ Renew a canvas grant using its original issuing credential
 
 - Route: `POST /v1/canvas/sessions/{sessionId}/refresh`
 - Class: write
+- SDK: `brew.canvas.sessions.refresh(...)`
 - Argument `sessionId` — Canvas session ID
 
 ```bash
@@ -2557,6 +2559,7 @@ Revoke a canvas session and terminate its access
 
 - Route: `DELETE /v1/canvas/sessions/{sessionId}`
 - Class: destructive
+- SDK: `brew.canvas.sessions.revoke(...)`
 - Argument `sessionId` — Canvas session ID
 
 ```bash
