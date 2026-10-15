@@ -127,7 +127,6 @@ export const typesCommand = defineCommand({
     'automations.triggers.list',
     'automations.triggers.getContract',
   ],
-  route: { method: 'GET', path: '/v1/automations/triggers' },
   commandClass: 'read',
   flags: [
     {
