@@ -7,6 +7,7 @@ import {
   IDEMPOTENCY_FLAG,
   requestOptions,
 } from '../../lib/input'
+import { EXPORT_EMAIL_DEFAULT_TIMEOUT_MS } from '../../lib/long-running'
 
 type ExportEmailInput = Parameters<BrewClient['emails']['export']>[0]
 
@@ -16,12 +17,13 @@ export const emailsExportCommand = defineCommand({
   sdkMethod: 'emails.export',
   route: { method: 'POST', path: '/v1/emails/{emailId}/export' },
   commandClass: 'write',
+  defaultTimeoutMs: EXPORT_EMAIL_DEFAULT_TIMEOUT_MS,
   args: [{ name: 'emailId', summary: 'Design id to export', isRequired: true }],
   flags: [
     {
       flag: '--provider <provider>',
       summary:
-        'Connected ESP: braze, brevo, hubspot, klaviyo, mailchimp, mailjet, iterable, postmark, onesignal, mailgun, sendgrid',
+        'Connected ESP: braze, brevo, hubspot, klaviyo, loops, mailchimp, mailjet, iterable, postmark, onesignal, mailgun, sendgrid',
     },
     {
       flag: '--template-name <name>',
@@ -41,13 +43,14 @@ export const emailsExportCommand = defineCommand({
   ],
   examples: [
     'brew-cli emails export eml_2SmZOWV3ZQ7W5x6g3m4p --provider klaviyo',
+    'brew-cli emails export eml_2SmZOWV3ZQ7W5x6g3m4p --provider loops --template-name "Welcome"',
     'brew-cli emails export eml_2SmZOWV3ZQ7W5x6g3m4p --provider mailchimp --template-name "Fall sale" --dry-run',
   ],
   run: async ({ ctx, args, flags }) => {
     const provider = flagString(flags.provider)
     if (provider === undefined) {
       throw new CliUsageError(
-        '--provider is required: braze, brevo, hubspot, klaviyo, mailchimp, mailjet, iterable, postmark, onesignal, mailgun, or sendgrid.'
+        '--provider is required: braze, brevo, hubspot, klaviyo, loops, mailchimp, mailjet, iterable, postmark, onesignal, mailgun, or sendgrid.'
       )
     }
     const templateName = flagString(flags.templateName)
@@ -62,7 +65,12 @@ export const emailsExportCommand = defineCommand({
           // The spec field is snake_case, unlike the rest of the API surface.
           ...(flags.dryRun === true ? { dryRun: true } : {}),
         }),
-        requestOptions(flags)
+        {
+          ...requestOptions(flags),
+          // Also raise the per-request budget for SDK versions predating
+          // export's own timeout floor. The explicit CLI timeout still wins.
+          timeoutMs: ctx.budget.attemptMs ?? EXPORT_EMAIL_DEFAULT_TIMEOUT_MS,
+        }
       ),
     }
   },

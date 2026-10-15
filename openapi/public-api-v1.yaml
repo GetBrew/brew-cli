@@ -5665,6 +5665,7 @@ components:
             - onesignal
             - mailgun
             - sendgrid
+            - loops
         providerName:
           type: string
         templateName:
@@ -5696,6 +5697,7 @@ components:
             - onesignal
             - mailgun
             - sendgrid
+            - loops
           description: The connected ESP to export the design to as a template.
         templateName:
           type: string
@@ -17566,6 +17568,7 @@ components:
                   - sendgrid
                   - mailjet
                   - mailchimp
+                  - loops
                   - stripe
                   - stytch
                   - supabase

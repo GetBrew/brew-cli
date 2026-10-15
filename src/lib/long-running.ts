@@ -1,15 +1,13 @@
-import {
-  ADD_IMAGE_DEFAULT_TIMEOUT_MS,
-  AUDIT_EMAIL_DEFAULT_TIMEOUT_MS,
-  EDIT_EMAIL_DEFAULT_TIMEOUT_MS,
-  GENERATE_EMAIL_DEFAULT_TIMEOUT_MS,
-  GENERATE_IMAGE_DEFAULT_TIMEOUT_MS,
-  GIF_DEFAULT_TIMEOUT_MS,
-  IMPORT_EMAIL_DEFAULT_TIMEOUT_MS,
-  IMPORT_FIGMA_DEFAULT_TIMEOUT_MS,
-  PREVIEW_EMAIL_CLIENTS_DEFAULT_TIMEOUT_MS,
-} from '@brew.new/sdk'
+import * as sdk from '@brew.new/sdk'
 import type { HttpMethod } from './define-command'
+
+// Older supported SDK releases do not expose the export default yet. Keep
+// those clients within Brew's export budget until they gain the SDK constant.
+export const EXPORT_EMAIL_DEFAULT_TIMEOUT_MS =
+  'EXPORT_EMAIL_DEFAULT_TIMEOUT_MS' in sdk &&
+  typeof sdk.EXPORT_EMAIL_DEFAULT_TIMEOUT_MS === 'number'
+    ? sdk.EXPORT_EMAIL_DEFAULT_TIMEOUT_MS
+    : 800_000
 
 /**
  * Routes whose server work routinely outlasts the 30 s default, with the
@@ -27,48 +25,53 @@ export const LONG_RUNNING_ROUTES: ReadonlyArray<{
 }> = [
   {
     method: 'POST',
+    path: '/v1/emails/{emailId}/export',
+    timeoutMs: EXPORT_EMAIL_DEFAULT_TIMEOUT_MS,
+  },
+  {
+    method: 'POST',
     path: '/v1/emails',
-    timeoutMs: GENERATE_EMAIL_DEFAULT_TIMEOUT_MS,
+    timeoutMs: sdk.GENERATE_EMAIL_DEFAULT_TIMEOUT_MS,
   },
   {
     method: 'PATCH',
     path: '/v1/emails/{emailId}',
-    timeoutMs: EDIT_EMAIL_DEFAULT_TIMEOUT_MS,
+    timeoutMs: sdk.EDIT_EMAIL_DEFAULT_TIMEOUT_MS,
   },
   {
     method: 'POST',
     path: '/v1/emails/audit',
-    timeoutMs: AUDIT_EMAIL_DEFAULT_TIMEOUT_MS,
+    timeoutMs: sdk.AUDIT_EMAIL_DEFAULT_TIMEOUT_MS,
   },
   {
     method: 'POST',
     path: '/v1/emails/{emailId}/client-previews',
-    timeoutMs: PREVIEW_EMAIL_CLIENTS_DEFAULT_TIMEOUT_MS,
+    timeoutMs: sdk.PREVIEW_EMAIL_CLIENTS_DEFAULT_TIMEOUT_MS,
   },
   {
     method: 'POST',
     path: '/v1/emails/import',
-    timeoutMs: IMPORT_EMAIL_DEFAULT_TIMEOUT_MS,
+    timeoutMs: sdk.IMPORT_EMAIL_DEFAULT_TIMEOUT_MS,
   },
   {
     method: 'POST',
     path: '/v1/emails/figma',
-    timeoutMs: IMPORT_FIGMA_DEFAULT_TIMEOUT_MS,
+    timeoutMs: sdk.IMPORT_FIGMA_DEFAULT_TIMEOUT_MS,
   },
   {
     method: 'POST',
     path: '/v1/content/gif',
-    timeoutMs: GIF_DEFAULT_TIMEOUT_MS,
+    timeoutMs: sdk.GIF_DEFAULT_TIMEOUT_MS,
   },
   {
     method: 'POST',
     path: '/v1/content/generate-image',
-    timeoutMs: GENERATE_IMAGE_DEFAULT_TIMEOUT_MS,
+    timeoutMs: sdk.GENERATE_IMAGE_DEFAULT_TIMEOUT_MS,
   },
   {
     method: 'POST',
     path: '/v1/content/add-image',
-    timeoutMs: ADD_IMAGE_DEFAULT_TIMEOUT_MS,
+    timeoutMs: sdk.ADD_IMAGE_DEFAULT_TIMEOUT_MS,
   },
 ]
 
