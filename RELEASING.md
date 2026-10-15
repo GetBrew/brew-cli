@@ -9,13 +9,19 @@ standalone binaries, the GitHub Release, and the Homebrew tap.
 
 The canvas session commands now use `brew.canvas.sessions.create`, `refresh`,
 and `revoke`. This change requires the SDK fix that preserves the revocation
-JSON response. Validate against a locally packed sibling SDK while developing;
-do not release these commands with the existing SDK 12.x dependency.
+JSON response. Do not release these commands with an SDK version that discards
+that response.
+
+For coordinated PR validation, the dependency and Bun lockfile pin the immutable
+SDK source commit containing the fix. Bun prepares its distribution from its own
+frozen build dependencies. A fresh frozen CLI install must pass all checks using
+that source dependency; a locally packed SDK must not hide dependency failures.
 
 Release the SDK first (planned 13.0.0 under its method-signature version policy),
 then update `@brew.new/sdk` to `^13.0.0` in this package and regenerate `bun.lock`
-from the published registry artifact. Run frozen installation, the full checks,
-and command-doc freshness before releasing the CLI. Never invent a future lockfile
+from the published registry artifact, replacing the temporary Git source pin.
+Run frozen installation, the full checks, and command-doc freshness before
+releasing the CLI. Never invent a future lockfile
 checksum. The canvas tests must preserve `{ revoked: true }`, the `--yes` gate,
 and one-attempt create/refresh requests.
 
