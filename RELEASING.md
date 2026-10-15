@@ -5,6 +5,20 @@ standalone binaries, the GitHub Release, and the Homebrew tap.
 
 ## Ship a version
 
+### Canvas SDK Migration Gate
+
+The canvas session commands now use `brew.canvas.sessions.create`, `refresh`,
+and `revoke`. This change requires the SDK fix that preserves the revocation
+JSON response. Validate against a locally packed sibling SDK while developing;
+do not release these commands with the existing SDK 12.x dependency.
+
+Release the SDK first (planned 13.0.0 under its method-signature version policy),
+then update `@brew.new/sdk` to `^13.0.0` in this package and regenerate `bun.lock`
+from the published registry artifact. Run frozen installation, the full checks,
+and command-doc freshness before releasing the CLI. Never invent a future lockfile
+checksum. The canvas tests must preserve `{ revoked: true }`, the `--yes` gate,
+and one-attempt create/refresh requests.
+
 ```bash
 # on a clean main with CI green
 npm version <patch|minor|major> --no-git-tag-version

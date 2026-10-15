@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- Canvas session create, refresh, and revoke use the SDK methods. JSON output,
+  revocation confirmation, and create/refresh no-retry behavior are preserved.
+
+Requires the SDK revocation response fix, planned for 13.0.0. Follow the canvas
+migration gate in `RELEASING.md` before updating the dependency and releasing.
+
 ## 0.16.0
 
 Needs `@brew.new/sdk` `^12.2.0`, which adds `triggers.ensureBrewEvent`
