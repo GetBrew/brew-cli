@@ -2,7 +2,7 @@
 
 <!-- GENERATED FILE — do not edit. Regenerate with `bun run docs:commands`. -->
 
-145 commands. Classes: read (always safe), write
+148 commands. Classes: read (always safe), write
 (mutating, retry-safe), destructive (irreversible — the confirmation
 protocol applies: interactive y/N on a TTY, exit 4 + JSON envelope with
 a `confirmCommand` otherwise, `--yes` to proceed).
@@ -160,6 +160,9 @@ a `confirmCommand` otherwise, `--yes` to proceed).
 | `brew-cli integrations list` | read | `GET /v1/integrations` | List the integration catalog with per-provider connected state (connect via Settings, not this CLI) |
 | `brew-cli chats list` | read | `GET /v1/chats` | List the brand's Brew chats, most recently active first; `chats get` reads one |
 | `brew-cli chats get` | read | `GET /v1/chats/{chatId}` | Brand-scoped digest of a Brew chat (artifacts + transcript tail) |
+| `brew-cli canvas sessions create` | write | `POST /v1/canvas/sessions` | Create an authenticated group or single-email canvas grant |
+| `brew-cli canvas sessions refresh` | write | `POST /v1/canvas/sessions/{sessionId}/refresh` | Renew a canvas grant using its original issuing credential |
+| `brew-cli canvas sessions revoke` | destructive | `DELETE /v1/canvas/sessions/{sessionId}` | Revoke a canvas session and terminate its access |
 | `brew-cli notifications list` | read | `GET /v1/notifications` | List the brand's notifications (generations, sends, imports, domain checks), newest first |
 | `brew-cli health` | read | `GET /v1/health` | Check Brew API liveness (no auth required) |
 | `brew-cli usage` | read | `GET /v1/usage` | Show plan, credit balance, and email-send quota |
@@ -2515,6 +2518,49 @@ Brand-scoped digest of a Brew chat (artifacts + transcript tail)
 
 ```bash
 brew-cli chats get Hk2mZ8t9QbY3sW1vR0pLd
+```
+
+### brew-cli canvas sessions create
+
+Create an authenticated group or single-email canvas grant
+
+- Route: `POST /v1/canvas/sessions`
+- Class: write
+- `--group-id <id>` — Embed exactly this group
+- `--email-id <id>` — Embed exactly this email
+- `--parent-origin <origin>` — Exact HTTPS origin allowed to frame the canvas
+- `--user-id <id>` — Authenticated user ID in your application
+- `--user-name <name>` — Collaborator display name
+- `--read-only` — Allow reading only (default: read, edit, presence)
+- `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
+
+```bash
+brew-cli canvas sessions create --group-id grp_example --parent-origin https://your-app.example --user-id user_example --user-name Alice
+brew-cli canvas sessions create --input -
+```
+
+### brew-cli canvas sessions refresh
+
+Renew a canvas grant using its original issuing credential
+
+- Route: `POST /v1/canvas/sessions/{sessionId}/refresh`
+- Class: write
+- Argument `sessionId` — Canvas session ID
+
+```bash
+brew-cli canvas sessions refresh session_example
+```
+
+### brew-cli canvas sessions revoke
+
+Revoke a canvas session and terminate its access
+
+- Route: `DELETE /v1/canvas/sessions/{sessionId}`
+- Class: destructive
+- Argument `sessionId` — Canvas session ID
+
+```bash
+brew-cli canvas sessions revoke session_example --yes
 ```
 
 ### brew-cli notifications list
