@@ -24,6 +24,7 @@ function cli(argv: readonly string[], options: RunCliOptions = {}) {
 type FireAccepted = components['schemas']['TriggerFireAccepted']
 type AppEmailRow = components['schemas']['AppEmailRow']
 type SetupResult = components['schemas']['AppEmailSetupResult']
+type PutBody = components['schemas']['AppEmailPutRequest']
 
 const ACCEPTED: FireAccepted = {
   triggerInstanceId: 'tin_1',
@@ -171,6 +172,37 @@ describe('send', () => {
     expect(result.code).toBe(0)
     expect(result.stdout).toBe(
       'Sent auth.password-reset: 1 run started (instance tin_1).\n'
+    )
+  })
+
+  it("names a not-started run's code (sandbox DOMAIN_REQUIRED) over its reason", async () => {
+    server.use(
+      http.post(
+        `${API}/v1/automations/triggers/by-key/auth.password-reset/fire`,
+        () =>
+          HttpResponse.json(
+            {
+              ...ACCEPTED,
+              automationRunIds: [],
+              notStarted: [
+                {
+                  automationId: 'aut_1',
+                  reason: 'The recipient is not in your organization.',
+                  code: 'DOMAIN_REQUIRED',
+                },
+              ],
+            } satisfies FireAccepted,
+            { status: 202 }
+          )
+      )
+    )
+    const result = await cli(
+      ['send', 'auth.password-reset', '--to', 'kim@example.com', '--yes'],
+      { ttyOut: true }
+    )
+    expect(result.code).toBe(0)
+    expect(result.stdout).toBe(
+      'Sent auth.password-reset: 0 runs started (instance tin_1).\nnot started: aut_1 (DOMAIN_REQUIRED)\n'
     )
   })
 
@@ -381,6 +413,55 @@ describe('app-emails upsert', () => {
       source: {
         format: 'jsx',
         content: readFileSync(file, 'utf8'),
+      },
+    })
+  })
+
+  it('sends --input payloadSchema fields as given, secret: true included', async () => {
+    let body: unknown
+    server.use(
+      http.put(
+        `${API}/v1/app-emails/account.sign-in-code`,
+        async ({ request }) => {
+          body = await request.json()
+          return HttpResponse.json(
+            { ...SETUP, triggerKey: 'account.sign-in-code' },
+            { status: 201 }
+          )
+        }
+      )
+    )
+    // Typed against the vendored spec: brew-v2#2066 declares `secret`.
+    const fields: NonNullable<PutBody['payloadSchema']>['fields'] = [
+      {
+        key: 'code',
+        type: 'string',
+        required: true,
+        pii: 'high',
+        secret: true,
+      },
+    ]
+    const result = await cli(
+      [
+        'app-emails',
+        'upsert',
+        'account.sign-in-code',
+        '--source-file',
+        '-',
+        '--format',
+        'jsx',
+        '--input',
+        JSON.stringify({ payloadSchema: { fields } }),
+        '--yes',
+      ],
+      { stdin: '<Html><Text>{{ trigger.code }}</Text></Html>' }
+    )
+    expect(result.code).toBe(0)
+    expect(body).toEqual({
+      payloadSchema: { fields },
+      source: {
+        format: 'jsx',
+        content: '<Html><Text>{{ trigger.code }}</Text></Html>',
       },
     })
   })
