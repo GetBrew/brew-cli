@@ -182,9 +182,10 @@ canvas commands: the published npm `0.16.0` artifact (`gitHead`
   (`nextStep` is `codex mcp login brew` after a Codex OAuth entry).
   Cursor and VS Code results carry one-click install deeplinks; the Cursor
   link is byte-identical to the one brew.new serves.
-- `BREW_CLI_INVOKED_AS`: a launcher package (`npx -y brew.new@<version>`)
-  sets it, and `confirmCommand`, `retryCommand` and every "run …" hint
-  start with it instead of `brew-cli`. Only `npx`, `npx -y`, `pnpm dlx`,
+- `BREW_CLI_INVOKED_AS`: a wrapper that runs the CLI through a package
+  runner (`npx -y @brew.new/cli@<version>`) sets it, and `confirmCommand`,
+  `retryCommand` and every "run …" hint start with it instead of
+  `brew-cli`. Only `npx`, `npx -y`, `pnpm dlx`,
   `bunx`, `yarn dlx`, `npm exec` or `npm create` followed by one package
   spec is accepted; anything else falls back to `brew-cli`.
 - Project foundations for the coming `init` and `migrate` commands,
