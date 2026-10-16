@@ -29,6 +29,19 @@ lockfile checksums must never be invented. The canvas tests must preserve
 `contacts.import` and the import response from SDK 13.3.0, the minimum this
 CLI depends on (`^13.3.0`).
 
+### App email SDK gate
+
+`send`, `app-emails` and the `types` key registry call `brew.send` and
+`brew.appEmails`, which no published SDK has yet:
+GetBrew/typescript-sdk#55 (`send`, `automations.triggers.fireByKey`) and
+GetBrew/typescript-sdk#64 (`appEmails`, the auth adapters), planned as 12.4.0
+and 12.5.0 on top of the canvas fix above. Until that release is on npm, the
+dependency and `bun.lock` stay on the pin above, and typecheck and parity
+fail in CI on these commands. Publish the SDK first, then
+`bun add @brew.new/sdk@^<that version>` (it regenerates `bun.lock` from the
+registry; never hand-write a lockfile entry), run a frozen install, the full
+checks and `docs:commands:check`, and release the CLI.
+
 ```bash
 # on a clean main with CI green
 npm version <patch|minor|major> --no-git-tag-version
