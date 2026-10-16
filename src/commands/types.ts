@@ -2,11 +2,11 @@ import { createHash } from 'node:crypto'
 import { readFileSync, writeFileSync } from 'node:fs'
 
 import type {
-  BrewClient,
   ListTriggersInput,
   ListTriggersResponse,
   Trigger,
 } from '@brew.new/sdk'
+import type { BrewClient } from '../lib/client'
 import { defineCommand } from '../lib/define-command'
 import { asSdkInput } from '../lib/input'
 import { getInvocationPrefix } from '../lib/invocation'

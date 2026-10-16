@@ -8,6 +8,7 @@ import {
   readJsonFlag,
   requestOptions,
 } from '../lib/input'
+import { triggerKeyArg } from '../lib/trigger-key'
 
 export const sendCommand = defineCommand({
   path: ['send'],
@@ -48,6 +49,7 @@ export const sendCommand = defineCommand({
     return `Send ${args.key ?? ''}${to === undefined ? '' : ` to ${to}`}: starts REAL runs on every published automation listening to this key (the email goes out).`
   },
   run: async ({ ctx, args, flags }) => {
+    const key = triggerKeyArg(args.key, 'The key')
     const data = await readJsonFlag(ctx, flags.data, '--data')
     if (
       data !== undefined &&
@@ -69,7 +71,6 @@ export const sendCommand = defineCommand({
         'A recipient is required: --to <email>, or an "email" field in --data.'
       )
     }
-    const key = args.key ?? ''
     const result = await ctx
       .client()
       .send(
