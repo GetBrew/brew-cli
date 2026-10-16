@@ -356,6 +356,37 @@ describe('init: confirmation and dry run', () => {
     ).toBe("npm install '@brew.new/sdk@^13.2.0'")
   })
 
+  it.each([
+    ['^12.3.0', "npm install '@brew.new/sdk@^13.2.0'"],
+    ['^13.1.0', "npm install '@brew.new/sdk@^13.2.0'"],
+    ['^13.2.0', '@brew.new/sdk ^13.2.0 already declared'],
+    ['^14.0.0', '@brew.new/sdk ^14.0.0 already declared'],
+  ])(
+    '--dry-run with %s declared: install unless it is the generated code range or newer',
+    async (declared, detail) => {
+      const root = copyFixture('next-better-auth')
+      const manifestPath = join(root, 'package.json')
+      const manifest = JSON.parse(read(root, 'package.json')) as {
+        dependencies?: Record<string, string>
+      }
+      manifest.dependencies = {
+        ...manifest.dependencies,
+        '@brew.new/sdk': declared,
+      }
+      writeFileSync(manifestPath, JSON.stringify(manifest, null, 2))
+      useBrewApi()
+      const result = await init(['--dry-run', '--json'], {
+        cwd: root,
+        env: configEnv({ BREW_API_KEY: EXPLICIT_KEY }),
+        spawn: recordingSpawn().spawn,
+      })
+      expect(result.code).toBe(0)
+      expect(
+        result.report.steps.find((step) => step.id === 'install')?.detail
+      ).toBe(detail)
+    }
+  )
+
   it('--dry-run without any credential sends no request at all', async () => {
     const root = copyFixture('next-better-auth')
     const result = await init(['--dry-run', '--json'], {
