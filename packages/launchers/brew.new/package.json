@@ -1,6 +1,6 @@
 {
   "name": "brew.new",
-  "version": "0.15.0",
+  "version": "0.18.0",
   "description": "Set up Brew email in your app with one command: npx brew.new init (auth and lifecycle email, the SDK, MCP for your editor).",
   "license": "MIT",
   "author": "Brew",
@@ -41,7 +41,7 @@
     "node": ">=20"
   },
   "dependencies": {
-    "@brew.new/cli": "0.15.0"
+    "@brew.new/cli": "0.18.0"
   },
   "publishConfig": {
     "access": "public"
