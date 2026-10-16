@@ -74,7 +74,7 @@ export async function rawFetch(
  * abort — a mocked body, or a runtime that does not, would otherwise hang
  * past the deadline.
  */
-async function readBodyText(
+export async function readBodyText(
   response: Response,
   signal: AbortSignal
 ): Promise<string> {

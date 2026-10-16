@@ -44,6 +44,49 @@ data on stdout and progress on stderr, and documents itself:
 brew-cli emails send --help
 ```
 
+## Connect your AI editor to Brew (MCP)
+
+```bash
+brew-cli mcp install                               # the editors this project uses
+brew-cli mcp install --client cursor claude-code   # or name them
+brew-cli mcp install --client all --dry-run --json # plan only
+```
+
+`mcp install` adds the Brew MCP server (`https://brew.new/api/mcp`, or the
+origin of `--api-url` + `/api/mcp`) to each client's config, merging a
+`brew` entry and keeping every other server:
+
+| Client | `--client` | Project file (`--scope project`, default) | User file (`--scope user`) |
+| --- | --- | --- | --- |
+| Cursor | `cursor` | `.cursor/mcp.json` | `~/.cursor/mcp.json` |
+| VS Code | `vscode` | `.vscode/mcp.json` | the profile's `mcp.json` |
+| Claude Code | `claude-code` | `.mcp.json` | prints `claude mcp add --scope user …` |
+| Gemini CLI | `gemini` | `.gemini/settings.json` | `~/.gemini/settings.json` |
+| Devin Desktop (Windsurf) | `windsurf` | (user only) | `~/.config/devin/mcp_config.json` (`$XDG_CONFIG_HOME/devin/`, Windows `%APPDATA%\devin\`) |
+| Codex | `codex` | (user only) | `~/.codex/config.toml` (`$CODEX_HOME`) |
+
+Without `--client` it configures the clients it detects (`.cursor/`,
+`.vscode/`, `.claude/` or `CLAUDECODE=1`, `.gemini/`); a detected Devin
+Desktop (`.windsurf/` or `.devin/`) or Codex is reported with its snippet
+but only written when you name it, since its config lives in your home
+directory. `--auth oauth` (default) writes the URL only and the client
+signs in on first use; Codex signs in only through its own command, so its
+result carries `nextStep: "codex mcp login brew"`. `--auth env` adds an
+`Authorization` header that the client fills from `BREW_API_KEY` at
+connect time: `${env:BREW_API_KEY}` for Cursor, VS Code and Devin Desktop,
+`${BREW_API_KEY}` for Claude Code and Gemini CLI, `bearer_token_env_var`
+for Codex. The client reads the variable from the environment it was
+started with, so an editor opened from the Dock or Start menu may not see
+a variable your shell exports. A literal key is never written.
+
+An existing `brew` entry is never replaced: the same settings report
+`unchanged`, other settings come back `manual` with the snippet to paste.
+So does a config with comments, and a config that is a symbolic link
+whose target leaves the project (or your home directory, for user
+files). `--print` prints the snippets and writes nothing. Each result is
+`created`, `updated`, `unchanged`, `manual` or `printed`; Cursor and
+VS Code results carry a one-click install `deeplink`.
+
 ## Authentication
 
 | Precedence | Source |
@@ -90,7 +133,11 @@ Designed for AI agents as first-class users:
   trigger fires) never hang waiting for input: non-interactive callers
   get exit `4` plus a JSON envelope containing a ready-to-run
   `confirmCommand`; pass `--yes` to proceed. Humans on a TTY get a y/N
-  prompt. Test sends (`emails send --test`) skip the gate.
+  prompt. Test sends (`emails send --test`) skip the gate. Printed
+  commands (`confirmCommand`, `retryCommand`, "run … login") start the
+  way the CLI was invoked: a wrapper that runs it through a package
+  runner sets `BREW_CLI_INVOKED_AS` (for example
+  `npx -y @brew.new/cli@<version>`), so they re-run through it.
 - **No fuzzy matching** — unknown commands fail hard with exit 2.
 - **Machine-readable discovery** — `brew-cli docs --agent` prints the
   full manifest (commands, flags, classes, routes, env, exit codes);
@@ -109,7 +156,7 @@ The full generated reference lives in
 `contacts`, `fields`, `emails` (+ `groups`, `comments`), `sends`,
 `audiences`, `automations` (+ `triggers`, `runs`, `audience-runs`,
 `trigger-instances`), `analytics`, `insights`, `brand`, `content`,
-`templates`, `flows`, `chats`, `notifications`, plus
+`templates`, `flows`, `chats`, `notifications`, `mcp`, plus
 `login`/`logout`/`whoami`/`config`/`usage`/`health`/`docs`/`api`.
 
 Every collection with ids to look up has a real detail read — `<group> get

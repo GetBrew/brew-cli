@@ -8,6 +8,7 @@ import type {
 } from '@brew.new/sdk'
 import { defineCommand } from '../lib/define-command'
 import { asSdkInput } from '../lib/input'
+import { getInvocationPrefix } from '../lib/invocation'
 
 type TriggerRow = Trigger
 
@@ -219,8 +220,8 @@ export const typesCommand = defineCommand({
           data: { checked: outPath, upToDate: false },
           human:
             existing === null
-              ? `${outPath} does not exist — run \`brew-cli types\` first.`
-              : `${outPath} is stale — the workspace's payload contracts changed. Run \`brew-cli types\` to regenerate.`,
+              ? `${outPath} does not exist — run \`${getInvocationPrefix(ctx.io.env)} types\` first.`
+              : `${outPath} is stale — the workspace's payload contracts changed. Run \`${getInvocationPrefix(ctx.io.env)} types\` to regenerate.`,
           // Documented drift contract: exit 1 (not the usage-error 2).
           exitCode: 1,
         }

@@ -2,6 +2,48 @@
 
 ## Unreleased
 
+### Added
+
+- **`brew-cli mcp install`** adds the Brew MCP server to Cursor
+  (`.cursor/mcp.json`), VS Code (`.vscode/mcp.json`), Claude Code
+  (`.mcp.json`), Gemini CLI (`.gemini/settings.json`), and, when named,
+  Devin Desktop, formerly Windsurf (`~/.config/devin/mcp_config.json`),
+  and Codex (`~/.codex/config.toml`). It merges a `brew` entry and keeps
+  other servers; an existing `brew` entry with other settings, a config
+  with comments, or a symbolic link whose target leaves the project comes
+  back `manual` with a snippet. `--client`, `--scope project|user`,
+  `--auth oauth|env` (env adds a header the client fills from
+  `BREW_API_KEY`, never a literal key), `--print`, `--dry-run`. JSON
+  output:
+  `{ mcpUrl, dryRun, clients: [{ client, path?, action, deeplink?, snippet?, note?, nextStep? }] }`
+  (`nextStep` is `codex mcp login brew` after a Codex OAuth entry).
+  Cursor and VS Code results carry one-click install deeplinks; the Cursor
+  link is byte-identical to the one brew.new serves.
+- `BREW_CLI_INVOKED_AS`: a wrapper that runs the CLI through a package
+  runner (`npx -y @brew.new/cli@<version>`) sets it, and `confirmCommand`,
+  `retryCommand` and every "run …" hint start with it instead of
+  `brew-cli`. Only `npx`, `npx -y`, `pnpm dlx`,
+  `bunx`, `yarn dlx`, `npm exec` or `npm create` followed by one package
+  spec is accepted; anything else falls back to `brew-cli`.
+- Project foundations for the coming `init` and `migrate` commands,
+  dependency-free under `src/lib/project/`: package-manager detection and
+  command builders (npm, pnpm, yarn classic and berry with PnP, bun, deno,
+  workspace filters), monorepo resolution (pnpm workspaces, npm/yarn/bun
+  workspaces, Turborepo, Nx, falling back to the git root when there is
+  no package.json), a create-only file writer (managed-file hashes,
+  marked-block upserts, atomic writes, dry-run plans; never writes a
+  secret through a symbolic link or follows one out of the project, and
+  tightens a secret file's mode to 0600), a dotenv editor that never
+  replaces, duplicates or prints a value and refuses browser-exposed
+  names for secrets, `brew.json` state (schema shipped in
+  `schemas/brew.json`), gitignore checks, a line diff, and vendor HTTP
+  that honours `--timeout` and Ctrl-C and never echoes a credential.
+- The agent skills in `skills/` are embedded in the build
+  (`src/generated/skills.ts`, `bun run generate:skills`; CI runs
+  `generate:skills:check`).
+- npm keywords for MCP, transactional and auth email, Resend and React
+  Email, so the package shows up where people look for them.
+
 ### Changed
 
 - Canvas session create, refresh, and revoke use the SDK methods. JSON output,

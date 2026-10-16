@@ -84,7 +84,7 @@ export const automationsRunsListCommand = defineCommand({
       return { data: singleRowPage(row), human: renderRuns([row]) }
     }
     if (include !== undefined) {
-      throw includeRidesDetailRead('automations runs get', '--run')
+      throw includeRidesDetailRead(ctx.io.env, 'automations runs get', '--run')
     }
     const input = mergeInput(base, {
       automationId: flagString(flags.automation),

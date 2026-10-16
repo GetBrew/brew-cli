@@ -1,5 +1,6 @@
 import type { CommandInvocation, CommandSpec } from './define-command'
 import { CommandAbortedError, ConfirmationRequiredError } from './errors'
+import { DEFAULT_INVOCATION_PREFIX, getInvocationPrefix } from './invocation'
 
 /**
  * The confirmation protocol for destructive commands:
@@ -34,16 +35,24 @@ export async function enforceConfirmation(
     }
     throw new CommandAbortedError('Aborted.')
   }
+  const prefix = getInvocationPrefix(ctx.io.env)
   throw new ConfirmationRequiredError({
     confirmationRequired: true,
-    command: ['brew-cli', ...spec.path].join(' '),
+    command: [prefix, ...spec.path].join(' '),
     summary,
-    confirmCommand: buildConfirmCommand(ctx.rawArgv),
+    confirmCommand: buildConfirmCommand(ctx.rawArgv, prefix),
   })
 }
 
-export function buildConfirmCommand(rawArgv: readonly string[]): string {
-  return ['brew-cli', ...rerunTokens(rawArgv), '--yes'].join(' ')
+/**
+ * `prefix` is how the CLI was invoked (`getInvocationPrefix`): `brew-cli`,
+ * or a launcher such as `npx -y brew.new@0.18.0`.
+ */
+export function buildConfirmCommand(
+  rawArgv: readonly string[],
+  prefix: string = DEFAULT_INVOCATION_PREFIX
+): string {
+  return [prefix, ...rerunTokens(rawArgv), '--yes'].join(' ')
 }
 
 /**
@@ -53,10 +62,11 @@ export function buildConfirmCommand(rawArgv: readonly string[]): string {
  */
 export function buildRetryCommand(
   rawArgv: readonly string[],
-  idempotencyKey: string
+  idempotencyKey: string,
+  prefix: string = DEFAULT_INVOCATION_PREFIX
 ): string {
   return [
-    'brew-cli',
+    prefix,
     ...rerunTokens(rawArgv, { dropIdempotencyKey: true }),
     '--idempotency-key',
     shellQuote(idempotencyKey),

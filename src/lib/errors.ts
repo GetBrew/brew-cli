@@ -74,6 +74,33 @@ export class CliAuthError extends Error {
   }
 }
 
+/**
+ * A third-party API (Supabase, Clerk, Resend) a project command called on
+ * the user's behalf answered with an error, or could not be reached. Never
+ * a Brew API error: it exits 1 whatever the vendor's status, and its
+ * message never repeats a credential (see `lib/project/vendor-http.ts`).
+ */
+export class CliVendorError extends Error {
+  readonly vendor: string
+  /** The vendor's HTTP status; `null` when no response arrived. */
+  readonly status: number | null
+  /** How long a 429 asked us to wait, when that exceeded our bound. */
+  readonly retryAfterMs: number | undefined
+
+  constructor(input: {
+    readonly vendor: string
+    readonly status: number | null
+    readonly message: string
+    readonly retryAfterMs?: number
+  }) {
+    super(input.message)
+    this.name = 'CliVendorError'
+    this.vendor = input.vendor
+    this.status = input.status
+    this.retryAfterMs = input.retryAfterMs
+  }
+}
+
 /** The user declined an interactive confirmation prompt. */
 export class CommandAbortedError extends Error {}
 
@@ -316,6 +343,24 @@ function baseEnvelope(error: unknown, context: ErrorContext): CliErrorEnvelope {
       ...(error.requestId ? { requestId: error.requestId } : {}),
       ...(details === undefined ? {} : { details }),
       status: error.status,
+    }
+  }
+  if (error instanceof CliVendorError) {
+    return {
+      code: 'VENDOR_ERROR',
+      type: 'vendor_error',
+      message: error.message,
+      details: {
+        vendor: error.vendor,
+        status: error.status,
+        ...(error.retryAfterMs === undefined
+          ? {}
+          : { retryAfterMs: error.retryAfterMs }),
+      },
+      suggestion:
+        error.status === 429
+          ? `${error.vendor} is rate limiting: wait, then run the command again.`
+          : `Check the ${error.vendor} credentials and settings, then run the command again.`,
     }
   }
   if (error instanceof CliAuthError) {
