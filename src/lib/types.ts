@@ -1,4 +1,5 @@
 import type { BrewClient } from './client'
+import type { Clock } from './clock'
 import type { Budget, TransportState } from './transport'
 
 /** What a spawned child process left behind. */
@@ -48,11 +49,17 @@ export type CliIo = {
   readonly spawn?: SpawnFn
   /**
    * Opens a URL in the user's browser or editor. Absent: the platform
-   * opener (`open`, `xdg-open`, `start`).
+   * opener (`open`, `xdg-open`, `wslview` under WSL, `rundll32` on Windows;
+   * see `lib/project/process.ts`).
    */
   readonly openUrl?: (url: string) => Promise<void>
   /** The working directory project commands act on. Absent: `process.cwd()`. */
   readonly cwd?: string
+  /**
+   * Time and waiting for commands that poll (`login`). Absent: the system
+   * clock and `setTimeout`.
+   */
+  readonly clock?: Clock
 }
 
 export type OutputMode = 'human' | 'json'
