@@ -150,7 +150,7 @@ export function rangeMajor(range: string | undefined): number | null {
   return match === null ? null : Number(match[1])
 }
 
-/** `[major, minor]` of a range, for "at least 12.3" checks. */
+/** `[major, minor]` of a range, for "at least SDK_RANGE" checks. */
 export function rangeVersion(
   range: string | undefined
 ): readonly [number, number] | null {
