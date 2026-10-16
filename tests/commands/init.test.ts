@@ -353,7 +353,7 @@ describe('init: confirmation and dry run', () => {
     ])
     expect(
       result.report.steps.find((step) => step.id === 'install')?.detail
-    ).toBe("npm install '@brew.new/sdk@^12.5.0'")
+    ).toBe("npm install '@brew.new/sdk@^13.2.0'")
   })
 
   it('--dry-run without any credential sends no request at all', async () => {
@@ -476,7 +476,7 @@ describe('init --yes: the full run', () => {
     expect(spawn.calls).toEqual([
       {
         command: 'npm',
-        args: ['install', '@brew.new/sdk@^12.5.0'],
+        args: ['install', '@brew.new/sdk@^13.2.0'],
         cwd: root,
       },
     ])
@@ -609,7 +609,7 @@ describe('init --yes: the full run', () => {
       result.report.nextSteps.find((step) => step.id === 'install-sdk')
     ).toMatchObject({
       blocking: true,
-      command: "npm install '@brew.new/sdk@^12.5.0'",
+      command: "npm install '@brew.new/sdk@^13.2.0'",
     })
 
     useBrewApi()
@@ -766,7 +766,7 @@ describe('init --yes: the full run', () => {
       "Deno.env.get('BREW_API_KEY')"
     )
     expect(read(root, 'supabase/functions/send-email/index.ts')).toContain(
-      'npm:@brew.new/sdk@^12.5.0/supabase'
+      'npm:@brew.new/sdk@^13.2.0/supabase'
     )
     expect(result.report.patches).toMatchObject([
       { id: 'supabase-config-hook', status: 'pending' },
@@ -1043,7 +1043,7 @@ describe('init per stack', () => {
     expect(spawn.calls).toEqual([
       {
         command: 'pnpm',
-        args: ['add', '--filter', 'web', '@brew.new/sdk@^12.5.0'],
+        args: ['add', '--filter', 'web', '@brew.new/sdk@^13.2.0'],
         cwd: root,
       },
     ])

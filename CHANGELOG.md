@@ -37,8 +37,8 @@ GetBrew/brew-v2#2066 and #2060.
   Express, Hono and plain Node get a blocking step to load `.env.local`.
   A test email that does not go out (say `SANDBOX_DAILY_LIMIT`) is a
   non-blocking retry step, not a failed run. The generated code and the
-  install command use `@brew.new/sdk@^12.5.0`, the planned release with
-  `send`, `appEmails` and the auth adapters.
+  install command use `@brew.new/sdk@^13.2.0`, the planned release with
+  `appEmails` and the auth adapters (on top of 13.1.0's `send`).
 - Not in this release (they need platform work first): the Supabase and
   Clerk provider switch-over (Supabase Management API hook, Clerk
   `toggle_delivery`; init prints them as human steps), `integrations

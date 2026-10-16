@@ -9,10 +9,11 @@ import type { AuthId, ProjectDetection } from './detect'
  */
 
 /** The SDK range generated code and the install step ask for. */
-// The first SDK release with `send`, `appEmails` and the auth adapter
-// subpaths (GetBrew/typescript-sdk#55 + #64, planned 12.5.0; see the app
-// email SDK gate in RELEASING.md). npm's 12.3.0 has none of them.
-export const SDK_RANGE = '^12.5.0'
+// The first SDK release with `appEmails` and the auth adapter subpaths
+// (GetBrew/typescript-sdk#64, planned 13.2.0, on top of #55's `send` in
+// 13.1.0; see the app email SDK gate in RELEASING.md). Generated code uses
+// the adapters, so it needs 13.2.0. npm's 12.3.0 has none of them.
+export const SDK_RANGE = '^13.2.0'
 export const SDK_PACKAGE = '@brew.new/sdk'
 
 /** The project-facing command, for files teammates commit and read. */
