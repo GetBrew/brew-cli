@@ -56,6 +56,35 @@ jobs:
           npm publish --provenance --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      # `brew.new` and `create-brew`: thin launchers pinned to this CLI
+      # version, published after it. This step never fails the release (the
+      # CLI is already out): a version npm already has is skipped, and a
+      # failed check or publish, such as a name the token does not own yet,
+      # leaves a warning.
+      - name: Publish launchers (brew.new, create-brew)
+        continue-on-error: true
+        run: |
+          if [ -z "$NODE_AUTH_TOKEN" ]; then
+            echo "::warning::NPM_TOKEN not set; launchers not published."
+            exit 0
+          fi
+          VERSION=$(node -p "require('./package.json').version")
+          if ! bun run sync:launchers:check || ! bun run smoke:launchers \
+            || ! bun run scripts/smoke-launchers.ts --registry; then
+            echo "::warning::Launcher checks failed; brew.new and create-brew $VERSION not published. The CLI release is unaffected."
+            exit 0
+          fi
+          for pkg in brew.new create-brew; do
+            if npm view "$pkg@$VERSION" version >/dev/null 2>&1; then
+              echo "$pkg@$VERSION is already on npm; skipping."
+              continue
+            fi
+            if ! (cd "packages/launchers/$pkg" && npm publish --provenance --access public); then
+              echo "::warning::$pkg@$VERSION was not published (is the npm name reserved for this token?). The CLI release is unaffected."
+            fi
+          done
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       - name: Bump Homebrew tap
         run: bun run scripts/update-tap.ts
         env:
