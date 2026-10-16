@@ -1,5 +1,5 @@
 import { posix } from 'node:path'
-import type { AuthId, ProjectDetection } from './detect'
+import { type AuthId, type ProjectDetection, rangeVersion } from './detect'
 
 /**
  * The files `init` writes into an app. Each template is deterministic (same
@@ -15,6 +15,22 @@ import type { AuthId, ProjectDetection } from './detect'
 // the adapters, so it needs 13.2.0. npm's 12.3.0 has none of them.
 export const SDK_RANGE = '^13.2.0'
 export const SDK_PACKAGE = '@brew.new/sdk'
+
+/**
+ * Whether a declared `@brew.new/sdk` range already reaches SDK_RANGE. An
+ * older one lacks the imports and calls the generated code makes, so init
+ * and migrate install SDK_RANGE over it.
+ */
+export function reachesSdkRange(declared: string | null | undefined): boolean {
+  const version = rangeVersion(declared ?? undefined)
+  const needed = rangeVersion(SDK_RANGE)
+  return (
+    version !== null &&
+    needed !== null &&
+    (version[0] > needed[0] ||
+      (version[0] === needed[0] && version[1] >= needed[1]))
+  )
+}
 
 /** The project-facing command, for files teammates commit and read. */
 // `@brew.new/cli` is on npm; the `brew.new` launcher name is not ours yet.
