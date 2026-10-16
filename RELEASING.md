@@ -59,10 +59,15 @@ The workflow then:
    (`scripts/build-binaries.ts`) and attaches them + `checksums.txt` to an
    auto-generated GitHub Release.
 5. Publishes the launchers `brew.new` (`npx brew.new init`) and
-   `create-brew` (`npm create brew`) from `packages/launchers/`, after a
-   registry smoke install (`scripts/smoke-launchers.ts --registry`). Each
-   is the CLI's version, depends on exactly that `@brew.new/cli`, and is
-   skipped when npm already has the version.
+   `create-brew` (`npm create brew`) from `packages/launchers/`, after the
+   sync check, a pack smoke and a registry smoke install
+   (`scripts/smoke-launchers.ts --registry`). Each is the CLI's version and
+   depends on exactly that `@brew.new/cli`. This step never fails the
+   release: the CLI is already out, so a version npm already has is skipped,
+   and a failed check or publish (for example a launcher name the token
+   does not own yet) leaves a warning on the run. Neither name is on npm
+   today; until they are reserved, docs and generated files point at
+   `npx @brew.new/cli`.
 6. Rewrites `Formula/brew-cli.rb` in `GetBrew/homebrew-tap`
    (`scripts/update-tap.ts`; skipped with a notice when
    `TAP_GITHUB_TOKEN` is absent).
@@ -87,7 +92,7 @@ brew install getbrew/tap/brew-cli
 - **The launcher names**: `brew.new` and `create-brew` must be owned on
   npm by the account behind `NPM_TOKEN` (reserve them with a `0.0.x`
   placeholder first), and the token must be allowed to publish unscoped
-  packages, or the launcher step fails after the CLI is out.
+  packages. Until then the launcher step warns and skips them.
 
 - **`NPM_TOKEN`** (repo secret): npm Automation token with publish access
   to the `@brew.new` org — same recipe as

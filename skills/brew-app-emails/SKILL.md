@@ -10,7 +10,7 @@ Every email this app sends has a **trigger key** (`auth.password-reset`,
 automation behind the key; code only sends the key and a payload:
 
 ```ts
-import { getBrew } from './lib/brew' // written by `npx brew.new init`
+import { getBrew } from './lib/brew' // written by `npx @brew.new/cli init`
 
 await getBrew().send(
   'auth.password-reset',
@@ -22,7 +22,7 @@ await getBrew().send(
 `brew.json` (committed) lists the keys this project set up;
 `lib/brew-contracts.ts` types each key's payload and makes an unknown key a
 compile error. Regenerate it after changing a payload contract:
-`npx brew.new types --out lib/brew-contracts.ts`.
+`npx @brew.new/cli types --out lib/brew-contracts.ts`.
 
 ## Rules
 
@@ -50,9 +50,9 @@ compile error. Regenerate it after changing a payload contract:
 ## A new email
 
 ```bash
-npx brew.new app-emails upsert order.paid --source-file emails/order-paid.tsx --subject "Order confirmed" --yes
-npx brew.new types --out lib/brew-contracts.ts
-npx brew.new send order.paid --to you@example.com --data '{"orderId":"ord_1"}' --yes
+npx @brew.new/cli app-emails upsert order.paid --source-file emails/order-paid.tsx --subject "Order confirmed" --yes
+npx @brew.new/cli types --out lib/brew-contracts.ts
+npx @brew.new/cli send order.paid --to you@example.com --data '{"orderId":"ord_1"}' --yes
 ```
 
 A design edited in Brew is never replaced: `upsert` answers
@@ -62,9 +62,9 @@ A design edited in Brew is never replaced: `upsert` answers
 
 | Error | Meaning | Fix |
 | --- | --- | --- |
-| `TRIGGER_KEY_NOT_FOUND` (404) | No trigger has the key in this brand | `npx brew.new app-emails list`; set it up with `app-emails upsert` or `init` |
-| `NO_PUBLISHED_AUTOMATION` (422) | The key exists, nothing publishes it | `npx brew.new app-emails upsert <key> --yes` |
-| `DOMAIN_REQUIRED` | Sandbox: the recipient is not in your Brew organization | Verify a sending domain (`npx brew.new domains add <host>`) |
+| `TRIGGER_KEY_NOT_FOUND` (404) | No trigger has the key in this brand | `npx @brew.new/cli app-emails list`; set it up with `app-emails upsert` or `init` |
+| `NO_PUBLISHED_AUTOMATION` (422) | The key exists, nothing publishes it | `npx @brew.new/cli app-emails upsert <key> --yes` |
+| `DOMAIN_REQUIRED` | Sandbox: the recipient is not in your Brew organization | Verify a sending domain (`npx @brew.new/cli domains add <host>`) |
 | `SANDBOX_DAILY_LIMIT` (429) | The team sandbox's daily cap is spent | Verify a domain, or wait for the UTC day |
 | `INVALID_PAYLOAD` | The payload misses a required field | Check `lib/brew-contracts.ts`; `details.errors[]` names the field |
 

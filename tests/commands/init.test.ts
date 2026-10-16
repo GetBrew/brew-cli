@@ -353,7 +353,7 @@ describe('init: confirmation and dry run', () => {
     ])
     expect(
       result.report.steps.find((step) => step.id === 'install')?.detail
-    ).toBe("npm install '@brew.new/sdk@^12.3.0'")
+    ).toBe("npm install '@brew.new/sdk@^12.5.0'")
   })
 
   it('--dry-run without any credential sends no request at all', async () => {
@@ -476,7 +476,7 @@ describe('init --yes: the full run', () => {
     expect(spawn.calls).toEqual([
       {
         command: 'npm',
-        args: ['install', '@brew.new/sdk@^12.3.0'],
+        args: ['install', '@brew.new/sdk@^12.5.0'],
         cwd: root,
       },
     ])
@@ -512,7 +512,8 @@ describe('init --yes: the full run', () => {
       actor: 'agent',
       kind: 'apply-patch',
       patchId: 'better-auth-config',
-      command: 'brew-cli init --json --apply-patches --yes',
+      // Pinned to the reviewed file: the hash of lib/auth.ts it was computed on.
+      command: `brew-cli init --json --apply-patches better-auth-config@${report.patches[0]?.baseSha256?.slice(0, 12)} --yes`,
     })
     expect(report.domain).toMatchObject({ mode: 'sandbox' })
     expect(report.nextSteps.map((step) => step.id)).toContain('verify-domain')
@@ -564,8 +565,21 @@ describe('init --yes: the full run', () => {
     useBrewApi()
     const env = configEnv({ BREW_API_KEY: EXPLICIT_KEY })
     writeFileSync(join(root, '.env.local'), `BREW_API_KEY=${APP_KEY}\n`)
+    const reviewed = await init(
+      ['--yes', '--json', '--no-test-email', '--no-install'],
+      { cwd: root, env, spawn: recordingSpawn().spawn }
+    )
+    const pin = `better-auth-config@${reviewed.report.patches[0]?.baseSha256?.slice(0, 12)}`
+    useBrewApi()
     const result = await init(
-      ['--yes', '--json', '--apply-patches', '--no-test-email', '--no-install'],
+      [
+        '--yes',
+        '--json',
+        '--apply-patches',
+        pin,
+        '--no-test-email',
+        '--no-install',
+      ],
       { cwd: root, env, spawn: recordingSpawn().spawn }
     )
     expect(result.code).toBe(0)
@@ -595,7 +609,7 @@ describe('init --yes: the full run', () => {
       result.report.nextSteps.find((step) => step.id === 'install-sdk')
     ).toMatchObject({
       blocking: true,
-      command: "npm install '@brew.new/sdk@^12.3.0'",
+      command: "npm install '@brew.new/sdk@^12.5.0'",
     })
 
     useBrewApi()
@@ -608,6 +622,49 @@ describe('init --yes: the full run', () => {
       }
     )
     expect(rerun.report.patches[0]?.status).toBe('already-applied')
+  })
+
+  it('--apply-patches leaves a file edited since the report alone (stale)', async () => {
+    const root = copyFixture('next-better-auth')
+    useBrewApi()
+    const env = configEnv({ BREW_API_KEY: EXPLICIT_KEY })
+    writeFileSync(join(root, '.env.local'), `BREW_API_KEY=${APP_KEY}\n`)
+    const reviewed = await init(
+      ['--yes', '--json', '--no-test-email', '--no-install'],
+      { cwd: root, env, spawn: recordingSpawn().spawn }
+    )
+    const pin = `better-auth-config@${reviewed.report.patches[0]?.baseSha256?.slice(0, 12)}`
+    const edited = `${read(root, 'lib/auth.ts')}// edited after the review\n`
+    writeFileSync(join(root, 'lib/auth.ts'), edited)
+    useBrewApi()
+    const result = await init(
+      [
+        '--yes',
+        '--json',
+        '--apply-patches',
+        pin,
+        '--no-test-email',
+        '--no-install',
+      ],
+      { cwd: root, env, spawn: recordingSpawn().spawn }
+    )
+    expect(result.report.patches[0]?.status).toBe('stale')
+    expect(read(root, 'lib/auth.ts')).toBe(edited)
+    expect(
+      result.report.nextSteps.find(
+        (step) => step.id === 'apply-better-auth-config'
+      )?.command
+    ).not.toContain(pin)
+  })
+
+  it('--apply-patches refuses a value that is not <id>@<hash> (exit 2)', async () => {
+    const root = copyFixture('next-better-auth')
+    const result = await init(['--yes', '--json', '--apply-patches', 'all'], {
+      cwd: root,
+      env: configEnv(),
+      spawn: recordingSpawn().spawn,
+    })
+    expect(result.code).toBe(2)
   })
 
   it('keeps a generated file someone edited, and says so', async () => {
@@ -709,7 +766,7 @@ describe('init --yes: the full run', () => {
       "Deno.env.get('BREW_API_KEY')"
     )
     expect(read(root, 'supabase/functions/send-email/index.ts')).toContain(
-      'npm:@brew.new/sdk@^12.3.0/supabase'
+      'npm:@brew.new/sdk@^12.5.0/supabase'
     )
     expect(result.report.patches).toMatchObject([
       { id: 'supabase-config-hook', status: 'pending' },
@@ -986,7 +1043,7 @@ describe('init per stack', () => {
     expect(spawn.calls).toEqual([
       {
         command: 'pnpm',
-        args: ['add', '--filter', 'web', '@brew.new/sdk@^12.3.0'],
+        args: ['add', '--filter', 'web', '@brew.new/sdk@^12.5.0'],
         cwd: root,
       },
     ])

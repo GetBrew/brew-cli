@@ -36,11 +36,17 @@ const EXPECTED_FILES = [
   'package/package.json',
 ]
 
-function run(command: string, args: readonly string[], cwd: string): string {
+function run(
+  command: string,
+  args: readonly string[],
+  cwd: string,
+  env?: Readonly<Record<string, string | undefined>>
+): string {
   return execFileSync(command, [...args], {
     cwd,
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'pipe'],
+    ...(env === undefined ? {} : { env: { ...process.env, ...env } }),
   })
 }
 
@@ -146,15 +152,18 @@ async function main(): Promise<void> {
         extract(entry.tarball, join(modules, entry.name))
       }
     }
+    // Node, as `npx` runs the launchers (`bun run` would make
+    // process.execPath bun and hide Node's module loading).
+    const configDir = join(scratch, 'config')
     for (const entry of launchers) {
       const bin = join(modules, entry.name, 'bin.mjs')
-      const printed = run(process.execPath, [bin, '--version'], project).trim()
+      const printed = run('node', [bin, '--version'], project).trim()
       if (printed !== version) {
         throw new Error(
           `${entry.name} --version printed "${printed}", not ${version}`
         )
       }
-      const help = run(process.execPath, [bin, '--help'], project)
+      const help = run('node', [bin, '--help'], project)
       const expected =
         entry.name === 'create-brew'
           ? 'Usage: brew-cli init'
@@ -162,7 +171,26 @@ async function main(): Promise<void> {
       if (!help.includes(expected)) {
         throw new Error(`${entry.name} --help did not print "${expected}"`)
       }
-      console.log(`${entry.name}@${version}: --version and --help ok`)
+      // argv: a bare launcher runs `init`; with no key a dry run plans the
+      // sign-in and sends nothing.
+      const args =
+        entry.name === 'create-brew'
+          ? ['--dry-run', '--json']
+          : ['init', '--dry-run', '--json']
+      const plan = JSON.parse(
+        run('node', [bin, ...args], project, {
+          BREW_CLI_CONFIG_DIR: configDir,
+          BREW_API_KEY: '',
+        })
+      ) as { status?: string }
+      if (plan.status !== 'planned') {
+        throw new Error(
+          `${entry.name} ${args.join(' ')} reported status ${String(plan.status)}, not planned`
+        )
+      }
+      console.log(
+        `${entry.name}@${version}: --version, --help and init --dry-run ok`
+      )
     }
   } finally {
     rmSync(scratch, { recursive: true, force: true })
