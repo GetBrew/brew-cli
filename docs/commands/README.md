@@ -177,6 +177,7 @@ a `confirmCommand` otherwise, `--yes` to proceed).
 | `brew-cli docs api` | read | `GET /v1/help` | Fetch the live machine-readable API catalog (GET /v1/help) |
 | `brew-cli mcp install` | write | — | Add the Brew MCP server to your AI editors' config (Cursor, VS Code, Claude Code, Gemini CLI, Devin Desktop/Windsurf, Codex) |
 | `brew-cli init` | destructive | — | Set up Brew app email in this project: sign in, starter kit, SDK, lib/brew.ts, .env.local, MCP, a sandbox test email |
+| `brew-cli migrate resend` | destructive | — | Move a Resend account and codebase to Brew: plan by default (writes brew.migration.json), --apply to copy templates, contacts, segments, topics, suppressions and draft broadcasts |
 | `brew-cli api` | destructive | — | Raw authenticated request against the Brew public API |
 
 ## Details
@@ -2850,6 +2851,30 @@ brew-cli init --yes --no-wait --json
 brew-cli init --resume --yes --json
 brew-cli init --app apps/web --domain mail.example.com --yes
 brew-cli init --yes --apply-patches better-auth-config@3f9c2a7d1b04
+```
+
+### brew-cli migrate resend
+
+Move a Resend account and codebase to Brew: plan by default (writes brew.migration.json), --apply to copy templates, contacts, segments, topics, suppressions and draft broadcasts
+
+- Class: destructive
+- Derived from `brew.brand.get(...)`, `brew.domains.list(...)`, `brew.appEmails.list(...)`, `brew.emails.import(...)`, `brew.appEmails.upsert(...)`, `brew.emails.delete(...)`, `brew.contacts.upsertMany(...)`, `brew.audiences.list(...)`, `brew.audiences.create(...)`, `brew.domains.unsubscribes.import(...)`
+- `--apply` — Execute the plan: import templates as app emails, upsert contacts, create segment and topic audiences, import suppressions, copy draft broadcasts as Brew drafts (resumes from brew.migration.json)
+- `--dry-run` — Plan and print the report without writing brew.migration.json
+- `--only <phases...>` — Run only these phases: domains, templates, code, contacts, segments, suppressions, topics, broadcasts, webhooks, automations
+- `--resend-key-stdin` — Read the Resend API key from stdin (else RESEND_API_KEY); it is never sent to Brew or printed
+- `--cwd <dir>` — The project to scan and rewrite (default: the current directory)
+- `--domain <domain>` — Brew domain (id or host) whose unsubscribe list takes Resend's suppressions and unsubscribed contacts
+- `--manifest <path>` — Where the plan and progress live (default brew.migration.json)
+- `--key-prefix <prefix>` — Prefix for the trigger keys made from template aliases and React Email file names (default none), e.g. resend.
+- `--rewrite-imports` — With --apply: move files whose every send is a migrated template from 'resend' to '@brew.new/sdk/resend' and write lib/brew-resend-map.ts
+
+```bash
+RESEND_API_KEY=re_123 brew-cli migrate resend
+printf %s "$RESEND_API_KEY" | brew-cli migrate resend --resend-key-stdin --json
+brew-cli migrate resend --only templates code --dry-run
+brew-cli migrate resend --apply --yes
+brew-cli migrate resend --apply --rewrite-imports --domain news.example.com --yes
 ```
 
 ### brew-cli api
