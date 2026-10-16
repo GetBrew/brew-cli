@@ -1,9 +1,14 @@
 # Changelog
 
-## Unreleased
+## 0.17.0
 
-Needs `@brew.new/sdk` `^12.3.0` (`brew.send`,
-`automations.triggers.fireByKey`, `appEmails`).
+Needs an `@brew.new/sdk` release that carries `brew.send` and
+`automations.triggers.fireByKey` (GetBrew/typescript-sdk#55), `appEmails`
+(GetBrew/typescript-sdk#64) and the canvas revocation response fix already
+on the SDK's main branch. Neither PR is published yet; see the app email SDK
+gate in `RELEASING.md`. The API side is GetBrew/brew-v2#2013 (trigger keys),
+#2017 (fire by key), #2059 (team sandbox), #2066 (app emails) and #2060
+(browser sign-in).
 
 ### Added
 
@@ -36,8 +41,11 @@ Needs `@brew.new/sdk` `^12.3.0` (`brew.send`,
   the payload at compile time. A workspace with no keyed triggers gets
   the same bytes as before (no `--check` drift); `--no-registry` leaves
   the block out.
-- The vendored spec now carries the by-key fire and the app-emails
-  routes (brew-v2 `claude/app-emails-setup`).
+- The vendored spec is brew-v2 main plus the spec delta of
+  GetBrew/brew-v2#2066 and the PRs it stacks on (#2013, #2017, #2059): the
+  by-key fire and the app-emails routes, `key` / `appEmail` on trigger
+  rows, and the sandbox error codes (`DOMAIN_REQUIRED`,
+  `SANDBOX_DAILY_LIMIT`). Re-vendor from brew-v2 main once they merge.
 
 - **`brew-cli login` signs in through the browser.** On an interactive
   terminal it starts a sign-in on brew.new, prints the link and a code
@@ -66,7 +74,6 @@ Needs `@brew.new/sdk` `^12.3.0` (`brew.send`,
   `--api-key` or `BREW_API_KEY` never sends it, and `logout` or a pasted
   key drops it. A sign-in against a non-default `--api-url` stores that
   URL with the key. The `Signed in as …` line shows even under `--quiet`.
-
 - **`brew-cli mcp install`** adds the Brew MCP server to Cursor
   (`.cursor/mcp.json`), VS Code (`.vscode/mcp.json`), Claude Code
   (`.mcp.json`), Gemini CLI (`.gemini/settings.json`), and, when named,
@@ -110,10 +117,9 @@ Needs `@brew.new/sdk` `^12.3.0` (`brew.send`,
 ### Changed
 
 - Canvas session create, refresh, and revoke use the SDK methods. JSON output,
-  revocation confirmation, and create/refresh no-retry behavior are preserved.
-
-Requires the SDK revocation response fix, planned for 13.0.0. Follow the canvas
-migration gate in `RELEASING.md` before updating the dependency and releasing.
+  revocation confirmation, and create/refresh no-retry behavior are preserved
+  (needs the SDK revocation response fix; see the canvas migration gate in
+  `RELEASING.md`).
 
 ## 0.16.0
 
