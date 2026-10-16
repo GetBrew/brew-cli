@@ -51,12 +51,7 @@ import {
   serializeBrewState,
 } from '../project/state'
 import type { CliContext } from '../types'
-import {
-  type AuthId,
-  detectProject,
-  type ProjectDetection,
-  rangeVersion,
-} from './detect'
+import { type AuthId, detectProject, type ProjectDetection } from './detect'
 import {
   applyPatch,
   authjsPatch,
@@ -85,6 +80,7 @@ import {
   clientPath,
   contractsPath,
   type GeneratedFile,
+  reachesSdkRange,
   SDK_PACKAGE,
   SDK_RANGE,
   SUPABASE_FUNCTION_PATH,
@@ -1132,11 +1128,7 @@ function planInstall(input: {
     })
     return
   }
-  const version = rangeVersion(project.sdkRange ?? undefined)
-  if (
-    version !== null &&
-    (version[0] > 12 || (version[0] === 12 && version[1] >= 3))
-  ) {
+  if (reachesSdkRange(project.sdkRange)) {
     steps.push({
       id: 'install',
       status: 'skipped',
