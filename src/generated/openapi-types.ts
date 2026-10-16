@@ -113,7 +113,9 @@ export interface paths {
          *
          *     **Input** `content` (the raw source as a string) and `format`: `html` (a document or fragment), `mjml`, `jsx` (a module with a default-exported component or a bare `<Html>` element; static values, `PreviewProps` and local sub-components fold, anything executable is rejected with the offending line) or `eml` (the HTML body is imported, inline `cid:` images are rehosted, other attachments are dropped, and the Subject becomes the title). HTML, MJML and EML land as source-preserved designs with an editable projection; JSX lands as a native React Email design. Optional `baseUrl` resolves relative image paths; optional `title` and `subjectLine` (the design-default inbox subject; an EML Subject is the default); optional `groupId` (`grp_…` or `ungrouped`) or `groupName` (resolve or create), not both; omit to land Ungrouped. Limits: 5,000,000 UTF-8 bytes, 256 remote resources, 8 concurrent fetches, 10 MB per resource and 50 MB aggregate downloads.
          *
-         *     **Returns** `201 { emailId, emailVersionId, html, previewImage?, assetReport, group, subjectLine? }`. Each source element with content that a design could not keep is listed once in `assetReport.warnings` as `{ code: "element_dropped", location: "markup", host: "<tag>" }`: inline `svg`, `math` and `canvas`, and `button`, `select`, `textarea` or table `caption` holding text are left out of the editable projection (the original source keeps them); `audio`, `video`, `iframe`, `object` and `embed` are removed from both, with `audio`/`video` fallback content kept.
+         *     **Migrating from Resend** `props: "merge_tags"` (`jsx` only) keeps the root component's props as `{{ trigger.<name> }}` merge tags filled from the trigger payload: member reads extend the path (`props.user.name` is `trigger.user.name`), default values and `??` / `||` literals become fallbacks, template literals and `href` / `src` / `alt` / `title` carry tags, and `{prop && <X />}` becomes a `{% if %}` block. A prop used where a tag cannot go (arithmetic, a style, a `.map`) takes its `PreviewProps` or default value with a `dynamic_prop_folded` or `dynamic_control_flow_unsupported` warning; one with neither is refused. `placeholders: "resend"` rewrites Resend `{{{NAME}}}` / `{{{NAME|fallback}}}` to `{{ trigger.NAME }}` in the body and `subjectLine` (`FIRST_NAME`, `LAST_NAME`, `EMAIL` read the contact; `href="{{{RESEND_UNSUBSCRIBE_URL}}}"` becomes Brew's unsubscribe link). Resend printed those values raw and Brew escapes them (`escaping_changed`): end a tag with `| raw` only for HTML you trust. Optional `variables: [{ key, fallbackValue? }]` supplies fallbacks the source lacks (a Resend template's `variables`) and needs one of the two modes.
+         *
+         *     **Returns** `201 { emailId, emailVersionId, html, previewImage?, assetReport, variables, group, subjectLine? }`. `variables` lists every merge path the design and subject read, `{ path, fallback? }`, ready to declare as the trigger payload. Each source element with content that a design could not keep is listed once in `assetReport.warnings` as `{ code: "element_dropped", location: "markup", host: "<tag>" }`: inline `svg`, `math` and `canvas`, and `button`, `select`, `textarea` or table `caption` holding text are left out of the editable projection (the original source keeps them); `audio`, `video`, `iframe`, `object` and `embed` are removed from both, with `audio`/`video` fallback content kept.
          *
          *     **Errors** `422 EMAIL_IMPORT_FAILED` when the markup cannot be compiled into a design or its editable model is over the size budget (nothing is persisted); `404 EMAIL_GROUP_NOT_FOUND` for an unknown `groupId`; `413 PAYLOAD_TOO_LARGE` over the byte cap; `422 BRAND_NOT_READY` while the brand is still extracting.
          *
@@ -807,7 +809,7 @@ export interface paths {
          *
          *     **Input** Update: one or more of `name`, `description`, `nodes`, `connections`, `triggerEventId`, under the same typed condition contract as create (explicit `type`, canonical snake_case `operator`, no `value` for unary operators, type-correct values elsewhere); `dryRun: true` validates without persisting. Node ids are stored as sent, so renamed nodes keep their new ids, except the two shapes `NODE_ID_REPLACED` reports. Lifecycle: `published: true` promotes the stored latest version live (optionally pin `automationVersionId`; the graph is validated first), `published: false` unpublishes, `paused: true` or `false` freezes or resumes future send steps (`stopInFlight` also stops runs already in progress).
          *
-         *     **Returns** the bare automation row, or with `dryRun: true` a `200 AutomationDryRunReport` `{ valid, blockers[], warnings[], blockingIssues[], nodeCounts }`: `blockingIssues[]` lists per-node references the effective trigger or contact catalog cannot provide, and publish refuses every one of them, fallback or not (`fatal` says what the reference would do: `true` for filter or split conditions and triple-brace `{{{ }}}` body tokens would break the run, `false` for subject, previewText, fromName, replyTo and double-brace body tags would render empty); `valid` is false when any blocker or blocking issue is present. Updating a LIVE automation saves a draft and does not go live: the previously published version keeps serving until you republish, `published` describes the returned row, `isLive`, `liveVersion` and `liveAutomationVersionId` describe the automation, and `warnings[]` carries `DRAFT_SAVED_NOT_LIVE`. Publishing an automation whose integration trigger has not received its event on the current connection (a Shopify topic with no webhook) still succeeds, and `warnings[]` carries `TRIGGER_EVENT_NOT_RECEIVED` saying what to set up.
+         *     **Returns** the bare automation row, or with `dryRun: true` a `200 AutomationDryRunReport` `{ valid, blockers[], warnings[], blockingIssues[], nodeCounts }`: `blockingIssues[]` lists per-node references the effective trigger or contact catalog cannot provide, and publish refuses every one of them, fallback or not (`fatal` says what the reference would do: `true` for filter or split conditions and triple-brace `{{{ }}}` body tokens would break the run, `false` for subject, previewText, fromName, replyTo and double-brace body tags would render empty); `valid` is false when any blocker or blocking issue is present. Updating a LIVE automation saves a draft and does not go live: the previously published version keeps serving until you republish, `published` describes the returned row, `isLive`, `liveVersion` and `liveAutomationVersionId` describe the automation, and `warnings[]` carries `DRAFT_SAVED_NOT_LIVE`. Publishing an automation whose integration trigger has not received its event on the current connection (a Shopify topic with no webhook) still succeeds, and `warnings[]` carries `TRIGGER_EVENT_NOT_RECEIVED` saying what to set up. An engagement filter that watches an email sent from a transactional domain (no open or click tracking) publishes with `ENGAGEMENT_NOT_TRACKED`.
          *
          *     **Errors** `404 AUTOMATION_NOT_FOUND`, `AUTOMATION_VERSION_NOT_FOUND` (pin `liveAutomationVersionId`, a `versions[]` id, or a run row's `automationVersionId`), `TRIGGER_EVENT_NOT_FOUND`; `400 AUTOMATION_GRAPH_INVALID` (`details.issues[]`); `409 AUTOMATION_VERSION_CONFLICT` (re-read, reapply, retry); `422 PUBLISH_VALIDATION_FAILED` (`details.blockers[]`; a cdn.brew.new image a step would send that does not exist is a blocker, listed in `details.missingImages[]`, and a dead icon whose real file sits elsewhere in its pack is moved there instead when the key has `emails` access), `AUTOMATION_NOT_PUBLISHED` (nothing to unpublish; with `stopInFlight: true` on a draft, also no contacts in flight to stop), `AUTOMATION_NOT_PAUSABLE` (a manual-audience automation pauses through its runs).
          *
@@ -1151,7 +1153,9 @@ export interface paths {
         put?: never;
         /**
          * Create a trigger
-         * @description Creates a custom trigger event definition — the contract automations subscribe to. Body carries `{ title, description?, payloadSchema }`; the server mints `triggerEventId` and hardcodes `provider: "brew_api"`. Integration triggers (clerk, stripe, shopify, …) are provisioned by the corresponding integration only.
+         * @description Creates a custom trigger event definition — the contract automations subscribe to. Body carries `{ title, description?, key?, payloadSchema }`; the server mints `triggerEventId` and hardcodes `provider: "brew_api"`. Integration triggers (clerk, stripe, shopify, …) are provisioned by the corresponding integration only.
+         *
+         *     `key` is an optional stable developer name (`order.paid`) for identifying the trigger; `POST /v1/automations/triggers/by-key/{triggerKey}/fire` fires by it. The key is unique in the brand (`409 TRIGGER_KEY_TAKEN`), and `kit`, `by-key`, `brew.*` and non-starter-kit `auth.*` keys are reserved (`400 TRIGGER_KEY_RESERVED`).
          *
          *     `payloadSchema.fields` MUST declare `{ key: "email", type: "string", required: true }` so downstream automations can resolve a recipient. Returns `201` with the bare trigger row.
          */
@@ -1195,7 +1199,7 @@ export interface paths {
         head?: never;
         /**
          * Update a trigger
-         * @description Updates one or more editable fields (`title`, `description`, `payloadSchema`). Whether a trigger fires is governed solely by `automation.published` on each wired automation — there is no per-trigger off-switch. Integration-provisioned triggers are immutable here (`422 TRIGGER_IMMUTABLE`). While a published automation uses the trigger, a `payloadSchema` change that would stop it from running (removing or retyping a field it reads, or declaring the shape of an open object or list so one of its merge tags no longer resolves) is refused with `409 CONTRACT_LOCKED_BY_PUBLISHED_AUTOMATIONS`. Returns the bare updated row.
+         * @description Updates one or more editable fields (`title`, `description`, `key`, `payloadSchema`). `key: null` clears the key; a key another trigger in the brand holds is `409 TRIGGER_KEY_TAKEN`. Whether a trigger fires is governed solely by `automation.published` on each wired automation — there is no per-trigger off-switch. Integration-provisioned triggers are immutable here (`422 TRIGGER_IMMUTABLE`). While a published automation uses the trigger, a `payloadSchema` change that would stop it from running (removing or retyping a field it reads, or declaring the shape of an open object or list so one of its merge tags no longer resolves) is refused with `409 CONTRACT_LOCKED_BY_PUBLISHED_AUTOMATIONS`. Returns the bare updated row.
          */
         patch: operations["updateTrigger"];
         trace?: never;
@@ -1251,11 +1255,43 @@ export interface paths {
          *
          *     **Idempotency** send a stable `Idempotency-Key` header on every retry. A repeat answers `200` with `status: "replayed"` and the ORIGINAL run ids; nothing fires twice. A fire key is matched against the stored trigger receipt, so it replays for as long as the receipt is kept (90 days), not only the 24 hours of the shared response cache. Use one key per business action and never reuse it for a different fire.
          *
-         *     **Errors** `400 INVALID_PAYLOAD` when the payload does not satisfy the schema, or when `email` (or `user.email`) is not one plain address such as `jane@example.com`: a display name (`Jane <jane@example.com>`), a list or a line break is refused with `details.errors[].code: "invalid_email"`, and no contact is written; `404 TRIGGER_EVENT_NOT_FOUND` for an unknown or cross-brand id; `422 NO_PUBLISHED_AUTOMATION` when nothing published listens for the trigger; `409 IDEMPOTENCY_CONFLICT` when a key is reused with a different body; `409 TRIGGER_NOT_FIREABLE` for a Brew event trigger, which Brew starts itself (try its automation with `testAutomation`).
+         *     **Errors** `400 INVALID_PAYLOAD` when the payload does not satisfy the schema, or when `email` (or `user.email`) is not one plain address such as `jane@example.com`: a display name (`Jane <jane@example.com>`), a list or a line break is refused with `details.errors[].code: "invalid_email"`, and no contact is written; `404 TRIGGER_EVENT_NOT_FOUND` for an unknown or cross-brand id; `422 NO_PUBLISHED_AUTOMATION` when nothing published listens for the trigger; `422 DOMAIN_REQUIRED` when every matched automation sends only from the Brew sandbox (no verified domain yet), right away, and to recipients who are not members of your organization (`details: { recipient, allowed, domainsUrl }`; in a mixed fan-out those automations are listed in `notStarted[]` with `code: "DOMAIN_REQUIRED"` and the rest start); `429 SANDBOX_DAILY_LIMIT` with `Retry-After` when the organization spent today’s sandbox sends (`details: { limit, resetsAt }`); `409 IDEMPOTENCY_CONFLICT` when a key is reused with a different body; `409 TRIGGER_NOT_FIREABLE` for a Brew event trigger, which Brew starts itself (try its automation with `testAutomation`).
          *
          *     **See also** `checkTriggerReady`, `getTriggerInstance`, `listAutomationRuns`.
          */
         post: operations["fireTrigger"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/automations/triggers/by-key/{triggerKey}/fire": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Fire a trigger by key
+         * @description Fires the trigger whose developer `key` matches, exactly as `fireTrigger` does by id: validates the payload, upserts the contact, then starts one run per published automation attached to the trigger. Use it when the same code fires the same trigger in several brands or environments, where each trigger has its own minted id but shares the key.
+         *
+         *     **Use when** your code names triggers by key (`order.paid`, `auth.password-reset`) instead of storing `triggerEventId`s.
+         *
+         *     **Input** `{ payload }`, validated against the trigger’s `payloadSchema`, as for `fireTrigger`.
+         *
+         *     **Returns** the `fireTrigger` response plus `triggerKey`: `202 { triggerInstanceId, triggerEventId, triggerKey, status, automationRunIds[], notStarted[], publishedAutomations[], counts, warnings[], receivedAt }`.
+         *
+         *     **Idempotency** send a stable `Idempotency-Key` header on every retry. The key is matched against the stored trigger receipt of the RESOLVED trigger, so a by-key and a by-id fire of one trigger with the same key replay each other, for as long as the receipt is kept (90 days).
+         *
+         *     **Errors** `404 TRIGGER_KEY_NOT_FOUND` when no trigger in the brand has the key (a sibling brand’s key never resolves); otherwise the `fireTrigger` errors: `400 INVALID_PAYLOAD`, `422 NO_PUBLISHED_AUTOMATION`, `422 DOMAIN_REQUIRED` and `429 SANDBOX_DAILY_LIMIT` (a sandbox automation before a domain verifies), `409 IDEMPOTENCY_CONFLICT`, and `409 TRIGGER_NOT_FIREABLE` for a Brew event trigger, which Brew starts itself.
+         *
+         *     **See also** `fireTrigger`, `listTriggers`, `updateTrigger` (to set a key).
+         */
+        post: operations["fireTriggerByKey"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1338,6 +1374,100 @@ export interface paths {
          *     Spots inference cannot type (nulls, empty arrays) degrade honestly and are listed in `issues` with the offending path. Nothing is saved: review the draft, then `PUT` it to `…/triggers/{triggerEventId}/contract`.
          */
         post: operations["inferPayloadContract"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/app-emails": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List app emails
+         * @description Lists the brand’s app emails: each keyed trigger an app-email setup wired to a design and an automation, under `{ data, pagination }`.
+         *
+         *     **Use when** checking which emails your app can send by key and whether each one sends now.
+         *
+         *     **Returns** `200` with rows carrying `triggerKey`, `emailId`, `automationId`, the starter and `upgradeAvailable`, `published`, the `sender` (`domain`, `sandbox` or `none`) and `readiness` (`ready`, `teamOnly`, `blockers`), as a fire sends now: from the published version while a newer draft waits, through the sandbox only while the domain is in its first check.
+         *
+         *     **See also** `upsertAppEmail`, `setUpAppEmailKit`, `fireTriggerByKey`.
+         */
+        get: operations["listAppEmails"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/app-emails/{triggerKey}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get an app email
+         * @description Reads one app email by its trigger key, as the list row.
+         *
+         *     **Errors** `404 TRIGGER_KEY_NOT_FOUND` when no app email is set up for the key in this brand.
+         */
+        get: operations["getAppEmail"];
+        /**
+         * Set up an app email
+         * @description Sets up one email your app sends by key, in one idempotent call: creates or reuses the trigger with that key and its payload contract, builds the design from a starter-kit template (`starter`) or your own `source`, wires an automation that sends it and publishes it.
+         *
+         *     **Use when** your code should send `brew.send(’<key>’, payload)` and nothing exists yet, or to bring an existing setup up to date.
+         *
+         *     **Input** at most one of `starter` and `source`; a starter-kit key defaults to its own starter. `payloadSchema` declares flat payload fields (on a starter, added to the kit’s); without it the starter’s contract is used, or for a `source` the fields its `{{ trigger.<field> }}` merge tags read (a nested path such as `trigger.user.name` or a loop over `trigger.items` declares its object or array). A field the trigger already declares keeps its stored type and markers, so a re-run without `payloadSchema` never drops a `secret`. Only `email` (the recipient) reaches the contact; every other field is template data. Mark a one-time code or sign-in link `secret: true`: it is used only to render the email and redacted wherever the fire is stored, logged or counted (never on `email`). An omitted marker counts `pii: high` as secret, and a field the starter kit marks secret (`otp`, `confirmationUrl`, `newEmail`) stays secret. `domainId` picks the sender; by default a verified domain whose purpose matches the email (transactional for auth emails, trial ending and payment failed; marketing for welcome and win-back), else the team-only sandbox (members of your organization, under a daily cap) until one verifies. A transactional key never sends from a marketing domain: naming one is `422 APP_EMAIL_DOMAIN_PURPOSE_MISMATCH`. `publish` defaults to true.
+         *
+         *     **Re-runs** change only what differs. The same starter and version, or the same source, keeps the design. A newer starter version, another starter or another source replaces it, unless it was edited in Brew since setup: then `409 APP_EMAIL_EDITED_IN_BREW` until `overwrite: true`. A new `subject` or `previewText` alone changes the send step and keeps the design. An HTML or MJML replacement is a new design, and the unedited one it replaced is deleted unless a run that started before may still send it. A deleted design or automation is created again. A sandbox sender moves to a matching domain once one verifies, and a marketing domain picked on a transactional key’s send step is not kept. A setup publishes only the automation version it wrote: a draft saved in Brew since takes the setup’s changes but is left unpublished with a `DRAFT_SAVED_NOT_LIVE` warning, and a change made with `publish: false` while the email is live answers the same warning. A key whose trigger already starts a published automation that no setup made is `409 APP_EMAIL_TRIGGER_IN_USE` (`details.automationIds`), since every fire would send both. A call that fails part way leaves nothing a re-run would duplicate, and two calls for one key at once end with one design and one automation.
+         *
+         *     **Scopes** an API key needs both `automations` and `emails` (`x-brew-scopes`): the setup imports its design the way `importEmail` does.
+         *
+         *     **Returns** `201` when this call set the key up, `200` on a re-run, with the ids, `published`, what was `created`, the `sender`, the stored `payloadSchema`, a `fireExample` (path, example payload, curl and `brew.send`) and `warnings`.
+         *
+         *     **Errors** `400 APP_EMAIL_STARTER_UNKNOWN`, `400 TRIGGER_KEY_RESERVED`, `404 DOMAIN_NOT_FOUND`, `409 APP_EMAIL_EDITED_IN_BREW`, `409 APP_EMAIL_TRIGGER_IN_USE`, `409 CONTRACT_LOCKED_BY_PUBLISHED_AUTOMATIONS` (a `payloadSchema` that drops or retypes a field the live automation reads), `409 APP_EMAIL_SETUP_IN_PROGRESS` (other setups of the key kept writing first; retry later), `409 TRIGGER_KEY_TAKEN` (another setup of the key won a race), `409 TRIGGER_LIMIT_REACHED`, `413 PAYLOAD_TOO_LARGE` and `422 EMAIL_IMPORT_FAILED` for the source, `422 APP_EMAIL_DOMAIN_PURPOSE_MISMATCH` (a marketing `domainId` for a transactional key), `422 AUTOMATION_GRAPH_INVALID` and `404 AUTOMATION_NOT_FOUND`, `TRIGGER_EVENT_NOT_FOUND` or `NOT_FOUND` when the trigger, automation or design changes during the setup.
+         *
+         *     **See also** `setUpAppEmailKit`, `fireTriggerByKey`, `listAppEmails`.
+         */
+        put: operations["upsertAppEmail"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/app-emails/kit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Set up the app email kit
+         * @description Sets up the starter kit: auth emails (verify email, magic link, one-time code, password reset, invite, email change, reauthentication, security notice) and lifecycle emails (welcome, trial ending, payment failed, win-back). Each key is set up exactly as `upsertAppEmail` does with its own starter, a few at a time.
+         *
+         *     **Input** `sets` (default both), `stack` (narrows the auth keys to the ones that auth library sends and picks the code snippets; default `custom`, every auth key) or exact `keys`, plus `domainId` and `overwrite` for every key (a marketing `domainId` sets up the marketing keys and answers each transactional key `APP_EMAIL_DOMAIN_PURPOSE_MISMATCH`). `supabase` sets up every auth email Supabase hands to Brew through its Send Email Hook (`authDelivery: hosted-webhook`; connect with `connectIntegrationHook`, or deploy the returned self-hosted hook from `@brew.new/sdk/supabase` as a Supabase Edge Function instead); `clerk` sets up the auth emails Clerk hands to Brew in its `email.created` webhook (`authDelivery: hosted-webhook`; connect Clerk in Brew, then turn off Clerk's own delivery for the templates `stack.note` lists) plus the lifecycle emails.
+         *
+         *     **Returns** `200` with `results[]` in kit order, each `ok: true` with the setup result or `ok: false` with its `error` (`code`, `message`, `details`), and `stack` (`provider`, `authDelivery`, `note`, `keys`, `snippets`). One key failing does not stop the others; running the kit again finishes them.
+         *
+         *     **Scopes** an API key needs both `automations` and `emails` (`x-brew-scopes`), as for `upsertAppEmail`.
+         *
+         *     **See also** `upsertAppEmail`, `listAppEmails`.
+         */
+        post: operations["setUpAppEmailKit"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1813,7 +1943,7 @@ export interface paths {
         put?: never;
         /**
          * Add a domain
-         * @description Registers a sending domain with the provider. Optional `sendingPurpose` is `marketing` (default; campaigns, audience sends, automations) or `transactional` (event-triggered automation mail — no unsubscribe link required, merely-unsubscribed contacts still receive it). Returns `201` with the bare row in `status: "pending"` plus the DNS `records` to publish. Once the records are live, call `POST /v1/domains/{domainId}/verify` until `sendable: true`.
+         * @description Registers a sending domain with the provider. Optional `sendingPurpose` is `marketing` (default; campaigns, audience sends, automations) or `transactional` (event-triggered automation mail: no unsubscribe link required, merely-unsubscribed contacts still receive it, and open and click tracking are off). Returns `201` with the bare row in `status: "pending"` plus the DNS `records` to publish. When the domain already publishes a different DKIM key where Brew asks for its record, the domain is still added and the row carries a `DKIM_SELECTOR_IN_USE` warning whose `suggestedNames` are subdomains to add instead. Once the records are live, call `POST /v1/domains/{domainId}/verify` until `sendable: true`.
          */
         post: operations["addDomain"];
         delete?: never;
@@ -1855,7 +1985,7 @@ export interface paths {
         head?: never;
         /**
          * Update domain settings
-         * @description Updates sender defaults (`defaultSenderName`, `defaultFromEmail`, `defaultReplyToEmail`) and/or `sendingPurpose` — at least one required. `defaultFromEmail` is the sender MAILBOX (the text before `@`) — the host is always this domain, so a full address is accepted and reduced to its local part; `defaultReplyToEmail`, by contrast, is a whole address. Live gates fail closed if a campaign still points at a transactional domain. Verification is its own action: `POST /v1/domains/{domainId}/verify`. Returns the bare updated row.
+         * @description Updates sender defaults (`defaultSenderName`, `defaultFromEmail`, `defaultReplyToEmail`) and/or `sendingPurpose` — at least one required. `defaultFromEmail` is the sender MAILBOX (the text before `@`) — the host is always this domain, so a full address is accepted and reduced to its local part; `defaultReplyToEmail`, by contrast, is a whole address. Live gates fail closed if a campaign still points at a transactional domain. A transactional domain has open and click tracking switched off whenever it is still on; a change back to `marketing` switches tracking on again. Verification is its own action: `POST /v1/domains/{domainId}/verify`. Returns the bare updated row.
          */
         patch: operations["updateDomain"];
         trace?: never;
@@ -2387,6 +2517,48 @@ export interface paths {
          */
         get: operations["listIntegrations"];
         put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/integrations/{provider}/connection": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get a hosted auth hook connection
+         * @description Reads the brand’s connection for a hosted auth email hook: the provider that hands your app’s auth emails to Brew.
+         *
+         *     **Returns** `200` with `provider`, `connectionId`, the `webhookUrl` the provider delivers to and `status` (`pending_verification` until the first signed delivery, then `active`).
+         *
+         *     **Errors** `404 NOT_FOUND` when the provider is not connected for the brand.
+         *
+         *     **See also** `connectIntegrationHook`, `listIntegrations`.
+         */
+        get: operations["getIntegrationConnection"];
+        /**
+         * Connect a hosted auth hook
+         * @description Connects a hosted auth email hook for the brand and sets up its auth app emails, so the provider hands every auth email to Brew: the Supabase Auth Send Email Hook (`supabase_auth`) or Clerk’s `email.created` (`clerk`).
+         *
+         *     **Input** `signingSecret`, the secret the provider signs deliveries with (Supabase: `v1,whsec_…` from Authentication > Hooks; Clerk: `whsec_…` from the endpoint). Supabase only: `settings.projectUrl`, the URL confirmation links point at (default: the one Supabase sends with each email).
+         *
+         *     **Re-runs** are safe: the `connectionId` and `webhookUrl` never change for a brand and provider, a new secret replaces the old one, and the auth app emails already set up are kept (a design edited in Brew is never replaced). Until the first signed delivery the connection is `pending_verification`.
+         *
+         *     **Scopes** an API key needs `emails` and `automations` (`x-brew-scopes`): the call also runs the app email kit.
+         *
+         *     **Returns** `200` with `provider`, `connectionId`, `webhookUrl`, `status` and `authEmails[]`: each auth key with `ok`, or its `error`; connecting again finishes a failed key.
+         *
+         *     **Errors** `400 INVALID_REQUEST` for an unsupported provider, a secret in the wrong format or a project URL that is not https.
+         *
+         *     **See also** `getIntegrationConnection`, `setUpAppEmailKit`, `listAppEmails`.
+         */
+        put: operations["connectIntegrationHook"];
         post?: never;
         delete?: never;
         options?: never;
@@ -2981,8 +3153,13 @@ export interface components {
                 emailId: string;
                 /** @description Email version id to send — required. A pin to the latest version follows new versions (prompt edit, restore) into an unpublished draft; older pins stay. */
                 emailVersionId: string;
-                /** @description Owned sending-domain id — optional at authoring; required, and verified (sendable: true), at publish and on every live run. A marketing domain enforces the unsubscribe link; a sendingPurpose "transactional" domain skips it and delivers even to unsubscribed contacts, so choose one only for genuinely transactional flows (receipts, password resets). */
+                /** @description Verified owned domain id, required at publish unless senderMode is sandbox. Transactional domains skip unsubscribe links and reach unsubscribed contacts: only for receipts, resets. */
                 domainId?: string;
+                /**
+                 * @description sandbox: until a domain verifies, event automations email your organization members only.
+                 * @enum {string}
+                 */
+                senderMode?: "domain" | "sandbox";
                 /** @description Inbox subject — required. Supports {{var | fallback}} interpolation. */
                 subject: string;
                 /** @description Inbox preheader — optional; the email design's <Preview> is the source of truth and wins when present. */
@@ -3346,6 +3523,8 @@ export interface components {
                     fromName?: string;
                     fromAddress?: string;
                     domainId?: string;
+                    /** @enum {string} */
+                    senderMode?: "domain" | "sandbox";
                     replyTo?: string;
                     to?: unknown;
                     html?: string;
@@ -3466,9 +3645,11 @@ export interface components {
         };
         ApiWarning: {
             /** @enum {string} */
-            code: "DRAFT_SAVED_NOT_LIVE" | "NODE_ID_REPLACED" | "TRIGGER_EVENT_NOT_RECEIVED" | "ENFORCEMENT_LOOSENED_WHILE_PUBLISHED" | "REQUIRED_FIELD_SATISFIED_BY_FALLBACK" | "RESUBSCRIBE_SKIPPED" | "CORE_FIELD_IGNORED" | "DATE_ORDER_ASSUMED" | "FIELD_TYPE_COERCED" | "CSV_ROW_SKIPPED" | "CONTACT_EXISTS_SKIPPED" | "CSV_COLUMN_IGNORED" | "VALIDATION_SKIPPED" | "RECIPIENTS_EXCLUDED" | "CONSENT_RECORD_MISSING";
+            code: "DRAFT_SAVED_NOT_LIVE" | "NODE_ID_REPLACED" | "TRIGGER_EVENT_NOT_RECEIVED" | "ENGAGEMENT_NOT_TRACKED" | "ENFORCEMENT_LOOSENED_WHILE_PUBLISHED" | "REQUIRED_FIELD_SATISFIED_BY_FALLBACK" | "RESUBSCRIBE_SKIPPED" | "CORE_FIELD_IGNORED" | "DATE_ORDER_ASSUMED" | "FIELD_TYPE_COERCED" | "CSV_ROW_SKIPPED" | "CONTACT_EXISTS_SKIPPED" | "CSV_COLUMN_IGNORED" | "VALIDATION_SKIPPED" | "RECIPIENTS_EXCLUDED" | "DKIM_SELECTOR_IN_USE" | "SANDBOX_SENDER" | "APP_EMAIL_NOT_PUBLISHED" | "DESIGN_EDITED_IN_BREW" | "CONSENT_RECORD_MISSING";
             message: string;
             field?: string;
+            /** @description Names to use instead of the one the request sent (`DKIM_SELECTOR_IN_USE`: subdomains of the added domain). */
+            suggestedNames?: string[];
         };
         AutomationDryRunReport: {
             /** @description Whether the graph would publish cleanly. false when any `blockers[]` entry or any `blockingIssues[]` entry is present. */
@@ -3638,6 +3819,19 @@ export interface components {
         };
         TriggerRow: {
             triggerEventId: string;
+            /** @description Stable developer key your code names this trigger by; unique in the brand. Fire by it with `POST /v1/automations/triggers/by-key/{triggerKey}/fire`. Absent when the trigger has none. */
+            key?: string;
+            /** @description Present when an app-email setup wired this keyed trigger to an automation and design. */
+            appEmail?: {
+                /** @description The automation that sends this app email. */
+                automationId: string;
+                /** @description The email design it sends. */
+                emailId: string;
+                /** @description The starter-kit template the design came from, if any. */
+                starterId?: string;
+                /** @description Version of that starter template. */
+                starterVersion?: number;
+            };
             title: string;
             description?: string;
             /** @enum {string} */
@@ -4468,7 +4662,7 @@ export interface components {
             };
         };
         /** @enum {string} */
-        ApiErrorCode: "ACCOUNT_SUSPENDED" | "API_KEY_REVOKED" | "AUDIENCE_BUILD_ACTIVE" | "AUDIENCE_BUILD_ALREADY_ACTIVE" | "AUDIENCE_EDIT_CONFLICT" | "AUDIENCE_MEMBERSHIP_NOT_EXPRESSIBLE" | "AUDIENCE_NOT_FOUND" | "AUDIENCE_RUN_NOT_FOUND" | "AUDIT_NOT_FOUND" | "AUTHENTICATION_REQUIRED" | "AUTOMATION_GRAPH_INVALID" | "AUTOMATION_NOT_FOUND" | "AUTOMATION_NOT_PAUSABLE" | "AUTOMATION_NOT_PUBLISHED" | "AUTOMATION_RUN_NOT_FOUND" | "AUTOMATION_VERSION_CONFLICT" | "AUTOMATION_VERSION_NOT_FOUND" | "BATCH_TOO_LARGE" | "BRAND_DOMAIN_CONFLICT" | "BRAND_ID_REQUIRED" | "BRAND_LIMIT_REACHED" | "BRAND_NOT_FOUND" | "BRAND_NOT_READY" | "BRAND_SCOPE_MISMATCH" | "CHAT_NOT_FOUND" | "COMMENT_NOT_FOUND" | "CONSENT_REQUIRED" | "CONTACT_NOT_FOUND" | "CONTENT_OPERATION_FAILED" | "CONTRACT_LOCKED_BY_PUBLISHED_AUTOMATIONS" | "CORE_FIELD_IMMUTABLE" | "DOMAIN_ALREADY_EXISTS" | "DOMAIN_CLAIMED_ELSEWHERE" | "DOMAIN_NOT_FOUND" | "DOMAIN_NOT_READY" | "DOMAIN_OTHER_BRAND" | "DOMAIN_PROVIDER_ERROR" | "DOMAIN_PURPOSE_NOT_ALLOWED" | "DOMAIN_VERIFICATION_FAILED" | "DOMAIN_VERIFIED_ELSEWHERE" | "EMAIL_GENERATION_FAILED" | "EMAIL_GROUP_NAME_CONFLICT" | "EMAIL_GROUP_NOT_FOUND" | "EMAIL_IMAGES_MISSING" | "EMAIL_IMPORT_FAILED" | "EMAIL_IN_PROGRESS" | "EMAIL_IN_USE_BY_AUTOMATION" | "EMAIL_NOT_FOUND" | "EMAIL_NOT_READY" | "EMAIL_RESULT_UNAVAILABLE" | "EMAIL_RUN_AMBIGUOUS" | "EMAIL_TEMPLATE_INVALID" | "EMAIL_VERSION_NOT_FOUND" | "EXPORT_PROVIDER_ERROR" | "EXPORT_UNSUPPORTED" | "FIELD_NAME_COLLISION" | "FIELD_NOT_FOUND" | "FIELD_TYPE_MISMATCH" | "FIGMA_ACCESS_DENIED" | "FIGMA_CONVERSION_FAILED" | "FIGMA_FRAME_NOT_FOUND" | "FIGMA_NOT_CONNECTED" | "FIGMA_UNAVAILABLE" | "FIGMA_URL_INVALID" | "FLOW_NOT_FOUND" | "IDEMPOTENCY_CONFLICT" | "IDEMPOTENCY_IN_PROGRESS" | "INSIGHT_NOT_FOUND" | "INSUFFICIENT_CREDITS" | "INSUFFICIENT_PERMISSIONS" | "INSUFFICIENT_ROLE" | "INTEGRATION_NOT_CONNECTED" | "INTERNAL_ERROR" | "INVALID_API_KEY" | "INVALID_EMAIL" | "INVALID_PAYLOAD" | "INVALID_REQUEST" | "LIQUID_RENDER_ERROR" | "METHOD_NOT_ALLOWED" | "MISSING_EMAIL" | "NO_ELIGIBLE_RECIPIENTS" | "NO_PUBLISHED_AUTOMATION" | "NOT_FOUND" | "NOT_IMPLEMENTED" | "ORG_SCOPE_REQUIRED" | "PAYLOAD_SCHEMA_EMAIL_REQUIRED" | "PAYLOAD_TOO_LARGE" | "PREVIEW_NOT_FOUND" | "PUBLISH_VALIDATION_FAILED" | "RATE_LIMITED" | "RECIPIENT_UNSUBSCRIBED" | "REFERENCE_EMAIL_NOT_FOUND" | "RESUBSCRIBE_NOT_ALLOWED" | "RUN_IN_PROGRESS" | "RUN_NOT_CANCELLABLE" | "RUN_NOT_PAUSABLE" | "RUN_NOT_PAUSED" | "RUN_NOT_RESUMABLE" | "RUN_START_FAILED" | "RUN_STOP_FAILED" | "SEND_NOT_CANCELLABLE" | "SEND_NOT_FOUND" | "SEND_NOT_PAUSABLE" | "SEND_NOT_RESUMABLE" | "SEND_QUOTA_EXCEEDED" | "SERVICE_UNAVAILABLE" | "TEMPLATE_NOT_FOUND" | "TRIGGER_ALREADY_EXISTS" | "TRIGGER_EVENT_NOT_FOUND" | "TRIGGER_HAS_DEPENDENT_AUTOMATIONS" | "TRIGGER_IMMUTABLE" | "TRIGGER_INSTANCE_NOT_FOUND" | "TRIGGER_LIMIT_REACHED" | "TRIGGER_NOT_FIREABLE" | "UPLOAD_IN_PROGRESS" | "UPLOAD_NOT_FOUND" | "UPLOAD_NOT_RECEIVED";
+        ApiErrorCode: "ACCOUNT_SUSPENDED" | "API_KEY_REVOKED" | "APP_EMAIL_DOMAIN_PURPOSE_MISMATCH" | "APP_EMAIL_EDITED_IN_BREW" | "APP_EMAIL_SETUP_IN_PROGRESS" | "APP_EMAIL_STARTER_UNKNOWN" | "APP_EMAIL_TRIGGER_IN_USE" | "AUDIENCE_BUILD_ACTIVE" | "AUDIENCE_BUILD_ALREADY_ACTIVE" | "AUDIENCE_EDIT_CONFLICT" | "AUDIENCE_MEMBERSHIP_NOT_EXPRESSIBLE" | "AUDIENCE_NOT_FOUND" | "AUDIENCE_RUN_NOT_FOUND" | "AUDIT_NOT_FOUND" | "AUTHENTICATION_REQUIRED" | "AUTOMATION_GRAPH_INVALID" | "AUTOMATION_NOT_FOUND" | "AUTOMATION_NOT_PAUSABLE" | "AUTOMATION_NOT_PUBLISHED" | "AUTOMATION_RUN_NOT_FOUND" | "AUTOMATION_VERSION_CONFLICT" | "AUTOMATION_VERSION_NOT_FOUND" | "BATCH_TOO_LARGE" | "BRAND_DOMAIN_CONFLICT" | "BRAND_ID_REQUIRED" | "BRAND_LIMIT_REACHED" | "BRAND_NOT_FOUND" | "BRAND_NOT_READY" | "BRAND_SCOPE_MISMATCH" | "CHAT_NOT_FOUND" | "COMMENT_NOT_FOUND" | "CONSENT_REQUIRED" | "CONTACT_NOT_FOUND" | "CONTENT_OPERATION_FAILED" | "CONTRACT_LOCKED_BY_PUBLISHED_AUTOMATIONS" | "CORE_FIELD_IMMUTABLE" | "DOMAIN_ALREADY_EXISTS" | "DOMAIN_CLAIMED_ELSEWHERE" | "DOMAIN_NOT_FOUND" | "DOMAIN_NOT_READY" | "DOMAIN_OTHER_BRAND" | "DOMAIN_PROVIDER_ERROR" | "DOMAIN_PURPOSE_NOT_ALLOWED" | "DOMAIN_REQUIRED" | "DOMAIN_VERIFICATION_FAILED" | "DOMAIN_VERIFIED_ELSEWHERE" | "EMAIL_GENERATION_FAILED" | "EMAIL_GROUP_NAME_CONFLICT" | "EMAIL_GROUP_NOT_FOUND" | "EMAIL_IMAGES_MISSING" | "EMAIL_IMPORT_FAILED" | "EMAIL_IN_PROGRESS" | "EMAIL_IN_USE_BY_AUTOMATION" | "EMAIL_NOT_FOUND" | "EMAIL_NOT_READY" | "EMAIL_RESULT_UNAVAILABLE" | "EMAIL_RUN_AMBIGUOUS" | "EMAIL_TEMPLATE_INVALID" | "EMAIL_VERSION_NOT_FOUND" | "EXPORT_PROVIDER_ERROR" | "EXPORT_UNSUPPORTED" | "FIELD_NAME_COLLISION" | "FIELD_NOT_FOUND" | "FIELD_TYPE_MISMATCH" | "FIGMA_ACCESS_DENIED" | "FIGMA_CONVERSION_FAILED" | "FIGMA_FRAME_NOT_FOUND" | "FIGMA_NOT_CONNECTED" | "FIGMA_UNAVAILABLE" | "FIGMA_URL_INVALID" | "FLOW_NOT_FOUND" | "IDEMPOTENCY_CONFLICT" | "IDEMPOTENCY_IN_PROGRESS" | "INSIGHT_NOT_FOUND" | "INSUFFICIENT_CREDITS" | "INSUFFICIENT_PERMISSIONS" | "INSUFFICIENT_ROLE" | "INTEGRATION_NOT_CONNECTED" | "INTERNAL_ERROR" | "INVALID_API_KEY" | "INVALID_EMAIL" | "INVALID_PAYLOAD" | "INVALID_REQUEST" | "LIQUID_RENDER_ERROR" | "METHOD_NOT_ALLOWED" | "MISSING_EMAIL" | "NO_ELIGIBLE_RECIPIENTS" | "NO_PUBLISHED_AUTOMATION" | "NOT_FOUND" | "NOT_IMPLEMENTED" | "ORG_SCOPE_REQUIRED" | "PAYLOAD_SCHEMA_EMAIL_REQUIRED" | "PAYLOAD_TOO_LARGE" | "PREVIEW_NOT_FOUND" | "PUBLISH_VALIDATION_FAILED" | "RATE_LIMITED" | "RECIPIENT_UNSUBSCRIBED" | "REFERENCE_EMAIL_NOT_FOUND" | "RESUBSCRIBE_NOT_ALLOWED" | "RUN_IN_PROGRESS" | "RUN_NOT_CANCELLABLE" | "RUN_NOT_PAUSABLE" | "RUN_NOT_PAUSED" | "RUN_NOT_RESUMABLE" | "RUN_START_FAILED" | "RUN_STOP_FAILED" | "SANDBOX_DAILY_LIMIT" | "SEND_NOT_CANCELLABLE" | "SEND_NOT_FOUND" | "SEND_NOT_PAUSABLE" | "SEND_NOT_RESUMABLE" | "SEND_QUOTA_EXCEEDED" | "SERVICE_UNAVAILABLE" | "TEMPLATE_NOT_FOUND" | "TRIGGER_ALREADY_EXISTS" | "TRIGGER_EVENT_NOT_FOUND" | "TRIGGER_HAS_DEPENDENT_AUTOMATIONS" | "TRIGGER_IMMUTABLE" | "TRIGGER_INSTANCE_NOT_FOUND" | "TRIGGER_KEY_NOT_FOUND" | "TRIGGER_KEY_RESERVED" | "TRIGGER_KEY_TAKEN" | "TRIGGER_LIMIT_REACHED" | "TRIGGER_NOT_FIREABLE" | "UPLOAD_IN_PROGRESS" | "UPLOAD_NOT_FOUND" | "UPLOAD_NOT_RECEIVED";
         EmailGenerateTextResponse: {
             response: string;
         };
@@ -4530,12 +4724,17 @@ export interface components {
                 dropped?: number;
                 warnings: {
                     /** @enum {string} */
-                    code: "fetch_failed_retained" | "non_image_resource_retained" | "social_icon_substituted" | "tracking_pixel_dropped" | "unsafe_url_stripped" | "unsupported_resource_retained" | "upload_failed_retained" | "inline_asset_retained" | "attachment_dropped" | "embedded_reference_unresolved" | "tailwind_config_unresolved" | "tailwind_class_dropped" | "foreign_component_dropped" | "element_dropped";
+                    code: "fetch_failed_retained" | "non_image_resource_retained" | "social_icon_substituted" | "tracking_pixel_dropped" | "unsafe_url_stripped" | "unsupported_resource_retained" | "upload_failed_retained" | "inline_asset_retained" | "attachment_dropped" | "embedded_reference_unresolved" | "tailwind_config_unresolved" | "tailwind_class_dropped" | "foreign_component_dropped" | "dynamic_prop_folded" | "dynamic_control_flow_unsupported" | "escaping_changed" | "placeholder_unmapped" | "element_dropped";
                     /** @enum {string} */
                     location: "background" | "css-url" | "data-src" | "data-srcset" | "markup" | "module" | "preload" | "src" | "srcset" | "stylesheet" | "vml-src";
                     host?: string;
                 }[];
             };
+            /** @description Merge variables the design and subject line read (`trigger.*` from the trigger payload, `contact.*` from the recipient), with their fallbacks. */
+            variables?: {
+                path: string;
+                fallback?: string;
+            }[];
         };
         EmailImportRequest: {
             /**
@@ -4549,6 +4748,21 @@ export interface components {
             subjectLine?: string;
             /** Format: uri */
             baseUrl?: string;
+            /**
+             * @description `jsx` only. How the root component's props land: `fold` (default) folds each to its `PreviewProps` value or default; `merge_tags` keeps them as `{{ trigger.<name> }}` merge tags filled from the trigger payload, with defaults and `??` literals as fallbacks.
+             * @enum {string}
+             */
+            props?: "fold" | "merge_tags";
+            /**
+             * @description `resend` rewrites Resend template placeholders (`{{{NAME}}}`, `{{{NAME|fallback}}}`) to Brew merge tags (`{{ trigger.NAME }}`; `FIRST_NAME`, `LAST_NAME` and `EMAIL` read the contact).
+             * @enum {string}
+             */
+            placeholders?: "resend";
+            /** @description Fallback text for variables the source gives none, e.g. a Resend template's `variables`. Needs `placeholders` or `props: "merge_tags"`. */
+            variables?: {
+                key: string;
+                fallbackValue?: string;
+            }[];
             /** @description File the design under an existing group (`grp_…`), or `ungrouped`. Mutually exclusive with `groupName`. */
             groupId?: string;
             /** @description File the design under a group resolved (or created) by this name. Mutually exclusive with `groupId`. */
@@ -5581,8 +5795,13 @@ export interface components {
                     emailId: string;
                     /** @description Email version id to send — required. A pin to the latest version follows new versions (prompt edit, restore) into an unpublished draft; older pins stay. */
                     emailVersionId: string;
-                    /** @description Owned sending-domain id — optional at authoring; required, and verified (sendable: true), at publish and on every live run. A marketing domain enforces the unsubscribe link; a sendingPurpose "transactional" domain skips it and delivers even to unsubscribed contacts, so choose one only for genuinely transactional flows (receipts, password resets). */
+                    /** @description Verified owned domain id, required at publish unless senderMode is sandbox. Transactional domains skip unsubscribe links and reach unsubscribed contacts: only for receipts, resets. */
                     domainId?: string;
+                    /**
+                     * @description sandbox: until a domain verifies, event automations email your organization members only.
+                     * @enum {string}
+                     */
+                    senderMode?: "domain" | "sandbox";
                     /** @description Inbox subject — required. Supports {{var | fallback}} interpolation. */
                     subject: string;
                     /** @description Inbox preheader — optional; the email design's <Preview> is the source of truth and wins when present. */
@@ -5951,6 +6170,8 @@ export interface components {
                         fromName?: string;
                         fromAddress?: string;
                         domainId?: string;
+                        /** @enum {string} */
+                        senderMode?: "domain" | "sandbox";
                         replyTo?: string;
                         to?: unknown;
                         html?: string;
@@ -6110,8 +6331,13 @@ export interface components {
                     emailId: string;
                     /** @description Email version id to send — required. A pin to the latest version follows new versions (prompt edit, restore) into an unpublished draft; older pins stay. */
                     emailVersionId: string;
-                    /** @description Owned sending-domain id — optional at authoring; required, and verified (sendable: true), at publish and on every live run. A marketing domain enforces the unsubscribe link; a sendingPurpose "transactional" domain skips it and delivers even to unsubscribed contacts, so choose one only for genuinely transactional flows (receipts, password resets). */
+                    /** @description Verified owned domain id, required at publish unless senderMode is sandbox. Transactional domains skip unsubscribe links and reach unsubscribed contacts: only for receipts, resets. */
                     domainId?: string;
+                    /**
+                     * @description sandbox: until a domain verifies, event automations email your organization members only.
+                     * @enum {string}
+                     */
+                    senderMode?: "domain" | "sandbox";
                     /** @description Inbox subject — required. Supports {{var | fallback}} interpolation. */
                     subject: string;
                     /** @description Inbox preheader — optional; the email design's <Preview> is the source of truth and wins when present. */
@@ -6803,6 +7029,19 @@ export interface components {
         };
         BrewEventTriggerSaved: {
             triggerEventId: string;
+            /** @description Stable developer key your code names this trigger by; unique in the brand. Fire by it with `POST /v1/automations/triggers/by-key/{triggerKey}/fire`. Absent when the trigger has none. */
+            key?: string;
+            /** @description Present when an app-email setup wired this keyed trigger to an automation and design. */
+            appEmail?: {
+                /** @description The automation that sends this app email. */
+                automationId: string;
+                /** @description The email design it sends. */
+                emailId: string;
+                /** @description The starter-kit template the design came from, if any. */
+                starterId?: string;
+                /** @description Version of that starter template. */
+                starterVersion?: number;
+            };
             title: string;
             description?: string;
             /** @enum {string} */
@@ -6852,6 +7091,8 @@ export interface components {
         TriggersPostRequest: {
             title: string;
             description?: string;
+            /** @description Stable developer key for identifying this trigger, unique in the brand (for example `order.paid`). A fire can name the trigger by this key or by the returned `triggerEventId`. Lowercase letters, digits, `.`, `_` and `-`, up to 64 characters. `kit`, `by-key`, `brew.*` and `auth.*` keys other than the starter-kit auth keys are reserved. */
+            key?: string;
             payloadSchema: {
                 /** @enum {string} */
                 type: "object";
@@ -6861,6 +7102,19 @@ export interface components {
         TriggersListResponse: {
             data: {
                 triggerEventId: string;
+                /** @description Stable developer key your code names this trigger by; unique in the brand. Fire by it with `POST /v1/automations/triggers/by-key/{triggerKey}/fire`. Absent when the trigger has none. */
+                key?: string;
+                /** @description Present when an app-email setup wired this keyed trigger to an automation and design. */
+                appEmail?: {
+                    /** @description The automation that sends this app email. */
+                    automationId: string;
+                    /** @description The email design it sends. */
+                    emailId: string;
+                    /** @description The starter-kit template the design came from, if any. */
+                    starterId?: string;
+                    /** @description Version of that starter template. */
+                    starterVersion?: number;
+                };
                 title: string;
                 description?: string;
                 /** @enum {string} */
@@ -6900,6 +7154,8 @@ export interface components {
         TriggersPatchRequest: {
             title?: string;
             description?: string;
+            /** @description Set or rename the developer key; `null` clears it (and the app-email link that depends on it). Omit to keep the current key. */
+            key?: string | null;
             payloadSchema?: {
                 /** @enum {string} */
                 type: "object";
@@ -6956,6 +7212,8 @@ export interface components {
             /** @description The persisted inbound row — `GET /v1/automations/trigger-instances/{triggerInstanceId}` for its match state. */
             triggerInstanceId: string;
             triggerEventId: string;
+            /** @description Present on a by-key fire: the developer key the trigger was named by. */
+            triggerKey?: string;
             /**
              * @description `triggered` = this call accepted and matched the event; `automationRunIds` lists the runs it started and `notStarted` any it could not. `replayed` = the same `Idempotency-Key` already fired; nothing ran twice.
              * @enum {string}
@@ -6971,6 +7229,11 @@ export interface components {
                 automationId: string;
                 /** @description Why its run did not start. A refusal (a merge tag or condition field the trigger does not declare, a step the run gate finds incomplete) repeats on every fire until the automation or trigger is fixed; an unexpected error is retried automatically. */
                 reason: string;
+                /**
+                 * @description DOMAIN_REQUIRED: this automation sends from the Brew sandbox until its domain is verified, and the recipient is not a member of your organization.
+                 * @enum {string}
+                 */
+                code?: "DOMAIN_REQUIRED";
             }[];
             publishedAutomations: ({
                 automationId: string;
@@ -7122,6 +7385,273 @@ export interface components {
             };
             /** @enum {string} */
             subjectKind?: "trigger";
+        };
+        AppEmailsListResponse: {
+            data: {
+                triggerKey: string;
+                triggerEventId: string;
+                title: string;
+                emailId: string;
+                automationId: string;
+                starterId?: string;
+                starterVersion?: number;
+                /** @description The starter has a newer version; running the setup again upgrades an unedited design. */
+                upgradeAvailable: boolean;
+                published: boolean;
+                sender: {
+                    /** @enum {string} */
+                    mode: "domain" | "sandbox" | "none";
+                    domainId?: string;
+                    /** @enum {string} */
+                    domainStatus?: "not_started" | "pending" | "verified" | "failed" | "temporary_failure" | "partially_verified" | "partially_failed";
+                };
+                readiness: {
+                    /** @description A fire by this key sends the email now. */
+                    ready: boolean;
+                    /** @description Sends reach organization members only until a domain verifies. */
+                    teamOnly: boolean;
+                    blockers: ("AUTOMATION_MISSING" | "AUTOMATION_NOT_PUBLISHED" | "DOMAIN_REQUIRED")[];
+                };
+                /** Format: date-time */
+                updatedAt: string;
+            }[];
+            pagination: {
+                limit: number;
+                cursor: string | null;
+                hasMore: boolean;
+            };
+        };
+        AppEmailRow: {
+            triggerKey: string;
+            triggerEventId: string;
+            title: string;
+            emailId: string;
+            automationId: string;
+            starterId?: string;
+            starterVersion?: number;
+            /** @description The starter has a newer version; running the setup again upgrades an unedited design. */
+            upgradeAvailable: boolean;
+            published: boolean;
+            sender: {
+                /** @enum {string} */
+                mode: "domain" | "sandbox" | "none";
+                domainId?: string;
+                /** @enum {string} */
+                domainStatus?: "not_started" | "pending" | "verified" | "failed" | "temporary_failure" | "partially_verified" | "partially_failed";
+            };
+            readiness: {
+                /** @description A fire by this key sends the email now. */
+                ready: boolean;
+                /** @description Sends reach organization members only until a domain verifies. */
+                teamOnly: boolean;
+                blockers: ("AUTOMATION_MISSING" | "AUTOMATION_NOT_PUBLISHED" | "DOMAIN_REQUIRED")[];
+            };
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        AppEmailSetupResult: {
+            triggerKey: string;
+            triggerEventId: string;
+            emailId: string;
+            emailVersionId: string;
+            automationId: string;
+            /** @description A fire by this key starts the automation. */
+            published: boolean;
+            /** @description What this call created; false means it already existed. */
+            created: {
+                trigger: boolean;
+                email: boolean;
+                automation: boolean;
+            };
+            sender: {
+                /**
+                 * @description `sandbox`: sends reach members of your organization only, under a daily cap, until a domain verifies.
+                 * @enum {string}
+                 */
+                mode: "domain" | "sandbox";
+                /** @description The address the email is sent from. */
+                from: string;
+                fromName?: string;
+                /** @description The sending domain, or in sandbox mode the domain still waiting to verify. */
+                domainId?: string;
+                /** @enum {string} */
+                domainStatus?: "not_started" | "pending" | "verified" | "failed" | "temporary_failure" | "partially_verified" | "partially_failed";
+                sandbox?: {
+                    dailyLimit: number;
+                    remainingToday: number;
+                };
+            };
+            payloadSchema: {
+                /** @enum {string} */
+                type: "object";
+                fields: components["schemas"]["TriggerPayloadField"][];
+            };
+            fireExample: {
+                /** @enum {string} */
+                method: "POST";
+                path: string;
+                examplePayload: {
+                    [key: string]: unknown;
+                };
+                curl: string;
+                sdk: string;
+            };
+            warnings: components["schemas"]["ApiWarning"][];
+        };
+        AppEmailPutRequest: {
+            /** @description Starter-kit template key. On a kit key it must equal the key and is the default; any kit template works on your own keys. */
+            starter?: string;
+            /** @description Your own design instead of a starter. */
+            source?: {
+                /**
+                 * @description `html`: an HTML email; `mjml`: MJML markup; `jsx`: React Email (a module with a default-exported component, or a bare `<Html>` element).
+                 * @enum {string}
+                 */
+                format: "html" | "mjml" | "jsx";
+                /** @description The email source. `{{ trigger.<field> }}` merge tags read the payload. */
+                content: string;
+                /**
+                 * @description `jsx` only. How the root component's props land: `fold` (default) folds each to its `PreviewProps` value or default; `merge_tags` keeps them as `{{ trigger.<name> }}` merge tags filled from the trigger payload, with defaults and `??` literals as fallbacks.
+                 * @enum {string}
+                 */
+                props?: "fold" | "merge_tags";
+                /**
+                 * @description `resend` rewrites Resend template placeholders (`{{{NAME}}}`, `{{{NAME|fallback}}}`) to Brew merge tags (`{{ trigger.NAME }}`; `FIRST_NAME`, `LAST_NAME` and `EMAIL` read the contact).
+                 * @enum {string}
+                 */
+                placeholders?: "resend";
+                /** @description Fallback text for variables the source gives none, e.g. a Resend template's `variables`. Needs `placeholders` or `props: "merge_tags"`. */
+                variables?: {
+                    key: string;
+                    fallbackValue?: string;
+                }[];
+            };
+            title?: string;
+            subject?: string;
+            previewText?: string;
+            /** @description Flat payload fields. `email` (the recipient) is added when missing. Every other field is template data only and never written to the contact. */
+            payloadSchema?: {
+                fields: {
+                    /** @description Field name, as templates read it: `{{ trigger.<key> }}`. */
+                    key: string;
+                    /** @enum {string} */
+                    type: "string" | "int" | "boolean" | "date";
+                    /** @description Defaults to false. */
+                    required?: boolean;
+                    /**
+                     * @description `high` keeps the value out of logs and stored copies.
+                     * @enum {string}
+                     */
+                    pii?: "none" | "low" | "high";
+                    /** @description True for a one-time code or sign-in link: used only to render the email, redacted in stored copies, logs and analytics. Never on `email`. Omitted: `pii: high` counts as secret, and a field the starter kit marks secret stays secret. */
+                    secret?: boolean;
+                    description?: string;
+                }[];
+            };
+            /** @description Sending domain. Defaults to a verified domain whose purpose matches the email, else the team-only sandbox. */
+            domainId?: string;
+            from?: {
+                /** @description Part before the @ on the sending domain, such as `hello`. */
+                localPart?: string;
+                name?: string;
+            };
+            /** @description Publish the automation. Defaults to true. */
+            publish?: boolean;
+            /** @description Replace a design edited in Brew since setup. Defaults to false. */
+            overwrite?: boolean;
+        };
+        AppEmailsKitResponse: {
+            results: ({
+                triggerKey: string;
+                triggerEventId: string;
+                emailId: string;
+                emailVersionId: string;
+                automationId: string;
+                /** @description A fire by this key starts the automation. */
+                published: boolean;
+                /** @description What this call created; false means it already existed. */
+                created: {
+                    trigger: boolean;
+                    email: boolean;
+                    automation: boolean;
+                };
+                sender: {
+                    /**
+                     * @description `sandbox`: sends reach members of your organization only, under a daily cap, until a domain verifies.
+                     * @enum {string}
+                     */
+                    mode: "domain" | "sandbox";
+                    /** @description The address the email is sent from. */
+                    from: string;
+                    fromName?: string;
+                    /** @description The sending domain, or in sandbox mode the domain still waiting to verify. */
+                    domainId?: string;
+                    /** @enum {string} */
+                    domainStatus?: "not_started" | "pending" | "verified" | "failed" | "temporary_failure" | "partially_verified" | "partially_failed";
+                    sandbox?: {
+                        dailyLimit: number;
+                        remainingToday: number;
+                    };
+                };
+                payloadSchema: {
+                    /** @enum {string} */
+                    type: "object";
+                    fields: components["schemas"]["TriggerPayloadField"][];
+                };
+                fireExample: {
+                    /** @enum {string} */
+                    method: "POST";
+                    path: string;
+                    examplePayload: {
+                        [key: string]: unknown;
+                    };
+                    curl: string;
+                    sdk: string;
+                };
+                warnings: components["schemas"]["ApiWarning"][];
+                /** @enum {boolean} */
+                ok: true;
+            } | {
+                triggerKey: string;
+                /** @enum {boolean} */
+                ok: false;
+                error: {
+                    code: string;
+                    message: string;
+                    details?: {
+                        [key: string]: unknown;
+                    };
+                };
+            })[];
+            stack: {
+                /** @enum {string} */
+                provider: "better-auth" | "authjs" | "supabase" | "clerk" | "firebase" | "custom";
+                /**
+                 * @description `code`: your app, or a hook it hosts, sends the auth keys; `hosted-webhook`: the provider hands them to Brew once connected.
+                 * @enum {string}
+                 */
+                authDelivery: "code" | "hosted-webhook";
+                note: string;
+                keys: string[];
+                snippets: {
+                    title: string;
+                    file: string;
+                    code: string;
+                }[];
+            };
+        };
+        AppEmailsKitRequest: {
+            /** @description Kit sets to set up. Defaults to both. */
+            sets?: ("auth" | "lifecycle")[];
+            /**
+             * @description Your auth stack: narrows the auth keys to the ones it sends and returns its code snippets. Defaults to `custom` (every auth key).
+             * @enum {string}
+             */
+            stack?: "better-auth" | "authjs" | "supabase" | "clerk" | "firebase" | "custom";
+            /** @description Exactly these kit keys, instead of `sets` and `stack`. */
+            keys?: ("auth.verify-email" | "auth.magic-link" | "auth.otp" | "auth.password-reset" | "auth.invite" | "auth.email-change" | "auth.reauthentication" | "auth.security-notice" | "lifecycle.welcome" | "lifecycle.trial-ending" | "lifecycle.payment-failed" | "lifecycle.win-back")[];
+            domainId?: string;
+            overwrite?: boolean;
         };
         TriggerInstancesListResponse: {
             data: {
@@ -8230,6 +8760,41 @@ export interface components {
                 hasMore: boolean;
             };
         };
+        DomainsPostResponse: {
+            domainId: string;
+            /** Format: uri */
+            domainUrl: string;
+            name: string;
+            region: string;
+            /** @enum {string} */
+            status: "not_started" | "pending" | "verified" | "failed" | "temporary_failure" | "partially_verified" | "partially_failed";
+            sendingEnabled: boolean;
+            sendable: boolean;
+            /**
+             * @description marketing (default) or transactional. Transactional domains skip unsubscribe and send via automation sendEmail nodes (or a test send).
+             * @enum {string}
+             */
+            sendingPurpose: "marketing" | "transactional";
+            records: {
+                record: string;
+                name: string;
+                type: string;
+                ttl: string;
+                status: string;
+                value: string;
+                priority?: number;
+            }[];
+            openTracking?: boolean;
+            clickTracking?: boolean;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            /** Format: date-time */
+            verifiedAt?: string;
+            /** @description Present only with a caveat about the domain just added. `DKIM_SELECTOR_IN_USE`: the domain already publishes a different DKIM key where Brew asks for its record; `suggestedNames` lists subdomains to add instead. */
+            warnings?: components["schemas"]["ApiWarning"][];
+        };
         DomainsPostRequest: {
             name: string;
             /** @enum {string} */
@@ -8940,7 +9505,7 @@ export interface components {
         IntegrationsListResponse: {
             data: {
                 /** @enum {string} */
-                provider: "braze" | "brevo" | "clerk" | "customerio" | "figma" | "framer" | "slack" | "hubspot" | "typeform" | "klaviyo" | "iterable" | "postmark" | "onesignal" | "mailgun" | "sendgrid" | "mailjet" | "mailchimp" | "loops" | "stripe" | "stytch" | "supabase" | "workos" | "shopify" | "revenuecat" | "notion";
+                provider: "braze" | "brevo" | "clerk" | "customerio" | "figma" | "framer" | "slack" | "hubspot" | "typeform" | "klaviyo" | "iterable" | "postmark" | "onesignal" | "mailgun" | "sendgrid" | "mailjet" | "mailchimp" | "loops" | "stripe" | "stytch" | "supabase" | "supabase_auth" | "workos" | "shopify" | "revenuecat" | "notion";
                 name: string;
                 /** @enum {string} */
                 category: "data_in" | "data_out";
@@ -8961,6 +9526,52 @@ export interface components {
                 limit: number;
                 cursor: string | null;
                 hasMore: boolean;
+            };
+        };
+        IntegrationConnection: {
+            /** @enum {string} */
+            provider: "supabase_auth" | "clerk";
+            /** @description Server-derived, stable per brand and provider. */
+            connectionId: string;
+            /** @description Where the provider delivers: `https://brew.new/api/integrations/{provider}/webhook/{connectionId}`. Paste it as the Supabase hook URL or the Clerk endpoint URL. */
+            webhookUrl: string;
+            /**
+             * @description `pending_verification` until the first signed delivery arrives, then `active`.
+             * @enum {string}
+             */
+            status: "pending_verification" | "active";
+        };
+        IntegrationConnectionPutResponse: {
+            /** @enum {string} */
+            provider: "supabase_auth" | "clerk";
+            /** @description Server-derived, stable per brand and provider. */
+            connectionId: string;
+            /** @description Where the provider delivers: `https://brew.new/api/integrations/{provider}/webhook/{connectionId}`. Paste it as the Supabase hook URL or the Clerk endpoint URL. */
+            webhookUrl: string;
+            /**
+             * @description `pending_verification` until the first signed delivery arrives, then `active`.
+             * @enum {string}
+             */
+            status: "pending_verification" | "active";
+            /** @description The auth app emails this provider sends, each set up from the starter kit or kept as it is. A key that failed carries its `error`; connecting again finishes it. */
+            authEmails: {
+                triggerKey: string;
+                ok: boolean;
+                error?: {
+                    code: string;
+                    message: string;
+                };
+            }[];
+        };
+        IntegrationConnectionPutRequest: {
+            /** @description The secret the provider signs deliveries with: Supabase shows `v1,whsec_…` for the hook, Clerk `whsec_…` for the endpoint. */
+            signingSecret: string;
+            settings?: {
+                /**
+                 * Format: uri
+                 * @description Supabase only: the project URL confirmation links point at (`https://<ref>.supabase.co` or a custom auth domain). Omitted: the URL Supabase sends with each email.
+                 */
+                projectUrl?: string;
             };
         };
         ApiKeysListResponse: {
@@ -10147,6 +10758,15 @@ export interface operations {
                      *         "stripped": 0,
                      *         "warnings": []
                      *       },
+                     *       "variables": [
+                     *         {
+                     *           "path": "trigger.name",
+                     *           "fallback": "there"
+                     *         },
+                     *         {
+                     *           "path": "trigger.inviteLink"
+                     *         }
+                     *       ],
                      *       "group": null
                      *     }
                      */
@@ -18677,6 +19297,8 @@ export interface operations {
              *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
              *
              *     `PAYLOAD_SCHEMA_EMAIL_REQUIRED`: A trigger payload schema must declare a required string `email` field.
+             *
+             *     `TRIGGER_KEY_RESERVED`: That trigger key is reserved by Brew: `kit`, `by-key`, `brew.*`, or an `auth.*` key outside the starter kit.
              */
             400: {
                 headers: {
@@ -18741,6 +19363,8 @@ export interface operations {
              *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
              *
              *     `TRIGGER_ALREADY_EXISTS`: A trigger with that id already exists in the brand.
+             *
+             *     `TRIGGER_KEY_TAKEN`: Another trigger in the brand already uses that key.
              *
              *     `TRIGGER_LIMIT_REACHED`: The brand already holds the maximum number of trigger events.
              */
@@ -19181,6 +19805,8 @@ export interface operations {
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
              *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *
+             *     `TRIGGER_KEY_RESERVED`: That trigger key is reserved by Brew: `kit`, `by-key`, `brew.*`, or an `auth.*` key outside the starter kit.
              */
             400: {
                 headers: {
@@ -19243,7 +19869,11 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `CONTRACT_LOCKED_BY_PUBLISHED_AUTOMATIONS`: A published automation consumes this trigger, so the contract change must stay backward compatible: enforcement cannot tighten, a referenced field cannot be removed, retyped, or made required without a fallback, and an open object or list cannot gain a shape that drops a field a published automation reads. */
+            /**
+             * @description `CONTRACT_LOCKED_BY_PUBLISHED_AUTOMATIONS`: A published automation consumes this trigger, so the contract change must stay backward compatible: enforcement cannot tighten, a referenced field cannot be removed, retyped, or made required without a fallback, and an open object or list cannot gain a shape that drops a field a published automation reads.
+             *
+             *     `TRIGGER_KEY_TAKEN`: Another trigger in the brand already uses that key.
+             */
             409: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -19674,7 +20304,11 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `NO_PUBLISHED_AUTOMATION`: The trigger fired, but no published automation listens for it, so nothing would run. */
+            /**
+             * @description `DOMAIN_REQUIRED`: The matched automations send from the Brew sandbox until a sending domain is verified, and the sandbox only emails members of your organization; `details` carries `recipient`, `allowed` and `domainsUrl`.
+             *
+             *     `NO_PUBLISHED_AUTOMATION`: The trigger fired, but no published automation listens for it, so nothing would run.
+             */
             422: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -19685,7 +20319,275 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
+            /**
+             * @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot.
+             *
+             *     `SANDBOX_DAILY_LIMIT`: Your organization used all of today’s Brew sandbox sends (`details.limit`, default 50 a UTC day); `details.resetsAt` is when the count resets, and `Retry-After` the seconds until then.
+             */
+            429: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it. */
+            500: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `SERVICE_UNAVAILABLE`: A dependency the operation must consult (billing, the idempotency store) is temporarily unavailable, so the request was refused rather than run unmetered. */
+            503: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+        };
+    };
+    fireTriggerByKey: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Optional idempotency key for safe retries of the same trigger fire and request body. The shared response cache defaults to 24 hours; the trigger receipt replays the original run ids for as long as it is stored (90 days). Use one key per business action and never reuse it for a different fire.
+                 * @example api-request-2026-04-08-001
+                 */
+                "Idempotency-Key"?: string;
+                /**
+                 * @description The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+                 * @example kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+                 */
+                "X-Brand-Id"?: string;
+            };
+            path: {
+                /** @description The developer key set on the trigger (`key` on the trigger row). Resolved inside the brand the credential acts for. */
+                triggerKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "payload": {
+                 *         "email": "jane@example.com",
+                 *         "orderId": "ord_1042"
+                 *       }
+                 *     }
+                 */
+                "application/json": components["schemas"]["TriggerFireRequest"];
+            };
+        };
+        responses: {
+            /** @description Idempotent replay: this `Idempotency-Key` already fired this trigger. The ids are the original run’s. */
+            200: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "triggerInstanceId": "tin_4fZ2kQ9pLm7xR1tV8wYcD",
+                     *       "triggerEventId": "Hq2LmP4xR7vB1nC5zKdWa",
+                     *       "triggerKey": "order.paid",
+                     *       "status": "replayed",
+                     *       "automationRunIds": [
+                     *         "jh7acthhe99pq4448xh83gn54x8eennb"
+                     *       ],
+                     *       "publishedAutomations": [
+                     *         {
+                     *           "automationId": "M3nRk8LqW2xT5vBp9YcZd",
+                     *           "name": "Receipt flow"
+                     *         }
+                     *       ],
+                     *       "counts": {
+                     *         "automations": 1,
+                     *         "skipped": 0
+                     *       },
+                     *       "warnings": [],
+                     *       "receivedAt": "2026-04-08T12:34:56.789Z"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["TriggerFireAccepted"];
+                };
+            };
+            /** @description Accepted: one run started per matched published automation. */
+            202: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "triggerInstanceId": "tin_4fZ2kQ9pLm7xR1tV8wYcD",
+                     *       "triggerEventId": "Hq2LmP4xR7vB1nC5zKdWa",
+                     *       "triggerKey": "order.paid",
+                     *       "status": "triggered",
+                     *       "automationRunIds": [
+                     *         "jh7acthhe99pq4448xh83gn54x8eennb"
+                     *       ],
+                     *       "publishedAutomations": [
+                     *         {
+                     *           "automationId": "M3nRk8LqW2xT5vBp9YcZd",
+                     *           "name": "Receipt flow"
+                     *         }
+                     *       ],
+                     *       "counts": {
+                     *         "automations": 1,
+                     *         "skipped": 0
+                     *       },
+                     *       "warnings": [],
+                     *       "receivedAt": "2026-04-08T12:34:56.789Z"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["TriggerFireAccepted"];
+                };
+            };
+            /**
+             * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+             *
+             *     `INVALID_PAYLOAD`: The test payload does not match the trigger’s payload schema.
+             *
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             */
+            400: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `API_KEY_REVOKED`: The API key was revoked.
+             *
+             *     `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+             *
+             *     `INVALID_API_KEY`: The API key is malformed or unknown.
+             */
+            401: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+             *
+             *     `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+             *
+             *     `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+             *
+             *     `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+             */
+            403: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+             *
+             *     `TRIGGER_KEY_NOT_FOUND`: No trigger in the brand has that key.
+             */
+            404: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+             *
+             *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
+             *
+             *     `TRIGGER_NOT_FIREABLE`: Brew starts this trigger itself when its event happens, so it cannot be fired over the API.
+             */
+            409: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `DOMAIN_REQUIRED`: The matched automations send from the Brew sandbox until a sending domain is verified, and the sandbox only emails members of your organization; `details` carries `recipient`, `allowed` and `domainsUrl`.
+             *
+             *     `NO_PUBLISHED_AUTOMATION`: The trigger fired, but no published automation listens for it, so nothing would run.
+             */
+            422: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot.
+             *
+             *     `SANDBOX_DAILY_LIMIT`: Your organization used all of today’s Brew sandbox sends (`details.limit`, default 50 a UTC day); `details.resetsAt` is when the count resets, and `Retry-After` the seconds until then.
+             */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -20441,6 +21343,900 @@ export interface operations {
             };
             /** @description `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization). */
             404: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
+            429: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it. */
+            500: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listAppEmails: {
+        parameters: {
+            query?: {
+                /**
+                 * @description Page size (1-100). Defaults to 100.
+                 * @example 50
+                 */
+                limit?: number;
+                cursor?: string;
+            };
+            header?: {
+                /**
+                 * @description The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+                 * @example kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+                 */
+                "X-Brand-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page of app emails. */
+            200: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": [
+                     *         {
+                     *           "triggerKey": "auth.password-reset",
+                     *           "triggerEventId": "Kq3vXf9LbN2mR7tY1wPzA",
+                     *           "title": "Password reset",
+                     *           "emailId": "V1StGXR8_Z5jdHi6B-myT",
+                     *           "automationId": "aZ8xQ4mN1pR6tY3vL0cBw",
+                     *           "starterId": "auth.password-reset",
+                     *           "starterVersion": 1,
+                     *           "upgradeAvailable": false,
+                     *           "published": true,
+                     *           "sender": {
+                     *             "mode": "sandbox"
+                     *           },
+                     *           "readiness": {
+                     *             "ready": true,
+                     *             "teamOnly": true,
+                     *             "blockers": []
+                     *           },
+                     *           "updatedAt": "2026-10-13T12:00:00.000Z"
+                     *         }
+                     *       ],
+                     *       "pagination": {
+                     *         "limit": 100,
+                     *         "cursor": null,
+                     *         "hasMore": false
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["AppEmailsListResponse"];
+                };
+            };
+            /**
+             * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+             *
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             */
+            400: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `API_KEY_REVOKED`: The API key was revoked.
+             *
+             *     `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+             *
+             *     `INVALID_API_KEY`: The API key is malformed or unknown.
+             */
+            401: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+             *
+             *     `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+             *
+             *     `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+             *
+             *     `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+             */
+            403: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization). */
+            404: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
+            429: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it. */
+            500: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getAppEmail: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+                 * @example kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+                 */
+                "X-Brand-Id"?: string;
+            };
+            path: {
+                /** @description The trigger key your code sends the email by. Starter-kit keys (`auth.password-reset`, `lifecycle.welcome`, …) default to their own template. */
+                triggerKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The app email. */
+            200: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "triggerKey": "auth.password-reset",
+                     *       "triggerEventId": "Kq3vXf9LbN2mR7tY1wPzA",
+                     *       "title": "Password reset",
+                     *       "emailId": "V1StGXR8_Z5jdHi6B-myT",
+                     *       "automationId": "aZ8xQ4mN1pR6tY3vL0cBw",
+                     *       "starterId": "auth.password-reset",
+                     *       "starterVersion": 1,
+                     *       "upgradeAvailable": false,
+                     *       "published": true,
+                     *       "sender": {
+                     *         "mode": "sandbox"
+                     *       },
+                     *       "readiness": {
+                     *         "ready": true,
+                     *         "teamOnly": true,
+                     *         "blockers": []
+                     *       },
+                     *       "updatedAt": "2026-10-13T12:00:00.000Z"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["AppEmailRow"];
+                };
+            };
+            /**
+             * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+             *
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             */
+            400: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `API_KEY_REVOKED`: The API key was revoked.
+             *
+             *     `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+             *
+             *     `INVALID_API_KEY`: The API key is malformed or unknown.
+             */
+            401: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+             *
+             *     `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+             *
+             *     `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+             *
+             *     `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+             */
+            403: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+             *
+             *     `TRIGGER_KEY_NOT_FOUND`: No trigger in the brand has that key.
+             */
+            404: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
+            429: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it. */
+            500: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+        };
+    };
+    upsertAppEmail: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+                 * @example kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+                 */
+                "X-Brand-Id"?: string;
+            };
+            path: {
+                /** @description The trigger key your code sends the email by. Starter-kit keys (`auth.password-reset`, `lifecycle.welcome`, …) default to their own template. */
+                triggerKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AppEmailPutRequest"];
+            };
+        };
+        responses: {
+            /** @description Re-run: the app email as it now stands. */
+            200: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "triggerKey": "auth.password-reset",
+                     *       "triggerEventId": "Kq3vXf9LbN2mR7tY1wPzA",
+                     *       "emailId": "V1StGXR8_Z5jdHi6B-myT",
+                     *       "emailVersionId": "h7Nc2pLq9XvB4sT8mWk1E",
+                     *       "automationId": "aZ8xQ4mN1pR6tY3vL0cBw",
+                     *       "published": true,
+                     *       "created": {
+                     *         "trigger": false,
+                     *         "email": false,
+                     *         "automation": false
+                     *       },
+                     *       "sender": {
+                     *         "mode": "sandbox",
+                     *         "from": "sandbox@email.brew.new",
+                     *         "fromName": "Acme via Brew sandbox",
+                     *         "sandbox": {
+                     *           "dailyLimit": 50,
+                     *           "remainingToday": 50
+                     *         }
+                     *       },
+                     *       "payloadSchema": {
+                     *         "type": "object",
+                     *         "fields": [
+                     *           {
+                     *             "key": "email",
+                     *             "type": "string",
+                     *             "required": true,
+                     *             "pii": "high"
+                     *           },
+                     *           {
+                     *             "key": "confirmationUrl",
+                     *             "type": "string",
+                     *             "required": false,
+                     *             "pii": "high",
+                     *             "secret": true,
+                     *             "syncToContact": false
+                     *           }
+                     *         ]
+                     *       },
+                     *       "fireExample": {
+                     *         "method": "POST",
+                     *         "path": "/v1/automations/triggers/by-key/auth.password-reset/fire",
+                     *         "examplePayload": {
+                     *           "email": "ada@example.com",
+                     *           "confirmationUrl": "https://app.example.com/auth/confirm?token=4f9c2a"
+                     *         },
+                     *         "curl": "curl -X POST 'https://brew.new/api/v1/automations/triggers/by-key/auth.password-reset/fire' \\\n  -H \"Authorization: Bearer $BREW_API_KEY\" \\\n  -H 'Content-Type: application/json' \\\n  -d '{\"payload\":{\"email\":\"ada@example.com\"}}'",
+                     *         "sdk": "await brew.send('auth.password-reset', { email: 'ada@example.com', confirmationUrl: 'https://app.example.com/auth/confirm?token=4f9c2a' })"
+                     *       },
+                     *       "warnings": [
+                     *         {
+                     *           "code": "SANDBOX_SENDER",
+                     *           "message": "\"auth.password-reset\" sends from the Brew sandbox to members of your organization only. Add and verify a transactional sending domain, then run the setup again.",
+                     *           "field": "domainId"
+                     *         }
+                     *       ]
+                     *     }
+                     */
+                    "application/json": components["schemas"]["AppEmailSetupResult"];
+                };
+            };
+            /** @description Set up for the first time. */
+            201: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "triggerKey": "auth.password-reset",
+                     *       "triggerEventId": "Kq3vXf9LbN2mR7tY1wPzA",
+                     *       "emailId": "V1StGXR8_Z5jdHi6B-myT",
+                     *       "emailVersionId": "h7Nc2pLq9XvB4sT8mWk1E",
+                     *       "automationId": "aZ8xQ4mN1pR6tY3vL0cBw",
+                     *       "published": true,
+                     *       "created": {
+                     *         "trigger": true,
+                     *         "email": true,
+                     *         "automation": true
+                     *       },
+                     *       "sender": {
+                     *         "mode": "sandbox",
+                     *         "from": "sandbox@email.brew.new",
+                     *         "fromName": "Acme via Brew sandbox",
+                     *         "sandbox": {
+                     *           "dailyLimit": 50,
+                     *           "remainingToday": 50
+                     *         }
+                     *       },
+                     *       "payloadSchema": {
+                     *         "type": "object",
+                     *         "fields": [
+                     *           {
+                     *             "key": "email",
+                     *             "type": "string",
+                     *             "required": true,
+                     *             "pii": "high"
+                     *           },
+                     *           {
+                     *             "key": "confirmationUrl",
+                     *             "type": "string",
+                     *             "required": false,
+                     *             "pii": "high",
+                     *             "secret": true,
+                     *             "syncToContact": false
+                     *           }
+                     *         ]
+                     *       },
+                     *       "fireExample": {
+                     *         "method": "POST",
+                     *         "path": "/v1/automations/triggers/by-key/auth.password-reset/fire",
+                     *         "examplePayload": {
+                     *           "email": "ada@example.com",
+                     *           "confirmationUrl": "https://app.example.com/auth/confirm?token=4f9c2a"
+                     *         },
+                     *         "curl": "curl -X POST 'https://brew.new/api/v1/automations/triggers/by-key/auth.password-reset/fire' \\\n  -H \"Authorization: Bearer $BREW_API_KEY\" \\\n  -H 'Content-Type: application/json' \\\n  -d '{\"payload\":{\"email\":\"ada@example.com\"}}'",
+                     *         "sdk": "await brew.send('auth.password-reset', { email: 'ada@example.com', confirmationUrl: 'https://app.example.com/auth/confirm?token=4f9c2a' })"
+                     *       },
+                     *       "warnings": [
+                     *         {
+                     *           "code": "SANDBOX_SENDER",
+                     *           "message": "\"auth.password-reset\" sends from the Brew sandbox to members of your organization only. Add and verify a transactional sending domain, then run the setup again.",
+                     *           "field": "domainId"
+                     *         }
+                     *       ]
+                     *     }
+                     */
+                    "application/json": components["schemas"]["AppEmailSetupResult"];
+                };
+            };
+            /**
+             * @description `APP_EMAIL_STARTER_UNKNOWN`: The starter names no starter-kit template, or a different one than the kit key being set up.
+             *
+             *     `AUTOMATION_GRAPH_INVALID`: The nodes and connections do not form a valid graph; `details.issues[]` lists each problem with its `nodeId` and `kind`.
+             *
+             *     `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+             *
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *
+             *     `TRIGGER_KEY_RESERVED`: That trigger key is reserved by Brew: `kit`, `by-key`, `brew.*`, or an `auth.*` key outside the starter kit.
+             */
+            400: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `API_KEY_REVOKED`: The API key was revoked.
+             *
+             *     `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+             *
+             *     `INVALID_API_KEY`: The API key is malformed or unknown.
+             */
+            401: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+             *
+             *     `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+             *
+             *     `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+             *
+             *     `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+             */
+            403: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `AUTOMATION_NOT_FOUND`: No automation with that id exists in the brand.
+             *
+             *     `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+             *
+             *     `DOMAIN_NOT_FOUND`: No domain with that id exists in the brand.
+             *
+             *     `NOT_FOUND`: No v1 resource lives at this path.
+             *
+             *     `TRIGGER_EVENT_NOT_FOUND`: No trigger with that id exists in the brand.
+             */
+            404: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `APP_EMAIL_EDITED_IN_BREW`: The app email’s design was edited in Brew since it was set up, so the setup did not replace it.
+             *
+             *     `APP_EMAIL_SETUP_IN_PROGRESS`: Other setups of this app email’s key were writing at the same time, so this one stopped before finishing.
+             *
+             *     `APP_EMAIL_TRIGGER_IN_USE`: The trigger with this key already starts a published automation that no app-email setup made, so setting the key up would send a second email on every fire.
+             *
+             *     `CONTRACT_LOCKED_BY_PUBLISHED_AUTOMATIONS`: A published automation consumes this trigger, so the contract change must stay backward compatible: enforcement cannot tighten, a referenced field cannot be removed, retyped, or made required without a fallback, and an open object or list cannot gain a shape that drops a field a published automation reads.
+             *
+             *     `TRIGGER_KEY_TAKEN`: Another trigger in the brand already uses that key.
+             *
+             *     `TRIGGER_LIMIT_REACHED`: The brand already holds the maximum number of trigger events.
+             */
+            409: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `PAYLOAD_TOO_LARGE`: The request body exceeds the route cap. */
+            413: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `APP_EMAIL_DOMAIN_PURPOSE_MISMATCH`: The `domainId` names a marketing domain for a transactional app email (auth, trial ending, payment failed), which would send it with an unsubscribe link and never to anyone who unsubscribed.
+             *
+             *     `EMAIL_IMPORT_FAILED`: The supplied markup could not be imported as an email.
+             */
+            422: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
+            429: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it. */
+            500: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+        };
+    };
+    setUpAppEmailKit: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Optional idempotency key for safe retries. Reusing the same key with the same request body returns the original response for 24 hours.
+                 * @example api-request-2026-04-08-001
+                 */
+                "Idempotency-Key"?: string;
+                /**
+                 * @description The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+                 * @example kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+                 */
+                "X-Brand-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "sets": [
+                 *         "auth",
+                 *         "lifecycle"
+                 *       ],
+                 *       "stack": "better-auth"
+                 *     }
+                 */
+                "application/json": components["schemas"]["AppEmailsKitRequest"];
+            };
+        };
+        responses: {
+            /** @description One result per key, and the stack’s snippets. */
+            200: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "results": [
+                     *         {
+                     *           "ok": true,
+                     *           "triggerKey": "auth.password-reset",
+                     *           "triggerEventId": "Kq3vXf9LbN2mR7tY1wPzA",
+                     *           "emailId": "V1StGXR8_Z5jdHi6B-myT",
+                     *           "emailVersionId": "h7Nc2pLq9XvB4sT8mWk1E",
+                     *           "automationId": "aZ8xQ4mN1pR6tY3vL0cBw",
+                     *           "published": true,
+                     *           "created": {
+                     *             "trigger": true,
+                     *             "email": true,
+                     *             "automation": true
+                     *           },
+                     *           "sender": {
+                     *             "mode": "sandbox",
+                     *             "from": "sandbox@email.brew.new",
+                     *             "fromName": "Acme via Brew sandbox",
+                     *             "sandbox": {
+                     *               "dailyLimit": 50,
+                     *               "remainingToday": 50
+                     *             }
+                     *           },
+                     *           "payloadSchema": {
+                     *             "type": "object",
+                     *             "fields": [
+                     *               {
+                     *                 "key": "email",
+                     *                 "type": "string",
+                     *                 "required": true,
+                     *                 "pii": "high"
+                     *               },
+                     *               {
+                     *                 "key": "confirmationUrl",
+                     *                 "type": "string",
+                     *                 "required": false,
+                     *                 "pii": "high",
+                     *                 "secret": true,
+                     *                 "syncToContact": false
+                     *               }
+                     *             ]
+                     *           },
+                     *           "fireExample": {
+                     *             "method": "POST",
+                     *             "path": "/v1/automations/triggers/by-key/auth.password-reset/fire",
+                     *             "examplePayload": {
+                     *               "email": "ada@example.com",
+                     *               "confirmationUrl": "https://app.example.com/auth/confirm?token=4f9c2a"
+                     *             },
+                     *             "curl": "curl -X POST 'https://brew.new/api/v1/automations/triggers/by-key/auth.password-reset/fire' \\\n  -H \"Authorization: Bearer $BREW_API_KEY\" \\\n  -H 'Content-Type: application/json' \\\n  -d '{\"payload\":{\"email\":\"ada@example.com\"}}'",
+                     *             "sdk": "await brew.send('auth.password-reset', { email: 'ada@example.com', confirmationUrl: 'https://app.example.com/auth/confirm?token=4f9c2a' })"
+                     *           },
+                     *           "warnings": [
+                     *             {
+                     *               "code": "SANDBOX_SENDER",
+                     *               "message": "\"auth.password-reset\" sends from the Brew sandbox to members of your organization only. Add and verify a transactional sending domain, then run the setup again.",
+                     *               "field": "domainId"
+                     *             }
+                     *           ]
+                     *         }
+                     *       ],
+                     *       "stack": {
+                     *         "provider": "better-auth",
+                     *         "authDelivery": "code",
+                     *         "note": "Better Auth hands each hook the link or code and Brew sends the email.",
+                     *         "keys": [
+                     *           "auth.verify-email",
+                     *           "auth.password-reset"
+                     *         ],
+                     *         "snippets": [
+                     *           {
+                     *             "title": "Email and password",
+                     *             "file": "lib/auth.ts",
+                     *             "code": "waitUntil(brew.send('auth.password-reset', { email: user.email, confirmationUrl: url }))"
+                     *           }
+                     *         ]
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["AppEmailsKitResponse"];
+                };
+            };
+            /**
+             * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+             *
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             */
+            400: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `API_KEY_REVOKED`: The API key was revoked.
+             *
+             *     `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+             *
+             *     `INVALID_API_KEY`: The API key is malformed or unknown.
+             */
+            401: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+             *
+             *     `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+             *
+             *     `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+             *
+             *     `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+             */
+            403: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization). */
+            404: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+             *
+             *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
+             */
+            409: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
                     "x-request-id": string;
@@ -24922,7 +26718,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Added — publish the returned DNS records, then verify. */
+            /** @description Added. Publish the returned DNS records, then verify. `warnings` appears only with a caveat about the domain just added. */
             201: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -24960,7 +26756,7 @@ export interface operations {
                      *       "updatedAt": "2026-04-08T12:34:56.789Z"
                      *     }
                      */
-                    "application/json": components["schemas"]["Domain"];
+                    "application/json": components["schemas"]["DomainsPostResponse"];
                 };
             };
             /**
@@ -29923,6 +31719,306 @@ export interface operations {
                      *     }
                      */
                     "application/json": components["schemas"]["IntegrationsListResponse"];
+                };
+            };
+            /**
+             * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+             *
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             */
+            400: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `API_KEY_REVOKED`: The API key was revoked.
+             *
+             *     `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+             *
+             *     `INVALID_API_KEY`: The API key is malformed or unknown.
+             */
+            401: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+             *
+             *     `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+             *
+             *     `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+             *
+             *     `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+             */
+            403: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+             *
+             *     `NOT_FOUND`: No v1 resource lives at this path.
+             */
+            404: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
+            429: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it. */
+            500: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getIntegrationConnection: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+                 * @example kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+                 */
+                "X-Brand-Id"?: string;
+            };
+            path: {
+                /** @description `supabase_auth` (the Supabase Auth Send Email Hook) or `clerk` (Clerk webhooks; `email.created` carries the auth emails). */
+                provider: "supabase_auth" | "clerk";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The connection. */
+            200: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "provider": "supabase_auth",
+                     *       "connectionId": "iac_Q2tX9vL1mB7rN4cP8wZsA",
+                     *       "webhookUrl": "https://brew.new/api/integrations/supabase_auth/webhook/iac_Q2tX9vL1mB7rN4cP8wZsA",
+                     *       "status": "pending_verification"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["IntegrationConnection"];
+                };
+            };
+            /**
+             * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+             *
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             */
+            400: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `API_KEY_REVOKED`: The API key was revoked.
+             *
+             *     `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+             *
+             *     `INVALID_API_KEY`: The API key is malformed or unknown.
+             */
+            401: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+             *
+             *     `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+             *
+             *     `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+             *
+             *     `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+             */
+            403: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+             *
+             *     `NOT_FOUND`: No v1 resource lives at this path.
+             */
+            404: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
+            429: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it. */
+            500: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+        };
+    };
+    connectIntegrationHook: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+                 * @example kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+                 */
+                "X-Brand-Id"?: string;
+            };
+            path: {
+                /** @description `supabase_auth` (the Supabase Auth Send Email Hook) or `clerk` (Clerk webhooks; `email.created` carries the auth emails). */
+                provider: "supabase_auth" | "clerk";
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IntegrationConnectionPutRequest"];
+            };
+        };
+        responses: {
+            /** @description Connected; the auth app emails are set up. */
+            200: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "provider": "supabase_auth",
+                     *       "connectionId": "iac_Q2tX9vL1mB7rN4cP8wZsA",
+                     *       "webhookUrl": "https://brew.new/api/integrations/supabase_auth/webhook/iac_Q2tX9vL1mB7rN4cP8wZsA",
+                     *       "status": "pending_verification",
+                     *       "authEmails": [
+                     *         {
+                     *           "triggerKey": "auth.verify-email",
+                     *           "ok": true
+                     *         },
+                     *         {
+                     *           "triggerKey": "auth.magic-link",
+                     *           "ok": true
+                     *         },
+                     *         {
+                     *           "triggerKey": "auth.otp",
+                     *           "ok": true
+                     *         }
+                     *       ]
+                     *     }
+                     */
+                    "application/json": components["schemas"]["IntegrationConnectionPutResponse"];
                 };
             };
             /**
