@@ -118,6 +118,40 @@ stack exits 2 before any request. `types` adds a
 `declare module '@brew.new/sdk'` block for keyed triggers; pass
 `--no-registry` in a project that does not install the SDK.
 
+## Move from Resend: `migrate resend`
+
+```bash
+printf %s "$RESEND_API_KEY" | brew-cli migrate resend --resend-key-stdin           # plan: writes brew.migration.json, changes nothing
+printf %s "$RESEND_API_KEY" | brew-cli migrate resend --resend-key-stdin --apply \
+  --domain news.example.com --yes                                                    # copy it into your Brew brand
+```
+
+The plan reads the Resend account (with a full-access key that stays on
+this machine and is never sent to Brew) at 2 requests a second, reads your
+Brew brand, and scans the project for `resend.emails.send` and
+`resend.batch.send`. `--apply` (destructive class: exit 4 without `--yes`)
+then copies:
+
+| Resend | Brew |
+| --- | --- |
+| Templates (`{{{VAR}}}`) | App emails by key, imported with `placeholders: "resend"` |
+| React Email files | App emails by key, props as merge tags (`props: "merge_tags"`) |
+| Contacts | Contacts (subscribed with an import consent record; unsubscribed stay unsubscribed) |
+| Segments, topics | A boolean contact field each, and an audience on it |
+| Suppressions, unsubscribed contacts | `--domain`'s unsubscribe list |
+| Draft broadcasts | Brew draft emails (nothing is sent) |
+| Domains, webhooks, automations | Reported only |
+
+Progress lives in `brew.migration.json` (ids, keys, counts and cursors,
+never an address, a name or a key), so an interrupted apply resumes where
+it stopped. Brew signs with the same DKIM selector as Resend
+(`resend._domainkey`): the plan suggests a subdomain to verify in Brew
+until cutover. Sends that do not carry over (raw `html`, `attachments`,
+`cc`, …) become `edit-file` next steps with a suggested
+`getBrew().send(key, payload)`; `--rewrite-imports` moves a file to
+`@brew.new/sdk/resend` only when every send through it is a migrated
+template.
+
 ## Connect your AI editor to Brew (MCP)
 
 ```bash
