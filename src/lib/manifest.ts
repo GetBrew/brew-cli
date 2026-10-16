@@ -19,7 +19,7 @@ export function buildManifest(): Record<string, unknown> {
       BREW_API_URL: 'API base URL',
       BREW_CLI_CONFIG_DIR: 'Config directory (default ~/.config/brew-cli)',
       BREW_CLI_INVOKED_AS:
-        'Command prefix for printed re-run commands (set by launchers such as `npx -y brew.new@<version>`; default brew-cli)',
+        'Command prefix for printed re-run commands (set by a wrapper that runs the CLI through a package runner, e.g. `npx -y @brew.new/cli@<version>`; default brew-cli)',
     },
     exitCodes: {
       '0': 'success',

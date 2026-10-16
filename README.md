@@ -135,8 +135,9 @@ Designed for AI agents as first-class users:
   `confirmCommand`; pass `--yes` to proceed. Humans on a TTY get a y/N
   prompt. Test sends (`emails send --test`) skip the gate. Printed
   commands (`confirmCommand`, `retryCommand`, "run … login") start the
-  way the CLI was invoked: a launcher such as `npx -y brew.new@<version>`
-  sets `BREW_CLI_INVOKED_AS`, so they re-run through it.
+  way the CLI was invoked: a wrapper that runs it through a package
+  runner sets `BREW_CLI_INVOKED_AS` (for example
+  `npx -y @brew.new/cli@<version>`), so they re-run through it.
 - **No fuzzy matching** — unknown commands fail hard with exit 2.
 - **Machine-readable discovery** — `brew-cli docs --agent` prints the
   full manifest (commands, flags, classes, routes, env, exit codes);
