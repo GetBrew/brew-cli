@@ -9,11 +9,15 @@ import type { AuthId, ProjectDetection } from './detect'
  */
 
 /** The SDK range generated code and the install step ask for. */
-export const SDK_RANGE = '^12.3.0'
+// The first SDK release with `send`, `appEmails` and the auth adapter
+// subpaths (GetBrew/typescript-sdk#55 + #64, planned 12.5.0; see the app
+// email SDK gate in RELEASING.md). npm's 12.3.0 has none of them.
+export const SDK_RANGE = '^12.5.0'
 export const SDK_PACKAGE = '@brew.new/sdk'
 
 /** The project-facing command, for files teammates commit and read. */
-export const PROJECT_COMMAND = 'npx brew.new'
+// `@brew.new/cli` is on npm; the `brew.new` launcher name is not ours yet.
+export const PROJECT_COMMAND = 'npx @brew.new/cli'
 
 export const APP_KEY_VARIABLE = 'BREW_API_KEY'
 export const SUPABASE_HOOK_SECRET_VARIABLE = 'SEND_EMAIL_HOOK_SECRET'
@@ -132,11 +136,21 @@ export function clientFile(project: ProjectDetection): string {
       '',
     ].join('\n')
   }
+  // Where server code finds BREW_API_KEY: SvelteKit and Astro read .env
+  // files through Vite, not into process.env.
+  const sveltekit = project.framework === 'sveltekit'
+  const keyRead =
+    project.framework === 'astro'
+      ? 'import.meta.env.BREW_API_KEY ?? process.env.BREW_API_KEY'
+      : sveltekit
+        ? 'env.BREW_API_KEY'
+        : 'process.env.BREW_API_KEY'
   return [
     HEADER,
     ts
       ? "import { type BrewClient, createBrewClient } from '@brew.new/sdk'"
       : "import { createBrewClient } from '@brew.new/sdk'",
+    ...(sveltekit ? ["import { env } from '$env/dynamic/private'"] : []),
     '',
     ts ? 'let client: BrewClient | undefined' : 'let client',
     '',
@@ -149,9 +163,9 @@ export function clientFile(project: ProjectDetection): string {
       ? 'export function getBrew(): BrewClient {'
       : 'export function getBrew() {',
     '  if (client === undefined) {',
-    '    const apiKey = process.env.BREW_API_KEY',
+    `    const apiKey = ${keyRead}`,
     "    if (apiKey === undefined || apiKey === '') {",
-    "      throw new Error('BREW_API_KEY is not set: add it to .env.local (npx brew.new init writes it).')",
+    "      throw new Error('BREW_API_KEY is not set: add it to .env.local (npx @brew.new/cli init writes it).')",
     '    }',
     '    client = createBrewClient({ apiKey })',
     '  }',
@@ -300,7 +314,7 @@ export function authHelperFile(
         " * Better Auth's email callbacks, sent with the starter kit's keys",
         ' * (auth.verify-email, auth.password-reset, auth.email-change,',
         ' * auth.magic-link, auth.otp, lifecycle.welcome). Wire them into',
-        ' * betterAuth({ … }): `npx brew.new init` prints the patch.',
+        ' * betterAuth({ … }): `npx @brew.new/cli init` prints the patch.',
         ...(after
           ? [
               ' * Sends run after the response (`after`), so sign-up never waits on email.',

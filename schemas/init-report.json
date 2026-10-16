@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://unpkg.com/@brew.new/cli/schemas/init-report.json",
   "title": "brew-cli init report",
-  "description": "What `brew-cli init --json` (and `npx brew.new init --json`) prints. schemaVersion 1. Never carries a secret: keys are masked.",
+  "description": "What `brew-cli init --json` prints. schemaVersion 1. Never carries a secret: keys are masked.",
   "type": "object",
   "additionalProperties": false,
   "required": [

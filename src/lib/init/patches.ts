@@ -207,7 +207,8 @@ export function betterAuthPatch(
     /^\s*emailAndPassword\s*:\s*\{\s*$/.test(line) ? [index] : []
   )
   const passwordLine = passwordLines[0]
-  if (passwordLines.length === 1 && passwordLine !== undefined) {
+  const resetInserted = passwordLines.length === 1 && passwordLine !== undefined
+  if (resetInserted) {
     next.splice(
       passwordLine + 1,
       0,
@@ -215,11 +216,19 @@ export function betterAuthPatch(
     )
   }
   next.splice(opener + 1, 0, ...inserted)
+  // The description must not promise a reset hook the diff does not add.
+  const described =
+    resetInserted || !/\bemailAndPassword\b/.test(text)
+      ? meta
+      : {
+          ...meta,
+          description: `${meta.description} emailAndPassword is not on its own lines here, so the patch leaves it alone: add sendResetPassword: brewEmails.sendResetPassword to it by hand.`,
+        }
   return computed(
     config.path,
     config.text,
     insertImport(next.join('\n'), importLine),
-    meta
+    described
   )
 }
 
@@ -251,6 +260,19 @@ export function authjsPatch(
     return {
       patch: { ...meta, path: config.path, status: 'already-applied' },
     }
+  }
+  // Auth.js refuses an email provider without a database adapter at
+  // startup (MissingAdapter): adding one to an adapter-less config would
+  // break sign-in for every provider.
+  if (!/\badapter\s*:/.test(text)) {
+    return manual(
+      config.path,
+      {
+        ...meta,
+        description: `${meta.description} This config has no database adapter, which Auth.js email sign-in requires: add one first, then add the provider. Import: ${importLine}`,
+      },
+      snippet
+    )
   }
   const existingSender =
     /\b(EmailProvider|Nodemailer|Resend|Sendgrid|Postmark)\(|sendVerificationRequest/.test(

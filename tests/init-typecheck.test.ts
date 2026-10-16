@@ -128,6 +128,23 @@ function scratchProject(input: {
     join(dir, 'node_modules/next/server.d.ts'),
     'export declare function after<T>(task: T | Promise<T> | (() => T | Promise<T>)): void\n'
   )
+  // SvelteKit's private env module and Vite's import.meta.env, as the
+  // frameworks declare them.
+  writeFileSync(
+    join(dir, 'framework-env.d.ts'),
+    [
+      "declare module '$env/dynamic/private' {",
+      '  export const env: Record<string, string | undefined>',
+      '}',
+      'interface ImportMetaEnv {',
+      '  readonly [key: string]: string | undefined',
+      '}',
+      'interface ImportMeta {',
+      '  readonly env: ImportMetaEnv',
+      '}',
+      '',
+    ].join('\n')
+  )
   writeFileSync(
     join(dir, 'package.json'),
     `{"name":"scratch","private":true${input.nodeNext ? ',"type":"module"' : ''}}\n`
@@ -151,7 +168,7 @@ function scratchProject(input: {
           noEmit: true,
           skipLibCheck: true,
         },
-        include: input.files,
+        include: [...input.files, 'framework-env.d.ts'],
       },
       null,
       2
@@ -181,6 +198,8 @@ const CASES: ReadonlyArray<readonly [fixture: string, nodeNext: boolean]> = [
   ['hono-workers', false],
   ['express-resend', true],
   ['next-firebase', false],
+  ['sveltekit', false],
+  ['astro', false],
 ]
 
 describe('generated files type-check against @brew.new/sdk', () => {
