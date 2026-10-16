@@ -14,6 +14,7 @@ import { readConfig } from '../../src/lib/config-store'
 import type { InitReport } from '../../src/lib/init/report'
 import { validateBrewState } from '../../src/lib/project/state'
 import type { SpawnFn } from '../../src/lib/types'
+import { contractHandler } from '../helpers/contract-artifacts'
 import { copyFixture } from '../helpers/fixtures'
 import { loadSchema, validateSchema } from '../helpers/json-schema'
 import {
@@ -62,6 +63,32 @@ function titleOf(key: string): string {
     .join(' ')
 }
 
+/** The kit's trigger rows, as `GET /v1/automations/triggers` lists them. */
+function kitTriggerRows() {
+  return KIT_KEYS.map((key, index) => ({
+    triggerEventId: `tri_${index}`,
+    key,
+    title: titleOf(key),
+    provider: 'brew_api',
+    payloadSchema: {
+      type: 'object',
+      fields: [
+        { key: 'email', type: 'string', required: true },
+        { key: 'appName', type: 'string', required: false },
+        { key: 'userName', type: 'string', required: false },
+        ...(key.startsWith('auth.')
+          ? [
+              { key: 'confirmationUrl', type: 'string', required: false },
+              { key: 'otp', type: 'string', required: false },
+            ]
+          : []),
+      ],
+    },
+    createdAt: '2026-10-13T12:00:00.000Z',
+    updatedAt: '2026-10-13T12:00:00.000Z',
+  }))
+}
+
 /** Brew's v1 API for init: brand, domains, kit, triggers, the by-key fire. */
 function useBrewApi(
   options: {
@@ -84,6 +111,7 @@ function useBrewApi(
     return body
   }
   server.use(
+    contractHandler(API, kitTriggerRows),
     http.get(`${API}/v1/brand`, async ({ request }) => {
       await record(request)
       return HttpResponse.json({
@@ -176,28 +204,7 @@ function useBrewApi(
     http.get(`${API}/v1/automations/triggers`, async ({ request }) => {
       await record(request)
       return HttpResponse.json({
-        data: KIT_KEYS.map((key, index) => ({
-          triggerEventId: `tri_${index}`,
-          key,
-          title: titleOf(key),
-          provider: 'brew_api',
-          payloadSchema: {
-            type: 'object',
-            fields: [
-              { key: 'email', type: 'string', required: true },
-              { key: 'appName', type: 'string', required: false },
-              { key: 'userName', type: 'string', required: false },
-              ...(key.startsWith('auth.')
-                ? [
-                    { key: 'confirmationUrl', type: 'string', required: false },
-                    { key: 'otp', type: 'string', required: false },
-                  ]
-                : []),
-            ],
-          },
-          createdAt: '2026-10-13T12:00:00.000Z',
-          updatedAt: '2026-10-13T12:00:00.000Z',
-        })),
+        data: kitTriggerRows(),
         pagination: { limit: 100, cursor: null, hasMore: false },
       })
     }),
@@ -784,6 +791,7 @@ describe('init: sign-in for agents (exit 3)', () => {
     const pending = await init(['--yes', '--json', '--no-test-email'], {
       cwd: root,
       env,
+      clock: fakeClock(),
       spawn: recordingSpawn().spawn,
     })
     expect(pending.code).toBe(3)
@@ -837,6 +845,7 @@ describe('init: sign-in for agents (exit 3)', () => {
     const result = await init(['--yes', '--json'], {
       cwd: root,
       env: configEnv({ BREW_CLI_INVOKED_AS: 'npx -y brew.new@0.18.0' }),
+      clock: fakeClock(),
       spawn: recordingSpawn().spawn,
     })
     expect(result.code).toBe(3)
