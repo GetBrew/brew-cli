@@ -144,6 +144,7 @@ import { integrationsListCommand } from './commands/integrations/list'
 import { loginCommand } from './commands/login'
 import { logoutCommand } from './commands/logout'
 import { mcpInstallCommand } from './commands/mcp/install'
+import { migrateResendCommand } from './commands/migrate/resend'
 import { notificationsListCommand } from './commands/notifications/list'
 import { sendCommand } from './commands/send'
 import { sendsCancelCommand } from './commands/sends/cancel'
@@ -318,5 +319,6 @@ export const ALL_COMMANDS: readonly CommandSpec[] = [
   docsApiCommand,
   mcpInstallCommand,
   initCommand,
+  migrateResendCommand,
   apiCommand,
 ]
