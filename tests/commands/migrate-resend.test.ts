@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { HttpResponse, http } from 'msw'
 import { describe, expect, it } from 'vitest'
@@ -704,6 +704,51 @@ describe('migrate resend --apply', () => {
       ])
     )
   })
+})
+
+describe('migrate resend: the SDK the rewritten files need', () => {
+  it.each([
+    [undefined, true],
+    ['^12.3.0', true],
+    ['^13.1.0', true],
+    ['^13.2.0', false],
+  ])(
+    'with %s declared, install-sdk is a next step: %s',
+    async (declared, expected) => {
+      const root = copyFixture('migrate-resend')
+      if (declared !== undefined) {
+        const path = join(root, 'package.json')
+        const manifest = JSON.parse(readFileSync(path, 'utf8')) as {
+          dependencies: Record<string, string>
+        }
+        manifest.dependencies['@brew.new/sdk'] = declared
+        writeFileSync(path, JSON.stringify(manifest, null, 2))
+      }
+      const clock = fakeClock()
+      server.use(useResendApi({ key: RESEND_KEY, clock }).handler)
+      useBrewApi()
+      const result = await migrate(
+        [
+          '--apply',
+          '--yes',
+          '--json',
+          '--rewrite-imports',
+          '--only',
+          'templates',
+          'code',
+        ],
+        { cwd: root, env: env(), clock }
+      )
+      expect(result.code).toBe(0)
+      const install = result.report.nextSteps.find(
+        (step) => step.id === 'install-sdk'
+      )
+      expect(install !== undefined).toBe(expected)
+      if (expected) {
+        expect(install?.command).toContain('@brew.new/sdk@^13.2.0')
+      }
+    }
+  )
 })
 
 describe('migrate resend: report-only account', () => {
