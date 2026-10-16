@@ -1,6 +1,6 @@
 {
   "name": "create-brew",
-  "version": "0.15.0",
+  "version": "0.18.0",
   "description": "npm create brew: set up Brew email in your app (auth and lifecycle email, the SDK, MCP for your editor).",
   "license": "MIT",
   "author": "Brew",
@@ -41,7 +41,7 @@
     "node": ">=20"
   },
   "dependencies": {
-    "@brew.new/cli": "0.15.0"
+    "@brew.new/cli": "0.18.0"
   },
   "publishConfig": {
     "access": "public"

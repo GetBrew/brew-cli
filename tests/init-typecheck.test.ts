@@ -12,6 +12,7 @@ import { dirname, join } from 'node:path'
 import { HttpResponse, http } from 'msw'
 import { describe, expect, it } from 'vitest'
 import type { InitReport } from '../src/lib/init/report'
+import { contractHandler } from './helpers/contract-artifacts'
 import { copyFixture } from './helpers/fixtures'
 import { server } from './helpers/msw-server'
 import { runCli } from './helpers/run-cli'
@@ -37,6 +38,29 @@ const KEYS = [
   'lifecycle.welcome',
 ]
 
+function triggerRows() {
+  return KEYS.map((key, index) => ({
+    triggerEventId: `tri_${index}`,
+    key,
+    title: key,
+    provider: 'brew_api',
+    payloadSchema: {
+      type: 'object',
+      fields: [
+        { key: 'email', type: 'string', required: true },
+        { key: 'appName', type: 'string', required: false },
+        { key: 'userName', type: 'string', required: false },
+        { key: 'confirmationUrl', type: 'string', required: false },
+        { key: 'otp', type: 'string', required: false },
+        { key: 'newEmail', type: 'string', required: false },
+        { key: 'expiresInMinutes', type: 'int', required: false },
+      ],
+    },
+    createdAt: '2026-10-13T12:00:00.000Z',
+    updatedAt: '2026-10-13T12:00:00.000Z',
+  }))
+}
+
 function useApi(): void {
   server.use(
     http.get(`${API}/v1/brand`, () =>
@@ -60,28 +84,10 @@ function useApi(): void {
         },
       })
     ),
+    contractHandler(API, triggerRows),
     http.get(`${API}/v1/automations/triggers`, () =>
       HttpResponse.json({
-        data: KEYS.map((key, index) => ({
-          triggerEventId: `tri_${index}`,
-          key,
-          title: key,
-          provider: 'brew_api',
-          payloadSchema: {
-            type: 'object',
-            fields: [
-              { key: 'email', type: 'string', required: true },
-              { key: 'appName', type: 'string', required: false },
-              { key: 'userName', type: 'string', required: false },
-              { key: 'confirmationUrl', type: 'string', required: false },
-              { key: 'otp', type: 'string', required: false },
-              { key: 'newEmail', type: 'string', required: false },
-              { key: 'expiresInMinutes', type: 'int', required: false },
-            ],
-          },
-          createdAt: '2026-10-13T12:00:00.000Z',
-          updatedAt: '2026-10-13T12:00:00.000Z',
-        })),
+        data: triggerRows(),
         pagination: { limit: 100, cursor: null, hasMore: false },
       })
     )
