@@ -203,7 +203,7 @@ export interface paths {
         put?: never;
         /**
          * Export a design to an ESP
-         * @description Export a finished email DESIGN to a connected third-party ESP (Braze, Brevo, HubSpot, Klaviyo, Mailchimp, Mailjet, Iterable, Postmark, OneSignal, Mailgun, SendGrid) as a reusable TEMPLATE. This is NOT a Brew send — it creates a template in the destination platform and does NOT deliver to recipients, and is unrelated to Brew sending domains or audiences. The `provider` must already be connected for the brand (connect ESPs in the Brew app). The exported HTML is automatically made ESP-portable. Brevo and Mailjet need `senderEmail` when the account has more than one active sender (with exactly one, it is selected automatically). Pass `dryRun: true` to validate the design, brand ownership, and ESP connection without creating a template. Free (no credits).
+         * @description Export a finished email DESIGN to a connected third-party ESP (Braze, Brevo, HubSpot, Klaviyo, Loops, Mailchimp, Mailjet, Iterable, Postmark, OneSignal, Mailgun, SendGrid) as a reusable TEMPLATE. This is NOT a Brew send — it creates a template in the destination platform and does NOT deliver to recipients, and is unrelated to Brew sending domains or audiences. The `provider` must already be connected for the brand (connect ESPs in the Brew app). The exported HTML is automatically made ESP-portable; Loops converts supported content to LMX and creates an editable campaign draft to review before sending. Brevo and Mailjet need `senderEmail` when the account has more than one active sender (with exactly one, it is selected automatically). Pass `dryRun: true` to validate the design, brand ownership, and ESP connection without creating a template. Free (no credits).
          */
         post: operations["exportEmailDesign"];
         delete?: never;
@@ -4604,7 +4604,7 @@ export interface components {
         EmailExportResponse: {
             emailId: string;
             /** @enum {string} */
-            provider: "braze" | "brevo" | "hubspot" | "klaviyo" | "mailchimp" | "mailjet" | "iterable" | "postmark" | "onesignal" | "mailgun" | "sendgrid";
+            provider: "braze" | "brevo" | "hubspot" | "klaviyo" | "mailchimp" | "mailjet" | "iterable" | "postmark" | "onesignal" | "mailgun" | "sendgrid" | "loops";
             providerName: string;
             templateName: string;
             templateId?: string;
@@ -4615,7 +4615,7 @@ export interface components {
              * @description The connected ESP to export the design to as a template.
              * @enum {string}
              */
-            provider: "braze" | "brevo" | "hubspot" | "klaviyo" | "mailchimp" | "mailjet" | "iterable" | "postmark" | "onesignal" | "mailgun" | "sendgrid";
+            provider: "braze" | "brevo" | "hubspot" | "klaviyo" | "mailchimp" | "mailjet" | "iterable" | "postmark" | "onesignal" | "mailgun" | "sendgrid" | "loops";
             /** @description Template name in the ESP. Defaults to the email title. */
             templateName?: string;
             /**
@@ -8755,7 +8755,7 @@ export interface components {
         IntegrationsListResponse: {
             data: {
                 /** @enum {string} */
-                provider: "braze" | "brevo" | "clerk" | "customerio" | "figma" | "framer" | "slack" | "hubspot" | "typeform" | "klaviyo" | "iterable" | "postmark" | "onesignal" | "mailgun" | "sendgrid" | "mailjet" | "mailchimp" | "stripe" | "stytch" | "supabase" | "workos" | "shopify" | "revenuecat";
+                provider: "braze" | "brevo" | "clerk" | "customerio" | "figma" | "framer" | "slack" | "hubspot" | "typeform" | "klaviyo" | "iterable" | "postmark" | "onesignal" | "mailgun" | "sendgrid" | "mailjet" | "mailchimp" | "loops" | "stripe" | "stytch" | "supabase" | "workos" | "shopify" | "revenuecat";
                 name: string;
                 /** @enum {string} */
                 category: "data_in" | "data_out";

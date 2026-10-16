@@ -827,7 +827,7 @@ Export a design to a connected ESP as a template (not a send)
 - Class: write
 - SDK: `brew.emails.export(...)`
 - Argument `emailId` — Design id to export
-- `--provider <provider>` — Connected ESP: braze, brevo, hubspot, klaviyo, mailchimp, mailjet, iterable, postmark, onesignal, mailgun, sendgrid
+- `--provider <provider>` — Connected ESP: braze, brevo, hubspot, klaviyo, loops, mailchimp, mailjet, iterable, postmark, onesignal, mailgun, sendgrid
 - `--template-name <name>` — Template name in the ESP (default: the email title)
 - `--sender-email <email>` — Brevo or Mailjet: the active sender to use (omit when the account has exactly one)
 - `--dry-run` — Validate design, ownership, and ESP connection without creating a template
@@ -835,6 +835,7 @@ Export a design to a connected ESP as a template (not a send)
 
 ```bash
 brew-cli emails export eml_2SmZOWV3ZQ7W5x6g3m4p --provider klaviyo
+brew-cli emails export eml_2SmZOWV3ZQ7W5x6g3m4p --provider loops --template-name "Welcome"
 brew-cli emails export eml_2SmZOWV3ZQ7W5x6g3m4p --provider mailchimp --template-name "Fall sale" --dry-run
 ```
 
