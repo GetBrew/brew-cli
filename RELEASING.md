@@ -25,6 +25,19 @@ releasing the CLI. Never invent a future lockfile
 checksum. The canvas tests must preserve `{ revoked: true }`, the `--yes` gate,
 and one-attempt create/refresh requests.
 
+### App email SDK gate
+
+`send`, `app-emails` and the `types` key registry call `brew.send` and
+`brew.appEmails`, which no published SDK has yet:
+GetBrew/typescript-sdk#55 (`send`, `automations.triggers.fireByKey`) and
+GetBrew/typescript-sdk#64 (`appEmails`, the auth adapters), planned as 13.1.0
+and 13.2.0, after the SDK's 13.0.0 above. Until 13.2.0 is on npm, the
+dependency and `bun.lock` stay on the pin above, and typecheck and parity
+fail in CI on these commands. Publish the SDK first, then
+`bun add @brew.new/sdk@^13.2.0` (it regenerates `bun.lock` from the
+registry; never hand-write a lockfile entry), run a frozen install, the full
+checks and `docs:commands:check`, and release the CLI.
+
 ```bash
 # on a clean main with CI green
 npm version <patch|minor|major> --no-git-tag-version

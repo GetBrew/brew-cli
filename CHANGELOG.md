@@ -1,8 +1,59 @@
 # Changelog
 
-## Unreleased
+## 0.17.0
+
+Needs `@brew.new/sdk` 13.2.0: `brew.send` and
+`automations.triggers.fireByKey` (GetBrew/typescript-sdk#55, planned
+13.1.0), `appEmails` (GetBrew/typescript-sdk#64, planned 13.2.0) and the
+canvas revocation response fix already on the SDK's main branch (planned
+13.0.0). Neither PR is published yet; see the app email SDK gate in
+`RELEASING.md`. The API side is GetBrew/brew-v2#2013 (trigger keys),
+#2017 (fire by key), #2059 (team sandbox), #2066 (app emails) and #2060
+(browser sign-in).
 
 ### Added
+
+- **`brew-cli send <key>`** sends the app email behind a trigger key: the
+  same call as `brew.send(key, payload)`
+  (`POST /v1/automations/triggers/by-key/{triggerKey}/fire`). `--to
+  <email>` sets `payload.email` (over `--data`), `--data <json|->` carries
+  the rest of the payload, `--idempotency-key` makes a retry replay.
+  Destructive like `automations triggers fire`: exit 4 without `--yes`.
+  A send with no recipient exits 2 before any request.
+  `automations.triggers.fireByKey` is the same route, so it is a reviewed
+  SDK skip (alias of `send`).
+- **`brew-cli app-emails list | get <key> | upsert <key> | kit`** bind
+  `GET /v1/app-emails`, `GET|PUT /v1/app-emails/{triggerKey}` and
+  `POST /v1/app-emails/kit`. `list` and `get` show each key's sender
+  (`domain`, `sandbox`, `none`) and readiness. `upsert` sets up one app
+  email (starter with `--starter`, or your own `--source-file` with
+  `--format` taken from `.html`, `.mjml`, `.jsx` or `.tsx`; `--title`,
+  `--subject`, `--preview-text`, `--domain`, `--overwrite`; `--input`
+  carries the rest, such as `payloadSchema` fields marked `secret: true`
+  for a one-time code or sign-in link) and publishes it, so it confirms;
+  `--no-publish` saves without the gate. `kit` sets up
+  the auth and lifecycle starter kit (`--sets`, `--stack`, `--keys`,
+  `--domain`, `--overwrite`, `--idempotency-key`), confirms, prints
+  per-key results and exits 1 when a key failed (run it again to finish).
+  Both use the SDK's 5-minute defaults as their whole-command deadline
+  and need a key with the `automations` and `emails` scopes. A key that
+  breaks the trigger key grammar, an unknown `--format`, `--sets`,
+  `--stack` or kit key, an empty list, or `--keys` with `--sets`/`--stack`
+  exits 2 before any request; a body on stdin (`--input -`) always
+  confirms.
+- `automations triggers create --key <key>` and `automations triggers
+  update --key <key>` set the stable key code fires by; `triggers list`
+  gains a `KEY` column (`get` returns `key` and `appEmail` in the row).
+- `brew-cli types` appends a `BrewTriggerKeyRegistry` augmentation for
+  every keyed trigger, so `brew.send('order.paid', …)` checks the key and
+  the payload at compile time. A workspace with no keyed triggers gets
+  the same bytes as before (no `--check` drift); `--no-registry` leaves
+  the block out.
+- The vendored spec is brew-v2 main plus the spec delta of
+  GetBrew/brew-v2#2066 and the PRs it stacks on (#2013, #2017, #2059): the
+  by-key fire and the app-emails routes, `key` / `appEmail` on trigger
+  rows, and the sandbox error codes (`DOMAIN_REQUIRED`,
+  `SANDBOX_DAILY_LIMIT`). Re-vendor from brew-v2 main once they merge.
 
 - **`brew-cli login` signs in through the browser.** On an interactive
   terminal it starts a sign-in on brew.new, prints the link and a code
@@ -31,7 +82,6 @@
   `--api-key` or `BREW_API_KEY` never sends it, and `logout` or a pasted
   key drops it. A sign-in against a non-default `--api-url` stores that
   URL with the key. The `Signed in as …` line shows even under `--quiet`.
-
 - **`brew-cli mcp install`** adds the Brew MCP server to Cursor
   (`.cursor/mcp.json`), VS Code (`.vscode/mcp.json`), Claude Code
   (`.mcp.json`), Gemini CLI (`.gemini/settings.json`), and, when named,
@@ -75,10 +125,9 @@
 ### Changed
 
 - Canvas session create, refresh, and revoke use the SDK methods. JSON output,
-  revocation confirmation, and create/refresh no-retry behavior are preserved.
-
-Requires the SDK revocation response fix, planned for 13.0.0. Follow the canvas
-migration gate in `RELEASING.md` before updating the dependency and releasing.
+  revocation confirmation, and create/refresh no-retry behavior are preserved
+  (needs the SDK revocation response fix; see the canvas migration gate in
+  `RELEASING.md`).
 
 ## 0.16.0
 

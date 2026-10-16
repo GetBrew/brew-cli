@@ -10,6 +10,7 @@ import {
   readJsonFlag,
   requestOptions,
 } from '../../../lib/input'
+import { triggerKeyArg } from '../../../lib/trigger-key'
 
 export const automationsTriggersCreateCommand = defineCommand({
   path: ['automations', 'triggers', 'create'],
@@ -20,10 +21,16 @@ export const automationsTriggersCreateCommand = defineCommand({
   flags: [
     { flag: '--title <title>', summary: 'Trigger event title' },
     { flag: '--description <text>', summary: 'Trigger event description' },
+    {
+      flag: '--key <key>',
+      summary:
+        'Stable trigger key your code fires by (`send <key>`), e.g. order.paid; unique per brand',
+    },
     INPUT_FLAG,
     IDEMPOTENCY_FLAG,
   ],
   examples: [
+    `brew-cli automations triggers create --title "Order paid" --key order.paid --input '{"payloadSchema":{"type":"object","fields":[{"key":"email","type":"string","required":true}]}}'`,
     `brew-cli automations triggers create --title user.signup --input '{"payloadSchema":{"type":"object","fields":[{"key":"userId","type":"string","required":true}]}}'`,
   ],
   run: async ({ ctx, flags }) => {
@@ -31,6 +38,8 @@ export const automationsTriggersCreateCommand = defineCommand({
     const input = mergeInput(base, {
       title: flagString(flags.title),
       description: flagString(flags.description),
+      key:
+        flags.key === undefined ? undefined : triggerKeyArg(flags.key, '--key'),
     })
     if (typeof input.title !== 'string' || input.title === '') {
       throw new CliUsageError('A title is required (--title or --input).')
