@@ -42,8 +42,6 @@ jobs:
       - run: bun run test
       - run: bun run docs:commands:check
       - run: bun run generate:skills:check
-      # The launchers ship the CLI's own version, pinned exactly.
-      - run: bun run sync:launchers:check
       - run: bun run build
       - name: Bin smoke
         run: |
@@ -54,8 +52,6 @@ jobs:
         run: bun run smoke:signals
       - name: CLI regression smoke
         run: bun run smoke:regressions
-      - name: Launcher pack smoke
-        run: bun run smoke:launchers
       - name: Compile standalone binaries
         run: bun run scripts/build-binaries.ts
       - name: Create GitHub Release
@@ -75,23 +71,32 @@ jobs:
           npm publish --provenance --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-      # `npx brew.new` and `npm create brew`: thin launchers pinned to this
-      # CLI version, published after it. A version npm already has is
-      # skipped, so re-running the workflow is safe.
+      # `brew.new` and `create-brew`: thin launchers pinned to this CLI
+      # version, published after it. This step never fails the release (the
+      # CLI is already out): a version npm already has is skipped, and a
+      # failed check or publish, such as a name the token does not own yet,
+      # leaves a warning.
       - name: Publish launchers (brew.new, create-brew)
+        continue-on-error: true
         run: |
           if [ -z "$NODE_AUTH_TOKEN" ]; then
-            echo "NPM_TOKEN secret not set — skipping launcher publish."
+            echo "::warning::NPM_TOKEN not set; launchers not published."
             exit 0
           fi
           VERSION=$(node -p "require('./package.json').version")
-          bun run scripts/smoke-launchers.ts --registry
+          if ! bun run sync:launchers:check || ! bun run smoke:launchers \
+            || ! bun run scripts/smoke-launchers.ts --registry; then
+            echo "::warning::Launcher checks failed; brew.new and create-brew $VERSION not published. The CLI release is unaffected."
+            exit 0
+          fi
           for pkg in brew.new create-brew; do
             if npm view "$pkg@$VERSION" version >/dev/null 2>&1; then
-              echo "$pkg@$VERSION is already on npm — skipping."
+              echo "$pkg@$VERSION is already on npm; skipping."
               continue
             fi
-            (cd "packages/launchers/$pkg" && npm publish --provenance --access public)
+            if ! (cd "packages/launchers/$pkg" && npm publish --provenance --access public); then
+              echo "::warning::$pkg@$VERSION was not published (is the npm name reserved for this token?). The CLI release is unaffected."
+            fi
           done
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

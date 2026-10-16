@@ -60,11 +60,12 @@ export function launcherArgv(args, options = {}) {
 /**
  * How the person ran the launcher, as the CLI prints it in every command it
  * suggests next (`BREW_CLI_INVOKED_AS`): pinned to this launcher's version
- * for `npx`, and `npm create brew@latest --` for `create-brew`.
+ * for both (`npx -y brew.new@<version>`, `npm create brew@<version> --`), so
+ * a resume or confirm command runs the same CLI that printed it.
  */
 export function invokedAs(packageName, version) {
   return packageName === 'create-brew'
-    ? 'npm create brew@latest --'
+    ? `npm create brew@${version} --`
     : `npx -y ${packageName}@${version}`
 }
 

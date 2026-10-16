@@ -19,16 +19,32 @@ GetBrew/brew-v2#2066 and #2060.
   `lib/brew.ts`, `lib/brew-auth.ts`, `lib/brew-contracts.ts`, a Supabase
   Send Email Hook function, `.env.example` and `brew.json` (create-only,
   hashes kept in `brew.json`), print patches for the auth config
-  (`--apply-patches` applies them when the file is unchanged), configure
+  (`--apply-patches <id>@<hash>,…` from the report applies each only while
+  its file still matches the reviewed hash), configure
   MCP for detected editors, write an `AGENTS.md` block and (in Claude Code
   projects) the skills, and send a sandbox test email. Destructive class:
   `--dry-run --json` plans with no writes and no mutating requests,
   `--yes --json` runs; `--no-wait` / `--resume` for agents (exit 3 with
   the sign-in link and code). Flags: `--app`, `--domain`, `--sets`,
-  `--stack`, `--test-to`, `--apply-patches`, `--no-install`, `--no-mcp`,
+  `--stack`, `--test-to`, `--apply-patches`, `--app-url` (shown on the
+  approval page so the right brand is picked), `--no-install`, `--no-mcp`,
   `--no-agent-files`, `--no-test-email`, `--no-open`. The JSON report
   follows `schemas/init-report.json` (`schemaVersion: 1`). Re-runs reuse
-  the idempotency keys `init:<projectId>:<step>`.
+  the idempotency keys `init:<projectId>:<step>:<body hash>`. After a
+  browser sign-in the run acts as the new app key, so the kit lands in the
+  brand that key is bound to. `lib/brew.ts` reads the key through
+  `$env/dynamic/private` in SvelteKit and `import.meta.env` in Astro;
+  Express, Hono and plain Node get a blocking step to load `.env.local`.
+  A test email that does not go out (say `SANDBOX_DAILY_LIMIT`) is a
+  non-blocking retry step, not a failed run. The generated code and the
+  install command use `@brew.new/sdk@^12.5.0`, the planned release with
+  `send`, `appEmails` and the auth adapters.
+- Not in this release (they need platform work first): the Supabase and
+  Clerk provider switch-over (Supabase Management API hook, Clerk
+  `toggle_delivery`; init prints them as human steps), `integrations
+  connect` (brew-v2 PR-L and SDK `integrations.connect`), and brand
+  creation from `--app-url` (sign-in keys are bound to a brand picked on
+  the approval page).
 - **Launchers** `brew.new` and `create-brew` (`packages/launchers/`):
   each runs `@brew.new/cli` in-process, pinned to the same version,
   inserts `init` when no subcommand is given, and sets

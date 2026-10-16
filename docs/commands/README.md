@@ -2836,14 +2836,15 @@ brew-cli mcp install --client vscode --print
 Set up Brew app email in this project: sign in, starter kit, SDK, lib/brew.ts, .env.local, MCP, a sandbox test email
 
 - Class: destructive
-- Derived from `brew.brand.get(...)`, `brew.domains.list(...)`, `brew.domains.add(...)`, `brew.appEmails.setUpKit(...)`, `brew.automations.triggers.list(...)`, `brew.send(...)`
+- Derived from `brew.brand.get(...)`, `brew.domains.list(...)`, `brew.domains.add(...)`, `brew.appEmails.setUpKit(...)`, `brew.automations.triggers.list(...)`, `brew.automations.triggers.getContract(...)`, `brew.send(...)`
 - `--dry-run` — Plan only: detect, read, and report every change (--json for the plan); no writes, no sign-in, no mutating requests
 - `--app <dir>` — The app to set up inside a monorepo (relative to the cwd)
 - `--domain <host>` — Add this sending domain and print its DNS records (init does not wait for verification)
 - `--sets <sets>` — Kit sets to set up: auth, lifecycle (default both)
 - `--stack <provider>` — Auth stack for the kit (default: detected): better-auth | authjs | supabase | clerk | firebase | custom
 - `--test-to <email>` — Send the test email here (default: the person who signed in; the sandbox reaches your Brew team only)
-- `--apply-patches` — Apply the printed patches to your auth config (only files unchanged since the patch was computed)
+- `--apply-patches <patches>` — Apply reviewed patches to your auth config: comma-separated <id>@<hash> from the report (each applies only while its file is unchanged since that report)
+- `--app-url <url>` — Your app's URL, shown on the brew.new approval page so the right brand is picked
 - `--no-install` — Do not install @brew.new/sdk
 - `--no-mcp` — Do not configure MCP for detected editors
 - `--no-agent-files` — Do not write the AGENTS.md block or the skill files
@@ -2859,7 +2860,7 @@ brew-cli init --yes --json
 brew-cli init --yes --no-wait --json
 brew-cli init --resume --yes --json
 brew-cli init --app apps/web --domain mail.example.com --yes
-brew-cli init --yes --apply-patches
+brew-cli init --yes --apply-patches better-auth-config@3f9c2a7d1b04
 ```
 
 ### brew-cli api

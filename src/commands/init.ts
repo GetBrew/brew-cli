@@ -47,6 +47,51 @@ function parseStack(value: unknown): AppEmailKitStackProvider | undefined {
   return text as AppEmailKitStackProvider
 }
 
+/**
+ * `--apply-patches id@hash,…`: each id with the hash prefix (12+ hex) of
+ * the file it was computed from, as the report's nextSteps print it.
+ */
+function parsePatchPins(value: unknown): ReadonlyMap<string, string> {
+  const text = flagString(value)
+  const pins = new Map<string, string>()
+  if (text === undefined) {
+    return pins
+  }
+  for (const item of text.split(',')) {
+    const match = /^([a-z0-9-]+)@([0-9a-f]{12,64})$/.exec(item.trim())
+    if (match?.[1] === undefined || match[2] === undefined) {
+      throw new CliUsageError(
+        `--apply-patches takes <id>@<hash> pairs from the report's nextSteps (e.g. better-auth-config@3f9c2a7d1b04); got "${item.trim()}".`
+      )
+    }
+    pins.set(match[1], match[2])
+  }
+  return pins
+}
+
+function parseAppUrl(value: unknown): string | undefined {
+  const text = flagString(value)
+  if (text === undefined) {
+    return
+  }
+  try {
+    const url = new URL(text)
+    if (
+      (url.protocol === 'https:' || url.protocol === 'http:') &&
+      url.username === '' &&
+      url.password === '' &&
+      text.length <= 512
+    ) {
+      return text
+    }
+  } catch {
+    // reported below
+  }
+  throw new CliUsageError(
+    `--app-url takes an http(s) URL without credentials; got "${text}".`
+  )
+}
+
 export const initCommand = defineCommand({
   path: ['init'],
   summary:
@@ -58,6 +103,7 @@ export const initCommand = defineCommand({
     'domains.add',
     'appEmails.setUpKit',
     'automations.triggers.list',
+    'automations.triggers.getContract',
     'send',
   ],
   commandClass: 'destructive',
@@ -91,9 +137,14 @@ export const initCommand = defineCommand({
         'Send the test email here (default: the person who signed in; the sandbox reaches your Brew team only)',
     },
     {
-      flag: '--apply-patches',
+      flag: '--apply-patches <patches>',
       summary:
-        'Apply the printed patches to your auth config (only files unchanged since the patch was computed)',
+        'Apply reviewed patches to your auth config: comma-separated <id>@<hash> from the report (each applies only while its file is unchanged since that report)',
+    },
+    {
+      flag: '--app-url <url>',
+      summary:
+        "Your app's URL, shown on the brew.new approval page so the right brand is picked",
     },
     { flag: '--no-install', summary: 'Do not install @brew.new/sdk' },
     { flag: '--no-mcp', summary: 'Do not configure MCP for detected editors' },
@@ -123,7 +174,7 @@ export const initCommand = defineCommand({
     'brew-cli init --yes --no-wait --json',
     'brew-cli init --resume --yes --json',
     'brew-cli init --app apps/web --domain mail.example.com --yes',
-    'brew-cli init --yes --apply-patches',
+    'brew-cli init --yes --apply-patches better-auth-config@3f9c2a7d1b04',
   ],
   confirmSummary: ({ flags }) => {
     if (flags.dryRun === true) {
@@ -135,8 +186,8 @@ export const initCommand = defineCommand({
       `set up and publish the ${parseSets(flags.sets)?.join(' + ') ?? 'auth + lifecycle'} app emails;`,
       flags.install === false ? '' : 'install @brew.new/sdk;',
       'write lib/brew.ts and friends (create-only, never over your edits)',
-      flags.applyPatches === true
-        ? 'and apply the auth config patches;'
+      flags.applyPatches !== undefined
+        ? 'and apply the reviewed auth config patches;'
         : 'and print patches for your auth config;',
       flags.testEmail === false ? '' : 'then send you a sandbox test email.',
     ]
@@ -160,7 +211,8 @@ export const initCommand = defineCommand({
       agentFiles: flags.agentFiles !== false,
       testEmail: flags.testEmail !== false,
       testTo: flagString(flags.testTo),
-      applyPatches: flags.applyPatches === true,
+      applyPatches: parsePatchPins(flags.applyPatches),
+      appUrl: parseAppUrl(flags.appUrl),
       noWait,
       resume,
       openBrowser: flags.open !== false,
