@@ -7,7 +7,7 @@ import type { CommandOutcome } from '../define-command'
 import { CliAuthError, CliUsageError } from '../errors'
 import { detectProject } from '../init/detect'
 import type { NextStep } from '../init/report'
-import { SDK_PACKAGE, SDK_RANGE } from '../init/templates'
+import { reachesSdkRange, SDK_PACKAGE, SDK_RANGE } from '../init/templates'
 import { getInvocationPrefix } from '../invocation'
 import { addCommand, formatCommandLine } from '../project/package-manager'
 import type { CliContext } from '../types'
@@ -96,14 +96,16 @@ function projectInfo(cwd: string, env: CliContext['io']['env']): ProjectInfo {
     }
   }
   const { project } = detected
-  let hasSdk = project.sdkRange !== null
+  // An SDK older than SDK_RANGE cannot load `@brew.new/sdk/resend`, so it
+  // counts as missing: the install step asks for SDK_RANGE over it.
+  let hasSdk = reachesSdkRange(project.sdkRange)
   try {
     const pkg = JSON.parse(
       readFileSync(join(project.root, 'package.json'), 'utf8')
     ) as {
       dependencies?: Record<string, string>
     }
-    hasSdk = pkg.dependencies?.['@brew.new/sdk'] !== undefined
+    hasSdk = reachesSdkRange(pkg.dependencies?.['@brew.new/sdk'])
   } catch {}
   return {
     root: project.root,
