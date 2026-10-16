@@ -58,8 +58,16 @@ export function resolveAuth(input: {
     readEnvValue(env.BREW_API_URL) ??
     stored.apiUrl ??
     DEFAULT_API_URL
+  // A browser sign-in stores the brand its key is bound to (with
+  // `brandName`). That brand belongs to the stored key: a key from
+  // --api-key or BREW_API_KEY may be bound to another brand, and sending
+  // the stored id with it would make every call a 403 BRAND_SCOPE_MISMATCH.
+  const storedBrandId =
+    stored.brandName !== undefined && apiKey !== keyFromConfig
+      ? undefined
+      : stored.brandId
   const brandId =
-    globals.brand ?? readEnvValue(env.BREW_BRAND_ID) ?? stored.brandId
+    globals.brand ?? readEnvValue(env.BREW_BRAND_ID) ?? storedBrandId
   if (!apiKey) {
     if (input.allowAnonymous === true) {
       return {

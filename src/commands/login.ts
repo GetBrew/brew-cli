@@ -7,11 +7,12 @@ import {
 import { printable } from '../lib/auth-flow/session'
 import {
   buildSdkClient,
+  DEFAULT_API_URL,
   LOGIN_KEYS_URL,
   maskApiKey,
   resolveAuth,
 } from '../lib/client'
-import { updateConfig } from '../lib/config-store'
+import { readConfig, updateConfig } from '../lib/config-store'
 import { sdkTransportFor } from '../lib/context'
 import { type CommandOutcome, defineCommand } from '../lib/define-command'
 import { CliApiError, CliUsageError, EXIT_AUTH } from '../lib/errors'
@@ -182,11 +183,18 @@ async function browserLogin(
     brandId: approved.brand.brandId,
     userEmail: approved.approver.email,
     brandName: approved.brand.name,
+    // The key lives on the server that minted it: a sign-in against
+    // staging or a local dev server keeps sending there.
+    apiUrl: apiUrl === DEFAULT_API_URL ? undefined : apiUrl,
   })
-  progress(
-    ctx,
-    `Signed in as ${printable(approved.approver.email)} to ${printable(approved.brand.name)}. Key stored in ${path} (0600).`
-  )
+  // Who approved is the check against a phished approval: shown even
+  // under --quiet (JSON output carries it as `userEmail`).
+  const signedIn = `Signed in as ${printable(approved.approver.email)} to ${printable(approved.brand.name)}. Key stored in ${path} (0600).`
+  if (ctx.mode === 'json') {
+    progress(ctx, signedIn)
+  } else {
+    ctx.io.stderr.write(`${signedIn}\n`)
+  }
   warnIfEnvKeyWins(ctx)
   return {
     data: {
@@ -232,11 +240,13 @@ async function keyLogin(
   // Throws a 401 BrewApiError (exit 3) when the key is invalid.
   await buildSdkClient(auth, sdkTransportFor(ctx)).usage.get()
   // A pasted key says nothing about who approved it: forget the identity
-  // a browser sign-in stored.
+  // a browser sign-in stored, and the brand that sign-in's key was bound to.
+  const browserBrand = readConfig(ctx.io.env).brandName !== undefined
   const path = updateConfig(ctx.io.env, {
     apiKey: candidate,
     userEmail: undefined,
     brandName: undefined,
+    ...(browserBrand ? { brandId: undefined } : {}),
   })
   progress(ctx, `Logged in. Key stored in ${path} (0600).`)
   return {

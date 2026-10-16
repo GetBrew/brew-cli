@@ -323,15 +323,56 @@ describe('login through the browser', () => {
     const fromEnv = await runCli(['whoami'], {
       env: { ...env, BREW_API_KEY: 'brew_otherkey0123456789abcdefghijkl' },
     })
+    // The stored brand belongs to the stored key: another key never
+    // inherits it (it would 403 BRAND_SCOPE_MISMATCH on brand routes).
     expect(fromEnv.json).toMatchObject({
       apiKeySource: 'env',
       userEmail: null,
       brandName: null,
     })
+    expect((fromEnv.json as { brandId?: unknown }).brandId ?? null).toBeNull()
 
     const logout = await runCli(['logout'], { env })
     expect(logout.code).toBe(0)
-    expect(readConfig(env)).toEqual({ brandId: BRAND.brandId })
+    expect(readConfig(env)).toEqual({})
+  })
+
+  it('a pasted key after a browser sign-in forgets the brand of that sign-in', async () => {
+    useLoginServer({ steps: ['approved'] })
+    server.use(
+      http.get('https://brew.new/api/v1/usage', () => HttpResponse.json(USAGE))
+    )
+    const env = tempEnv()
+    await runCli(['login', '--browser'], { env, clock: fakeClock() })
+    expect(readConfig(env).brandId).toBe(BRAND.brandId)
+    const pasted = await runCli(
+      ['login', '--api-key', 'brew_otherkey0123456789abcdefghijkl'],
+      { env }
+    )
+    expect(pasted.code).toBe(0)
+    expect(readConfig(env)).toEqual({
+      apiKey: 'brew_otherkey0123456789abcdefghijkl',
+    })
+  })
+
+  it('shows who approved even under --quiet, and remembers a non-default API URL', async () => {
+    useLoginServer({ steps: ['approved'], origin: 'http://localhost:3000' })
+    const env = tempEnv()
+    const result = await runCli(
+      [
+        'login',
+        '--browser',
+        '--quiet',
+        '--api-url',
+        'http://localhost:3000/api',
+      ],
+      { env, clock: fakeClock(), ttyOut: true }
+    )
+    expect(result.code).toBe(0)
+    expect(result.stderr).toContain(
+      `Signed in as ${APPROVER_EMAIL} to ${BRAND.name}`
+    )
+    expect(readConfig(env).apiUrl).toBe('http://localhost:3000/api')
   })
 })
 

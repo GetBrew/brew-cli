@@ -2,6 +2,7 @@ import {
   chmodSync,
   mkdirSync,
   readFileSync,
+  renameSync,
   rmSync,
   writeFileSync,
 } from 'node:fs'
@@ -58,10 +59,16 @@ export function writePendingLogin(
 ): string {
   mkdirSync(configDir(env), { recursive: true, mode: 0o700 })
   const path = pendingLoginPath(env)
-  writeFileSync(path, `${JSON.stringify(pending, null, 2)}\n`, {
+  // A fresh 0600 file renamed into place: the secret is never readable
+  // through an older, wider file, and a crash never leaves half a file.
+  const temporary = `${path}.${process.pid}.tmp`
+  rmSync(temporary, { force: true })
+  writeFileSync(temporary, `${JSON.stringify(pending, null, 2)}\n`, {
     mode: 0o600,
+    flag: 'wx',
   })
-  chmodSync(path, 0o600)
+  chmodSync(temporary, 0o600)
+  renameSync(temporary, path)
   return path
 }
 
