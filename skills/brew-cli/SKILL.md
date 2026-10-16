@@ -69,8 +69,8 @@ Cursor and VS Code.
 - Destructive commands (sends, deletes, fires, cancels) never hang: they
   exit 4 with a `confirmCommand` to re-run once a human approves, or take
   `--yes`. `confirmCommand` and `retryCommand` start the way you invoked
-  the CLI (`brew-cli …`, or `npx -y brew.new@<version> …` through a
-  launcher), so run them as printed. Do not pass `--yes` for real campaign sends without an explicit
+  the CLI (`brew-cli …`, or a package-runner prefix such as
+  `npx -y @brew.new/cli@<version> …`), so run them as printed. Do not pass `--yes` for real campaign sends without an explicit
   human instruction; `emails send --test --to you@x.com` is the safe lane.
 - `--input '<json>'` (or `-` for stdin) carries full request bodies;
   positional ids always win over `--input`. `--all` drains pagination.
