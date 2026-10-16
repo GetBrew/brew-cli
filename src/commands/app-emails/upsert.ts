@@ -81,6 +81,7 @@ export const appEmailsUpsertCommand = defineCommand({
     'brew-cli app-emails upsert auth.password-reset --yes',
     'brew-cli app-emails upsert order.paid --source-file emails/order-paid.tsx --subject "Your order is confirmed" --yes',
     'brew-cli app-emails upsert lifecycle.welcome --overwrite --yes',
+    `brew-cli app-emails upsert account.sign-in-code --source-file emails/sign-in-code.tsx --input '{"payloadSchema":{"fields":[{"key":"code","type":"string","required":true,"secret":true}]}}' --yes`,
   ],
   confirmSummary: ({ args, flags }) => {
     if (flags.input === '-') {

@@ -2,11 +2,12 @@
 
 ## 0.17.0
 
-Needs an `@brew.new/sdk` release that carries `brew.send` and
-`automations.triggers.fireByKey` (GetBrew/typescript-sdk#55), `appEmails`
-(GetBrew/typescript-sdk#64) and the canvas revocation response fix already
-on the SDK's main branch. Neither PR is published yet; see the app email SDK
-gate in `RELEASING.md`. The API side is GetBrew/brew-v2#2013 (trigger keys),
+Needs `@brew.new/sdk` 13.2.0: `brew.send` and
+`automations.triggers.fireByKey` (GetBrew/typescript-sdk#55, planned
+13.1.0), `appEmails` (GetBrew/typescript-sdk#64, planned 13.2.0) and the
+canvas revocation response fix already on the SDK's main branch (planned
+13.0.0). Neither PR is published yet; see the app email SDK gate in
+`RELEASING.md`. The API side is GetBrew/brew-v2#2013 (trigger keys),
 #2017 (fire by key), #2059 (team sandbox), #2066 (app emails) and #2060
 (browser sign-in).
 
@@ -27,8 +28,10 @@ gate in `RELEASING.md`. The API side is GetBrew/brew-v2#2013 (trigger keys),
   (`domain`, `sandbox`, `none`) and readiness. `upsert` sets up one app
   email (starter with `--starter`, or your own `--source-file` with
   `--format` taken from `.html`, `.mjml`, `.jsx` or `.tsx`; `--title`,
-  `--subject`, `--preview-text`, `--domain`, `--overwrite`) and publishes
-  it, so it confirms; `--no-publish` saves without the gate. `kit` sets up
+  `--subject`, `--preview-text`, `--domain`, `--overwrite`; `--input`
+  carries the rest, such as `payloadSchema` fields marked `secret: true`
+  for a one-time code or sign-in link) and publishes it, so it confirms;
+  `--no-publish` saves without the gate. `kit` sets up
   the auth and lifecycle starter kit (`--sets`, `--stack`, `--keys`,
   `--domain`, `--overwrite`, `--idempotency-key`), confirms, prints
   per-key results and exits 1 when a key failed (run it again to finish).
