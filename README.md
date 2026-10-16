@@ -62,7 +62,11 @@ brew-cli types --out lib/brew-contracts.ts              # payload types + the br
 Until a sending domain verifies, app emails go out from the team-only
 sandbox: members of your Brew organization receive them, under a daily
 cap. `send`, `upsert` and `kit` are destructive (they send or publish) and
-exit 4 without `--yes` off a terminal.
+exit 4 without `--yes` off a terminal. `upsert` and `kit` need a key with
+both the `automations` and `emails` scopes. A mistyped key, format, set or
+stack exits 2 before any request. `types` adds a
+`declare module '@brew.new/sdk'` block for keyed triggers; pass
+`--no-registry` in a project that does not install the SDK.
 
 ## Connect your AI editor to Brew (MCP)
 

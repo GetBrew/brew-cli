@@ -3,7 +3,16 @@ import type {
   SetUpAppEmailKitResponse,
 } from '@brew.new/sdk'
 import { SET_UP_APP_EMAIL_KIT_DEFAULT_TIMEOUT_MS } from '@brew.new/sdk'
+import {
+  APP_EMAIL_AUTH_STACKS,
+  APP_EMAIL_KIT_KEYS,
+  APP_EMAIL_KIT_SETS,
+  inlineInput,
+  listFlag,
+  oneOfFlag,
+} from '../../lib/app-email-inputs'
 import { defineCommand } from '../../lib/define-command'
+import { CliUsageError } from '../../lib/errors'
 import {
   asSdkInput,
   flagString,
@@ -19,7 +28,7 @@ import { renderTable } from '../../lib/output'
 export const appEmailsKitCommand = defineCommand({
   path: ['app-emails', 'kit'],
   summary:
-    'Set up and publish the auth + lifecycle starter kit (per-key results; exits 1 when a key failed, re-run to finish)',
+    'Set up and publish the auth + lifecycle starter kit (per-key results; exits 1 when a key failed, re-run to finish). Needs the automations and emails scopes',
   sdkMethod: 'appEmails.setUpKit',
   route: { method: 'POST', path: '/v1/app-emails/kit' },
   commandClass: 'destructive',
@@ -57,21 +66,42 @@ export const appEmailsKitCommand = defineCommand({
     'brew-cli app-emails kit --keys auth.password-reset,auth.verify-email --domain dom_123 --yes',
   ],
   confirmSummary: ({ flags }) => {
-    const keys = list(flags.keys)
-    const sets = list(flags.sets)
+    if (flags.input === '-') {
+      // The body comes from stdin, which the gate cannot read ahead.
+      return 'Set up and publish the app emails described on stdin (possibly replacing designs edited in Brew): each key sends real email once your code fires it.'
+    }
+    const inline = inlineInput(flags.input)
+    const strings = (value: unknown): string[] | undefined =>
+      Array.isArray(value) && value.every((item) => typeof item === 'string')
+        ? value
+        : undefined
+    const keys = selection(flags.keys) ?? strings(inline.keys)
+    const sets = selection(flags.sets) ?? strings(inline.sets)
     const what =
       keys !== undefined
         ? keys.join(', ')
         : `the ${(sets ?? ['auth', 'lifecycle']).join(' + ')} kit`
-    const stack = flagString(flags.stack)
-    return `Set up and publish ${what}${stack === undefined ? '' : ` for ${stack}`}${flags.overwrite === true ? ', replacing designs edited in Brew' : ''}: each key sends real email once your code fires it.`
+    const stack =
+      flagString(flags.stack) ??
+      (typeof inline.stack === 'string' ? inline.stack : undefined)
+    const overwrites = flags.overwrite === true || inline.overwrite === true
+    return `Set up and publish ${what}${stack === undefined ? '' : ` for ${stack}`}${overwrites ? ', replacing designs edited in Brew' : ''}: each key sends real email once your code fires it.`
   },
   run: async ({ ctx, flags }) => {
+    const sets = listFlag(flags.sets, '--sets', APP_EMAIL_KIT_SETS)
+    const keys = listFlag(flags.keys, '--keys', APP_EMAIL_KIT_KEYS)
+    const stack = oneOfFlag(flags.stack, '--stack', APP_EMAIL_AUTH_STACKS)
+    if (keys !== undefined && (sets !== undefined || stack !== undefined)) {
+      // The API takes `keys` instead of `sets` and `stack`, silently.
+      throw new CliUsageError(
+        '--keys names exact kit keys: pass it without --sets and --stack.'
+      )
+    }
     const base = await readJsonFlag(ctx, flags.input, '--input')
     const input = mergeInput(base, {
-      sets: list(flags.sets),
-      stack: flagString(flags.stack),
-      keys: list(flags.keys),
+      sets,
+      stack,
+      keys,
       domainId: flagString(flags.domain),
       overwrite: flags.overwrite === true ? true : undefined,
     })
@@ -90,12 +120,9 @@ export const appEmailsKitCommand = defineCommand({
   },
 })
 
-function list(value: unknown): string[] | undefined {
-  const text = flagString(value)
-  if (text === undefined) {
-    return
-  }
-  const items = text
+/** A list flag for the confirmation summary only (validated in `run`). */
+function selection(value: unknown): string[] | undefined {
+  const items = (flagString(value) ?? '')
     .split(',')
     .map((item) => item.trim())
     .filter((item) => item !== '')

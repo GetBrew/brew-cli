@@ -8,6 +8,7 @@ import {
   mergeInput,
   readJsonFlag,
 } from '../../../lib/input'
+import { triggerKeyArg } from '../../../lib/trigger-key'
 
 export const automationsTriggersUpdateCommand = defineCommand({
   path: ['automations', 'triggers', 'update'],
@@ -45,7 +46,8 @@ export const automationsTriggersUpdateCommand = defineCommand({
     const input = mergeInput(base, {
       title: flagString(flags.title),
       description: flagString(flags.description),
-      key: flagString(flags.key),
+      key:
+        flags.key === undefined ? undefined : triggerKeyArg(flags.key, '--key'),
     })
     if (Object.keys(input).length === 0) {
       throw new CliUsageError('Nothing to update — pass flags or --input.')

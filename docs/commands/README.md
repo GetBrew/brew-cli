@@ -107,8 +107,8 @@ a `confirmCommand` otherwise, `--yes` to proceed).
 | `brew-cli send` | destructive | `POST /v1/automations/triggers/by-key/{triggerKey}/fire` | Send the app email behind a trigger key (fires the key: starts LIVE runs) |
 | `brew-cli app-emails list` | read | `GET /v1/app-emails` | List the app emails your code sends by key, with sender and readiness |
 | `brew-cli app-emails get` | read | `GET /v1/app-emails/{triggerKey}` | Fetch one app email by its trigger key (404 TRIGGER_KEY_NOT_FOUND when none is set up) |
-| `brew-cli app-emails upsert` | destructive | `PUT /v1/app-emails/{triggerKey}` | Set up one app email by key in one idempotent call (trigger, contract, design, automation) and publish it |
-| `brew-cli app-emails kit` | destructive | `POST /v1/app-emails/kit` | Set up and publish the auth + lifecycle starter kit (per-key results; exits 1 when a key failed, re-run to finish) |
+| `brew-cli app-emails upsert` | destructive | `PUT /v1/app-emails/{triggerKey}` | Set up one app email by key in one idempotent call (trigger, contract, design, automation) and publish it. Needs the automations and emails scopes |
+| `brew-cli app-emails kit` | destructive | `POST /v1/app-emails/kit` | Set up and publish the auth + lifecycle starter kit (per-key results; exits 1 when a key failed, re-run to finish). Needs the automations and emails scopes |
 | `brew-cli automations runs list` | read | `GET /v1/automations/runs` | List automation runs (live + test history); one run is `automations runs get` |
 | `brew-cli automations runs get` | read | `GET /v1/automations/runs/{automationRunId}` | Fetch one automation run by id — the bare row |
 | `brew-cli automations runs cancel` | destructive | `POST /v1/automations/runs/{automationRunId}/cancel` | Cancel one in-flight automation run (event execution or test run) — nothing further is sent, and it can never be resumed |
@@ -1643,7 +1643,7 @@ brew-cli app-emails get order.paid --json
 
 ### brew-cli app-emails upsert
 
-Set up one app email by key in one idempotent call (trigger, contract, design, automation) and publish it
+Set up one app email by key in one idempotent call (trigger, contract, design, automation) and publish it. Needs the automations and emails scopes
 
 - Route: `PUT /v1/app-emails/{triggerKey}`
 - Class: destructive
@@ -1668,7 +1668,7 @@ brew-cli app-emails upsert lifecycle.welcome --overwrite --yes
 
 ### brew-cli app-emails kit
 
-Set up and publish the auth + lifecycle starter kit (per-key results; exits 1 when a key failed, re-run to finish)
+Set up and publish the auth + lifecycle starter kit (per-key results; exits 1 when a key failed, re-run to finish). Needs the automations and emails scopes
 
 - Route: `POST /v1/app-emails/kit`
 - Class: destructive

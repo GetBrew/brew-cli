@@ -32,7 +32,12 @@ gate in `RELEASING.md`. The API side is GetBrew/brew-v2#2013 (trigger keys),
   the auth and lifecycle starter kit (`--sets`, `--stack`, `--keys`,
   `--domain`, `--overwrite`, `--idempotency-key`), confirms, prints
   per-key results and exits 1 when a key failed (run it again to finish).
-  Both use the SDK's 5-minute defaults as their whole-command deadline.
+  Both use the SDK's 5-minute defaults as their whole-command deadline
+  and need a key with the `automations` and `emails` scopes. A key that
+  breaks the trigger key grammar, an unknown `--format`, `--sets`,
+  `--stack` or kit key, an empty list, or `--keys` with `--sets`/`--stack`
+  exits 2 before any request; a body on stdin (`--input -`) always
+  confirms.
 - `automations triggers create --key <key>` and `automations triggers
   update --key <key>` set the stable key code fires by; `triggers list`
   gains a `KEY` column (`get` returns `key` and `appEmail` in the row).

@@ -1,6 +1,11 @@
 import { extname } from 'node:path'
 import type { UpsertAppEmailInput, UpsertAppEmailResponse } from '@brew.new/sdk'
 import { UPSERT_APP_EMAIL_DEFAULT_TIMEOUT_MS } from '@brew.new/sdk'
+import {
+  APP_EMAIL_SOURCE_FORMATS,
+  inlineInput,
+  oneOfFlag,
+} from '../../lib/app-email-inputs'
 import { defineCommand } from '../../lib/define-command'
 import { CliUsageError } from '../../lib/errors'
 import {
@@ -12,6 +17,7 @@ import {
   readTextFlag,
 } from '../../lib/input'
 import { getInvocationPrefix } from '../../lib/invocation'
+import { triggerKeyArg } from '../../lib/trigger-key'
 
 const FORMAT_BY_EXTENSION: Readonly<Record<string, 'html' | 'jsx' | 'mjml'>> = {
   '.htm': 'html',
@@ -24,7 +30,7 @@ const FORMAT_BY_EXTENSION: Readonly<Record<string, 'html' | 'jsx' | 'mjml'>> = {
 export const appEmailsUpsertCommand = defineCommand({
   path: ['app-emails', 'upsert'],
   summary:
-    'Set up one app email by key in one idempotent call (trigger, contract, design, automation) and publish it',
+    'Set up one app email by key in one idempotent call (trigger, contract, design, automation) and publish it. Needs the automations and emails scopes',
   sdkMethod: 'appEmails.upsert',
   route: { method: 'PUT', path: '/v1/app-emails/{triggerKey}' },
   commandClass: 'destructive',
@@ -77,6 +83,10 @@ export const appEmailsUpsertCommand = defineCommand({
     'brew-cli app-emails upsert lifecycle.welcome --overwrite --yes',
   ],
   confirmSummary: ({ args, flags }) => {
+    if (flags.input === '-') {
+      // stdin may set `overwrite` or `publish`; the gate cannot read it ahead.
+      return `Set up app email ${args.triggerKey ?? ''} from the body on stdin, which may publish it (\`send\` then sends real email) or replace a design edited in Brew.`
+    }
     const inline = inlineInput(flags.input)
     const publishes = flags.publish !== false && inline.publish !== false
     const overwrites = flags.overwrite === true || inline.overwrite === true
@@ -94,13 +104,19 @@ export const appEmailsUpsertCommand = defineCommand({
     return parts.join('')
   },
   run: async ({ ctx, args, flags }) => {
+    const triggerKey = triggerKeyArg(args.triggerKey, 'The app email key')
+    const explicitFormat = oneOfFlag(
+      flags.format,
+      '--format',
+      APP_EMAIL_SOURCE_FORMATS
+    )
     const base = await readJsonFlag(ctx, flags.input, '--input')
     const sourcePath = flagString(flags.sourceFile)
     const content = await readTextFlag(ctx, sourcePath, '--source-file')
     let source: { format: string; content: string } | undefined
     if (content !== undefined) {
       const format =
-        flagString(flags.format) ??
+        explicitFormat ??
         (sourcePath === undefined || sourcePath === '-'
           ? undefined
           : FORMAT_BY_EXTENSION[extname(sourcePath).toLowerCase()])
@@ -110,7 +126,7 @@ export const appEmailsUpsertCommand = defineCommand({
         )
       }
       source = { format, content }
-    } else if (flagString(flags.format) !== undefined) {
+    } else if (explicitFormat !== undefined) {
       throw new CliUsageError('--format applies to --source-file only.')
     }
     const input = mergeInput(base, {
@@ -131,7 +147,7 @@ export const appEmailsUpsertCommand = defineCommand({
     const result = await ctx.client().appEmails.upsert(
       asSdkInput<UpsertAppEmailInput>({
         ...input,
-        triggerKey: args.triggerKey ?? '',
+        triggerKey,
       })
     )
     return {
@@ -140,21 +156,6 @@ export const appEmailsUpsertCommand = defineCommand({
     }
   },
 })
-
-/** `--input` given inline (not stdin), for the confirmation summary only. */
-function inlineInput(value: unknown): Record<string, unknown> {
-  if (typeof value !== 'string' || value === '-') {
-    return {}
-  }
-  try {
-    const parsed = JSON.parse(value) as unknown
-    return parsed !== null && typeof parsed === 'object'
-      ? (parsed as Record<string, unknown>)
-      : {}
-  } catch {
-    return {}
-  }
-}
 
 export function renderSetup(
   result: Pick<

@@ -1,4 +1,5 @@
 import { defineCommand } from '../../lib/define-command'
+import { triggerKeyArg } from '../../lib/trigger-key'
 import { renderAppEmails } from './list'
 
 export const appEmailsGetCommand = defineCommand({
@@ -20,7 +21,9 @@ export const appEmailsGetCommand = defineCommand({
     'brew-cli app-emails get order.paid --json',
   ],
   run: async ({ ctx, args }) => {
-    const row = await ctx.client().appEmails.get(args.triggerKey ?? '')
+    const row = await ctx
+      .client()
+      .appEmails.get(triggerKeyArg(args.triggerKey, 'The app email key'))
     return { data: row, human: renderAppEmails([row]) }
   },
 })
