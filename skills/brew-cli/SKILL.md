@@ -82,8 +82,10 @@ Before a sending domain verifies, app emails use the team-only sandbox:
 they reach members of the Brew organization only, under a daily cap
 (`sender.mode: "sandbox"`). `send` is destructive (real email): it exits 4
 without `--yes`. `upsert` and `kit` publish, so they confirm too;
-`upsert --no-publish` saves without the gate. `409 APP_EMAIL_EDITED_IN_BREW`
-means a teammate edited the design in Brew: keep it, or pass `--overwrite`.
+`upsert --no-publish` saves without the gate. `upsert` and `kit` need a key
+with the `automations` and `emails` scopes (403 otherwise).
+`409 APP_EMAIL_EDITED_IN_BREW` means a teammate edited the design in Brew:
+keep it, or pass `--overwrite`.
 `automations triggers create --key <key>` gives any trigger a key.
 
 ## The contract you can rely on

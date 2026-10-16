@@ -10,6 +10,7 @@ import {
   readJsonFlag,
   requestOptions,
 } from '../../../lib/input'
+import { triggerKeyArg } from '../../../lib/trigger-key'
 
 export const automationsTriggersCreateCommand = defineCommand({
   path: ['automations', 'triggers', 'create'],
@@ -37,7 +38,8 @@ export const automationsTriggersCreateCommand = defineCommand({
     const input = mergeInput(base, {
       title: flagString(flags.title),
       description: flagString(flags.description),
-      key: flagString(flags.key),
+      key:
+        flags.key === undefined ? undefined : triggerKeyArg(flags.key, '--key'),
     })
     if (typeof input.title !== 'string' || input.title === '') {
       throw new CliUsageError('A title is required (--title or --input).')
