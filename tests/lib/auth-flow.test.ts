@@ -138,9 +138,18 @@ describe('seal', () => {
     expect(parseSealedPayload('not json')).toBeUndefined()
     expect(parseSealedPayload('{"v":2,"keys":[]}')).toBeUndefined()
     expect(
-      parseSealedPayload(
-        '{"v":1,"keys":[{"kind":"root","keyId":"k","key":"x"}]}'
-      )
+      parseSealedPayload('{"v":1,"keys":[{"kind":"cli","keyId":"k"}]}')
     ).toBeUndefined()
+  })
+
+  it('skips a key kind it does not know instead of failing the sign-in', () => {
+    expect(
+      parseSealedPayload(
+        '{"v":1,"keys":[{"kind":"root","keyId":"r","key":"x"},{"kind":"cli","keyId":"k","key":"brew_secret"}]}'
+      )
+    ).toEqual({
+      v: 1,
+      keys: [{ kind: 'cli', keyId: 'k', key: 'brew_secret' }],
+    })
   })
 })
