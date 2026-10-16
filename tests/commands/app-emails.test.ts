@@ -627,3 +627,115 @@ describe('automations triggers --key', () => {
     expect(result.stdout).toContain('order.paid')
   })
 })
+
+describe('local input checks (exit 2 before any request)', () => {
+  it.each([
+    [['send', 'Order Paid', '--to', 'jane@example.com', '--yes']],
+    [['send', '.', '--to', 'jane@example.com', '--yes']],
+    [['app-emails', 'get', 'auth/password-reset']],
+    [['app-emails', 'upsert', 'Order.Paid', '--yes']],
+    [['app-emails', 'upsert', 'order.paid', '--format', 'pdf', '--yes']],
+    [['app-emails', 'kit', '--keys', '', '--yes']],
+    [['app-emails', 'kit', '--sets', ',', '--yes']],
+    [['app-emails', 'kit', '--sets', 'billing', '--yes']],
+    [['app-emails', 'kit', '--stack', 'auth0', '--yes']],
+    [['app-emails', 'kit', '--keys', 'order.paid', '--yes']],
+    [['app-emails', 'kit', '--keys', 'auth.otp', '--sets', 'auth', '--yes']],
+    [
+      [
+        'automations',
+        'triggers',
+        'create',
+        '--title',
+        'Paid',
+        '--key',
+        'Order',
+      ],
+    ],
+  ])('%j', async (argv) => {
+    // MSW fails any request: nothing reaches the API.
+    const result = await cli(argv)
+    expect(result.code).toBe(2)
+  })
+
+  it('upsert with the body on stdin always confirms (it may overwrite)', async () => {
+    const result = await cli(
+      ['app-emails', 'upsert', 'order.paid', '--no-publish', '--input', '-'],
+      { stdin: '{"overwrite":true,"starter":"lifecycle.welcome"}' }
+    )
+    expect(result.code).toBe(4)
+    expect((result.json as { summary: string }).summary).toContain('stdin')
+  })
+
+  it('kit summary names keys passed inline through --input', async () => {
+    const result = await cli([
+      'app-emails',
+      'kit',
+      '--input',
+      '{"keys":["auth.otp"],"overwrite":true}',
+    ])
+    expect(result.code).toBe(4)
+    expect((result.json as { summary: string }).summary).toContain(
+      'Set up and publish auth.otp, replacing designs edited in Brew'
+    )
+  })
+
+  it('the local vocabularies match the vendored spec', async () => {
+    const { parse } = await import('yaml')
+    const spec = parse(
+      readFileSync(
+        join(import.meta.dirname, '../../openapi/public-api-v1.yaml'),
+        'utf8'
+      )
+    ) as {
+      paths: Record<string, Record<string, Record<string, unknown>>>
+      components: { schemas: Record<string, Record<string, unknown>> }
+    }
+    const resolve = (schema: Record<string, unknown>) =>
+      typeof schema.$ref === 'string'
+        ? (spec.components.schemas[schema.$ref.split('/').pop() ?? ''] ?? {})
+        : schema
+    type Body = {
+      properties: Record<
+        string,
+        {
+          enum?: string[]
+          items?: { enum?: string[] }
+          properties?: Record<string, { enum?: string[] }>
+        }
+      >
+    }
+    const body = (path: string, method: string): Body => {
+      const operation = spec.paths[path]?.[method] as
+        | {
+            requestBody: {
+              content: {
+                'application/json': { schema: Record<string, unknown> }
+              }
+            }
+          }
+        | undefined
+      if (operation === undefined) {
+        throw new Error(`${method} ${path} is not in the vendored spec`)
+      }
+      return resolve(
+        operation.requestBody.content['application/json'].schema
+      ) as Body
+    }
+    const kit = body('/v1/app-emails/kit', 'post')
+    const upsert = body('/v1/app-emails/{triggerKey}', 'put')
+    const inputs = await import('../../src/lib/app-email-inputs')
+    expect(kit.properties.sets?.items?.enum).toEqual([
+      ...inputs.APP_EMAIL_KIT_SETS,
+    ])
+    expect(kit.properties.stack?.enum).toEqual([
+      ...inputs.APP_EMAIL_AUTH_STACKS,
+    ])
+    expect(kit.properties.keys?.items?.enum).toEqual([
+      ...inputs.APP_EMAIL_KIT_KEYS,
+    ])
+    expect(upsert.properties.source?.properties?.format?.enum).toEqual([
+      ...inputs.APP_EMAIL_SOURCE_FORMATS,
+    ])
+  })
+})
