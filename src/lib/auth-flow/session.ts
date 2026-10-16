@@ -163,7 +163,10 @@ export async function createSession(
   // 403 or an HTML page): browser sign-in is not deployed there.
   if (
     [401, 403, 404, 405].includes(response.status) ||
-    (code === undefined && response.status < 500)
+    (code === undefined &&
+      response.status < 500 &&
+      response.status !== 408 &&
+      response.status !== 429)
   ) {
     const prefix = getInvocationPrefix(ctx.io.env)
     throw new CliAuthError(
@@ -280,7 +283,12 @@ function displayValue(
   if (value === undefined) {
     return
   }
-  const cleaned = printable(value).trim().slice(0, limit).trim()
+  // By code point: slicing UTF-16 could leave half an emoji, which the
+  // server's printable check refuses.
+  const cleaned = Array.from(printable(value).trim())
+    .slice(0, limit)
+    .join('')
+    .trim()
   return cleaned === '' ? undefined : cleaned
 }
 

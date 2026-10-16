@@ -184,6 +184,12 @@ export function parseSealedPayload(text: string): SealedPayload | undefined {
   }
   const keys: Array<SealedPayload['keys'][number]> = []
   for (const entry of parsed.keys) {
+    // A kind this CLI does not know (a newer server) is skipped, not fatal:
+    // the session is already consumed, so failing here would strand the
+    // keys this CLI does know.
+    if (isRecord(entry) && entry.kind !== 'cli' && entry.kind !== 'app') {
+      continue
+    }
     if (
       !isRecord(entry) ||
       (entry.kind !== 'cli' && entry.kind !== 'app') ||
