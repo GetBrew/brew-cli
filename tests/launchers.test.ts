@@ -77,12 +77,12 @@ describe('BREW_CLI_INVOKED_AS from a launcher', () => {
         BREW_CLI_INVOKED_AS: invokedAs('brew.new', '0.18.0'),
       })
     ).toBe('npx -y brew.new@0.18.0')
-    expect(invokedAs('create-brew', '0.18.0')).toBe('npm create brew@latest --')
+    expect(invokedAs('create-brew', '0.18.0')).toBe('npm create brew@0.18.0 --')
     expect(
       getInvocationPrefix({
         BREW_CLI_INVOKED_AS: invokedAs('create-brew', '0.18.0'),
       })
-    ).toBe('npm create brew@latest --')
+    ).toBe('npm create brew@0.18.0 --')
   })
 
   it('a printed command re-enters through the launcher without a second init', async () => {
@@ -100,7 +100,7 @@ describe('BREW_CLI_INVOKED_AS from a launcher', () => {
     )
     expect(result.code).toBe(4)
     const { confirmCommand } = result.json as { confirmCommand: string }
-    expect(confirmCommand).toBe('npm create brew@latest -- init --json --yes')
+    expect(confirmCommand).toBe('npm create brew@0.18.0 -- init --json --yes')
     // What npm hands the launcher for that command: init stays single.
     const rerun = confirmCommand.split(' ').slice(4)
     expect(launcherArgv(rerun, { alwaysInit: true })).toEqual([

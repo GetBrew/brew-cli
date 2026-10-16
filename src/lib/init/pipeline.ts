@@ -105,7 +105,10 @@ export type InitOptions = {
   readonly agentFiles: boolean
   readonly testEmail: boolean
   readonly testTo: string | undefined
-  readonly applyPatches: boolean
+  /** Patch id → hash prefix of the file it was reviewed against. */
+  readonly applyPatches: ReadonlyMap<string, string>
+  /** Shown on the approval page so the person picks the right brand. */
+  readonly appUrl?: string | undefined
   readonly noWait: boolean
   readonly resume: boolean
   readonly openBrowser: boolean
@@ -151,13 +154,26 @@ function describeError(error: unknown): string {
 }
 
 /** The command an agent re-runs to continue: same flags, `--yes`. */
+/** Flags of `init` whose value is the next token (`--apply-patches a@b`). */
+const VALUE_FLAGS: ReadonlySet<string> = new Set(['--apply-patches'])
+
 function rerunCommand(
   ctx: CliContext,
   options: { readonly drop: readonly string[]; readonly add: readonly string[] }
 ): string {
-  const argv = ctx.rawArgv.filter(
-    (token) => !options.drop.includes(token) && token !== '--yes'
-  )
+  const argv: string[] = []
+  for (let index = 0; index < ctx.rawArgv.length; index++) {
+    const token = ctx.rawArgv[index] ?? ''
+    const name = token.split('=')[0] ?? token
+    if (token === '--yes' || options.drop.includes(name)) {
+      // A dropped flag that takes a value drops its value too.
+      if (VALUE_FLAGS.has(token)) {
+        index++
+      }
+      continue
+    }
+    argv.push(token)
+  }
   return buildConfirmCommand(
     [...argv, ...options.add],
     getInvocationPrefix(ctx.io.env)
@@ -242,7 +258,7 @@ export async function runInit(
       id: 'env',
       status: 'failed',
       detail:
-        '.env.local is not git-ignored (a later rule re-includes it); no key was written',
+        '.env.local is not git-ignored (a later rule re-includes it, or git already tracks it: `git rm --cached .env.local`); no key was written',
     })
     nextSteps.push({
       id: 'gitignore-env-local',
@@ -351,7 +367,10 @@ export async function runInit(
       ? await resumeBrowserLogin(ctx, { waitMs, ...loginCommands })
       : await startBrowserLogin(ctx, {
           keys,
-          client: { project: project.name.slice(0, 100) },
+          client: {
+            project: project.name.slice(0, 100),
+            ...(options.appUrl === undefined ? {} : { appUrl: options.appUrl }),
+          },
           openBrowser: options.openBrowser,
           waitMs,
           ...loginCommands,
@@ -417,9 +436,10 @@ export async function runInit(
         brandName: approved.brand.name,
       })
     }
-    if (explicitKey === undefined) {
-      credential = authFor(minted.key, 'browser', approved.brand.brandId)
-    }
+    // The kit, contracts and test email must land in the brand the new app
+    // key is bound to, so the rest of the run acts as that key, even when
+    // an explicit key (maybe another brand's) started it.
+    credential = authFor(minted.key, 'browser', approved.brand.brandId)
     steps.push({
       id: 'sign-in',
       status: 'done',
@@ -823,9 +843,17 @@ export async function runInit(
   if (project.auth === 'supabase' && project.hasSupabaseDir) {
     computedPatches.push(supabaseConfigPatch(project))
   }
-  const patches: InitPatch[] = computedPatches.map((computed) =>
-    options.applyPatches ? applyPatch(writer, computed) : computed.patch
-  )
+  const patches: InitPatch[] = computedPatches.map((computed) => {
+    const pin = options.applyPatches.get(computed.patch.id)
+    if (pin === undefined || computed.patch.status !== 'pending') {
+      return computed.patch
+    }
+    // Applied only when the file still hashes to what was reviewed: a file
+    // edited since the report would get a diff nobody saw.
+    return computed.patch.baseSha256?.startsWith(pin) === true
+      ? applyPatch(writer, computed)
+      : { ...computed.patch, status: 'stale' }
+  })
   for (const patch of patches) {
     if (patch.status === 'pending' || patch.status === 'stale') {
       nextSteps.push({
@@ -837,7 +865,10 @@ export async function runInit(
         title: `${patch.title} (review the diff, then apply)`,
         command: rerunCommand(ctx, {
           drop: ['--resume', '--no-wait', '--dry-run', '--apply-patches'],
-          add: ['--apply-patches'],
+          add: [
+            '--apply-patches',
+            `${patch.id}@${(patch.baseSha256 ?? '').slice(0, 12)}`,
+          ],
         }),
         blocking: true,
       })
@@ -1247,6 +1278,22 @@ function projectNextSteps(input: {
       blocking: true,
     })
   }
+  if (
+    input.paths.client !== null &&
+    project.runtime === 'node' &&
+    (project.framework === 'express' ||
+      project.framework === 'hono' ||
+      project.framework === 'node')
+  ) {
+    nextSteps.push({
+      id: 'load-env-local',
+      actor: 'agent',
+      kind: 'review',
+      title:
+        'This server does not read .env.local by itself: start it with `node --env-file=.env.local …` (Node 20.6+) or load the file with dotenv before getBrew() runs',
+      blocking: true,
+    })
+  }
   if (input.paths.client !== null && project.runtime === 'node') {
     nextSteps.push({
       id: 'production-env',
@@ -1288,12 +1335,17 @@ async function sendTestEmail(input: {
     return { status: 'skipped', key: null, to: null, reason: '--no-test-email' }
   }
   if (options.dryRun || client === undefined) {
+    // The key the real run picks: the welcome email, else the verify email.
+    const sets = options.sets ?? ['auth', 'lifecycle']
+    const planned = sets.includes('lifecycle')
+      ? 'lifecycle.welcome'
+      : 'auth.verify-email'
     steps.push({
       id: 'test-email',
       status: 'planned',
-      detail: `lifecycle.welcome to ${to ?? 'the person who signs in'}`,
+      detail: `${planned} to ${to ?? 'the person who signs in'}`,
     })
-    return { status: 'planned', key: 'lifecycle.welcome', to }
+    return { status: 'planned', key: planned, to }
   }
   if (key === null) {
     steps.push({
@@ -1357,10 +1409,20 @@ async function sendTestEmail(input: {
     }
   } catch (error) {
     rethrowIfFatal(ctx, error)
+    // The setup itself is done; a test email that did not go out (say
+    // 429 SANDBOX_DAILY_LIMIT) is a retry for later, not a failed init.
     steps.push({
       id: 'test-email',
-      status: 'failed',
-      detail: describeError(error),
+      status: 'skipped',
+      detail: `not sent: ${describeError(error)}`,
+    })
+    input.nextSteps.push({
+      id: 'send-test-email',
+      actor: 'agent',
+      kind: 'run-command',
+      command: `${input.prefix} send ${key} --to ${to} --yes`,
+      title: 'Send the test email again later',
+      blocking: false,
     })
     return { status: 'failed', key, to, reason: describeError(error) }
   }

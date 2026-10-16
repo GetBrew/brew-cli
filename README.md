@@ -47,8 +47,11 @@ brew-cli emails send --help
 ## Set up Brew in your app: `init`
 
 ```bash
-npx brew.new init            # or: npm create brew@latest, or brew-cli init
+npx @brew.new/cli init       # or, installed: brew-cli init
 ```
+
+Short launchers (`npx brew.new init`, `npm create brew`) live in
+`packages/launchers/` and are not on npm yet.
 
 `init` reads the project (framework, auth library, package manager,
 monorepo, editors), signs you in through the browser, and then:
@@ -63,8 +66,11 @@ monorepo, editors), signs you in through the browser, and then:
    Auth, `.env.example` and `brew.json`;
 4. puts the app key in `.env.local` (mode 0600, git-ignored, never under a
    `NEXT_PUBLIC_`/`VITE_`/`PUBLIC_` name);
-5. prints patches for your auth config (applied with `--apply-patches`,
-   only to files unchanged since the patch was computed);
+5. prints patches for your auth config; after review, the report's
+   `--apply-patches <id>@<hash>` command applies each one only while its
+   file still matches the hash it was reviewed against (an Auth.js config
+   without a database adapter gets a manual step instead, since Auth.js
+   email sign-in needs one);
 6. adds the Brew MCP server for the editors the project uses, an
    `AGENTS.md` block, and (in Claude Code projects) the agent skills;
 7. sends you a test email from the team sandbox.
@@ -80,8 +86,8 @@ Agents run it in two steps and read one JSON report
 `nextSteps[]` with `actor: agent | human`, `agentInstructions`):
 
 ```bash
-npx brew.new init --dry-run --json   # the plan; no writes, no sign-in, no mutating requests
-npx brew.new init --yes --json       # exit 3: show the person nextSteps' link + code, then run its resume command
+npx @brew.new/cli init --dry-run --json   # the plan; no writes, no sign-in, no mutating requests
+npx @brew.new/cli init --yes --json       # exit 3: show the person nextSteps' link + code, then run its resume command
 ```
 
 Exit codes: 0 `complete` or `action_required` (blocking `nextSteps` left),
