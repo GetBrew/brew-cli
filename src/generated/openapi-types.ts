@@ -113,7 +113,9 @@ export interface paths {
          *
          *     **Input** `content` (the raw source as a string) and `format`: `html` (a document or fragment), `mjml`, `jsx` (a module with a default-exported component or a bare `<Html>` element; static values, `PreviewProps` and local sub-components fold, anything executable is rejected with the offending line) or `eml` (the HTML body is imported, inline `cid:` images are rehosted, other attachments are dropped, and the Subject becomes the title). HTML, MJML and EML land as source-preserved designs with an editable projection; JSX lands as a native React Email design. Optional `baseUrl` resolves relative image paths; optional `title` and `subjectLine` (the design-default inbox subject; an EML Subject is the default); optional `groupId` (`grp_…` or `ungrouped`) or `groupName` (resolve or create), not both; omit to land Ungrouped. Limits: 5,000,000 UTF-8 bytes, 256 remote resources, 8 concurrent fetches, 10 MB per resource and 50 MB aggregate downloads.
          *
-         *     **Returns** `201 { emailId, emailVersionId, html, previewImage?, assetReport, group, subjectLine? }`.
+         *     **Migrating from Resend** `props: "merge_tags"` (`jsx` only) keeps the root component's props as `{{ trigger.<name> }}` merge tags filled from the trigger payload: member reads extend the path (`props.user.name` is `trigger.user.name`), default values and `??` / `||` literals become fallbacks, template literals and `href` / `src` / `alt` / `title` carry tags, and `{prop && <X />}` becomes a `{% if %}` block. A prop used where a tag cannot go (arithmetic, a style, a `.map`) takes its `PreviewProps` or default value with a `dynamic_prop_folded` or `dynamic_control_flow_unsupported` warning; one with neither is refused. `placeholders: "resend"` rewrites Resend `{{{NAME}}}` / `{{{NAME|fallback}}}` to `{{ trigger.NAME }}` in the body and `subjectLine` (`FIRST_NAME`, `LAST_NAME`, `EMAIL` read the contact; `href="{{{RESEND_UNSUBSCRIBE_URL}}}"` becomes Brew's unsubscribe link). Resend printed those values raw and Brew escapes them (`escaping_changed`): end a tag with `| raw` only for HTML you trust. Optional `variables: [{ key, fallbackValue? }]` supplies fallbacks the source lacks (a Resend template's `variables`) and needs one of the two modes.
+         *
+         *     **Returns** `201 { emailId, emailVersionId, html, previewImage?, assetReport, variables, group, subjectLine? }`. `variables` lists every merge path the design and subject read, `{ path, fallback? }`, ready to declare as the trigger payload.
          *
          *     **Errors** `422 EMAIL_IMPORT_FAILED` when the markup cannot become an editable design (a lossy round trip persists nothing); `404 EMAIL_GROUP_NOT_FOUND` for an unknown `groupId`; `413 PAYLOAD_TOO_LARGE` over the byte cap; `422 BRAND_NOT_READY` while the brand is still extracting.
          *
@@ -4626,12 +4628,17 @@ export interface components {
                 dropped?: number;
                 warnings: {
                     /** @enum {string} */
-                    code: "fetch_failed_retained" | "non_image_resource_retained" | "social_icon_substituted" | "tracking_pixel_dropped" | "unsafe_url_stripped" | "unsupported_resource_retained" | "upload_failed_retained" | "inline_asset_retained" | "attachment_dropped" | "embedded_reference_unresolved" | "tailwind_config_unresolved" | "tailwind_class_dropped" | "foreign_component_dropped";
+                    code: "fetch_failed_retained" | "non_image_resource_retained" | "social_icon_substituted" | "tracking_pixel_dropped" | "unsafe_url_stripped" | "unsupported_resource_retained" | "upload_failed_retained" | "inline_asset_retained" | "attachment_dropped" | "embedded_reference_unresolved" | "tailwind_config_unresolved" | "tailwind_class_dropped" | "foreign_component_dropped" | "dynamic_prop_folded" | "dynamic_control_flow_unsupported" | "escaping_changed" | "placeholder_unmapped";
                     /** @enum {string} */
                     location: "background" | "css-url" | "data-src" | "data-srcset" | "module" | "preload" | "src" | "srcset" | "stylesheet" | "vml-src";
                     host?: string;
                 }[];
             };
+            /** @description Merge variables the design and subject line read (`trigger.*` from the trigger payload, `contact.*` from the recipient), with their fallbacks. */
+            variables?: {
+                path: string;
+                fallback?: string;
+            }[];
         };
         EmailImportRequest: {
             /**
@@ -4645,6 +4652,21 @@ export interface components {
             subjectLine?: string;
             /** Format: uri */
             baseUrl?: string;
+            /**
+             * @description `jsx` only. How the root component's props land: `fold` (default) folds each to its `PreviewProps` value or default; `merge_tags` keeps them as `{{ trigger.<name> }}` merge tags filled from the trigger payload, with defaults and `??` literals as fallbacks.
+             * @enum {string}
+             */
+            props?: "fold" | "merge_tags";
+            /**
+             * @description `resend` rewrites Resend template placeholders (`{{{NAME}}}`, `{{{NAME|fallback}}}`) to Brew merge tags (`{{ trigger.NAME }}`; `FIRST_NAME`, `LAST_NAME` and `EMAIL` read the contact).
+             * @enum {string}
+             */
+            placeholders?: "resend";
+            /** @description Fallback text for variables the source gives none, e.g. a Resend template's `variables`. Needs `placeholders` or `props: "merge_tags"`. */
+            variables?: {
+                key: string;
+                fallbackValue?: string;
+            }[];
             /** @description File the design under an existing group (`grp_…`), or `ungrouped`. Mutually exclusive with `groupName`. */
             groupId?: string;
             /** @description File the design under a group resolved (or created) by this name. Mutually exclusive with `groupId`. */
@@ -7387,6 +7409,21 @@ export interface components {
                 format: "html" | "mjml" | "jsx";
                 /** @description The email source. `{{ trigger.<field> }}` merge tags read the payload. */
                 content: string;
+                /**
+                 * @description `jsx` only. How the root component's props land: `fold` (default) folds each to its `PreviewProps` value or default; `merge_tags` keeps them as `{{ trigger.<name> }}` merge tags filled from the trigger payload, with defaults and `??` literals as fallbacks.
+                 * @enum {string}
+                 */
+                props?: "fold" | "merge_tags";
+                /**
+                 * @description `resend` rewrites Resend template placeholders (`{{{NAME}}}`, `{{{NAME|fallback}}}`) to Brew merge tags (`{{ trigger.NAME }}`; `FIRST_NAME`, `LAST_NAME` and `EMAIL` read the contact).
+                 * @enum {string}
+                 */
+                placeholders?: "resend";
+                /** @description Fallback text for variables the source gives none, e.g. a Resend template's `variables`. Needs `placeholders` or `props: "merge_tags"`. */
+                variables?: {
+                    key: string;
+                    fallbackValue?: string;
+                }[];
             };
             title?: string;
             subject?: string;
@@ -10396,6 +10433,15 @@ export interface operations {
                      *         "stripped": 0,
                      *         "warnings": []
                      *       },
+                     *       "variables": [
+                     *         {
+                     *           "path": "trigger.name",
+                     *           "fallback": "there"
+                     *         },
+                     *         {
+                     *           "path": "trigger.inviteLink"
+                     *         }
+                     *       ],
                      *       "group": null
                      *     }
                      */

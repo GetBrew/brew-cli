@@ -88,6 +88,15 @@ with the `automations` and `emails` scopes (403 otherwise).
 keep it, or pass `--overwrite`.
 `automations triggers create --key <key>` gives any trigger a key.
 
+## Moving from Resend
+
+`brew-cli migrate resend` plans by default (writes `brew.migration.json`,
+changes nothing); `--apply --yes` copies templates, React Email files,
+contacts, segments, topics, suppressions and draft broadcasts, and
+resumes when re-run. Pass the Resend key on stdin with
+`--resend-key-stdin`; it never goes to Brew. The
+`brew-migrate-from-resend` skill has the full mapping.
+
 ## The contract you can rely on
 
 - Exit codes: 0 ok · 1 API error · 2 usage · 3 auth · 4 confirmation

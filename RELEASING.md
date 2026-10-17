@@ -38,6 +38,13 @@ fail in CI on these commands. Publish the SDK first, then
 registry; never hand-write a lockfile entry), run a frozen install, the full
 checks and `docs:commands:check`, and release the CLI.
 
+The API side must be live first: GetBrew/brew-v2#2066 (`/v1/app-emails`),
+#2064 (the import modes on `POST /v1/emails/import`, which `migrate resend`
+sends) and #2145 (the same modes on an app email's `source`, which
+`app-emails upsert --input` passes through) deployed, and the live spec
+matching `openapi/public-api-v1.yaml` (#2145's `b2912ad9f7`: #2066
+`0fed90fbf3` merged with #2064 `9f97aea3f8`, plus #2145's own delta).
+
 ```bash
 # on a clean main with CI green
 npm version <patch|minor|major> --no-git-tag-version
