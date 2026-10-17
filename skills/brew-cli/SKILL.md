@@ -19,6 +19,12 @@ Exit 0 = API reachable, auth valid, and this CLI covers every live
 operation. Exit 1 = read the report: `DRIFT` lines list live operations
 this build lacks (update the CLI); auth/reachability failures name the fix.
 
+In an app that `init` set up, `brew-cli doctor --project --json` checks the
+app against its `brew.json` (managed files, `BREW_API_KEY` set, git-ignored
+and never `NEXT_PUBLIC_`/`VITE_`/`PUBLIC_`, the SDK version, every key set
+up and published, the sending domain, the hosted auth hook). Any `fail`
+check exits 1; each carries a `fix`.
+
 ## Auth and targeting
 
 - `BREW_API_KEY` env var (or `brew-cli login` once, or `--api-key`).
@@ -98,6 +104,25 @@ or retypes a field the live automation reads. A `DRAFT_SAVED_NOT_LIVE`
 warning means the published version keeps sending until the draft is
 published.
 `automations triggers create --key <key>` gives any trigger a key.
+
+## Auth emails from Supabase or Clerk (hosted hooks)
+
+```bash
+brew-cli integrations connect supabase_auth --signing-secret-env SEND_EMAIL_HOOK_SECRET --project-url https://<ref>.supabase.co --yes
+printenv CLERK_WEBHOOK_SIGNING_SECRET | brew-cli integrations connect clerk --signing-secret-stdin --yes
+brew-cli integrations connection clerk   # pending_verification until the first signed delivery, then active
+```
+
+The signing secret comes from an environment variable or stdin, never a
+flag value; never print it. Paste the returned `webhookUrl` into the
+provider (Supabase's Send Email hook, the Clerk endpoint). `init` can do
+the provider side, only when asked: `--configure-supabase` (with
+`SUPABASE_ACCESS_TOKEN` on this machine) points the Send Email hook at
+Brew; `--configure-clerk` turns off Clerk's delivery for the templates
+Brew sends, only once the Clerk connection is `active`. Both save the old
+settings in `brew.json`; `init --rollback-provider --yes` restores them.
+Run them with `--dry-run --json` first and show the person the requests.
+A bare `--yes` never changes a provider.
 
 ## Moving from Resend
 

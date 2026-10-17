@@ -1,5 +1,76 @@
 # Changelog
 
+## 0.22.0
+
+Not released yet. Needs `@brew.new/sdk` 13.3.0: `integrations.connect` and
+`integrations.getConnection` (GetBrew/typescript-sdk#74, on top of the
+13.2.0 that 0.18.0 needs; see the SDK gates in `RELEASING.md`), and the API
+from GetBrew/brew-v2#2146 (`GET|PUT /v1/integrations/{provider}/connection`,
+the `supabase_auth` hosted Send Email Hook) and #2068 (Clerk `email.created`
+sends the app's auth emails). The bundled spec is 0.19.0's plus exactly
+those two PRs' spec deltas.
+
+### Added
+
+- **`brew-cli integrations connect <provider>`** connects a hosted auth
+  email hook, `supabase_auth` or `clerk` (`PUT
+  /v1/integrations/{provider}/connection`, destructive class: a new secret
+  replaces the old one), and sets up its auth app emails. The signing
+  secret comes from `--signing-secret-env <VAR>` or
+  `--signing-secret-stdin`, never a flag value; a value shaped wrong (or
+  pasted where the variable name goes) is a usage error that never echoes
+  it. `--project-url` sets Supabase's confirmation link base. Prints
+  `{ connectionId, webhookUrl, status, authEmails }`. 5-minute default
+  deadline, as the SDK's.
+- **`brew-cli integrations connection <provider>`** reads it:
+  `pending_verification` until the first signed delivery, then `active`
+  (404 `NOT_FOUND` when not connected).
+- **`init --configure-supabase`** (with `SUPABASE_ACCESS_TOKEN` on this
+  machine, sent to api.supabase.com only) connects Brew as the Send Email
+  Hook with a freshly generated `v1,whsec_` secret, then points the
+  project's hook at it through the Supabase Management API (`PATCH
+  /v1/projects/{ref}/config/auth`: `hook_send_email_enabled`,
+  `hook_send_email_uri`, `hook_send_email_secrets`). The previous hook
+  settings are saved to `brew.json#providerConfig` before the change (a
+  previous secret goes to `.env.local` as
+  `BREW_SUPABASE_PREVIOUS_HOOK_SECRETS`, never `brew.json`); a re-run that
+  finds the hook already on Brew changes nothing. `--dry-run --json`
+  lists the exact requests with the secret replaced. The project ref comes
+  from `--supabase-project <ref>`, `supabase link`, a `*SUPABASE_URL`, or
+  Lovable's files.
+- **`init --configure-clerk`** turns off "Delivered by Clerk" (Clerk
+  Backend API `POST /templates/email/{slug}/toggle_delivery`, with
+  `CLERK_SECRET_KEY` from the shell or `.env.local`) for exactly the
+  templates whose kit key has a published app email in the brand, and
+  only once Brew's Clerk connection is `active`; otherwise it refuses and
+  says what is missing. The templates it turned off are saved in
+  `brew.json`.
+- **`init --rollback-provider`** puts back the Supabase hook settings or
+  Clerk delivery saved in `brew.json`, and nothing else.
+- Without those flags, init prints the manual steps for Supabase (the
+  hosted hook first; the self-hosted Edge Function it writes is now the
+  non-blocking alternative) and Clerk. A bare `--yes` never changes a
+  provider.
+- **`init --app-url`** with an organization key picks the brand whose
+  website is the app (a subdomain counts), or creates one (`POST
+  /v1/brands`) and waits for it to be ready (`--no-wait`: the kit waits for
+  a re-run). A 403 (`ORG_SCOPE_REQUIRED`, no `brands` scope) becomes a next
+  step; a key bound to one brand is never moved, a mismatch is reported.
+- **`init --domain`** also returns the domain's page in Brew
+  (`domain.connectUrl`, a `connect-dns-automatically` next step), where
+  Connect automatically (Entri) adds the records: it runs in the app, not
+  the API.
+- **`brew-cli doctor --project`** checks an app against its `brew.json`:
+  managed file hashes, `BREW_API_KEY` set, git-ignored and never under a
+  browser-exposed name, the SDK declared and installed at `^13.2.0`, and,
+  with the app key, the brand (the key's brand is `brew.json`'s), every key
+  set up and published, a verified sending domain, and the hosted hook's
+  status. `--json`; any failed check exits 1, no `brew.json` exits 2.
+- The init report (schema version 1, additive) gains `providers[]`, the
+  `provider` step, `brand.domain` / `matchesAppUrl` / `created` and
+  `domain.connectUrl`.
+- The bundled spec carries GetBrew/brew-v2#2146 and #2068.
+
 ## 0.21.0
 
 Needs the same SDK release as 0.19.0, and the API from GetBrew/brew-v2#2169
