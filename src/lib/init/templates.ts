@@ -273,9 +273,9 @@ const AUTH_NOTES: Readonly<
   Record<Exclude<AuthId, 'better-auth' | 'authjs'>, string>
 > = {
   supabase:
-    'Supabase Auth emails go through the Send Email Hook in supabase/functions/send-email.',
+    "Supabase Auth emails go through Brew's hosted Send Email Hook once connected (`integrations connect supabase_auth`, or `init --configure-supabase`); supabase/functions/send-email is the self-hosted alternative.",
   clerk:
-    'Clerk keeps sending its own sign-in and verification emails; connect Clerk in Brew (Integrations) to start lifecycle automations from Clerk events, or send them from your code.',
+    "Clerk sends its own auth emails until its email.created webhook is connected to Brew (`integrations connect clerk`) and `init --configure-clerk` turns off Clerk's delivery for the templates Brew sends; lifecycle emails go out from your code.",
   firebase:
     'Firebase Auth keeps sending its own auth emails; Brew sends your lifecycle emails from your code.',
   workos:

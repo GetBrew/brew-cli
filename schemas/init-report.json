@@ -140,7 +140,10 @@
       "required": ["brandId", "name"],
       "properties": {
         "brandId": { "type": "string" },
-        "name": { "type": ["string", "null"] }
+        "name": { "type": ["string", "null"] },
+        "domain": { "type": ["string", "null"] },
+        "matchesAppUrl": { "type": ["boolean", "null"] },
+        "created": { "type": "boolean" }
       }
     },
     "credential": {
@@ -195,6 +198,7 @@
           }
         },
         "settingsUrl": { "type": "string" },
+        "connectUrl": { "type": ["string", "null"] },
         "sandbox": {
           "type": ["object", "null"],
           "required": ["note"],
@@ -295,6 +299,64 @@
         }
       }
     },
+    "providers": {
+      "description": "Where the auth provider's own emails go (Supabase's Send Email hook, Clerk's delivery). Requests carry no secret: each is replaced by a placeholder.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "provider",
+          "action",
+          "connection",
+          "requests",
+          "rollbackCommand",
+          "detail"
+        ],
+        "properties": {
+          "provider": { "enum": ["supabase_auth", "clerk"] },
+          "action": {
+            "enum": [
+              "manual",
+              "planned",
+              "configured",
+              "unchanged",
+              "refused",
+              "restored",
+              "failed"
+            ]
+          },
+          "connection": {
+            "type": ["object", "null"],
+            "required": ["connectionId", "webhookUrl", "status"],
+            "properties": {
+              "connectionId": { "type": "string" },
+              "webhookUrl": { "type": "string" },
+              "status": { "type": "string" }
+            }
+          },
+          "projectRef": { "type": ["string", "null"] },
+          "previous": {},
+          "templates": { "type": "array", "items": { "type": "string" } },
+          "requests": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["vendor", "method", "url", "body"],
+              "properties": {
+                "vendor": { "enum": ["Brew", "Supabase", "Clerk"] },
+                "method": { "enum": ["PATCH", "POST", "PUT"] },
+                "url": { "type": "string" },
+                "body": {}
+              }
+            }
+          },
+          "rollbackCommand": { "type": ["string", "null"] },
+          "detail": { "type": "string" }
+        }
+      }
+    },
     "testEmail": {
       "type": "object",
       "required": ["status", "key", "to"],
@@ -326,6 +388,7 @@
               "install",
               "files",
               "patches",
+              "provider",
               "mcp",
               "agent-files",
               "state",
