@@ -18472,6 +18472,7 @@ components:
                   - stripe
                   - stytch
                   - supabase
+                  - supabase_auth
                   - workos
                   - shopify
                   - revenuecat
@@ -18516,6 +18517,104 @@ components:
       required:
         - data
         - pagination
+      additionalProperties: false
+    IntegrationConnection:
+      type: object
+      properties:
+        provider:
+          type: string
+          enum:
+            - supabase_auth
+            - clerk
+        connectionId:
+          type: string
+          description: Server-derived, stable per brand and provider.
+        webhookUrl:
+          type: string
+          description: "Where the provider delivers: `https://brew.new/api/integrations/{provider}/webhook/{connectionId}`. Paste it as the Supabase hook URL or the Clerk endpoint URL."
+        status:
+          type: string
+          enum:
+            - pending_verification
+            - active
+          description: "`pending_verification` until the first signed delivery arrives, then `active`."
+      required:
+        - provider
+        - connectionId
+        - webhookUrl
+        - status
+      additionalProperties: false
+    IntegrationConnectionPutResponse:
+      type: object
+      properties:
+        provider:
+          type: string
+          enum:
+            - supabase_auth
+            - clerk
+        connectionId:
+          type: string
+          description: Server-derived, stable per brand and provider.
+        webhookUrl:
+          type: string
+          description: "Where the provider delivers: `https://brew.new/api/integrations/{provider}/webhook/{connectionId}`. Paste it as the Supabase hook URL or the Clerk endpoint URL."
+        status:
+          type: string
+          enum:
+            - pending_verification
+            - active
+          description: "`pending_verification` until the first signed delivery arrives, then `active`."
+        authEmails:
+          type: array
+          items:
+            type: object
+            properties:
+              triggerKey:
+                type: string
+              ok:
+                type: boolean
+              error:
+                type: object
+                properties:
+                  code:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - code
+                  - message
+                additionalProperties: false
+            required:
+              - triggerKey
+              - ok
+            additionalProperties: false
+          description: The auth app emails this provider sends, each set up from the starter kit or kept as it is. A key that failed carries its `error`; connecting again finishes it.
+      required:
+        - provider
+        - connectionId
+        - webhookUrl
+        - status
+        - authEmails
+      additionalProperties: false
+    IntegrationConnectionPutRequest:
+      type: object
+      properties:
+        signingSecret:
+          type: string
+          minLength: 1
+          maxLength: 4096
+          description: "The secret the provider signs deliveries with: Supabase shows `v1,whsec_…` for the hook, Clerk `whsec_…` for the endpoint."
+        settings:
+          type: object
+          properties:
+            projectUrl:
+              type: string
+              maxLength: 2048
+              format: uri
+              description: "Supabase only: the project URL confirmation links point at (`https://<ref>.supabase.co` or a custom auth domain). Omitted: the URL Supabase sends with each email."
+          additionalProperties: false
+      required:
+        - signingSecret
       additionalProperties: false
     ApiKeysListResponse:
       type: object
@@ -47589,7 +47688,7 @@ paths:
       description: |-
         Sets up the starter kit: auth emails (verify email, magic link, one-time code, password reset, invite, email change, reauthentication, security notice) and lifecycle emails (welcome, trial ending, payment failed, win-back). Each key is set up exactly as `upsertAppEmail` does with its own starter, a few at a time.
 
-        **Input** `sets` (default both), `stack` (narrows the auth keys to the ones that auth library sends and picks the code snippets; default `custom`, every auth key) or exact `keys`, plus `domainId` and `overwrite` for every key. `supabase` returns a Send Email Hook to deploy as a Supabase Edge Function (`@brew.new/sdk/supabase`); `clerk` sets up the lifecycle emails only, since Clerk keeps sending its own auth emails.
+        **Input** `sets` (default both), `stack` (narrows the auth keys to the ones that auth library sends and picks the code snippets; default `custom`, every auth key) or exact `keys`, plus `domainId` and `overwrite` for every key. `supabase` sets up every auth email Supabase hands to Brew through its Send Email Hook (`authDelivery: hosted-webhook`; connect with `connectIntegrationHook`, or deploy the returned self-hosted hook from `@brew.new/sdk/supabase` as a Supabase Edge Function instead); `clerk` sets up the auth emails Clerk hands to Brew in its `email.created` webhook (`authDelivery: hosted-webhook`; connect Clerk in Brew, then turn off Clerk's own delivery for the templates `stack.note` lists) plus the lifecycle emails.
 
         **Returns** `200` with `results[]` in kit order, each `ok: true` with the setup result or `ok: false` with its `error` (`code`, `message`, `details`), and `stack` (`provider`, `authDelivery`, `note`, `keys`, `snippets`). One key failing does not stop the others; running the kit again finishes them.
 
@@ -68947,6 +69046,720 @@ paths:
       x-brew-idempotency: none
       x-brew-credited: false
       x-brew-rate-policy: integrations.read
+  /v1/integrations/{provider}/connection:
+    get:
+      operationId: getIntegrationConnection
+      tags:
+        - Integrations
+      summary: Get a hosted auth hook connection
+      description: |-
+        Reads the brand’s connection for a hosted auth email hook: the provider that hands your app’s auth emails to Brew.
+
+        **Returns** `200` with `provider`, `connectionId`, the `webhookUrl` the provider delivers to and `status` (`pending_verification` until the first signed delivery, then `active`).
+
+        **Errors** `404 NOT_FOUND` when the provider is not connected for the brand.
+
+        **See also** `connectIntegrationHook`, `listIntegrations`.
+      parameters:
+        - schema:
+            type: string
+            enum:
+              - supabase_auth
+              - clerk
+            description: "`supabase_auth` (the Supabase Auth Send Email Hook) or `clerk` (Clerk webhooks; `email.created` carries the auth emails)."
+            example: supabase_auth
+          required: true
+          description: "`supabase_auth` (the Supabase Auth Send Email Hook) or `clerk` (Clerk webhooks; `email.created` carries the auth emails)."
+          name: provider
+          in: path
+        - name: X-Brand-Id
+          in: header
+          required: false
+          description: The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 64
+          example: kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+      responses:
+        "200":
+          description: The connection.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+            X-RateLimit-Limit:
+              schema:
+                type: integer
+                description: Requests allowed in the current rolling rate limit window.
+                example: 100
+              required: true
+              description: Requests allowed in the current rolling rate limit window.
+            X-RateLimit-Remaining:
+              schema:
+                type: integer
+                description: Requests remaining in the current rolling rate limit window.
+                example: 99
+              required: true
+              description: Requests remaining in the current rolling rate limit window.
+            X-RateLimit-Reset:
+              schema:
+                type: integer
+                description: Unix timestamp in seconds when the oldest recorded request leaves the rolling window.
+                example: 1712592360
+              required: true
+              description: Unix timestamp in seconds when the oldest recorded request leaves the rolling window.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IntegrationConnection"
+              example:
+                provider: supabase_auth
+                connectionId: iac_Q2tX9vL1mB7rN4cP8wZsA
+                webhookUrl: https://brew.new/api/integrations/supabase_auth/webhook/iac_Q2tX9vL1mB7rN4cP8wZsA
+                status: pending_verification
+        "400":
+          description: |-
+            `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+
+            `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                brandIdRequired:
+                  summary: BRAND_ID_REQUIRED
+                  value:
+                    error:
+                      code: BRAND_ID_REQUIRED
+                      type: invalid_request
+                      message: An organization-scoped credential called a brand-scoped operation without naming the brand.
+                      suggestion: List brands with GET /v1/brands, then name one with the X-Brand-Id header. There is no default brand.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                invalidRequest:
+                  summary: INVALID_REQUEST
+                  value:
+                    error:
+                      code: INVALID_REQUEST
+                      type: invalid_request
+                      message: "The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender."
+                      suggestion: Fix the field reported in `param` and retry.
+                      docs: https://docs.brew.new/api-reference/api/errors
+        "401":
+          description: |-
+            `API_KEY_REVOKED`: The API key was revoked.
+
+            `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+
+            `INVALID_API_KEY`: The API key is malformed or unknown.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                apiKeyRevoked:
+                  summary: API_KEY_REVOKED
+                  value:
+                    error:
+                      code: API_KEY_REVOKED
+                      type: authentication_error
+                      message: The API key was revoked.
+                      suggestion: Create a new active API key and retry.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                authenticationRequired:
+                  summary: AUTHENTICATION_REQUIRED
+                  value:
+                    error:
+                      code: AUTHENTICATION_REQUIRED
+                      type: authentication_error
+                      message: No API key or session accompanied the request.
+                      suggestion: Provide a valid API key or sign in with an organization session.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                invalidApiKey:
+                  summary: INVALID_API_KEY
+                  value:
+                    error:
+                      code: INVALID_API_KEY
+                      type: authentication_error
+                      message: The API key is malformed or unknown.
+                      suggestion: Check the API key format and retry with a valid active key.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+        "403":
+          description: |-
+            `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+
+            `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+
+            `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+
+            `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                accountSuspended:
+                  summary: ACCOUNT_SUSPENDED
+                  value:
+                    error:
+                      code: ACCOUNT_SUSPENDED
+                      type: authorization_error
+                      message: The organization behind the credential is suspended.
+                      suggestion: The organization behind this credential is suspended. Contact support@brew.new; do not retry.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                brandScopeMismatch:
+                  summary: BRAND_SCOPE_MISMATCH
+                  value:
+                    error:
+                      code: BRAND_SCOPE_MISMATCH
+                      type: authorization_error
+                      message: A brand-scoped credential named a brand other than the one it is bound to.
+                      suggestion: Omit the brand to use the one this credential is bound to, or use an organization-scoped credential to reach other brands.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                insufficientPermissions:
+                  summary: INSUFFICIENT_PERMISSIONS
+                  value:
+                    error:
+                      code: INSUFFICIENT_PERMISSIONS
+                      type: authorization_error
+                      message: The credential lacks the permission scope the operation needs.
+                      suggestion: Use an API key or session with the required permission.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                insufficientRole:
+                  summary: INSUFFICIENT_ROLE
+                  value:
+                    error:
+                      code: INSUFFICIENT_ROLE
+                      type: authorization_error
+                      message: "The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role)."
+                      suggestion: Ask an organization admin to run this, to add you to the brand, or to make you an admin.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+        "404":
+          description: |-
+            `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+
+            `NOT_FOUND`: No v1 resource lives at this path.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                brandNotFound:
+                  summary: BRAND_NOT_FOUND
+                  value:
+                    error:
+                      code: BRAND_NOT_FOUND
+                      type: not_found
+                      message: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+                      suggestion: List the brands this credential can reach with GET /v1/brands.
+                      docs: https://docs.brew.new/api-reference/api/errors
+                notFound:
+                  summary: NOT_FOUND
+                  value:
+                    error:
+                      code: NOT_FOUND
+                      type: not_found
+                      message: No v1 resource lives at this path.
+                      suggestion: Check the request path and HTTP method against the API reference.
+                      docs: https://docs.brew.new/api-reference/api/api-introduction
+        "429":
+          description: "`RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot."
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+            X-RateLimit-Limit:
+              schema:
+                type: integer
+                description: Requests allowed in the current rolling rate limit window.
+                example: 100
+              required: true
+              description: Requests allowed in the current rolling rate limit window.
+            X-RateLimit-Remaining:
+              schema:
+                type: integer
+                description: Requests remaining in the current rolling rate limit window.
+                example: 0
+              required: true
+              description: Requests remaining in the current rolling rate limit window.
+            X-RateLimit-Reset:
+              schema:
+                type: integer
+                description: Unix timestamp in seconds when the oldest recorded request leaves the rolling window.
+                example: 1712592360
+              required: true
+              description: Unix timestamp in seconds when the oldest recorded request leaves the rolling window.
+            Retry-After:
+              schema:
+                type: integer
+                description: Seconds to wait before retrying the request.
+                example: 42
+              required: true
+              description: Seconds to wait before retrying the request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                rateLimited:
+                  summary: RATE_LIMITED
+                  value:
+                    error:
+                      code: RATE_LIMITED
+                      type: rate_limit
+                      message: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot.
+                      suggestion: Wait the Retry-After time, then retry the same request.
+                      docs: https://docs.brew.new/api-reference/api/rate-limits
+                      retryAfter: 42
+                      details:
+                        scope: credential
+                        limit: 100
+                        remaining: 0
+                        reset: 1712592360
+                        consumed: false
+        "500":
+          description: "`INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it."
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                internalError:
+                  summary: INTERNAL_ERROR
+                  value:
+                    error:
+                      code: INTERNAL_ERROR
+                      type: internal_error
+                      message: An unexpected failure; the x-request-id header identifies it.
+                      suggestion: Retry the request. If it keeps failing, contact support with the x-request-id header.
+                      docs: https://docs.brew.new/api-reference/api/errors
+      x-brew-scope: none
+      x-brew-brand-scope: brand
+      x-brew-idempotency: none
+      x-brew-credited: false
+      x-brew-rate-policy: integrations.read
+    put:
+      operationId: connectIntegrationHook
+      tags:
+        - Integrations
+      summary: Connect a hosted auth hook
+      description: |-
+        Connects a hosted auth email hook for the brand and sets up its auth app emails, so the provider hands every auth email to Brew: the Supabase Auth Send Email Hook (`supabase_auth`) or Clerk’s `email.created` (`clerk`).
+
+        **Input** `signingSecret`, the secret the provider signs deliveries with (Supabase: `v1,whsec_…` from Authentication > Hooks; Clerk: `whsec_…` from the endpoint). Supabase only: `settings.projectUrl`, the URL confirmation links point at (default: the one Supabase sends with each email).
+
+        **Re-runs** are safe: the `connectionId` and `webhookUrl` never change for a brand and provider, a new secret replaces the old one, and the auth app emails already set up are kept (a design edited in Brew is never replaced). Until the first signed delivery the connection is `pending_verification`.
+
+        **Scopes** an API key needs `emails` and `automations` (`x-brew-scopes`): the call also runs the app email kit.
+
+        **Returns** `200` with `provider`, `connectionId`, `webhookUrl`, `status` and `authEmails[]`: each auth key with `ok`, or its `error`; connecting again finishes a failed key.
+
+        **Errors** `400 INVALID_REQUEST` for an unsupported provider, a secret in the wrong format or a project URL that is not https.
+
+        **See also** `getIntegrationConnection`, `setUpAppEmailKit`, `listAppEmails`.
+      parameters:
+        - schema:
+            type: string
+            enum:
+              - supabase_auth
+              - clerk
+            description: "`supabase_auth` (the Supabase Auth Send Email Hook) or `clerk` (Clerk webhooks; `email.created` carries the auth emails)."
+            example: supabase_auth
+          required: true
+          description: "`supabase_auth` (the Supabase Auth Send Email Hook) or `clerk` (Clerk webhooks; `email.created` carries the auth emails)."
+          name: provider
+          in: path
+        - name: X-Brand-Id
+          in: header
+          required: false
+          description: The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 64
+          example: kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/IntegrationConnectionPutRequest"
+            examples:
+              supabase:
+                summary: Supabase Send Email Hook
+                value:
+                  signingSecret: v1,whsec_dGhpc2lzYW5leGFtcGxlc2VjcmV0Zm9yYnJldw==
+                  settings:
+                    projectUrl: https://abcd.supabase.co
+              clerk:
+                summary: Clerk email.created
+                value:
+                  signingSecret: whsec_C2FVsBQIhrscChlQIMV+b5sSYspob7oD
+      responses:
+        "200":
+          description: Connected; the auth app emails are set up.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+            X-RateLimit-Limit:
+              schema:
+                type: integer
+                description: Requests allowed in the current rolling rate limit window.
+                example: 100
+              required: true
+              description: Requests allowed in the current rolling rate limit window.
+            X-RateLimit-Remaining:
+              schema:
+                type: integer
+                description: Requests remaining in the current rolling rate limit window.
+                example: 99
+              required: true
+              description: Requests remaining in the current rolling rate limit window.
+            X-RateLimit-Reset:
+              schema:
+                type: integer
+                description: Unix timestamp in seconds when the oldest recorded request leaves the rolling window.
+                example: 1712592360
+              required: true
+              description: Unix timestamp in seconds when the oldest recorded request leaves the rolling window.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IntegrationConnectionPutResponse"
+              example:
+                provider: supabase_auth
+                connectionId: iac_Q2tX9vL1mB7rN4cP8wZsA
+                webhookUrl: https://brew.new/api/integrations/supabase_auth/webhook/iac_Q2tX9vL1mB7rN4cP8wZsA
+                status: pending_verification
+                authEmails:
+                  - triggerKey: auth.verify-email
+                    ok: true
+                  - triggerKey: auth.magic-link
+                    ok: true
+                  - triggerKey: auth.otp
+                    ok: true
+        "400":
+          description: |-
+            `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+
+            `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                brandIdRequired:
+                  summary: BRAND_ID_REQUIRED
+                  value:
+                    error:
+                      code: BRAND_ID_REQUIRED
+                      type: invalid_request
+                      message: An organization-scoped credential called a brand-scoped operation without naming the brand.
+                      suggestion: List brands with GET /v1/brands, then name one with the X-Brand-Id header. There is no default brand.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                invalidRequest:
+                  summary: INVALID_REQUEST
+                  value:
+                    error:
+                      code: INVALID_REQUEST
+                      type: invalid_request
+                      message: "The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender."
+                      suggestion: Fix the field reported in `param` and retry.
+                      docs: https://docs.brew.new/api-reference/api/errors
+        "401":
+          description: |-
+            `API_KEY_REVOKED`: The API key was revoked.
+
+            `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+
+            `INVALID_API_KEY`: The API key is malformed or unknown.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                apiKeyRevoked:
+                  summary: API_KEY_REVOKED
+                  value:
+                    error:
+                      code: API_KEY_REVOKED
+                      type: authentication_error
+                      message: The API key was revoked.
+                      suggestion: Create a new active API key and retry.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                authenticationRequired:
+                  summary: AUTHENTICATION_REQUIRED
+                  value:
+                    error:
+                      code: AUTHENTICATION_REQUIRED
+                      type: authentication_error
+                      message: No API key or session accompanied the request.
+                      suggestion: Provide a valid API key or sign in with an organization session.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                invalidApiKey:
+                  summary: INVALID_API_KEY
+                  value:
+                    error:
+                      code: INVALID_API_KEY
+                      type: authentication_error
+                      message: The API key is malformed or unknown.
+                      suggestion: Check the API key format and retry with a valid active key.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+        "403":
+          description: |-
+            `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+
+            `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+
+            `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+
+            `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                accountSuspended:
+                  summary: ACCOUNT_SUSPENDED
+                  value:
+                    error:
+                      code: ACCOUNT_SUSPENDED
+                      type: authorization_error
+                      message: The organization behind the credential is suspended.
+                      suggestion: The organization behind this credential is suspended. Contact support@brew.new; do not retry.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                brandScopeMismatch:
+                  summary: BRAND_SCOPE_MISMATCH
+                  value:
+                    error:
+                      code: BRAND_SCOPE_MISMATCH
+                      type: authorization_error
+                      message: A brand-scoped credential named a brand other than the one it is bound to.
+                      suggestion: Omit the brand to use the one this credential is bound to, or use an organization-scoped credential to reach other brands.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                insufficientPermissions:
+                  summary: INSUFFICIENT_PERMISSIONS
+                  value:
+                    error:
+                      code: INSUFFICIENT_PERMISSIONS
+                      type: authorization_error
+                      message: The credential lacks the permission scope the operation needs.
+                      suggestion: Use an API key or session with the required permission.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                insufficientRole:
+                  summary: INSUFFICIENT_ROLE
+                  value:
+                    error:
+                      code: INSUFFICIENT_ROLE
+                      type: authorization_error
+                      message: "The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role)."
+                      suggestion: Ask an organization admin to run this, to add you to the brand, or to make you an admin.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+        "404":
+          description: |-
+            `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+
+            `NOT_FOUND`: No v1 resource lives at this path.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                brandNotFound:
+                  summary: BRAND_NOT_FOUND
+                  value:
+                    error:
+                      code: BRAND_NOT_FOUND
+                      type: not_found
+                      message: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+                      suggestion: List the brands this credential can reach with GET /v1/brands.
+                      docs: https://docs.brew.new/api-reference/api/errors
+                notFound:
+                  summary: NOT_FOUND
+                  value:
+                    error:
+                      code: NOT_FOUND
+                      type: not_found
+                      message: No v1 resource lives at this path.
+                      suggestion: Check the request path and HTTP method against the API reference.
+                      docs: https://docs.brew.new/api-reference/api/api-introduction
+        "429":
+          description: "`RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot."
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+            X-RateLimit-Limit:
+              schema:
+                type: integer
+                description: Requests allowed in the current rolling rate limit window.
+                example: 10
+              required: true
+              description: Requests allowed in the current rolling rate limit window.
+            X-RateLimit-Remaining:
+              schema:
+                type: integer
+                description: Requests remaining in the current rolling rate limit window.
+                example: 0
+              required: true
+              description: Requests remaining in the current rolling rate limit window.
+            X-RateLimit-Reset:
+              schema:
+                type: integer
+                description: Unix timestamp in seconds when the oldest recorded request leaves the rolling window.
+                example: 1712592360
+              required: true
+              description: Unix timestamp in seconds when the oldest recorded request leaves the rolling window.
+            Retry-After:
+              schema:
+                type: integer
+                description: Seconds to wait before retrying the request.
+                example: 42
+              required: true
+              description: Seconds to wait before retrying the request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                rateLimited:
+                  summary: RATE_LIMITED
+                  value:
+                    error:
+                      code: RATE_LIMITED
+                      type: rate_limit
+                      message: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot.
+                      suggestion: Wait the Retry-After time, then retry the same request.
+                      docs: https://docs.brew.new/api-reference/api/rate-limits
+                      retryAfter: 42
+                      details:
+                        scope: credential
+                        limit: 10
+                        remaining: 0
+                        reset: 1712592360
+                        consumed: false
+        "500":
+          description: "`INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it."
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                internalError:
+                  summary: INTERNAL_ERROR
+                  value:
+                    error:
+                      code: INTERNAL_ERROR
+                      type: internal_error
+                      message: An unexpected failure; the x-request-id header identifies it.
+                      suggestion: Retry the request. If it keeps failing, contact support with the x-request-id header.
+                      docs: https://docs.brew.new/api-reference/api/errors
+      x-brew-scope: emails
+      x-brew-scopes:
+        - emails
+        - automations
+      x-brew-brand-scope: brand
+      x-brew-idempotency: none
+      x-brew-credited: false
+      x-brew-rate-policy: integrations.write
   /v1/api-keys:
     get:
       operationId: listApiKeys

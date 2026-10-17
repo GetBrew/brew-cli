@@ -1459,7 +1459,7 @@ export interface paths {
          * Set up the app email kit
          * @description Sets up the starter kit: auth emails (verify email, magic link, one-time code, password reset, invite, email change, reauthentication, security notice) and lifecycle emails (welcome, trial ending, payment failed, win-back). Each key is set up exactly as `upsertAppEmail` does with its own starter, a few at a time.
          *
-         *     **Input** `sets` (default both), `stack` (narrows the auth keys to the ones that auth library sends and picks the code snippets; default `custom`, every auth key) or exact `keys`, plus `domainId` and `overwrite` for every key. `supabase` returns a Send Email Hook to deploy as a Supabase Edge Function (`@brew.new/sdk/supabase`); `clerk` sets up the lifecycle emails only, since Clerk keeps sending its own auth emails.
+         *     **Input** `sets` (default both), `stack` (narrows the auth keys to the ones that auth library sends and picks the code snippets; default `custom`, every auth key) or exact `keys`, plus `domainId` and `overwrite` for every key. `supabase` sets up every auth email Supabase hands to Brew through its Send Email Hook (`authDelivery: hosted-webhook`; connect with `connectIntegrationHook`, or deploy the returned self-hosted hook from `@brew.new/sdk/supabase` as a Supabase Edge Function instead); `clerk` sets up the auth emails Clerk hands to Brew in its `email.created` webhook (`authDelivery: hosted-webhook`; connect Clerk in Brew, then turn off Clerk's own delivery for the templates `stack.note` lists) plus the lifecycle emails.
          *
          *     **Returns** `200` with `results[]` in kit order, each `ok: true` with the setup result or `ok: false` with its `error` (`code`, `message`, `details`), and `stack` (`provider`, `authDelivery`, `note`, `keys`, `snippets`). One key failing does not stop the others; running the kit again finishes them.
          *
@@ -2487,6 +2487,48 @@ export interface paths {
          */
         get: operations["listIntegrations"];
         put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/integrations/{provider}/connection": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get a hosted auth hook connection
+         * @description Reads the brand’s connection for a hosted auth email hook: the provider that hands your app’s auth emails to Brew.
+         *
+         *     **Returns** `200` with `provider`, `connectionId`, the `webhookUrl` the provider delivers to and `status` (`pending_verification` until the first signed delivery, then `active`).
+         *
+         *     **Errors** `404 NOT_FOUND` when the provider is not connected for the brand.
+         *
+         *     **See also** `connectIntegrationHook`, `listIntegrations`.
+         */
+        get: operations["getIntegrationConnection"];
+        /**
+         * Connect a hosted auth hook
+         * @description Connects a hosted auth email hook for the brand and sets up its auth app emails, so the provider hands every auth email to Brew: the Supabase Auth Send Email Hook (`supabase_auth`) or Clerk’s `email.created` (`clerk`).
+         *
+         *     **Input** `signingSecret`, the secret the provider signs deliveries with (Supabase: `v1,whsec_…` from Authentication > Hooks; Clerk: `whsec_…` from the endpoint). Supabase only: `settings.projectUrl`, the URL confirmation links point at (default: the one Supabase sends with each email).
+         *
+         *     **Re-runs** are safe: the `connectionId` and `webhookUrl` never change for a brand and provider, a new secret replaces the old one, and the auth app emails already set up are kept (a design edited in Brew is never replaced). Until the first signed delivery the connection is `pending_verification`.
+         *
+         *     **Scopes** an API key needs `emails` and `automations` (`x-brew-scopes`): the call also runs the app email kit.
+         *
+         *     **Returns** `200` with `provider`, `connectionId`, `webhookUrl`, `status` and `authEmails[]`: each auth key with `ok`, or its `error`; connecting again finishes a failed key.
+         *
+         *     **Errors** `400 INVALID_REQUEST` for an unsupported provider, a secret in the wrong format or a project URL that is not https.
+         *
+         *     **See also** `getIntegrationConnection`, `setUpAppEmailKit`, `listAppEmails`.
+         */
+        put: operations["connectIntegrationHook"];
         post?: never;
         delete?: never;
         options?: never;
@@ -9241,7 +9283,7 @@ export interface components {
         IntegrationsListResponse: {
             data: {
                 /** @enum {string} */
-                provider: "braze" | "brevo" | "clerk" | "customerio" | "figma" | "framer" | "slack" | "hubspot" | "typeform" | "klaviyo" | "iterable" | "postmark" | "onesignal" | "mailgun" | "sendgrid" | "mailjet" | "mailchimp" | "loops" | "stripe" | "stytch" | "supabase" | "workos" | "shopify" | "revenuecat";
+                provider: "braze" | "brevo" | "clerk" | "customerio" | "figma" | "framer" | "slack" | "hubspot" | "typeform" | "klaviyo" | "iterable" | "postmark" | "onesignal" | "mailgun" | "sendgrid" | "mailjet" | "mailchimp" | "loops" | "stripe" | "stytch" | "supabase" | "supabase_auth" | "workos" | "shopify" | "revenuecat";
                 name: string;
                 /** @enum {string} */
                 category: "data_in" | "data_out";
@@ -9253,6 +9295,52 @@ export interface components {
                 limit: number;
                 cursor: string | null;
                 hasMore: boolean;
+            };
+        };
+        IntegrationConnection: {
+            /** @enum {string} */
+            provider: "supabase_auth" | "clerk";
+            /** @description Server-derived, stable per brand and provider. */
+            connectionId: string;
+            /** @description Where the provider delivers: `https://brew.new/api/integrations/{provider}/webhook/{connectionId}`. Paste it as the Supabase hook URL or the Clerk endpoint URL. */
+            webhookUrl: string;
+            /**
+             * @description `pending_verification` until the first signed delivery arrives, then `active`.
+             * @enum {string}
+             */
+            status: "pending_verification" | "active";
+        };
+        IntegrationConnectionPutResponse: {
+            /** @enum {string} */
+            provider: "supabase_auth" | "clerk";
+            /** @description Server-derived, stable per brand and provider. */
+            connectionId: string;
+            /** @description Where the provider delivers: `https://brew.new/api/integrations/{provider}/webhook/{connectionId}`. Paste it as the Supabase hook URL or the Clerk endpoint URL. */
+            webhookUrl: string;
+            /**
+             * @description `pending_verification` until the first signed delivery arrives, then `active`.
+             * @enum {string}
+             */
+            status: "pending_verification" | "active";
+            /** @description The auth app emails this provider sends, each set up from the starter kit or kept as it is. A key that failed carries its `error`; connecting again finishes it. */
+            authEmails: {
+                triggerKey: string;
+                ok: boolean;
+                error?: {
+                    code: string;
+                    message: string;
+                };
+            }[];
+        };
+        IntegrationConnectionPutRequest: {
+            /** @description The secret the provider signs deliveries with: Supabase shows `v1,whsec_…` for the hook, Clerk `whsec_…` for the endpoint. */
+            signingSecret: string;
+            settings?: {
+                /**
+                 * Format: uri
+                 * @description Supabase only: the project URL confirmation links point at (`https://<ref>.supabase.co` or a custom auth domain). Omitted: the URL Supabase sends with each email.
+                 */
+                projectUrl?: string;
             };
         };
         ApiKeysListResponse: {
@@ -31123,6 +31211,306 @@ export interface operations {
                      *     }
                      */
                     "application/json": components["schemas"]["IntegrationsListResponse"];
+                };
+            };
+            /**
+             * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+             *
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             */
+            400: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `API_KEY_REVOKED`: The API key was revoked.
+             *
+             *     `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+             *
+             *     `INVALID_API_KEY`: The API key is malformed or unknown.
+             */
+            401: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+             *
+             *     `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+             *
+             *     `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+             *
+             *     `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+             */
+            403: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+             *
+             *     `NOT_FOUND`: No v1 resource lives at this path.
+             */
+            404: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
+            429: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it. */
+            500: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getIntegrationConnection: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+                 * @example kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+                 */
+                "X-Brand-Id"?: string;
+            };
+            path: {
+                /** @description `supabase_auth` (the Supabase Auth Send Email Hook) or `clerk` (Clerk webhooks; `email.created` carries the auth emails). */
+                provider: "supabase_auth" | "clerk";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The connection. */
+            200: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "provider": "supabase_auth",
+                     *       "connectionId": "iac_Q2tX9vL1mB7rN4cP8wZsA",
+                     *       "webhookUrl": "https://brew.new/api/integrations/supabase_auth/webhook/iac_Q2tX9vL1mB7rN4cP8wZsA",
+                     *       "status": "pending_verification"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["IntegrationConnection"];
+                };
+            };
+            /**
+             * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+             *
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             */
+            400: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `API_KEY_REVOKED`: The API key was revoked.
+             *
+             *     `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+             *
+             *     `INVALID_API_KEY`: The API key is malformed or unknown.
+             */
+            401: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+             *
+             *     `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+             *
+             *     `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+             *
+             *     `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+             */
+            403: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+             *
+             *     `NOT_FOUND`: No v1 resource lives at this path.
+             */
+            404: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
+            429: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it. */
+            500: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+        };
+    };
+    connectIntegrationHook: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+                 * @example kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+                 */
+                "X-Brand-Id"?: string;
+            };
+            path: {
+                /** @description `supabase_auth` (the Supabase Auth Send Email Hook) or `clerk` (Clerk webhooks; `email.created` carries the auth emails). */
+                provider: "supabase_auth" | "clerk";
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IntegrationConnectionPutRequest"];
+            };
+        };
+        responses: {
+            /** @description Connected; the auth app emails are set up. */
+            200: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "provider": "supabase_auth",
+                     *       "connectionId": "iac_Q2tX9vL1mB7rN4cP8wZsA",
+                     *       "webhookUrl": "https://brew.new/api/integrations/supabase_auth/webhook/iac_Q2tX9vL1mB7rN4cP8wZsA",
+                     *       "status": "pending_verification",
+                     *       "authEmails": [
+                     *         {
+                     *           "triggerKey": "auth.verify-email",
+                     *           "ok": true
+                     *         },
+                     *         {
+                     *           "triggerKey": "auth.magic-link",
+                     *           "ok": true
+                     *         },
+                     *         {
+                     *           "triggerKey": "auth.otp",
+                     *           "ok": true
+                     *         }
+                     *       ]
+                     *     }
+                     */
+                    "application/json": components["schemas"]["IntegrationConnectionPutResponse"];
                 };
             };
             /**
