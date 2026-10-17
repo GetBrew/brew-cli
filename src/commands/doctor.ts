@@ -1,6 +1,10 @@
 import { BrewApiError } from '@brew.new/sdk'
 import { maskApiKey, resolveAuth } from '../lib/client'
 import { defineCommand } from '../lib/define-command'
+import {
+  type ProjectDoctorReport,
+  runProjectDoctor,
+} from '../lib/doctor/project'
 import { CliApiError } from '../lib/errors'
 import { getInvocationPrefix } from '../lib/invocation'
 import type { CliContext } from '../lib/types'
@@ -12,11 +16,40 @@ const NON_COMMAND_OPS = new Set(['GET /v1/llms.txt'])
 export const doctorCommand = defineCommand({
   path: ['doctor'],
   summary:
-    'Trust check: auth, API reachability, and installed-CLI vs live-API drift',
+    'Trust check: auth, API reachability, and installed-CLI vs live-API drift; --project checks this app against its brew.json',
   sdkMethod: null,
+  derivedFrom: [
+    'health.get',
+    'usage.get',
+    'help.get',
+    'brand.get',
+    'appEmails.list',
+    'domains.list',
+    'integrations.getConnection',
+  ],
   commandClass: 'read',
-  examples: ['brew-cli doctor', 'brew-cli doctor --json'],
-  run: async ({ ctx }) => {
+  flags: [
+    {
+      flag: '--project',
+      summary:
+        "Check this app against its brew.json: managed files, BREW_API_KEY (set, git-ignored, never NEXT_PUBLIC_/VITE_/PUBLIC_), the SDK version, the brand's keys, sending domain and auth hook (exit 1 on any failure)",
+    },
+  ],
+  examples: [
+    'brew-cli doctor',
+    'brew-cli doctor --json',
+    'brew-cli doctor --project',
+    'brew-cli doctor --project --json',
+  ],
+  run: async ({ ctx, flags }) => {
+    if (flags.project === true) {
+      const report = await runProjectDoctor(ctx)
+      return {
+        data: report,
+        human: renderProjectReport(report),
+        exitCode: report.ok ? 0 : 1,
+      }
+    }
     const auth = resolveAuth({
       globals: ctx.globals,
       env: ctx.io.env,
@@ -148,4 +181,29 @@ export const doctorCommand = defineCommand({
  */
 function rethrowIfStopped(ctx: CliContext): void {
   ctx.signal.throwIfAborted()
+}
+
+const MARKS: Readonly<
+  Record<ProjectDoctorReport['checks'][number]['status'], string>
+> = {
+  ok: 'ok',
+  warn: 'WARN',
+  fail: 'FAIL',
+  skipped: '--',
+}
+
+function renderProjectReport(report: ProjectDoctorReport): string {
+  const lines = [
+    `${report.ok ? 'ok' : 'FAIL'}  project ${report.root}${report.brandId === null ? '' : ` (brand ${report.brandId})`}`,
+  ]
+  for (const check of report.checks) {
+    lines.push(`${MARKS[check.status].padEnd(5)} ${check.id}: ${check.detail}`)
+    for (const item of check.items ?? []) {
+      lines.push(`        ${item}`)
+    }
+    if (check.fix !== undefined && check.status !== 'ok') {
+      lines.push(`        fix: ${check.fix}`)
+    }
+  }
+  return lines.join('\n')
 }

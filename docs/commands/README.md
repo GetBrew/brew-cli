@@ -2,7 +2,7 @@
 
 <!-- GENERATED FILE — do not edit. Regenerate with `bun run docs:commands`. -->
 
-156 commands. Classes: read (always safe), write
+158 commands. Classes: read (always safe), write
 (mutating, retry-safe), destructive (irreversible — the confirmation
 protocol applies: interactive y/N on a TTY, exit 4 + JSON envelope with
 a `confirmCommand` otherwise, `--yes` to proceed).
@@ -163,6 +163,8 @@ a `confirmCommand` otherwise, `--yes` to proceed).
 | `brew-cli flows list` | read | `GET /v1/flows` | List public email flows (real multi-step sequences by brand) as cards; `flows get <slug>` reads one |
 | `brew-cli flows get` | read | `GET /v1/flows/{slug}` | Fetch one public email flow by brand domain, with every step (day offset, wait, subject, template id) |
 | `brew-cli integrations list` | read | `GET /v1/integrations` | List the integration catalog with per-provider connected state (connect via Settings, not this CLI) |
+| `brew-cli integrations connect` | destructive | `PUT /v1/integrations/{provider}/connection` | Connect a hosted auth email hook (Supabase Send Email Hook, Clerk email.created) and set up its auth app emails; prints the webhook URL to paste into the provider |
+| `brew-cli integrations connection` | read | `GET /v1/integrations/{provider}/connection` | Show a hosted auth email hook's connection: webhook URL and status (pending_verification until the first signed delivery, then active) |
 | `brew-cli chats list` | read | `GET /v1/chats` | List the brand's Brew chats, most recently active first; `chats get` reads one |
 | `brew-cli chats get` | read | `GET /v1/chats/{chatId}` | Brand-scoped digest of a Brew chat (artifacts + transcript tail) |
 | `brew-cli canvas sessions create` | write | `POST /v1/canvas/sessions` | Create an authenticated group or single-email canvas grant |
@@ -171,7 +173,7 @@ a `confirmCommand` otherwise, `--yes` to proceed).
 | `brew-cli notifications list` | read | `GET /v1/notifications` | List the brand's notifications (generations, sends, imports, domain checks), newest first |
 | `brew-cli health` | read | `GET /v1/health` | Check Brew API liveness (no auth required) |
 | `brew-cli usage` | read | `GET /v1/usage` | Show plan, credit balance, and email-send quota |
-| `brew-cli doctor` | read | — | Trust check: auth, API reachability, and installed-CLI vs live-API drift |
+| `brew-cli doctor` | read | — | Trust check: auth, API reachability, and installed-CLI vs live-API drift; --project checks this app against its brew.json |
 | `brew-cli docs` | read | — | Documentation pointers; --agent prints the command manifest |
 | `brew-cli docs api` | read | `GET /v1/help` | Fetch the live machine-readable API catalog (GET /v1/help) |
 | `brew-cli mcp install` | write | — | Add the Brew MCP server to your AI editors' config (Cursor, VS Code, Claude Code, Gemini CLI, Devin Desktop/Windsurf, Codex) |
@@ -2609,6 +2611,37 @@ brew-cli integrations list
 brew-cli integrations list --json
 ```
 
+### brew-cli integrations connect
+
+Connect a hosted auth email hook (Supabase Send Email Hook, Clerk email.created) and set up its auth app emails; prints the webhook URL to paste into the provider
+
+- Route: `PUT /v1/integrations/{provider}/connection`
+- Class: destructive
+- SDK: `brew.integrations.connect(...)`
+- Argument `provider` — supabase_auth (the Supabase Auth Send Email Hook) or clerk (Clerk webhooks: email.created)
+- `--signing-secret-env <var>` — Read the signing secret from this environment variable (never pass the secret itself)
+- `--signing-secret-stdin` — Read the signing secret from stdin (a pipe)
+- `--project-url <url>` — supabase_auth only: the project URL confirmation links point at (https://<ref>.supabase.co); default: the one Supabase sends
+
+```bash
+brew-cli integrations connect supabase_auth --signing-secret-env SEND_EMAIL_HOOK_SECRET --project-url https://abcdefghijklmnopqrst.supabase.co --yes
+printenv CLERK_WEBHOOK_SIGNING_SECRET | brew-cli integrations connect clerk --signing-secret-stdin --yes --json
+```
+
+### brew-cli integrations connection
+
+Show a hosted auth email hook's connection: webhook URL and status (pending_verification until the first signed delivery, then active)
+
+- Route: `GET /v1/integrations/{provider}/connection`
+- Class: read
+- SDK: `brew.integrations.getConnection(...)`
+- Argument `provider` — supabase_auth or clerk
+
+```bash
+brew-cli integrations connection supabase_auth
+brew-cli integrations connection clerk --json
+```
+
 ### brew-cli chats list
 
 List the brand's Brew chats, most recently active first; `chats get` reads one
@@ -2729,13 +2762,17 @@ brew-cli usage --json
 
 ### brew-cli doctor
 
-Trust check: auth, API reachability, and installed-CLI vs live-API drift
+Trust check: auth, API reachability, and installed-CLI vs live-API drift; --project checks this app against its brew.json
 
 - Class: read
+- Derived from `brew.health.get(...)`, `brew.usage.get(...)`, `brew.help.get(...)`, `brew.brand.get(...)`, `brew.appEmails.list(...)`, `brew.domains.list(...)`, `brew.integrations.getConnection(...)`
+- `--project` — Check this app against its brew.json: managed files, BREW_API_KEY (set, git-ignored, never NEXT_PUBLIC_/VITE_/PUBLIC_), the SDK version, the brand's keys, sending domain and auth hook (exit 1 on any failure)
 
 ```bash
 brew-cli doctor
 brew-cli doctor --json
+brew-cli doctor --project
+brew-cli doctor --project --json
 ```
 
 ### brew-cli docs
@@ -2786,15 +2823,19 @@ brew-cli mcp install --client vscode --print
 Set up Brew app email in this project: sign in, starter kit, SDK, lib/brew.ts, .env.local, MCP, a sandbox test email
 
 - Class: destructive
-- Derived from `brew.brand.get(...)`, `brew.domains.list(...)`, `brew.domains.add(...)`, `brew.appEmails.setUpKit(...)`, `brew.automations.triggers.list(...)`, `brew.automations.triggers.getContract(...)`, `brew.send(...)`
+- Derived from `brew.brand.get(...)`, `brew.brands.list(...)`, `brew.brands.create(...)`, `brew.brands.get(...)`, `brew.domains.list(...)`, `brew.domains.add(...)`, `brew.appEmails.setUpKit(...)`, `brew.appEmails.list(...)`, `brew.integrations.getConnection(...)`, `brew.integrations.connect(...)`, `brew.automations.triggers.list(...)`, `brew.automations.triggers.getContract(...)`, `brew.send(...)`
 - `--dry-run` — Plan only: detect, read, and report every change (--json for the plan); no writes, no sign-in, no mutating requests
 - `--app <dir>` — The app to set up inside a monorepo (relative to the cwd)
-- `--domain <host>` — Add this sending domain and print its DNS records (init does not wait for verification)
+- `--domain <host>` — Add this transactional sending domain, print its DNS records and the Brew page that can add them for you (init does not wait for verification; the team sandbox applies until then)
 - `--sets <sets>` — Kit sets to set up: auth, lifecycle (default both)
 - `--stack <provider>` — Auth stack for the kit (default: detected): better-auth | authjs | supabase | clerk | firebase | custom
 - `--test-to <email>` — Send the test email here (default: the person who signed in; the sandbox reaches your Brew team only)
 - `--apply-patches <patches>` — Apply reviewed patches to your auth config: comma-separated <id>@<hash> from the report (each applies only while its file is unchanged since that report)
-- `--app-url <url>` — Your app's URL, shown on the brew.new approval page so the right brand is picked
+- `--app-url <url>` — Your app's URL: shown on the approval page so the right brand is picked; with an organization key, init uses the brand with this website or creates one
+- `--configure-supabase` — Point Supabase Auth's Send Email hook at Brew through the Supabase Management API (needs SUPABASE_ACCESS_TOKEN locally; the old hook settings are saved in brew.json for --rollback-provider)
+- `--supabase-project <ref>` — The Supabase project ref (the <ref> in https://<ref>.supabase.co) when init cannot find it
+- `--configure-clerk` — Turn off Clerk's delivery for exactly the templates Brew sends, only once Brew's Clerk connection is active (needs CLERK_SECRET_KEY locally; saved for --rollback-provider)
+- `--rollback-provider` — Put back the Supabase hook or Clerk delivery settings init saved in brew.json, and nothing else
 - `--no-install` — Do not install @brew.new/sdk
 - `--no-mcp` — Do not configure MCP for detected editors
 - `--no-agent-files` — Do not write the AGENTS.md block or the skill files
@@ -2811,6 +2852,11 @@ brew-cli init --yes --no-wait --json
 brew-cli init --resume --yes --json
 brew-cli init --app apps/web --domain mail.example.com --yes
 brew-cli init --yes --apply-patches better-auth-config@3f9c2a7d1b04
+brew-cli init --configure-supabase --dry-run --json
+brew-cli init --configure-supabase --yes --json
+brew-cli init --configure-clerk --yes --json
+brew-cli init --rollback-provider --yes --json
+BREW_API_KEY=<org key> brew-cli init --app-url https://acme.com --yes --json
 ```
 
 ### brew-cli migrate resend
