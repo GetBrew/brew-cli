@@ -1618,7 +1618,7 @@ Set up one app email by key in one idempotent call (trigger, contract, design, a
 - SDK: `brew.appEmails.upsert(...)`
 - Argument `triggerKey` — Trigger key your code sends by: a kit key (auth.password-reset) or your own (order.paid)
 - `--starter <id>` — Starter-kit template to use (a kit key alone uses its own starter)
-- `--source-file <path>` — Your own design source (HTML, MJML or React Email JSX), or - for stdin
+- `--source-file <path>` — Your own design source (HTML, MJML or React Email JSX), or - for stdin. Import modes (props, placeholders, variables) go in --input's source
 - `--format <format>` — Source format: html | mjml | jsx (default: from the file extension)
 - `--title <title>` — App email title in Brew
 - `--subject <text>` — Subject line
@@ -1633,6 +1633,7 @@ brew-cli app-emails upsert auth.password-reset --yes
 brew-cli app-emails upsert order.paid --source-file emails/order-paid.tsx --subject "Your order is confirmed" --yes
 brew-cli app-emails upsert lifecycle.welcome --overwrite --yes
 brew-cli app-emails upsert account.sign-in-code --source-file emails/sign-in-code.tsx --input '{"payloadSchema":{"fields":[{"key":"code","type":"string","required":true,"secret":true}]}}' --yes
+brew-cli app-emails upsert order.shipped --source-file emails/order-shipped.tsx --input '{"source":{"props":"merge_tags"}}' --yes
 ```
 
 ### brew-cli app-emails kit
