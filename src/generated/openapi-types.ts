@@ -3964,7 +3964,7 @@ export interface components {
              * @description The chat app the conversation started in; null for the Brew web app.
              * @enum {string|null}
              */
-            origin: "slack" | null;
+            origin: "slack" | "teams" | "telegram" | "whatsapp" | "discord" | "gchat" | "github" | "linear" | "notion" | "gmail" | "twilio" | "messenger" | "instagram" | "x" | "xchat" | "web" | "agentphone" | "dial" | "kapso" | "lark" | "linq" | "liveblocks" | "matrix" | "novu" | "photon" | "resend" | "sendblue" | "velt" | "zernio" | "webex" | "line" | "baileys" | "blooio" | "zalo" | "mattermost" | "weixin" | "qq" | "wecom" | "zaileys" | null;
             /** Format: date-time */
             updatedAt: string;
             /** @description Opens the chat in the Brew app. */
@@ -8832,7 +8832,7 @@ export interface components {
                  * @description The chat app the conversation started in; null for the Brew web app.
                  * @enum {string|null}
                  */
-                origin: "slack" | null;
+                origin: "slack" | "teams" | "telegram" | "whatsapp" | "discord" | "gchat" | "github" | "linear" | "notion" | "gmail" | "twilio" | "messenger" | "instagram" | "x" | "xchat" | "web" | "agentphone" | "dial" | "kapso" | "lark" | "linq" | "liveblocks" | "matrix" | "novu" | "photon" | "resend" | "sendblue" | "velt" | "zernio" | "webex" | "line" | "baileys" | "blooio" | "zalo" | "mattermost" | "weixin" | "qq" | "wecom" | "zaileys" | null;
                 /** Format: date-time */
                 updatedAt: string;
                 /** @description Opens the chat in the Brew app. */
