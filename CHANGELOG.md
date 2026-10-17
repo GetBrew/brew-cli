@@ -4,7 +4,8 @@
 
 Needs the same SDK release as 0.19.0, and the API from GetBrew/brew-v2#2064
 (the import modes `props: "merge_tags"`, `placeholders: "resend"` and
-`variables`); the bundled spec carries its delta.
+`variables`) and #2145 (the same modes on an app email's `source`); the
+bundled spec carries both deltas.
 
 ### Added
 
@@ -37,7 +38,15 @@ Needs the same SDK release as 0.19.0, and the API from GetBrew/brew-v2#2064
   Sources sit behind a `MigrationSource` interface; Resend is the only one.
 - The `brew-migrate-from-resend` agent skill (embedded; `init` installs it
   in Claude Code projects that use Resend).
-- The bundled spec carries GetBrew/brew-v2#2064's import modes.
+- `app-emails upsert` takes the import modes on `source`
+  (GetBrew/brew-v2#2145) through `--input`, e.g.
+  `--source-file emails/order-shipped.tsx --input '{"source":{"props":"merge_tags"}}'`:
+  `--source-file` fills `format` and `content` and keeps the rest of
+  `--input`'s `source` (before, it replaced it), and takes the format from
+  `--input`'s `source` when it cannot infer one. `migrate resend` names
+  that command for a React Email file it leaves to move by hand.
+- The bundled spec carries GetBrew/brew-v2#2064's import modes and
+  #2145's import modes on an app email's `source`.
 
 ## 0.20.0
 

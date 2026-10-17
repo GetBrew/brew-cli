@@ -358,6 +358,12 @@ describe('migrate resend: the plan (default)', () => {
         ['emails/invoice.tsx', 'manual'],
       ])
     )
+    // Moved by hand, it keeps its props as merge tags like the rest.
+    expect(
+      code?.items.find((item) => item.file === 'emails/invoice.tsx')?.detail
+    ).toContain(
+      `app-emails upsert invoice --source-file emails/invoice.tsx --input '{"source":{"props":"merge_tags"}}' --yes`
+    )
 
     // The manifest is written, and the next step applies it.
     const manifest = readManifest(root)
