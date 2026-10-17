@@ -1525,7 +1525,7 @@ export interface paths {
         put?: never;
         /**
          * Validate email deliverability
-         * @description Batch deliverability check (up to 100 addresses) — run BEFORE importing or sending. Each address is classified `valid` (safe), `risky` (deliverable but flagged — e.g. role account, disposable, catch-all), or `invalid` (undeliverable / do-not-send), with a machine-readable `reason` and a `didYouMean` typo correction when applicable. Cost: 2 credits PER ADDRESS (`X-Credit-Cost` = 2 × the number of addresses), charged ONLY on success — if the check cannot complete for the whole batch, the call returns a retryable `503` and is NOT billed.
+         * @description Batch deliverability check (up to 100 addresses) — run BEFORE importing or sending. Each address is classified `valid` (safe), `risky` (deliverable but flagged — e.g. role account, disposable, catch-all), or `invalid` (undeliverable / do-not-send), with a machine-readable `reason` and a `didYouMean` typo correction when applicable. Partial outages return `status: unavailable` with `checkOutcome: unavailable` and preserve the stored verdict. `persistence` reports matched, modified and failed update-only writes; validation never grants subscription or clears suppression. Cost: 2 credits PER ADDRESS (`X-Credit-Cost` = 2 × the number of addresses), charged ONLY on success — if the check cannot complete for the whole batch, the call returns `503` (transient outages are retryable; configuration failures need support) and is NOT billed.
          */
         post: operations["validateContacts"];
         delete?: never;
@@ -7118,6 +7118,11 @@ export interface components {
                 risky: number;
                 invalid: number;
                 unscored: number;
+                persistence?: {
+                    matched: number;
+                    modified: number;
+                    failed: number;
+                };
             };
             validationJobId?: string;
         };
@@ -7193,6 +7198,11 @@ export interface components {
                 risky: number;
                 invalid: number;
                 unscored: number;
+                persistence?: {
+                    matched: number;
+                    modified: number;
+                    failed: number;
+                };
             };
         };
         ContactsPostRequest: components["schemas"]["ContactsPostSingleRequest"] | components["schemas"]["ContactsPostBatchRequest"];
@@ -7598,17 +7608,34 @@ export interface components {
             include?: "openProfile"[];
         };
         ContactsValidateResponse: {
-            data: {
+            data: ({
                 email: string;
                 valid: boolean;
                 /** @enum {string} */
                 status: "valid" | "risky" | "invalid";
+                /** @enum {string} */
+                checkOutcome: "completed";
                 reason?: string;
                 didYouMean?: string;
                 risk?: string;
                 isDisposable?: boolean;
                 isRole?: boolean;
-            }[];
+            } | {
+                email: string;
+                /** @enum {boolean} */
+                valid: false;
+                /** @enum {string} */
+                status: "unavailable";
+                /** @enum {string} */
+                checkOutcome: "unavailable";
+                /** @enum {string} */
+                reason: "validation_unavailable";
+            })[];
+            persistence: {
+                matched: number;
+                modified: number;
+                failed: number;
+            };
         };
         ContactsValidateRequest: {
             emails: string[];
@@ -7642,6 +7669,11 @@ export interface components {
                 risky: number;
                 invalid: number;
                 unscored: number;
+                persistence?: {
+                    matched: number;
+                    modified: number;
+                    failed: number;
+                };
             };
             validationJobId?: string;
         };
@@ -21775,18 +21807,21 @@ export interface operations {
                      *         {
                      *           "email": "ada@gmail.com",
                      *           "valid": true,
-                     *           "status": "valid"
+                     *           "status": "valid",
+                     *           "checkOutcome": "completed"
                      *         },
                      *         {
                      *           "email": "temp@mailinator.com",
                      *           "valid": false,
                      *           "status": "invalid",
+                     *           "checkOutcome": "completed",
                      *           "reason": "undeliverable"
                      *         },
                      *         {
                      *           "email": "ada@gmial.com",
                      *           "valid": false,
                      *           "status": "risky",
+                     *           "checkOutcome": "completed",
                      *           "reason": "unknown",
                      *           "didYouMean": "ada@gmail.com"
                      *         },
@@ -21794,9 +21829,15 @@ export interface operations {
                      *           "email": "admin@stripe.com",
                      *           "valid": false,
                      *           "status": "risky",
+                     *           "checkOutcome": "completed",
                      *           "reason": "role_address"
                      *         }
-                     *       ]
+                     *       ],
+                     *       "persistence": {
+                     *         "matched": 4,
+                     *         "modified": 4,
+                     *         "failed": 0
+                     *       }
                      *     }
                      */
                     "application/json": components["schemas"]["ContactsValidateResponse"];
@@ -22057,6 +22098,11 @@ export interface operations {
                             risky: number;
                             invalid: number;
                             unscored: number;
+                            persistence?: {
+                                matched: number;
+                                modified: number;
+                                failed: number;
+                            };
                         };
                         validationJobId?: string;
                     };
