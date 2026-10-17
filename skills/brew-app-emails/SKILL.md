@@ -42,10 +42,18 @@ compile error. Regenerate it after changing a payload contract:
   `betterAuth({ emailVerification, emailAndPassword, databaseHooks })`.
 - Auth.js: `brewEmailProvider` (`@brew.new/sdk/next-auth`) goes into
   `providers`; email sign-in needs a database adapter.
-- Supabase: the Send Email Hook in `supabase/functions/send-email` sends
-  every auth email; deploy it and point Authentication > Hooks at it.
-- Clerk, Firebase, WorkOS, Stytch: the provider keeps its auth emails;
-  Brew sends lifecycle emails (`sendWelcomeEmail`).
+- Supabase: Brew's hosted Send Email Hook sends every auth email once
+  connected (`npx @brew.new/cli integrations connect supabase_auth`, or
+  `init --configure-supabase` with `SUPABASE_ACCESS_TOKEN` set). The
+  function in `supabase/functions/send-email` is the self-hosted
+  alternative: deploy it and point Authentication > Hooks at it.
+- Clerk: connect Clerk's `email.created` webhook to Brew
+  (`integrations connect clerk`); once `integrations connection clerk` is
+  `active`, `init --configure-clerk` turns off Clerk's delivery for the
+  templates Brew sends. Until then Clerk sends its own. Brew sends the
+  lifecycle emails (`sendWelcomeEmail`).
+- Firebase, WorkOS, Stytch: the provider keeps its auth emails; Brew
+  sends lifecycle emails (`sendWelcomeEmail`).
 
 ## A new email
 
