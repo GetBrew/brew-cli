@@ -10,6 +10,16 @@ export const EXPORT_EMAIL_DEFAULT_TIMEOUT_MS =
     : 800_000
 
 /**
+ * `integrations.connect` also runs the auth app email kit (SDK 13.3.0's
+ * constant; older SDKs lack it, and the route runs for up to 300 s).
+ */
+export const CONNECT_INTEGRATION_TIMEOUT_MS =
+  'CONNECT_INTEGRATION_DEFAULT_TIMEOUT_MS' in sdk &&
+  typeof sdk.CONNECT_INTEGRATION_DEFAULT_TIMEOUT_MS === 'number'
+    ? sdk.CONNECT_INTEGRATION_DEFAULT_TIMEOUT_MS
+    : 300_000
+
+/**
  * Routes whose server work routinely outlasts the 30 s default, with the
  * SDK's own per-call default for each — one source for the numbers, so the
  * CLI never disagrees with the SDK about how long a generate may take.
@@ -82,6 +92,11 @@ export const LONG_RUNNING_ROUTES: ReadonlyArray<{
     method: 'POST',
     path: '/v1/app-emails/kit',
     timeoutMs: sdk.SET_UP_APP_EMAIL_KIT_DEFAULT_TIMEOUT_MS,
+  },
+  {
+    method: 'PUT',
+    path: '/v1/integrations/{provider}/connection',
+    timeoutMs: CONNECT_INTEGRATION_TIMEOUT_MS,
   },
 ]
 
