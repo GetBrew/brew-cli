@@ -28,6 +28,7 @@ import {
   type ResolvedAuth,
   resolveAuth,
 } from '../client'
+import { systemClock } from '../clock'
 import { readConfig, updateConfig } from '../config-store'
 import { buildConfirmCommand } from '../confirm'
 import { sdkTransportFor } from '../context'
@@ -45,12 +46,15 @@ import {
   BREW_STATE_FILE,
   type BrewManagedFile,
   type BrewProjectEmail,
+  type BrewProjectState,
   BrewStateError,
+  type BrewStateExtra,
   createBrewState,
   readBrewState,
   serializeBrewState,
 } from '../project/state'
 import type { CliContext } from '../types'
+import { type AppBrand, resolveAppBrand } from './brand'
 import { type AuthId, detectProject, type ProjectDetection } from './detect'
 import {
   applyPatch,
@@ -60,6 +64,12 @@ import {
   type InitPatch,
   supabaseConfigPatch,
 } from './patches'
+import { runProviderRollback } from './providers/rollback'
+import {
+  type InitProvider,
+  type ProviderConfig,
+  runProviderStep,
+} from './providers/step'
 import {
   exitCodeFor,
   INIT_REPORT_SCHEMA_VERSION,
@@ -108,6 +118,14 @@ export type InitOptions = {
   readonly noWait: boolean
   readonly resume: boolean
   readonly openBrowser: boolean
+  /** Point Supabase Auth's Send Email hook at Brew (Management API). */
+  readonly configureSupabase?: boolean
+  /** Turn off Clerk's delivery for the templates Brew sends. */
+  readonly configureClerk?: boolean
+  /** The Supabase project ref, when it cannot be detected. */
+  readonly supabaseProject?: string | undefined
+  /** Only put back the provider settings saved in brew.json. */
+  readonly rollbackProvider?: boolean
 }
 
 /** The kit's auth stack for a detected auth library. */
@@ -239,6 +257,21 @@ export async function runInit(
   const sets: readonly AppEmailKitSet[] = options.sets ?? ['auth', 'lifecycle']
   const lifecycle = sets.includes('lifecycle')
   const stack = options.stack ?? kitStackFor(project.auth)
+  if (options.configureSupabase === true && stack !== 'supabase') {
+    throw new CliUsageError(
+      `--configure-supabase is for Supabase Auth projects; this one's auth stack is ${stack} (pass --stack supabase if detection is wrong).`
+    )
+  }
+  if (options.configureClerk === true && stack !== 'clerk') {
+    throw new CliUsageError(
+      `--configure-clerk is for Clerk projects; this one's auth stack is ${stack} (pass --stack clerk if detection is wrong).`
+    )
+  }
+  if (options.rollbackProvider === true) {
+    return finish(
+      await rollbackOnly({ ctx, project, state, stateRead, writer, dryRun })
+    )
+  }
 
   // ---- App key: .env.local must be git-ignored before a key goes in it.
   const envLocalText = writer.read('.env.local')
@@ -485,14 +518,80 @@ export async function runInit(
     })
   }
 
-  const client: BrewClient | undefined =
+  let client: BrewClient | undefined =
     credential.auth === undefined
       ? undefined
       : buildSdkClient(credential.auth, sdkTransportFor(ctx))
   const afterSignIn = 'after sign-in'
+  // False while a brand this run created is still being extracted: the
+  // kit and everything after it wait for a re-run.
+  let brandReady = true
 
   // ---- Brand.
-  if (brand !== null) {
+  if (
+    options.appUrl !== undefined &&
+    client !== undefined &&
+    credential.auth !== undefined
+  ) {
+    let current: AppBrand | null = null
+    let lookupError: string | undefined
+    try {
+      const row = await client.brand.get()
+      current = {
+        brandId: row.brandId,
+        name: brand?.name ?? row.identity?.brandName ?? row.domain ?? null,
+        domain: row.domain ?? null,
+      }
+    } catch (error) {
+      rethrowIfFatal(ctx, error)
+      // 400 BRAND_ID_REQUIRED: an organization key with no brand picked yet.
+      if (
+        !(
+          (error instanceof BrewApiError || error instanceof CliApiError) &&
+          error.status === 400
+        )
+      ) {
+        lookupError = describeError(error)
+      }
+    }
+    if (lookupError !== undefined) {
+      steps.push({ id: 'brand', status: 'failed', detail: lookupError })
+    } else {
+      const resolution = await resolveAppBrand({
+        ctx,
+        client,
+        appUrl: options.appUrl,
+        current,
+        canSwitch:
+          credential.source === 'flag' ||
+          credential.source === 'env' ||
+          credential.source === 'config',
+        dryRun,
+        noWait: options.noWait,
+        idempotencyKey: (body) => idempotencyKey('brand', body),
+        siteUrl,
+        rerunCommand: rerunCommand(ctx, {
+          drop: ['--resume', '--no-wait', '--dry-run'],
+          add: [],
+        }),
+      })
+      brand = resolution.brand
+      brandReady = resolution.ready
+      steps.push(resolution.step)
+      nextSteps.push(...resolution.nextSteps)
+      if (resolution.switchTo !== undefined) {
+        credential = authFor(
+          credential.auth.apiKey,
+          credential.source,
+          resolution.switchTo
+        )
+        client = buildSdkClient(
+          credential.auth as ResolvedAuth,
+          sdkTransportFor(ctx)
+        )
+      }
+    }
+  } else if (brand !== null) {
     steps.push({
       id: 'brand',
       status: 'done',
@@ -537,6 +636,7 @@ export async function runInit(
     added: false,
     records: [],
     settingsUrl: `${siteUrl}/domains`,
+    connectUrl: null,
     sandbox: null,
   }
   if (client === undefined) {
@@ -575,6 +675,7 @@ export async function runInit(
         domain.domainId = shown.domainId
         domain.name = shown.name
         domain.status = shown.status
+        domain.connectUrl = shown.domainUrl ?? `${siteUrl}/domains`
         if (shown.status !== 'verified') {
           domain.records = shown.records.map((record) => ({
             type: record.type,
@@ -613,6 +714,16 @@ export async function runInit(
           url: shown?.domainUrl ?? domain.settingsUrl,
           blocking: false,
         })
+        // Entri's automatic DNS connect runs in the Brew app only: v1 has no
+        // API for it, so the CLI hands the person the page with the button.
+        nextSteps.push({
+          id: 'connect-dns-automatically',
+          actor: 'human',
+          kind: 'open-url',
+          url: domain.connectUrl ?? domain.settingsUrl,
+          title: `Or let Brew add the records for you: open ${domain.name} in Brew and choose Connect automatically (it signs in to your DNS provider; this runs in the Brew app, not the CLI). Until the domain verifies, app emails reach your Brew team only (sandbox)`,
+          blocking: false,
+        })
       } else if (chosen === undefined) {
         nextSteps.push({
           id: 'verify-domain',
@@ -637,7 +748,13 @@ export async function runInit(
   // ---- The starter kit.
   let kit: SetUpAppEmailKitResponse | undefined
   const emails: InitEmail[] = []
-  if (client === undefined || dryRun) {
+  if (client !== undefined && !dryRun && !brandReady) {
+    steps.push({
+      id: 'kit',
+      status: 'skipped',
+      detail: 'the brand is still being built; run init again when it is ready',
+    })
+  } else if (client === undefined || dryRun) {
     steps.push({
       id: 'kit',
       status: 'planned',
@@ -776,12 +893,12 @@ export async function runInit(
       })
     }
     if (paths.contracts !== null) {
-      if (client === undefined) {
+      if (client === undefined || !brandReady) {
         files.push({
           path: paths.contracts,
           action: 'planned',
           role: 'contracts',
-          note: afterSignIn,
+          note: client === undefined ? afterSignIn : 'after the brand is ready',
         })
       } else {
         const triggers = await listAllTriggers(client)
@@ -872,7 +989,9 @@ export async function runInit(
             `${patch.id}@${(patch.baseSha256 ?? '').slice(0, 12)}`,
           ],
         }),
-        blocking: true,
+        // The local config.toml hook serves the self-hosted function, the
+        // alternative to Brew's hosted hook: useful, never required.
+        blocking: patch.id !== 'supabase-config-hook',
       })
     } else if (patch.status === 'manual') {
       nextSteps.push({
@@ -894,6 +1013,58 @@ export async function runInit(
         ? 'nothing to patch'
         : patches.map((patch) => `${patch.id} ${patch.status}`).join(', '),
   })
+
+  // ---- Where the auth provider's own emails go (Supabase, Clerk).
+  let providerConfig: ProviderConfig = (state?.providerConfig ??
+    {}) as ProviderConfig
+  let providers: readonly InitProvider[] = []
+  let stateWrittenEarly = false
+  if (stack === 'supabase' || stack === 'clerk') {
+    if (!brandReady) {
+      steps.push({
+        id: 'provider',
+        status: 'skipped',
+        detail: 'after the brand is ready',
+      })
+    } else {
+      const result = await runProviderStep({
+        ctx,
+        root: project.root,
+        stack,
+        dryRun,
+        configureSupabase: options.configureSupabase === true,
+        configureClerk: options.configureClerk === true,
+        supabaseProject: options.supabaseProject,
+        client,
+        writer,
+        prefix,
+        providerConfig,
+        // brew.json holds the provider's old settings BEFORE they change.
+        persist: (config) => {
+          stateWrittenEarly = true
+          writer.writeFile(
+            BREW_STATE_FILE,
+            serializeBrewState(
+              createBrewState({
+                ...(state ?? {}),
+                projectId,
+                providerConfig: config,
+              }),
+              stateRead?.extra ?? {}
+            ),
+            { overwrite: true }
+          )
+        },
+        now: () => (ctx.io.clock ?? systemClock).now(),
+      })
+      if (result.step !== null) {
+        steps.push(result.step)
+      }
+      nextSteps.push(...result.nextSteps)
+      providers = result.providers
+      providerConfig = result.providerConfig
+    }
+  }
 
   // ---- MCP clients the project already uses.
   const mcp: McpInstallResult[] = []
@@ -1025,8 +1196,9 @@ export async function runInit(
     ]),
   ]
   const brandId = brand?.brandId ?? state?.brandId
+  const { providerConfig: _savedProviderConfig, ...previousState } = state ?? {}
   const nextState = createBrewState({
-    ...(state ?? {}),
+    ...previousState,
     projectId,
     ...(brandId === undefined ? {} : { brandId }),
     framework: project.framework,
@@ -1037,6 +1209,7 @@ export async function runInit(
     ...(paths.contracts === null ? {} : { contractsPath: paths.contracts }),
     emails: stateEmails,
     files: stateFiles,
+    ...(Object.keys(providerConfig).length === 0 ? {} : { providerConfig }),
     ...(mcpIds.length === 0 ? {} : { mcp: mcpIds }),
   })
   const stateChange = writer.writeFile(
@@ -1046,7 +1219,13 @@ export async function runInit(
   )
   files.push({
     path: BREW_STATE_FILE,
-    action: stateChange.action,
+    // A provider change saved brew.json early; this run still created it.
+    action:
+      stateWrittenEarly &&
+      stateRead === null &&
+      stateChange.action === 'updated'
+        ? 'created'
+        : stateChange.action,
     role: 'state',
   })
   steps.push({ id: 'state', status: dryRun ? 'planned' : 'done' })
@@ -1055,17 +1234,26 @@ export async function runInit(
   projectNextSteps({ project, nextSteps, siteUrl, paths, prefix })
 
   // ---- A sandbox test email to the person who signed in.
-  const testEmail = await sendTestEmail({
-    ctx,
-    client,
-    options,
-    emails,
-    to: options.testTo ?? signedInEmail,
-    idempotencyKey: (body) => idempotencyKey('test-email', body),
-    steps,
-    nextSteps,
-    prefix,
-  })
+  if (!brandReady) {
+    steps.push({
+      id: 'test-email',
+      status: 'skipped',
+      detail: 'after the brand is ready',
+    })
+  }
+  const testEmail: InitReport['testEmail'] = !brandReady
+    ? { status: 'skipped', key: null, to: null, reason: 'brand not ready' }
+    : await sendTestEmail({
+        ctx,
+        client,
+        options,
+        emails,
+        to: options.testTo ?? signedInEmail,
+        idempotencyKey: (body) => idempotencyKey('test-email', body),
+        steps,
+        nextSteps,
+        prefix,
+      })
 
   const report = baseReport({
     ctx,
@@ -1094,6 +1282,7 @@ export async function runInit(
     files,
     patches,
     mcp,
+    providers,
     testEmail,
     paths,
     keys,
@@ -1224,34 +1413,15 @@ function projectNextSteps(input: {
 }): void {
   const { project, nextSteps } = input
   if (project.auth === 'supabase') {
-    nextSteps.push(
-      {
-        id: 'deploy-supabase-hook',
-        actor: 'agent',
-        kind: 'run-command',
-        command: 'supabase functions deploy send-email --no-verify-jwt',
-        title: 'Deploy the Send Email Hook function',
-        blocking: true,
-      },
-      {
-        id: 'connect-supabase-hook',
-        actor: 'human',
-        kind: 'open-url',
-        url: 'https://supabase.com/dashboard/project/_/auth/hooks',
-        title:
-          "In Supabase, set Authentication > Hooks > Send Email to the send-email function's URL; store the secret it shows as SEND_EMAIL_HOOK_SECRET and BREW_API_KEY (from .env.local) in the Edge Function secrets",
-        blocking: true,
-      }
-    )
-  }
-  if (project.auth === 'clerk') {
+    // Brew's hosted hook is the default (the provider step); the function
+    // init writes is the self-hosted alternative.
     nextSteps.push({
-      id: 'connect-clerk',
-      actor: 'human',
-      kind: 'open-url',
-      url: `${input.siteUrl}/integrations/clerk`,
+      id: 'deploy-supabase-hook',
+      actor: 'agent',
+      kind: 'run-command',
+      command: 'supabase functions deploy send-email --no-verify-jwt',
       title:
-        'Clerk keeps sending its own auth emails. Connect Clerk in Brew to start lifecycle automations from Clerk events (or call sendWelcomeEmail from your webhook)',
+        "Alternative to Brew's hosted hook: deploy the self-hosted Send Email Hook function, point Authentication > Hooks > Send Email at its URL, and store the hook's secret as SEND_EMAIL_HOOK_SECRET and BREW_API_KEY (from .env.local) in the Edge Function secrets",
       blocking: false,
     })
   }
@@ -1487,6 +1657,7 @@ function baseReport(input: {
   readonly files?: readonly InitFile[]
   readonly patches?: readonly InitPatch[]
   readonly mcp?: readonly McpInstallResult[]
+  readonly providers?: readonly InitProvider[]
   readonly testEmail?: InitReport['testEmail']
   readonly paths?: {
     readonly client: string | null
@@ -1566,6 +1737,7 @@ function baseReport(input: {
     files: input.files ?? [],
     patches: input.patches ?? [],
     mcp: input.mcp ?? [],
+    providers: input.providers ?? [],
     testEmail: input.testEmail ?? { status: 'skipped', key: null, to: null },
     steps: input.steps,
     nextSteps: input.nextSteps,
@@ -1655,6 +1827,7 @@ function ambiguousReport(
     files: [],
     patches: [],
     mcp: [],
+    providers: [],
     testEmail: { status: 'skipped', key: null, to: null },
     steps: [
       {
@@ -1671,6 +1844,85 @@ function ambiguousReport(
       nextSteps,
     }),
   }
+}
+
+/**
+ * `init --rollback-provider`: only the provider settings saved in
+ * brew.json go back; nothing else in the project or the brand changes.
+ */
+async function rollbackOnly(input: {
+  readonly ctx: CliContext
+  readonly project: ProjectDetection
+  readonly state: BrewProjectState | null
+  readonly stateRead: { readonly extra: BrewStateExtra } | null
+  readonly writer: ProjectWriter
+  readonly dryRun: boolean
+}): Promise<InitReport> {
+  const { ctx, project, state, writer, dryRun } = input
+  if (state === null) {
+    throw new CliUsageError(
+      `No ${BREW_STATE_FILE} in ${project.root}: there is nothing to roll back. Run this in the app init set up.`
+    )
+  }
+  const result = await runProviderRollback({
+    ctx,
+    root: project.root,
+    writer,
+    dryRun,
+    providerConfig: (state.providerConfig ?? {}) as ProviderConfig,
+  })
+  const steps: InitStep[] = [
+    { id: 'detect', status: 'done', detail: project.framework },
+    result.step,
+  ]
+  const files: InitFile[] = []
+  const changed =
+    Object.keys(result.providerConfig).length !==
+      Object.keys(state.providerConfig ?? {}).length ||
+    result.providers.some((provider) => provider.action === 'failed')
+  if (!dryRun && changed) {
+    const { providerConfig: _saved, ...rest } = state
+    const next = createBrewState({
+      ...rest,
+      ...(Object.keys(result.providerConfig).length === 0
+        ? {}
+        : { providerConfig: result.providerConfig }),
+    })
+    const change = writer.writeFile(
+      BREW_STATE_FILE,
+      serializeBrewState(next, input.stateRead?.extra ?? {}),
+      { overwrite: true }
+    )
+    files.push({ path: BREW_STATE_FILE, action: change.action, role: 'state' })
+    steps.push({
+      id: 'state',
+      status: 'done',
+      detail: 'restored providers removed from providerConfig',
+    })
+  } else {
+    steps.push({ id: 'state', status: dryRun ? 'planned' : 'skipped' })
+  }
+  const appKey = nonEmpty(
+    getEnvValue(parseEnv(writer.read('.env.local') ?? ''), APP_KEY_VARIABLE)
+  )
+  return baseReport({
+    ctx,
+    project,
+    projectId: state.projectId,
+    dryRun,
+    steps,
+    nextSteps: result.nextSteps,
+    credential: { auth: undefined, source: 'none' },
+    appKey: {
+      status: appKey === undefined ? 'missing' : 'existing',
+      masked: appKey === undefined ? null : maskApiKey(appKey),
+    },
+    ...(state.brandId === undefined
+      ? {}
+      : { brand: { brandId: state.brandId, name: null } }),
+    files,
+    providers: result.providers,
+  })
 }
 
 function finish(report: InitReport): CommandOutcome {
