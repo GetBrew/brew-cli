@@ -7409,6 +7409,21 @@ export interface components {
                 format: "html" | "mjml" | "jsx";
                 /** @description The email source. `{{ trigger.<field> }}` merge tags read the payload. */
                 content: string;
+                /**
+                 * @description `jsx` only. How the root component's props land: `fold` (default) folds each to its `PreviewProps` value or default; `merge_tags` keeps them as `{{ trigger.<name> }}` merge tags filled from the trigger payload, with defaults and `??` literals as fallbacks.
+                 * @enum {string}
+                 */
+                props?: "fold" | "merge_tags";
+                /**
+                 * @description `resend` rewrites Resend template placeholders (`{{{NAME}}}`, `{{{NAME|fallback}}}`) to Brew merge tags (`{{ trigger.NAME }}`; `FIRST_NAME`, `LAST_NAME` and `EMAIL` read the contact).
+                 * @enum {string}
+                 */
+                placeholders?: "resend";
+                /** @description Fallback text for variables the source gives none, e.g. a Resend template's `variables`. Needs `placeholders` or `props: "merge_tags"`. */
+                variables?: {
+                    key: string;
+                    fallbackValue?: string;
+                }[];
             };
             title?: string;
             subject?: string;

@@ -4,6 +4,7 @@ import { UPSERT_APP_EMAIL_DEFAULT_TIMEOUT_MS } from '@brew.new/sdk'
 import {
   APP_EMAIL_SOURCE_FORMATS,
   inlineInput,
+  inputSource,
   oneOfFlag,
 } from '../../lib/app-email-inputs'
 import { defineCommand } from '../../lib/define-command'
@@ -52,7 +53,7 @@ export const appEmailsUpsertCommand = defineCommand({
     {
       flag: '--source-file <path>',
       summary:
-        'Your own design source (HTML, MJML or React Email JSX), or - for stdin',
+        "Your own design source (HTML, MJML or React Email JSX), or - for stdin. Import modes (props, placeholders, variables) go in --input's source",
     },
     {
       flag: '--format <format>',
@@ -82,6 +83,7 @@ export const appEmailsUpsertCommand = defineCommand({
     'brew-cli app-emails upsert order.paid --source-file emails/order-paid.tsx --subject "Your order is confirmed" --yes',
     'brew-cli app-emails upsert lifecycle.welcome --overwrite --yes',
     `brew-cli app-emails upsert account.sign-in-code --source-file emails/sign-in-code.tsx --input '{"payloadSchema":{"fields":[{"key":"code","type":"string","required":true,"secret":true}]}}' --yes`,
+    `brew-cli app-emails upsert order.shipped --source-file emails/order-shipped.tsx --input '{"source":{"props":"merge_tags"}}' --yes`,
   ],
   confirmSummary: ({ args, flags }) => {
     if (flags.input === '-') {
@@ -114,10 +116,14 @@ export const appEmailsUpsertCommand = defineCommand({
     const base = await readJsonFlag(ctx, flags.input, '--input')
     const sourcePath = flagString(flags.sourceFile)
     const content = await readTextFlag(ctx, sourcePath, '--source-file')
-    let source: { format: string; content: string } | undefined
+    let source: Readonly<Record<string, unknown>> | undefined
     if (content !== undefined) {
+      // The file fills `format` and `content`; the rest of --input's
+      // `source` (the import modes) stays.
+      const baseSource = inputSource(base)
       const format =
         explicitFormat ??
+        flagString(baseSource?.format) ??
         (sourcePath === undefined || sourcePath === '-'
           ? undefined
           : FORMAT_BY_EXTENSION[extname(sourcePath).toLowerCase()])
@@ -126,7 +132,7 @@ export const appEmailsUpsertCommand = defineCommand({
           '--format is required for this source: html | mjml | jsx.'
         )
       }
-      source = { format, content }
+      source = { ...baseSource, format, content }
     } else if (explicitFormat !== undefined) {
       throw new CliUsageError('--format applies to --source-file only.')
     }

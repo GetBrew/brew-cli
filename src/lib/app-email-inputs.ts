@@ -84,6 +84,23 @@ export function oneOfFlag(
   return text
 }
 
+/**
+ * `--input`'s `source` object, so `--source-file` can fill `format` and
+ * `content` and keep the rest: the import modes `props`, `placeholders`
+ * and `variables` (brew-v2#2145).
+ */
+export function inputSource(
+  base: unknown
+): Readonly<Record<string, unknown>> | undefined {
+  if (base === null || typeof base !== 'object') {
+    return
+  }
+  const source = (base as Record<string, unknown>).source
+  return source !== null && typeof source === 'object' && !Array.isArray(source)
+    ? (source as Record<string, unknown>)
+    : undefined
+}
+
 /** `--input` given inline (not stdin), for confirmation summaries only. */
 export function inlineInput(value: unknown): Record<string, unknown> {
   if (typeof value !== 'string' || value === '-') {

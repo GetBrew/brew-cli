@@ -13140,6 +13140,34 @@ components:
               type: string
               minLength: 1
               description: The email source. `{{ trigger.<field> }}` merge tags read the payload.
+            props:
+              type: string
+              enum:
+                - fold
+                - merge_tags
+              description: "`jsx` only. How the root component's props land: `fold` (default) folds each to its `PreviewProps` value or default; `merge_tags` keeps them as `{{ trigger.<name> }}` merge tags filled from the trigger payload, with defaults and `??` literals as fallbacks."
+            placeholders:
+              type: string
+              enum:
+                - resend
+              description: "`resend` rewrites Resend template placeholders (`{{{NAME}}}`, `{{{NAME|fallback}}}`) to Brew merge tags (`{{ trigger.NAME }}`; `FIRST_NAME`, `LAST_NAME` and `EMAIL` read the contact)."
+            variables:
+              type: array
+              items:
+                type: object
+                properties:
+                  key:
+                    type: string
+                    maxLength: 200
+                    pattern: ^[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*$
+                  fallbackValue:
+                    type: string
+                    maxLength: 1000
+                required:
+                  - key
+                additionalProperties: false
+              maxItems: 500
+              description: "Fallback text for variables the source gives none, e.g. a Resend template's `variables`. Needs `placeholders` or `props: \"merge_tags\"`."
           required:
             - format
             - content

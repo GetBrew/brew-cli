@@ -298,7 +298,7 @@ export async function codePhase(run: RunContext): Promise<CodePhaseResult> {
     item.warnings = []
     if (file.manualReasons.length > 0) {
       item.status = 'manual'
-      item.detail = `${file.manualReasons.join('; ')}: a static import cannot follow that, so move it by hand (inline what it needs, then ${run.prefix} app-emails upsert ${key} --source-file ${file.file} --yes)`
+      item.detail = `${file.manualReasons.join('; ')}: a static import cannot follow that, so move it by hand (inline what it needs, then ${run.prefix} app-emails upsert ${key} --source-file ${file.file} --input '{"source":{"props":"merge_tags"}}' --yes)`
     } else {
       item.status = 'planned'
       item.detail = `→ app email ${key}; props become {{ trigger.* }} merge tags`
