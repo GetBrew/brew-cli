@@ -43,13 +43,16 @@ export const fieldsListCommand = defineCommand({
     }
     const fields = ctx.client().fields
     if (flags.all === true) {
-      const rows = await collectAll(ctx, (cursor) =>
-        fields.list(
-          asSdkInput<ListFieldsInput>({
-            ...input,
-            ...(cursor === undefined ? {} : { cursor }),
-          })
-        )
+      const rows = await collectAll(
+        ctx,
+        (cursor) =>
+          fields.list(
+            asSdkInput<ListFieldsInput>({
+              ...input,
+              ...(cursor === undefined ? {} : { cursor }),
+            })
+          ),
+        { cursor: flagString(input.cursor) }
       )
       return {
         data: { data: rows, pagination: { cursor: null, hasMore: false } },

@@ -107,16 +107,20 @@ export const flowsListCommand = defineCommand({
     const isSemantic = 'semantic' in input && input.semantic !== undefined
     if (flags.all === true) {
       let count: FlowCount = {}
-      const rows = await collectAll(ctx, async (cursor) => {
-        const page = await flows.list(
-          asSdkInput<ListFlowsInput>({
-            ...input,
-            ...(cursor === undefined ? {} : { cursor }),
-          })
-        )
-        count = readCount(page)
-        return page
-      })
+      const rows = await collectAll(
+        ctx,
+        async (cursor) => {
+          const page = await flows.list(
+            asSdkInput<ListFlowsInput>({
+              ...input,
+              ...(cursor === undefined ? {} : { cursor }),
+            })
+          )
+          count = readCount(page)
+          return page
+        },
+        { cursor: flagString(input.cursor) }
+      )
       return {
         data: {
           data: rows,

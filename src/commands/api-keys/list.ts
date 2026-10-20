@@ -41,7 +41,7 @@ export const apiKeysListCommand = defineCommand({
         },
       })
     if (flags.all === true) {
-      const rows = await collectAll(ctx, (next) => page(next ?? cursor))
+      const rows = await collectAll(ctx, page, { cursor })
       return {
         data: { data: rows, pagination: { cursor: null, hasMore: false } },
         human: renderApiKeys(rows),

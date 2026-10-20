@@ -85,11 +85,11 @@ a `confirmCommand` otherwise, `--yes` to proceed).
 | `brew-cli automations list` | read | `GET /v1/automations` | List automations (lean rows; `automations get` for the graph) |
 | `brew-cli automations get` | read | `GET /v1/automations/{automationId}` | Fetch one automation by id — the bare row, lean by default |
 | `brew-cli automations create` | write | `POST /v1/automations` | Create an automation from a graph JSON (starts unpublished) |
-| `brew-cli automations update` | write | `PATCH /v1/automations/{automationId}` | Update automation metadata and/or its graph (PATCH) |
+| `brew-cli automations update` | destructive | `PATCH /v1/automations/{automationId}` | Update automation metadata and/or its graph (PATCH) |
 | `brew-cli automations publish` | write | `PATCH /v1/automations/{automationId}` | Publish an automation — arms it for live fires; does not itself send |
 | `brew-cli automations unpublish` | write | `PATCH /v1/automations/{automationId}` | Unpublish an automation so new trigger fires no longer start runs |
 | `brew-cli automations delete` | destructive | `DELETE /v1/automations/{automationId}` | Delete an automation and its version history (cascade) |
-| `brew-cli automations test` | write | `POST /v1/automations/{automationId}/test` | Start a suppression-aware TEST run (no real mail is sent) |
+| `brew-cli automations test` | destructive | `POST /v1/automations/{automationId}/test` | Test an automation; testRecipient delivers real mail, omit for a dry run |
 | `brew-cli automations run` | destructive | `POST /v1/automations/{automationId}/run` | Run a manual-audience automation (live send; --dry-run previews) |
 | `brew-cli automations triggers list` | read | `GET /v1/automations/triggers` | List trigger events (their payload schemas drive fires); one trigger is `automations triggers get` |
 | `brew-cli automations triggers get` | read | `GET /v1/automations/triggers/{triggerEventId}` | Fetch one trigger by id — the bare row with its payload schema |
@@ -1264,7 +1264,7 @@ brew-cli automations create --name "Welcome flow" --input '{"triggerEventId":"te
 Update automation metadata and/or its graph (PATCH)
 
 - Route: `PATCH /v1/automations/{automationId}`
-- Class: write
+- Class: destructive
 - SDK: `brew.automations.patch(...)`
 - Argument `automationId` — Id of the automation to update
 - `--name <name>` — New name
@@ -1320,17 +1320,19 @@ brew-cli automations delete am_123 --yes
 
 ### brew-cli automations test
 
-Start a suppression-aware TEST run (no real mail is sent)
+Test an automation; testRecipient delivers real mail, omit for a dry run
 
 - Route: `POST /v1/automations/{automationId}/test`
-- Class: write
+- Class: destructive
 - SDK: `brew.automations.test(...)`
 - Argument `automationId` — Id of the automation to test
 - `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
+- `--idempotency-key <key>` — Idempotency-Key for safe retries (auto-generated otherwise)
 
 ```bash
 brew-cli automations test am_123
 brew-cli automations test am_123 --input '{"userId":"u_1"}'
+brew-cli automations test am_123 --input '{"testRecipient":"qa@example.com"}' --yes
 ```
 
 ### brew-cli automations run

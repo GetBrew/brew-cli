@@ -59,13 +59,16 @@ export const analyticsEventsCommand = defineCommand({
     })
     const analytics = ctx.client().analytics
     if (flags.all === true) {
-      const rows = await collectAll(ctx, (cursor) =>
-        analytics.events(
-          asSdkInput<EventsAnalyticsInput>({
-            ...input,
-            ...(cursor === undefined ? {} : { cursor }),
-          })
-        )
+      const rows = await collectAll(
+        ctx,
+        (cursor) =>
+          analytics.events(
+            asSdkInput<EventsAnalyticsInput>({
+              ...input,
+              ...(cursor === undefined ? {} : { cursor }),
+            })
+          ),
+        { cursor: flagString(input.cursor) }
       )
       return {
         data: { data: rows, pagination: { cursor: null, hasMore: false } },

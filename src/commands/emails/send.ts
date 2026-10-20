@@ -1,4 +1,5 @@
 import type { SendEmailInput } from '@brew.new/sdk'
+import { enforceStdinConfirmation } from '../../lib/confirm'
 import { defineCommand } from '../../lib/define-command'
 import { CliUsageError } from '../../lib/errors'
 import {
@@ -44,6 +45,10 @@ export const emailsSendCommand = defineCommand({
     'brew-cli emails send eml_1 --subject "Fall sale" --domain dom_1 --audience aud_1 --schedule-at 2026-09-01T09:00:00Z --yes',
   ],
   confirmSummary: ({ args, flags }) => {
+    // Stdin is checked in run after its body and flag overrides are merged.
+    if (flags.input === '-') {
+      return
+    }
     // The gate must describe the MERGED send, not just the flags — an
     // --input body can carry test/audienceId/to/scheduledAt on its own.
     const inline = parseInlineInput(flags.input)
@@ -55,14 +60,12 @@ export const emailsSendCommand = defineCommand({
     const scheduleAt =
       flagString(flags.scheduleAt) ?? asString(inline?.scheduledAt)
     const recipients = toStringArray(flags.to) ?? asRecipients(inline?.to)
-    const target =
-      audience === undefined
-        ? recipients === undefined
-          ? flags.input === '-'
-            ? 'the recipients named in the --input body on stdin'
-            : 'its recipients'
-          : `${recipients.length} listed recipient(s)`
-        : `audience ${audience}`
+    let target = 'its recipients'
+    if (audience !== undefined) {
+      target = `audience ${audience}`
+    } else if (recipients !== undefined) {
+      target = `${recipients.length} listed recipient(s)`
+    }
     const timing = scheduleAt === undefined ? 'now' : `at ${scheduleAt}`
     return `Send email ${args.emailId ?? ''} as a REAL campaign to ${target} ${timing}. Real recipients receive it; this cannot be undone.`
   },
@@ -77,6 +80,11 @@ export const emailsSendCommand = defineCommand({
       domainId: flagString(flags.domain),
       scheduledAt: flagString(flags.scheduleAt),
     })
+    await enforceStdinConfirmation(
+      emailsSendCommand,
+      { ctx, args, flags },
+      input
+    )
     if (typeof input.subject !== 'string' || input.subject === '') {
       throw new CliUsageError(
         '--subject is required (or provide it via --input).'

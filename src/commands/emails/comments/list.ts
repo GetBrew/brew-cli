@@ -8,7 +8,11 @@ import { defineCommand } from '../../../lib/define-command'
 import { CliUsageError } from '../../../lib/errors'
 import { asSdkInput, flagInt, flagString } from '../../../lib/input'
 import { progress, renderTable } from '../../../lib/output'
-import { CURSOR_FLAG, collectAll } from '../../../lib/paginate'
+import {
+  assertPaginationProgress,
+  CURSOR_FLAG,
+  collectAll,
+} from '../../../lib/paginate'
 import type { CliContext } from '../../../lib/types'
 
 type CommentsPage = ListEmailCommentsResponse
@@ -109,8 +113,11 @@ export const emailsCommentsListCommand = defineCommand({
       }
     }
     if (isAll) {
-      const rows = await collectAll(ctx, (next) =>
-        list({ ...input, ...(next === undefined ? {} : { cursor: next }) })
+      const rows = await collectAll(
+        ctx,
+        (next) =>
+          list({ ...input, ...(next === undefined ? {} : { cursor: next }) }),
+        { cursor }
       )
       return {
         data: { data: rows, pagination: { cursor: null, hasMore: false } },
@@ -142,6 +149,7 @@ async function readWholeThread(
   let thread: Thread | undefined
   let messages: Message[] = []
   let reads = 0
+  const fetched = new Set<string>()
   for (;;) {
     let page: CommentsPage
     try {
@@ -174,7 +182,15 @@ async function readWholeThread(
     thread ??= slice
     messages = [...(slice.messages ?? []), ...messages]
     const older = slice.messagesCursor ?? null
-    if (older === null || older === next) {
+    assertPaginationProgress({
+      ctx,
+      fetchedCursors: fetched,
+      cursor: next,
+      next: older,
+      rowsFetched: messages.length,
+      pagesFetched: reads,
+    })
+    if (older === null) {
       return { ...thread, messages, messagesCursor: null }
     }
     next = older

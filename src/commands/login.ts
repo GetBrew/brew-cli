@@ -55,7 +55,7 @@ async function readCandidateKey(ctx: CliContext): Promise<string> {
     return ctx.globals.apiKey
   }
   if (!ctx.io.isTtyIn) {
-    const piped = (await ctx.io.readStdin()).trim()
+    const piped = (await ctx.io.readStdin(ctx.signal)).trim()
     if (piped !== '') {
       return piped
     }

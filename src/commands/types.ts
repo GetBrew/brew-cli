@@ -1,15 +1,10 @@
 import { createHash } from 'node:crypto'
 import { readFileSync, writeFileSync } from 'node:fs'
 
-import type {
-  ListTriggersInput,
-  ListTriggersResponse,
-  Trigger,
-} from '@brew.new/sdk'
+import type { ListTriggersInput, ListTriggersResponse } from '@brew.new/sdk'
 import { defineCommand } from '../lib/define-command'
 import { asSdkInput } from '../lib/input'
-
-type TriggerRow = Trigger
+import { collectAll } from '../lib/paginate'
 
 /**
  * `brew-cli types` — generate TypeScript payload contracts for this
@@ -146,34 +141,20 @@ export const typesCommand = defineCommand({
     'brew-cli types --check',
   ],
   run: async ({ ctx, flags }) => {
-    // Follow the cursor to the end — a silent 100-trigger cap would make
-    // `--check` certify an incomplete file (integration catalogs alone
-    // can cross 100). The page ceiling is a runaway-loop backstop only.
-    const triggers: Array<TriggerRow> = []
-    let cursor: string | null = null
-    for (let page = 0; page < 50; page++) {
-      const listResponse: ListTriggersResponse = await ctx
+    // Complete the read before writing or certifying any artifact. Shared
+    // pagination rejects cycles and observes the command's stop signal.
+    const triggers = await collectAll(ctx, async (cursor) => {
+      const response: ListTriggersResponse = await ctx
         .client()
         .automations.triggers.list(
           asSdkInput<ListTriggersInput>({
             limit: 100,
-            ...(cursor === null ? {} : { cursor }),
+            ...(cursor === undefined ? {} : { cursor }),
           })
         )
-      triggers.push(...(listResponse.data ?? []))
-      if (
-        !listResponse.pagination?.hasMore ||
-        !listResponse.pagination.cursor
-      ) {
-        cursor = null
-        break
-      }
-      cursor = listResponse.pagination.cursor
-    }
-    if (cursor !== null)
-      throw new Error(
-        'Trigger pagination exceeded the safety limit; no output was written.'
-      )
+      return { data: response.data, pagination: response.pagination }
+    })
+    ctx.signal.throwIfAborted()
     const artifacts: Array<ContractArtifact> = []
     for (let index = 0; index < triggers.length; index += 8) {
       ctx.signal.throwIfAborted()
@@ -201,6 +182,7 @@ export const typesCommand = defineCommand({
       )
       artifacts.push(...batch)
     }
+    ctx.signal.throwIfAborted()
     const text = buildFileText({ artifacts })
     const outPath =
       typeof flags.out === 'string' ? flags.out : 'brew-contracts.ts'

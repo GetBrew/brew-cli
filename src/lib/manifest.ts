@@ -1,14 +1,17 @@
-import { ALL_COMMANDS } from '../registry'
 import { SDK_SKIP_LIST, SPEC_SKIP_LIST } from '../skip-list'
 import { CLI_NAME, CLI_VERSION } from '../version'
-import { GLOBAL_FLAGS } from './define-command'
+import { type CommandMetadata, GLOBAL_FLAGS } from './define-command'
 
 /**
  * The machine-readable surface contract printed by `brew-cli docs --agent`.
  * Additive-only: tests snapshot this shape, so removals or renames are
  * breaking changes by construction.
  */
-export function buildManifest(): Record<string, unknown> {
+export function buildManifest({
+  commands,
+}: {
+  readonly commands: readonly CommandMetadata[]
+}): Record<string, unknown> {
   return {
     name: CLI_NAME,
     version: CLI_VERSION,
@@ -43,7 +46,7 @@ export function buildManifest(): Record<string, unknown> {
       flag: flag.flag,
       summary: flag.summary,
     })),
-    commands: ALL_COMMANDS.map((spec) => ({
+    commands: commands.map((spec) => ({
       command: [CLI_NAME, ...spec.path].join(' '),
       summary: spec.summary,
       class: spec.commandClass,
@@ -65,7 +68,7 @@ export function buildManifest(): Record<string, unknown> {
         flag: flag.flag,
         summary: flag.summary,
       })),
-      confirmation: spec.confirmSummary !== undefined,
+      confirmation: spec.confirmation,
       examples: spec.examples,
     })),
     skips: {

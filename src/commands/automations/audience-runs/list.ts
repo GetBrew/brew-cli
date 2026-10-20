@@ -1,5 +1,6 @@
 import type { ListAudienceRunsInput } from '@brew.new/sdk'
 import { inputField, singleRowPage } from '../../../lib/compat'
+import { shellQuote } from '../../../lib/confirm'
 import { defineCommand } from '../../../lib/define-command'
 import {
   asSdkInput,
@@ -69,13 +70,16 @@ export const automationsAudienceRunsListCommand = defineCommand({
       cursor: flagString(flags.cursor),
     })
     if (flags.all === true) {
-      const rows = await collectAll(ctx, (cursor) =>
-        audienceRuns.list(
-          asSdkInput<ListAudienceRunsInput>({
-            ...input,
-            ...(cursor === undefined ? {} : { cursor }),
-          })
-        )
+      const rows = await collectAll(
+        ctx,
+        (cursor) =>
+          audienceRuns.list(
+            asSdkInput<ListAudienceRunsInput>({
+              ...input,
+              ...(cursor === undefined ? {} : { cursor }),
+            })
+          ),
+        { cursor: flagString(input.cursor) }
       )
       return {
         data: { data: rows, pagination: { cursor: null, hasMore: false } },
@@ -85,7 +89,13 @@ export const automationsAudienceRunsListCommand = defineCommand({
     const result = await audienceRuns.list(
       asSdkInput<ListAudienceRunsInput>(input)
     )
-    return { data: result, human: renderAudienceRuns(result.data) }
+    const human =
+      result.data.length === 0 &&
+      result.pagination.hasMore &&
+      result.pagination.cursor !== null
+        ? `No matching audience runs on this page. Continue with --cursor ${shellQuote(result.pagination.cursor)} or --all.`
+        : renderAudienceRuns(result.data)
+    return { data: result, human }
   },
 })
 

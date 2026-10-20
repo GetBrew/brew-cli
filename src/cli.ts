@@ -2,8 +2,8 @@ import { BrewApiError } from '@brew.new/sdk'
 import { Command, CommanderError } from 'commander'
 import { buildRetryCommand, enforceConfirmation } from './lib/confirm'
 import { makeContext, makeFallbackContext } from './lib/context'
-import type { CommandSpec } from './lib/define-command'
-import { GLOBAL_FLAGS } from './lib/define-command'
+import type { CommandMetadata, CommandSpec } from './lib/define-command'
+import { commandMetadata, GLOBAL_FLAGS } from './lib/define-command'
 import {
   CliApiError,
   CliUsageError,
@@ -178,12 +178,13 @@ function commandFor(
   )
 }
 
-/** `--input -`, `--file -` or `--data -`: the re-run needs the same stdin. */
+/** Split or equals-form stdin flags require the same input on a re-run. */
 function readsStdin(rawArgv: readonly string[]): boolean {
   return rawArgv.some(
     (token, index) =>
-      token === '-' &&
-      ['--input', '--file', '--data'].includes(rawArgv[index - 1] ?? '')
+      ['--input=-', '--file=-', '--data=-'].includes(token) ||
+      (token === '-' &&
+        ['--input', '--file', '--data'].includes(rawArgv[index - 1] ?? ''))
   )
 }
 
@@ -262,8 +263,9 @@ export function buildProgram(
   for (const flag of GLOBAL_FLAGS) {
     program.option(flag.flag, flag.summary)
   }
+  const metadata = commands.map(commandMetadata)
   for (const spec of commands) {
-    registerCommand(program, spec, io, rawArgv, onContext, onExitCode)
+    registerCommand(program, spec, io, rawArgv, onContext, onExitCode, metadata)
   }
   return program
 }
@@ -274,7 +276,8 @@ function registerCommand(
   io: CliIo,
   rawArgv: readonly string[],
   onContext?: (ctx: CliContext) => void,
-  onExitCode?: (code: number) => void
+  onExitCode?: (code: number) => void,
+  metadata: readonly CommandMetadata[] = []
 ): void {
   const parent = resolveGroup(program, spec.path.slice(0, -1))
   const leafName = spec.path.at(-1)
@@ -323,14 +326,25 @@ function registerCommand(
       },
       {}
     )
-    const ctx = makeContext({ io, flags, rawArgv, traits: traitsOf(spec) })
+    const ctx = makeContext({
+      io,
+      flags,
+      rawArgv,
+      traits: traitsOf(spec),
+      commands: metadata,
+    })
     onContext?.(ctx)
-    const invocation = { ctx, args: positional, flags }
-    await enforceConfirmation(spec, invocation)
-    // Armed only now: time a human spends at the y/N prompt is not the
-    // request's.
     ctx.startDeadline()
     try {
+      const baseInvocation = { ctx, args: positional, flags }
+      const input = await spec.prepareInput?.(baseInvocation)
+      ctx.signal.throwIfAborted()
+      const invocation = {
+        ...baseInvocation,
+        ...(input === undefined ? {} : { input }),
+      }
+      await enforceConfirmation(spec, invocation)
+      ctx.signal.throwIfAborted()
       const outcome = await spec.run(invocation)
       if (outcome !== undefined) {
         printData(ctx, outcome.data, outcome.human)
