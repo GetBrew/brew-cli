@@ -8,6 +8,11 @@ permissions:
   contents: write
   id-token: write
 
+# Prevent duplicate tag runs from publishing or replacing release assets together.
+concurrency:
+  group: release-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   release:
     # npm rejects provenance from self-hosted runners, including Blacksmith.
