@@ -7,7 +7,7 @@ Not released yet. Needs `@brew.new/sdk` 13.3.0: `integrations.connect` and
 13.2.0 that 0.18.0 needs; see the SDK gates in `RELEASING.md`), and the API
 from GetBrew/brew-v2#2146 (`GET|PUT /v1/integrations/{provider}/connection`,
 the `supabase_auth` hosted Send Email Hook) and #2068 (Clerk `email.created`
-sends the app's auth emails). The bundled spec is 0.19.0's plus exactly
+sends the app's auth emails). The bundled spec is 0.20.0's plus exactly
 those two PRs' spec deltas.
 
 ### Added
