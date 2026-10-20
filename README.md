@@ -102,6 +102,11 @@ Designed for AI agents as first-class users:
   pagination; `--idempotency-key` makes retries safe across process
   restarts.
 
+Filtered list pages can be empty while more pages remain. Follow their cursor
+or use `--all`. If a cursor stops advancing, `--all` exits with
+`CLI_PAGINATION_STALLED` and reports its progress without printing a partial
+list as complete.
+
 ## Command reference
 
 The full generated reference lives in

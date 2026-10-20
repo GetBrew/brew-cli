@@ -61,6 +61,16 @@ export class CliConnectionError extends Error {
   }
 }
 
+/** A list cursor stopped advancing; partial output must not look complete. */
+export class CliPaginationError extends Error {
+  constructor() {
+    super(
+      'Pagination stopped because the API returned a cursor that did not advance.'
+    )
+    this.name = 'CliPaginationError'
+  }
+}
+
 /** Bad invocation: malformed input, unusable flag combinations. */
 export class CliUsageError extends Error {}
 
@@ -262,6 +272,15 @@ export function toErrorEnvelope(
 }
 
 function baseEnvelope(error: unknown, context: ErrorContext): CliErrorEnvelope {
+  if (error instanceof CliPaginationError) {
+    return {
+      code: 'CLI_PAGINATION_STALLED',
+      type: 'internal_error',
+      message: error.message,
+      suggestion:
+        'Restart the list without a cursor; the partial list was not printed.',
+    }
+  }
   if (error instanceof CliInterruptError) {
     return {
       code: 'CLI_INTERRUPTED',
