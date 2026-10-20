@@ -183,34 +183,37 @@ describe('emails clone', () => {
 })
 
 describe('emails export', () => {
-  it('maps provider, template name, and dryRun onto the body', async () => {
-    let body: unknown
-    server.use(
-      http.post(`${API}/v1/emails/eml_1/export`, async ({ request }) => {
-        body = await request.json()
-        return HttpResponse.json({ provider: 'klaviyo', dryRun: true })
+  it.each(['klaviyo', 'loops'])(
+    'maps %s, template name, and dryRun onto the body',
+    async (provider) => {
+      let body: unknown
+      server.use(
+        http.post(`${API}/v1/emails/eml_1/export`, async ({ request }) => {
+          body = await request.json()
+          return HttpResponse.json({ provider, dryRun: true })
+        })
+      )
+      const result = await runCli(
+        [
+          'emails',
+          'export',
+          'eml_1',
+          '--provider',
+          provider,
+          '--template-name',
+          'Fall sale',
+          '--dry-run',
+        ],
+        { env: env(), extraCommands: EXTRA }
+      )
+      expect(result.code).toBe(0)
+      expect(body).toEqual({
+        provider,
+        templateName: 'Fall sale',
+        dryRun: true,
       })
-    )
-    const result = await runCli(
-      [
-        'emails',
-        'export',
-        'eml_1',
-        '--provider',
-        'klaviyo',
-        '--template-name',
-        'Fall sale',
-        '--dry-run',
-      ],
-      { env: env(), extraCommands: EXTRA }
-    )
-    expect(result.code).toBe(0)
-    expect(body).toEqual({
-      provider: 'klaviyo',
-      templateName: 'Fall sale',
-      dryRun: true,
-    })
-  })
+    }
+  )
 
   it('sends --sender-email for Brevo and Mailjet', async () => {
     let body: unknown
