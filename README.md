@@ -91,6 +91,11 @@ Designed for AI agents as first-class users:
   get exit `4` plus a JSON envelope containing a ready-to-run
   `confirmCommand`; pass `--yes` to proceed. Humans on a TTY get a y/N
   prompt. Test sends (`emails send --test`) skip the gate.
+- **Saved email recovery** — `409 EMAIL_RESULT_UNAVAILABLE` means the
+  generation or edit committed. Do not repeat the write. Read the exact
+  saved result using `error.details.emailId` and `emailVersionId`:
+  `brew-cli emails get <emailId> --email-version-id <emailVersionId> --include html`.
+  The error preserves these identifiers and the API's recovery guidance.
 - **No fuzzy matching** — unknown commands fail hard with exit 2.
 - **Machine-readable discovery** — `brew-cli docs --agent` prints the
   full manifest (commands, flags, classes, routes, env, exit codes);
@@ -108,9 +113,18 @@ The full generated reference lives in
 [`docs/commands/README.md`](./docs/commands/README.md). Resource groups:
 `contacts`, `fields`, `emails` (+ `groups`, `comments`), `sends`,
 `audiences`, `automations` (+ `triggers`, `runs`, `audience-runs`,
-`trigger-instances`), `analytics`, `insights`, `brand`, `content`,
+`trigger-instances`), `analytics`, `insights`, `brand`, `brands`, `content`,
 `templates`, `flows`, `chats`, `notifications`, plus
-`login`/`logout`/`whoami`/`config`/`usage`/`health`/`docs`/`api`.
+`canvas sessions` and `login`/`logout`/`whoami`/`config`/`usage`/`health`/`docs`/`api`.
+
+For an embedded editor, create brands with an organization-scoped key,
+poll `brands get <brandId>` until `ready: true`, then use `--brand <brandId>`
+to generate or import emails and create scoped `canvas sessions` grants.
+Keep API keys on the host's backend; pass only the scoped session credentials
+to the browser. See the [white-label integration guide](https://docs.brew.new/sdks/typescript/white-label-email-editor)
+for the complete SDK and host authorization flow. Imports accept HTML, MJML,
+JSX, and saved EML messages; JSON output includes the import's `assetReport`
+with asset counts and warnings.
 
 Every collection with ids to look up has a real detail read — `<group> get
 <id>` returns the bare row, and an unknown id surfaces the API's own typed
@@ -120,9 +134,8 @@ comment thread is `emails comments list <emailId> --comment-id <id>`).
 ## How this repo stays in sync with the API, MCP, and SDK
 
 The app repo's Zod contracts generate the OpenAPI spec, which is mirrored
-into this repo (`openapi/public-api-v1.yaml`) and the SDK: byte-identically,
-except that a release can leave out blocks another open PR owns (0.13.0
-keeps `main`'s email-audit and add-image blocks for the PR that ships them). Two parity tests gate CI here:
+into this repo (`openapi/public-api-v1.yaml`) and the SDK byte for byte.
+Two parity tests gate CI here:
 
 - **SDK parity** walks the installed `@brew.new/sdk` client and fails if
   any method lacks a command or a reviewed skip entry — so an SDK upgrade

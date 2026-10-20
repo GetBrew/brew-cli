@@ -15,7 +15,7 @@ import {
 
 export const emailsImportCommand = defineCommand({
   path: ['emails', 'import'],
-  summary: 'Import existing HTML, MJML, or JSX as a new editable design',
+  summary: 'Import existing HTML, MJML, JSX, or EML as a new editable design',
   sdkMethod: 'emails.import',
   route: { method: 'POST', path: '/v1/emails/import' },
   commandClass: 'write',
@@ -25,7 +25,10 @@ export const emailsImportCommand = defineCommand({
       flag: '--file <path>',
       summary: 'Source file to import, or - for stdin',
     },
-    { flag: '--format <format>', summary: 'Source format: html | mjml | jsx' },
+    {
+      flag: '--format <format>',
+      summary: 'Source format: html | mjml | jsx | eml',
+    },
     { flag: '--title <title>', summary: 'Design title' },
     {
       flag: '--base-url <url>',
@@ -42,6 +45,7 @@ export const emailsImportCommand = defineCommand({
     'brew-cli emails import --file newsletter.html --format html --title "Legacy newsletter"',
     'brew-cli emails import --file newsletter.html --format html --subject-line "This month at Brew"',
     'cat email.html | brew-cli emails import --file - --format html',
+    'brew-cli emails import --file saved-message.eml --format eml',
   ],
   run: async ({ ctx, flags }) => {
     const base = await readJsonFlag(ctx, flags.input, '--input')
@@ -59,7 +63,7 @@ export const emailsImportCommand = defineCommand({
       )
     }
     if (typeof input.format !== 'string') {
-      throw new CliUsageError('--format is required: html | mjml | jsx.')
+      throw new CliUsageError('--format is required: html | mjml | jsx | eml.')
     }
     const result = await ctx
       .client()

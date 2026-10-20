@@ -54,7 +54,7 @@ a `confirmCommand` otherwise, `--yes` to proceed).
 | `brew-cli emails get` | read | `GET /v1/emails/{emailId}` | Fetch one email design by id — the bare row |
 | `brew-cli emails comments list` | read | `GET /v1/emails/{emailId}/comments` | List a design's open comment threads (who, where, latest message); --include messages adds the messages |
 | `brew-cli emails generate` | write ($) | `POST /v1/emails` | Generate a new on-brand email design from a prompt |
-| `brew-cli emails import` | write | `POST /v1/emails/import` | Import existing HTML, MJML, or JSX as a new editable design |
+| `brew-cli emails import` | write | `POST /v1/emails/import` | Import existing HTML, MJML, JSX, or EML as a new editable design |
 | `brew-cli emails import-figma` | write | `POST /v1/emails/figma` | Convert one Figma frame into an editable design (deterministic, free) |
 | `brew-cli emails edit` | write ($) | `PATCH /v1/emails/{emailId}` | AI-edit an email design, and/or set its subject line, title or group (free without a prompt) |
 | `brew-cli emails clone` | write | `POST /v1/emails/{emailId}/clone` | Clone a design into a new one (exact snapshot copy, no AI) |
@@ -706,13 +706,13 @@ brew-cli emails generate --prompt "Welcome email" --content-urls https://example
 
 ### brew-cli emails import
 
-Import existing HTML, MJML, or JSX as a new editable design
+Import existing HTML, MJML, JSX, or EML as a new editable design
 
 - Route: `POST /v1/emails/import`
 - Class: write
 - SDK: `brew.emails.import(...)`
 - `--file <path>` — Source file to import, or - for stdin
-- `--format <format>` — Source format: html | mjml | jsx
+- `--format <format>` — Source format: html | mjml | jsx | eml
 - `--title <title>` — Design title
 - `--base-url <url>` — Base URL for resolving relative asset links
 - `--subject-line <text>` — The design's default inbox subject line
@@ -723,6 +723,7 @@ Import existing HTML, MJML, or JSX as a new editable design
 brew-cli emails import --file newsletter.html --format html --title "Legacy newsletter"
 brew-cli emails import --file newsletter.html --format html --subject-line "This month at Brew"
 cat email.html | brew-cli emails import --file - --format html
+brew-cli emails import --file saved-message.eml --format eml
 ```
 
 ### brew-cli emails import-figma
