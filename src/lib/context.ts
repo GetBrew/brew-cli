@@ -45,8 +45,19 @@ export function makeContext(input: {
   const { signal } = anySignal([input.io.signal, deadline.signal])
   const transport = createTransportState()
   const cache = new Map<string, BrewClient>()
+  let stdinConsumed = false
+  const io: CliIo = {
+    ...input.io,
+    get isTtyIn() {
+      return input.io.isTtyIn && !stdinConsumed
+    },
+    readStdin: (signal) => {
+      stdinConsumed = true
+      return input.io.readStdin(signal)
+    },
+  }
   const ctx: CliContext = {
-    io: input.io,
+    io,
     mode,
     globals,
     rawArgv: input.rawArgv,

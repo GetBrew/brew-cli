@@ -7,7 +7,6 @@ import {
 } from '../../src/lib/confirm'
 import { makeContext } from '../../src/lib/context'
 import { CliInterruptError, CliTimeoutError } from '../../src/lib/errors'
-import { readJsonFlag } from '../../src/lib/input'
 import type { CliIo } from '../../src/lib/types'
 
 const body = { testRecipient: 'qa@example.com' }
@@ -46,28 +45,18 @@ afterEach(() => {
 })
 
 describe('interactive confirmation command budget', () => {
-  it('excludes a deferred stdin prompt and resumes only the remaining budget', async () => {
+  it('pauses an active prompt and resumes only the remaining budget', async () => {
     let answer: (value: string) => void = () => undefined
     const { ctx, invocation } = interactiveContext({
-      input: '-',
-      readStdin: () =>
-        new Promise((resolve) => {
-          setTimeout(() => resolve(JSON.stringify(body)), 60)
-        }),
+      input: JSON.stringify(body),
       readLine: () =>
         new Promise((resolve) => {
           answer = resolve
         }),
     })
     ctx.startDeadline()
-    const input = readJsonFlag(ctx, '-', '--input')
     await vi.advanceTimersByTimeAsync(60)
-    await expect(input).resolves.toEqual(body)
-    const pending = enforceStdinConfirmation(
-      automationsTestCommand,
-      invocation,
-      body
-    )
+    const pending = enforceConfirmation(automationsTestCommand, invocation)
     try {
       await vi.advanceTimersByTimeAsync(1000)
       expect(

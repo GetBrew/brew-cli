@@ -666,6 +666,36 @@ describe('emails send', () => {
   })
 })
 
+describe('stdin confirmation after reading to EOF', () => {
+  it('returns a replayable confirmation instead of prompting on exhausted stdin', async () => {
+    let dispatches = 0
+    server.use(
+      http.post(`https://brew.new/api/v1/sends`, () => {
+        dispatches += 1
+        return HttpResponse.json({ sendId: 'send_1' })
+      })
+    )
+    const input = {
+      subject: 'Confirmed campaign',
+      domainId: 'dom_1',
+      to: 'qa@example.com',
+    }
+    const result = await runCli(['emails', 'send', 'eml_1', '--input', '-'], {
+      env: env(),
+      stdin: JSON.stringify(input),
+      ttyIn: true,
+      ttyOut: true,
+      promptAnswer: 'yes',
+    })
+    expect(result.code).toBe(4)
+    expect(result.json).toMatchObject({ confirmationRequired: true })
+    expect(dispatches).toBe(0)
+    expect(
+      (result.json as { confirmCommand: string }).confirmCommand
+    ).toContain('Confirmed campaign')
+  })
+})
+
 describe('emails send with --input bodies (gate awareness)', () => {
   it.each([['--input', '-'], ['--input=-']])(
     'sends a stdin test request without the campaign confirmation gate (%j)',
