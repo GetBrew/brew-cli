@@ -2676,6 +2676,7 @@ SDK methods intentionally without a dedicated command:
 - `emails.comments.listAllMessages` — auto-pager covered by `emails comments list <emailId> --comment-id <id> --all`
 - `notifications.listAll` — auto-pager covered by `notifications list --all`
 - `brand.update` — SDK alias of brand.patch, exposed as `brand update`
+- `brands.waitForExtraction` — read-only SDK polling helper over brands.get; lifecycle reads are exposed by `brands get`
 - `withBrand` — client scoping helper activated by the global `--brand`; not an API command
 
 Public API operations not yet available (tracked by the spec parity test):

@@ -12,18 +12,16 @@ and `revoke`. This change requires the SDK fix that preserves the revocation
 JSON response. Do not release these commands with an SDK version that discards
 that response.
 
-For coordinated PR validation, the dependency and Bun lockfile pin the immutable
-SDK source commit containing the fix. Bun prepares its distribution from its own
-frozen build dependencies. A fresh frozen CLI install must pass all checks using
-that source dependency; a locally packed SDK must not hide dependency failures.
+SDK 13.0.0 preserves the revocation JSON response and is the minimum supported
+SDK release for these commands. The dependency and Bun lockfile consume the
+published registry artifact; the temporary Git source pin has been removed.
 
-Release the SDK first (planned 13.0.0 under its method-signature version policy),
-then update `@brew.new/sdk` to `^13.0.0` in this package and regenerate `bun.lock`
-from the published registry artifact, replacing the temporary Git source pin.
-Run frozen installation, the full checks, and command-doc freshness before
-releasing the CLI. Never invent a future lockfile
-checksum. The canvas tests must preserve `{ revoked: true }`, the `--yes` gate,
-and one-attempt create/refresh requests.
+For future upgrades, release the SDK first, then update the dependency and
+regenerate `bun.lock` from its actual published artifact. Run frozen
+installation, the full checks, and command-doc freshness before releasing the
+CLI. A locally packed SDK must not hide dependency failures, and future
+lockfile checksums must never be invented. The canvas tests must preserve
+`{ revoked: true }`, the `--yes` gate, and one-attempt create/refresh requests.
 
 ```bash
 # on a clean main with CI green
