@@ -109,7 +109,8 @@ async function readBodyText(
  * the SDK method when it ships — the parity-sdk sentinel flags the moment
  * that becomes possible. Unlike the SDK transport, raw calls are
  * single-attempt (no retry loop), bounded by `rawFetch`'s deadline. POST
- * calls get an idempotency key automatically; a timed-out or interrupted
+ * calls get an idempotency key automatically unless `idempotency: 'none'`
+ * marks a credential-minting operation; a timed-out or interrupted
  * one reports that key (and the command that replays it), and callers can
  * pass their own to replay across process restarts.
  */
@@ -121,6 +122,8 @@ export async function rawRequest<TResponse>(
     readonly body?: unknown
     readonly query?: Readonly<Record<string, string | undefined>>
     readonly idempotencyKey?: string | undefined
+    /** Credential-minting operations cannot replay their response. */
+    readonly idempotency?: 'none'
     readonly allowAnonymous?: boolean
   }
 ): Promise<TResponse> {
@@ -130,10 +133,10 @@ export async function rawRequest<TResponse>(
     ...(request.allowAnonymous === true ? { allowAnonymous: true } : {}),
   })
   const hasBody = request.body !== undefined
-  const idempotencyKey = resolveRawIdempotencyKey(
-    request.method,
-    request.idempotencyKey
-  )
+  const idempotencyKey =
+    request.idempotency === 'none'
+      ? undefined
+      : resolveRawIdempotencyKey(request.method, request.idempotencyKey)
   const headers = buildRawHeaders({
     auth,
     path: request.path,

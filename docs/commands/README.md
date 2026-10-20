@@ -2,7 +2,7 @@
 
 <!-- GENERATED FILE — do not edit. Regenerate with `bun run docs:commands`. -->
 
-144 commands. Classes: read (always safe), write
+148 commands. Classes: read (always safe), write
 (mutating, retry-safe), destructive (irreversible — the confirmation
 protocol applies: interactive y/N on a TTY, exit 4 + JSON envelope with
 a `confirmCommand` otherwise, `--yes` to proceed).
@@ -74,7 +74,7 @@ a `confirmCommand` otherwise, `--yes` to proceed).
 | `brew-cli sends cancel` | destructive | `POST /v1/sends/{sendId}/cancel` | Cancel a scheduled or queued send before it goes out |
 | `brew-cli sends pause` | write | `POST /v1/sends/{sendId}/pause` | Pause an in-flight or scheduled send (resumable) |
 | `brew-cli sends resume` | write | `POST /v1/sends/{sendId}/resume` | Resume a paused gradual send (the unsent tail is re-spread); the send reports `running` again |
-| `brew-cli types` | read | `GET /v1/automations/triggers` | Generate TypeScript payload contracts for this workspace's triggers into your codebase; --check is the CI drift gate (exit 1 on drift). Needs the automations scope |
+| `brew-cli types` | read | — | Generate TypeScript payload contracts for this workspace's triggers into your codebase; --check is the CI drift gate (exit 1 on drift). Needs the automations scope |
 | `brew-cli audiences list` | read | `GET /v1/audiences` | List audience segments; one segment is `audiences get` |
 | `brew-cli audiences get` | read | `GET /v1/audiences/{audienceId}` | Fetch one audience segment by id — the bare row |
 | `brew-cli audiences create` | write | `POST /v1/audiences` | Create an audience segment from a filter definition |
@@ -99,6 +99,7 @@ a `confirmCommand` otherwise, `--yes` to proceed).
 | `brew-cli automations triggers contract validate` | read | `POST /v1/automations/triggers/{triggerEventId}/contract/validate` | Dry-run a payload against a trigger's contract (the fire path's validator) — never fires; invalid payloads still exit 0 |
 | `brew-cli contracts infer` | read | `POST /v1/payload-contracts/infer` | Draft a payload contract from a real example payload — nothing is saved; PUT the draft on a trigger |
 | `brew-cli automations triggers create` | write | `POST /v1/automations/triggers` | Create a trigger event (title + typed payload schema) |
+| `brew-cli automations triggers ensure-brew-event` | write | `POST /v1/automations/triggers/brew-events` | Get or create the brand's trigger for a contact unsubscribing (one domain's list, or all emails) |
 | `brew-cli automations triggers update` | write | `PATCH /v1/automations/triggers/{triggerEventId}` | Update a trigger event (title, description, payload schema) |
 | `brew-cli automations triggers delete` | destructive | `DELETE /v1/automations/triggers/{triggerEventId}` | Delete a trigger event (rejected while automations depend on it) |
 | `brew-cli automations triggers fire` | destructive | `POST /v1/automations/triggers/{triggerEventId}/fire` | Fire a trigger event with a payload (starts LIVE runs) |
@@ -159,6 +160,9 @@ a `confirmCommand` otherwise, `--yes` to proceed).
 | `brew-cli integrations list` | read | `GET /v1/integrations` | List the integration catalog with per-provider connected state (connect via Settings, not this CLI) |
 | `brew-cli chats list` | read | `GET /v1/chats` | List the brand's Brew chats, most recently active first; `chats get` reads one |
 | `brew-cli chats get` | read | `GET /v1/chats/{chatId}` | Brand-scoped digest of a Brew chat (artifacts + transcript tail) |
+| `brew-cli canvas sessions create` | write | `POST /v1/canvas/sessions` | Create an authenticated group or single-email canvas grant |
+| `brew-cli canvas sessions refresh` | write | `POST /v1/canvas/sessions/{sessionId}/refresh` | Renew a canvas grant using its original issuing credential |
+| `brew-cli canvas sessions revoke` | destructive | `DELETE /v1/canvas/sessions/{sessionId}` | Revoke a canvas session and terminate its access |
 | `brew-cli notifications list` | read | `GET /v1/notifications` | List the brand's notifications (generations, sends, imports, domain checks), newest first |
 | `brew-cli health` | read | `GET /v1/health` | Check Brew API liveness (no auth required) |
 | `brew-cli usage` | read | `GET /v1/usage` | Show plan, credit balance, and email-send quota |
@@ -823,7 +827,7 @@ Export a design to a connected ESP as a template (not a send)
 - Class: write
 - SDK: `brew.emails.export(...)`
 - Argument `emailId` — Design id to export
-- `--provider <provider>` — Connected ESP: braze, brevo, hubspot, klaviyo, mailchimp, mailjet, iterable, postmark, onesignal, mailgun, sendgrid
+- `--provider <provider>` — Connected ESP: braze, brevo, hubspot, klaviyo, loops, mailchimp, mailjet, iterable, postmark, onesignal, mailgun, sendgrid
 - `--template-name <name>` — Template name in the ESP (default: the email title)
 - `--sender-email <email>` — Brevo or Mailjet: the active sender to use (omit when the account has exactly one)
 - `--dry-run` — Validate design, ownership, and ESP connection without creating a template
@@ -831,6 +835,7 @@ Export a design to a connected ESP as a template (not a send)
 
 ```bash
 brew-cli emails export eml_2SmZOWV3ZQ7W5x6g3m4p --provider klaviyo
+brew-cli emails export eml_2SmZOWV3ZQ7W5x6g3m4p --provider loops --template-name "Welcome"
 brew-cli emails export eml_2SmZOWV3ZQ7W5x6g3m4p --provider mailchimp --template-name "Fall sale" --dry-run
 ```
 
@@ -1073,9 +1078,8 @@ brew-cli sends resume snd_123
 
 Generate TypeScript payload contracts for this workspace's triggers into your codebase; --check is the CI drift gate (exit 1 on drift). Needs the automations scope
 
-- Route: `GET /v1/automations/triggers`
 - Class: read
-- Derived from `brew.automations.triggers.list(...)`
+- Derived from `brew.automations.triggers.list(...)`, `brew.automations.triggers.getContract(...)`
 - `--out <file>` — Output file (default brew-contracts.ts)
 - `--check` — Verify the output file is up to date instead of writing; exits 1 on drift
 
@@ -1468,6 +1472,23 @@ Create a trigger event (title + typed payload schema)
 
 ```bash
 brew-cli automations triggers create --title user.signup --input '{"payloadSchema":{"type":"object","fields":[{"key":"userId","type":"string","required":true}]}}'
+```
+
+### brew-cli automations triggers ensure-brew-event
+
+Get or create the brand's trigger for a contact unsubscribing (one domain's list, or all emails)
+
+- Route: `POST /v1/automations/triggers/brew-events`
+- Class: write
+- SDK: `brew.automations.triggers.ensureBrewEvent(...)`
+- `--scope <scope>` — domain (one marketing domain's list, with --domain-id) | all (every email the brand sends)
+- `--domain-id <domainId>` — The marketing domain for --scope domain (ids from domains list)
+- `--event <event>` — The Brew event (default contact.unsubscribed)
+- `--idempotency-key <key>` — Idempotency-Key for safe retries (auto-generated otherwise)
+
+```bash
+brew-cli automations triggers ensure-brew-event --scope domain --domain-id jd7f0c2a8w1x9m4n6p3q5r8s2t
+brew-cli automations triggers ensure-brew-event --scope all
 ```
 
 ### brew-cli automations triggers update
@@ -2497,6 +2518,52 @@ Brand-scoped digest of a Brew chat (artifacts + transcript tail)
 
 ```bash
 brew-cli chats get Hk2mZ8t9QbY3sW1vR0pLd
+```
+
+### brew-cli canvas sessions create
+
+Create an authenticated group or single-email canvas grant
+
+- Route: `POST /v1/canvas/sessions`
+- Class: write
+- SDK: `brew.canvas.sessions.create(...)`
+- `--group-id <id>` — Embed exactly this group
+- `--email-id <id>` — Embed exactly this email
+- `--parent-origin <origin>` — Exact HTTPS origin allowed to frame the canvas
+- `--user-id <id>` — Authenticated user ID in your application
+- `--user-name <name>` — Collaborator display name
+- `--read-only` — Allow reading only (default: read, edit, presence)
+- `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
+
+```bash
+brew-cli canvas sessions create --group-id grp_example --parent-origin https://your-app.example --user-id user_example --user-name Alice
+brew-cli canvas sessions create --input -
+```
+
+### brew-cli canvas sessions refresh
+
+Renew a canvas grant using its original issuing credential
+
+- Route: `POST /v1/canvas/sessions/{sessionId}/refresh`
+- Class: write
+- SDK: `brew.canvas.sessions.refresh(...)`
+- Argument `sessionId` — Canvas session ID
+
+```bash
+brew-cli canvas sessions refresh session_example
+```
+
+### brew-cli canvas sessions revoke
+
+Revoke a canvas session and terminate its access
+
+- Route: `DELETE /v1/canvas/sessions/{sessionId}`
+- Class: destructive
+- SDK: `brew.canvas.sessions.revoke(...)`
+- Argument `sessionId` — Canvas session ID
+
+```bash
+brew-cli canvas sessions revoke session_example --yes
 ```
 
 ### brew-cli notifications list
