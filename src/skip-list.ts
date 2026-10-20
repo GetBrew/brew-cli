@@ -54,6 +54,11 @@ export const SDK_SKIP_LIST: readonly SdkSkip[] = [
     reason: 'SDK alias of brand.patch, exposed as `brand update`',
   },
   {
+    sdkPath: 'brands.waitForExtraction',
+    reason:
+      'read-only SDK polling helper over brands.get; lifecycle reads are exposed by `brands get`',
+  },
+  {
     sdkPath: 'withBrand',
     reason:
       'client scoping helper activated by the global `--brand`; not an API command',
