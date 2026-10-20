@@ -2,8 +2,10 @@ import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { HttpResponse, http } from 'msw'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { typesCommand } from '../../src/commands/types'
+import { defineCommand } from '../../src/lib/define-command'
+import { CliInterruptError } from '../../src/lib/errors'
 import { server } from '../helpers/msw-server'
 import { runCli } from '../helpers/run-cli'
 
@@ -72,6 +74,43 @@ describe('types uses authoritative contract artifacts', () => {
     expect(text).toContain('export type StablePayloadTriTwo =')
     expect(text).toContain('export const StablePayloadTriTwoContractHash =')
   })
+
+  it.each([false, true])(
+    'preserves the artifact when interrupted after its final contract read (check=%s)',
+    async (isCheck) => {
+      const { out, env } = setup()
+      const controller = new AbortController()
+      const existing = '// existing authoritative contracts\n'
+      writeFileSync(out, existing)
+      const command = defineCommand({
+        ...typesCommand,
+        path: ['types-late-interrupt'],
+        run: async (invocation) => {
+          const triggers = invocation.ctx.client().automations.triggers
+          const getContract = triggers.getContract.bind(triggers)
+          vi.spyOn(triggers, 'getContract').mockImplementation(
+            async (...args) => {
+              const response = await getContract(...args)
+              controller.abort(new CliInterruptError('SIGINT'))
+              return response
+            }
+          )
+          return typesCommand.run(invocation)
+        },
+      })
+      const result = await runCli(
+        ['types-late-interrupt', '--out', out, ...(isCheck ? ['--check'] : [])],
+        {
+          env,
+          signal: controller.signal,
+          extraCommands: [command],
+        }
+      )
+      expect(result.code).toBe(130)
+      expect(result.stdout).toBe('')
+      expect(readFileSync(out, 'utf8')).toBe(existing)
+    }
+  )
 
   it('leaves the existing output intact if a contract cannot be read', async () => {
     const { out, env } = setup()
