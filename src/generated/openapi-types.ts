@@ -7699,7 +7699,7 @@ export interface components {
                 };
             };
             validationJobId?: string;
-            /** @description This batch's Import History id. Each contact it wrote carries it as `importId` until a later import touches that contact, so filtering contacts on `importId` (`POST /v1/contacts/search`) lists them. */
+            /** @description This batch's Import History id. Each contact it wrote carries it as `importId` until a later import touches that contact, so a contact filter on `importId` lists them. */
             importId: string;
         };
         ContactsImportCsvRequest: {
