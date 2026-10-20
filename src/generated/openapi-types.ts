@@ -7707,7 +7707,7 @@ export interface components {
             mapping?: {
                 [key: string]: string;
             };
-            /** @description Optional deliverability check on ingestion. When true, each address is validated with the provider (2 credits per address, charged on success) and the verdict is saved to the contact’s `validationStatus`. Submissions above the inline cap (100 addresses) upsert first and validate as a background job, returning a `validationJobId`. */
+            /** @description Optional deliverability check on ingestion. When true, each imported address is validated with the provider and the verdict is saved to the contact’s `validationStatus`. Metered at 2 credits per CSV data row (rows skipped for a missing or invalid email, and repeats of an address, count), charged on success. Imports above the inline cap (100 rows) write first and validate as a background job, returning a `validationJobId`. */
             validate?: boolean;
             /** @description Consent record stamped on every imported row (typically `{ "source": "import" }`). */
             consent?: {
