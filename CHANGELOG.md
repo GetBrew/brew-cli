@@ -4,10 +4,9 @@
 
 Needs `@brew.new/sdk` 13.2.0: `brew.send` and
 `automations.triggers.fireByKey` (GetBrew/typescript-sdk#55, planned
-13.1.0), `appEmails` (GetBrew/typescript-sdk#64, planned 13.2.0) and the
-canvas revocation response fix already on the SDK's main branch (planned
-13.0.0). Neither PR is published yet; see the app email SDK gate in
-`RELEASING.md`. The API side is GetBrew/brew-v2#2013 (trigger keys),
+13.1.0) and `appEmails` (GetBrew/typescript-sdk#64, planned 13.2.0), both
+after the published 13.0.0. Neither PR is published yet; see the app email
+SDK gate in `RELEASING.md`. The API side is GetBrew/brew-v2#2013 (trigger keys),
 #2017 (fire by key), #2059 (team sandbox), #2066 (app emails) and #2060
 (browser sign-in).
 

@@ -30,13 +30,16 @@ export const appEmailsListCommand = defineCommand({
     }
     const appEmails = ctx.client().appEmails
     if (flags.all === true) {
-      const rows = await collectAll(ctx, (next) =>
-        appEmails.list(
-          asSdkInput<ListAppEmailsInput>({
-            ...input,
-            ...(next === undefined ? {} : { cursor: next }),
-          })
-        )
+      const rows = await collectAll(
+        ctx,
+        (next) =>
+          appEmails.list(
+            asSdkInput<ListAppEmailsInput>({
+              ...input,
+              ...(next === undefined ? {} : { cursor: next }),
+            })
+          ),
+        { cursor }
       )
       return {
         data: { data: rows, pagination: { cursor: null, hasMore: false } },
