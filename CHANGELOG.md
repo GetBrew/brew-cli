@@ -7,9 +7,12 @@
 - **`contacts import`** (`POST /v1/contacts/import`): bulk-import up to 1000
   contacts from a JSON file (an array, or `{ "contacts": [...] }`) or stdin as
   one batch in Brew's Import History. Takes `--file-name`, `--validate` and
-  `--consent-source`, and prints the batch's `importId`.
-- `contacts import-csv` names its batch in Import History: the `--file` name
-  by default, or `--file-name`. Both imports return `importId`.
+  `--consent-source`, and prints the batch's `importId`. A JSON object body
+  keeps its own `validate`, `consent` and `fileName`; a flag overrides them
+  only when given.
+- `contacts import-csv` names its batch in Import History: `--file-name`, else
+  a `fileName` in `--input`, else the `--file` name. Both imports return
+  `importId`.
 
 ### Changed
 

@@ -41,7 +41,7 @@ a `confirmCommand` otherwise, `--yes` to proceed).
 | `brew-cli contacts delete-many` | destructive | `POST /v1/contacts/batch-delete` | Delete up to 1000 contacts by email |
 | `brew-cli contacts validate` | write ($) | `POST /v1/contacts/validate` | Batch-validate email deliverability (no contacts created) |
 | `brew-cli contacts import` | write | `POST /v1/contacts/import` | Bulk-import up to 1000 contacts from a JSON file or stdin as one Import History batch (free; --validate costs 2 credits per address) |
-| `brew-cli contacts import-csv` | write | `POST /v1/contacts/import-csv` | Bulk-import contacts from a CSV file or stdin as one Import History batch (free; --validate costs 2 credits per address) |
+| `brew-cli contacts import-csv` | write | `POST /v1/contacts/import-csv` | Bulk-import contacts from a CSV file or stdin as one Import History batch (free; --validate costs 2 credits per row) |
 | `brew-cli fields list` | read | `GET /v1/fields` | List custom contact fields |
 | `brew-cli fields get` | read | `GET /v1/fields/{fieldName}` | Fetch one contact field definition by name — the bare row |
 | `brew-cli fields create` | write | `POST /v1/fields` | Create a custom contact field |
@@ -473,7 +473,7 @@ cat contacts.json | brew-cli contacts import --file - --file-name crm-export.jso
 
 ### brew-cli contacts import-csv
 
-Bulk-import contacts from a CSV file or stdin as one Import History batch (free; --validate costs 2 credits per address)
+Bulk-import contacts from a CSV file or stdin as one Import History batch (free; --validate costs 2 credits per row)
 
 - Route: `POST /v1/contacts/import-csv`
 - Class: write
@@ -482,7 +482,7 @@ Bulk-import contacts from a CSV file or stdin as one Import History batch (free;
 - `--file-name <name>` — Name the batch in Brew's Import History (default: the --file name)
 - `--mapping <pairs...>` — Column mapping csvColumn=fieldName, repeatable
 - `--date-order <order>` — month_first or day_first: how to read dates like 03/04/2026 (a day over 12 in the column wins; default month-first, with a DATE_ORDER_ASSUMED warning)
-- `--validate` — Deliverability-check every imported address (2 credits per address)
+- `--validate` — Deliverability-check every imported address (2 credits per CSV row)
 - `--consent-source <source>` — Stamp a marketing consent record on every row: api, form or import (sets the source of a record given in --input)
 - `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
 - `--idempotency-key <key>` — Idempotency-Key for safe retries (auto-generated otherwise)

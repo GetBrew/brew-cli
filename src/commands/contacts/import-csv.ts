@@ -19,7 +19,7 @@ type ImportCsvContactsInput = Parameters<ContactsResource['importCsv']>[0]
 export const contactsImportCsvCommand = defineCommand({
   path: ['contacts', 'import-csv'],
   summary:
-    'Bulk-import contacts from a CSV file or stdin as one Import History batch (free; --validate costs 2 credits per address)',
+    'Bulk-import contacts from a CSV file or stdin as one Import History batch (free; --validate costs 2 credits per row)',
   sdkMethod: 'contacts.importCsv',
   route: { method: 'POST', path: '/v1/contacts/import-csv' },
   commandClass: 'write',
@@ -45,7 +45,7 @@ export const contactsImportCsvCommand = defineCommand({
     {
       flag: '--validate',
       summary:
-        'Deliverability-check every imported address (2 credits per address)',
+        'Deliverability-check every imported address (2 credits per CSV row)',
     },
     {
       flag: '--consent-source <source>',
@@ -71,8 +71,11 @@ export const contactsImportCsvCommand = defineCommand({
       mapping: parseKeyValues(flags.mapping, '--mapping'),
       dateOrder: flagString(flags.dateOrder),
       validate: flags.validate === true ? true : undefined,
-      fileName: importFileName(flags),
     })
+    const fileName = importFileName(flags, input)
+    if (fileName !== undefined) {
+      input.fileName = fileName
+    }
     if (typeof input.csv !== 'string' || input.csv.trim() === '') {
       throw new CliUsageError(
         'Pass the CSV with --file (a path, or - for stdin) or as csv in --input.'
@@ -98,16 +101,20 @@ export const contactsImportCsvCommand = defineCommand({
 })
 
 /**
- * The Import History name: `--file-name`, else the file's own name (stdin
- * has none, so the batch is named by its source in Brew).
+ * The Import History name: `--file-name`, else a `fileName` the JSON body
+ * already carries, else the file's own name (stdin has none, so the batch is
+ * named by its source in Brew). `undefined` leaves the body's value alone.
  */
-export function importFileName(flags: {
-  readonly fileName?: unknown
-  readonly file?: unknown
-}): string | undefined {
+export function importFileName(
+  flags: { readonly fileName?: unknown; readonly file?: unknown },
+  body: Readonly<Record<string, unknown>> = {}
+): string | undefined {
   const explicit = flagString(flags.fileName)
   if (explicit !== undefined) {
     return explicit
+  }
+  if (typeof body.fileName === 'string') {
+    return
   }
   const file = flagString(flags.file)
   return file === undefined || file === '-' ? undefined : basename(file)

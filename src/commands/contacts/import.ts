@@ -58,10 +58,15 @@ export const contactsImportCommand = defineCommand({
       await readTextFlag(ctx, flags.file, '--file')
     )
     const base = await readJsonFlag(ctx, flags.input, '--input')
-    const rows = Array.isArray(fromFile) ? { contacts: fromFile } : fromFile
-    const input = mergeInput(Array.isArray(base) ? { contacts: base } : base, {
-      ...(rows && typeof rows === 'object' ? rows : {}),
-      fileName: importFileName(flags),
+    // The file's body (an array, or an object that may carry `validate`,
+    // `consent` or `fileName`) layers over --input; flags apply only when
+    // given, so a value the body set is never replaced by an absent flag.
+    const body = mergeInput(
+      Array.isArray(base) ? { contacts: base } : base,
+      asBody(fromFile)
+    )
+    const input = mergeInput(body, {
+      fileName: importFileName(flags, body),
       validate: flags.validate === true ? true : undefined,
     })
     if (!Array.isArray(input.contacts) || input.contacts.length === 0) {
@@ -86,6 +91,21 @@ export const contactsImportCommand = defineCommand({
     return { data: result }
   },
 })
+
+function asBody(fromFile: unknown): Record<string, unknown> {
+  if (fromFile === undefined) {
+    return {}
+  }
+  if (Array.isArray(fromFile)) {
+    return { contacts: fromFile }
+  }
+  if (fromFile === null || typeof fromFile !== 'object') {
+    throw new CliUsageError(
+      '--file must hold JSON: an array of contacts or { "contacts": [...] }'
+    )
+  }
+  return fromFile as Record<string, unknown>
+}
 
 function parseContactsFile(text: string | undefined): unknown {
   if (text === undefined) {

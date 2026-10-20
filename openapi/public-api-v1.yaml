@@ -13967,7 +13967,7 @@ components:
       required:
         - emails
       additionalProperties: false
-    ContactsImportCsvResponse:
+    ContactsImportResponse:
       type: object
       properties:
         summary:
@@ -13985,6 +13985,7 @@ components:
             skipped:
               type: integer
               minimum: 0
+              description: CSV rows left out for a missing or invalid email, or merged into a later row with the same address. Always 0 for a JSON import.
           required:
             - inserted
             - updated
@@ -14088,7 +14089,7 @@ components:
           type: string
         importId:
           type: string
-          description: This batch's Import History id. Every contact it wrote carries it as `importId`, so `search_contacts` with an `importId` filter lists them.
+          description: This batch's Import History id. Each contact it wrote carries it as `importId` until a later import touches that contact, so filtering contacts on `importId` (`POST /v1/contacts/search`) lists them.
       required:
         - summary
         - fieldsCreated
@@ -14149,135 +14150,6 @@ components:
           description: Name this batch is listed under in Import History (usually the source file name, e.g. `customers.csv`), also stamped on every contact it writes as `csvFileName`. A path keeps only its last segment.
       required:
         - csv
-      additionalProperties: false
-    ContactsImportResponse:
-      type: object
-      properties:
-        summary:
-          type: object
-          properties:
-            inserted:
-              type: integer
-              minimum: 0
-            updated:
-              type: integer
-              minimum: 0
-            failed:
-              type: integer
-              minimum: 0
-            skipped:
-              type: integer
-              minimum: 0
-          required:
-            - inserted
-            - updated
-            - failed
-            - skipped
-          additionalProperties: false
-        fieldsCreated:
-          type: array
-          items:
-            type: string
-        errors:
-          type: array
-          items:
-            type: object
-            properties:
-              email:
-                type: string
-              code:
-                type: string
-              field:
-                type: string
-              message:
-                type: string
-            required:
-              - email
-              - code
-              - message
-            additionalProperties: false
-        warnings:
-          type: array
-          items:
-            type: object
-            properties:
-              code:
-                type: string
-                minLength: 1
-              email:
-                type: string
-                minLength: 1
-              field:
-                type: string
-                minLength: 1
-              message:
-                type: string
-                minLength: 1
-              from:
-                type: string
-                minLength: 1
-              to:
-                type: string
-                minLength: 1
-              original:
-                type: string
-                minLength: 1
-              normalized:
-                type: string
-                minLength: 1
-            required:
-              - code
-              - message
-            additionalProperties: false
-        validation:
-          type: object
-          properties:
-            valid:
-              type: integer
-              minimum: 0
-            risky:
-              type: integer
-              minimum: 0
-            invalid:
-              type: integer
-              minimum: 0
-            unscored:
-              type: integer
-              minimum: 0
-            persistence:
-              type: object
-              properties:
-                matched:
-                  type: integer
-                  minimum: 0
-                modified:
-                  type: integer
-                  minimum: 0
-                failed:
-                  type: integer
-                  minimum: 0
-              required:
-                - matched
-                - modified
-                - failed
-              additionalProperties: false
-          required:
-            - valid
-            - risky
-            - invalid
-            - unscored
-          additionalProperties: false
-        validationJobId:
-          type: string
-        importId:
-          type: string
-          description: This batch's Import History id. Every contact it wrote carries it as `importId`, so `search_contacts` with an `importId` filter lists them.
-      required:
-        - summary
-        - fieldsCreated
-        - errors
-        - warnings
-        - importId
       additionalProperties: false
     ContactsImportRequest:
       type: object
@@ -48738,7 +48610,7 @@ paths:
         - Contacts
       summary: Bulk-import contacts from CSV
       description: |-
-        Parse a raw CSV string and upsert the rows as contacts (≤ 1000). By default each column header maps to a field of the same name (`email` is required). A header that spells a core field, ignoring case, spaces, `_` and `-`, or whose field key equals it (`First.Name`), maps to it: `Email`, `First Name`, `Last Name` and `Subscribed` fill `email`, `firstName`, `lastName` and `subscribed`. Pass `mapping` to remap single columns; the columns it leaves out keep their default mapping, `""` leaves a column out, and a key that names no column is a `400`. A core field that `mapping` fills is filled from that column alone: another column whose default would fill it is left out with a `CSV_COLUMN_IGNORED` warning. Rows with a missing/invalid email are SKIPPED (counted in `summary.skipped`), not errored; disposable-domain rows are imported with `validationStatus: "risky"` (deliverable but flagged). Returns the same `{ summary, fieldsCreated, errors, warnings }` as batch-create plus `importId` — `207` when some rows fail. The batch is listed in Import History under `fileName` (optional), and every contact it writes carries `importId` (filter on it to list them; deleting the import in the app removes the contacts it created). For rows you already hold as JSON, use `POST /v1/contacts/import`.
+        Parse a raw CSV string and upsert the rows as contacts (≤ 1000). By default each column header maps to a field of the same name (`email` is required). A header that spells a core field, ignoring case, spaces, `_` and `-`, or whose field key equals it (`First.Name`), maps to it: `Email`, `First Name`, `Last Name` and `Subscribed` fill `email`, `firstName`, `lastName` and `subscribed`. Pass `mapping` to remap single columns; the columns it leaves out keep their default mapping, `""` leaves a column out, and a key that names no column is a `400`. A core field that `mapping` fills is filled from that column alone: another column whose default would fill it is left out with a `CSV_COLUMN_IGNORED` warning. Rows with a missing/invalid email are SKIPPED (counted in `summary.skipped`), not errored; disposable-domain rows are imported with `validationStatus: "risky"` (deliverable but flagged). Returns the same `{ summary, fieldsCreated, errors, warnings }` as batch-create plus `importId` — `207` when some rows fail. The batch is listed in Import History under `fileName` (optional), and each contact it writes carries `importId` until a later import touches it (filter on it to list them; deleting the import in the app removes the contacts it created). For rows you already hold as JSON, use `POST /v1/contacts/import`.
 
         CSV cells are text: a column mapped onto an EXISTING field is coerced to that field's type (dates → epoch ms, `1,234` → 1234, `yes`/`no` → booleans), and a cell that cannot be coerced (`$49` in a number column) fails ITS row with a per-row `errors[]` entry (`code: FIELD_TYPE_MISMATCH`, `field`) while the other rows still land. An undeclared column is created as a `string` field unless every value is an ISO date (→ `date`); predeclare `number` / `bool` columns with `POST /v1/fields`. A column whose field Brew manages (`Created At`, `Validation Status`) is not imported and adds a `warnings[]` entry (`code: CSV_COLUMN_IGNORED`, `field` names the column).
 
@@ -48796,7 +48668,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ContactsImportCsvResponse"
+                $ref: "#/components/schemas/ContactsImportResponse"
               example:
                 summary:
                   inserted: 2
@@ -48841,134 +48713,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  summary:
-                    type: object
-                    properties:
-                      inserted:
-                        type: integer
-                        minimum: 0
-                      updated:
-                        type: integer
-                        minimum: 0
-                      failed:
-                        type: integer
-                        minimum: 0
-                      skipped:
-                        type: integer
-                        minimum: 0
-                    required:
-                      - inserted
-                      - updated
-                      - failed
-                      - skipped
-                    additionalProperties: false
-                  fieldsCreated:
-                    type: array
-                    items:
-                      type: string
-                  errors:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        email:
-                          type: string
-                        code:
-                          type: string
-                        field:
-                          type: string
-                        message:
-                          type: string
-                      required:
-                        - email
-                        - code
-                        - message
-                      additionalProperties: false
-                  warnings:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        code:
-                          type: string
-                          minLength: 1
-                        email:
-                          type: string
-                          minLength: 1
-                        field:
-                          type: string
-                          minLength: 1
-                        message:
-                          type: string
-                          minLength: 1
-                        from:
-                          type: string
-                          minLength: 1
-                        to:
-                          type: string
-                          minLength: 1
-                        original:
-                          type: string
-                          minLength: 1
-                        normalized:
-                          type: string
-                          minLength: 1
-                      required:
-                        - code
-                        - message
-                      additionalProperties: false
-                  validation:
-                    type: object
-                    properties:
-                      valid:
-                        type: integer
-                        minimum: 0
-                      risky:
-                        type: integer
-                        minimum: 0
-                      invalid:
-                        type: integer
-                        minimum: 0
-                      unscored:
-                        type: integer
-                        minimum: 0
-                      persistence:
-                        type: object
-                        properties:
-                          matched:
-                            type: integer
-                            minimum: 0
-                          modified:
-                            type: integer
-                            minimum: 0
-                          failed:
-                            type: integer
-                            minimum: 0
-                        required:
-                          - matched
-                          - modified
-                          - failed
-                        additionalProperties: false
-                    required:
-                      - valid
-                      - risky
-                      - invalid
-                      - unscored
-                    additionalProperties: false
-                  validationJobId:
-                    type: string
-                  importId:
-                    type: string
-                    description: This batch's Import History id. Every contact it wrote carries it as `importId`, so `search_contacts` with an `importId` filter lists them.
-                required:
-                  - summary
-                  - fieldsCreated
-                  - errors
-                  - warnings
-                  - importId
-                additionalProperties: false
+                $ref: "#/components/schemas/ContactsImportResponse"
               example:
                 summary:
                   inserted: 1
@@ -49350,7 +49095,7 @@ paths:
       description: |-
         Create or update up to 1000 contacts from JSON rows and record them as one Import History batch: the JSON twin of `POST /v1/contacts/import-csv`. Rows take the batch-create shape (`email`, `firstName`, `lastName`, `subscribed`, `customFields`, `consent`) and follow its rules: a missing or invalid email, or an address repeated in the batch, fails its row (`errors[]`, `207`) while the others land. New contacts are subscribed unless the row says `subscribed: false`; re-subscribing a contact who opted out keeps its other fields and adds a `RESUBSCRIBE_SKIPPED` warning.
 
-        The batch is listed in Import History under `fileName` (optional), and every contact it writes carries the returned `importId` (filter on it to list them; deleting the import in the app removes the contacts it created). `POST /v1/contacts` with `contacts[]` writes the same rows without an Import History entry, for recurring syncs.
+        The batch is listed in Import History under `fileName` (optional), and each contact it writes carries the returned `importId` until a later import touches it (filter on it to list them; deleting the import in the app removes the contacts it created). `POST /v1/contacts` with `contacts[]` writes the same rows without an Import History entry, for recurring syncs.
       requestBody:
         required: true
         content:
@@ -49449,134 +49194,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  summary:
-                    type: object
-                    properties:
-                      inserted:
-                        type: integer
-                        minimum: 0
-                      updated:
-                        type: integer
-                        minimum: 0
-                      failed:
-                        type: integer
-                        minimum: 0
-                      skipped:
-                        type: integer
-                        minimum: 0
-                    required:
-                      - inserted
-                      - updated
-                      - failed
-                      - skipped
-                    additionalProperties: false
-                  fieldsCreated:
-                    type: array
-                    items:
-                      type: string
-                  errors:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        email:
-                          type: string
-                        code:
-                          type: string
-                        field:
-                          type: string
-                        message:
-                          type: string
-                      required:
-                        - email
-                        - code
-                        - message
-                      additionalProperties: false
-                  warnings:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        code:
-                          type: string
-                          minLength: 1
-                        email:
-                          type: string
-                          minLength: 1
-                        field:
-                          type: string
-                          minLength: 1
-                        message:
-                          type: string
-                          minLength: 1
-                        from:
-                          type: string
-                          minLength: 1
-                        to:
-                          type: string
-                          minLength: 1
-                        original:
-                          type: string
-                          minLength: 1
-                        normalized:
-                          type: string
-                          minLength: 1
-                      required:
-                        - code
-                        - message
-                      additionalProperties: false
-                  validation:
-                    type: object
-                    properties:
-                      valid:
-                        type: integer
-                        minimum: 0
-                      risky:
-                        type: integer
-                        minimum: 0
-                      invalid:
-                        type: integer
-                        minimum: 0
-                      unscored:
-                        type: integer
-                        minimum: 0
-                      persistence:
-                        type: object
-                        properties:
-                          matched:
-                            type: integer
-                            minimum: 0
-                          modified:
-                            type: integer
-                            minimum: 0
-                          failed:
-                            type: integer
-                            minimum: 0
-                        required:
-                          - matched
-                          - modified
-                          - failed
-                        additionalProperties: false
-                    required:
-                      - valid
-                      - risky
-                      - invalid
-                      - unscored
-                    additionalProperties: false
-                  validationJobId:
-                    type: string
-                  importId:
-                    type: string
-                    description: This batch's Import History id. Every contact it wrote carries it as `importId`, so `search_contacts` with an `importId` filter lists them.
-                required:
-                  - summary
-                  - fieldsCreated
-                  - errors
-                  - warnings
-                  - importId
-                additionalProperties: false
+                $ref: "#/components/schemas/ContactsImportResponse"
               example:
                 summary:
                   inserted: 1

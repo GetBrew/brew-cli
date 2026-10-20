@@ -1545,7 +1545,7 @@ export interface paths {
         put?: never;
         /**
          * Bulk-import contacts from CSV
-         * @description Parse a raw CSV string and upsert the rows as contacts (≤ 1000). By default each column header maps to a field of the same name (`email` is required). A header that spells a core field, ignoring case, spaces, `_` and `-`, or whose field key equals it (`First.Name`), maps to it: `Email`, `First Name`, `Last Name` and `Subscribed` fill `email`, `firstName`, `lastName` and `subscribed`. Pass `mapping` to remap single columns; the columns it leaves out keep their default mapping, `""` leaves a column out, and a key that names no column is a `400`. A core field that `mapping` fills is filled from that column alone: another column whose default would fill it is left out with a `CSV_COLUMN_IGNORED` warning. Rows with a missing/invalid email are SKIPPED (counted in `summary.skipped`), not errored; disposable-domain rows are imported with `validationStatus: "risky"` (deliverable but flagged). Returns the same `{ summary, fieldsCreated, errors, warnings }` as batch-create plus `importId` — `207` when some rows fail. The batch is listed in Import History under `fileName` (optional), and every contact it writes carries `importId` (filter on it to list them; deleting the import in the app removes the contacts it created). For rows you already hold as JSON, use `POST /v1/contacts/import`.
+         * @description Parse a raw CSV string and upsert the rows as contacts (≤ 1000). By default each column header maps to a field of the same name (`email` is required). A header that spells a core field, ignoring case, spaces, `_` and `-`, or whose field key equals it (`First.Name`), maps to it: `Email`, `First Name`, `Last Name` and `Subscribed` fill `email`, `firstName`, `lastName` and `subscribed`. Pass `mapping` to remap single columns; the columns it leaves out keep their default mapping, `""` leaves a column out, and a key that names no column is a `400`. A core field that `mapping` fills is filled from that column alone: another column whose default would fill it is left out with a `CSV_COLUMN_IGNORED` warning. Rows with a missing/invalid email are SKIPPED (counted in `summary.skipped`), not errored; disposable-domain rows are imported with `validationStatus: "risky"` (deliverable but flagged). Returns the same `{ summary, fieldsCreated, errors, warnings }` as batch-create plus `importId` — `207` when some rows fail. The batch is listed in Import History under `fileName` (optional), and each contact it writes carries `importId` until a later import touches it (filter on it to list them; deleting the import in the app removes the contacts it created). For rows you already hold as JSON, use `POST /v1/contacts/import`.
          *
          *     CSV cells are text: a column mapped onto an EXISTING field is coerced to that field's type (dates → epoch ms, `1,234` → 1234, `yes`/`no` → booleans), and a cell that cannot be coerced (`$49` in a number column) fails ITS row with a per-row `errors[]` entry (`code: FIELD_TYPE_MISMATCH`, `field`) while the other rows still land. An undeclared column is created as a `string` field unless every value is an ISO date (→ `date`); predeclare `number` / `bool` columns with `POST /v1/fields`. A column whose field Brew manages (`Created At`, `Validation Status`) is not imported and adds a `warnings[]` entry (`code: CSV_COLUMN_IGNORED`, `field` names the column).
          *
@@ -1573,7 +1573,7 @@ export interface paths {
          * Bulk-import contacts from JSON
          * @description Create or update up to 1000 contacts from JSON rows and record them as one Import History batch: the JSON twin of `POST /v1/contacts/import-csv`. Rows take the batch-create shape (`email`, `firstName`, `lastName`, `subscribed`, `customFields`, `consent`) and follow its rules: a missing or invalid email, or an address repeated in the batch, fails its row (`errors[]`, `207`) while the others land. New contacts are subscribed unless the row says `subscribed: false`; re-subscribing a contact who opted out keeps its other fields and adds a `RESUBSCRIBE_SKIPPED` warning.
          *
-         *     The batch is listed in Import History under `fileName` (optional), and every contact it writes carries the returned `importId` (filter on it to list them; deleting the import in the app removes the contacts it created). `POST /v1/contacts` with `contacts[]` writes the same rows without an Import History entry, for recurring syncs.
+         *     The batch is listed in Import History under `fileName` (optional), and each contact it writes carries the returned `importId` until a later import touches it (filter on it to list them; deleting the import in the app removes the contacts it created). `POST /v1/contacts` with `contacts[]` writes the same rows without an Import History entry, for recurring syncs.
          */
         post: operations["importContacts"];
         delete?: never;
@@ -7662,11 +7662,12 @@ export interface components {
         ContactsValidateRequest: {
             emails: string[];
         };
-        ContactsImportCsvResponse: {
+        ContactsImportResponse: {
             summary: {
                 inserted: number;
                 updated: number;
                 failed: number;
+                /** @description CSV rows left out for a missing or invalid email, or merged into a later row with the same address. Always 0 for a JSON import. */
                 skipped: number;
             };
             fieldsCreated: string[];
@@ -7698,7 +7699,7 @@ export interface components {
                 };
             };
             validationJobId?: string;
-            /** @description This batch's Import History id. Every contact it wrote carries it as `importId`, so `search_contacts` with an `importId` filter lists them. */
+            /** @description This batch's Import History id. Each contact it wrote carries it as `importId` until a later import touches that contact, so filtering contacts on `importId` (`POST /v1/contacts/search`) lists them. */
             importId: string;
         };
         ContactsImportCsvRequest: {
@@ -7730,45 +7731,6 @@ export interface components {
             dateOrder?: "month_first" | "day_first";
             /** @description Name this batch is listed under in Import History (usually the source file name, e.g. `customers.csv`), also stamped on every contact it writes as `csvFileName`. A path keeps only its last segment. */
             fileName?: string;
-        };
-        ContactsImportResponse: {
-            summary: {
-                inserted: number;
-                updated: number;
-                failed: number;
-                skipped: number;
-            };
-            fieldsCreated: string[];
-            errors: {
-                email: string;
-                code: string;
-                field?: string;
-                message: string;
-            }[];
-            warnings: {
-                code: string;
-                email?: string;
-                field?: string;
-                message: string;
-                from?: string;
-                to?: string;
-                original?: string;
-                normalized?: string;
-            }[];
-            validation?: {
-                valid: number;
-                risky: number;
-                invalid: number;
-                unscored: number;
-                persistence?: {
-                    matched: number;
-                    modified: number;
-                    failed: number;
-                };
-            };
-            validationJobId?: string;
-            /** @description This batch's Import History id. Every contact it wrote carries it as `importId`, so `search_contacts` with an `importId` filter lists them. */
-            importId: string;
         };
         ContactsImportRequest: {
             contacts: {
@@ -22144,7 +22106,7 @@ export interface operations {
                      *       "importId": "imp_01JABCDEF0123456789XYZ"
                      *     }
                      */
-                    "application/json": components["schemas"]["ContactsImportCsvResponse"];
+                    "application/json": components["schemas"]["ContactsImportResponse"];
                 };
             };
             /** @description Partial success — some rows failed validation. */
@@ -22182,45 +22144,7 @@ export interface operations {
                      *       "importId": "imp_01JABCDEF0123456789XYZ"
                      *     }
                      */
-                    "application/json": {
-                        summary: {
-                            inserted: number;
-                            updated: number;
-                            failed: number;
-                            skipped: number;
-                        };
-                        fieldsCreated: string[];
-                        errors: {
-                            email: string;
-                            code: string;
-                            field?: string;
-                            message: string;
-                        }[];
-                        warnings: {
-                            code: string;
-                            email?: string;
-                            field?: string;
-                            message: string;
-                            from?: string;
-                            to?: string;
-                            original?: string;
-                            normalized?: string;
-                        }[];
-                        validation?: {
-                            valid: number;
-                            risky: number;
-                            invalid: number;
-                            unscored: number;
-                            persistence?: {
-                                matched: number;
-                                modified: number;
-                                failed: number;
-                            };
-                        };
-                        validationJobId?: string;
-                        /** @description This batch's Import History id. Every contact it wrote carries it as `importId`, so `search_contacts` with an `importId` filter lists them. */
-                        importId: string;
-                    };
+                    "application/json": components["schemas"]["ContactsImportResponse"];
                 };
             };
             /**
@@ -22463,45 +22387,7 @@ export interface operations {
                      *       "importId": "imp_01JABCDEF0123456789XYZ"
                      *     }
                      */
-                    "application/json": {
-                        summary: {
-                            inserted: number;
-                            updated: number;
-                            failed: number;
-                            skipped: number;
-                        };
-                        fieldsCreated: string[];
-                        errors: {
-                            email: string;
-                            code: string;
-                            field?: string;
-                            message: string;
-                        }[];
-                        warnings: {
-                            code: string;
-                            email?: string;
-                            field?: string;
-                            message: string;
-                            from?: string;
-                            to?: string;
-                            original?: string;
-                            normalized?: string;
-                        }[];
-                        validation?: {
-                            valid: number;
-                            risky: number;
-                            invalid: number;
-                            unscored: number;
-                            persistence?: {
-                                matched: number;
-                                modified: number;
-                                failed: number;
-                            };
-                        };
-                        validationJobId?: string;
-                        /** @description This batch's Import History id. Every contact it wrote carries it as `importId`, so `search_contacts` with an `importId` filter lists them. */
-                        importId: string;
-                    };
+                    "application/json": components["schemas"]["ContactsImportResponse"];
                 };
             };
             /**
