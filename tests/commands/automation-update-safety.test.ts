@@ -51,6 +51,28 @@ describe('resolved automation update confirmation', () => {
     expect(result.json).toMatchObject({ confirmationRequired: true })
     expect(bodies).toEqual([])
   })
+  it.each([['--input', '-'], ['--input=-']])(
+    'preserves consumed input in confirmation reruns: %j',
+    async (...inputFlag) => {
+      const input = { published: true, name: 'Original' }
+      const result = await runCli(
+        ['automations', 'update', 'am_1', ...inputFlag, '--name', 'Resolved'],
+        {
+          env,
+          stdin: JSON.stringify(input),
+        }
+      )
+      expect(result.code).toBe(4)
+      const command = (result.json as { confirmCommand: string }).confirmCommand
+      expect(command).toContain(
+        JSON.stringify({ published: true, name: 'Resolved' })
+      )
+      expect(command).not.toContain('--input -')
+      expect(command).not.toContain('--input=-')
+      expect(bodies).toEqual([])
+    }
+  )
+
   it('can confirm inline input interactively', async () => {
     const input = { published: true }
     const result = await runCli(

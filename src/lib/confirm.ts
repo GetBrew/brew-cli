@@ -10,7 +10,8 @@ import { CommandAbortedError, ConfirmationRequiredError } from './errors'
  */
 export async function enforceConfirmation(
   spec: CommandSpec,
-  invocation: CommandInvocation
+  invocation: CommandInvocation,
+  options: { readonly confirmationArgv?: readonly string[] } = {}
 ): Promise<void> {
   if (!spec.confirmSummary) {
     return
@@ -24,27 +25,81 @@ export async function enforceConfirmation(
     return
   }
   const { ctx } = invocation
+  ctx.signal.throwIfAborted()
   if (ctx.globals.yes) {
     return
   }
   if (ctx.mode === 'human' && ctx.io.isTtyIn) {
-    const answer = await ctx.io.readLine(`${summary}\nProceed? [y/N] `)
-    const normalized = answer.trim().toLowerCase()
-    if (normalized === 'y' || normalized === 'yes') {
-      return
+    const resumeDeadline = ctx.pauseDeadline()
+    try {
+      ctx.signal.throwIfAborted()
+      const answer = await ctx.io.readLine(`${summary}\nProceed? [y/N] `)
+      ctx.signal.throwIfAborted()
+      const normalized = answer.trim().toLowerCase()
+      if (normalized === 'y' || normalized === 'yes') {
+        return
+      }
+      throw new CommandAbortedError('Aborted.')
+    } catch (error) {
+      ctx.signal.throwIfAborted()
+      throw error
+    } finally {
+      resumeDeadline()
     }
-    throw new CommandAbortedError('Aborted.')
   }
   throw new ConfirmationRequiredError({
     confirmationRequired: true,
     command: ['brew-cli', ...spec.path].join(' '),
     summary,
-    confirmCommand: buildConfirmCommand(ctx.rawArgv),
+    confirmCommand: buildConfirmCommand(
+      options.confirmationArgv ??
+        (invocation.flags.input === '-' && invocation.input !== undefined
+          ? inlineStdinInputArgv(ctx.rawArgv, JSON.stringify(invocation.input))
+          : ctx.rawArgv)
+    ),
   })
 }
 
 export function buildConfirmCommand(rawArgv: readonly string[]): string {
   return ['brew-cli', ...rerunTokens(rawArgv), '--yes'].join(' ')
+}
+
+/** Confirm stdin requests after parsing, carrying the merged body on a re-run. */
+export async function enforceStdinConfirmation(
+  spec: CommandSpec,
+  invocation: CommandInvocation,
+  input: Readonly<Record<string, unknown>>
+): Promise<void> {
+  if (invocation.flags.input !== '-') {
+    return
+  }
+  const serializedInput = JSON.stringify(input)
+  await enforceConfirmation(
+    spec,
+    { ...invocation, flags: { ...invocation.flags, input: serializedInput } },
+    {
+      confirmationArgv: inlineStdinInputArgv(
+        invocation.ctx.rawArgv,
+        serializedInput
+      ),
+    }
+  )
+}
+
+/** Consumed JSON stdin must travel inline when confirmation reruns a command. */
+function inlineStdinInputArgv(
+  rawArgv: readonly string[],
+  input: string
+): readonly string[] {
+  return rawArgv.map((token, index) => {
+    if (token === '--input=-') {
+      return `--input=${input}`
+    }
+    if (token === '-' && rawArgv[index - 1] === '--input') {
+      return input
+    }
+    return token
+  })
 }
 
 /**
