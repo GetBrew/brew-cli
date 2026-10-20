@@ -70,7 +70,7 @@ export async function enforceConfirmation(
 
 /**
  * `prefix` is how the CLI was invoked (`getInvocationPrefix`): `brew-cli`,
- * or a launcher such as `npx -y brew.new@0.18.0`.
+ * or a package runner such as `npx -y @brew.new/cli@<version>`.
  */
 export function buildConfirmCommand(
   invocation: RerunInvocation,
