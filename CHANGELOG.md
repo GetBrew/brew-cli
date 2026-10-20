@@ -1,17 +1,6 @@
 # Changelog
 
-## 0.17.0
-
-Requires `@brew.new/sdk` `^13.0.0`. This is a minor release because it adds
-canvas commands: the published npm `0.16.0` artifact (`gitHead`
-`2213a2060ba13d378c1f11f75abb2ff303e9bf5a`) did not include them.
-
-### Added
-
-- `canvas sessions create`, `refresh`, and `revoke` manage origin-bound grants
-  for one group or email. Credentials stay out of iframe URLs; API keys stay
-  on the host backend. Revocation requires confirmation, and create/refresh
-  requests never retry credentials that cannot be replayed.
+## Unreleased
 
 ### Added
 
@@ -54,6 +43,19 @@ canvas commands: the published npm `0.16.0` artifact (`gitHead`
   `generate:skills:check`).
 - npm keywords for MCP, transactional and auth email, Resend and React
   Email, so the package shows up where people look for them.
+
+## 0.17.0
+
+Requires `@brew.new/sdk` `^13.0.0`. This is a minor release because it adds
+canvas commands: the published npm `0.16.0` artifact (`gitHead`
+`2213a2060ba13d378c1f11f75abb2ff303e9bf5a`) did not include them.
+
+### Added
+
+- `canvas sessions create`, `refresh`, and `revoke` manage origin-bound grants
+  for one group or email. Credentials stay out of iframe URLs; API keys stay
+  on the host backend. Revocation requires confirmation, and create/refresh
+  requests never retry credentials that cannot be replayed.
 
 ### Changed
 
