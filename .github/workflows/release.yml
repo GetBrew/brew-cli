@@ -8,10 +8,10 @@ permissions:
   contents: write
   id-token: write
 
-# Prevent duplicate tag runs from publishing or replacing release assets together.
+# Let the active release finish before a duplicate tag run starts.
 concurrency:
   group: release-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   release:
@@ -47,6 +47,7 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          overwrite_files: false
           files: |
             dist-bin/*
           generate_release_notes: true
