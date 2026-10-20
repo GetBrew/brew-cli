@@ -1,3 +1,4 @@
+import { basename } from 'node:path'
 import type { ContactsResource } from '@brew.new/sdk'
 import { defineCommand } from '../../lib/define-command'
 import { CliUsageError } from '../../lib/errors'
@@ -13,15 +14,12 @@ import {
   requestOptions,
 } from '../../lib/input'
 
-// SDK 10's `importCsv` types only `{ csv, mapping, validate }` but sends
-// its input as the body, so `dateOrder` and `consent` reach the API through
-// the boundary cast until the CLI adopts SDK 11.2.
 type ImportCsvContactsInput = Parameters<ContactsResource['importCsv']>[0]
 
 export const contactsImportCsvCommand = defineCommand({
   path: ['contacts', 'import-csv'],
   summary:
-    'Bulk-import contacts from a CSV file or stdin (free; --validate costs 2 credits per address)',
+    'Bulk-import contacts from a CSV file or stdin as one Import History batch (free; --validate costs 2 credits per address)',
   sdkMethod: 'contacts.importCsv',
   route: { method: 'POST', path: '/v1/contacts/import-csv' },
   commandClass: 'write',
@@ -29,6 +27,11 @@ export const contactsImportCsvCommand = defineCommand({
     {
       flag: '--file <path>',
       summary: 'CSV file to import, or - for stdin (or csv in --input)',
+    },
+    {
+      flag: '--file-name <name>',
+      summary:
+        "Name the batch in Brew's Import History (default: the --file name)",
     },
     {
       flag: '--mapping <pairs...>',
@@ -68,6 +71,7 @@ export const contactsImportCsvCommand = defineCommand({
       mapping: parseKeyValues(flags.mapping, '--mapping'),
       dateOrder: flagString(flags.dateOrder),
       validate: flags.validate === true ? true : undefined,
+      fileName: importFileName(flags),
     })
     if (typeof input.csv !== 'string' || input.csv.trim() === '') {
       throw new CliUsageError(
@@ -92,3 +96,19 @@ export const contactsImportCsvCommand = defineCommand({
     return { data: result }
   },
 })
+
+/**
+ * The Import History name: `--file-name`, else the file's own name (stdin
+ * has none, so the batch is named by its source in Brew).
+ */
+export function importFileName(flags: {
+  readonly fileName?: unknown
+  readonly file?: unknown
+}): string | undefined {
+  const explicit = flagString(flags.fileName)
+  if (explicit !== undefined) {
+    return explicit
+  }
+  const file = flagString(flags.file)
+  return file === undefined || file === '-' ? undefined : basename(file)
+}

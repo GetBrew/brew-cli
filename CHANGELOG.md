@@ -2,12 +2,26 @@
 
 ## Unreleased
 
+### Added
+
+- **`contacts import`** (`POST /v1/contacts/import`): bulk-import up to 1000
+  contacts from a JSON file (an array, or `{ "contacts": [...] }`) or stdin as
+  one batch in Brew's Import History. Takes `--file-name`, `--validate` and
+  `--consent-source`, and prints the batch's `importId`.
+- `contacts import-csv` names its batch in Import History: the `--file` name
+  by default, or `--file-name`. Both imports return `importId`.
+
 ### Changed
+
+- `contacts upsert-many` says what it is for: up to 1000 contacts per call
+  (its summary said 100) with no Import History entry, for recurring syncs.
 
 - Canvas session create, refresh, and revoke use the SDK methods. JSON output,
   revocation confirmation, and create/refresh no-retry behavior are preserved.
 
-Requires the SDK revocation response fix, planned for 13.0.0. Follow the canvas
+Requires the SDK revocation response fix, planned for 13.0.0, and
+`contacts.import` (GetBrew/typescript-sdk `claude/contact-imports`); the
+dependency pins that SDK source commit until it is published. Follow the canvas
 migration gate in `RELEASING.md` before updating the dependency and releasing.
 
 ## 0.16.0

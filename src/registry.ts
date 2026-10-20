@@ -73,6 +73,7 @@ import { contactsCountByCommand } from './commands/contacts/count-by'
 import { contactsDeleteCommand } from './commands/contacts/delete'
 import { contactsDeleteManyCommand } from './commands/contacts/delete-many'
 import { contactsGetCommand } from './commands/contacts/get'
+import { contactsImportCommand } from './commands/contacts/import'
 import { contactsImportCsvCommand } from './commands/contacts/import-csv'
 import { contactsListCommand } from './commands/contacts/list'
 import { contactsSearchCommand } from './commands/contacts/search'
@@ -175,6 +176,7 @@ export const ALL_COMMANDS: readonly CommandSpec[] = [
   contactsDeleteCommand,
   contactsDeleteManyCommand,
   contactsValidateCommand,
+  contactsImportCommand,
   contactsImportCsvCommand,
   fieldsListCommand,
   fieldsGetCommand,
