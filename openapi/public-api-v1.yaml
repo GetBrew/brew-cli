@@ -5070,6 +5070,7 @@ components:
         - EMAIL_IN_USE_BY_AUTOMATION
         - EMAIL_NOT_FOUND
         - EMAIL_NOT_READY
+        - EMAIL_RESULT_UNAVAILABLE
         - EMAIL_RUN_AMBIGUOUS
         - EMAIL_TEMPLATE_INVALID
         - EMAIL_VERSION_NOT_FOUND
@@ -18747,7 +18748,7 @@ paths:
 
         **Returns** `201 { emailId, emailVersionId, html, previewImage?, group, subjectLine? }` when a design was persisted, or `200 { response }` when the agent answered in prose without writing a design.
 
-        **Errors** `404 REFERENCE_EMAIL_NOT_FOUND` for an unknown `referenceEmailId`; `404 EMAIL_GROUP_NOT_FOUND` for an unknown `groupId`; `422 BRAND_NOT_READY` while the brand is still extracting; `502 EMAIL_GENERATION_FAILED` when the agent could not produce a design; `402 INSUFFICIENT_CREDITS` on an empty balance.
+        **Errors** `404 REFERENCE_EMAIL_NOT_FOUND` for an unknown `referenceEmailId`; `404 EMAIL_GROUP_NOT_FOUND` for an unknown `groupId`; `422 BRAND_NOT_READY` while the brand is still extracting; `502 EMAIL_GENERATION_FAILED` when the agent could not produce a design; `409 EMAIL_RESULT_UNAVAILABLE` when the design was saved but its completed result could not be returned (read the saved `emailVersionId` from `error.details`; do not repeat generation); `402 INSUFFICIENT_CREDITS` on an empty balance.
 
         **See also** `editEmail`, `importEmail`, `createSend`.
       parameters:
@@ -19084,6 +19085,8 @@ paths:
                       docs: https://docs.brew.new/api-reference/api/errors
         "409":
           description: |-
+            `EMAIL_RESULT_UNAVAILABLE`: The email was saved, but its completed result could not be read for this response.
+
             `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
 
             `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
@@ -19100,6 +19103,20 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelope"
               examples:
+                emailResultUnavailable:
+                  summary: EMAIL_RESULT_UNAVAILABLE
+                  value:
+                    error:
+                      code: EMAIL_RESULT_UNAVAILABLE
+                      type: conflict
+                      message: The email was saved, but its completed result could not be read for this response.
+                      suggestion: "Read GET /v1/emails/{emailId}?include=html with emailVersionId set to the saved value from error.details. Do not repeat the generation or edit: it already committed."
+                      docs: https://docs.brew.new/api-reference/api/errors
+                      details:
+                        committed: true
+                        emailId: K7mV9aL2qW4xP6tR8yU0n
+                        emailVersionId: N8cX2mV5pL7qR9tW1yZ3a
+                        runId: R6bN8kM2pV4xZ7qW9tY1s
                 idempotencyConflict:
                   summary: IDEMPOTENCY_CONFLICT
                   value:
@@ -19754,7 +19771,7 @@ paths:
 
         **Automations** a prompt edit moves every automation `sendEmail` step pinned to the previous latest version onto the new one, in a new unpublished automation version (while a Brew agent is still building that automation, its in-progress draft is updated in place instead); the published version keeps its pin until the next publish. Steps pinned to an older version do not move. An envelope patch writes no version and moves nothing.
 
-        **Errors** `404 EMAIL_NOT_FOUND`, `EMAIL_VERSION_NOT_FOUND` (a pin that is not one of this design's versions), `EMAIL_GROUP_NOT_FOUND` (a `groupId` that is not one of this brand's groups); `409 EMAIL_IN_PROGRESS` while the design is still generating (or a concurrent edit moved the head between read and patch); `422 BRAND_NOT_READY` until the brand has finished extracting; `502 EMAIL_GENERATION_FAILED` when the agent run fails (retry later); `400 INVALID_REQUEST` for a body with none of the four fields, or `emailVersionId` without `prompt`.
+        **Errors** `404 EMAIL_NOT_FOUND`, `EMAIL_VERSION_NOT_FOUND` (a pin that is not one of this design's versions), `EMAIL_GROUP_NOT_FOUND` (a `groupId` that is not one of this brand's groups); `409 EMAIL_IN_PROGRESS` while the design is still generating (or a concurrent edit moved the head between read and patch); `409 EMAIL_RESULT_UNAVAILABLE` when the edit was saved but its completed result could not be returned (read the saved `emailVersionId` from `error.details`; do not repeat the edit); `422 BRAND_NOT_READY` until the brand has finished extracting; `502 EMAIL_GENERATION_FAILED` when the agent run fails (retry later); `400 INVALID_REQUEST` for a body with none of the four fields, or `emailVersionId` without `prompt`.
 
         **See also** `cloneEmail` (name the copy with `title`), `restoreEmailVersion`, `listEmails`.
       parameters:
@@ -20083,7 +20100,10 @@ paths:
                       suggestion: List versions with GET /v1/emails/{emailId}?include=versions and retry with a valid emailVersionId.
                       docs: https://docs.brew.new/api-reference/api/errors
         "409":
-          description: "`EMAIL_IN_PROGRESS`: The design is being generated and cannot be edited or cloned yet."
+          description: |-
+            `EMAIL_IN_PROGRESS`: The design is being generated and cannot be edited or cloned yet.
+
+            `EMAIL_RESULT_UNAVAILABLE`: The email was saved, but its completed result could not be read for this response.
           headers:
             x-request-id:
               schema:
@@ -20106,6 +20126,20 @@ paths:
                       message: The design is being generated and cannot be edited or cloned yet.
                       suggestion: Poll GET /v1/emails/{emailId} until `status` is `ready`, then retry.
                       docs: https://docs.brew.new/api-reference/api/errors
+                emailResultUnavailable:
+                  summary: EMAIL_RESULT_UNAVAILABLE
+                  value:
+                    error:
+                      code: EMAIL_RESULT_UNAVAILABLE
+                      type: conflict
+                      message: The email was saved, but its completed result could not be read for this response.
+                      suggestion: "Read GET /v1/emails/{emailId}?include=html with emailVersionId set to the saved value from error.details. Do not repeat the generation or edit: it already committed."
+                      docs: https://docs.brew.new/api-reference/api/errors
+                      details:
+                        committed: true
+                        emailId: K7mV9aL2qW4xP6tR8yU0n
+                        emailVersionId: N8cX2mV5pL7qR9tW1yZ3a
+                        runId: R6bN8kM2pV4xZ7qW9tY1s
         "422":
           description: "`BRAND_NOT_READY`: The brand is still extracting and cannot generate email yet."
           headers:
