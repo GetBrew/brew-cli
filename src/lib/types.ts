@@ -76,7 +76,7 @@ export type CliContext = {
   readonly budget: Budget
   readonly transport: TransportState
   readonly traits: CommandTraits | undefined
-  /** Start the whole-command deadline, after any confirmation prompt. */
+  /** Start or resume the whole-command deadline; human prompts pause it. */
   readonly startDeadline: () => void
   /** Pause an active clock; the returned callback resumes its remaining budget. */
   readonly pauseDeadline: () => () => void
