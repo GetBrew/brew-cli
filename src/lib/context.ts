@@ -1,5 +1,6 @@
 import type { BrewClient, SdkTransport } from './client'
 import { buildSdkClient, resolveAuth } from './client'
+import type { CommandMetadata } from './define-command'
 import { CliTimeoutError } from './errors'
 import { resolveOutputMode } from './output'
 import {
@@ -23,6 +24,7 @@ export function makeContext(input: {
   readonly flags: Readonly<Record<string, unknown>>
   readonly rawArgv: readonly string[]
   readonly traits?: CommandTraits
+  readonly commands?: readonly CommandMetadata[]
 }): CliContext {
   const globals = readGlobalFlags(input.flags)
   const mode = resolveOutputMode({
@@ -57,6 +59,7 @@ export function makeContext(input: {
     },
   }
   const ctx: CliContext = {
+    commands: input.commands ?? [],
     io,
     mode,
     globals,

@@ -105,6 +105,43 @@ export function defineCommand(spec: CommandSpec): CommandSpec {
   return spec
 }
 
+/** Read-only catalog data; discovery commands never need executable handlers. */
+export type CommandMetadata = Pick<
+  CommandSpec,
+  | 'path'
+  | 'summary'
+  | 'sdkMethod'
+  | 'derivedFrom'
+  | 'route'
+  | 'commandClass'
+  | 'isCredited'
+  | 'isRawTransport'
+  | 'args'
+  | 'flags'
+  | 'examples'
+> & { readonly confirmation: boolean }
+
+export function commandMetadata(spec: CommandSpec): CommandMetadata {
+  return {
+    path: spec.path,
+    summary: spec.summary,
+    sdkMethod: spec.sdkMethod,
+    ...(spec.derivedFrom !== undefined
+      ? { derivedFrom: spec.derivedFrom }
+      : {}),
+    ...(spec.route !== undefined ? { route: spec.route } : {}),
+    commandClass: spec.commandClass,
+    ...(spec.isCredited !== undefined ? { isCredited: spec.isCredited } : {}),
+    ...(spec.isRawTransport !== undefined
+      ? { isRawTransport: spec.isRawTransport }
+      : {}),
+    ...(spec.args !== undefined ? { args: spec.args } : {}),
+    ...(spec.flags !== undefined ? { flags: spec.flags } : {}),
+    examples: spec.examples,
+    confirmation: spec.confirmSummary !== undefined,
+  }
+}
+
 export const GLOBAL_FLAGS: readonly FlagSpec[] = [
   {
     flag: '--json',

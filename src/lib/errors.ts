@@ -16,6 +16,17 @@ export const EXIT_INTERRUPTED = 130
 /** 128 + SIGTERM, as a shell reports a terminated process. */
 export const EXIT_TERMINATED = 143
 
+/** A server pagination cycle is a failed drain, never a complete list. */
+export class CliPaginationError extends Error {
+  readonly cursor: string
+
+  constructor(cursor: string) {
+    super('Pagination returned a previously fetched cursor.')
+    this.name = 'CliPaginationError'
+    this.cursor = cursor
+  }
+}
+
 export type InterruptSignal = 'SIGINT' | 'SIGTERM'
 
 export function exitCodeForSignal(signal: InterruptSignal): number {
@@ -58,16 +69,6 @@ export class CliConnectionError extends Error {
       cause,
     })
     this.name = 'CliConnectionError'
-  }
-}
-
-/** A list cursor stopped advancing; partial output must not look complete. */
-export class CliPaginationError extends Error {
-  constructor() {
-    super(
-      'Pagination stopped because the API returned a cursor that did not advance.'
-    )
-    this.name = 'CliPaginationError'
   }
 }
 
@@ -274,11 +275,12 @@ export function toErrorEnvelope(
 function baseEnvelope(error: unknown, context: ErrorContext): CliErrorEnvelope {
   if (error instanceof CliPaginationError) {
     return {
-      code: 'CLI_PAGINATION_STALLED',
+      code: 'CLI_PAGINATION',
       type: 'internal_error',
       message: error.message,
       suggestion:
-        'Restart the list without a cursor; the partial list was not printed.',
+        'Report the pagination failure. The list is incomplete; a cyclic cursor cannot safely resume it.',
+      details: { cursor: error.cursor },
     }
   }
   if (error instanceof CliInterruptError) {

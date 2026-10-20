@@ -70,13 +70,16 @@ export const automationsAudienceRunsListCommand = defineCommand({
       cursor: flagString(flags.cursor),
     })
     if (flags.all === true) {
-      const rows = await collectAll(ctx, (cursor) =>
-        audienceRuns.list(
-          asSdkInput<ListAudienceRunsInput>({
-            ...input,
-            ...(cursor === undefined ? {} : { cursor }),
-          })
-        )
+      const rows = await collectAll(
+        ctx,
+        (cursor) =>
+          audienceRuns.list(
+            asSdkInput<ListAudienceRunsInput>({
+              ...input,
+              ...(cursor === undefined ? {} : { cursor }),
+            })
+          ),
+        { cursor: flagString(input.cursor) }
       )
       return {
         data: { data: rows, pagination: { cursor: null, hasMore: false } },

@@ -71,9 +71,10 @@ describe('audience history pagination', () => {
       }
     }
     expect(envelope.error).toMatchObject({
-      code: 'CLI_PAGINATION_STALLED',
-      progress: { rowsFetched: 1, pagesFetched: 2, resumeCursor: 'stalled' },
+      code: 'CLI_PAGINATION',
+      progress: { rowsFetched: 2, pagesFetched: 2 },
     })
+    expect(envelope.error.progress).not.toHaveProperty('resumeCursor')
     expect(requests).toBe(2)
   })
 

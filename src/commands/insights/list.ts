@@ -128,17 +128,21 @@ async function listEveryInsight(
   for (let attempt = 1; ; attempt += 1) {
     extras = undefined
     try {
-      rows = await collectAll(ctx, async (cursor) => {
-        const page = await insights.list(
-          asSdkInput<ListInsightsInput>(
-            extras === undefined
-              ? { ...input, ...(cursor === undefined ? {} : { cursor }) }
-              : { ...rest, ...(cursor === undefined ? {} : { cursor }) }
+      rows = await collectAll(
+        ctx,
+        async (cursor) => {
+          const page = await insights.list(
+            asSdkInput<ListInsightsInput>(
+              extras === undefined
+                ? { ...input, ...(cursor === undefined ? {} : { cursor }) }
+                : { ...rest, ...(cursor === undefined ? {} : { cursor }) }
+            )
           )
-        )
-        extras ??= readExtras(page)
-        return page
-      })
+          extras ??= readExtras(page)
+          return page
+        },
+        { cursor: startCursor }
+      )
       break
     } catch (error) {
       if (!isStaleCursor(error)) {

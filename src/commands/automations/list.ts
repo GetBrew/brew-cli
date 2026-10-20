@@ -45,13 +45,16 @@ export const automationsListCommand = defineCommand({
     })
     const automations = ctx.client().automations
     if (flags.all === true) {
-      const rows = await collectAll(ctx, (cursor) =>
-        automations.list(
-          asSdkInput<ListAutomationsInput>({
-            ...input,
-            ...(cursor === undefined ? {} : { cursor }),
-          })
-        )
+      const rows = await collectAll(
+        ctx,
+        (cursor) =>
+          automations.list(
+            asSdkInput<ListAutomationsInput>({
+              ...input,
+              ...(cursor === undefined ? {} : { cursor }),
+            })
+          ),
+        { cursor: flagString(input.cursor) }
       )
       return {
         data: { data: rows, pagination: { cursor: null, hasMore: false } },
