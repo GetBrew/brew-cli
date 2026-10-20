@@ -42,6 +42,7 @@ import {
 } from './commands/automations/triggers/contract'
 import { automationsTriggersCreateCommand } from './commands/automations/triggers/create'
 import { automationsTriggersDeleteCommand } from './commands/automations/triggers/delete'
+import { automationsTriggersEnsureBrewEventCommand } from './commands/automations/triggers/ensure-brew-event'
 import { automationsTriggersFireCommand } from './commands/automations/triggers/fire'
 import { automationsTriggersGetCommand } from './commands/automations/triggers/get'
 import { automationsTriggersListCommand } from './commands/automations/triggers/list'
@@ -56,6 +57,9 @@ import { brandUpdateCommand } from './commands/brand/update'
 import { brandsCreateCommand } from './commands/brands/create'
 import { brandsGetCommand } from './commands/brands/get'
 import { brandsListCommand } from './commands/brands/list'
+import { canvasSessionsCreateCommand } from './commands/canvas/sessions/create'
+import { canvasSessionsRefreshCommand } from './commands/canvas/sessions/refresh'
+import { canvasSessionsRevokeCommand } from './commands/canvas/sessions/revoke'
 import { chatsGetCommand } from './commands/chats/get'
 import { chatsListCommand } from './commands/chats/list'
 import {
@@ -230,6 +234,7 @@ export const ALL_COMMANDS: readonly CommandSpec[] = [
   automationsTriggersContractValidateCommand,
   contractsInferCommand,
   automationsTriggersCreateCommand,
+  automationsTriggersEnsureBrewEventCommand,
   automationsTriggersUpdateCommand,
   automationsTriggersDeleteCommand,
   automationsTriggersFireCommand,
@@ -290,6 +295,9 @@ export const ALL_COMMANDS: readonly CommandSpec[] = [
   integrationsListCommand,
   chatsListCommand,
   chatsGetCommand,
+  canvasSessionsCreateCommand,
+  canvasSessionsRefreshCommand,
+  canvasSessionsRevokeCommand,
   notificationsListCommand,
   healthCommand,
   usageCommand,

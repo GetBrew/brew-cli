@@ -12,7 +12,7 @@ the SDK carries transport + types, and this repo owns the command surface.
 `src/commands/`). `src/cli.ts` mounts them into commander with global
 flags, the confirmation gate, and the output/error contracts applied by
 construction. `src/lib/` holds the shared behavior: `client.ts` (SDK
-client factory + auth resolution + the temporary X-Brand-Id fetch bridge),
+client factory + auth resolution + native SDK brand scoping),
 `output.ts` (stdout=data, stderr=progress, `--json` + auto-JSON on
 non-TTY), `errors.ts` (exit codes 0/1/2/3/4 + envelopes), `confirm.ts`
 (exit-4 protocol), `input.ts` (`--input <json|->`, `--file <path|->`,
@@ -83,13 +83,18 @@ of leaving a hole:
    method+path+body and, for destructive commands, the exit-4 envelope.
 7. `bun run docs:commands` to refresh the generated reference.
 
-## Validation (all must pass before handing work back)
+## Validation
+
+Run checks appropriate to the change; CI runs the full gate set. For code
+changes, check lint and relevant tests; typecheck when types or contracts change.
+For command changes, regenerate the reference and run its freshness check.
+Report checks run and anything deferred to CI.
 
 ```bash
 bun install          # only when deps changed
 bun run tsc          # strict typecheck
 bun run lint         # biome check (also formatting)
-bun run test         # vitest + MSW, includes both parity suites
+bun run test -- tests/<file>.test.ts  # relevant vitest + MSW tests
 bun run docs:commands:check
 ```
 
