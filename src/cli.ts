@@ -334,12 +334,17 @@ function registerCommand(
       commands: metadata,
     })
     onContext?.(ctx)
-    const invocation = { ctx, args: positional, flags }
-    await enforceConfirmation(spec, invocation)
-    // Armed only now: time a human spends at the y/N prompt is not the
-    // request's.
     ctx.startDeadline()
     try {
+      const baseInvocation = { ctx, args: positional, flags }
+      const input = await spec.prepareInput?.(baseInvocation)
+      ctx.signal.throwIfAborted()
+      const invocation = {
+        ...baseInvocation,
+        ...(input === undefined ? {} : { input }),
+      }
+      await enforceConfirmation(spec, invocation)
+      ctx.signal.throwIfAborted()
       const outcome = await spec.run(invocation)
       if (outcome !== undefined) {
         printData(ctx, outcome.data, outcome.human)

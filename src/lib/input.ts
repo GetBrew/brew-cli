@@ -146,8 +146,25 @@ export function toStringArray(value: unknown): readonly string[] | undefined {
 export function requestOptions(
   flags: Readonly<Record<string, unknown>>
 ): { idempotencyKey: string } | undefined {
-  const key = flagString(flags.idempotencyKey)
-  return key === undefined ? undefined : { idempotencyKey: key }
+  if (flags.idempotencyKey === undefined) return undefined
+  const raw = flagString(flags.idempotencyKey)
+  let key: string | undefined
+  try {
+    key =
+      raw === undefined
+        ? undefined
+        : new Headers({ 'Idempotency-Key': raw }).get('Idempotency-Key')?.trim()
+  } catch {
+    throw new CliUsageError(
+      '--idempotency-key must be a valid HTTP header value.'
+    )
+  }
+  if (!key || key.length > 100) {
+    throw new CliUsageError(
+      '--idempotency-key must contain 1–100 characters after trimming.'
+    )
+  }
+  return { idempotencyKey: key }
 }
 
 export const IDEMPOTENCY_FLAG = {

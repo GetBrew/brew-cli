@@ -69,11 +69,11 @@ export const contactsListCommand = defineCommand({
       )
       return {
         data: { data: rows, pagination: { cursor: null, hasMore: false } },
-        human: renderContacts(rows),
+        human: () => renderContacts(rows),
       }
     }
     const result = await contacts.list(asSdkInput<ListContactsInput>(input))
-    return { data: result, human: renderContacts(result.data) }
+    return { data: result, human: () => renderContacts(result.data) }
   },
 })
 
