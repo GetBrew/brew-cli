@@ -56,21 +56,24 @@ export const contactsListCommand = defineCommand({
     })
     const contacts = ctx.client().contacts
     if (flags.all === true) {
-      const rows = await collectAll(ctx, (cursor) =>
-        contacts.list(
-          asSdkInput<ListContactsInput>({
-            ...input,
-            ...(cursor === undefined ? {} : { cursor }),
-          })
-        )
+      const rows = await collectAll(
+        ctx,
+        (cursor) =>
+          contacts.list(
+            asSdkInput<ListContactsInput>({
+              ...input,
+              ...(cursor === undefined ? {} : { cursor }),
+            })
+          ),
+        { cursor: flagString(input.cursor) }
       )
       return {
         data: { data: rows, pagination: { cursor: null, hasMore: false } },
-        human: renderContacts(rows),
+        human: () => renderContacts(rows),
       }
     }
     const result = await contacts.list(asSdkInput<ListContactsInput>(input))
-    return { data: result, human: renderContacts(result.data) }
+    return { data: result, human: () => renderContacts(result.data) }
   },
 })
 

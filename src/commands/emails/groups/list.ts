@@ -41,7 +41,9 @@ export const emailsGroupsListCommand = defineCommand({
         })
       )
     if (flags.all === true) {
-      const rows = await collectAll(ctx, fetchPage)
+      const rows = await collectAll(ctx, fetchPage, {
+        cursor: flagString(input.cursor),
+      })
       return {
         data: { data: rows, pagination: { cursor: null, hasMore: false } },
         human: renderEmailGroups(rows),

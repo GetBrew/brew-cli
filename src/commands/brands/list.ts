@@ -37,13 +37,16 @@ export const brandsListCommand = defineCommand({
     }
     const brands = ctx.client().brands
     if (flags.all === true) {
-      const rows = await collectAll(ctx, (cursor) =>
-        brands.list(
-          asSdkInput<ListBrandsInput>({
-            ...input,
-            ...(cursor === undefined ? {} : { cursor }),
-          })
-        )
+      const rows = await collectAll(
+        ctx,
+        (cursor) =>
+          brands.list(
+            asSdkInput<ListBrandsInput>({
+              ...input,
+              ...(cursor === undefined ? {} : { cursor }),
+            })
+          ),
+        { cursor: flagString(input.cursor) }
       )
       return {
         data: { data: rows, pagination: { cursor: null, hasMore: false } },

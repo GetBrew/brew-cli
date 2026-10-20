@@ -102,6 +102,13 @@ Designed for AI agents as first-class users:
   pagination; `--idempotency-key` makes retries safe across process
   restarts.
 
+Filtered list pages can be empty while more pages remain. Follow their cursor
+or use `--all`. When `--all` receives a repeated or cyclic cursor, it exits with code 1 and
+`CLI_PAGINATION` on stderr. It emits no truncated success payload. Error details
+include the fetched page and item counts; a cyclic cursor is not offered as a
+resume point. This also covers resumed lists and a comment thread's older
+message slices. Empty pages with an advancing cursor continue normally.
+
 ## Command reference
 
 The full generated reference lives in
@@ -141,6 +148,10 @@ keeps `main`'s email-audit and add-image blocks for the PR that ships them). Two
 
 Contributor guide: [`AGENTS.md`](./AGENTS.md) · Release process:
 [`RELEASING.md`](./RELEASING.md).
+
+Development and release checks use Bun 1.3.10, pinned in every workflow.
+Command metadata is supplied by CLI composition to `docs` and `doctor`; these
+handlers do not import the live registry.
 
 ## License
 

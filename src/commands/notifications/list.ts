@@ -50,13 +50,16 @@ export const notificationsListCommand = defineCommand({
     }
     const notifications = ctx.client().notifications
     if (flags.all === true) {
-      const rows = await collectAll(ctx, (cursor) =>
-        notifications.list(
-          asSdkInput<ListNotificationsInput>({
-            ...input,
-            ...(cursor === undefined ? {} : { cursor }),
-          })
-        )
+      const rows = await collectAll(
+        ctx,
+        (cursor) =>
+          notifications.list(
+            asSdkInput<ListNotificationsInput>({
+              ...input,
+              ...(cursor === undefined ? {} : { cursor }),
+            })
+          ),
+        { cursor: flagString(input.cursor) }
       )
       return {
         data: { data: rows, pagination: { cursor: null, hasMore: false } },

@@ -2,6 +2,7 @@ import { createInterface } from 'node:readline/promises'
 import { run } from './cli'
 import { exitCodeForSignal } from './lib/errors'
 import { createInterrupter, type Interrupter } from './lib/interrupt'
+import { readStdinText } from './lib/stdin'
 import type { CliIo } from './lib/types'
 
 function realIo(interrupter: Interrupter): CliIo {
@@ -13,29 +14,8 @@ function realIo(interrupter: Interrupter): CliIo {
     isTtyIn: process.stdin.isTTY === true,
     env: process.env,
     signal,
-    readStdin: async () => {
-      // With a SIGINT listener installed, an open stdin would keep the
-      // process alive after Ctrl-C: stop reading when the command aborts.
-      const stop = (): void => {
-        process.stdin.destroy()
-      }
-      signal.addEventListener('abort', stop, { once: true })
-      process.stdin.setEncoding('utf8')
-      let data = ''
-      try {
-        for await (const chunk of process.stdin) {
-          data += chunk
-        }
-      } catch (error) {
-        if (!signal.aborted) {
-          throw error
-        }
-      } finally {
-        signal.removeEventListener('abort', stop)
-      }
-      signal.throwIfAborted()
-      return data
-    },
+    readStdin: (readSignal = signal) =>
+      readStdinText({ stream: process.stdin, signal: readSignal }),
     readLine: async (prompt: string) => {
       const rl = createInterface({
         input: process.stdin,

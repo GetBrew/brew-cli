@@ -9,6 +9,8 @@ export type RunCliOptions = {
   readonly env?: Readonly<Record<string, string | undefined>>
   /** Text available on stdin (for `-` inputs and piped login). */
   readonly stdin?: string
+  /** Controlled stdin reader for cancellation and command-deadline tests. */
+  readonly readStdin?: CliIo['readStdin']
   /** Answer returned by interactive prompts (readLine). */
   readonly promptAnswer?: string
   readonly ttyOut?: boolean
@@ -53,7 +55,7 @@ export async function runCli(
     isTtyOut: options.ttyOut ?? false,
     isTtyIn: options.ttyIn ?? false,
     env: options.env ?? {},
-    readStdin: async () => options.stdin ?? '',
+    readStdin: options.readStdin ?? (async () => options.stdin ?? ''),
     readLine: async () => options.promptAnswer ?? '',
     ...(options.signal === undefined ? {} : { signal: options.signal }),
   }
