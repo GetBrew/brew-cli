@@ -19,6 +19,7 @@ export async function enforceConfirmation(
   const summary = spec.confirmSummary({
     args: invocation.args,
     flags: invocation.flags,
+    ...(invocation.input === undefined ? {} : { input: invocation.input }),
   })
   if (summary === undefined) {
     return
@@ -51,7 +52,10 @@ export async function enforceConfirmation(
     command: ['brew-cli', ...spec.path].join(' '),
     summary,
     confirmCommand: buildConfirmCommand(
-      options.confirmationArgv ?? ctx.rawArgv
+      options.confirmationArgv ??
+        (invocation.flags.input === '-' && invocation.input !== undefined
+          ? inlineStdinInputArgv(ctx.rawArgv, JSON.stringify(invocation.input))
+          : ctx.rawArgv)
     ),
   })
 }
