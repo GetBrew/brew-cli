@@ -539,9 +539,9 @@ export interface paths {
          *
          *     Test (`test: true`): `emailId`, `subject`, one `to` address, optional `emailVersionId`, `previewText`, `replyTo`, `domainId` (a verified org-owned domain; otherwise the Brew default sender, and an unverified or foreign domain is rejected, never downgraded), `from` (`{ email, name? }`, an address on that domain), `variables` (example values for `{{ var | fallback }}` merge tags; a value wins over the fallback) and `payload` (template data; nested JSON renders via Liquid as `trigger.*`); the subject carries a `[TEST]` prefix. The same design can be sent unlimited times; every campaign call mints a new send.
          *
-         *     **Returns** campaign `202 { status: 'queued' | 'scheduled', sendId, scheduledAt?, warnings? }` (poll `getSend`; `warnings[]` carries one `CONSENT_RECORD_MISSING` per inline recipient that is a subscribed contact with no consent record, and one `RECIPIENTS_EXCLUDED` with the counts when unsubscribed, suppressed or undeliverable contacts will be skipped); test `200 { status: 'completed', recipient }`.
+         *     **Returns** campaign `202 { status: 'queued' | 'scheduled', sendId, scheduledAt?, warnings? }` (poll `getSend`; `warnings[]` carries one `CONSENT_RECORD_MISSING` per inline recipient that is a subscribed contact with no consent record, and one `RECIPIENTS_EXCLUDED` with the counts when unsubscribed, suppressed, undeliverable or permission-less recipients will be skipped); test `200 { status: 'completed', recipient }`.
          *
-         *     **Errors** `400 INVALID_REQUEST` (`param: subject`) when `subject` has a line break or runs over 1000 characters (993 on a test send, for the `[TEST]` prefix), judged on the text every recipient receives; `404 EMAIL_NOT_FOUND`, `DOMAIN_NOT_FOUND`, `AUDIENCE_NOT_FOUND` (a resource in another brand also surfaces as `404`); `422 EMAIL_NOT_READY`, `DOMAIN_NOT_READY`, `DOMAIN_PURPOSE_NOT_ALLOWED`, `LIQUID_RENDER_ERROR`; `422 CONSENT_REQUIRED` when an inline marketing recipient has no contact record with marketing consent and no `consent` was supplied (`details.recipients`); `422 RECIPIENT_UNSUBSCRIBED` when an inline recipient is an existing contact who opted out (`details.recipients`, never re-subscribed); `422 NO_ELIGIBLE_RECIPIENTS` when an immediate send would reach nobody because every contact it targets is unsubscribed, suppressed or undeliverable (`details.eligibility` = `{ total, eligible, excluded: { unsubscribed, suppressed, invalidEmail } }`; no send is created, while a scheduled send is accepted instead); `422 EMAIL_IMAGES_MISSING` when the email shows a cdn.brew.new image that does not exist (`details.missingImages[]`; a dead icon whose real file sits elsewhere in its pack is moved there instead when the key has `emails` access); `402 SEND_QUOTA_EXCEEDED` when the plan's monthly volume would be exceeded (no `Retry-After`).
+         *     **Errors** `400 INVALID_REQUEST` (`param: subject`) when `subject` has a line break or runs over 1000 characters (993 on a test send, for the `[TEST]` prefix), judged on the text every recipient receives; `404 EMAIL_NOT_FOUND`, `DOMAIN_NOT_FOUND`, `AUDIENCE_NOT_FOUND` (a resource in another brand also surfaces as `404`); `422 EMAIL_NOT_READY`, `DOMAIN_NOT_READY`, `DOMAIN_PURPOSE_NOT_ALLOWED`, `LIQUID_RENDER_ERROR`; `422 CONSENT_REQUIRED` when an inline marketing recipient has no contact record with marketing consent and no `consent` was supplied (`details.recipients`); `422 RECIPIENT_UNSUBSCRIBED` when an inline recipient is an existing contact who opted out (`details.recipients`, never re-subscribed); `422 NO_ELIGIBLE_RECIPIENTS` when an immediate send would reach nobody because every contact it targets is excluded (`details.eligibility` = `{ total, eligible, excluded: { unsubscribed, suppressed, invalidEmail, consentRequired? } }`, each address counted once; no send is created, while a scheduled send is accepted instead); `422 EMAIL_IMAGES_MISSING` when the email shows a cdn.brew.new image that does not exist (`details.missingImages[]`; a dead icon whose real file sits elsewhere in its pack is moved there instead when the key has `emails` access); `402 SEND_QUOTA_EXCEEDED` when the plan's monthly volume would be exceeded (no `Retry-After`).
          *
          *     **See also** `listSends`, `cancelSend`, `fireTrigger`.
          */
@@ -1049,7 +1049,7 @@ export interface paths {
          *
          *     **Use when** debugging one contact’s journey or confirming a test run finished.
          *
-         *     **Input** `automationRunId` in the path; `include=logs` inlines the newest 100 per-node execution logs and sets `logsTruncated` when older logs exist.
+         *     **Input** `automationRunId` in the path; `include=logs` inlines the newest 100 execution log rows in `orderIndex` order and sets `logsTruncated` when older rows exist. Each node status change is its own row: a node that runs has a `running` row (no `completedAt`), then its terminal `completed` or `failed` row, or `skipped` when the run is canceled while it runs; a node a branch rules out has only a `skipped` row. A node’s outcome is its last row.
          *
          *     **Returns** `200` with the row; `logs` is present only when requested.
          *
@@ -1525,7 +1525,7 @@ export interface paths {
         put?: never;
         /**
          * Validate email deliverability
-         * @description Batch deliverability check (up to 100 addresses) — run BEFORE importing or sending. Each address is classified `valid` (safe), `risky` (deliverable but flagged — e.g. role account, disposable, catch-all), or `invalid` (undeliverable / do-not-send), with a machine-readable `reason` and a `didYouMean` typo correction when applicable. Cost: 2 credits PER ADDRESS (`X-Credit-Cost` = 2 × the number of addresses), charged ONLY on success — if the check cannot complete for the whole batch, the call returns a retryable `503` and is NOT billed.
+         * @description Batch deliverability check (up to 100 addresses) — run BEFORE importing or sending. Each address is classified `valid` (safe), `risky` (deliverable but flagged — e.g. role account, disposable, catch-all), or `invalid` (undeliverable / do-not-send), with a machine-readable `reason` and a `didYouMean` typo correction when applicable. Partial outages retain the legacy `status: risky` with `checkOutcome: unavailable` (not a completed risky verdict) and preserve the stored verdict. `persistence` reports matched, modified and failed update-only writes; validation never grants subscription or clears suppression. Cost: 2 credits PER ADDRESS (`X-Credit-Cost` = 2 × the number of addresses), charged ONLY on success — if the check cannot complete for the whole batch, the call returns `503` (transient outages are retryable; configuration failures need support) and is NOT billed.
          */
         post: operations["validateContacts"];
         delete?: never;
@@ -4421,7 +4421,7 @@ export interface components {
             };
         };
         /** @enum {string} */
-        ApiErrorCode: "ACCOUNT_SUSPENDED" | "API_KEY_REVOKED" | "AUDIENCE_BUILD_ACTIVE" | "AUDIENCE_BUILD_ALREADY_ACTIVE" | "AUDIENCE_EDIT_CONFLICT" | "AUDIENCE_MEMBERSHIP_NOT_EXPRESSIBLE" | "AUDIENCE_NOT_FOUND" | "AUDIENCE_RUN_NOT_FOUND" | "AUDIT_NOT_FOUND" | "AUTHENTICATION_REQUIRED" | "AUTOMATION_GRAPH_INVALID" | "AUTOMATION_NOT_FOUND" | "AUTOMATION_NOT_PAUSABLE" | "AUTOMATION_NOT_PUBLISHED" | "AUTOMATION_RUN_NOT_FOUND" | "AUTOMATION_VERSION_CONFLICT" | "AUTOMATION_VERSION_NOT_FOUND" | "BATCH_TOO_LARGE" | "BRAND_DOMAIN_CONFLICT" | "BRAND_ID_REQUIRED" | "BRAND_LIMIT_REACHED" | "BRAND_NOT_FOUND" | "BRAND_NOT_READY" | "BRAND_SCOPE_MISMATCH" | "CHAT_NOT_FOUND" | "COMMENT_NOT_FOUND" | "CONSENT_REQUIRED" | "CONTACT_NOT_FOUND" | "CONTENT_OPERATION_FAILED" | "CONTRACT_LOCKED_BY_PUBLISHED_AUTOMATIONS" | "CORE_FIELD_IMMUTABLE" | "DOMAIN_ALREADY_EXISTS" | "DOMAIN_CLAIMED_ELSEWHERE" | "DOMAIN_NOT_FOUND" | "DOMAIN_NOT_READY" | "DOMAIN_OTHER_BRAND" | "DOMAIN_PROVIDER_ERROR" | "DOMAIN_PURPOSE_NOT_ALLOWED" | "DOMAIN_VERIFICATION_FAILED" | "DOMAIN_VERIFIED_ELSEWHERE" | "EMAIL_GENERATION_FAILED" | "EMAIL_GROUP_NAME_CONFLICT" | "EMAIL_GROUP_NOT_FOUND" | "EMAIL_IMAGES_MISSING" | "EMAIL_IMPORT_FAILED" | "EMAIL_IN_PROGRESS" | "EMAIL_IN_USE_BY_AUTOMATION" | "EMAIL_NOT_FOUND" | "EMAIL_NOT_READY" | "EMAIL_RUN_AMBIGUOUS" | "EMAIL_TEMPLATE_INVALID" | "EMAIL_VERSION_NOT_FOUND" | "EXPORT_PROVIDER_ERROR" | "EXPORT_UNSUPPORTED" | "FIELD_NOT_FOUND" | "FIELD_TYPE_MISMATCH" | "FIGMA_ACCESS_DENIED" | "FIGMA_CONVERSION_FAILED" | "FIGMA_FRAME_NOT_FOUND" | "FIGMA_NOT_CONNECTED" | "FIGMA_UNAVAILABLE" | "FIGMA_URL_INVALID" | "FLOW_NOT_FOUND" | "IDEMPOTENCY_CONFLICT" | "IDEMPOTENCY_IN_PROGRESS" | "INSIGHT_NOT_FOUND" | "INSUFFICIENT_CREDITS" | "INSUFFICIENT_PERMISSIONS" | "INSUFFICIENT_ROLE" | "INTEGRATION_NOT_CONNECTED" | "INTERNAL_ERROR" | "INVALID_API_KEY" | "INVALID_EMAIL" | "INVALID_PAYLOAD" | "INVALID_REQUEST" | "LIQUID_RENDER_ERROR" | "METHOD_NOT_ALLOWED" | "MISSING_EMAIL" | "NO_ELIGIBLE_RECIPIENTS" | "NO_PUBLISHED_AUTOMATION" | "NOT_FOUND" | "NOT_IMPLEMENTED" | "ORG_SCOPE_REQUIRED" | "PAYLOAD_SCHEMA_EMAIL_REQUIRED" | "PAYLOAD_TOO_LARGE" | "PREVIEW_NOT_FOUND" | "PUBLISH_VALIDATION_FAILED" | "RATE_LIMITED" | "RECIPIENT_UNSUBSCRIBED" | "REFERENCE_EMAIL_NOT_FOUND" | "RESUBSCRIBE_NOT_ALLOWED" | "RUN_IN_PROGRESS" | "RUN_NOT_CANCELLABLE" | "RUN_NOT_PAUSABLE" | "RUN_NOT_PAUSED" | "RUN_NOT_RESUMABLE" | "RUN_START_FAILED" | "RUN_STOP_FAILED" | "SEND_NOT_CANCELLABLE" | "SEND_NOT_FOUND" | "SEND_NOT_PAUSABLE" | "SEND_NOT_RESUMABLE" | "SEND_QUOTA_EXCEEDED" | "SERVICE_UNAVAILABLE" | "TEMPLATE_NOT_FOUND" | "TRIGGER_ALREADY_EXISTS" | "TRIGGER_EVENT_NOT_FOUND" | "TRIGGER_HAS_DEPENDENT_AUTOMATIONS" | "TRIGGER_IMMUTABLE" | "TRIGGER_INSTANCE_NOT_FOUND" | "TRIGGER_LIMIT_REACHED" | "TRIGGER_NOT_FIREABLE" | "UPLOAD_IN_PROGRESS" | "UPLOAD_NOT_FOUND" | "UPLOAD_NOT_RECEIVED";
+        ApiErrorCode: "ACCOUNT_SUSPENDED" | "API_KEY_REVOKED" | "AUDIENCE_BUILD_ACTIVE" | "AUDIENCE_BUILD_ALREADY_ACTIVE" | "AUDIENCE_EDIT_CONFLICT" | "AUDIENCE_MEMBERSHIP_NOT_EXPRESSIBLE" | "AUDIENCE_NOT_FOUND" | "AUDIENCE_RUN_NOT_FOUND" | "AUDIT_NOT_FOUND" | "AUTHENTICATION_REQUIRED" | "AUTOMATION_GRAPH_INVALID" | "AUTOMATION_NOT_FOUND" | "AUTOMATION_NOT_PAUSABLE" | "AUTOMATION_NOT_PUBLISHED" | "AUTOMATION_RUN_NOT_FOUND" | "AUTOMATION_VERSION_CONFLICT" | "AUTOMATION_VERSION_NOT_FOUND" | "BATCH_TOO_LARGE" | "BRAND_DOMAIN_CONFLICT" | "BRAND_ID_REQUIRED" | "BRAND_LIMIT_REACHED" | "BRAND_NOT_FOUND" | "BRAND_NOT_READY" | "BRAND_SCOPE_MISMATCH" | "CHAT_NOT_FOUND" | "COMMENT_NOT_FOUND" | "CONSENT_REQUIRED" | "CONTACT_NOT_FOUND" | "CONTENT_OPERATION_FAILED" | "CONTRACT_LOCKED_BY_PUBLISHED_AUTOMATIONS" | "CORE_FIELD_IMMUTABLE" | "DOMAIN_ALREADY_EXISTS" | "DOMAIN_CLAIMED_ELSEWHERE" | "DOMAIN_NOT_FOUND" | "DOMAIN_NOT_READY" | "DOMAIN_OTHER_BRAND" | "DOMAIN_PROVIDER_ERROR" | "DOMAIN_PURPOSE_NOT_ALLOWED" | "DOMAIN_VERIFICATION_FAILED" | "DOMAIN_VERIFIED_ELSEWHERE" | "EMAIL_GENERATION_FAILED" | "EMAIL_GROUP_NAME_CONFLICT" | "EMAIL_GROUP_NOT_FOUND" | "EMAIL_IMAGES_MISSING" | "EMAIL_IMPORT_FAILED" | "EMAIL_IN_PROGRESS" | "EMAIL_IN_USE_BY_AUTOMATION" | "EMAIL_NOT_FOUND" | "EMAIL_NOT_READY" | "EMAIL_RESULT_UNAVAILABLE" | "EMAIL_RUN_AMBIGUOUS" | "EMAIL_TEMPLATE_INVALID" | "EMAIL_VERSION_NOT_FOUND" | "EXPORT_PROVIDER_ERROR" | "EXPORT_UNSUPPORTED" | "FIELD_NOT_FOUND" | "FIELD_TYPE_MISMATCH" | "FIGMA_ACCESS_DENIED" | "FIGMA_CONVERSION_FAILED" | "FIGMA_FRAME_NOT_FOUND" | "FIGMA_NOT_CONNECTED" | "FIGMA_UNAVAILABLE" | "FIGMA_URL_INVALID" | "FLOW_NOT_FOUND" | "IDEMPOTENCY_CONFLICT" | "IDEMPOTENCY_IN_PROGRESS" | "INSIGHT_NOT_FOUND" | "INSUFFICIENT_CREDITS" | "INSUFFICIENT_PERMISSIONS" | "INSUFFICIENT_ROLE" | "INTEGRATION_NOT_CONNECTED" | "INTERNAL_ERROR" | "INVALID_API_KEY" | "INVALID_EMAIL" | "INVALID_PAYLOAD" | "INVALID_REQUEST" | "LIQUID_RENDER_ERROR" | "METHOD_NOT_ALLOWED" | "MISSING_EMAIL" | "NO_ELIGIBLE_RECIPIENTS" | "NO_PUBLISHED_AUTOMATION" | "NOT_FOUND" | "NOT_IMPLEMENTED" | "ORG_SCOPE_REQUIRED" | "PAYLOAD_SCHEMA_EMAIL_REQUIRED" | "PAYLOAD_TOO_LARGE" | "PREVIEW_NOT_FOUND" | "PUBLISH_VALIDATION_FAILED" | "RATE_LIMITED" | "RECIPIENT_UNSUBSCRIBED" | "REFERENCE_EMAIL_NOT_FOUND" | "RESUBSCRIBE_NOT_ALLOWED" | "RUN_IN_PROGRESS" | "RUN_NOT_CANCELLABLE" | "RUN_NOT_PAUSABLE" | "RUN_NOT_PAUSED" | "RUN_NOT_RESUMABLE" | "RUN_START_FAILED" | "RUN_STOP_FAILED" | "SEND_NOT_CANCELLABLE" | "SEND_NOT_FOUND" | "SEND_NOT_PAUSABLE" | "SEND_NOT_RESUMABLE" | "SEND_QUOTA_EXCEEDED" | "SERVICE_UNAVAILABLE" | "TEMPLATE_NOT_FOUND" | "TRIGGER_ALREADY_EXISTS" | "TRIGGER_EVENT_NOT_FOUND" | "TRIGGER_HAS_DEPENDENT_AUTOMATIONS" | "TRIGGER_IMMUTABLE" | "TRIGGER_INSTANCE_NOT_FOUND" | "TRIGGER_LIMIT_REACHED" | "TRIGGER_NOT_FIREABLE" | "UPLOAD_IN_PROGRESS" | "UPLOAD_NOT_FOUND" | "UPLOAD_NOT_RECEIVED";
         EmailGenerateTextResponse: {
             response: string;
         };
@@ -7118,6 +7118,11 @@ export interface components {
                 risky: number;
                 invalid: number;
                 unscored: number;
+                persistence?: {
+                    matched: number;
+                    modified: number;
+                    failed: number;
+                };
             };
             validationJobId?: string;
         };
@@ -7193,6 +7198,11 @@ export interface components {
                 risky: number;
                 invalid: number;
                 unscored: number;
+                persistence?: {
+                    matched: number;
+                    modified: number;
+                    failed: number;
+                };
             };
         };
         ContactsPostRequest: components["schemas"]["ContactsPostSingleRequest"] | components["schemas"]["ContactsPostBatchRequest"];
@@ -7598,17 +7608,34 @@ export interface components {
             include?: "openProfile"[];
         };
         ContactsValidateResponse: {
-            data: {
+            data: ({
                 email: string;
                 valid: boolean;
                 /** @enum {string} */
                 status: "valid" | "risky" | "invalid";
+                /** @enum {string} */
+                checkOutcome: "completed";
                 reason?: string;
                 didYouMean?: string;
                 risk?: string;
                 isDisposable?: boolean;
                 isRole?: boolean;
-            }[];
+            } | {
+                email: string;
+                /** @enum {boolean} */
+                valid: false;
+                /** @enum {string} */
+                status: "risky";
+                /** @enum {string} */
+                checkOutcome: "unavailable";
+                /** @enum {string} */
+                reason: "validation_unavailable";
+            })[];
+            persistence: {
+                matched: number;
+                modified: number;
+                failed: number;
+            };
         };
         ContactsValidateRequest: {
             emails: string[];
@@ -7642,6 +7669,11 @@ export interface components {
                 risky: number;
                 invalid: number;
                 unscored: number;
+                persistence?: {
+                    matched: number;
+                    modified: number;
+                    failed: number;
+                };
             };
             validationJobId?: string;
         };
@@ -9276,7 +9308,9 @@ export interface operations {
                 };
             };
             /**
-             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+             * @description `EMAIL_RESULT_UNAVAILABLE`: The email was saved, but its completed result could not be read for this response.
+             *
+             *     `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
              *
              *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
              */
@@ -9818,7 +9852,11 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `EMAIL_IN_PROGRESS`: The design is being generated and cannot be edited or cloned yet. */
+            /**
+             * @description `EMAIL_IN_PROGRESS`: The design is being generated and cannot be edited or cloned yet.
+             *
+             *     `EMAIL_RESULT_UNAVAILABLE`: The email was saved, but its completed result could not be read for this response.
+             */
             409: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -17542,7 +17580,7 @@ export interface operations {
     getAutomationRun: {
         parameters: {
             query?: {
-                /** @description Expansions: `logs` inlines the newest 100 per-node execution logs and reports `logsTruncated`. */
+                /** @description Expansions: `logs` inlines the newest 100 execution log rows, one per node status change (a node's outcome is its last row by `orderIndex`), and reports `logsTruncated`. */
                 include?: string;
             };
             header?: {
@@ -21775,18 +21813,21 @@ export interface operations {
                      *         {
                      *           "email": "ada@gmail.com",
                      *           "valid": true,
-                     *           "status": "valid"
+                     *           "status": "valid",
+                     *           "checkOutcome": "completed"
                      *         },
                      *         {
                      *           "email": "temp@mailinator.com",
                      *           "valid": false,
                      *           "status": "invalid",
+                     *           "checkOutcome": "completed",
                      *           "reason": "undeliverable"
                      *         },
                      *         {
                      *           "email": "ada@gmial.com",
                      *           "valid": false,
                      *           "status": "risky",
+                     *           "checkOutcome": "completed",
                      *           "reason": "unknown",
                      *           "didYouMean": "ada@gmail.com"
                      *         },
@@ -21794,9 +21835,15 @@ export interface operations {
                      *           "email": "admin@stripe.com",
                      *           "valid": false,
                      *           "status": "risky",
+                     *           "checkOutcome": "completed",
                      *           "reason": "role_address"
                      *         }
-                     *       ]
+                     *       ],
+                     *       "persistence": {
+                     *         "matched": 4,
+                     *         "modified": 4,
+                     *         "failed": 0
+                     *       }
                      *     }
                      */
                     "application/json": components["schemas"]["ContactsValidateResponse"];
@@ -22057,6 +22104,11 @@ export interface operations {
                             risky: number;
                             invalid: number;
                             unscored: number;
+                            persistence?: {
+                                matched: number;
+                                modified: number;
+                                failed: number;
+                            };
                         };
                         validationJobId?: string;
                     };
