@@ -778,8 +778,12 @@ export async function runInit(
           note: afterSignIn,
         })
       } else {
-        const triggers = await listAllTriggers(client)
-        const artifacts = await fetchContractArtifacts(client, triggers)
+        const triggers = await listAllTriggers(ctx, client)
+        const artifacts = await fetchContractArtifacts(
+          client,
+          triggers,
+          ctx.signal
+        )
         writeManaged({
           path: paths.contracts,
           content: buildContractsFile({ artifacts }),
