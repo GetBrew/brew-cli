@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process'
 import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -665,7 +666,124 @@ describe('emails send', () => {
   })
 })
 
+describe('stdin confirmation after reading to EOF', () => {
+  it('returns a replayable confirmation instead of prompting on exhausted stdin', async () => {
+    let dispatches = 0
+    server.use(
+      http.post(`https://brew.new/api/v1/sends`, () => {
+        dispatches += 1
+        return HttpResponse.json({ sendId: 'send_1' })
+      })
+    )
+    const input = {
+      subject: 'Confirmed campaign',
+      domainId: 'dom_1',
+      to: 'qa@example.com',
+    }
+    const result = await runCli(['emails', 'send', 'eml_1', '--input', '-'], {
+      env: env(),
+      stdin: JSON.stringify(input),
+      ttyIn: true,
+      ttyOut: true,
+      promptAnswer: 'yes',
+    })
+    expect(result.code).toBe(4)
+    expect(result.json).toMatchObject({ confirmationRequired: true })
+    expect(dispatches).toBe(0)
+    expect(
+      (result.json as { confirmCommand: string }).confirmCommand
+    ).toContain('Confirmed campaign')
+  })
+})
+
 describe('emails send with --input bodies (gate awareness)', () => {
+  it.each([['--input', '-'], ['--input=-']])(
+    'sends a stdin test request without the campaign confirmation gate (%j)',
+    async (...inputArgs) => {
+      const input = {
+        test: true,
+        subject: 'Preview',
+        to: 'qa@example.com',
+      }
+      const bodies: unknown[] = []
+      server.use(
+        http.post(SENDS_URL, async ({ request }) => {
+          bodies.push(await request.json())
+          return HttpResponse.json({ status: 'completed', recipient: input.to })
+        })
+      )
+      const result = await runCli(['emails', 'send', 'eml_1', ...inputArgs], {
+        env: env(),
+        stdin: JSON.stringify(input),
+        extraCommands: EXTRA,
+      })
+      expect(result.code).toBe(0)
+      expect(bodies).toEqual([{ ...input, emailId: 'eml_1' }])
+      expect(result.json).toEqual({ status: 'completed', recipient: input.to })
+    }
+  )
+
+  it.each([['--input', '-'], ['--input=-']])(
+    'confirms the scoped stdin campaign and replays its body without stdin (%j)',
+    async (...inputArgs) => {
+      const input = {
+        emailId: 'eml_other',
+        subject: "Operator's launch",
+        domainId: 'dom_1',
+        audienceId: 'aud_9',
+        scheduledAt: '2099-01-01T00:00:00Z',
+      }
+      const bodies: unknown[] = []
+      let key: string | null | undefined
+      server.use(
+        http.post(SENDS_URL, async ({ request }) => {
+          bodies.push(await request.json())
+          key = request.headers.get('Idempotency-Key')
+          return HttpResponse.json(
+            { status: 'scheduled', sendId: 'snd_1' },
+            { status: 202 }
+          )
+        })
+      )
+      const environment = env()
+      const result = await runCli(
+        [
+          'emails',
+          'send',
+          'eml_1',
+          ...inputArgs,
+          '--idempotency-key',
+          'send-stdin-retry',
+        ],
+        { env: environment, stdin: JSON.stringify(input), extraCommands: EXTRA }
+      )
+      expect(result.code).toBe(4)
+      expect(bodies).toEqual([])
+      const { summary, confirmCommand } = result.json as {
+        summary: string
+        confirmCommand: string
+      }
+      expect(summary).toContain('email eml_1')
+      expect(summary).toContain('audience aud_9')
+      expect(summary).toContain('at 2099-01-01T00:00:00Z')
+      const argv = execFileSync(
+        'sh',
+        ['-c', `set -- ${confirmCommand}; printf '%s\\0' "$@"`],
+        { encoding: 'utf8' }
+      )
+        .split('\0')
+        .slice(0, -1)
+      expect(argv[0]).toBe('brew-cli')
+      const confirmed = await runCli(argv.slice(1), {
+        env: environment,
+        extraCommands: EXTRA,
+      })
+      expect(confirmed.code).toBe(0)
+      expect(bodies).toEqual([{ ...input, emailId: 'eml_1' }])
+      expect(key).toBe('send-stdin-retry')
+    }
+  )
+
   it('skips the gate when --input carries test:true, and it reaches the wire', async () => {
     let body: Record<string, unknown> | undefined
     server.use(

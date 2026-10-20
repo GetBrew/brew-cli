@@ -1,5 +1,6 @@
 import type { ListAudienceRunsInput } from '@brew.new/sdk'
 import { inputField, singleRowPage } from '../../../lib/compat'
+import { shellQuote } from '../../../lib/confirm'
 import { defineCommand } from '../../../lib/define-command'
 import {
   asSdkInput,
@@ -88,7 +89,13 @@ export const automationsAudienceRunsListCommand = defineCommand({
     const result = await audienceRuns.list(
       asSdkInput<ListAudienceRunsInput>(input)
     )
-    return { data: result, human: renderAudienceRuns(result.data) }
+    const human =
+      result.data.length === 0 &&
+      result.pagination.hasMore &&
+      result.pagination.cursor !== null
+        ? `No matching audience runs on this page. Continue with --cursor ${shellQuote(result.pagination.cursor)} or --all.`
+        : renderAudienceRuns(result.data)
+    return { data: result, human }
   },
 })
 

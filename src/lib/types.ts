@@ -12,7 +12,8 @@ export type CliIo = {
   readonly isTtyOut: boolean
   readonly isTtyIn: boolean
   readonly env: Readonly<Record<string, string | undefined>>
-  readonly readStdin: () => Promise<string>
+  /** When supplied, the command signal closes input on interrupt or timeout. */
+  readonly readStdin: (signal?: AbortSignal) => Promise<string>
   readonly readLine: (prompt: string) => Promise<string>
   /**
    * Aborts on SIGINT/SIGTERM with a `CliInterruptError` (see
@@ -77,5 +78,7 @@ export type CliContext = {
   readonly traits: CommandTraits | undefined
   /** Start the whole-command deadline, after any confirmation prompt. */
   readonly startDeadline: () => void
+  /** Pause an active clock; the returned callback resumes its remaining budget. */
+  readonly pauseDeadline: () => () => void
   readonly stopDeadline: () => void
 }

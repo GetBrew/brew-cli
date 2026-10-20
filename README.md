@@ -102,7 +102,8 @@ Designed for AI agents as first-class users:
   pagination; `--idempotency-key` makes retries safe across process
   restarts.
 
-When `--all` receives a repeated or cyclic cursor, it exits with code 1 and
+Filtered list pages can be empty while more pages remain. Follow their cursor
+or use `--all`. When `--all` receives a repeated or cyclic cursor, it exits with code 1 and
 `CLI_PAGINATION` on stderr. It emits no truncated success payload. Error details
 include the fetched page and item counts; a cyclic cursor is not offered as a
 resume point. This also covers resumed lists and a comment thread's older

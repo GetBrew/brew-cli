@@ -36,13 +36,31 @@ export function makeContext(input: {
     defaultTimeoutMs: input.traits?.defaultTimeoutMs,
   })
   const deadline = new AbortController()
-  let deadlineTimer: ReturnType<typeof setTimeout> | undefined
+  let remainingMs = budget.deadlineMs
+  let activeDeadline:
+    | {
+        readonly timer: ReturnType<typeof setTimeout>
+        readonly startedAt: number
+        readonly allowanceMs: number
+      }
+    | undefined
   const { signal } = anySignal([input.io.signal, deadline.signal])
   const transport = createTransportState()
   const cache = new Map<string, BrewClient>()
+  let stdinConsumed = false
+  const io: CliIo = {
+    ...input.io,
+    get isTtyIn() {
+      return input.io.isTtyIn && !stdinConsumed
+    },
+    readStdin: (signal) => {
+      stdinConsumed = true
+      return input.io.readStdin(signal)
+    },
+  }
   const ctx: CliContext = {
     commands: input.commands ?? [],
-    io: input.io,
+    io,
     mode,
     globals,
     rawArgv: input.rawArgv,
@@ -51,17 +69,54 @@ export function makeContext(input: {
     transport,
     traits: input.traits,
     startDeadline: () => {
-      const ms = budget.deadlineMs
-      if (ms === undefined || deadlineTimer !== undefined) {
+      const timeoutMs = budget.deadlineMs
+      if (
+        timeoutMs === undefined ||
+        remainingMs === undefined ||
+        activeDeadline !== undefined ||
+        signal.aborted
+      ) {
         return
       }
-      deadlineTimer = setTimeout(() => {
-        deadline.abort(new CliTimeoutError(ms))
-      }, ms)
+      if (remainingMs <= 0) {
+        deadline.abort(new CliTimeoutError(timeoutMs))
+        return
+      }
+      const allowanceMs = remainingMs
+      const startedAt = performance.now()
+      const timer = setTimeout(() => {
+        activeDeadline = undefined
+        remainingMs = 0
+        deadline.abort(new CliTimeoutError(timeoutMs))
+      }, allowanceMs)
+      activeDeadline = { timer, startedAt, allowanceMs }
+    },
+    pauseDeadline: () => {
+      if (activeDeadline === undefined) {
+        return () => undefined
+      }
+      ctx.stopDeadline()
+      if (remainingMs === 0 && budget.deadlineMs !== undefined) {
+        deadline.abort(new CliTimeoutError(budget.deadlineMs))
+      }
+      let hasResumed = false
+      return () => {
+        if (hasResumed) {
+          return
+        }
+        hasResumed = true
+        ctx.startDeadline()
+      }
     },
     stopDeadline: () => {
-      if (deadlineTimer !== undefined) {
-        clearTimeout(deadlineTimer)
+      if (activeDeadline !== undefined) {
+        clearTimeout(activeDeadline.timer)
+        remainingMs = Math.max(
+          0,
+          activeDeadline.allowanceMs -
+            (performance.now() - activeDeadline.startedAt)
+        )
+        activeDeadline = undefined
       }
     },
     client: (options?: ClientOptions) => {
