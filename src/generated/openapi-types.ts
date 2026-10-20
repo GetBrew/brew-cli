@@ -35,7 +35,7 @@ export interface paths {
          *
          *     **Returns** `201 { emailId, emailVersionId, html, previewImage?, group, subjectLine? }` when a design was persisted, or `200 { response }` when the agent answered in prose without writing a design.
          *
-         *     **Errors** `404 REFERENCE_EMAIL_NOT_FOUND` for an unknown `referenceEmailId`; `404 EMAIL_GROUP_NOT_FOUND` for an unknown `groupId`; `422 BRAND_NOT_READY` while the brand is still extracting; `502 EMAIL_GENERATION_FAILED` when the agent could not produce a design; `402 INSUFFICIENT_CREDITS` on an empty balance.
+         *     **Errors** `404 REFERENCE_EMAIL_NOT_FOUND` for an unknown `referenceEmailId`; `404 EMAIL_GROUP_NOT_FOUND` for an unknown `groupId`; `422 BRAND_NOT_READY` while the brand is still extracting; `502 EMAIL_GENERATION_FAILED` when the agent could not produce a design; `409 EMAIL_RESULT_UNAVAILABLE` when the design was saved but its completed result could not be returned (read the saved `emailVersionId` from `error.details`; do not repeat generation); `402 INSUFFICIENT_CREDITS` on an empty balance.
          *
          *     **See also** `editEmail`, `importEmail`, `createSend`.
          */
@@ -89,7 +89,7 @@ export interface paths {
          *
          *     **Automations** a prompt edit moves every automation `sendEmail` step pinned to the previous latest version onto the new one, in a new unpublished automation version (while a Brew agent is still building that automation, its in-progress draft is updated in place instead); the published version keeps its pin until the next publish. Steps pinned to an older version do not move. An envelope patch writes no version and moves nothing.
          *
-         *     **Errors** `404 EMAIL_NOT_FOUND`, `EMAIL_VERSION_NOT_FOUND` (a pin that is not one of this design's versions), `EMAIL_GROUP_NOT_FOUND` (a `groupId` that is not one of this brand's groups); `409 EMAIL_IN_PROGRESS` while the design is still generating (or a concurrent edit moved the head between read and patch); `422 BRAND_NOT_READY` until the brand has finished extracting; `502 EMAIL_GENERATION_FAILED` when the agent run fails (retry later); `400 INVALID_REQUEST` for a body with none of the four fields, or `emailVersionId` without `prompt`.
+         *     **Errors** `404 EMAIL_NOT_FOUND`, `EMAIL_VERSION_NOT_FOUND` (a pin that is not one of this design's versions), `EMAIL_GROUP_NOT_FOUND` (a `groupId` that is not one of this brand's groups); `409 EMAIL_IN_PROGRESS` while the design is still generating (or a concurrent edit moved the head between read and patch); `409 EMAIL_RESULT_UNAVAILABLE` when the edit was saved but its completed result could not be returned (read the saved `emailVersionId` from `error.details`; do not repeat the edit); `422 BRAND_NOT_READY` until the brand has finished extracting; `502 EMAIL_GENERATION_FAILED` when the agent run fails (retry later); `400 INVALID_REQUEST` for a body with none of the four fields, or `emailVersionId` without `prompt`.
          *
          *     **See also** `cloneEmail` (name the copy with `title`), `restoreEmailVersion`, `listEmails`.
          */
