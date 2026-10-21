@@ -121,7 +121,9 @@ brew-cli integrations connection clerk   # pending_verification until the first 
 
 The signing secret comes from an environment variable or stdin, never a
 flag value; never print it. Paste the returned `webhookUrl` into the
-provider (Supabase's Send Email hook, the Clerk endpoint). `init` can do
+provider (Supabase's Send Email hook, the Clerk endpoint). A re-run keeps
+`connectionId` and `webhookUrl`, replaces the secret and finishes auth
+emails that failed. `init` can do
 the provider side, only when asked: `--configure-supabase` (with
 `SUPABASE_ACCESS_TOKEN` on this machine) points the Send Email hook at
 Brew; `--configure-clerk` turns off Clerk's delivery for the templates
