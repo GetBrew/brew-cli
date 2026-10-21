@@ -9,6 +9,10 @@ but does not provide that method. Follow the contact import SDK gate in
 
 ### Added
 
+- Synchronize email-category and template browse-group contracts with app
+  revision `9bf2e01f14d8260bdde0825e901a05497b66c70c`. Template reads accept
+  `--group`, and `--count --group-by group` labels browse groups correctly in
+  human output. These additions require the matching API deployment.
 - **`contacts import`** (`POST /v1/contacts/import`): bulk-import up to 1000
   contacts from a JSON file (an array, or `{ "contacts": [...] }`) or stdin as
   one batch in Brew's Import History. Takes `--file-name`, `--validate` and
