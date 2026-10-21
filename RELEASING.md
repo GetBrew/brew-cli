@@ -27,7 +27,7 @@ lockfile checksums must never be invented. The canvas tests must preserve
 
 The new `contacts import` command requires `contacts.import`, which the
 published SDK 13.0.0 does not expose. This branch pins reviewed SDK source
-commit `5c1b2f7aa56e14d458d1e6c7c4ad2bd3a4d53b72` for coordinated PR validation.
+commit `7ca8cac2d70dd53244a343ee123b75ed9520b988` for coordinated PR validation.
 It preserves SDK 13.0.0's features and version while adding the import method.
 
 A fresh frozen install must build that source dependency without relying on

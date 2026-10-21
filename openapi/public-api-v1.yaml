@@ -14143,7 +14143,7 @@ components:
             type: string
         validate:
           type: boolean
-          description: Optional deliverability check on ingestion. When true, each imported address is validated with the provider and the verdict is saved to the contact’s `validationStatus`. Metered at 2 credits per CSV data row (rows skipped for a missing or invalid email, and repeats of an address, count), charged on success. Imports above the inline cap (100 rows) write first and validate as a background job, returning a `validationJobId`.
+          description: Optional deliverability check on ingestion. When true, each imported address is validated with the provider and the verdict is saved to the contact’s `validationStatus`. Imports of at most 100 submitted CSV data rows validate inline, metered at 2 credits per submitted row on a successful response, including skipped rows and repeated addresses. Larger imports write first and use a background validation workflow billed per address as it runs; `validationJobId` is returned when a job is queued.
         consent:
           type: object
           properties:

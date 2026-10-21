@@ -20,7 +20,7 @@ type ImportCsvContactsInput = Parameters<ContactsResource['importCsv']>[0]
 export const contactsImportCsvCommand = defineCommand({
   path: ['contacts', 'import-csv'],
   summary:
-    'Bulk-import contacts from a CSV file or stdin as one Import History batch (free; --validate costs 2 credits per row)',
+    'Bulk-import contacts from a CSV file or stdin as one Import History batch (free; validation charged separately)',
   sdkMethod: 'contacts.importCsv',
   route: { method: 'POST', path: '/v1/contacts/import-csv' },
   commandClass: 'write',
@@ -46,7 +46,7 @@ export const contactsImportCsvCommand = defineCommand({
     {
       flag: '--validate',
       summary:
-        'Deliverability-check every imported address (2 credits per CSV row)',
+        'Deliverability checks: up to 100 submitted CSV data rows cost 2 credits/row inline; larger files use background checks when needed, charged per address',
     },
     {
       flag: '--consent-source <source>',
