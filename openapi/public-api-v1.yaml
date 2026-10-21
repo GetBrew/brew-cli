@@ -2255,6 +2255,7 @@ components:
           enum:
             - DRAFT_SAVED_NOT_LIVE
             - TRIGGER_EVENT_NOT_RECEIVED
+            - ENGAGEMENT_NOT_TRACKED
             - ENFORCEMENT_LOOSENED_WHILE_PUBLISHED
             - REQUIRED_FIELD_SATISFIED_BY_FALLBACK
             - RESUBSCRIBE_SKIPPED
@@ -2262,6 +2263,7 @@ components:
             - DATE_ORDER_ASSUMED
             - CSV_COLUMN_IGNORED
             - RECIPIENTS_EXCLUDED
+            - DKIM_SELECTOR_IN_USE
             - SANDBOX_SENDER
             - APP_EMAIL_NOT_PUBLISHED
             - DESIGN_EDITED_IN_BREW
@@ -2270,6 +2272,11 @@ components:
           type: string
         field:
           type: string
+        suggestedNames:
+          type: array
+          items:
+            type: string
+          description: "Names to use instead of the one the request sent (`DKIM_SELECTOR_IN_USE`: subdomains of the added domain)."
       required:
         - code
         - message
@@ -5062,8 +5069,11 @@ components:
       enum:
         - ACCOUNT_SUSPENDED
         - API_KEY_REVOKED
+        - APP_EMAIL_DOMAIN_PURPOSE_MISMATCH
         - APP_EMAIL_EDITED_IN_BREW
+        - APP_EMAIL_SETUP_IN_PROGRESS
         - APP_EMAIL_STARTER_UNKNOWN
+        - APP_EMAIL_TRIGGER_IN_USE
         - AUDIENCE_BUILD_ACTIVE
         - AUDIENCE_BUILD_ALREADY_ACTIVE
         - AUDIENCE_EDIT_CONFLICT
@@ -5254,30 +5264,36 @@ components:
           type: string
           enum:
             - welcome
+            - onboarding
             - newsletter
-            - promotional
+            - content
+            - event-invitation
+            - event-reminder
+            - event-recap
             - product-launch
             - product-update
+            - product-pitch
+            - promotional
+            - cart-abandonment
+            - re-engagement
+            - subscription
+            - feedback-request
+            - referral
+            - company-news
+            - fundraising
             - order-confirmation
             - shipping-update
             - receipt
-            - cart-abandonment
-            - subscription
             - password-reset
             - verification
             - security-alert
             - account-update
-            - event-invitation
-            - event-reminder
-            - feedback-request
-            - re-engagement
-            - referral
-            - support
-            - business
-            - internal
             - notification
+            - support
+            - internal
+            - business
             - general
-          description: "Email category that steers the design treatment (exemplars, hero recipe, personalization) — mirrors what the in-app agent infers per request. One of: welcome, newsletter, promotional, product-launch, product-update, order-confirmation, shipping-update, receipt, cart-abandonment, subscription, password-reset, verification, security-alert, account-update, event-invitation, event-reminder, feedback-request, re-engagement, referral, support, business, internal, notification, general. Omit for a general treatment. Transactional categories (receipt, password-reset, order-confirmation, …) steer receipt/reset design conventions; to DELIVER those emails, wire the design into an automation with a trigger and a transactional-purpose sending domain, then fire the trigger."
+          description: "Email category that steers the design treatment (exemplars, hero recipe, personalization) — mirrors what the in-app agent infers per request. One of: welcome, onboarding, newsletter, content, event-invitation, event-reminder, event-recap, product-launch, product-update, product-pitch, promotional, cart-abandonment, re-engagement, subscription, feedback-request, referral, company-news, fundraising, order-confirmation, shipping-update, receipt, password-reset, verification, security-alert, account-update, notification, support, internal, business, general. Omit for a general treatment. Transactional categories (receipt, password-reset, order-confirmation, …) steer receipt/reset design conventions; to DELIVER those emails, wire the design into an automation with a trigger and a transactional-purpose sending domain, then fire the trigger."
         subjectLine:
           type: string
           minLength: 1
@@ -5371,6 +5387,10 @@ components:
                       - tailwind_config_unresolved
                       - tailwind_class_dropped
                       - foreign_component_dropped
+                      - dynamic_prop_folded
+                      - dynamic_control_flow_unsupported
+                      - escaping_changed
+                      - placeholder_unmapped
                   location:
                     type: string
                     enum:
@@ -5397,6 +5417,20 @@ components:
             - stripped
             - warnings
           additionalProperties: false
+        variables:
+          type: array
+          items:
+            type: object
+            properties:
+              path:
+                type: string
+                minLength: 1
+              fallback:
+                type: string
+            required:
+              - path
+            additionalProperties: false
+          description: Merge variables the design and subject line read (`trigger.*` from the trigger payload, `contact.*` from the recipient), with their fallbacks.
       required:
         - emailId
         - emailVersionId
@@ -5430,6 +5464,34 @@ components:
         baseUrl:
           type: string
           format: uri
+        props:
+          type: string
+          enum:
+            - fold
+            - merge_tags
+          description: "`jsx` only. How the root component's props land: `fold` (default) folds each to its `PreviewProps` value or default; `merge_tags` keeps them as `{{ trigger.<name> }}` merge tags filled from the trigger payload, with defaults and `??` literals as fallbacks."
+        placeholders:
+          type: string
+          enum:
+            - resend
+          description: "`resend` rewrites Resend template placeholders (`{{{NAME}}}`, `{{{NAME|fallback}}}`) to Brew merge tags (`{{ trigger.NAME }}`; `FIRST_NAME`, `LAST_NAME` and `EMAIL` read the contact)."
+        variables:
+          type: array
+          items:
+            type: object
+            properties:
+              key:
+                type: string
+                maxLength: 200
+                pattern: ^[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*$
+              fallbackValue:
+                type: string
+                maxLength: 1000
+            required:
+              - key
+            additionalProperties: false
+          maxItems: 500
+          description: "Fallback text for variables the source gives none, e.g. a Resend template's `variables`. Needs `placeholders` or `props: \"merge_tags\"`."
         groupId:
           type: string
           minLength: 1
@@ -13095,6 +13157,34 @@ components:
               type: string
               minLength: 1
               description: The email source. `{{ trigger.<field> }}` merge tags read the payload.
+            props:
+              type: string
+              enum:
+                - fold
+                - merge_tags
+              description: "`jsx` only. How the root component's props land: `fold` (default) folds each to its `PreviewProps` value or default; `merge_tags` keeps them as `{{ trigger.<name> }}` merge tags filled from the trigger payload, with defaults and `??` literals as fallbacks."
+            placeholders:
+              type: string
+              enum:
+                - resend
+              description: "`resend` rewrites Resend template placeholders (`{{{NAME}}}`, `{{{NAME|fallback}}}`) to Brew merge tags (`{{ trigger.NAME }}`; `FIRST_NAME`, `LAST_NAME` and `EMAIL` read the contact)."
+            variables:
+              type: array
+              items:
+                type: object
+                properties:
+                  key:
+                    type: string
+                    maxLength: 200
+                    pattern: ^[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*$
+                  fallbackValue:
+                    type: string
+                    maxLength: 1000
+                required:
+                  - key
+                additionalProperties: false
+              maxItems: 500
+              description: "Fallback text for variables the source gives none, e.g. a Resend template's `variables`. Needs `placeholders` or `props: \"merge_tags\"`."
           required:
             - format
             - content
@@ -16261,6 +16351,100 @@ components:
         - data
         - pagination
       additionalProperties: false
+    DomainsPostResponse:
+      type: object
+      properties:
+        domainId:
+          type: string
+          minLength: 1
+          maxLength: 64
+        domainUrl:
+          type: string
+          format: uri
+        name:
+          type: string
+          minLength: 1
+          maxLength: 253
+        region:
+          type: string
+        status:
+          type: string
+          enum:
+            - not_started
+            - pending
+            - verified
+            - failed
+            - temporary_failure
+            - partially_verified
+            - partially_failed
+        sendingEnabled:
+          type: boolean
+        sendable:
+          type: boolean
+        sendingPurpose:
+          type: string
+          enum:
+            - marketing
+            - transactional
+          description: marketing (default) or transactional. Transactional domains skip unsubscribe and send via automation sendEmail nodes (or a test send).
+        records:
+          type: array
+          items:
+            type: object
+            properties:
+              record:
+                type: string
+              name:
+                type: string
+              type:
+                type: string
+              ttl:
+                type: string
+              status:
+                type: string
+              value:
+                type: string
+              priority:
+                type: number
+            required:
+              - record
+              - name
+              - type
+              - ttl
+              - status
+              - value
+            additionalProperties: false
+        openTracking:
+          type: boolean
+        clickTracking:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        verifiedAt:
+          type: string
+          format: date-time
+        warnings:
+          type: array
+          items:
+            $ref: "#/components/schemas/ApiWarning"
+          description: "Present only with a caveat about the domain just added. `DKIM_SELECTOR_IN_USE`: the domain already publishes a different DKIM key where Brew asks for its record; `suggestedNames` lists subdomains to add instead."
+      required:
+        - domainId
+        - domainUrl
+        - name
+        - region
+        - status
+        - sendingEnabled
+        - sendable
+        - sendingPurpose
+        - records
+        - createdAt
+        - updatedAt
+      additionalProperties: false
     DomainsPostRequest:
       type: object
       properties:
@@ -18501,6 +18685,7 @@ components:
                   - stripe
                   - stytch
                   - supabase
+                  - supabase_auth
                   - workos
                   - shopify
                   - revenuecat
@@ -18545,6 +18730,104 @@ components:
       required:
         - data
         - pagination
+      additionalProperties: false
+    IntegrationConnection:
+      type: object
+      properties:
+        provider:
+          type: string
+          enum:
+            - supabase_auth
+            - clerk
+        connectionId:
+          type: string
+          description: Server-derived, stable per brand and provider.
+        webhookUrl:
+          type: string
+          description: "Where the provider delivers: `https://brew.new/api/integrations/{provider}/webhook/{connectionId}`. Paste it as the Supabase hook URL or the Clerk endpoint URL."
+        status:
+          type: string
+          enum:
+            - pending_verification
+            - active
+          description: "`pending_verification` until the first signed delivery arrives, then `active`."
+      required:
+        - provider
+        - connectionId
+        - webhookUrl
+        - status
+      additionalProperties: false
+    IntegrationConnectionPutResponse:
+      type: object
+      properties:
+        provider:
+          type: string
+          enum:
+            - supabase_auth
+            - clerk
+        connectionId:
+          type: string
+          description: Server-derived, stable per brand and provider.
+        webhookUrl:
+          type: string
+          description: "Where the provider delivers: `https://brew.new/api/integrations/{provider}/webhook/{connectionId}`. Paste it as the Supabase hook URL or the Clerk endpoint URL."
+        status:
+          type: string
+          enum:
+            - pending_verification
+            - active
+          description: "`pending_verification` until the first signed delivery arrives, then `active`."
+        authEmails:
+          type: array
+          items:
+            type: object
+            properties:
+              triggerKey:
+                type: string
+              ok:
+                type: boolean
+              error:
+                type: object
+                properties:
+                  code:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - code
+                  - message
+                additionalProperties: false
+            required:
+              - triggerKey
+              - ok
+            additionalProperties: false
+          description: The auth app emails this provider sends, each set up from the starter kit or kept as it is. A key that failed carries its `error`; connecting again finishes it.
+      required:
+        - provider
+        - connectionId
+        - webhookUrl
+        - status
+        - authEmails
+      additionalProperties: false
+    IntegrationConnectionPutRequest:
+      type: object
+      properties:
+        signingSecret:
+          type: string
+          minLength: 1
+          maxLength: 4096
+          description: "The secret the provider signs deliveries with: Supabase shows `v1,whsec_…` for the hook, Clerk `whsec_…` for the endpoint."
+        settings:
+          type: object
+          properties:
+            projectUrl:
+              type: string
+              maxLength: 2048
+              format: uri
+              description: "Supabase only: the project URL confirmation links point at (`https://<ref>.supabase.co` or a custom auth domain). Omitted: the URL Supabase sends with each email."
+          additionalProperties: false
+      required:
+        - signingSecret
       additionalProperties: false
     ApiKeysListResponse:
       type: object
@@ -21393,7 +21676,9 @@ paths:
 
         **Input** `content` (the raw source as a string) and `format`: `html` (a document or fragment), `mjml`, `jsx` (a module with a default-exported component or a bare `<Html>` element; static values, `PreviewProps` and local sub-components fold, anything executable is rejected with the offending line) or `eml` (the HTML body is imported, inline `cid:` images are rehosted, other attachments are dropped, and the Subject becomes the title). HTML, MJML and EML land as source-preserved designs with an editable projection; JSX lands as a native React Email design. Optional `baseUrl` resolves relative image paths; optional `title` and `subjectLine` (the design-default inbox subject; an EML Subject is the default); optional `groupId` (`grp_…` or `ungrouped`) or `groupName` (resolve or create), not both; omit to land Ungrouped. Limits: 5,000,000 UTF-8 bytes, 256 remote resources, 8 concurrent fetches, 10 MB per resource and 50 MB aggregate downloads.
 
-        **Returns** `201 { emailId, emailVersionId, html, previewImage?, assetReport, group, subjectLine? }`.
+        **Migrating from Resend** `props: "merge_tags"` (`jsx` only) keeps the root component's props as `{{ trigger.<name> }}` merge tags filled from the trigger payload: member reads extend the path (`props.user.name` is `trigger.user.name`), default values and `??` / `||` literals become fallbacks, template literals and `href` / `src` / `alt` / `title` carry tags, and `{prop && <X />}` becomes a `{% if %}` block. A prop used where a tag cannot go (arithmetic, a style, a `.map`) takes its `PreviewProps` or default value with a `dynamic_prop_folded` or `dynamic_control_flow_unsupported` warning; one with neither is refused. `placeholders: "resend"` rewrites Resend `{{{NAME}}}` / `{{{NAME|fallback}}}` to `{{ trigger.NAME }}` in the body and `subjectLine` (`FIRST_NAME`, `LAST_NAME`, `EMAIL` read the contact; `href="{{{RESEND_UNSUBSCRIBE_URL}}}"` becomes Brew's unsubscribe link). Resend printed those values raw and Brew escapes them (`escaping_changed`): end a tag with `| raw` only for HTML you trust. Optional `variables: [{ key, fallbackValue? }]` supplies fallbacks the source lacks (a Resend template's `variables`) and needs one of the two modes.
+
+        **Returns** `201 { emailId, emailVersionId, html, previewImage?, assetReport, variables, group, subjectLine? }`. `variables` lists every merge path the design and subject read, `{ path, fallback? }`, ready to declare as the trigger payload.
 
         **Errors** `422 EMAIL_IMPORT_FAILED` when the markup cannot become an editable design (a lossy round trip persists nothing); `404 EMAIL_GROUP_NOT_FOUND` for an unknown `groupId`; `413 PAYLOAD_TOO_LARGE` over the byte cap; `422 BRAND_NOT_READY` while the brand is still extracting.
 
@@ -21440,6 +21725,26 @@ paths:
                 value:
                   format: jsx
                   content: <Html><Body><Container><Heading>Welcome</Heading><Text>Thanks for joining.</Text></Container></Body></Html>
+              jsxMergeTags:
+                summary: Import React Email with props as merge tags
+                value:
+                  format: jsx
+                  props: merge_tags
+                  content: |-
+                    import { Html, Body, Text, Button } from 'react-email'
+                    export default function Invite({ name = 'there', inviteLink }) {
+                      return <Html><Body><Text>Hi {name},</Text><Button href={inviteLink}>Accept</Button></Body></Html>
+                    }
+              resendTemplate:
+                summary: Import a Resend template
+                value:
+                  format: html
+                  placeholders: resend
+                  subjectLine: Order {{{ORDER_ID}}} confirmed
+                  content: <html><body><p>Hi {{{FIRST_NAME|there}}}, order {{{ORDER_ID}}} ships {{{ETA}}}.</p></body></html>
+                  variables:
+                    - key: ETA
+                      fallbackValue: soon
               eml:
                 summary: Import a saved .eml message
                 value:
@@ -21504,6 +21809,10 @@ paths:
                   retained: 0
                   stripped: 0
                   warnings: []
+                variables:
+                  - path: trigger.name
+                    fallback: there
+                  - path: trigger.inviteLink
                 group: null
         "400":
           description: |-
@@ -35649,7 +35958,7 @@ paths:
 
         **Input** Update: one or more of `name`, `description`, `nodes`, `connections`, `triggerEventId`, under the same typed condition contract as create (explicit `type`, canonical snake_case `operator`, no `value` for unary operators, type-correct values elsewhere); `dryRun: true` validates without persisting. Lifecycle: `published: true` promotes the stored latest version live (optionally pin `automationVersionId`; the graph is validated first), `published: false` unpublishes, `paused: true` or `false` freezes or resumes future send steps (`stopInFlight` also stops runs already in progress).
 
-        **Returns** the bare automation row, or with `dryRun: true` a `200 AutomationDryRunReport` `{ valid, blockers[], warnings[], blockingIssues[], nodeCounts }`: `blockingIssues[]` lists per-node references the effective trigger or contact catalog cannot provide, and publish refuses every one of them, fallback or not (`fatal` says what the reference would do: `true` for filter or split conditions and triple-brace `{{{ }}}` body tokens would break the run, `false` for subject, previewText, fromName, replyTo and double-brace body tags would render empty); `valid` is false when any blocker or blocking issue is present. Updating a LIVE automation saves a draft and does not go live: the previously published version keeps serving until you republish, `published` describes the returned row, `isLive`, `liveVersion` and `liveAutomationVersionId` describe the automation, and `warnings[]` carries `DRAFT_SAVED_NOT_LIVE`. Publishing an automation whose integration trigger has not received its event on the current connection (a Shopify topic with no webhook) still succeeds, and `warnings[]` carries `TRIGGER_EVENT_NOT_RECEIVED` saying what to set up.
+        **Returns** the bare automation row, or with `dryRun: true` a `200 AutomationDryRunReport` `{ valid, blockers[], warnings[], blockingIssues[], nodeCounts }`: `blockingIssues[]` lists per-node references the effective trigger or contact catalog cannot provide, and publish refuses every one of them, fallback or not (`fatal` says what the reference would do: `true` for filter or split conditions and triple-brace `{{{ }}}` body tokens would break the run, `false` for subject, previewText, fromName, replyTo and double-brace body tags would render empty); `valid` is false when any blocker or blocking issue is present. Updating a LIVE automation saves a draft and does not go live: the previously published version keeps serving until you republish, `published` describes the returned row, `isLive`, `liveVersion` and `liveAutomationVersionId` describe the automation, and `warnings[]` carries `DRAFT_SAVED_NOT_LIVE`. Publishing an automation whose integration trigger has not received its event on the current connection (a Shopify topic with no webhook) still succeeds, and `warnings[]` carries `TRIGGER_EVENT_NOT_RECEIVED` saying what to set up. An engagement filter that watches an email sent from a transactional domain (no open or click tracking) publishes with `ENGAGEMENT_NOT_TRACKED`.
 
         **Errors** `404 AUTOMATION_NOT_FOUND`, `AUTOMATION_VERSION_NOT_FOUND` (pin `liveAutomationVersionId`, a `versions[]` id, or a run row's `automationVersionId`), `TRIGGER_EVENT_NOT_FOUND`; `400 AUTOMATION_GRAPH_INVALID` (`details.issues[]`); `409 AUTOMATION_VERSION_CONFLICT` (re-read, reapply, retry); `422 PUBLISH_VALIDATION_FAILED` (`details.blockers[]`; a cdn.brew.new image a step would send that does not exist is a blocker, listed in `details.missingImages[]`, and a dead icon whose real file sits elsewhere in its pack is moved there instead when the key has `emails` access), `AUTOMATION_NOT_PUBLISHED` (nothing to unpublish), `AUTOMATION_NOT_PAUSABLE` (a manual-audience automation pauses through its runs).
 
@@ -46248,7 +46557,7 @@ paths:
 
         **Use when** checking which emails your app can send by key and whether each one sends now.
 
-        **Returns** `200` with rows carrying `triggerKey`, `emailId`, `automationId`, the starter and `upgradeAvailable`, `published`, the `sender` (`domain`, `sandbox` or `none`) and `readiness` (`ready`, `teamOnly`, `blockers`).
+        **Returns** `200` with rows carrying `triggerKey`, `emailId`, `automationId`, the starter and `upgradeAvailable`, `published`, the `sender` (`domain`, `sandbox` or `none`) and `readiness` (`ready`, `teamOnly`, `blockers`), as a fire sends now: from the published version while a newer draft waits, through the sandbox only while the domain is in its first check.
 
         **See also** `upsertAppEmail`, `setUpAppEmailKit`, `fireTriggerByKey`.
       parameters:
@@ -46949,15 +47258,15 @@ paths:
 
         **Use when** your code should send `brew.send(’<key>’, payload)` and nothing exists yet, or to bring an existing setup up to date.
 
-        **Input** at most one of `starter` and `source`; a starter-kit key defaults to its own starter. `payloadSchema` declares flat payload fields; without it the starter’s contract is used, or for a `source` the fields its `{{ trigger.<field> }}` merge tags read. Only `email` (the recipient) reaches the contact; every other field is template data. Mark a one-time code or sign-in link `secret: true`: it is used only to render the email and redacted wherever the fire is stored, logged or counted (never on `email`). An omitted marker counts `pii: high` as secret, and a field the starter kit marks secret (`otp`, `confirmationUrl`, `newEmail`) stays secret. `domainId` picks the sender; by default a verified domain whose purpose matches the email (transactional for auth emails, trial ending and payment failed; marketing for welcome and win-back), else the team-only sandbox (members of your organization, under a daily cap) until one verifies. `publish` defaults to true.
+        **Input** at most one of `starter` and `source`; a starter-kit key defaults to its own starter. `payloadSchema` declares flat payload fields (on a starter, added to the kit’s); without it the starter’s contract is used, or for a `source` the fields its `{{ trigger.<field> }}` merge tags read (a nested path such as `trigger.user.name` or a loop over `trigger.items` declares its object or array). A field the trigger already declares keeps its stored type and markers, so a re-run without `payloadSchema` never drops a `secret`. Only `email` (the recipient) reaches the contact; every other field is template data. Mark a one-time code or sign-in link `secret: true`: it is used only to render the email and redacted wherever the fire is stored, logged or counted (never on `email`). An omitted marker counts `pii: high` as secret, and a field the starter kit marks secret (`otp`, `confirmationUrl`, `newEmail`) stays secret. `domainId` picks the sender; by default a verified domain whose purpose matches the email (transactional for auth emails, trial ending and payment failed; marketing for welcome and win-back), else the team-only sandbox (members of your organization, under a daily cap) until one verifies. A transactional key never sends from a marketing domain: naming one is `422 APP_EMAIL_DOMAIN_PURPOSE_MISMATCH`. `publish` defaults to true.
 
-        **Re-runs** change only what differs. The same starter and version, or the same source, keeps the design. A newer starter version, another starter or another source replaces it, unless it was edited in Brew since setup: then `409 APP_EMAIL_EDITED_IN_BREW` until `overwrite: true`. A deleted design or automation is created again. A sandbox sender moves to a matching domain once one verifies. A call that fails part way leaves nothing a re-run would duplicate, and two calls for one key at once end with one design and one automation.
+        **Re-runs** change only what differs. The same starter and version, or the same source, keeps the design. A newer starter version, another starter or another source replaces it, unless it was edited in Brew since setup: then `409 APP_EMAIL_EDITED_IN_BREW` until `overwrite: true`. A new `subject` or `previewText` alone changes the send step and keeps the design. An HTML or MJML replacement is a new design, and the unedited one it replaced is deleted unless a run that started before may still send it. A deleted design or automation is created again. A sandbox sender moves to a matching domain once one verifies, and a marketing domain picked on a transactional key’s send step is not kept. A setup publishes only the automation version it wrote: a draft saved in Brew since takes the setup’s changes but is left unpublished with a `DRAFT_SAVED_NOT_LIVE` warning, and a change made with `publish: false` while the email is live answers the same warning. A key whose trigger already starts a published automation that no setup made is `409 APP_EMAIL_TRIGGER_IN_USE` (`details.automationIds`), since every fire would send both. A call that fails part way leaves nothing a re-run would duplicate, and two calls for one key at once end with one design and one automation.
 
         **Scopes** an API key needs both `automations` and `emails` (`x-brew-scopes`): the setup imports its design the way `importEmail` does.
 
         **Returns** `201` when this call set the key up, `200` on a re-run, with the ids, `published`, what was `created`, the `sender`, the stored `payloadSchema`, a `fireExample` (path, example payload, curl and `brew.send`) and `warnings`.
 
-        **Errors** `400 APP_EMAIL_STARTER_UNKNOWN`, `400 TRIGGER_KEY_RESERVED`, `404 DOMAIN_NOT_FOUND`, `409 APP_EMAIL_EDITED_IN_BREW`, `409 TRIGGER_KEY_TAKEN` (another setup of the key won a race), `409 TRIGGER_LIMIT_REACHED`, `413 PAYLOAD_TOO_LARGE` and `422 EMAIL_IMPORT_FAILED` for the source, `422 AUTOMATION_GRAPH_INVALID` and `404 AUTOMATION_NOT_FOUND`, `TRIGGER_EVENT_NOT_FOUND` or `NOT_FOUND` when the trigger, automation or design changes during the setup.
+        **Errors** `400 APP_EMAIL_STARTER_UNKNOWN`, `400 TRIGGER_KEY_RESERVED`, `404 DOMAIN_NOT_FOUND`, `409 APP_EMAIL_EDITED_IN_BREW`, `409 APP_EMAIL_TRIGGER_IN_USE`, `409 CONTRACT_LOCKED_BY_PUBLISHED_AUTOMATIONS` (a `payloadSchema` that drops or retypes a field the live automation reads), `409 APP_EMAIL_SETUP_IN_PROGRESS` (other setups of the key kept writing first; retry later), `409 TRIGGER_KEY_TAKEN` (another setup of the key won a race), `409 TRIGGER_LIMIT_REACHED`, `413 PAYLOAD_TOO_LARGE` and `422 EMAIL_IMPORT_FAILED` for the source, `422 APP_EMAIL_DOMAIN_PURPOSE_MISMATCH` (a marketing `domainId` for a transactional key), `422 AUTOMATION_GRAPH_INVALID` and `404 AUTOMATION_NOT_FOUND`, `TRIGGER_EVENT_NOT_FOUND` or `NOT_FOUND` when the trigger, automation or design changes during the setup.
 
         **See also** `setUpAppEmailKit`, `fireTriggerByKey`, `listAppEmails`.
       parameters:
@@ -47429,6 +47738,12 @@ paths:
           description: |-
             `APP_EMAIL_EDITED_IN_BREW`: The app email’s design was edited in Brew since it was set up, so the setup did not replace it.
 
+            `APP_EMAIL_SETUP_IN_PROGRESS`: Other setups of this app email’s key were writing at the same time, so this one stopped before finishing.
+
+            `APP_EMAIL_TRIGGER_IN_USE`: The trigger with this key already starts a published automation that no app-email setup made, so setting the key up would send a second email on every fire.
+
+            `CONTRACT_LOCKED_BY_PUBLISHED_AUTOMATIONS`: A published automation consumes this trigger, so the contract change must stay backward compatible: enforcement cannot tighten, a referenced field cannot be removed, retyped, or made required without a fallback, and an open object or list cannot gain a shape that drops a field a published automation reads.
+
             `TRIGGER_KEY_TAKEN`: Another trigger in the brand already uses that key.
 
             `TRIGGER_LIMIT_REACHED`: The brand already holds the maximum number of trigger events.
@@ -47459,6 +47774,38 @@ paths:
                         emailId: V1StGXR8_Z5jdHi6B-myT
                         linkedEmailVersionId: h7Nc2pLq9XvB4sT8mWk1E
                         currentEmailVersionId: p2Rk8LmQ4xZ7vN1cT5bWy
+                appEmailSetupInProgress:
+                  summary: APP_EMAIL_SETUP_IN_PROGRESS
+                  value:
+                    error:
+                      code: APP_EMAIL_SETUP_IN_PROGRESS
+                      type: conflict
+                      message: Other setups of this app email’s key were writing at the same time, so this one stopped before finishing.
+                      suggestion: Run the setup again once the others finish; it picks up what they left.
+                      docs: https://docs.brew.new/api-reference/api/errors
+                appEmailTriggerInUse:
+                  summary: APP_EMAIL_TRIGGER_IN_USE
+                  value:
+                    error:
+                      code: APP_EMAIL_TRIGGER_IN_USE
+                      type: conflict
+                      message: The trigger with this key already starts a published automation that no app-email setup made, so setting the key up would send a second email on every fire.
+                      suggestion: Unpublish or delete the automations in `details.automationIds`, then run the setup again, or keep sending from them.
+                      docs: https://docs.brew.new/api-reference/api/errors
+                      details:
+                        triggerKey: order.shipped
+                        triggerEventId: xK4p9Qm2Lr7Tz1Vb8NcWd
+                        automationIds:
+                          - b7Hq2Zp9Lm4Xr1Tc6VwKe
+                contractLockedByPublishedAutomations:
+                  summary: CONTRACT_LOCKED_BY_PUBLISHED_AUTOMATIONS
+                  value:
+                    error:
+                      code: CONTRACT_LOCKED_BY_PUBLISHED_AUTOMATIONS
+                      type: conflict
+                      message: "A published automation consumes this trigger, so the contract change must stay backward compatible: enforcement cannot tighten, a referenced field cannot be removed, retyped, or made required without a fallback, and an open object or list cannot gain a shape that drops a field a published automation reads."
+                      suggestion: Unpublish or detach the published automations that consume this trigger, or make a backward-compatible change (adding optional fields and loosening enforcement stay allowed).
+                      docs: https://docs.brew.new/api-reference/api/errors
                 triggerKeyTaken:
                   summary: TRIGGER_KEY_TAKEN
                   value:
@@ -47502,7 +47849,10 @@ paths:
                       suggestion: Reduce the payload size and retry.
                       docs: https://docs.brew.new/api-reference/api/errors
         "422":
-          description: "`EMAIL_IMPORT_FAILED`: The supplied markup could not be imported as an email."
+          description: |-
+            `APP_EMAIL_DOMAIN_PURPOSE_MISMATCH`: The `domainId` names a marketing domain for a transactional app email (auth, trial ending, payment failed), which would send it with an unsubscribe link and never to anyone who unsubscribed.
+
+            `EMAIL_IMPORT_FAILED`: The supplied markup could not be imported as an email.
           headers:
             x-request-id:
               schema:
@@ -47516,6 +47866,20 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelope"
               examples:
+                appEmailDomainPurposeMismatch:
+                  summary: APP_EMAIL_DOMAIN_PURPOSE_MISMATCH
+                  value:
+                    error:
+                      code: APP_EMAIL_DOMAIN_PURPOSE_MISMATCH
+                      type: invalid_request
+                      message: The `domainId` names a marketing domain for a transactional app email (auth, trial ending, payment failed), which would send it with an unsubscribe link and never to anyone who unsubscribed.
+                      suggestion: "Pass a transactional domain, or leave `domainId` out: the setup then picks a verified transactional domain, or the sandbox until one verifies."
+                      docs: https://docs.brew.new/api-reference/api/errors
+                      details:
+                        triggerKey: auth.password-reset
+                        domainId: k57c2nq8xw1v3m9d4pyr6tb0hs
+                        messageClass: transactional
+                        sendingPurpose: marketing
                 emailImportFailed:
                   summary: EMAIL_IMPORT_FAILED
                   value:
@@ -47625,7 +47989,7 @@ paths:
       description: |-
         Sets up the starter kit: auth emails (verify email, magic link, one-time code, password reset, invite, email change, reauthentication, security notice) and lifecycle emails (welcome, trial ending, payment failed, win-back). Each key is set up exactly as `upsertAppEmail` does with its own starter, a few at a time.
 
-        **Input** `sets` (default both), `stack` (narrows the auth keys to the ones that auth library sends and picks the code snippets; default `custom`, every auth key) or exact `keys`, plus `domainId` and `overwrite` for every key. `supabase` returns a Send Email Hook to deploy as a Supabase Edge Function (`@brew.new/sdk/supabase`); `clerk` sets up the lifecycle emails only, since Clerk keeps sending its own auth emails.
+        **Input** `sets` (default both), `stack` (narrows the auth keys to the ones that auth library sends and picks the code snippets; default `custom`, every auth key) or exact `keys`, plus `domainId` and `overwrite` for every key (a marketing `domainId` sets up the marketing keys and answers each transactional key `APP_EMAIL_DOMAIN_PURPOSE_MISMATCH`). `supabase` sets up every auth email Supabase hands to Brew through its Send Email Hook (`authDelivery: hosted-webhook`; connect with `connectIntegrationHook`, or deploy the returned self-hosted hook from `@brew.new/sdk/supabase` as a Supabase Edge Function instead); `clerk` sets up the auth emails Clerk hands to Brew in its `email.created` webhook (`authDelivery: hosted-webhook`; connect Clerk in Brew, then turn off Clerk's own delivery for the templates `stack.note` lists) plus the lifecycle emails.
 
         **Returns** `200` with `results[]` in kit order, each `ok: true` with the setup result or `ok: false` with its `error` (`code`, `message`, `details`), and `stack` (`provider`, `authDelivery`, `note`, `keys`, `snippets`). One key failing does not stop the others; running the kit again finishes them.
 
@@ -57397,7 +57761,7 @@ paths:
       tags:
         - Domains
       summary: Add a domain
-      description: 'Registers a sending domain with the provider. Optional `sendingPurpose` is `marketing` (default; campaigns, audience sends, automations) or `transactional` (event-triggered automation mail — no unsubscribe link required, merely-unsubscribed contacts still receive it). Returns `201` with the bare row in `status: "pending"` plus the DNS `records` to publish. Once the records are live, call `POST /v1/domains/{domainId}/verify` until `sendable: true`.'
+      description: 'Registers a sending domain with the provider. Optional `sendingPurpose` is `marketing` (default; campaigns, audience sends, automations) or `transactional` (event-triggered automation mail: no unsubscribe link required, merely-unsubscribed contacts still receive it, and open and click tracking are off). Returns `201` with the bare row in `status: "pending"` plus the DNS `records` to publish. When the domain already publishes a different DKIM key where Brew asks for its record, the domain is still added and the row carries a `DKIM_SELECTOR_IN_USE` warning whose `suggestedNames` are subdomains to add instead. Once the records are live, call `POST /v1/domains/{domainId}/verify` until `sendable: true`.'
       parameters:
         - name: Idempotency-Key
           in: header
@@ -57427,7 +57791,7 @@ paths:
               name: send.example.com
       responses:
         "201":
-          description: Added — publish the returned DNS records, then verify.
+          description: Added. Publish the returned DNS records, then verify. `warnings` appears only with a caveat about the domain just added.
           headers:
             x-request-id:
               schema:
@@ -57460,7 +57824,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Domain"
+                $ref: "#/components/schemas/DomainsPostResponse"
               example:
                 domainId: kx7bkh53hasmfeh5kd7sqgykt187g8ww
                 domainUrl: https://send.example.com
@@ -58222,7 +58586,7 @@ paths:
       tags:
         - Domains
       summary: Update domain settings
-      description: "Updates sender defaults (`defaultSenderName`, `defaultFromEmail`, `defaultReplyToEmail`) and/or `sendingPurpose` — at least one required. `defaultFromEmail` is the sender MAILBOX (the text before `@`) — the host is always this domain, so a full address is accepted and reduced to its local part; `defaultReplyToEmail`, by contrast, is a whole address. Live gates fail closed if a campaign still points at a transactional domain. Verification is its own action: `POST /v1/domains/{domainId}/verify`. Returns the bare updated row."
+      description: "Updates sender defaults (`defaultSenderName`, `defaultFromEmail`, `defaultReplyToEmail`) and/or `sendingPurpose` — at least one required. `defaultFromEmail` is the sender MAILBOX (the text before `@`) — the host is always this domain, so a full address is accepted and reduced to its local part; `defaultReplyToEmail`, by contrast, is a whole address. Live gates fail closed if a campaign still points at a transactional domain. A transactional domain has open and click tracking switched off whenever it is still on; a change back to `marketing` switches tracking on again. Verification is its own action: `POST /v1/domains/{domainId}/verify`. Returns the bare updated row."
       parameters:
         - schema:
             type: string
@@ -61988,7 +62352,7 @@ paths:
       tags:
         - Templates
       summary: List templates
-      description: Lists public templates under { data, pagination }. The default full representation includes HTML. Set representation=summary for metadata, previewImage, viewUrl, and referenceEmailId without HTML. Supports exact brand and category filters; query matches title text or an exact template identifier. semantic ranks up to 200 matches using vector search; query additionally filters those matches when both are supplied. Browse defaults to 50 full rows or 20 summary rows. Brand and category match case-insensitively. Continue with pagination.cursor, including after an empty filtered page with hasMore=true. Templates are organization-wide references; pass referenceEmailId to POST /v1/emails to remix one. Set count=true for { count }, the number of templates matching brand and category (refreshed every 15 minutes), instead of rows; add groupBy=brand or groupBy=category for per-value counts, largest first, 100 groups a page with the same pagination.cursor (count does not combine with semantic or query).
+      description: "Lists public templates under { data, pagination }. The default full representation includes HTML. Set representation=summary for metadata, previewImage, viewUrl, and referenceEmailId without HTML. Supports exact brand and category filters and a group filter (a browse group: every category in it); query matches title text or an exact template identifier. semantic ranks up to 200 matches using vector search; query additionally filters those matches when both are supplied. Browse defaults to 50 full rows or 20 summary rows. Brand and category match case-insensitively. Continue with pagination.cursor, including after an empty filtered page with hasMore=true. Templates are organization-wide references; pass referenceEmailId to POST /v1/emails to remix one. Set count=true for { count }, the number of templates matching brand, category and group (refreshed every 15 minutes), instead of rows; add groupBy=brand, groupBy=category or groupBy=group for per-value counts, largest first, 100 groups a page with the same pagination.cursor (count does not combine with semantic or query)."
       parameters:
         - schema:
             type: string
@@ -62001,10 +62365,29 @@ paths:
         - schema:
             type: string
             minLength: 1
-            description: "Email category, matched case-insensitively (unknown → empty page): welcome, newsletter, promotional, product-launch, product-update, order-confirmation, shipping-update, receipt, cart-abandonment, subscription, password-reset, verification, security-alert, account-update, event-invitation, event-reminder, feedback-request, re-engagement, referral, support, business, internal, notification, general."
+            description: "Email category, matched case-insensitively (unknown → empty page): welcome, onboarding, newsletter, content, event-invitation, event-reminder, event-recap, product-launch, product-update, product-pitch, promotional, cart-abandonment, re-engagement, subscription, feedback-request, referral, company-news, fundraising, order-confirmation, shipping-update, receipt, password-reset, verification, security-alert, account-update, notification, support, internal, business, general."
           required: false
-          description: "Email category, matched case-insensitively (unknown → empty page): welcome, newsletter, promotional, product-launch, product-update, order-confirmation, shipping-update, receipt, cart-abandonment, subscription, password-reset, verification, security-alert, account-update, event-invitation, event-reminder, feedback-request, re-engagement, referral, support, business, internal, notification, general."
+          description: "Email category, matched case-insensitively (unknown → empty page): welcome, onboarding, newsletter, content, event-invitation, event-reminder, event-recap, product-launch, product-update, product-pitch, promotional, cart-abandonment, re-engagement, subscription, feedback-request, referral, company-news, fundraising, order-confirmation, shipping-update, receipt, password-reset, verification, security-alert, account-update, notification, support, internal, business, general."
           name: category
+          in: query
+        - schema:
+            type: string
+            enum:
+              - welcome-onboarding
+              - newsletter
+              - content
+              - events
+              - product-news
+              - sales
+              - retention
+              - company
+              - transactional
+              - internal
+              - other
+            description: "A browse group: every category in it (e.g. `events` = invitations, reminders and recaps)."
+          required: false
+          description: "A browse group: every category in it (e.g. `events` = invitations, reminders and recaps)."
+          name: group
           in: query
         - schema:
             type: string
@@ -62041,9 +62424,9 @@ paths:
                 enum:
                   - 'true'
                   - 'false'
-            description: Return `{ count }`, the number of templates matching `brand`/`category`, instead of rows. Not with `semantic` or `query`.
+            description: Return `{ count }`, the number of templates matching `brand`/`category`/`group`, instead of rows. Not with `semantic` or `query`.
           required: false
-          description: Return `{ count }`, the number of templates matching `brand`/`category`, instead of rows. Not with `semantic` or `query`.
+          description: Return `{ count }`, the number of templates matching `brand`/`category`/`group`, instead of rows. Not with `semantic` or `query`.
           name: count
           in: query
         - schema:
@@ -62051,12 +62434,14 @@ paths:
             enum:
               - brand
               - category
-            description: "With `count: true`: also count per brand or per category, largest first, 100 groups a page; continue with `cursor`."
+              - group
+            description: "With `count: true`: also count per brand, category or group, largest first, 100 groups a page; continue with `cursor`."
             x-brew-group-by-tokens:
               - brand
               - category
+              - group
           required: false
-          description: "With `count: true`: also count per brand or per category, largest first, 100 groups a page; continue with `cursor`."
+          description: "With `count: true`: also count per brand, category or group, largest first, 100 groups a page; continue with `cursor`."
           name: groupBy
           in: query
         - schema:
@@ -62187,6 +62572,7 @@ paths:
                         enum:
                           - brand
                           - category
+                          - group
                       groups:
                         type: array
                         items:
@@ -62195,7 +62581,7 @@ paths:
                             value:
                               type: string
                               minLength: 1
-                              description: The brand domain or category; pass it back as the `brand`/`category` filter.
+                              description: The brand domain, category or group; pass it back as the filter of the same name (`brand`, `category` or `group`).
                             name:
                               type: string
                               minLength: 1
@@ -69008,6 +69394,720 @@ paths:
       x-brew-idempotency: none
       x-brew-credited: false
       x-brew-rate-policy: integrations.read
+  /v1/integrations/{provider}/connection:
+    get:
+      operationId: getIntegrationConnection
+      tags:
+        - Integrations
+      summary: Get a hosted auth hook connection
+      description: |-
+        Reads the brand’s connection for a hosted auth email hook: the provider that hands your app’s auth emails to Brew.
+
+        **Returns** `200` with `provider`, `connectionId`, the `webhookUrl` the provider delivers to and `status` (`pending_verification` until the first signed delivery, then `active`).
+
+        **Errors** `404 NOT_FOUND` when the provider is not connected for the brand.
+
+        **See also** `connectIntegrationHook`, `listIntegrations`.
+      parameters:
+        - schema:
+            type: string
+            enum:
+              - supabase_auth
+              - clerk
+            description: "`supabase_auth` (the Supabase Auth Send Email Hook) or `clerk` (Clerk webhooks; `email.created` carries the auth emails)."
+            example: supabase_auth
+          required: true
+          description: "`supabase_auth` (the Supabase Auth Send Email Hook) or `clerk` (Clerk webhooks; `email.created` carries the auth emails)."
+          name: provider
+          in: path
+        - name: X-Brand-Id
+          in: header
+          required: false
+          description: The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 64
+          example: kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+      responses:
+        "200":
+          description: The connection.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+            X-RateLimit-Limit:
+              schema:
+                type: integer
+                description: Requests allowed in the current rolling rate limit window.
+                example: 100
+              required: true
+              description: Requests allowed in the current rolling rate limit window.
+            X-RateLimit-Remaining:
+              schema:
+                type: integer
+                description: Requests remaining in the current rolling rate limit window.
+                example: 99
+              required: true
+              description: Requests remaining in the current rolling rate limit window.
+            X-RateLimit-Reset:
+              schema:
+                type: integer
+                description: Unix timestamp in seconds when the oldest recorded request leaves the rolling window.
+                example: 1712592360
+              required: true
+              description: Unix timestamp in seconds when the oldest recorded request leaves the rolling window.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IntegrationConnection"
+              example:
+                provider: supabase_auth
+                connectionId: iac_Q2tX9vL1mB7rN4cP8wZsA
+                webhookUrl: https://brew.new/api/integrations/supabase_auth/webhook/iac_Q2tX9vL1mB7rN4cP8wZsA
+                status: pending_verification
+        "400":
+          description: |-
+            `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+
+            `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                brandIdRequired:
+                  summary: BRAND_ID_REQUIRED
+                  value:
+                    error:
+                      code: BRAND_ID_REQUIRED
+                      type: invalid_request
+                      message: An organization-scoped credential called a brand-scoped operation without naming the brand.
+                      suggestion: List brands with GET /v1/brands, then name one with the X-Brand-Id header. There is no default brand.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                invalidRequest:
+                  summary: INVALID_REQUEST
+                  value:
+                    error:
+                      code: INVALID_REQUEST
+                      type: invalid_request
+                      message: "The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender."
+                      suggestion: Fix the field reported in `param` and retry.
+                      docs: https://docs.brew.new/api-reference/api/errors
+        "401":
+          description: |-
+            `API_KEY_REVOKED`: The API key was revoked.
+
+            `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+
+            `INVALID_API_KEY`: The API key is malformed or unknown.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                apiKeyRevoked:
+                  summary: API_KEY_REVOKED
+                  value:
+                    error:
+                      code: API_KEY_REVOKED
+                      type: authentication_error
+                      message: The API key was revoked.
+                      suggestion: Create a new active API key and retry.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                authenticationRequired:
+                  summary: AUTHENTICATION_REQUIRED
+                  value:
+                    error:
+                      code: AUTHENTICATION_REQUIRED
+                      type: authentication_error
+                      message: No API key or session accompanied the request.
+                      suggestion: Provide a valid API key or sign in with an organization session.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                invalidApiKey:
+                  summary: INVALID_API_KEY
+                  value:
+                    error:
+                      code: INVALID_API_KEY
+                      type: authentication_error
+                      message: The API key is malformed or unknown.
+                      suggestion: Check the API key format and retry with a valid active key.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+        "403":
+          description: |-
+            `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+
+            `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+
+            `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+
+            `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                accountSuspended:
+                  summary: ACCOUNT_SUSPENDED
+                  value:
+                    error:
+                      code: ACCOUNT_SUSPENDED
+                      type: authorization_error
+                      message: The organization behind the credential is suspended.
+                      suggestion: The organization behind this credential is suspended. Contact support@brew.new; do not retry.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                brandScopeMismatch:
+                  summary: BRAND_SCOPE_MISMATCH
+                  value:
+                    error:
+                      code: BRAND_SCOPE_MISMATCH
+                      type: authorization_error
+                      message: A brand-scoped credential named a brand other than the one it is bound to.
+                      suggestion: Omit the brand to use the one this credential is bound to, or use an organization-scoped credential to reach other brands.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                insufficientPermissions:
+                  summary: INSUFFICIENT_PERMISSIONS
+                  value:
+                    error:
+                      code: INSUFFICIENT_PERMISSIONS
+                      type: authorization_error
+                      message: The credential lacks the permission scope the operation needs.
+                      suggestion: Use an API key or session with the required permission.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                insufficientRole:
+                  summary: INSUFFICIENT_ROLE
+                  value:
+                    error:
+                      code: INSUFFICIENT_ROLE
+                      type: authorization_error
+                      message: "The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role)."
+                      suggestion: Ask an organization admin to run this, to add you to the brand, or to make you an admin.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+        "404":
+          description: |-
+            `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+
+            `NOT_FOUND`: No v1 resource lives at this path.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                brandNotFound:
+                  summary: BRAND_NOT_FOUND
+                  value:
+                    error:
+                      code: BRAND_NOT_FOUND
+                      type: not_found
+                      message: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+                      suggestion: List the brands this credential can reach with GET /v1/brands.
+                      docs: https://docs.brew.new/api-reference/api/errors
+                notFound:
+                  summary: NOT_FOUND
+                  value:
+                    error:
+                      code: NOT_FOUND
+                      type: not_found
+                      message: No v1 resource lives at this path.
+                      suggestion: Check the request path and HTTP method against the API reference.
+                      docs: https://docs.brew.new/api-reference/api/api-introduction
+        "429":
+          description: "`RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot."
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+            X-RateLimit-Limit:
+              schema:
+                type: integer
+                description: Requests allowed in the current rolling rate limit window.
+                example: 100
+              required: true
+              description: Requests allowed in the current rolling rate limit window.
+            X-RateLimit-Remaining:
+              schema:
+                type: integer
+                description: Requests remaining in the current rolling rate limit window.
+                example: 0
+              required: true
+              description: Requests remaining in the current rolling rate limit window.
+            X-RateLimit-Reset:
+              schema:
+                type: integer
+                description: Unix timestamp in seconds when the oldest recorded request leaves the rolling window.
+                example: 1712592360
+              required: true
+              description: Unix timestamp in seconds when the oldest recorded request leaves the rolling window.
+            Retry-After:
+              schema:
+                type: integer
+                description: Seconds to wait before retrying the request.
+                example: 42
+              required: true
+              description: Seconds to wait before retrying the request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                rateLimited:
+                  summary: RATE_LIMITED
+                  value:
+                    error:
+                      code: RATE_LIMITED
+                      type: rate_limit
+                      message: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot.
+                      suggestion: Wait the Retry-After time, then retry the same request.
+                      docs: https://docs.brew.new/api-reference/api/rate-limits
+                      retryAfter: 42
+                      details:
+                        scope: credential
+                        limit: 100
+                        remaining: 0
+                        reset: 1712592360
+                        consumed: false
+        "500":
+          description: "`INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it."
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                internalError:
+                  summary: INTERNAL_ERROR
+                  value:
+                    error:
+                      code: INTERNAL_ERROR
+                      type: internal_error
+                      message: An unexpected failure; the x-request-id header identifies it.
+                      suggestion: Retry the request. If it keeps failing, contact support with the x-request-id header.
+                      docs: https://docs.brew.new/api-reference/api/errors
+      x-brew-scope: none
+      x-brew-brand-scope: brand
+      x-brew-idempotency: none
+      x-brew-credited: false
+      x-brew-rate-policy: integrations.read
+    put:
+      operationId: connectIntegrationHook
+      tags:
+        - Integrations
+      summary: Connect a hosted auth hook
+      description: |-
+        Connects a hosted auth email hook for the brand and sets up its auth app emails, so the provider hands every auth email to Brew: the Supabase Auth Send Email Hook (`supabase_auth`) or Clerk’s `email.created` (`clerk`).
+
+        **Input** `signingSecret`, the secret the provider signs deliveries with (Supabase: `v1,whsec_…` from Authentication > Hooks; Clerk: `whsec_…` from the endpoint). Supabase only: `settings.projectUrl`, the URL confirmation links point at (default: the one Supabase sends with each email).
+
+        **Re-runs** are safe: the `connectionId` and `webhookUrl` never change for a brand and provider, a new secret replaces the old one, and the auth app emails already set up are kept (a design edited in Brew is never replaced). Until the first signed delivery the connection is `pending_verification`.
+
+        **Scopes** an API key needs `emails` and `automations` (`x-brew-scopes`): the call also runs the app email kit.
+
+        **Returns** `200` with `provider`, `connectionId`, `webhookUrl`, `status` and `authEmails[]`: each auth key with `ok`, or its `error`; connecting again finishes a failed key.
+
+        **Errors** `400 INVALID_REQUEST` for an unsupported provider, a secret in the wrong format or a project URL that is not https.
+
+        **See also** `getIntegrationConnection`, `setUpAppEmailKit`, `listAppEmails`.
+      parameters:
+        - schema:
+            type: string
+            enum:
+              - supabase_auth
+              - clerk
+            description: "`supabase_auth` (the Supabase Auth Send Email Hook) or `clerk` (Clerk webhooks; `email.created` carries the auth emails)."
+            example: supabase_auth
+          required: true
+          description: "`supabase_auth` (the Supabase Auth Send Email Hook) or `clerk` (Clerk webhooks; `email.created` carries the auth emails)."
+          name: provider
+          in: path
+        - name: X-Brand-Id
+          in: header
+          required: false
+          description: The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 64
+          example: kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/IntegrationConnectionPutRequest"
+            examples:
+              supabase:
+                summary: Supabase Send Email Hook
+                value:
+                  signingSecret: v1,whsec_dGhpc2lzYW5leGFtcGxlc2VjcmV0Zm9yYnJldw==
+                  settings:
+                    projectUrl: https://abcd.supabase.co
+              clerk:
+                summary: Clerk email.created
+                value:
+                  signingSecret: whsec_C2FVsBQIhrscChlQIMV+b5sSYspob7oD
+      responses:
+        "200":
+          description: Connected; the auth app emails are set up.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+            X-RateLimit-Limit:
+              schema:
+                type: integer
+                description: Requests allowed in the current rolling rate limit window.
+                example: 100
+              required: true
+              description: Requests allowed in the current rolling rate limit window.
+            X-RateLimit-Remaining:
+              schema:
+                type: integer
+                description: Requests remaining in the current rolling rate limit window.
+                example: 99
+              required: true
+              description: Requests remaining in the current rolling rate limit window.
+            X-RateLimit-Reset:
+              schema:
+                type: integer
+                description: Unix timestamp in seconds when the oldest recorded request leaves the rolling window.
+                example: 1712592360
+              required: true
+              description: Unix timestamp in seconds when the oldest recorded request leaves the rolling window.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IntegrationConnectionPutResponse"
+              example:
+                provider: supabase_auth
+                connectionId: iac_Q2tX9vL1mB7rN4cP8wZsA
+                webhookUrl: https://brew.new/api/integrations/supabase_auth/webhook/iac_Q2tX9vL1mB7rN4cP8wZsA
+                status: pending_verification
+                authEmails:
+                  - triggerKey: auth.verify-email
+                    ok: true
+                  - triggerKey: auth.magic-link
+                    ok: true
+                  - triggerKey: auth.otp
+                    ok: true
+        "400":
+          description: |-
+            `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+
+            `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                brandIdRequired:
+                  summary: BRAND_ID_REQUIRED
+                  value:
+                    error:
+                      code: BRAND_ID_REQUIRED
+                      type: invalid_request
+                      message: An organization-scoped credential called a brand-scoped operation without naming the brand.
+                      suggestion: List brands with GET /v1/brands, then name one with the X-Brand-Id header. There is no default brand.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                invalidRequest:
+                  summary: INVALID_REQUEST
+                  value:
+                    error:
+                      code: INVALID_REQUEST
+                      type: invalid_request
+                      message: "The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender."
+                      suggestion: Fix the field reported in `param` and retry.
+                      docs: https://docs.brew.new/api-reference/api/errors
+        "401":
+          description: |-
+            `API_KEY_REVOKED`: The API key was revoked.
+
+            `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+
+            `INVALID_API_KEY`: The API key is malformed or unknown.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                apiKeyRevoked:
+                  summary: API_KEY_REVOKED
+                  value:
+                    error:
+                      code: API_KEY_REVOKED
+                      type: authentication_error
+                      message: The API key was revoked.
+                      suggestion: Create a new active API key and retry.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                authenticationRequired:
+                  summary: AUTHENTICATION_REQUIRED
+                  value:
+                    error:
+                      code: AUTHENTICATION_REQUIRED
+                      type: authentication_error
+                      message: No API key or session accompanied the request.
+                      suggestion: Provide a valid API key or sign in with an organization session.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                invalidApiKey:
+                  summary: INVALID_API_KEY
+                  value:
+                    error:
+                      code: INVALID_API_KEY
+                      type: authentication_error
+                      message: The API key is malformed or unknown.
+                      suggestion: Check the API key format and retry with a valid active key.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+        "403":
+          description: |-
+            `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+
+            `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+
+            `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+
+            `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                accountSuspended:
+                  summary: ACCOUNT_SUSPENDED
+                  value:
+                    error:
+                      code: ACCOUNT_SUSPENDED
+                      type: authorization_error
+                      message: The organization behind the credential is suspended.
+                      suggestion: The organization behind this credential is suspended. Contact support@brew.new; do not retry.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                brandScopeMismatch:
+                  summary: BRAND_SCOPE_MISMATCH
+                  value:
+                    error:
+                      code: BRAND_SCOPE_MISMATCH
+                      type: authorization_error
+                      message: A brand-scoped credential named a brand other than the one it is bound to.
+                      suggestion: Omit the brand to use the one this credential is bound to, or use an organization-scoped credential to reach other brands.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                insufficientPermissions:
+                  summary: INSUFFICIENT_PERMISSIONS
+                  value:
+                    error:
+                      code: INSUFFICIENT_PERMISSIONS
+                      type: authorization_error
+                      message: The credential lacks the permission scope the operation needs.
+                      suggestion: Use an API key or session with the required permission.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                insufficientRole:
+                  summary: INSUFFICIENT_ROLE
+                  value:
+                    error:
+                      code: INSUFFICIENT_ROLE
+                      type: authorization_error
+                      message: "The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role)."
+                      suggestion: Ask an organization admin to run this, to add you to the brand, or to make you an admin.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+        "404":
+          description: |-
+            `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+
+            `NOT_FOUND`: No v1 resource lives at this path.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                brandNotFound:
+                  summary: BRAND_NOT_FOUND
+                  value:
+                    error:
+                      code: BRAND_NOT_FOUND
+                      type: not_found
+                      message: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+                      suggestion: List the brands this credential can reach with GET /v1/brands.
+                      docs: https://docs.brew.new/api-reference/api/errors
+                notFound:
+                  summary: NOT_FOUND
+                  value:
+                    error:
+                      code: NOT_FOUND
+                      type: not_found
+                      message: No v1 resource lives at this path.
+                      suggestion: Check the request path and HTTP method against the API reference.
+                      docs: https://docs.brew.new/api-reference/api/api-introduction
+        "429":
+          description: "`RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot."
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+            X-RateLimit-Limit:
+              schema:
+                type: integer
+                description: Requests allowed in the current rolling rate limit window.
+                example: 10
+              required: true
+              description: Requests allowed in the current rolling rate limit window.
+            X-RateLimit-Remaining:
+              schema:
+                type: integer
+                description: Requests remaining in the current rolling rate limit window.
+                example: 0
+              required: true
+              description: Requests remaining in the current rolling rate limit window.
+            X-RateLimit-Reset:
+              schema:
+                type: integer
+                description: Unix timestamp in seconds when the oldest recorded request leaves the rolling window.
+                example: 1712592360
+              required: true
+              description: Unix timestamp in seconds when the oldest recorded request leaves the rolling window.
+            Retry-After:
+              schema:
+                type: integer
+                description: Seconds to wait before retrying the request.
+                example: 42
+              required: true
+              description: Seconds to wait before retrying the request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                rateLimited:
+                  summary: RATE_LIMITED
+                  value:
+                    error:
+                      code: RATE_LIMITED
+                      type: rate_limit
+                      message: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot.
+                      suggestion: Wait the Retry-After time, then retry the same request.
+                      docs: https://docs.brew.new/api-reference/api/rate-limits
+                      retryAfter: 42
+                      details:
+                        scope: credential
+                        limit: 10
+                        remaining: 0
+                        reset: 1712592360
+                        consumed: false
+        "500":
+          description: "`INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it."
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                internalError:
+                  summary: INTERNAL_ERROR
+                  value:
+                    error:
+                      code: INTERNAL_ERROR
+                      type: internal_error
+                      message: An unexpected failure; the x-request-id header identifies it.
+                      suggestion: Retry the request. If it keeps failing, contact support with the x-request-id header.
+                      docs: https://docs.brew.new/api-reference/api/errors
+      x-brew-scope: emails
+      x-brew-scopes:
+        - emails
+        - automations
+      x-brew-brand-scope: brand
+      x-brew-idempotency: none
+      x-brew-credited: false
+      x-brew-rate-policy: integrations.write
   /v1/api-keys:
     get:
       operationId: listApiKeys
