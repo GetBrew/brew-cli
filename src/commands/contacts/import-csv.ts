@@ -13,6 +13,7 @@ import {
   readTextFlag,
   requestOptions,
 } from '../../lib/input'
+import { DRY_RUN_FLAG, importModeFlags, ON_CONFLICT_FLAG } from './import-modes'
 import { renderImportResult } from './import-summary'
 
 type ImportCsvContactsInput = Parameters<ContactsResource['importCsv']>[0]
@@ -53,6 +54,8 @@ export const contactsImportCsvCommand = defineCommand({
       summary:
         'Stamp a marketing consent record on every row: api, form or import (sets the source of a record given in --input)',
     },
+    DRY_RUN_FLAG,
+    ON_CONFLICT_FLAG,
     INPUT_FLAG,
     IDEMPOTENCY_FLAG,
   ],
@@ -60,6 +63,8 @@ export const contactsImportCsvCommand = defineCommand({
     'brew-cli contacts import-csv --file contacts.csv',
     'cat contacts.csv | brew-cli contacts import-csv --file - --mapping Email=email',
     'brew-cli contacts import-csv --file eu-signups.csv --date-order day_first --consent-source import',
+    'brew-cli contacts import-csv --file contacts.csv --dry-run',
+    'brew-cli contacts import-csv --file contacts.csv --on-conflict skip',
   ],
   run: async ({ ctx, flags }) => {
     if (flags.input === '-' && flags.file === '-') {
@@ -72,6 +77,7 @@ export const contactsImportCsvCommand = defineCommand({
       mapping: parseKeyValues(flags.mapping, '--mapping'),
       dateOrder: flagString(flags.dateOrder),
       validate: flags.validate === true ? true : undefined,
+      ...importModeFlags(flags),
     })
     const fileName = importFileName(flags, input)
     if (fileName !== undefined) {

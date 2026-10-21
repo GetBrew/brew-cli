@@ -463,12 +463,15 @@ Bulk-import up to 1000 contacts from a JSON file or stdin as one Import History 
 - `--file-name <name>` — Name the batch in Brew's Import History (default: the --file name)
 - `--validate` — Deliverability-check every imported address (2 credits per address)
 - `--consent-source <source>` — Default marketing consent record for rows without their own: api, form or import
+- `--dry-run` — Show what the import would do and write nothing (no contacts, fields or Import History batch; --validate is skipped and nothing is charged)
+- `--on-conflict <mode>` — upsert (default) updates existing contacts; skip only creates missing ones and leaves existing contacts unchanged (counted as skipped)
 - `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
 - `--idempotency-key <key>` — Idempotency-Key for safe retries (auto-generated otherwise)
 
 ```bash
 brew-cli contacts import --file contacts.json --consent-source import
 cat contacts.json | brew-cli contacts import --file - --file-name crm-export.json
+brew-cli contacts import --file contacts.json --dry-run --on-conflict skip
 ```
 
 ### brew-cli contacts import-csv
@@ -484,6 +487,8 @@ Bulk-import contacts from a CSV file or stdin as one Import History batch (free;
 - `--date-order <order>` — month_first or day_first: how to read dates like 03/04/2026 (a day over 12 in the column wins; default month-first, with a DATE_ORDER_ASSUMED warning)
 - `--validate` — Deliverability checks: up to 100 submitted CSV data rows cost 2 credits/row inline; larger files use background checks when needed, charged per address
 - `--consent-source <source>` — Stamp a marketing consent record on every row: api, form or import (sets the source of a record given in --input)
+- `--dry-run` — Show what the import would do and write nothing (no contacts, fields or Import History batch; --validate is skipped and nothing is charged)
+- `--on-conflict <mode>` — upsert (default) updates existing contacts; skip only creates missing ones and leaves existing contacts unchanged (counted as skipped)
 - `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
 - `--idempotency-key <key>` — Idempotency-Key for safe retries (auto-generated otherwise)
 
@@ -491,6 +496,8 @@ Bulk-import contacts from a CSV file or stdin as one Import History batch (free;
 brew-cli contacts import-csv --file contacts.csv
 cat contacts.csv | brew-cli contacts import-csv --file - --mapping Email=email
 brew-cli contacts import-csv --file eu-signups.csv --date-order day_first --consent-source import
+brew-cli contacts import-csv --file contacts.csv --dry-run
+brew-cli contacts import-csv --file contacts.csv --on-conflict skip
 ```
 
 ### brew-cli fields list
