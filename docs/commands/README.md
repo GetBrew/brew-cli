@@ -2,7 +2,7 @@
 
 <!-- GENERATED FILE — do not edit. Regenerate with `bun run docs:commands`. -->
 
-148 commands. Classes: read (always safe), write
+149 commands. Classes: read (always safe), write
 (mutating, retry-safe), destructive (irreversible — the confirmation
 protocol applies: interactive y/N on a TTY, exit 4 + JSON envelope with
 a `confirmCommand` otherwise, `--yes` to proceed).
@@ -35,12 +35,13 @@ a `confirmCommand` otherwise, `--yes` to proceed).
 | `brew-cli contacts count` | read | `POST /v1/contacts/search` | Count contacts matching a filter |
 | `brew-cli contacts count-by` | read | `POST /v1/contacts/search` | Count contacts per field value, email domain, or signup period (largest group first) |
 | `brew-cli contacts upsert` | write | `POST /v1/contacts` | Create or update one contact by email |
-| `brew-cli contacts upsert-many` | write | `POST /v1/contacts` | Create or update a batch of contacts (up to 100 per call) |
+| `brew-cli contacts upsert-many` | write | `POST /v1/contacts` | Create or update up to 1000 contacts per call, with no Import History entry (for syncs; use contacts import for a batch you want listed) |
 | `brew-cli contacts update` | write | `PATCH /v1/contacts/{email}` | Partially update one contact (PATCH; never retried) |
 | `brew-cli contacts delete` | destructive | `DELETE /v1/contacts/{email}` | Delete one contact by email (idempotent) |
 | `brew-cli contacts delete-many` | destructive | `POST /v1/contacts/batch-delete` | Delete up to 1000 contacts by email |
 | `brew-cli contacts validate` | write ($) | `POST /v1/contacts/validate` | Batch-validate email deliverability (no contacts created) |
-| `brew-cli contacts import-csv` | write | `POST /v1/contacts/import-csv` | Bulk-import contacts from a CSV file or stdin (free; --validate costs 2 credits per address) |
+| `brew-cli contacts import` | write | `POST /v1/contacts/import` | Bulk-import up to 1000 contacts from a JSON file or stdin as one Import History batch (free; --validate costs 2 credits per address) |
+| `brew-cli contacts import-csv` | write | `POST /v1/contacts/import-csv` | Bulk-import contacts from a CSV file or stdin as one Import History batch (free; validation charged separately) |
 | `brew-cli fields list` | read | `GET /v1/fields` | List custom contact fields |
 | `brew-cli fields get` | read | `GET /v1/fields/{fieldName}` | Fetch one contact field definition by name — the bare row |
 | `brew-cli fields create` | write | `POST /v1/fields` | Create a custom contact field |
@@ -374,7 +375,7 @@ brew-cli contacts upsert --email j@x.com --custom plan=pro --custom seats=4
 
 ### brew-cli contacts upsert-many
 
-Create or update a batch of contacts (up to 100 per call)
+Create or update up to 1000 contacts per call, with no Import History entry (for syncs; use contacts import for a batch you want listed)
 
 - Route: `POST /v1/contacts`
 - Class: write
@@ -451,17 +452,37 @@ brew-cli contacts validate --emails jane@example.com bob@example.com
 brew-cli contacts validate --input '{"emails":["jane@example.com"]}'
 ```
 
+### brew-cli contacts import
+
+Bulk-import up to 1000 contacts from a JSON file or stdin as one Import History batch (free; --validate costs 2 credits per address)
+
+- Route: `POST /v1/contacts/import`
+- Class: write
+- SDK: `brew.contacts.import(...)`
+- `--file <path>` — JSON file of contacts (an array, or { "contacts": [...] }), or - for stdin
+- `--file-name <name>` — Name the batch in Brew's Import History (default: the --file name)
+- `--validate` — Deliverability-check every imported address (2 credits per address)
+- `--consent-source <source>` — Default marketing consent record for rows without their own: api, form or import
+- `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
+- `--idempotency-key <key>` — Idempotency-Key for safe retries (auto-generated otherwise)
+
+```bash
+brew-cli contacts import --file contacts.json --consent-source import
+cat contacts.json | brew-cli contacts import --file - --file-name crm-export.json
+```
+
 ### brew-cli contacts import-csv
 
-Bulk-import contacts from a CSV file or stdin (free; --validate costs 2 credits per address)
+Bulk-import contacts from a CSV file or stdin as one Import History batch (free; validation charged separately)
 
 - Route: `POST /v1/contacts/import-csv`
 - Class: write
 - SDK: `brew.contacts.importCsv(...)`
 - `--file <path>` — CSV file to import, or - for stdin (or csv in --input)
+- `--file-name <name>` — Name the batch in Brew's Import History (default: the --file name)
 - `--mapping <pairs...>` — Column mapping csvColumn=fieldName, repeatable
 - `--date-order <order>` — month_first or day_first: how to read dates like 03/04/2026 (a day over 12 in the column wins; default month-first, with a DATE_ORDER_ASSUMED warning)
-- `--validate` — Deliverability-check every imported address (2 credits per address)
+- `--validate` — Deliverability checks: up to 100 submitted CSV data rows cost 2 credits/row inline; larger files use background checks when needed, charged per address
 - `--consent-source <source>` — Stamp a marketing consent record on every row: api, form or import (sets the source of a record given in --input)
 - `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
 - `--idempotency-key <key>` — Idempotency-Key for safe retries (auto-generated otherwise)

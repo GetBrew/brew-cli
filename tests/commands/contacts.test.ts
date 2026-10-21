@@ -303,6 +303,7 @@ describe('contacts import-csv', () => {
     expect(body).toEqual({
       csv: 'Email\njane@example.com\n',
       mapping: { Email: 'email' },
+      fileName: 'contacts.csv',
     })
   })
 
@@ -340,6 +341,7 @@ describe('contacts import-csv', () => {
       dateOrder: 'day_first',
       validate: true,
       consent: { source: 'import' },
+      fileName: 'contacts.csv',
     })
   })
 
@@ -375,6 +377,7 @@ describe('contacts import-csv', () => {
       csv: 'Email\njane@example.com\n',
       dateOrder: 'day_first',
       consent: { source: 'form', evidence: 'Footer form' },
+      fileName: 'contacts.csv',
     })
   })
 
@@ -413,6 +416,7 @@ describe('contacts import-csv', () => {
         evidence: 'Footer form',
         policyVersion: 'v3',
       },
+      fileName: 'contacts.csv',
     })
   })
 
@@ -458,6 +462,197 @@ describe('contacts import-csv', () => {
       { env: env() }
     )
     expect(result.code).toBe(2)
+  })
+  it('keeps a fileName from --input over the --file name', async () => {
+    let body: unknown
+    server.use(
+      http.post(
+        'https://brew.new/api/v1/contacts/import-csv',
+        async ({ request }) => {
+          body = await request.json()
+          return HttpResponse.json({ imported: 1 })
+        }
+      )
+    )
+    const dir = mkdtempSync(join(tmpdir(), 'brew-cli-csv-'))
+    const csvPath = join(dir, 'export.csv')
+    writeFileSync(csvPath, 'Email\njane@example.com\n')
+    const result = await runCli(
+      [
+        'contacts',
+        'import-csv',
+        '--file',
+        csvPath,
+        '--input',
+        '{"fileName":"Webinar sign-ups"}',
+      ],
+      { env: env() }
+    )
+    expect(result.code).toBe(0)
+    expect(body).toEqual({
+      csv: 'Email\njane@example.com\n',
+      fileName: 'Webinar sign-ups',
+    })
+  })
+
+  it('names the batch with --file-name, and sends no name for stdin', async () => {
+    const bodies: Array<unknown> = []
+    server.use(
+      http.post(
+        'https://brew.new/api/v1/contacts/import-csv',
+        async ({ request }) => {
+          bodies.push(await request.json())
+          return HttpResponse.json({ imported: 1 })
+        }
+      )
+    )
+    const dir = mkdtempSync(join(tmpdir(), 'brew-cli-csv-'))
+    const csvPath = join(dir, 'export-2026.csv')
+    writeFileSync(csvPath, 'Email\njane@example.com\n')
+    const named = await runCli(
+      [
+        'contacts',
+        'import-csv',
+        '--file',
+        csvPath,
+        '--file-name',
+        'October webinar',
+      ],
+      { env: env() }
+    )
+    const piped = await runCli(['contacts', 'import-csv', '--file', '-'], {
+      env: env(),
+      stdin: 'Email\njane@example.com\n',
+    })
+    expect(named.code).toBe(0)
+    expect(piped.code).toBe(0)
+    expect(bodies).toEqual([
+      { csv: 'Email\njane@example.com\n', fileName: 'October webinar' },
+      { csv: 'Email\njane@example.com\n' },
+    ])
+  })
+})
+
+describe('contacts import', () => {
+  const IMPORT_URL = 'https://brew.new/api/v1/contacts/import'
+
+  it('keeps validate, consent and fileName a JSON body sets; flags win only when given', async () => {
+    const bodies: Array<unknown> = []
+    server.use(
+      http.post(IMPORT_URL, async ({ request }) => {
+        bodies.push(await request.json())
+        return HttpResponse.json({ importId: 'imp_3' })
+      })
+    )
+    const stdin = JSON.stringify({
+      contacts: [{ email: 'a@example.com' }],
+      validate: true,
+      consent: { source: 'form' },
+      fileName: 'crm.json',
+    })
+    const kept = await runCli(['contacts', 'import', '--file', '-'], {
+      env: env(),
+      stdin,
+    })
+    const overridden = await runCli(
+      ['contacts', 'import', '--file', '-', '--file-name', 'October list'],
+      { env: env(), stdin }
+    )
+    expect(kept.code).toBe(0)
+    expect(overridden.code).toBe(0)
+    expect(bodies).toEqual([
+      {
+        contacts: [{ email: 'a@example.com' }],
+        validate: true,
+        consent: { source: 'form' },
+        fileName: 'crm.json',
+      },
+      {
+        contacts: [{ email: 'a@example.com' }],
+        validate: true,
+        consent: { source: 'form' },
+        fileName: 'October list',
+      },
+    ])
+  })
+
+  it('refuses a --file that is not an array or an object', async () => {
+    const result = await runCli(['contacts', 'import', '--file', '-'], {
+      env: env(),
+      stdin: '"nope"',
+    })
+    expect(result.code).toBe(2)
+    expect(result.stderr).toContain('--file must hold JSON')
+  })
+
+  it('reads a JSON array file and sends it as one named batch', async () => {
+    let body: unknown
+    server.use(
+      http.post(IMPORT_URL, async ({ request }) => {
+        body = await request.json()
+        return HttpResponse.json({
+          summary: { inserted: 1, updated: 0, failed: 0, skipped: 0, total: 1 },
+          fieldsCreated: [],
+          errors: [],
+          warnings: [],
+          importId: 'imp_1',
+        })
+      })
+    )
+    const dir = mkdtempSync(join(tmpdir(), 'brew-cli-json-'))
+    const jsonPath = join(dir, 'crm-export.json')
+    writeFileSync(
+      jsonPath,
+      JSON.stringify([{ email: 'jane@example.com', firstName: 'Jane' }])
+    )
+    const result = await runCli(
+      [
+        'contacts',
+        'import',
+        '--file',
+        jsonPath,
+        '--consent-source',
+        'import',
+        '--validate',
+      ],
+      { env: env() }
+    )
+    expect(result.code).toBe(0)
+    expect(body).toEqual({
+      contacts: [{ email: 'jane@example.com', firstName: 'Jane' }],
+      fileName: 'crm-export.json',
+      validate: true,
+      consent: { source: 'import' },
+    })
+    expect(result.stdout).toContain('imp_1')
+  })
+
+  it('takes { contacts } from stdin and refuses an empty batch', async () => {
+    let body: unknown
+    server.use(
+      http.post(IMPORT_URL, async ({ request }) => {
+        body = await request.json()
+        return HttpResponse.json({ importId: 'imp_2' })
+      })
+    )
+    const result = await runCli(
+      ['contacts', 'import', '--file', '-', '--file-name', 'sync.json'],
+      {
+        env: env(),
+        stdin: JSON.stringify({ contacts: [{ email: 'a@example.com' }] }),
+      }
+    )
+    expect(result.code).toBe(0)
+    expect(body).toEqual({
+      contacts: [{ email: 'a@example.com' }],
+      fileName: 'sync.json',
+    })
+
+    const empty = await runCli(['contacts', 'import', '--input', '[]'], {
+      env: env(),
+    })
+    expect(empty.code).toBe(2)
+    expect(empty.stderr).toContain('--file')
   })
 })
 
