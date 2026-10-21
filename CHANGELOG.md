@@ -22,6 +22,10 @@ but does not provide that method. Follow the contact import SDK gate in
 - `contacts import-csv` names its batch in Import History: `--file-name`, else
   a `fileName` in `--input`, else the `--file` name. Both imports return
   `importId`.
+- On a terminal, `contacts import` and `contacts import-csv` print one line of
+  counts that add up to the rows submitted, then each failed row and each
+  note (a skipped CSV row, an ignored column) with its row number. `--json`
+  still prints the API envelope verbatim.
 
 ### Changed
 

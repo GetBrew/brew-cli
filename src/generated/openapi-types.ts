@@ -3448,7 +3448,7 @@ export interface components {
         };
         ApiWarning: {
             /** @enum {string} */
-            code: "DRAFT_SAVED_NOT_LIVE" | "TRIGGER_EVENT_NOT_RECEIVED" | "ENFORCEMENT_LOOSENED_WHILE_PUBLISHED" | "REQUIRED_FIELD_SATISFIED_BY_FALLBACK" | "RESUBSCRIBE_SKIPPED" | "CORE_FIELD_IGNORED" | "DATE_ORDER_ASSUMED" | "CSV_COLUMN_IGNORED" | "RECIPIENTS_EXCLUDED" | "CONSENT_RECORD_MISSING";
+            code: "DRAFT_SAVED_NOT_LIVE" | "TRIGGER_EVENT_NOT_RECEIVED" | "ENFORCEMENT_LOOSENED_WHILE_PUBLISHED" | "REQUIRED_FIELD_SATISFIED_BY_FALLBACK" | "RESUBSCRIBE_SKIPPED" | "CORE_FIELD_IGNORED" | "DATE_ORDER_ASSUMED" | "CSV_ROW_SKIPPED" | "CSV_COLUMN_IGNORED" | "RECIPIENTS_EXCLUDED" | "CONSENT_RECORD_MISSING";
             message: string;
             field?: string;
         };
@@ -7121,6 +7121,8 @@ export interface components {
             fieldsCreated: string[];
             errors: {
                 email: string;
+                /** @description The 1-based row that failed: `contacts[row - 1]`, or the CSV data row (header excluded). */
+                row?: number;
                 code: string;
                 field?: string;
                 message: string;
@@ -7128,6 +7130,8 @@ export interface components {
             warnings: {
                 code: string;
                 email?: string;
+                /** @description The 1-based row it is about (CSV: data row). */
+                row?: number;
                 field?: string;
                 message: string;
                 from?: string;
@@ -7208,6 +7212,8 @@ export interface components {
             warnings: {
                 code: string;
                 email?: string;
+                /** @description The 1-based row it is about (CSV: data row). */
+                row?: number;
                 field?: string;
                 message: string;
                 from?: string;
@@ -7667,12 +7673,16 @@ export interface components {
                 inserted: number;
                 updated: number;
                 failed: number;
-                /** @description CSV rows left out for a missing or invalid email, or merged into a later row with the same address. Always 0 for a JSON import. */
+                /** @description CSV rows left out for a missing or invalid email, or merged into a later row with the same address; each has a `CSV_ROW_SKIPPED` warning naming its `row`. Always 0 for a JSON import. */
                 skipped: number;
+                /** @description Rows submitted (JSON contacts, or CSV data rows). Always `inserted + updated + failed + skipped`. */
+                total: number;
             };
             fieldsCreated: string[];
             errors: {
                 email: string;
+                /** @description The 1-based row that failed: `contacts[row - 1]`, or the CSV data row (header excluded). */
+                row?: number;
                 code: string;
                 field?: string;
                 message: string;
@@ -7680,6 +7690,8 @@ export interface components {
             warnings: {
                 code: string;
                 email?: string;
+                /** @description The 1-based row it is about (CSV: data row). */
+                row?: number;
                 field?: string;
                 message: string;
                 from?: string;

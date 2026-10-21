@@ -12,6 +12,7 @@ import {
   requestOptions,
 } from '../../lib/input'
 import { importFileName } from './import-csv'
+import { renderImportResult } from './import-summary'
 
 type ImportContactsInput = Parameters<ContactsResource['import']>[0]
 
@@ -88,7 +89,14 @@ export const contactsImportCommand = defineCommand({
         asSdkInput<ImportContactsInput>(input),
         requestOptions(flags)
       )
-    return { data: result }
+    return {
+      data: result,
+      human: () =>
+        renderImportResult(
+          result,
+          typeof input.fileName === 'string' ? input.fileName : undefined
+        ),
+    }
   },
 })
 
