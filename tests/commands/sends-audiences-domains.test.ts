@@ -291,6 +291,35 @@ describe('domains add', () => {
     expect(body).toEqual({ name: 'mail.example.com' })
     expect((result.json as { records: unknown[] }).records).toHaveLength(1)
   })
+
+  it('passes a DKIM_SELECTOR_IN_USE warning and its suggestedNames through verbatim', async () => {
+    const warning = {
+      code: 'DKIM_SELECTOR_IN_USE',
+      message:
+        'example.com already publishes a different DKIM key at resend._domainkey.',
+      suggestedNames: ['mail.example.com', 'send.example.com'],
+    }
+    server.use(
+      http.post(DOMAINS_URL, () =>
+        HttpResponse.json(
+          {
+            domainId: 'dom_new',
+            name: 'example.com',
+            status: 'pending',
+            records: [],
+            warnings: [warning],
+          },
+          { status: 201 }
+        )
+      )
+    )
+    const result = await runCli(['domains', 'add', 'example.com'], {
+      env: env(),
+      extraCommands: EXTRA,
+    })
+    expect(result.code).toBe(0)
+    expect((result.json as { warnings: unknown[] }).warnings).toEqual([warning])
+  })
 })
 
 describe('domains verify', () => {

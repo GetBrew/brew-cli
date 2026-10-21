@@ -8,8 +8,16 @@ import { SPEC_SKIP_LIST } from '../src/skip-list'
 /**
  * Spec operations whose commands are still being built, phase by phase.
  * This list must ONLY shrink; it must be empty before 0.1.0 ships.
+ *
+ * The bundled spec is brew-v2 #2169 whole, which also carries the hosted
+ * auth hook connection routes. Their commands (`integrations connect`,
+ * `integrations connection`) land in GetBrew/brew-cli#63, which empties
+ * this list again.
  */
-const PENDING_BUILD_ROUTES: readonly string[] = []
+const PENDING_BUILD_ROUTES: readonly string[] = [
+  'GET /v1/integrations/{provider}/connection',
+  'PUT /v1/integrations/{provider}/connection',
+]
 
 /**
  * Commands built AHEAD of the platform: the payload-contract wave-2 API

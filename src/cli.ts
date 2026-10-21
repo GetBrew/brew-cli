@@ -25,6 +25,8 @@ const GROUP_SUMMARIES: Readonly<Record<string, string>> = {
   analytics: 'Reports: overview, events, and automation analytics',
   'audience-runs': 'Manual-audience launches: read, pause, resume, cancel',
   'api-keys': 'Manage organization API keys',
+  'app-emails':
+    'App emails your code sends by key: the starter kit, one-call setup, readiness',
   audiences: 'Manage audience segments',
   automations: 'Manage automation graphs, triggers, and runs',
   brand: "Read and update the active brand's design context",

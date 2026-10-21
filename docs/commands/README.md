@@ -2,7 +2,7 @@
 
 <!-- GENERATED FILE — do not edit. Regenerate with `bun run docs:commands`. -->
 
-149 commands. Classes: read (always safe), write
+154 commands. Classes: read (always safe), write
 (mutating, retry-safe), destructive (irreversible — the confirmation
 protocol applies: interactive y/N on a TTY, exit 4 + JSON envelope with
 a `confirmCommand` otherwise, `--yes` to proceed).
@@ -74,7 +74,7 @@ a `confirmCommand` otherwise, `--yes` to proceed).
 | `brew-cli sends cancel` | destructive | `POST /v1/sends/{sendId}/cancel` | Cancel a scheduled or queued send before it goes out |
 | `brew-cli sends pause` | write | `POST /v1/sends/{sendId}/pause` | Pause an in-flight or scheduled send (resumable) |
 | `brew-cli sends resume` | write | `POST /v1/sends/{sendId}/resume` | Resume a paused gradual send (the unsent tail is re-spread); the send reports `running` again |
-| `brew-cli types` | read | — | Generate TypeScript payload contracts for this workspace's triggers into your codebase; --check is the CI drift gate (exit 1 on drift). Needs the automations scope |
+| `brew-cli types` | read | — | Generate TypeScript payload contracts for this workspace's triggers (plus the brew.send key registry for keyed triggers) into your codebase; --check is the CI drift gate (exit 1 on drift). Needs the automations scope |
 | `brew-cli audiences list` | read | `GET /v1/audiences` | List audience segments; one segment is `audiences get` |
 | `brew-cli audiences get` | read | `GET /v1/audiences/{audienceId}` | Fetch one audience segment by id — the bare row |
 | `brew-cli audiences create` | write | `POST /v1/audiences` | Create an audience segment from a filter definition |
@@ -103,6 +103,11 @@ a `confirmCommand` otherwise, `--yes` to proceed).
 | `brew-cli automations triggers update` | write | `PATCH /v1/automations/triggers/{triggerEventId}` | Update a trigger event (title, description, payload schema) |
 | `brew-cli automations triggers delete` | destructive | `DELETE /v1/automations/triggers/{triggerEventId}` | Delete a trigger event (rejected while automations depend on it) |
 | `brew-cli automations triggers fire` | destructive | `POST /v1/automations/triggers/{triggerEventId}/fire` | Fire a trigger event with a payload (starts LIVE runs) |
+| `brew-cli send` | destructive | `POST /v1/automations/triggers/by-key/{triggerKey}/fire` | Send the app email behind a trigger key (fires the key: starts LIVE runs) |
+| `brew-cli app-emails list` | read | `GET /v1/app-emails` | List the app emails your code sends by key, with sender and readiness |
+| `brew-cli app-emails get` | read | `GET /v1/app-emails/{triggerKey}` | Fetch one app email by its trigger key (404 TRIGGER_KEY_NOT_FOUND when none is set up) |
+| `brew-cli app-emails upsert` | destructive | `PUT /v1/app-emails/{triggerKey}` | Set up one app email by key in one idempotent call (trigger, contract, design, automation) and publish it. Needs the automations and emails scopes |
+| `brew-cli app-emails kit` | destructive | `POST /v1/app-emails/kit` | Set up and publish the auth + lifecycle starter kit (per-key results; exits 1 when a key failed, re-run to finish). Needs the automations and emails scopes |
 | `brew-cli automations runs list` | read | `GET /v1/automations/runs` | List automation runs (live + test history); one run is `automations runs get` |
 | `brew-cli automations runs get` | read | `GET /v1/automations/runs/{automationRunId}` | Fetch one automation run by id — the bare row |
 | `brew-cli automations runs cancel` | destructive | `POST /v1/automations/runs/{automationRunId}/cancel` | Cancel one in-flight automation run (event execution or test run) — nothing further is sent, and it can never be resumed |
@@ -1087,11 +1092,12 @@ brew-cli sends resume snd_123
 
 ### brew-cli types
 
-Generate TypeScript payload contracts for this workspace's triggers into your codebase; --check is the CI drift gate (exit 1 on drift). Needs the automations scope
+Generate TypeScript payload contracts for this workspace's triggers (plus the brew.send key registry for keyed triggers) into your codebase; --check is the CI drift gate (exit 1 on drift). Needs the automations scope
 
 - Class: read
 - Derived from `brew.automations.triggers.list(...)`, `brew.automations.triggers.getContract(...)`
 - `--out <file>` — Output file (default brew-contracts.ts)
+- `--no-registry` — Leave out the BrewTriggerKeyRegistry augmentation for keyed triggers (for code that does not use @brew.new/sdk's send)
 - `--check` — Verify the output file is up to date instead of writing; exits 1 on drift
 
 ```bash
@@ -1480,10 +1486,12 @@ Create a trigger event (title + typed payload schema)
 - SDK: `brew.automations.triggers.create(...)`
 - `--title <title>` — Trigger event title
 - `--description <text>` — Trigger event description
+- `--key <key>` — Stable trigger key your code fires by (`send <key>`), e.g. order.paid; unique per brand
 - `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
 - `--idempotency-key <key>` — Idempotency-Key for safe retries (auto-generated otherwise)
 
 ```bash
+brew-cli automations triggers create --title "Order paid" --key order.paid --input '{"payloadSchema":{"type":"object","fields":[{"key":"email","type":"string","required":true}]}}'
 brew-cli automations triggers create --title user.signup --input '{"payloadSchema":{"type":"object","fields":[{"key":"userId","type":"string","required":true}]}}'
 ```
 
@@ -1514,10 +1522,12 @@ Update a trigger event (title, description, payload schema)
 - Argument `triggerEventId` — Id of the trigger event to update
 - `--title <title>` — New title
 - `--description <text>` — New description
+- `--key <key>` — Set the trigger key your code fires by (clear it with --input '{"key":null}')
 - `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
 
 ```bash
 brew-cli automations triggers update tev_123 --title user.signup.v2
+brew-cli automations triggers update tev_123 --key user.signup
 brew-cli automations triggers update tev_123 --input '{"payloadSchema":{"type":"object","fields":[]}}'
 ```
 
@@ -1547,6 +1557,101 @@ Fire a trigger event with a payload (starts LIVE runs)
 
 ```bash
 brew-cli automations triggers fire tri_signup --input '{"payload":{"email":"jane@example.com"}}' --yes
+```
+
+### brew-cli send
+
+Send the app email behind a trigger key (fires the key: starts LIVE runs)
+
+- Route: `POST /v1/automations/triggers/by-key/{triggerKey}/fire`
+- Class: destructive
+- SDK: `brew.send(...)`
+- Argument `key` — Trigger key, e.g. auth.password-reset or order.paid
+- `--to <email>` — Recipient address (sets payload.email; overrides --data)
+- `--data <json>` — Payload JSON object (the values the email reads as {{ trigger.* }}), or - to read stdin
+- `--idempotency-key <key>` — Idempotency-Key for safe retries (auto-generated otherwise)
+
+```bash
+brew-cli send lifecycle.welcome --to jane@example.com --yes
+brew-cli send auth.password-reset --to jane@example.com --data '{"userName":"Jane","confirmationUrl":"https://app.example.com/reset?token=…"}' --yes
+echo '{"email":"jane@example.com","orderId":"ord_1"}' | brew-cli send order.paid --data - --idempotency-key order.paid:ord_1 --yes
+```
+
+### brew-cli app-emails list
+
+List the app emails your code sends by key, with sender and readiness
+
+- Route: `GET /v1/app-emails`
+- Class: read
+- SDK: `brew.appEmails.list(...)`
+- `--limit <n>` — Page size, 1-100 (default 100)
+- `--cursor <cursor>` — Opaque pagination cursor from a previous page
+- `--all` — Follow the cursor and return every page as one result
+
+```bash
+brew-cli app-emails list
+brew-cli app-emails list --all --json
+```
+
+### brew-cli app-emails get
+
+Fetch one app email by its trigger key (404 TRIGGER_KEY_NOT_FOUND when none is set up)
+
+- Route: `GET /v1/app-emails/{triggerKey}`
+- Class: read
+- SDK: `brew.appEmails.get(...)`
+- Argument `triggerKey` — Trigger key, e.g. auth.password-reset
+
+```bash
+brew-cli app-emails get auth.password-reset
+brew-cli app-emails get order.paid --json
+```
+
+### brew-cli app-emails upsert
+
+Set up one app email by key in one idempotent call (trigger, contract, design, automation) and publish it. Needs the automations and emails scopes
+
+- Route: `PUT /v1/app-emails/{triggerKey}`
+- Class: destructive
+- SDK: `brew.appEmails.upsert(...)`
+- Argument `triggerKey` — Trigger key your code sends by: a kit key (auth.password-reset) or your own (order.paid)
+- `--starter <id>` — Starter-kit template to use (a kit key alone uses its own starter)
+- `--source-file <path>` — Your own design source (HTML, MJML or React Email JSX), or - for stdin
+- `--format <format>` — Source format: html | mjml | jsx (default: from the file extension)
+- `--title <title>` — App email title in Brew
+- `--subject <text>` — Subject line
+- `--preview-text <text>` — Inbox preview text
+- `--domain <domainId>` — Sending domain id (default: a verified domain for the purpose, else the team-only sandbox). A transactional key (auth, trial ending, payment failed) refuses a marketing domain
+- `--no-publish` — Save the setup without publishing the automation
+- `--overwrite` — Replace a design that was edited in Brew since setup
+- `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
+
+```bash
+brew-cli app-emails upsert auth.password-reset --yes
+brew-cli app-emails upsert order.paid --source-file emails/order-paid.tsx --subject "Your order is confirmed" --yes
+brew-cli app-emails upsert lifecycle.welcome --overwrite --yes
+brew-cli app-emails upsert account.sign-in-code --source-file emails/sign-in-code.tsx --input '{"payloadSchema":{"fields":[{"key":"code","type":"string","required":true,"secret":true}]}}' --yes
+```
+
+### brew-cli app-emails kit
+
+Set up and publish the auth + lifecycle starter kit (per-key results; exits 1 when a key failed, re-run to finish). Needs the automations and emails scopes
+
+- Route: `POST /v1/app-emails/kit`
+- Class: destructive
+- SDK: `brew.appEmails.setUpKit(...)`
+- `--sets <sets>` — Comma-separated kit sets: auth, lifecycle (default both)
+- `--stack <provider>` — Auth library: better-auth | authjs | supabase | clerk | firebase | custom (narrows the auth keys, picks the snippets)
+- `--keys <keys>` — Comma-separated exact kit keys instead of sets (auth.password-reset,lifecycle.welcome)
+- `--domain <domainId>` — Sending domain id for every key (default: a verified domain per purpose, else the team-only sandbox). A marketing domain fails the transactional keys with APP_EMAIL_DOMAIN_PURPOSE_MISMATCH
+- `--overwrite` — Replace designs that were edited in Brew since setup
+- `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
+- `--idempotency-key <key>` — Idempotency-Key for safe retries (auto-generated otherwise)
+
+```bash
+brew-cli app-emails kit --stack better-auth --yes
+brew-cli app-emails kit --sets lifecycle --yes --json
+brew-cli app-emails kit --keys auth.password-reset,auth.verify-email --domain dom_123 --yes
 ```
 
 ### brew-cli automations runs list
@@ -2704,6 +2809,7 @@ SDK methods intentionally without a dedicated command:
 - `chats.listAll` — auto-pager covered by `chats list --all`
 - `emails.comments.listAllMessages` — auto-pager covered by `emails comments list <emailId> --comment-id <id> --all`
 - `notifications.listAll` — auto-pager covered by `notifications list --all`
+- `automations.triggers.fireByKey` — alias of `send` (the same by-key fire route), exposed as `send <key>`
 - `brand.update` — SDK alias of brand.patch, exposed as `brand update`
 - `brands.waitForExtraction` — read-only SDK polling helper over brands.get; lifecycle reads are exposed by `brands get`
 - `withBrand` — client scoping helper activated by the global `--brand`; not an API command

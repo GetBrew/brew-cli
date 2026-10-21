@@ -68,6 +68,7 @@ beforeEach(() => {
         if (id === 'tri_l') name = 'Payload2026Launch'
         if (id === 'tri_tail' || id === 'tri_page_51')
           name = 'TailTriggerPayload'
+        if (id === 'tri_reset') name = 'PasswordResetPayload'
         if (id.startsWith('tri_page1_'))
           name = `PageOne${Number(id.slice('tri_page1_'.length))}Payload`
         const content =
@@ -546,5 +547,84 @@ describe('automations triggers ready', () => {
     )
     expect(result.code).toBe(0)
     expect(JSON.parse(result.stdout)).toEqual(readiness)
+  })
+})
+
+describe('types — trigger key registry', () => {
+  const KEYED = [
+    { ...TRIGGER, key: 'user.signup' },
+    {
+      ...TRIGGER,
+      triggerEventId: 'tri_reset',
+      title: 'Password reset',
+      key: 'auth.password-reset',
+    },
+  ]
+
+  function mockTriggers(rows: ReadonlyArray<Record<string, unknown>>) {
+    server.use(
+      http.get(`${API}/v1/automations/triggers`, () =>
+        HttpResponse.json({
+          data: rows,
+          pagination: { cursor: null, hasMore: false },
+        })
+      )
+    )
+  }
+
+  it('stays byte-identical to the key-less output when no trigger has a key', async () => {
+    mockTriggers([TRIGGER])
+    const dir = mkdtempSync(join(tmpdir(), 'brew-types-'))
+    const withRegistry = join(dir, 'a.ts')
+    const withoutRegistry = join(dir, 'b.ts')
+    const first = await runCli(['types', '--out', withRegistry], {
+      extraCommands: [typesCommand],
+      env: env(),
+    })
+    const second = await runCli(
+      ['types', '--out', withoutRegistry, '--no-registry'],
+      { extraCommands: [typesCommand], env: env() }
+    )
+    expect(first.code).toBe(0)
+    expect(second.code).toBe(0)
+    // A key-less workspace's committed file must not read as drift after
+    // the upgrade: the registry adds nothing, not even a blank line.
+    const text = readFileSync(withRegistry, 'utf8')
+    expect(text).not.toContain('declare module')
+    expect(text).toBe(readFileSync(withoutRegistry, 'utf8'))
+    expect(text.endsWith('  "kebab-key"?: string\n}\n')).toBe(true)
+  })
+
+  it('augments BrewTriggerKeyRegistry for keyed triggers, sorted by key', async () => {
+    mockTriggers(KEYED)
+    const out = join(mkdtempSync(join(tmpdir(), 'brew-types-')), 'c.ts')
+    const result = await runCli(['types', '--out', out], {
+      extraCommands: [typesCommand],
+      env: env(),
+    })
+    expect(result.code).toBe(0)
+    const text = readFileSync(out, 'utf8')
+    expect(text).toContain(
+      [
+        "declare module '@brew.new/sdk' {",
+        '  interface BrewTriggerKeyRegistry {',
+        '    "auth.password-reset": PasswordResetPayload',
+        '    "user.signup": UserSignedUpPayload',
+        '  }',
+        '}',
+        '',
+      ].join('\n')
+    )
+  })
+
+  it('--no-registry leaves the augmentation out', async () => {
+    mockTriggers(KEYED)
+    const out = join(mkdtempSync(join(tmpdir(), 'brew-types-')), 'c.ts')
+    const result = await runCli(['types', '--out', out, '--no-registry'], {
+      extraCommands: [typesCommand],
+      env: env(),
+    })
+    expect(result.code).toBe(0)
+    expect(readFileSync(out, 'utf8')).not.toContain('declare module')
   })
 })
