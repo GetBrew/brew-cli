@@ -87,7 +87,7 @@ export function oneOfFlag(
 /**
  * `--input`'s `source` object, so `--source-file` can fill `format` and
  * `content` and keep the rest: the import modes `props`, `placeholders`
- * and `variables` (brew-v2#2145).
+ * and `variables` (brew-v2#2169).
  */
 export function inputSource(
   base: unknown
