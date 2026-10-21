@@ -5,10 +5,10 @@
 Not released yet. Needs `@brew.new/sdk` 13.3.0: `integrations.connect` and
 `integrations.getConnection` (GetBrew/typescript-sdk#74, on top of the
 13.2.0 that 0.18.0 needs; see the SDK gates in `RELEASING.md`), and the API
-from GetBrew/brew-v2#2146 (`GET|PUT /v1/integrations/{provider}/connection`,
-the `supabase_auth` hosted Send Email Hook) and #2068 (Clerk `email.created`
-sends the app's auth emails). The bundled spec is 0.20.0's plus exactly
-those two PRs' spec deltas.
+from GetBrew/brew-v2#2169 (`GET|PUT /v1/integrations/{provider}/connection`,
+the `supabase_auth` hosted Send Email Hook, and Clerk `email.created`
+sending the app's auth emails). The bundled spec is 0.18.0's, #2169 @
+`6f8ef50544`.
 
 ### Added
 
@@ -21,7 +21,10 @@ those two PRs' spec deltas.
   pasted where the variable name goes) is a usage error that never echoes
   it. `--project-url` sets Supabase's confirmation link base. Prints
   `{ connectionId, webhookUrl, status, authEmails }`. 5-minute default
-  deadline, as the SDK's.
+  deadline, as the SDK's. Re-running it is safe: `connectionId` and
+  `webhookUrl` stay the same for the brand and provider, the new secret
+  replaces the old one in place, auth emails already set up are kept, and
+  keys that failed are finished.
 - **`brew-cli integrations connection <provider>`** reads it:
   `pending_verification` until the first signed delivery, then `active`
   (404 `NOT_FOUND` when not connected).
@@ -69,7 +72,8 @@ those two PRs' spec deltas.
 - The init report (schema version 1, additive) gains `providers[]`, the
   `provider` step, `brand.domain` / `matchesAppUrl` / `created` and
   `domain.connectUrl`.
-- The bundled spec carries GetBrew/brew-v2#2146 and #2068.
+- The spec parity test's pending-build list is empty again: these
+  commands bind the two connection routes 0.18.0's spec already carried.
 
 ## 0.20.0
 

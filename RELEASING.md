@@ -53,8 +53,8 @@ arrive in GetBrew/typescript-sdk#74 (planned 13.3.0, after 13.2.0 above).
 Release that SDK first, then `bun add @brew.new/sdk@^13.3.0` (never
 hand-write a lockfile entry), run a frozen install, the full checks and
 `docs:commands:check`, and release the CLI. The API side,
-GetBrew/brew-v2#2146 (and #2068 for Clerk), must be deployed first:
-re-fetch `https://brew.new/api/openapi.yaml` and compare the two
+GetBrew/brew-v2#2169, must be deployed first: re-fetch
+`https://brew.new/openapi/public-api-v1.yaml` and compare the two
 `/v1/integrations/{provider}/connection` operations with the bundled spec
 before tagging. Generated app code still asks for `^13.2.0`
 (`SDK_RANGE`): only the CLI itself needs 13.3.0.

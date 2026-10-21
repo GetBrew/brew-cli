@@ -604,6 +604,8 @@ describe('init --yes: the full run', () => {
     expectValidReport(result.report)
     const ids = result.report.nextSteps.map((step) => step.id)
     expect(ids).not.toContain('add-dns-records')
+    // Connect automatically would publish the same clashing DKIM record.
+    expect(ids).not.toContain('connect-dns-automatically')
     expect(
       result.report.nextSteps.find((step) => step.id === 'dkim-selector-in-use')
     ).toEqual({

@@ -10,7 +10,7 @@ import type { CliContext } from '../types'
 
 /**
  * The hosted auth email hooks (`GET|PUT /v1/integrations/{provider}/
- * connection`, GetBrew/brew-v2#2146): the providers that hand an app's auth
+ * connection`, GetBrew/brew-v2#2169): the providers that hand an app's auth
  * emails to Brew once connected, through the SDK's `integrations.connect`
  * and `integrations.getConnection` (typescript-sdk 13.3.0).
  *

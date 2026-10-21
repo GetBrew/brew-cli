@@ -128,7 +128,9 @@ brew-cli integrations connection clerk   # pending_verification until the first 
 
 `connect` prints `{ connectionId, webhookUrl, status }` (and each auth
 email it set up): paste `webhookUrl` into Supabase's hook or Clerk's
-endpoint.
+endpoint. Running it again is safe: `connectionId` and `webhookUrl` stay
+the same for the brand and provider, the new secret replaces the old one,
+auth emails already set up are kept, and keys that failed are finished.
 
 ### Check a project: `doctor --project`
 

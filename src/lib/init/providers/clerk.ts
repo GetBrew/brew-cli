@@ -33,7 +33,7 @@ export const CLERK_SECRET_VARIABLE = 'CLERK_SECRET_KEY'
 /**
  * Clerk email template slug → the kit key Brew sends for it: brew-v2
  * `lib/app-emails/auth-routing.ts` `CLERK_EMAIL_SLUG_ROUTES`
- * (GetBrew/brew-v2#2068). Delivery is turned off only for a slug whose key
+ * (GetBrew/brew-v2#2169). Delivery is turned off only for a slug whose key
  * has a published app email in the brand.
  */
 export const CLERK_EMAIL_SLUG_KEYS: Readonly<Record<string, string>> = {
