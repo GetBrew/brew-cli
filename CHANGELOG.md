@@ -24,9 +24,10 @@ in `RELEASING.md` before release.
   a `fileName` in `--input`, else the `--file` name. Both imports return
   `importId`.
 - On a terminal, `contacts import` and `contacts import-csv` print the API's
-  counts, failed addresses, and warnings with their available field details.
-  `--json` still prints the API envelope verbatim. Row indexes and a submitted
-  total are not part of the current API contract.
+  submitted total and outcome counts, plus failed rows and warnings with
+  available row, email and field details. `--json` preserves the API envelope.
+  CSV skip warnings list the first 100 skipped rows and summarize the rest;
+  column-wide and aggregate warnings have no row index.
 - Completed import deliverability checks show valid, risky, invalid and
   unscored counts, plus available persistence counts, in terminal output.
 

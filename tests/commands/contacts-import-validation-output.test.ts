@@ -8,7 +8,7 @@ describe('completed import validation output', () => {
     '%s shows paid check outcomes on a terminal and preserves JSON',
     async (command) => {
       const response = {
-        summary: { inserted: 1, updated: 0, failed: 0, skipped: 0 },
+        summary: { inserted: 1, updated: 0, failed: 0, skipped: 0, total: 1 },
         fieldsCreated: [],
         errors: [],
         warnings: [],

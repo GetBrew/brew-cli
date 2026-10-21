@@ -591,7 +591,7 @@ describe('contacts import', () => {
       http.post(IMPORT_URL, async ({ request }) => {
         body = await request.json()
         return HttpResponse.json({
-          summary: { inserted: 1, updated: 0, failed: 0, skipped: 0 },
+          summary: { inserted: 1, updated: 0, failed: 0, skipped: 0, total: 1 },
           fieldsCreated: [],
           errors: [],
           warnings: [],

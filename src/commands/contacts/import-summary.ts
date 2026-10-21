@@ -21,12 +21,16 @@ export function renderImportResult(
     ...(summary.skipped > 0 ? [`${summary.skipped} skipped`] : []),
   ].join(', ')
   const name = fileName ? `${fileName} ` : ''
-  const lines = [`Imported ${name}as ${result.importId}: ${counts}.`]
+  const rowNoun = summary.total === 1 ? 'row' : 'rows'
+  const lines = [
+    `Imported ${name}as ${result.importId}: ${counts} (${summary.total} ${rowNoun} submitted).`,
+  ]
   if (result.errors.length > 0) {
     lines.push(
       '',
       'FAILED ROWS',
       limitedTable(result.errors, [
+        { key: 'row', header: 'ROW' },
         { key: 'email', header: 'EMAIL' },
         { key: 'code', header: 'CODE' },
         { key: 'field', header: 'FIELD' },
@@ -39,6 +43,7 @@ export function renderImportResult(
       '',
       'WARNINGS',
       limitedTable(result.warnings, [
+        { key: 'row', header: 'ROW' },
         { key: 'email', header: 'EMAIL' },
         { key: 'code', header: 'CODE' },
         { key: 'field', header: 'FIELD' },
@@ -81,6 +86,6 @@ function limitedTable(
   const table = renderTable(shown, columns)
   const hidden = rows.length - shown.length
   return hidden > 0
-    ? `${table}\n… ${hidden} more; --json prints every row.`
+    ? `${table}\n… ${hidden} more; --json prints the full response.`
     : table
 }
