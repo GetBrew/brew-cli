@@ -447,6 +447,77 @@ describe('contacts import-csv', () => {
     })
   })
 
+  it('sends --dry-run and --on-conflict, and renders the dry run as written nowhere', async () => {
+    let body: unknown
+    server.use(
+      http.post(
+        'https://brew.new/api/v1/contacts/import-csv',
+        async ({ request }) => {
+          body = await request.json()
+          return HttpResponse.json({
+            summary: {
+              inserted: 1,
+              updated: 0,
+              failed: 0,
+              skipped: 1,
+              total: 2,
+            },
+            fieldsCreated: [],
+            errors: [],
+            warnings: [
+              {
+                code: 'CONTACT_EXISTS_SKIPPED',
+                email: 'jane@example.com',
+                row: 1,
+                message:
+                  'jane@example.com already exists, so onConflict: "skip" left it unchanged.',
+              },
+            ],
+            dryRun: true,
+          })
+        }
+      )
+    )
+    const dir = mkdtempSync(join(tmpdir(), 'brew-cli-csv-'))
+    const csvPath = join(dir, 'contacts.csv')
+    writeFileSync(csvPath, 'Email\njane@example.com\nnew@example.com\n')
+    const result = await runCli(
+      [
+        'contacts',
+        'import-csv',
+        '--file',
+        csvPath,
+        '--dry-run',
+        '--on-conflict',
+        'skip',
+      ],
+      { env: env(), ttyOut: true }
+    )
+    expect(result.code).toBe(0)
+    expect(body).toEqual({
+      csv: 'Email\njane@example.com\nnew@example.com\n',
+      dryRun: true,
+      onConflict: 'skip',
+      fileName: 'contacts.csv',
+    })
+    expect(result.stdout).toContain(
+      'Dry run of contacts.csv — nothing was written: 1 to add, 0 to update, 0 to fail, 1 to skip (2 rows submitted).'
+    )
+    expect(result.stdout).toContain('CONTACT_EXISTS_SKIPPED')
+  })
+
+  it('refuses an --on-conflict mode the API does not take', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'brew-cli-csv-'))
+    const csvPath = join(dir, 'contacts.csv')
+    writeFileSync(csvPath, 'Email\njane@example.com\n')
+    const result = await runCli(
+      ['contacts', 'import-csv', '--file', csvPath, '--on-conflict', 'merge'],
+      { env: env() }
+    )
+    expect(result.code).toBe(2)
+    expect(result.stderr).toContain('--on-conflict takes upsert or skip')
+  })
+
   it('refuses a call with no CSV at all', async () => {
     const result = await runCli(
       ['contacts', 'import-csv', '--date-order', 'day_first'],
@@ -535,6 +606,34 @@ describe('contacts import-csv', () => {
 
 describe('contacts import', () => {
   const IMPORT_URL = 'https://brew.new/api/v1/contacts/import'
+
+  it('sends --dry-run and --on-conflict over a body that sets neither', async () => {
+    let body: unknown
+    server.use(
+      http.post(IMPORT_URL, async ({ request }) => {
+        body = await request.json()
+        return HttpResponse.json({ dryRun: true })
+      })
+    )
+    const result = await runCli(
+      [
+        'contacts',
+        'import',
+        '--file',
+        '-',
+        '--dry-run',
+        '--on-conflict',
+        'skip',
+      ],
+      { env: env(), stdin: JSON.stringify([{ email: 'a@example.com' }]) }
+    )
+    expect(result.code).toBe(0)
+    expect(body).toEqual({
+      contacts: [{ email: 'a@example.com' }],
+      dryRun: true,
+      onConflict: 'skip',
+    })
+  })
 
   it('keeps validate, consent and fileName a JSON body sets; flags win only when given', async () => {
     const bodies: Array<unknown> = []

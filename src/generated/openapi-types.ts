@@ -1552,6 +1552,8 @@ export interface paths {
          *     A date column is read in ONE day/month order: the order its own dates prove (a day over 12 anywhere in the column, `13/04/2026`), else `dateOrder` (`day_first` reads `03/04/2026` as 3 April, `month_first` as 4 March), else month/day with a `warnings[]` entry (`code: DATE_ORDER_ASSUMED`, `field`). Dotted dates (`03.04.2026`) are day-first. ISO (`2026-04-03`), Unix seconds or milliseconds, month names (`3 Apr 2026`), year-first (`2026/04/03`) and compact (`20260403`) dates need no order. Convert to `YYYY-MM-DD` to be unambiguous.
          *
          *     A `subscribed` column reads true/false and ESP status words (`unsubscribed`, `cleaned`, `blocklisted`, `transactional`, `active`, …). An opt-out unsubscribes the contact, new or existing. A word that is not a subscription status (`maybe`) fails its row (`code: FIELD_TYPE_MISMATCH`, `field: subscribed`) instead of importing the contact subscribed. A subscribed value only applies to new contacts: a row that asks to re-subscribe a contact who opted out keeps its other fields and adds a `warnings[]` entry (`code: RESUBSCRIBE_SKIPPED`, `email`).
+         *
+         *     Two opt-in modes. `dryRun: true` returns the response this import would return (`summary`, `errors`, row `warnings`, `fieldsCreated` as fields it would create) with `dryRun: true` and no `importId`, and writes nothing: no contacts, field definitions or Import History entry; `validate` is not run and nothing is charged. Insert vs update is decided by the same address match the write uses, so a real run right after returns the same counts. `onConflict: "skip"` only creates missing contacts: each existing contact is left unchanged (an opt-out row included), counted in `summary.skipped` with a `CONTACT_EXISTS_SKIPPED` warning naming its `row`. Either way `inserted + updated + failed + skipped = total`.
          */
         post: operations["importContactsCsv"];
         delete?: never;
@@ -1574,6 +1576,8 @@ export interface paths {
          * @description Create or update up to 1000 contacts from JSON rows and record them as one Import History batch: the JSON twin of `POST /v1/contacts/import-csv`. Rows take the batch-create shape (`email`, `firstName`, `lastName`, `subscribed`, `customFields`, `consent`) and follow its rules: a missing or invalid email, or an address repeated in the batch, fails its row (`errors[]`, `207`) while the others land. New contacts are subscribed unless the row says `subscribed: false`; re-subscribing a contact who opted out keeps its other fields and adds a `RESUBSCRIBE_SKIPPED` warning.
          *
          *     The batch is listed in Import History under `fileName` (optional), and each contact it writes carries the returned `importId` until a later import touches it (filter on it to list them; deleting the import in the app removes the contacts it created). `POST /v1/contacts` with `contacts[]` writes the same rows without an Import History entry, for recurring syncs.
+         *
+         *     Two opt-in modes. `dryRun: true` returns the response this import would return (`summary`, `errors`, row `warnings`, `fieldsCreated` as fields it would create) with `dryRun: true` and no `importId`, and writes nothing: no contacts, field definitions or Import History entry; `validate` is not run and nothing is charged. Insert vs update is decided by the same address match the write uses, so a real run right after returns the same counts. `onConflict: "skip"` only creates missing contacts: each existing contact is left unchanged (an opt-out row included), counted in `summary.skipped` with a `CONTACT_EXISTS_SKIPPED` warning naming its `row`. Either way `inserted + updated + failed + skipped = total`.
          */
         post: operations["importContacts"];
         delete?: never;
@@ -3448,7 +3452,7 @@ export interface components {
         };
         ApiWarning: {
             /** @enum {string} */
-            code: "DRAFT_SAVED_NOT_LIVE" | "TRIGGER_EVENT_NOT_RECEIVED" | "ENFORCEMENT_LOOSENED_WHILE_PUBLISHED" | "REQUIRED_FIELD_SATISFIED_BY_FALLBACK" | "RESUBSCRIBE_SKIPPED" | "CORE_FIELD_IGNORED" | "DATE_ORDER_ASSUMED" | "CSV_ROW_SKIPPED" | "CSV_COLUMN_IGNORED" | "RECIPIENTS_EXCLUDED" | "CONSENT_RECORD_MISSING";
+            code: "DRAFT_SAVED_NOT_LIVE" | "TRIGGER_EVENT_NOT_RECEIVED" | "ENFORCEMENT_LOOSENED_WHILE_PUBLISHED" | "REQUIRED_FIELD_SATISFIED_BY_FALLBACK" | "RESUBSCRIBE_SKIPPED" | "CORE_FIELD_IGNORED" | "DATE_ORDER_ASSUMED" | "CSV_ROW_SKIPPED" | "CONTACT_EXISTS_SKIPPED" | "CSV_COLUMN_IGNORED" | "RECIPIENTS_EXCLUDED" | "CONSENT_RECORD_MISSING";
             message: string;
             field?: string;
         };
@@ -7673,7 +7677,7 @@ export interface components {
                 inserted: number;
                 updated: number;
                 failed: number;
-                /** @description CSV rows omitted for a missing/invalid email or merged into a later duplicate. Up to 100 `CSV_ROW_SKIPPED` warnings name each `row`; a final warning counts further skipped rows. Always 0 for JSON. */
+                /** @description Rows not written and not failed: existing contacts left alone by `onConflict: "skip"` (one `CONTACT_EXISTS_SKIPPED` warning each), and CSV rows omitted for a missing/invalid email or merged into a later duplicate (up to 100 `CSV_ROW_SKIPPED` warnings name each `row`; a final warning counts further skipped rows). */
                 skipped: number;
                 /** @description Rows submitted (JSON contacts, or CSV data rows). Always `inserted + updated + failed + skipped`. */
                 total: number;
@@ -7711,8 +7715,13 @@ export interface components {
                 };
             };
             validationJobId?: string;
-            /** @description This batch's Import History id. Each contact it wrote carries it as `importId` until a later import touches that contact, so a contact filter on `importId` lists them. */
-            importId: string;
+            /** @description This batch's Import History id. Each contact it wrote carries it as `importId` until a later import touches that contact, so a contact filter on `importId` lists them. Absent on a dry run. */
+            importId?: string;
+            /**
+             * @description Present on a dry run: the counts say what the import would do, and nothing was written.
+             * @enum {boolean}
+             */
+            dryRun?: true;
         };
         ContactsImportCsvRequest: {
             csv: string;
@@ -7743,6 +7752,13 @@ export interface components {
             dateOrder?: "month_first" | "day_first";
             /** @description Name this batch is listed under in Import History (usually the source file name, e.g. `customers.csv`), also stamped on every contact it writes as `csvFileName`. A path keeps only its last segment. */
             fileName?: string;
+            /** @description When true, returns what this import would return and writes nothing: no contacts, fields, Import History entry or `importId`; `validate` is skipped and nothing is charged. */
+            dryRun?: boolean;
+            /**
+             * @description `upsert` (default) updates existing contacts; `skip` only creates missing ones, leaving each existing contact unchanged (counted in `summary.skipped`, with a `CONTACT_EXISTS_SKIPPED` warning).
+             * @enum {string}
+             */
+            onConflict?: "upsert" | "skip";
         };
         ContactsImportRequest: {
             contacts: {
@@ -7788,6 +7804,13 @@ export interface components {
             };
             /** @description Name this batch is listed under in Import History (usually the source file name, e.g. `customers.csv`), also stamped on every contact it writes as `csvFileName`. A path keeps only its last segment. */
             fileName?: string;
+            /** @description When true, returns what this import would return and writes nothing: no contacts, fields, Import History entry or `importId`; `validate` is skipped and nothing is charged. */
+            dryRun?: boolean;
+            /**
+             * @description `upsert` (default) updates existing contacts; `skip` only creates missing ones, leaving each existing contact unchanged (counted in `summary.skipped`, with a `CONTACT_EXISTS_SKIPPED` warning).
+             * @enum {string}
+             */
+            onConflict?: "upsert" | "skip";
         };
         ContactsBatchDeleteResponse: {
             deletedCount: number;

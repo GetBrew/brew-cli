@@ -23,6 +23,13 @@ in `RELEASING.md` before release.
 - `contacts import-csv` names its batch in Import History: `--file-name`, else
   a `fileName` in `--input`, else the `--file` name. Both imports return
   `importId`.
+- `contacts import` and `contacts import-csv` take `--dry-run` (print what
+  the import would do and write nothing: no contacts, fields or Import History
+  batch, no `importId`) and `--on-conflict upsert|skip` (`skip` creates
+  missing contacts and leaves existing ones unchanged, counted as skipped
+  with a `CONTACT_EXISTS_SKIPPED` warning). The terminal summary of a dry run
+  starts "Dry run — nothing was written". These flags require the matching
+  API deployment.
 - On a terminal, `contacts import` and `contacts import-csv` print the API's
   submitted total and outcome counts, plus failed rows and warnings with
   available row, email and field details. `--json` preserves the API envelope.

@@ -7,23 +7,29 @@ export const MAX_TERMINAL_ROWS = 20
 /**
  * The terminal rendering of `contacts import` and `contacts import-csv`: one
  * line of counts, then the failures and warnings returned by the API.
- * `--json` prints the full envelope.
+ * `--json` prints the full envelope. A dry run (`--dry-run`) says so first
+ * and counts what the import would do.
  */
 export function renderImportResult(
   result: ImportContactsResponse,
   fileName: string | undefined
 ): string {
   const { summary } = result
+  const isDryRun = result.dryRun === true
   const counts = [
-    `${summary.inserted} added`,
-    `${summary.updated} updated`,
-    `${summary.failed} failed`,
-    ...(summary.skipped > 0 ? [`${summary.skipped} skipped`] : []),
+    `${summary.inserted} ${isDryRun ? 'to add' : 'added'}`,
+    `${summary.updated} ${isDryRun ? 'to update' : 'updated'}`,
+    `${summary.failed} ${isDryRun ? 'to fail' : 'failed'}`,
+    ...(summary.skipped > 0
+      ? [`${summary.skipped} ${isDryRun ? 'to skip' : 'skipped'}`]
+      : []),
   ].join(', ')
   const name = fileName ? `${fileName} ` : ''
   const rowNoun = summary.total === 1 ? 'row' : 'rows'
   const lines = [
-    `Imported ${name}as ${result.importId}: ${counts} (${summary.total} ${rowNoun} submitted).`,
+    isDryRun
+      ? `Dry run${fileName ? ` of ${fileName}` : ''} — nothing was written: ${counts} (${summary.total} ${rowNoun} submitted).`
+      : `Imported ${name}as ${result.importId}: ${counts} (${summary.total} ${rowNoun} submitted).`,
   ]
   if (result.errors.length > 0) {
     lines.push(
@@ -52,7 +58,10 @@ export function renderImportResult(
     )
   }
   if (result.fieldsCreated.length > 0) {
-    lines.push('', `New custom fields: ${result.fieldsCreated.join(', ')}.`)
+    lines.push(
+      '',
+      `${isDryRun ? 'Custom fields it would create' : 'New custom fields'}: ${result.fieldsCreated.join(', ')}.`
+    )
   }
   if (result.validation) {
     const { valid, risky, invalid, unscored, persistence } = result.validation

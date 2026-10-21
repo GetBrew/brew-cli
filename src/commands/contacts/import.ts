@@ -12,6 +12,7 @@ import {
   requestOptions,
 } from '../../lib/input'
 import { importFileName } from './import-csv'
+import { DRY_RUN_FLAG, importModeFlags, ON_CONFLICT_FLAG } from './import-modes'
 import { renderImportResult } from './import-summary'
 
 type ImportContactsInput = Parameters<ContactsResource['import']>[0]
@@ -44,12 +45,15 @@ export const contactsImportCommand = defineCommand({
       summary:
         'Default marketing consent record for rows without their own: api, form or import',
     },
+    DRY_RUN_FLAG,
+    ON_CONFLICT_FLAG,
     INPUT_FLAG,
     IDEMPOTENCY_FLAG,
   ],
   examples: [
     'brew-cli contacts import --file contacts.json --consent-source import',
     'cat contacts.json | brew-cli contacts import --file - --file-name crm-export.json',
+    'brew-cli contacts import --file contacts.json --dry-run --on-conflict skip',
   ],
   run: async ({ ctx, flags }) => {
     if (flags.input === '-' && flags.file === '-') {
@@ -69,6 +73,7 @@ export const contactsImportCommand = defineCommand({
     const input = mergeInput(body, {
       fileName: importFileName(flags, body),
       validate: flags.validate === true ? true : undefined,
+      ...importModeFlags(flags),
     })
     if (!Array.isArray(input.contacts) || input.contacts.length === 0) {
       throw new CliUsageError(
