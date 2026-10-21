@@ -4,7 +4,7 @@
 
 Needs the same SDK release as 0.18.0 (`appEmails.setUpKit` and the auth
 adapter subpaths from GetBrew/typescript-sdk#64), and the API from
-GetBrew/brew-v2#2066 and #2060.
+GetBrew/brew-v2#2169 (spec @ `6f8ef50544`).
 
 ### Added
 
@@ -36,13 +36,18 @@ GetBrew/brew-v2#2066 and #2060.
   `$env/dynamic/private` in SvelteKit and `import.meta.env` in Astro;
   Express, Hono and plain Node get a blocking step to load `.env.local`.
   A test email that does not go out (say `SANDBOX_DAILY_LIMIT`) is a
-  non-blocking retry step, not a failed run. The generated code and the
+  non-blocking retry step, not a failed run. A domain `--domain` adds that
+  already publishes another DKIM key (`DKIM_SELECTOR_IN_USE`) gets a
+  `dkim-selector-in-use` step naming the suggested subdomain instead of
+  the DNS records step, and a kit key refused with
+  `APP_EMAIL_TRIGGER_IN_USE` gets a human `trigger-in-use:<key>` review
+  step ahead of the re-run. The generated code and the
   install command use `@brew.new/sdk@^13.2.0`, the planned release with
   `appEmails` and the auth adapters (on top of 13.1.0's `send`).
 - Not in this release (they need platform work first): the Supabase and
   Clerk provider switch-over (Supabase Management API hook, Clerk
   `toggle_delivery`; init prints them as human steps), `integrations
-  connect` (brew-v2 PR-L and SDK `integrations.connect`), and brand
+  connect` (GetBrew/brew-v2#2169 and SDK `integrations.connect`), and brand
   creation from `--app-url` (sign-in keys are bound to a brand picked on
   the approval page).
 - **Launchers** `brew.new` and `create-brew` (`packages/launchers/`):
