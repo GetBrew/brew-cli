@@ -44,6 +44,10 @@ function useBrewApi(
     readonly domains?: ReadonlyArray<Record<string, unknown>>
     /** Refuse the contacts upserts holding this address until healed. */
     readonly failContact?: string
+    /** Refuse the app email setup of these keys with this API error. */
+    readonly refuseKeys?: Readonly<
+      Record<string, { readonly status: number; readonly error: object }>
+    >
   } = {}
 ) {
   const calls: BrewCall[] = []
@@ -112,6 +116,13 @@ function useBrewApi(
     http.put(`${API}/v1/app-emails/:key`, async ({ request, params }) => {
       const body = (await record(request)) as { publish?: boolean }
       const key = String(params.key)
+      const refusal = options.refuseKeys?.[key]
+      if (refusal !== undefined) {
+        return HttpResponse.json(
+          { error: refusal.error },
+          { status: refusal.status }
+        )
+      }
       return HttpResponse.json({
         triggerKey: key,
         triggerEventId: `tri_${key}`,
@@ -636,6 +647,44 @@ describe('migrate resend --apply', () => {
     expect(
       report.nextSteps.filter((step) => step.kind === 'edit-file').length
     ).toBeGreaterThan(0)
+  })
+
+  it('leaves a key whose trigger another published automation sends from to a person', async () => {
+    const root = copyFixture('migrate-resend')
+    const clock = fakeClock()
+    server.use(useResendApi({ key: RESEND_KEY, clock }).handler)
+    const message =
+      '"reset-password" already starts the published automation "Reset" (aut_9), which no app-email setup made, so setting it up would send a second email on every fire. Unpublish or delete it, then run the setup again.'
+    useBrewApi({
+      refuseKeys: {
+        'reset-password': {
+          status: 409,
+          error: {
+            code: 'APP_EMAIL_TRIGGER_IN_USE',
+            type: 'conflict',
+            message,
+            details: {
+              triggerKey: 'reset-password',
+              triggerEventId: 'tri_9',
+              automationIds: ['aut_9'],
+            },
+          },
+        },
+      },
+    })
+    const result = await migrate(
+      ['--apply', '--yes', '--json', '--only', 'templates'],
+      { cwd: root, env: env(), clock }
+    )
+    expect(result.code).toBe(0)
+    const item = readManifest(root).phases.templates?.items.find(
+      (entry) => entry.key === 'reset-password'
+    )
+    expect(item).toMatchObject({
+      status: 'manual',
+      detail: message,
+      error: { code: 'APP_EMAIL_TRIGGER_IN_USE' },
+    })
   })
 
   it('resumes an interrupted apply from the saved cursor', async () => {

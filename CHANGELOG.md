@@ -2,10 +2,11 @@
 
 ## 0.21.0
 
-Needs the same SDK release as 0.19.0, and the API from GetBrew/brew-v2#2064
+Needs the same SDK release as 0.19.0, and the API from GetBrew/brew-v2#2169
 (the import modes `props: "merge_tags"`, `placeholders: "resend"` and
-`variables`) and #2145 (the same modes on an app email's `source`); the
-bundled spec carries both deltas.
+`variables`, and the same modes on an app email's `source`); the bundled
+spec is the #2169 @ `6f8ef50544` DX delta on main's spec (brew-v2
+`87ac2c6242`).
 
 ### Added
 
@@ -26,7 +27,11 @@ bundled spec carries both deltas.
   broadcasts as Brew draft emails (nothing is sent). Domains, webhooks
   and automations are reported. Every write carries an idempotency key,
   and `brew.migration.json` keeps cursors, so a re-run resumes; it never
-  holds an address, a name or a key. A Resend domain that is also in
+  holds an address, a name or a key. A template whose key's trigger
+  already starts a published automation no setup made
+  (`APP_EMAIL_TRIGGER_IN_USE`) is left `manual` with the API's message;
+  the next run sets it up once that automation is unpublished. A Resend
+  domain that is also in
   Brew gets the `DKIM_SELECTOR_IN_USE` advice and a subdomain to verify
   instead. Each `resend.emails.send` / `resend.batch.send` call site is
   reported with what carries over and a suggested
@@ -38,15 +43,13 @@ bundled spec carries both deltas.
   Sources sit behind a `MigrationSource` interface; Resend is the only one.
 - The `brew-migrate-from-resend` agent skill (embedded; `init` installs it
   in Claude Code projects that use Resend).
-- `app-emails upsert` takes the import modes on `source`
-  (GetBrew/brew-v2#2145) through `--input`, e.g.
+- `app-emails upsert` takes the import modes on `source` through
+  `--input`, e.g.
   `--source-file emails/order-shipped.tsx --input '{"source":{"props":"merge_tags"}}'`:
   `--source-file` fills `format` and `content` and keeps the rest of
   `--input`'s `source` (before, it replaced it), and takes the format from
   `--input`'s `source` when it cannot infer one. `migrate resend` names
   that command for a React Email file it leaves to move by hand.
-- The bundled spec carries GetBrew/brew-v2#2064's import modes and
-  #2145's import modes on an app email's `source`.
 
 ## 0.20.0
 
