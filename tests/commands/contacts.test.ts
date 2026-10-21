@@ -644,7 +644,13 @@ describe('contacts import', () => {
   })
 
   it('renders a dry run that --input asked for, with no flag', async () => {
-    server.use(http.post(IMPORT_URL, () => HttpResponse.json(DRY_RUN_ENVELOPE)))
+    let body: unknown
+    server.use(
+      http.post(IMPORT_URL, async ({ request }) => {
+        body = await request.json()
+        return HttpResponse.json(DRY_RUN_ENVELOPE)
+      })
+    )
     const result = await runCli(
       [
         'contacts',
@@ -658,10 +664,53 @@ describe('contacts import', () => {
       { env: env(), ttyOut: true }
     )
     expect(result.code).toBe(0)
+    // The preview the body asked for is still a preview on the wire.
+    expect(body).toEqual({
+      contacts: [{ email: 'a@example.com' }],
+      dryRun: true,
+    })
     expect(result.stdout).toContain(
       'Dry run — nothing was written: 1 to add, 0 to update, 0 to fail (1 row submitted).'
     )
   })
+
+  it.each([
+    ['import', IMPORT_URL, { contacts: [{ email: 'a@example.com' }] }],
+    [
+      'import-csv',
+      'https://brew.new/api/v1/contacts/import-csv',
+      { csv: 'Email\na@example.com\n' },
+    ],
+  ] as const)(
+    'contacts %s keeps dryRun and onConflict from the body, and a flag wins over it',
+    async (command, url, rows) => {
+      const bodies: Array<unknown> = []
+      server.use(
+        http.post(url, async ({ request }) => {
+          bodies.push(await request.json())
+          return HttpResponse.json(DRY_RUN_ENVELOPE)
+        })
+      )
+      const input = JSON.stringify({
+        ...rows,
+        dryRun: true,
+        onConflict: 'upsert',
+      })
+      const kept = await runCli(['contacts', command, '--input', input], {
+        env: env(),
+      })
+      const overridden = await runCli(
+        ['contacts', command, '--input', input, '--on-conflict', 'skip'],
+        { env: env() }
+      )
+      expect(kept.code).toBe(0)
+      expect(overridden.code).toBe(0)
+      expect(bodies).toEqual([
+        { ...rows, dryRun: true, onConflict: 'upsert' },
+        { ...rows, dryRun: true, onConflict: 'skip' },
+      ])
+    }
+  )
 
   it('refuses an --on-conflict mode the API does not take', async () => {
     const result = await runCli(
