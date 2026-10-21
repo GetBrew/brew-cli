@@ -27,6 +27,8 @@ in `RELEASING.md` before release.
   counts, failed addresses, and warnings with their available field details.
   `--json` still prints the API envelope verbatim. Row indexes and a submitted
   total are not part of the current API contract.
+- Completed import deliverability checks show valid, risky, invalid and
+  unscored counts, plus available persistence counts, in terminal output.
 
 ### Changed
 

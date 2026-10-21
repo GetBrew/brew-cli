@@ -49,6 +49,19 @@ export function renderImportResult(
   if (result.fieldsCreated.length > 0) {
     lines.push('', `New custom fields: ${result.fieldsCreated.join(', ')}.`)
   }
+  if (result.validation) {
+    const { valid, risky, invalid, unscored, persistence } = result.validation
+    lines.push(
+      '',
+      'DELIVERABILITY CHECK',
+      `${valid} valid, ${risky} risky, ${invalid} invalid, ${unscored} unscored.`
+    )
+    if (persistence) {
+      lines.push(
+        `Saved results: ${persistence.matched} matched, ${persistence.modified} updated, ${persistence.failed} failed to save.`
+      )
+    }
+  }
   if (result.validationJobId) {
     lines.push(
       '',

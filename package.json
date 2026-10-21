@@ -53,7 +53,7 @@
     "smoke:signals": "bun run scripts/signal-smoke.ts"
   },
   "dependencies": {
-    "@brew.new/sdk": "git+https://github.com/GetBrew/typescript-sdk.git#9bedcdc8810314ee8de62273e510b8da6131574c",
+    "@brew.new/sdk": "git+https://github.com/GetBrew/typescript-sdk.git#1f9f0af51c81b23541c9cee303e027ad5a263bc3",
     "commander": "^14.0.0"
   },
   "devDependencies": {

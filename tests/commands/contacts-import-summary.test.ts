@@ -78,4 +78,33 @@ describe('renderImportResult (contacts import / import-csv on a terminal)', () =
     expect(text).toContain('… 5 more; --json prints every row.')
     expect(text).not.toContain(`x${MAX_TERMINAL_ROWS}@brewmail.dev`)
   })
+
+  it('shows completed deliverability outcomes and failed saves on a terminal', () => {
+    const text = renderImportResult(
+      result({
+        validation: {
+          valid: 2,
+          risky: 1,
+          invalid: 3,
+          unscored: 4,
+          persistence: { matched: 6, modified: 5, failed: 1 },
+        },
+      }),
+      undefined
+    )
+    expect(text).toContain('DELIVERABILITY CHECK')
+    expect(text).toContain('2 valid, 1 risky, 3 invalid, 4 unscored.')
+    expect(text).toContain(
+      'Saved results: 6 matched, 5 updated, 1 failed to save.'
+    )
+  })
+
+  it('shows completed outcomes when persistence details are absent', () => {
+    const text = renderImportResult(
+      result({ validation: { valid: 1, risky: 0, invalid: 0, unscored: 0 } }),
+      undefined
+    )
+    expect(text).toContain('1 valid, 0 risky, 0 invalid, 0 unscored.')
+    expect(text).not.toContain('Saved results:')
+  })
 })
