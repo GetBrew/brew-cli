@@ -21,7 +21,7 @@ import {
  * import so the brand keeps one design per key.
  *
  * The import modes (`props`, `placeholders`, `variables`) and the response's
- * `variables` come from brew-v2#2064 (in the vendored spec, not yet in the
+ * `variables` come from brew-v2#2169 (in the vendored spec, not yet in the
  * SDK's types), so the body and the response are typed here and passed
  * through the SDK, which sends a body verbatim.
  */
@@ -165,6 +165,12 @@ export async function importAndSetUp(
     if (failure.code === 'APP_EMAIL_EDITED_IN_BREW') {
       item.status = 'skipped'
       item.detail = `${key} was edited in Brew since it was set up; the Brew version is kept`
+    } else if (failure.code === 'APP_EMAIL_TRIGGER_IN_USE') {
+      // Another published automation already sends on this key's trigger:
+      // a person picks which one stays, then a re-run sets it up.
+      item.status = 'manual'
+      item.error = failure
+      item.detail = failure.message
     } else {
       item.status = 'failed'
       item.error = failure
