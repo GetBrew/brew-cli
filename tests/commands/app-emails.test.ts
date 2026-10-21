@@ -532,6 +532,127 @@ describe('app-emails upsert', () => {
     expect(result.code).toBe(1)
     expect(result.stdout + result.stderr).toContain('APP_EMAIL_EDITED_IN_BREW')
   })
+
+  it('surfaces APP_EMAIL_TRIGGER_IN_USE with the automations it names (exit 1)', async () => {
+    server.use(
+      http.put(`${API}/v1/app-emails/order.shipped`, () =>
+        HttpResponse.json(
+          {
+            error: {
+              code: 'APP_EMAIL_TRIGGER_IN_USE',
+              message:
+                'The trigger with this key already starts a published automation that no app-email setup made, so setting the key up would send a second email on every fire.',
+              type: 'conflict',
+              suggestion:
+                'Unpublish or delete the automations in `details.automationIds`, then run the setup again, or keep sending from them.',
+              docs: 'https://docs.brew.new/api-reference/api/errors',
+              details: {
+                triggerKey: 'order.shipped',
+                triggerEventId: 'tri_1',
+                automationIds: ['aut_9'],
+              },
+            },
+          },
+          { status: 409 }
+        )
+      )
+    )
+    const result = await cli(
+      [
+        'app-emails',
+        'upsert',
+        'order.shipped',
+        '--source-file',
+        '-',
+        '--format',
+        'html',
+        '--yes',
+      ],
+      { stdin: '<p>Shipped</p>' }
+    )
+    expect(result.code).toBe(1)
+    const envelope = JSON.parse(result.stderr) as {
+      error: { code: string; details?: { automationIds?: string[] } }
+    }
+    expect(envelope.error.code).toBe('APP_EMAIL_TRIGGER_IN_USE')
+    expect(envelope.error.details?.automationIds).toEqual(['aut_9'])
+  })
+
+  it('surfaces APP_EMAIL_DOMAIN_PURPOSE_MISMATCH for a marketing --domain (exit 1)', async () => {
+    let body: unknown
+    server.use(
+      http.put(
+        `${API}/v1/app-emails/auth.password-reset`,
+        async ({ request }) => {
+          body = await request.json()
+          return HttpResponse.json(
+            {
+              error: {
+                code: 'APP_EMAIL_DOMAIN_PURPOSE_MISMATCH',
+                message:
+                  'The `domainId` names a marketing domain for a transactional app email (auth, trial ending, payment failed), which would send it with an unsubscribe link and never to anyone who unsubscribed.',
+                type: 'invalid_request',
+                docs: 'https://docs.brew.new/api-reference/api/errors',
+                details: {
+                  triggerKey: 'auth.password-reset',
+                  domainId: 'dom_mkt',
+                  messageClass: 'transactional',
+                  sendingPurpose: 'marketing',
+                },
+              },
+            },
+            { status: 422 }
+          )
+        }
+      )
+    )
+    const result = await cli([
+      'app-emails',
+      'upsert',
+      'auth.password-reset',
+      '--domain',
+      'dom_mkt',
+      '--yes',
+    ])
+    expect(result.code).toBe(1)
+    expect(body).toEqual({ domainId: 'dom_mkt' })
+    expect(result.stderr).toContain('APP_EMAIL_DOMAIN_PURPOSE_MISMATCH')
+  })
+
+  it('renders a draft over a live version as still sending (DRAFT_SAVED_NOT_LIVE)', async () => {
+    server.use(
+      http.put(`${API}/v1/app-emails/lifecycle.welcome`, () =>
+        HttpResponse.json({
+          ...SETUP,
+          triggerKey: 'lifecycle.welcome',
+          published: false,
+          created: { trigger: false, email: false, automation: false },
+          warnings: [
+            {
+              code: 'DRAFT_SAVED_NOT_LIVE',
+              message:
+                'The automation for "lifecycle.welcome" has a newer draft saved in Brew since setup, so the setup left it unpublished: live sends still use the published version. Publish the draft in Brew when it is ready.',
+            },
+          ],
+        })
+      )
+    )
+    const result = await cli(
+      ['app-emails', 'upsert', 'lifecycle.welcome', '--yes'],
+      { ttyOut: true }
+    )
+    expect(result.code).toBe(0)
+    const lines = result.stdout.trimEnd().split('\n')
+    expect(lines[0]).toBe(
+      'lifecycle.welcome: draft saved, the published version keeps sending; sender sandbox hello@email.brew.new (team only until a domain verifies).'
+    )
+    expect(lines).toContain(
+      'warning: The automation for "lifecycle.welcome" has a newer draft saved in Brew since setup, so the setup left it unpublished: live sends still use the published version. Publish the draft in Brew when it is ready.'
+    )
+    expect(lines.at(-1)).toBe(
+      'Send it: brew-cli send lifecycle.welcome --to <email>'
+    )
+  })
 })
 
 describe('app-emails kit', () => {
@@ -614,6 +735,40 @@ describe('app-emails kit', () => {
     expect(result.code).toBe(1)
     const data = result.json as { results: Array<{ ok: boolean }> }
     expect(data.results.map((entry) => entry.ok)).toEqual([true, false])
+  })
+
+  it('names the change a refused key needs instead of a plain re-run', async () => {
+    const failure = (triggerKey: string, code: string) => ({
+      triggerKey,
+      ok: false,
+      error: { code, message: `${code} for ${triggerKey}.` },
+    })
+    server.use(
+      http.post(`${API}/v1/app-emails/kit`, () =>
+        HttpResponse.json({
+          results: [
+            { ...SETUP, triggerKey: 'lifecycle.welcome', ok: true },
+            failure('auth.password-reset', 'APP_EMAIL_DOMAIN_PURPOSE_MISMATCH'),
+            failure('auth.verify-email', 'APP_EMAIL_DOMAIN_PURPOSE_MISMATCH'),
+            failure('lifecycle.win-back', 'APP_EMAIL_TRIGGER_IN_USE'),
+            failure('lifecycle.trial-ending', 'APP_EMAIL_SETUP_IN_PROGRESS'),
+          ],
+          stack: STACK,
+        })
+      )
+    )
+    const result = await cli(
+      ['app-emails', 'kit', '--domain', 'dom_mkt', '--yes'],
+      { ttyOut: true }
+    )
+    expect(result.code).toBe(1)
+    expect(result.stdout).toContain('failed: APP_EMAIL_DOMAIN_PURPOSE_MISMATCH')
+    const lines = result.stdout.trimEnd().split('\n')
+    expect(lines.slice(-3)).toEqual([
+      'auth.password-reset, auth.verify-email: transactional, so they never send from a marketing domain. Run `brew-cli app-emails kit` again with a transactional --domain, or without --domain.',
+      'lifecycle.win-back: the trigger already starts a published automation no setup made, so every send would go out twice. Unpublish or delete the automations in error.details.automationIds, then run the kit again.',
+      '1 key failed. Run `brew-cli app-emails kit` again with the same flags to finish them.',
+    ])
   })
 })
 

@@ -6,9 +6,9 @@ Needs `@brew.new/sdk` 13.2.0: `brew.send` and
 `automations.triggers.fireByKey` (GetBrew/typescript-sdk#55, planned
 13.1.0) and `appEmails` (GetBrew/typescript-sdk#64, planned 13.2.0), both
 after the published 13.0.0. Neither PR is published yet; see the app email
-SDK gate in `RELEASING.md`. The API side is GetBrew/brew-v2#2013 (trigger keys),
-#2017 (fire by key), #2059 (team sandbox), #2066 (app emails) and #2060
-(browser sign-in).
+SDK gate in `RELEASING.md`. The API side is GetBrew/brew-v2#2169, one PR
+for trigger keys, fire by key, the team sandbox, app emails and browser
+sign-in.
 
 ### Added
 
@@ -33,7 +33,16 @@ SDK gate in `RELEASING.md`. The API side is GetBrew/brew-v2#2013 (trigger keys),
   `--no-publish` saves without the gate. `kit` sets up
   the auth and lifecycle starter kit (`--sets`, `--stack`, `--keys`,
   `--domain`, `--overwrite`, `--idempotency-key`), confirms, prints
-  per-key results and exits 1 when a key failed (run it again to finish).
+  per-key results and exits 1 when a key failed. Its human output says
+  what each failed key needs: run it again to finish a key that failed
+  part way, a transactional `--domain` (or none) for
+  `APP_EMAIL_DOMAIN_PURPOSE_MISMATCH`, unpublishing the automations in
+  `error.details.automationIds` for `APP_EMAIL_TRIGGER_IN_USE`, and
+  `--overwrite` for `APP_EMAIL_EDITED_IN_BREW`. `upsert` exits 1 on the
+  same refusals, `APP_EMAIL_SETUP_IN_PROGRESS` and
+  `CONTRACT_LOCKED_BY_PUBLISHED_AUTOMATIONS`; when the published version
+  keeps sending under a newer draft (`DRAFT_SAVED_NOT_LIVE`), it says so
+  and still prints the `send` line.
   Both use the SDK's 5-minute defaults as their whole-command deadline
   and need a key with the `automations` and `emails` scopes. A key that
   breaks the trigger key grammar, an unknown `--format`, `--sets`,
@@ -48,11 +57,16 @@ SDK gate in `RELEASING.md`. The API side is GetBrew/brew-v2#2013 (trigger keys),
   the payload at compile time. A workspace with no keyed triggers gets
   the same bytes as before (no `--check` drift); `--no-registry` leaves
   the block out.
-- The vendored spec is brew-v2 main plus the spec delta of
-  GetBrew/brew-v2#2066 and the PRs it stacks on (#2013, #2017, #2059): the
-  by-key fire and the app-emails routes, `key` / `appEmail` on trigger
-  rows, and the sandbox error codes (`DOMAIN_REQUIRED`,
-  `SANDBOX_DAILY_LIMIT`). Re-vendor from brew-v2 main once they merge.
+- The vendored spec is GetBrew/brew-v2#2169 @ `6f8ef50544` whole (brew-v2
+  main `2db5428b09` plus every DX route): the by-key fire and the
+  app-emails routes, `key` / `appEmail` on trigger rows, the sandbox error
+  codes (`DOMAIN_REQUIRED`, `SANDBOX_DAILY_LIMIT`), the app email refusals
+  above, `DKIM_SELECTOR_IN_USE` warnings with `suggestedNames` on
+  `domains add` (printed verbatim), and the hosted auth hook connection
+  routes, pending in the spec parity test until `integrations connect`
+  lands. It also carries brew-v2 main's email category relabel and the
+  template `group` filter, which GetBrew/brew-cli#68 binds. Re-vendor from
+  brew-v2 main once #2169 merges.
 
 - **`brew-cli login` signs in through the browser.** On an interactive
   terminal it starts a sign-in on brew.new, prints the link and a code

@@ -84,8 +84,19 @@ they reach members of the Brew organization only, under a daily cap
 without `--yes`. `upsert` and `kit` publish, so they confirm too;
 `upsert --no-publish` saves without the gate. `upsert` and `kit` need a key
 with the `automations` and `emails` scopes (403 otherwise).
+Refusals worth knowing (exit 1, the envelope on stderr):
 `409 APP_EMAIL_EDITED_IN_BREW` means a teammate edited the design in Brew:
-keep it, or pass `--overwrite`.
+keep it, or pass `--overwrite`. `409 APP_EMAIL_TRIGGER_IN_USE`: the key's
+trigger already starts a published automation no setup made, so every send
+would go out twice; unpublish or delete `details.automationIds` first.
+`422 APP_EMAIL_DOMAIN_PURPOSE_MISMATCH`: a transactional key (auth, trial
+ending, payment failed) never sends from a marketing `--domain`; pass a
+transactional one or leave `--domain` out. `409 APP_EMAIL_SETUP_IN_PROGRESS`:
+another setup of the key was writing; run it again later.
+`409 CONTRACT_LOCKED_BY_PUBLISHED_AUTOMATIONS`: a `payloadSchema` that drops
+or retypes a field the live automation reads. A `DRAFT_SAVED_NOT_LIVE`
+warning means the published version keeps sending until the draft is
+published.
 `automations triggers create --key <key>` gives any trigger a key.
 
 ## The contract you can rely on
