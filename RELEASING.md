@@ -13,8 +13,8 @@ JSON response. Do not release these commands with an SDK version that discards
 that response.
 
 SDK 13.0.0 preserves the revocation JSON response and is the minimum supported
-SDK release for these commands. The dependency and Bun lockfile consume the
-published registry artifact; the temporary Git source pin has been removed.
+SDK release for these commands. CLI 0.17.0 consumes that published registry
+artifact. Contact-import coordination uses the separate gate below.
 
 For future upgrades, release the SDK first, then update the dependency and
 regenerate `bun.lock` from its actual published artifact. Run frozen
@@ -26,15 +26,15 @@ lockfile checksums must never be invented. The canvas tests must preserve
 ### Contact Import SDK Gate
 
 The new `contacts import` command requires `contacts.import`, which the
-published SDK 13.0.0 does not expose. Keeping its registry dependency while
-integrating the branch does not validate or enable that command.
+published SDK 13.0.0 does not expose. This branch pins reviewed SDK source
+commit `9bedcdc8810314ee8de62273e510b8da6131574c` for coordinated PR validation.
+It preserves SDK 13.0.0's features and version while adding the import method.
 
-After the app contract is finalized, coordinated PR validation may use an
-immutable reviewed SDK source commit containing the import method and the
-current published SDK features. A fresh frozen install must build that source
-dependency without relying on a locally packed SDK. Release the API and SDK
-first, then replace any temporary source pin with the actual published SDK
-version and regenerate `bun.lock` before releasing the CLI.
+A fresh frozen install must build that source dependency without relying on
+a locally packed SDK. Do not release the CLI with this temporary source pin.
+Deploy the API contract and release the SDK first, then replace the pin with
+the actual published SDK version and regenerate `bun.lock` before releasing
+the CLI.
 
 ```bash
 # on a clean main with CI green

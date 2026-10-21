@@ -4,8 +4,9 @@
 
 These import changes require an SDK release exposing `contacts.import`.
 The published SDK 13.0.0 baseline supports the existing released commands,
-but does not provide that method. Follow the contact import SDK gate in
-`RELEASING.md` before dependency validation and release.
+but does not provide that method. This branch uses a reviewed immutable SDK
+source commit for coordinated validation. Follow the contact import SDK gate
+in `RELEASING.md` before release.
 
 ### Added
 

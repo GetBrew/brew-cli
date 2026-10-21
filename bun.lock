@@ -5,7 +5,7 @@
     "": {
       "name": "@brew.new/cli",
       "dependencies": {
-        "@brew.new/sdk": "^13.0.0",
+        "@brew.new/sdk": "git+https://github.com/GetBrew/typescript-sdk.git#9bedcdc8810314ee8de62273e510b8da6131574c",
         "commander": "^14.0.0",
       },
       "devDependencies": {
@@ -20,6 +20,9 @@
       },
     },
   },
+  "trustedDependencies": [
+    "@brew.new/sdk",
+  ],
   "packages": {
     "@babel/code-frame": ["@babel/code-frame@7.29.7", "", { "dependencies": { "@babel/helper-validator-identifier": "^7.29.7", "js-tokens": "^4.0.0", "picocolors": "^1.1.1" } }, "sha512-Aup7aUOfpbAUg2ROOJN6Iw5f9DMBlzu0mIkm/malLQFN/YQgO48wCj0Kxa3sEHJvPVFg7siR+qRInwXd2qhQKw=="],
 
@@ -43,7 +46,7 @@
 
     "@biomejs/cli-win32-x64": ["@biomejs/cli-win32-x64@2.5.7", "", { "os": "win32", "cpu": "x64" }, "sha512-V+0wu/nrj2S+MhP4EQ0uHNolP0IALEsz45pg0WoKkHfDeh0+ItHwP/p7bX5RPoMOl9NkpHYWdYPhIcy2mACHvQ=="],
 
-    "@brew.new/sdk": ["@brew.new/sdk@13.0.0", "", { "peerDependencies": { "react": ">=18.2.0 <20" }, "optionalPeers": ["react"] }, "sha512-oqQnXRJY/duMsL7Sn+i18+omB+oDkp7fzK6f7/27YWkB5nxIY5X+aQ7sRjRBBnb/JPeHvfVmHb7DuZ2ABJ3HFw=="],
+    "@brew.new/sdk": ["@brew.new/sdk@github:GetBrew/typescript-sdk#9bedcdc", { "peerDependencies": { "react": ">=18.2.0 <20" }, "optionalPeers": ["react"] }, "GetBrew-typescript-sdk-9bedcdc", "sha512-xlegIQtdOP1P2Rx/wZYBcEvzGNxsoEVPM4FOz9Yo47qipvehJIM3iDxr16PLpUDuKna1d/WsLduyoJSz+nIaZw=="],
 
     "@esbuild/aix-ppc64": ["@esbuild/aix-ppc64@0.27.7", "", { "os": "aix", "cpu": "ppc64" }, "sha512-EKX3Qwmhz1eMdEJokhALr0YiD0lhQNwDqkPYyPhiSwKrh7/4KRjQc04sZ8db+5DVVnZ1LmbNDI1uAMPEUBnQPg=="],
 
