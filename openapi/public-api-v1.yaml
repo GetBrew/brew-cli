@@ -3736,6 +3736,44 @@ components:
             - "null"
           enum:
             - slack
+            - teams
+            - telegram
+            - whatsapp
+            - discord
+            - gchat
+            - github
+            - linear
+            - notion
+            - gmail
+            - twilio
+            - messenger
+            - instagram
+            - x
+            - xchat
+            - web
+            - agentphone
+            - dial
+            - kapso
+            - lark
+            - linq
+            - liveblocks
+            - matrix
+            - novu
+            - photon
+            - resend
+            - sendblue
+            - velt
+            - zernio
+            - webex
+            - line
+            - baileys
+            - blooio
+            - zalo
+            - mattermost
+            - weixin
+            - qq
+            - wecom
+            - zaileys
             - null
           description: The chat app the conversation started in; null for the Brew web app.
         updatedAt:
@@ -17911,6 +17949,44 @@ components:
                   - "null"
                 enum:
                   - slack
+                  - teams
+                  - telegram
+                  - whatsapp
+                  - discord
+                  - gchat
+                  - github
+                  - linear
+                  - notion
+                  - gmail
+                  - twilio
+                  - messenger
+                  - instagram
+                  - x
+                  - xchat
+                  - web
+                  - agentphone
+                  - dial
+                  - kapso
+                  - lark
+                  - linq
+                  - liveblocks
+                  - matrix
+                  - novu
+                  - photon
+                  - resend
+                  - sendblue
+                  - velt
+                  - zernio
+                  - webex
+                  - line
+                  - baileys
+                  - blooio
+                  - zalo
+                  - mattermost
+                  - weixin
+                  - qq
+                  - wecom
+                  - zaileys
                   - null
                 description: The chat app the conversation started in; null for the Brew web app.
               updatedAt:
