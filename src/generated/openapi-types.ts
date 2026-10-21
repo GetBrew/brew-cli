@@ -7125,7 +7125,7 @@ export interface components {
             fieldsCreated: string[];
             errors: {
                 email: string;
-                /** @description The 1-based row that failed: `contacts[row - 1]`, or the CSV data row (header excluded). */
+                /** @description The 1-based row that failed: `contacts[row - 1]`, or the CSV data row (header and blank lines not counted). */
                 row?: number;
                 code: string;
                 field?: string;
@@ -7134,7 +7134,7 @@ export interface components {
             warnings: {
                 code: string;
                 email?: string;
-                /** @description The 1-based row it is about (CSV: data row). */
+                /** @description The 1-based row it is about (CSV: data row; header and blank lines not counted). */
                 row?: number;
                 field?: string;
                 message: string;
@@ -7216,7 +7216,7 @@ export interface components {
             warnings: {
                 code: string;
                 email?: string;
-                /** @description The 1-based row it is about (CSV: data row). */
+                /** @description The 1-based row it is about (CSV: data row; header and blank lines not counted). */
                 row?: number;
                 field?: string;
                 message: string;
@@ -7685,7 +7685,7 @@ export interface components {
             fieldsCreated: string[];
             errors: {
                 email: string;
-                /** @description The 1-based row that failed: `contacts[row - 1]`, or the CSV data row (header excluded). */
+                /** @description The 1-based row that failed: `contacts[row - 1]`, or the CSV data row (header and blank lines not counted). */
                 row?: number;
                 code: string;
                 field?: string;
@@ -7694,7 +7694,7 @@ export interface components {
             warnings: {
                 code: string;
                 email?: string;
-                /** @description The 1-based row it is about (CSV: data row). */
+                /** @description The 1-based row it is about (CSV: data row; header and blank lines not counted). */
                 row?: number;
                 field?: string;
                 message: string;
@@ -7785,7 +7785,7 @@ export interface components {
                     evidence?: string;
                 };
             }[];
-            /** @description Optional deliverability check on ingestion. When true, each address is validated with the provider (2 credits per address, charged on success) and the verdict is saved to the contact’s `validationStatus`. Submissions above the inline cap (100 addresses) upsert first and validate as a background job, returning a `validationJobId`. */
+            /** @description Optional deliverability check on ingestion. When true, each imported address is validated with the provider and the verdict is saved to the contact’s `validationStatus`. Imports of at most 100 submitted contacts validate inline, metered at 2 credits per submitted contact on a successful response, including rows that fail. Larger imports write first and use a background validation workflow billed per address as it runs; `validationJobId` is returned when a job is queued. */
             validate?: boolean;
             /** @description Default consent record for every row that does not carry its own `consent` (typically `{ "source": "import" }`). */
             consent?: {
