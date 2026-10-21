@@ -5208,30 +5208,36 @@ components:
           type: string
           enum:
             - welcome
+            - onboarding
             - newsletter
-            - promotional
+            - content
+            - event-invitation
+            - event-reminder
+            - event-recap
             - product-launch
             - product-update
+            - product-pitch
+            - promotional
+            - cart-abandonment
+            - re-engagement
+            - subscription
+            - feedback-request
+            - referral
+            - company-news
+            - fundraising
             - order-confirmation
             - shipping-update
             - receipt
-            - cart-abandonment
-            - subscription
             - password-reset
             - verification
             - security-alert
             - account-update
-            - event-invitation
-            - event-reminder
-            - feedback-request
-            - re-engagement
-            - referral
-            - support
-            - business
-            - internal
             - notification
+            - support
+            - internal
+            - business
             - general
-          description: "Email category that steers the design treatment (exemplars, hero recipe, personalization) — mirrors what the in-app agent infers per request. One of: welcome, newsletter, promotional, product-launch, product-update, order-confirmation, shipping-update, receipt, cart-abandonment, subscription, password-reset, verification, security-alert, account-update, event-invitation, event-reminder, feedback-request, re-engagement, referral, support, business, internal, notification, general. Omit for a general treatment. Transactional categories (receipt, password-reset, order-confirmation, …) steer receipt/reset design conventions; to DELIVER those emails, wire the design into an automation with a trigger and a transactional-purpose sending domain, then fire the trigger."
+          description: "Email category that steers the design treatment (exemplars, hero recipe, personalization) — mirrors what the in-app agent infers per request. One of: welcome, onboarding, newsletter, content, event-invitation, event-reminder, event-recap, product-launch, product-update, product-pitch, promotional, cart-abandonment, re-engagement, subscription, feedback-request, referral, company-news, fundraising, order-confirmation, shipping-update, receipt, password-reset, verification, security-alert, account-update, notification, support, internal, business, general. Omit for a general treatment. Transactional categories (receipt, password-reset, order-confirmation, …) steer receipt/reset design conventions; to DELIVER those emails, wire the design into an automation with a trigger and a transactional-purpose sending domain, then fire the trigger."
         subjectLine:
           type: string
           minLength: 1
@@ -58713,7 +58719,7 @@ paths:
       tags:
         - Templates
       summary: List templates
-      description: Lists public templates under { data, pagination }. The default full representation includes HTML. Set representation=summary for metadata, previewImage, viewUrl, and referenceEmailId without HTML. Supports exact brand and category filters; query matches title text or an exact template identifier. semantic ranks up to 200 matches using vector search; query additionally filters those matches when both are supplied. Browse defaults to 50 full rows or 20 summary rows. Brand and category match case-insensitively. Continue with pagination.cursor, including after an empty filtered page with hasMore=true. Templates are organization-wide references; pass referenceEmailId to POST /v1/emails to remix one. Set count=true for { count }, the number of templates matching brand and category (refreshed every 15 minutes), instead of rows; add groupBy=brand or groupBy=category for per-value counts, largest first, 100 groups a page with the same pagination.cursor (count does not combine with semantic or query).
+      description: "Lists public templates under { data, pagination }. The default full representation includes HTML. Set representation=summary for metadata, previewImage, viewUrl, and referenceEmailId without HTML. Supports exact brand and category filters and a group filter (a browse group: every category in it); query matches title text or an exact template identifier. semantic ranks up to 200 matches using vector search; query additionally filters those matches when both are supplied. Browse defaults to 50 full rows or 20 summary rows. Brand and category match case-insensitively. Continue with pagination.cursor, including after an empty filtered page with hasMore=true. Templates are organization-wide references; pass referenceEmailId to POST /v1/emails to remix one. Set count=true for { count }, the number of templates matching brand, category and group (refreshed every 15 minutes), instead of rows; add groupBy=brand, groupBy=category or groupBy=group for per-value counts, largest first, 100 groups a page with the same pagination.cursor (count does not combine with semantic or query)."
       parameters:
         - schema:
             type: string
@@ -58726,10 +58732,29 @@ paths:
         - schema:
             type: string
             minLength: 1
-            description: "Email category, matched case-insensitively (unknown → empty page): welcome, newsletter, promotional, product-launch, product-update, order-confirmation, shipping-update, receipt, cart-abandonment, subscription, password-reset, verification, security-alert, account-update, event-invitation, event-reminder, feedback-request, re-engagement, referral, support, business, internal, notification, general."
+            description: "Email category, matched case-insensitively (unknown → empty page): welcome, onboarding, newsletter, content, event-invitation, event-reminder, event-recap, product-launch, product-update, product-pitch, promotional, cart-abandonment, re-engagement, subscription, feedback-request, referral, company-news, fundraising, order-confirmation, shipping-update, receipt, password-reset, verification, security-alert, account-update, notification, support, internal, business, general."
           required: false
-          description: "Email category, matched case-insensitively (unknown → empty page): welcome, newsletter, promotional, product-launch, product-update, order-confirmation, shipping-update, receipt, cart-abandonment, subscription, password-reset, verification, security-alert, account-update, event-invitation, event-reminder, feedback-request, re-engagement, referral, support, business, internal, notification, general."
+          description: "Email category, matched case-insensitively (unknown → empty page): welcome, onboarding, newsletter, content, event-invitation, event-reminder, event-recap, product-launch, product-update, product-pitch, promotional, cart-abandonment, re-engagement, subscription, feedback-request, referral, company-news, fundraising, order-confirmation, shipping-update, receipt, password-reset, verification, security-alert, account-update, notification, support, internal, business, general."
           name: category
+          in: query
+        - schema:
+            type: string
+            enum:
+              - welcome-onboarding
+              - newsletter
+              - content
+              - events
+              - product-news
+              - sales
+              - retention
+              - company
+              - transactional
+              - internal
+              - other
+            description: "A browse group: every category in it (e.g. `events` = invitations, reminders and recaps)."
+          required: false
+          description: "A browse group: every category in it (e.g. `events` = invitations, reminders and recaps)."
+          name: group
           in: query
         - schema:
             type: string
@@ -58766,9 +58791,9 @@ paths:
                 enum:
                   - 'true'
                   - 'false'
-            description: Return `{ count }`, the number of templates matching `brand`/`category`, instead of rows. Not with `semantic` or `query`.
+            description: Return `{ count }`, the number of templates matching `brand`/`category`/`group`, instead of rows. Not with `semantic` or `query`.
           required: false
-          description: Return `{ count }`, the number of templates matching `brand`/`category`, instead of rows. Not with `semantic` or `query`.
+          description: Return `{ count }`, the number of templates matching `brand`/`category`/`group`, instead of rows. Not with `semantic` or `query`.
           name: count
           in: query
         - schema:
@@ -58776,12 +58801,14 @@ paths:
             enum:
               - brand
               - category
-            description: "With `count: true`: also count per brand or per category, largest first, 100 groups a page; continue with `cursor`."
+              - group
+            description: "With `count: true`: also count per brand, category or group, largest first, 100 groups a page; continue with `cursor`."
             x-brew-group-by-tokens:
               - brand
               - category
+              - group
           required: false
-          description: "With `count: true`: also count per brand or per category, largest first, 100 groups a page; continue with `cursor`."
+          description: "With `count: true`: also count per brand, category or group, largest first, 100 groups a page; continue with `cursor`."
           name: groupBy
           in: query
         - schema:
@@ -58912,6 +58939,7 @@ paths:
                         enum:
                           - brand
                           - category
+                          - group
                       groups:
                         type: array
                         items:
@@ -58920,7 +58948,7 @@ paths:
                             value:
                               type: string
                               minLength: 1
-                              description: The brand domain or category; pass it back as the `brand`/`category` filter.
+                              description: The brand domain, category or group; pass it back as the filter of the same name (`brand`, `category` or `group`).
                             name:
                               type: string
                               minLength: 1

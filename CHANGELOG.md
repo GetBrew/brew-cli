@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Synchronize email-category and template browse-group contracts with app
+  revision `9bf2e01f14d8260bdde0825e901a05497b66c70c`. Template reads accept
+  `--group`, and `--count --group-by group` labels browse groups correctly in
+  human output. These additions require the matching API deployment.
+
 ## 0.17.0
 
 Requires `@brew.new/sdk` `^13.0.0`. This is a minor release because it adds

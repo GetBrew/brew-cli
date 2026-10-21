@@ -2408,9 +2408,10 @@ List public templates (each row carries the rendered html)
 - SDK: `brew.templates.list(...)`
 - `--brand-name <name>` — Filter by gallery brand name
 - `--category <category>` — Filter by category
+- `--group <group>` — Filter by category browse group
 - `--semantic <text>` — Semantic search over the gallery
 - `--count` — Return matching template counts instead of rows
-- `--group-by <field>` — Group counts by brand or category (requires --count)
+- `--group-by <field>` — Group counts by brand, category or group (requires --count)
 - `--limit <n>` — Page size, 1-100 (default 100)
 - `--cursor <cursor>` — Opaque pagination cursor from a previous page
 - `--all` — Follow the cursor and return every page as one result
@@ -2419,6 +2420,7 @@ List public templates (each row carries the rendered html)
 ```bash
 brew-cli templates list --category welcome
 brew-cli templates list --count --group-by category --json
+brew-cli templates list --group events --count --group-by group --json
 brew-cli templates list --semantic "minimal product launch" --json
 ```
 
