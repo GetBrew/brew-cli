@@ -94,6 +94,12 @@ function useBrewApi(
   options: {
     readonly domains?: ReadonlyArray<Record<string, unknown>>
     readonly failKeys?: readonly string[]
+    /** A kit key's refusal, by key (beats `failKeys`' INTERNAL_ERROR). */
+    readonly refusals?: Readonly<
+      Record<string, { readonly code: string; readonly message: string }>
+    >
+    /** `warnings` on the `POST /v1/domains` row. */
+    readonly addWarnings?: ReadonlyArray<Record<string, unknown>>
   } = {}
 ): Recorded[] {
   const requests: Recorded[] = []
@@ -153,6 +159,9 @@ function useBrewApi(
           ],
           createdAt: '2026-10-13T12:00:00.000Z',
           updatedAt: '2026-10-13T12:00:00.000Z',
+          ...(options.addWarnings === undefined
+            ? {}
+            : { warnings: options.addWarnings }),
         },
         { status: 201 }
       )
@@ -161,36 +170,38 @@ function useBrewApi(
       await record(request)
       return HttpResponse.json({
         results: KIT_KEYS.map((key, index) =>
-          options.failKeys?.includes(key)
-            ? {
-                triggerKey: key,
-                ok: false,
-                error: { code: 'INTERNAL_ERROR', message: 'Import failed.' },
-              }
-            : {
-                ok: true,
-                triggerKey: key,
-                triggerEventId: `tri_${index}`,
-                emailId: `eml_${index}`,
-                emailVersionId: `emv_${index}`,
-                automationId: `aut_${index}`,
-                published: true,
-                created: { trigger: true, email: true, automation: true },
-                sender: {
-                  mode: 'sandbox',
-                  from: 'acme@email.brew.new',
-                  sandbox: { dailyLimit: 50, remainingToday: 50 },
-                },
-                payloadSchema: { type: 'object', fields: [] },
-                fireExample: {
-                  method: 'POST',
-                  path: `/v1/automations/triggers/by-key/${key}/fire`,
-                  examplePayload: { email: 'jane@example.com' },
-                  curl: 'curl …',
-                  sdk: `await brew.send('${key}', { email })`,
-                },
-                warnings: [],
-              }
+          options.refusals?.[key] !== undefined
+            ? { triggerKey: key, ok: false, error: options.refusals[key] }
+            : options.failKeys?.includes(key)
+              ? {
+                  triggerKey: key,
+                  ok: false,
+                  error: { code: 'INTERNAL_ERROR', message: 'Import failed.' },
+                }
+              : {
+                  ok: true,
+                  triggerKey: key,
+                  triggerEventId: `tri_${index}`,
+                  emailId: `eml_${index}`,
+                  emailVersionId: `emv_${index}`,
+                  automationId: `aut_${index}`,
+                  published: true,
+                  created: { trigger: true, email: true, automation: true },
+                  sender: {
+                    mode: 'sandbox',
+                    from: 'acme@email.brew.new',
+                    sandbox: { dailyLimit: 50, remainingToday: 50 },
+                  },
+                  payloadSchema: { type: 'object', fields: [] },
+                  fireExample: {
+                    method: 'POST',
+                    path: `/v1/automations/triggers/by-key/${key}/fire`,
+                    examplePayload: { email: 'jane@example.com' },
+                    curl: 'curl …',
+                    sdk: `await brew.send('${key}', { email })`,
+                  },
+                  warnings: [],
+                }
         ),
         stack: {
           provider: 'better-auth',
@@ -845,6 +856,39 @@ describe('init --yes: the full run', () => {
     })
   })
 
+  it('points at a subdomain when the added domain already publishes another DKIM key', async () => {
+    const root = copyFixture('express-resend')
+    useBrewApi({
+      addWarnings: [
+        {
+          code: 'DKIM_SELECTOR_IN_USE',
+          message: 'acme.com already publishes a different DKIM key.',
+          suggestedNames: ['mail.acme.com', 'send.acme.com'],
+        },
+      ],
+    })
+    writeFileSync(join(root, '.env.local'), `BREW_API_KEY=${APP_KEY}\n`)
+    const result = await init(
+      ['--yes', '--json', '--domain', 'acme.com', '--no-test-email'],
+      { cwd: root, env: configEnv(), spawn: recordingSpawn().spawn }
+    )
+    expect(result.code).toBe(0)
+    expectValidReport(result.report)
+    const ids = result.report.nextSteps.map((step) => step.id)
+    expect(ids).not.toContain('add-dns-records')
+    expect(
+      result.report.nextSteps.find((step) => step.id === 'dkim-selector-in-use')
+    ).toEqual({
+      id: 'dkim-selector-in-use',
+      actor: 'human',
+      kind: 'run-command',
+      title:
+        'acme.com already publishes a different DKIM key where Brew asks for its record: add a subdomain instead (mail.acme.com, send.acme.com)',
+      command: 'brew-cli init --domain mail.acme.com',
+      blocking: false,
+    })
+  })
+
   it('exits 1 with the report when a kit key failed, pointing at a re-run', async () => {
     const root = copyFixture('express-resend')
     useBrewApi({ failKeys: ['auth.magic-link'] })
@@ -868,6 +912,41 @@ describe('init --yes: the full run', () => {
       command: 'brew-cli init --json --yes',
       blocking: true,
     })
+  })
+
+  it('asks a person about a key whose trigger another published automation sends from', async () => {
+    const root = copyFixture('express-resend')
+    const message =
+      '"lifecycle.welcome" already starts the published automation "Welcome" (aut_9), which no app-email setup made, so setting it up would send a second email on every fire. Unpublish or delete it, then run the setup again.'
+    useBrewApi({
+      refusals: {
+        'lifecycle.welcome': { code: 'APP_EMAIL_TRIGGER_IN_USE', message },
+      },
+    })
+    writeFileSync(join(root, '.env.local'), `BREW_API_KEY=${APP_KEY}\n`)
+    const result = await init(['--yes', '--json', '--no-test-email'], {
+      cwd: root,
+      env: configEnv(),
+      spawn: recordingSpawn().spawn,
+    })
+    expect(result.code).toBe(1)
+    expectValidReport(result.report)
+    const ids = result.report.nextSteps.map((step) => step.id)
+    expect(
+      result.report.nextSteps.find(
+        (step) => step.id === 'trigger-in-use:lifecycle.welcome'
+      )
+    ).toEqual({
+      id: 'trigger-in-use:lifecycle.welcome',
+      actor: 'human',
+      kind: 'review',
+      title: `lifecycle.welcome: ${message}`,
+      blocking: false,
+    })
+    // The person decides first; then a re-run finishes the key.
+    expect(ids.indexOf('trigger-in-use:lifecycle.welcome')).toBeLessThan(
+      ids.indexOf('rerun-init')
+    )
   })
 })
 

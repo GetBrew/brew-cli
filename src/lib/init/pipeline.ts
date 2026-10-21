@@ -556,6 +556,7 @@ export async function runInit(
           : list.data.find(
               (row) => row.name.toLowerCase() === options.domain?.toLowerCase()
             )
+      let selectorInUse: DkimSelectorInUse | undefined
       if (options.domain !== undefined && target === undefined) {
         if (dryRun) {
           domain.name = options.domain
@@ -568,6 +569,7 @@ export async function runInit(
             idempotencyKey: idempotencyKey('domain', body),
           })
           domain.added = true
+          selectorInUse = dkimSelectorInUse(target)
         }
       }
       const shown = target ?? chosen
@@ -599,11 +601,26 @@ export async function runInit(
         detail:
           chosen !== undefined
             ? `sending from ${chosen.name}`
-            : domain.added
-              ? `added ${domain.name}; sandbox until its DNS verifies`
-              : 'sandbox (no verified domain yet)',
+            : selectorInUse !== undefined
+              ? `added ${domain.name}, which already publishes another DKIM key; sandbox until a domain verifies`
+              : domain.added
+                ? `added ${domain.name}; sandbox until its DNS verifies`
+                : 'sandbox (no verified domain yet)',
       })
-      if (domain.records.length > 0 && domain.domainId !== null) {
+      if (selectorInUse !== undefined) {
+        // Its DKIM record would replace the key another sender signs with.
+        const [suggested] = selectorInUse.suggestedNames
+        nextSteps.push({
+          id: 'dkim-selector-in-use',
+          actor: 'human',
+          kind: suggested === undefined ? 'open-url' : 'run-command',
+          title: `${domain.name} already publishes a different DKIM key where Brew asks for its record: add a subdomain instead${selectorInUse.suggestedNames.length > 0 ? ` (${selectorInUse.suggestedNames.join(', ')})` : ''}`,
+          ...(suggested === undefined
+            ? { url: shownUrl(target, domain.settingsUrl) }
+            : { command: `${prefix} init --domain ${suggested}` }),
+          blocking: false,
+        })
+      } else if (domain.records.length > 0 && domain.domainId !== null) {
         nextSteps.push({
           id: 'add-dns-records',
           actor: 'human',
@@ -684,6 +701,19 @@ export async function runInit(
             ? `${failed.length} of ${emails.length} keys failed: ${failed.map((email) => email.key).join(', ')}`
             : `${emails.length} app emails published`,
       })
+      for (const email of failed) {
+        // A re-run alone cannot set up a key whose trigger another published
+        // automation already sends from: a person picks which one stays.
+        if (email.error?.code === 'APP_EMAIL_TRIGGER_IN_USE') {
+          nextSteps.push({
+            id: `trigger-in-use:${email.key}`,
+            actor: 'human',
+            kind: 'review',
+            title: `${email.key}: ${email.error.message}`,
+            blocking: false,
+          })
+        }
+      }
       if (failed.length > 0) {
         nextSteps.push({
           id: 'rerun-init',
@@ -1678,4 +1708,51 @@ function finish(report: InitReport): CommandOutcome {
     human: renderReport(report),
     ...(exitCode === 0 ? {} : { exitCode }),
   }
+}
+
+type DkimSelectorInUse = { readonly suggestedNames: readonly string[] }
+
+/**
+ * The `DKIM_SELECTOR_IN_USE` warning on a domain just added (brew-v2
+ * #2169): the domain already publishes a different DKIM key where Brew asks
+ * for its record, and `suggestedNames` are subdomains to add instead.
+ */
+function dkimSelectorInUse(row: unknown): DkimSelectorInUse | undefined {
+  if (
+    typeof row !== 'object' ||
+    row === null ||
+    !('warnings' in row) ||
+    !Array.isArray(row.warnings)
+  ) {
+    return
+  }
+  const warnings: unknown[] = row.warnings
+  for (const warning of warnings) {
+    if (
+      typeof warning === 'object' &&
+      warning !== null &&
+      'code' in warning &&
+      warning.code === 'DKIM_SELECTOR_IN_USE'
+    ) {
+      const names: unknown[] =
+        'suggestedNames' in warning && Array.isArray(warning.suggestedNames)
+          ? warning.suggestedNames
+          : []
+      return {
+        suggestedNames: names.filter(
+          (name): name is string => typeof name === 'string'
+        ),
+      }
+    }
+  }
+  return
+}
+
+function shownUrl(row: unknown, fallback: string): string {
+  return typeof row === 'object' &&
+    row !== null &&
+    'domainUrl' in row &&
+    typeof row.domainUrl === 'string'
+    ? row.domainUrl
+    : fallback
 }
