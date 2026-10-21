@@ -186,6 +186,25 @@ describe('emails get', () => {
     expect((result.json as { emailId: string }).emailId).toBe('eml_1')
   })
 
+  it('shows the lang the API returns on the detail row', async () => {
+    server.use(
+      http.get(`${EMAILS_URL}/eml_1`, () =>
+        HttpResponse.json({
+          emailId: 'eml_1',
+          title: 'Herbstverkauf',
+          status: 'ready',
+          lang: 'de',
+        })
+      )
+    )
+    const result = await runCli(['emails', 'get', 'eml_1'], {
+      env: env(),
+      extraCommands: EXTRA,
+    })
+    expect(result.code).toBe(0)
+    expect((result.json as { lang: string }).lang).toBe('de')
+  })
+
   it("surfaces the API's own 404 instead of a hand-built one", async () => {
     server.use(
       http.get(`${EMAILS_URL}/eml_ghost`, () =>
@@ -271,6 +290,25 @@ describe('emails generate', () => {
       prompt: 'Fall launch email',
       subjectLine: 'Fall arrivals are here',
     })
+  })
+
+  it('sends --lang as lang', async () => {
+    let body: unknown
+    server.use(
+      http.post(EMAILS_URL, async ({ request }) => {
+        body = await request.json()
+        return HttpResponse.json(
+          { emailId: 'eml_new', status: 'ready' },
+          { status: 201 }
+        )
+      })
+    )
+    const result = await runCli(
+      ['emails', 'generate', '--prompt', 'Willkommens-E-Mail', '--lang', 'de'],
+      { env: env(), extraCommands: EXTRA }
+    )
+    expect(result.code).toBe(0)
+    expect(body).toEqual({ prompt: 'Willkommens-E-Mail', lang: 'de' })
   })
 
   it('requires a prompt', async () => {
@@ -382,6 +420,55 @@ describe('emails edit', () => {
     expect(result.stderr).not.toContain('Editing email')
   })
 
+  it('patches lang-only without an AI prompt (no generation heartbeat)', async () => {
+    let body: unknown
+    server.use(
+      http.patch(`${EMAILS_URL}/eml_1`, async ({ request }) => {
+        body = await request.json()
+        return HttpResponse.json({ emailId: 'eml_1', status: 'ready' })
+      })
+    )
+    const result = await runCli(
+      ['emails', 'edit', 'eml_1', '--lang', 'zh-Hant'],
+      {
+        env: env(),
+        extraCommands: EXTRA,
+      }
+    )
+    expect(result.code).toBe(0)
+    expect(body).toEqual({ lang: 'zh-Hant' })
+    expect(result.stderr).toContain('Setting the language')
+    expect(result.stderr).not.toContain('Editing email')
+  })
+
+  it('sends both when a prompt and a lang are given', async () => {
+    let body: unknown
+    server.use(
+      http.patch(`${EMAILS_URL}/eml_1`, async ({ request }) => {
+        body = await request.json()
+        return HttpResponse.json({ emailId: 'eml_1', status: 'ready' })
+      })
+    )
+    const result = await runCli(
+      [
+        'emails',
+        'edit',
+        'eml_1',
+        '--prompt',
+        'Translate the copy into French',
+        '--lang',
+        'fr',
+      ],
+      { env: env(), extraCommands: EXTRA }
+    )
+    expect(result.code).toBe(0)
+    expect(body).toEqual({
+      prompt: 'Translate the copy into French',
+      lang: 'fr',
+    })
+    expect(result.stderr).toContain('Editing email')
+  })
+
   it('sends both when a prompt and a subject line are given', async () => {
     let body: unknown
     server.use(
@@ -410,7 +497,7 @@ describe('emails edit', () => {
     expect(result.stderr).toContain('Editing email')
   })
 
-  // The API takes any of prompt, title, subjectLine and groupId; without a
+  // The API takes any of prompt, title, subjectLine, lang and groupId; without a
   // prompt it is one free in-place patch of the design's envelope.
   it('renames through --input without a prompt (no AI run)', async () => {
     let body: unknown

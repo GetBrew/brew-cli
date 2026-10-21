@@ -31,7 +31,7 @@ export interface paths {
          *
          *     **Use when** you have a brief and want Brew to author on brand. For existing markup use `importEmail`; for a Figma frame use `importFigmaDesign`.
          *
-         *     **Input** `prompt`; optional `category` (steers the design treatment only: transactional categories get receipt or reset conventions, while delivery for those flows is a triggered automation on a transactional-purpose domain), `contentUrls`, `referenceEmailId`, `subjectLine` (the design-default inbox subject; `createSend` still takes a per-send `subject`), and `groupId` (`grp_…` or `ungrouped`) or `groupName` (resolve or create), not both; omit to land Ungrouped. Supports `Idempotency-Key`.
+         *     **Input** `prompt`; optional `category` (steers the design treatment only: transactional categories get receipt or reset conventions, while delivery for those flows is a triggered automation on a transactional-purpose domain), `contentUrls`, `referenceEmailId`, `subjectLine` (the design-default inbox subject; `createSend` still takes a per-send `subject`), `lang` (the language of the copy, ISO 639-1; omit and Brew detects it from the finished body), and `groupId` (`grp_…` or `ungrouped`) or `groupName` (resolve or create), not both; omit to land Ungrouped. Supports `Idempotency-Key`.
          *
          *     **Returns** `201 { emailId, emailVersionId, html, previewImage?, group, subjectLine? }` when a design was persisted, or `200 { response }` when the agent answered in prose without writing a design.
          *
@@ -55,7 +55,7 @@ export interface paths {
         };
         /**
          * Get an email design
-         * @description Reads one design as the bare `EmailDetail` row: `emailId`, the `emailVersionId` (the pin for `POST /v1/sends` and sendEmail nodes), `title`, `status`, `previewStatus`, `subjectLine`, `previewText`, `previewImage`, `updatedAt`, `group` and `createdBy` / `createdByUserId` (the design’s creator, shared by every version), plus `errorMessage` when a generation failed.
+         * @description Reads one design as the bare `EmailDetail` row: `emailId`, the `emailVersionId` (the pin for `POST /v1/sends` and sendEmail nodes), `title`, `status`, `previewStatus`, `subjectLine`, `previewText`, `lang` (the copy’s language, once read), `previewImage`, `updatedAt`, `group` and `createdBy` / `createdByUserId` (the design’s creator, shared by every version), plus `errorMessage` when a generation failed.
          *
          *     **Use when** inspecting a design before sending it, pinning a version, polling a generation you started, or pulling rendered HTML or version history.
          *
@@ -79,11 +79,11 @@ export interface paths {
         head?: never;
         /**
          * Edit an email design
-         * @description Updates a design: an AI edit (`prompt`), its envelope (`title`, `subjectLine`, `groupId`), or both in one call. At least one of the four is required. A design renames and moves between groups here exactly like an audience, trigger, automation or group renames through its own PATCH.
+         * @description Updates a design: an AI edit (`prompt`), its envelope (`title`, `subjectLine`, `lang`, `groupId`), or both in one call. At least one of the five is required. A design renames and moves between groups here exactly like an audience, trigger, automation or group renames through its own PATCH.
          *
          *     **Use when** changing an existing design: rewording or restyling it with a prompt, renaming it (a clone starts as `Copy of …`), setting the inbox subject the design carries by default, or filing it in another group.
          *
-         *     **Input** `prompt` runs the Brew email agent against the current latest version (or the `emailVersionId` pin, optionally grounded by `contentUrls`) and writes a new `version: "latest"` row on the same `emailId` (the previous head becomes a numeric historical version); usage-metered by actual token spend. `title` renames the design (its canvas name, 1 to 200 characters), `subjectLine` sets the default inbox subject and `groupId` moves it into an existing group (`null` = Ungrouped); any of them without `prompt` is ONE atomic in-place patch (no AI run, no new version, free). With `prompt`, the rename and move land first so the new version inherits them and the subject is applied to the new head. `emailVersionId` requires `prompt`.
+         *     **Input** `prompt` runs the Brew email agent against the current latest version (or the `emailVersionId` pin, optionally grounded by `contentUrls`) and writes a new `version: "latest"` row on the same `emailId` (the previous head becomes a numeric historical version); usage-metered by actual token spend. `title` renames the design (its canvas name, 1 to 200 characters), `subjectLine` sets the default inbox subject, `lang` sets the language of the copy (kept from then on; Brew stops re-detecting it) and `groupId` moves it into an existing group (`null` = Ungrouped); any of them without `prompt` is ONE atomic in-place patch (no AI run, no new version, free). With `prompt`, the rename and move land first so the new version inherits them and the subject is applied to the new head. `emailVersionId` requires `prompt`.
          *
          *     **Returns** `200` with the generated-email shape: the NEW head after a prompt edit, or the CURRENT head after an envelope patch (with its `title`, `subjectLine` and `group` after the patch); a text response when the agent answered in prose.
          *
@@ -2651,6 +2651,11 @@ export interface components {
             subjectLine?: string;
             /** @description The design's inbox preview line, read directly from the latest version's JSX <Preview> (its single source of truth) — what a send delivers when no explicit `previewText` override is passed to POST /v1/sends. Detail-only; absent when the design has no <Preview>. */
             previewText?: string;
+            /**
+             * @description The language the email's copy is written in (ISO 639-1, or zh-Hans / zh-Hant), read by Brew's language model after each content change unless a caller set it. Rendered as the HTML document's lang. Detail-only; absent until it has been read.
+             * @enum {string}
+             */
+            lang?: "en" | "de" | "fr" | "es" | "pt" | "it" | "nl" | "pl" | "sv" | "da" | "no" | "fi" | "cs" | "sk" | "hu" | "ro" | "bg" | "el" | "tr" | "ru" | "uk" | "hr" | "sr" | "sl" | "lt" | "lv" | "et" | "ca" | "ar" | "he" | "fa" | "ur" | "hi" | "bn" | "th" | "vi" | "id" | "ms" | "tl" | "ja" | "ko" | "zh-Hans" | "zh-Hant" | "sw" | "af";
             html?: string;
             versions?: {
                 version: number | "latest";
@@ -2682,6 +2687,11 @@ export interface components {
             subjectLine?: string;
             /** @description The design's inbox preview line, read directly from the latest version's JSX <Preview> (its single source of truth) — what a send delivers when no explicit `previewText` override is passed to POST /v1/sends. Detail-only; absent when the design has no <Preview>. */
             previewText?: string;
+            /**
+             * @description The language the email's copy is written in (ISO 639-1, or zh-Hans / zh-Hant), read by Brew's language model after each content change unless a caller set it. Rendered as the HTML document's lang. Detail-only; absent until it has been read.
+             * @enum {string}
+             */
+            lang?: "en" | "de" | "fr" | "es" | "pt" | "it" | "nl" | "pl" | "sv" | "da" | "no" | "fi" | "cs" | "sk" | "hu" | "ro" | "bg" | "el" | "tr" | "ru" | "uk" | "hr" | "sr" | "sl" | "lt" | "lv" | "et" | "ca" | "ar" | "he" | "fa" | "ur" | "hi" | "bn" | "th" | "vi" | "id" | "ms" | "tl" | "ja" | "ko" | "zh-Hans" | "zh-Hant" | "sw" | "af";
             html?: string;
             versions?: {
                 version: number | "latest";
@@ -4384,6 +4394,11 @@ export interface components {
                 subjectLine?: string;
                 /** @description The design's inbox preview line, read directly from the latest version's JSX <Preview> (its single source of truth) — what a send delivers when no explicit `previewText` override is passed to POST /v1/sends. Detail-only; absent when the design has no <Preview>. */
                 previewText?: string;
+                /**
+                 * @description The language the email's copy is written in (ISO 639-1, or zh-Hans / zh-Hant), read by Brew's language model after each content change unless a caller set it. Rendered as the HTML document's lang. Detail-only; absent until it has been read.
+                 * @enum {string}
+                 */
+                lang?: "en" | "de" | "fr" | "es" | "pt" | "it" | "nl" | "pl" | "sv" | "da" | "no" | "fi" | "cs" | "sk" | "hu" | "ro" | "bg" | "el" | "tr" | "ru" | "uk" | "hr" | "sr" | "sl" | "lt" | "lv" | "et" | "ca" | "ar" | "he" | "fa" | "ur" | "hi" | "bn" | "th" | "vi" | "id" | "ms" | "tl" | "ja" | "ko" | "zh-Hans" | "zh-Hant" | "sw" | "af";
                 html?: string;
                 versions?: {
                     version: number | "latest";
@@ -4452,6 +4467,11 @@ export interface components {
             category?: "welcome" | "onboarding" | "newsletter" | "content" | "event-invitation" | "event-reminder" | "event-recap" | "product-launch" | "product-update" | "product-pitch" | "promotional" | "cart-abandonment" | "re-engagement" | "subscription" | "feedback-request" | "referral" | "company-news" | "fundraising" | "order-confirmation" | "shipping-update" | "receipt" | "password-reset" | "verification" | "security-alert" | "account-update" | "notification" | "support" | "internal" | "business" | "general";
             /** @description Inbox subject line to set on the design (`subjectLine` — distinct from `title`, the canvas name). Sends still take an explicit per-send `subject`; this is the design's default, seeded into the send dialog and returned by `GET /v1/emails/{emailId}`. */
             subjectLine?: string;
+            /**
+             * @description ISO 639-1 language code of the email's copy (or zh-Hans / zh-Hant). Omit and Brew's language model reads it from the finished body; a value you set is kept and never re-detected. Becomes the HTML document's lang (and dir for right-to-left languages) on every send and export. One of: en, de, fr, es, pt, it, nl, pl, sv, da, no, fi, cs, sk, hu, ro, bg, el, tr, ru, uk, hr, sr, sl, lt, lv, et, ca, ar, he, fa, ur, hi, bn, th, vi, id, ms, tl, ja, ko, zh-Hans, zh-Hant, sw, af.
+             * @enum {string}
+             */
+            lang?: "en" | "de" | "fr" | "es" | "pt" | "it" | "nl" | "pl" | "sv" | "da" | "no" | "fi" | "cs" | "sk" | "hu" | "ro" | "bg" | "el" | "tr" | "ru" | "uk" | "hr" | "sr" | "sl" | "lt" | "lv" | "et" | "ca" | "ar" | "he" | "fa" | "ur" | "hi" | "bn" | "th" | "vi" | "id" | "ms" | "tl" | "ja" | "ko" | "zh-Hans" | "zh-Hant" | "sw" | "af";
             /** @description File the design under an existing group (`grp_…`), or `ungrouped`. Mutually exclusive with `groupName`. */
             groupId?: string;
             /** @description File the design under a group resolved (or created) by this name. Mutually exclusive with `groupId`. */
@@ -4560,7 +4580,7 @@ export interface components {
             response: string;
         };
         EmailEditRequest: {
-            /** @description The edit to make, in plain language — e.g. "swap the hero for the spring campaign image and tighten the CTA copy". Scoped edits beat full rewrites. Omit to only patch `title`, `subjectLine` or `groupId` (at least one of the four is required). */
+            /** @description The edit to make, in plain language — e.g. "swap the hero for the spring campaign image and tighten the CTA copy". Scoped edits beat full rewrites. Omit to only patch `title`, `subjectLine`, `lang` or `groupId` (at least one of the five is required). */
             prompt?: string;
             /** @description Pin the edit to a specific source version (from `GET /v1/emails/{emailId}?include=versions`). Requires `prompt`. Omit to edit the current latest. */
             emailVersionId?: string;
@@ -4570,6 +4590,11 @@ export interface components {
             title?: string;
             /** @description Inbox subject line to set on the design (`subjectLine` — distinct from `title`, the canvas name). Sends still take an explicit per-send `subject`; this is the design's default, seeded into the send dialog and returned by `GET /v1/emails/{emailId}`. */
             subjectLine?: string;
+            /**
+             * @description Set the language of the email (ISO 639-1, or zh-Hans / zh-Hant). Part of the free envelope patch: no AI run, no new version. Once set it is kept: Brew no longer re-detects it after edits.
+             * @enum {string}
+             */
+            lang?: "en" | "de" | "fr" | "es" | "pt" | "it" | "nl" | "pl" | "sv" | "da" | "no" | "fi" | "cs" | "sk" | "hu" | "ro" | "bg" | "el" | "tr" | "ru" | "uk" | "hr" | "sr" | "sl" | "lt" | "lv" | "et" | "ca" | "ar" | "he" | "fa" | "ur" | "hi" | "bn" | "th" | "vi" | "id" | "ms" | "tl" | "ja" | "ko" | "zh-Hans" | "zh-Hant" | "sw" | "af";
             /** @description Move the design into this existing group (`grp_…`); `null` moves it to Ungrouped; omit to leave its group alone. Part of the free envelope patch: no AI run, no new version. */
             groupId?: string | null;
         };
@@ -9747,7 +9772,7 @@ export interface operations {
             };
             cookie?: never;
         };
-        /** @description A natural-language `prompt` edit (optional `emailVersionId` source pin, optional `contentUrls`) and/or the envelope fields `title`, `subjectLine` and `groupId` — at least one of the four. Identity lives on the path. */
+        /** @description A natural-language `prompt` edit (optional `emailVersionId` source pin, optional `contentUrls`) and/or the envelope fields `title`, `subjectLine`, `lang` and `groupId` — at least one of the five. Identity lives on the path. */
         requestBody: {
             content: {
                 "application/json": components["schemas"]["EmailEditRequest"];

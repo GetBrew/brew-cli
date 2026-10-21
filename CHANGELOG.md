@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Add `--lang <code>` (ISO 639-1, or `zh-Hans` / `zh-Hant`) to
+  `emails generate` and `emails edit`, sent as the body `lang`, synced with
+  GetBrew/brew-v2#2225. On `emails edit`, `--lang` alone is a free envelope
+  patch: no AI run, no new version, and Brew stops re-detecting the language.
+  `emails get` shows the design's `lang` once Brew has read it. Requires the
+  matching API deployment.
 - Synchronize email-category and template browse-group contracts with app
   revision `9bf2e01f14d8260bdde0825e901a05497b66c70c`. Template reads accept
   `--group`, and `--count --group-by group` labels browse groups correctly in
