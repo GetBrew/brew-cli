@@ -42,6 +42,12 @@ parity fail in CI on these commands. Publish the SDK first, then
 registry; never hand-write a lockfile entry), run a frozen install, the full
 checks and `docs:commands:check`, and release the CLI.
 
+The API side must be live first: GetBrew/brew-v2#2169 deployed (the by-key
+fire, `/v1/app-emails`, the team sandbox), and the live spec
+(`https://brew.new/openapi/public-api-v1.yaml`, what the spec-drift
+sentinel reads) matching `openapi/public-api-v1.yaml`,
+which is #2169 at `6f8ef50544`.
+
 ```bash
 # on a clean main with CI green
 npm version <patch|minor|major> --no-git-tag-version

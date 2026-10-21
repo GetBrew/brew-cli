@@ -51,7 +51,7 @@ export const appEmailsKitCommand = defineCommand({
     {
       flag: '--domain <domainId>',
       summary:
-        'Sending domain id for every key (default: a verified domain per purpose, else the team-only sandbox)',
+        'Sending domain id for every key (default: a verified domain per purpose, else the team-only sandbox). A marketing domain fails the transactional keys with APP_EMAIL_DOMAIN_PURPOSE_MISMATCH',
     },
     {
       flag: '--overwrite',
@@ -143,7 +143,6 @@ function renderKit(result: SetUpAppEmailKitResponse, prefix: string): string {
           sender: '',
         }
   )
-  const failed = result.results.filter((entry) => !entry.ok).length
   const lines = [
     renderTable(rows, [
       { key: 'key', header: 'KEY' },
@@ -156,11 +155,57 @@ function renderKit(result: SetUpAppEmailKitResponse, prefix: string): string {
   for (const snippet of result.stack.snippets) {
     lines.push(`Snippet: ${snippet.title} (${snippet.file})`)
   }
-  if (failed > 0) {
-    lines.push(
-      '',
-      `${failed} key${failed === 1 ? '' : 's'} failed. Run \`${prefix} app-emails kit\` again with the same flags to finish them.`
-    )
+  const hints = kitFailureHints(
+    result.results.flatMap((entry) => (entry.ok ? [] : [entry])),
+    prefix
+  )
+  if (hints.length > 0) {
+    lines.push('', ...hints)
   }
   return lines.join('\n')
+}
+
+/**
+ * What to do about each failed key. Running the kit again finishes a key
+ * that failed part way, but not one the API refused for a reason a re-run
+ * keeps: those name the change to make first.
+ */
+function kitFailureHints(
+  failures: ReadonlyArray<{
+    readonly triggerKey: string
+    readonly error: { readonly code: string }
+  }>,
+  prefix: string
+): string[] {
+  const keysWith = (code: string) =>
+    failures
+      .filter((entry) => entry.error.code === code)
+      .map((entry) => entry.triggerKey)
+  const hints: string[] = []
+  const mismatched = keysWith('APP_EMAIL_DOMAIN_PURPOSE_MISMATCH')
+  if (mismatched.length > 0) {
+    hints.push(
+      `${mismatched.join(', ')}: transactional, so they never send from a marketing domain. Run \`${prefix} app-emails kit\` again with a transactional --domain, or without --domain.`
+    )
+  }
+  const inUse = keysWith('APP_EMAIL_TRIGGER_IN_USE')
+  if (inUse.length > 0) {
+    hints.push(
+      `${inUse.join(', ')}: the trigger already starts a published automation no setup made, so every send would go out twice. Unpublish or delete the automations in error.details.automationIds, then run the kit again.`
+    )
+  }
+  const edited = keysWith('APP_EMAIL_EDITED_IN_BREW')
+  if (edited.length > 0) {
+    hints.push(
+      `${edited.join(', ')}: edited in Brew since setup. Keep the edits, or run the kit again with --overwrite.`
+    )
+  }
+  const handled = new Set([...mismatched, ...inUse, ...edited])
+  const rest = failures.filter((entry) => !handled.has(entry.triggerKey))
+  if (rest.length > 0) {
+    hints.push(
+      `${rest.length} key${rest.length === 1 ? '' : 's'} failed. Run \`${prefix} app-emails kit\` again with the same flags to finish them.`
+    )
+  }
+  return hints
 }

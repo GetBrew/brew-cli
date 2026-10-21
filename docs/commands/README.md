@@ -1667,7 +1667,7 @@ Set up one app email by key in one idempotent call (trigger, contract, design, a
 - `--title <title>` — App email title in Brew
 - `--subject <text>` — Subject line
 - `--preview-text <text>` — Inbox preview text
-- `--domain <domainId>` — Sending domain id (default: a verified domain for the purpose, else the team-only sandbox)
+- `--domain <domainId>` — Sending domain id (default: a verified domain for the purpose, else the team-only sandbox). A transactional key (auth, trial ending, payment failed) refuses a marketing domain
 - `--no-publish` — Save the setup without publishing the automation
 - `--overwrite` — Replace a design that was edited in Brew since setup
 - `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
@@ -1689,7 +1689,7 @@ Set up and publish the auth + lifecycle starter kit (per-key results; exits 1 wh
 - `--sets <sets>` — Comma-separated kit sets: auth, lifecycle (default both)
 - `--stack <provider>` — Auth library: better-auth | authjs | supabase | clerk | firebase | custom (narrows the auth keys, picks the snippets)
 - `--keys <keys>` — Comma-separated exact kit keys instead of sets (auth.password-reset,lifecycle.welcome)
-- `--domain <domainId>` — Sending domain id for every key (default: a verified domain per purpose, else the team-only sandbox)
+- `--domain <domainId>` — Sending domain id for every key (default: a verified domain per purpose, else the team-only sandbox). A marketing domain fails the transactional keys with APP_EMAIL_DOMAIN_PURPOSE_MISMATCH
 - `--overwrite` — Replace designs that were edited in Brew since setup
 - `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
 - `--idempotency-key <key>` — Idempotency-Key for safe retries (auto-generated otherwise)
