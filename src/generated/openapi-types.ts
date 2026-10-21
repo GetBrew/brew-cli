@@ -1965,7 +1965,7 @@ export interface paths {
         };
         /**
          * List templates
-         * @description Lists public templates under { data, pagination }. The default full representation includes HTML. Set representation=summary for metadata, previewImage, viewUrl, and referenceEmailId without HTML. Supports exact brand and category filters; query matches title text or an exact template identifier. semantic ranks up to 200 matches using vector search; query additionally filters those matches when both are supplied. Browse defaults to 50 full rows or 20 summary rows. Brand and category match case-insensitively. Continue with pagination.cursor, including after an empty filtered page with hasMore=true. Templates are organization-wide references; pass referenceEmailId to POST /v1/emails to remix one. Set count=true for { count }, the number of templates matching brand and category (refreshed every 15 minutes), instead of rows; add groupBy=brand or groupBy=category for per-value counts, largest first, 100 groups a page with the same pagination.cursor (count does not combine with semantic or query).
+         * @description Lists public templates under { data, pagination }. The default full representation includes HTML. Set representation=summary for metadata, previewImage, viewUrl, and referenceEmailId without HTML. Supports exact brand and category filters and a group filter (a browse group: every category in it); query matches title text or an exact template identifier. semantic ranks up to 200 matches using vector search; query additionally filters those matches when both are supplied. Browse defaults to 50 full rows or 20 summary rows. Brand and category match case-insensitively. Continue with pagination.cursor, including after an empty filtered page with hasMore=true. Templates are organization-wide references; pass referenceEmailId to POST /v1/emails to remix one. Set count=true for { count }, the number of templates matching brand, category and group (refreshed every 15 minutes), instead of rows; add groupBy=brand, groupBy=category or groupBy=group for per-value counts, largest first, 100 groups a page with the same pagination.cursor (count does not combine with semantic or query).
          */
         get: operations["listTemplates"];
         put?: never;
@@ -4446,10 +4446,10 @@ export interface components {
             /** @description The `emailId` of an existing design to redraw in this brand's voice — one of this brand's own designs (GET /v1/emails) or a public gallery template (GET /v1/templates). Its layout and structure are the reference; the copy, imagery and styling become this brand's. */
             referenceEmailId?: string;
             /**
-             * @description Email category that steers the design treatment (exemplars, hero recipe, personalization) — mirrors what the in-app agent infers per request. One of: welcome, newsletter, promotional, product-launch, product-update, order-confirmation, shipping-update, receipt, cart-abandonment, subscription, password-reset, verification, security-alert, account-update, event-invitation, event-reminder, feedback-request, re-engagement, referral, support, business, internal, notification, general. Omit for a general treatment. Transactional categories (receipt, password-reset, order-confirmation, …) steer receipt/reset design conventions; to DELIVER those emails, wire the design into an automation with a trigger and a transactional-purpose sending domain, then fire the trigger.
+             * @description Email category that steers the design treatment (exemplars, hero recipe, personalization) — mirrors what the in-app agent infers per request. One of: welcome, onboarding, newsletter, content, event-invitation, event-reminder, event-recap, product-launch, product-update, product-pitch, promotional, cart-abandonment, re-engagement, subscription, feedback-request, referral, company-news, fundraising, order-confirmation, shipping-update, receipt, password-reset, verification, security-alert, account-update, notification, support, internal, business, general. Omit for a general treatment. Transactional categories (receipt, password-reset, order-confirmation, …) steer receipt/reset design conventions; to DELIVER those emails, wire the design into an automation with a trigger and a transactional-purpose sending domain, then fire the trigger.
              * @enum {string}
              */
-            category?: "welcome" | "newsletter" | "promotional" | "product-launch" | "product-update" | "order-confirmation" | "shipping-update" | "receipt" | "cart-abandonment" | "subscription" | "password-reset" | "verification" | "security-alert" | "account-update" | "event-invitation" | "event-reminder" | "feedback-request" | "re-engagement" | "referral" | "support" | "business" | "internal" | "notification" | "general";
+            category?: "welcome" | "onboarding" | "newsletter" | "content" | "event-invitation" | "event-reminder" | "event-recap" | "product-launch" | "product-update" | "product-pitch" | "promotional" | "cart-abandonment" | "re-engagement" | "subscription" | "feedback-request" | "referral" | "company-news" | "fundraising" | "order-confirmation" | "shipping-update" | "receipt" | "password-reset" | "verification" | "security-alert" | "account-update" | "notification" | "support" | "internal" | "business" | "general";
             /** @description Inbox subject line to set on the design (`subjectLine` — distinct from `title`, the canvas name). Sends still take an explicit per-send `subject`; this is the design's default, seeded into the send dialog and returned by `GET /v1/emails/{emailId}`. */
             subjectLine?: string;
             /** @description File the design under an existing group (`grp_…`), or `ungrouped`. Mutually exclusive with `groupName`. */
@@ -26555,18 +26555,20 @@ export interface operations {
             query?: {
                 /** @description Only this brand's templates, by domain (e.g. `brew.new`); case-insensitive. */
                 brand?: string;
-                /** @description Email category, matched case-insensitively (unknown → empty page): welcome, newsletter, promotional, product-launch, product-update, order-confirmation, shipping-update, receipt, cart-abandonment, subscription, password-reset, verification, security-alert, account-update, event-invitation, event-reminder, feedback-request, re-engagement, referral, support, business, internal, notification, general. */
+                /** @description Email category, matched case-insensitively (unknown → empty page): welcome, onboarding, newsletter, content, event-invitation, event-reminder, event-recap, product-launch, product-update, product-pitch, promotional, cart-abandonment, re-engagement, subscription, feedback-request, referral, company-news, fundraising, order-confirmation, shipping-update, receipt, password-reset, verification, security-alert, account-update, notification, support, internal, business, general. */
                 category?: string;
+                /** @description A browse group: every category in it (e.g. `events` = invitations, reminders and recaps). */
+                group?: "welcome-onboarding" | "newsletter" | "content" | "events" | "product-news" | "sales" | "retention" | "company" | "transactional" | "internal" | "other";
                 /** @description Rank by relevance to this text instead of newest first (top 200; `brand`/`category` still narrow). */
                 semantic?: string;
                 /** @description Case-insensitive title substring or exact public template identifier. Applied within semantic results when semantic is supplied. */
                 query?: string;
                 /** @description Full rows include HTML. Summary rows include selection metadata and links only. */
                 representation?: "full" | "summary";
-                /** @description Return `{ count }`, the number of templates matching `brand`/`category`, instead of rows. Not with `semantic` or `query`. */
+                /** @description Return `{ count }`, the number of templates matching `brand`/`category`/`group`, instead of rows. Not with `semantic` or `query`. */
                 count?: boolean | ("true" | "false");
-                /** @description With `count: true`: also count per brand or per category, largest first, 100 groups a page; continue with `cursor`. */
-                groupBy?: "brand" | "category";
+                /** @description With `count: true`: also count per brand, category or group, largest first, 100 groups a page; continue with `cursor`. */
+                groupBy?: "brand" | "category" | "group";
                 /**
                  * @description Page size, 1–100 (default 50: each row carries its full HTML).
                  * @example 50
@@ -26637,10 +26639,10 @@ export interface operations {
                         /** @description Templates matching `brand`/`category`. */
                         count: number;
                         /** @enum {string} */
-                        groupBy?: "brand" | "category";
+                        groupBy?: "brand" | "category" | "group";
                         /** @description With `groupBy`: up to 100 groups, largest first. */
                         groups?: {
-                            /** @description The brand domain or category; pass it back as the `brand`/`category` filter. */
+                            /** @description The brand domain, category or group; pass it back as the filter of the same name (`brand`, `category` or `group`). */
                             value: string;
                             /** @description The brand's curated display name, when it has one. */
                             name?: string;
