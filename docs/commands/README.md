@@ -2,7 +2,7 @@
 
 <!-- GENERATED FILE — do not edit. Regenerate with `bun run docs:commands`. -->
 
-154 commands. Classes: read (always safe), write
+155 commands. Classes: read (always safe), write
 (mutating, retry-safe), destructive (irreversible — the confirmation
 protocol applies: interactive y/N on a TTY, exit 4 + JSON envelope with
 a `confirmCommand` otherwise, `--yes` to proceed).
@@ -175,6 +175,7 @@ a `confirmCommand` otherwise, `--yes` to proceed).
 | `brew-cli docs` | read | — | Documentation pointers; --agent prints the command manifest |
 | `brew-cli docs api` | read | `GET /v1/help` | Fetch the live machine-readable API catalog (GET /v1/help) |
 | `brew-cli mcp install` | write | — | Add the Brew MCP server to your AI editors' config (Cursor, VS Code, Claude Code, Gemini CLI, Devin Desktop/Windsurf, Codex) |
+| `brew-cli init` | destructive | — | Set up Brew app email in this project: sign in, starter kit, SDK, lib/brew.ts, .env.local, MCP, a sandbox test email |
 | `brew-cli api` | destructive | — | Raw authenticated request against the Brew public API |
 
 ## Details
@@ -2779,6 +2780,38 @@ brew-cli mcp install --client cursor claude-code
 brew-cli mcp install --client codex --auth env
 brew-cli mcp install --client all --dry-run --json
 brew-cli mcp install --client vscode --print
+```
+
+### brew-cli init
+
+Set up Brew app email in this project: sign in, starter kit, SDK, lib/brew.ts, .env.local, MCP, a sandbox test email
+
+- Class: destructive
+- Derived from `brew.brand.get(...)`, `brew.domains.list(...)`, `brew.domains.add(...)`, `brew.appEmails.setUpKit(...)`, `brew.automations.triggers.list(...)`, `brew.automations.triggers.getContract(...)`, `brew.send(...)`
+- `--dry-run` — Plan only: detect, read, and report every change (--json for the plan); no writes, no sign-in, no mutating requests
+- `--app <dir>` — The app to set up inside a monorepo (relative to the cwd)
+- `--domain <host>` — Add this sending domain and print its DNS records (init does not wait for verification)
+- `--sets <sets>` — Kit sets to set up: auth, lifecycle (default both)
+- `--stack <provider>` — Auth stack for the kit (default: detected): better-auth | authjs | supabase | clerk | firebase | custom
+- `--test-to <email>` — Send the test email here (default: the person who signed in; the sandbox reaches your Brew team only)
+- `--apply-patches <patches>` — Apply reviewed patches to your auth config: comma-separated <id>@<hash> from the report (each applies only while its file is unchanged since that report)
+- `--app-url <url>` — Your app's URL, shown on the brew.new approval page so the right brand is picked
+- `--no-install` — Do not install @brew.new/sdk
+- `--no-mcp` — Do not configure MCP for detected editors
+- `--no-agent-files` — Do not write the AGENTS.md block or the skill files
+- `--no-test-email` — Do not send the sandbox test email
+- `--no-wait` — If a sign-in is needed, exit 3 at once with its link and code (agents), then run the resume command
+- `--resume` — Collect the sign-in started with --no-wait, then continue
+- `--no-open` — Print the sign-in link without opening a browser
+
+```bash
+brew-cli init
+brew-cli init --dry-run --json
+brew-cli init --yes --json
+brew-cli init --yes --no-wait --json
+brew-cli init --resume --yes --json
+brew-cli init --app apps/web --domain mail.example.com --yes
+brew-cli init --yes --apply-patches better-auth-config@3f9c2a7d1b04
 ```
 
 ### brew-cli api
