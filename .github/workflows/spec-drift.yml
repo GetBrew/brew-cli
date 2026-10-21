@@ -9,7 +9,7 @@ permissions:
   contents: read
   issues: write
 
-# An earlier match must finish reconciling before a later mismatch opens an alert.
+# Keep comparisons and issue reconciliation from running simultaneously.
 concurrency:
   group: spec-drift-${{ github.workflow }}
   cancel-in-progress: false
@@ -49,6 +49,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          DEFAULT_HEAD=$(gh api "repos/${{ github.repository }}/git/ref/heads/${{ github.event.repository.default_branch }}" --jq '.object.sha')
+          if [ "$DEFAULT_HEAD" != "${{ github.sha }}" ]; then
+            echo "Skipping recovery: the verified revision is no longer the default-branch head."
+            exit 0
+          fi
           MATCHING=$(gh issue list --label spec-drift --state open --limit 100 --json number,title,author --jq '.[] | select(.author.is_bot and .title == "Spec drift: live API differs from the vendored spec") | .number')
           SPEC_SHA=$(sha256sum openapi/public-api-v1.yaml | cut -d ' ' -f 1)
           BODY="The live published spec and this revision's vendored spec are byte-identical.
