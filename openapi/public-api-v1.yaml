@@ -12747,7 +12747,7 @@ components:
               row:
                 type: integer
                 exclusiveMinimum: 0
-                description: "The 1-based row that failed: `contacts[row - 1]`, or the CSV data row (header excluded)."
+                description: "The 1-based row that failed: `contacts[row - 1]`, or the CSV data row (header and blank lines not counted)."
               code:
                 type: string
               field:
@@ -12773,7 +12773,7 @@ components:
               row:
                 type: integer
                 exclusiveMinimum: 0
-                description: "The 1-based row it is about (CSV: data row)."
+                description: "The 1-based row it is about (CSV: data row; header and blank lines not counted)."
               field:
                 type: string
                 minLength: 1
@@ -12968,7 +12968,7 @@ components:
               row:
                 type: integer
                 exclusiveMinimum: 0
-                description: "The 1-based row it is about (CSV: data row)."
+                description: "The 1-based row it is about (CSV: data row; header and blank lines not counted)."
               field:
                 type: string
                 minLength: 1
@@ -14031,7 +14031,7 @@ components:
               row:
                 type: integer
                 exclusiveMinimum: 0
-                description: "The 1-based row that failed: `contacts[row - 1]`, or the CSV data row (header excluded)."
+                description: "The 1-based row that failed: `contacts[row - 1]`, or the CSV data row (header and blank lines not counted)."
               code:
                 type: string
               field:
@@ -14057,7 +14057,7 @@ components:
               row:
                 type: integer
                 exclusiveMinimum: 0
-                description: "The 1-based row it is about (CSV: data row)."
+                description: "The 1-based row it is about (CSV: data row; header and blank lines not counted)."
               field:
                 type: string
                 minLength: 1

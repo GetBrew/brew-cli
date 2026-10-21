@@ -7121,7 +7121,7 @@ export interface components {
             fieldsCreated: string[];
             errors: {
                 email: string;
-                /** @description The 1-based row that failed: `contacts[row - 1]`, or the CSV data row (header excluded). */
+                /** @description The 1-based row that failed: `contacts[row - 1]`, or the CSV data row (header and blank lines not counted). */
                 row?: number;
                 code: string;
                 field?: string;
@@ -7130,7 +7130,7 @@ export interface components {
             warnings: {
                 code: string;
                 email?: string;
-                /** @description The 1-based row it is about (CSV: data row). */
+                /** @description The 1-based row it is about (CSV: data row; header and blank lines not counted). */
                 row?: number;
                 field?: string;
                 message: string;
@@ -7212,7 +7212,7 @@ export interface components {
             warnings: {
                 code: string;
                 email?: string;
-                /** @description The 1-based row it is about (CSV: data row). */
+                /** @description The 1-based row it is about (CSV: data row; header and blank lines not counted). */
                 row?: number;
                 field?: string;
                 message: string;
@@ -7681,7 +7681,7 @@ export interface components {
             fieldsCreated: string[];
             errors: {
                 email: string;
-                /** @description The 1-based row that failed: `contacts[row - 1]`, or the CSV data row (header excluded). */
+                /** @description The 1-based row that failed: `contacts[row - 1]`, or the CSV data row (header and blank lines not counted). */
                 row?: number;
                 code: string;
                 field?: string;
@@ -7690,7 +7690,7 @@ export interface components {
             warnings: {
                 code: string;
                 email?: string;
-                /** @description The 1-based row it is about (CSV: data row). */
+                /** @description The 1-based row it is about (CSV: data row; header and blank lines not counted). */
                 row?: number;
                 field?: string;
                 message: string;
