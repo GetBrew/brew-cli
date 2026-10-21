@@ -41,7 +41,7 @@ a `confirmCommand` otherwise, `--yes` to proceed).
 | `brew-cli contacts delete-many` | destructive | `POST /v1/contacts/batch-delete` | Delete up to 1000 contacts by email |
 | `brew-cli contacts validate` | write ($) | `POST /v1/contacts/validate` | Batch-validate email deliverability (no contacts created) |
 | `brew-cli contacts import` | write | `POST /v1/contacts/import` | Bulk-import up to 1000 contacts from a JSON file or stdin as one Import History batch (free; --validate costs 2 credits per address) |
-| `brew-cli contacts import-csv` | write | `POST /v1/contacts/import-csv` | Bulk-import contacts from a CSV file or stdin as one Import History batch (free; --validate costs 2 credits per row) |
+| `brew-cli contacts import-csv` | write | `POST /v1/contacts/import-csv` | Bulk-import contacts from a CSV file or stdin as one Import History batch (free; validation charged separately) |
 | `brew-cli fields list` | read | `GET /v1/fields` | List custom contact fields |
 | `brew-cli fields get` | read | `GET /v1/fields/{fieldName}` | Fetch one contact field definition by name — the bare row |
 | `brew-cli fields create` | write | `POST /v1/fields` | Create a custom contact field |
@@ -476,7 +476,7 @@ brew-cli contacts import --file contacts.json --dry-run --on-conflict skip
 
 ### brew-cli contacts import-csv
 
-Bulk-import contacts from a CSV file or stdin as one Import History batch (free; --validate costs 2 credits per row)
+Bulk-import contacts from a CSV file or stdin as one Import History batch (free; validation charged separately)
 
 - Route: `POST /v1/contacts/import-csv`
 - Class: write
@@ -485,7 +485,7 @@ Bulk-import contacts from a CSV file or stdin as one Import History batch (free;
 - `--file-name <name>` — Name the batch in Brew's Import History (default: the --file name)
 - `--mapping <pairs...>` — Column mapping csvColumn=fieldName, repeatable
 - `--date-order <order>` — month_first or day_first: how to read dates like 03/04/2026 (a day over 12 in the column wins; default month-first, with a DATE_ORDER_ASSUMED warning)
-- `--validate` — Deliverability-check every imported address (2 credits per CSV row)
+- `--validate` — Deliverability checks: up to 100 submitted CSV data rows cost 2 credits/row inline; larger files use background checks when needed, charged per address
 - `--consent-source <source>` — Stamp a marketing consent record on every row: api, form or import (sets the source of a record given in --input)
 - `--dry-run` — Show what the import would do and write nothing (no contacts, fields or Import History batch; --validate is skipped and nothing is charged)
 - `--on-conflict <mode>` — upsert (default) updates existing contacts; skip only creates missing ones and leaves existing contacts unchanged (counted as skipped)

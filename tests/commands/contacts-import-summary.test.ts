@@ -94,6 +94,16 @@ describe('renderImportResult (contacts import / import-csv on a terminal)', () =
     expect(text).not.toContain('undefined')
   })
 
+  it('names no batch when a real run returns no importId', () => {
+    const { importId: _none, ...noId } = result({ errors: [], warnings: [] })
+    expect(renderImportResult(noId, 'customers.csv').split('\n')[0]).toBe(
+      'Imported customers.csv: 2 added, 0 updated, 1 failed, 3 skipped (6 rows submitted).'
+    )
+    expect(renderImportResult(noId, undefined).split('\n')[0]).toBe(
+      'Imported: 2 added, 0 updated, 1 failed, 3 skipped (6 rows submitted).'
+    )
+  })
+
   it('caps a long table and points at --json for the rest', () => {
     const errors = Array.from({ length: MAX_TERMINAL_ROWS + 5 }, (_, i) => ({
       email: `x${i}@brewmail.dev`,

@@ -24,13 +24,17 @@ export function renderImportResult(
       ? [`${summary.skipped} ${isDryRun ? 'to skip' : 'skipped'}`]
       : []),
   ].join(', ')
-  const name = fileName ? `${fileName} ` : ''
   const rowNoun = summary.total === 1 ? 'row' : 'rows'
-  const lines = [
-    isDryRun
-      ? `Dry run${fileName ? ` of ${fileName}` : ''} — nothing was written: ${counts} (${summary.total} ${rowNoun} submitted).`
-      : `Imported ${name}as ${result.importId}: ${counts} (${summary.total} ${rowNoun} submitted).`,
-  ]
+  const head = isDryRun
+    ? `Dry run${fileName ? ` of ${fileName}` : ''} — nothing was written`
+    : [
+        'Imported',
+        fileName,
+        result.importId ? `as ${result.importId}` : undefined,
+      ]
+        .filter(Boolean)
+        .join(' ')
+  const lines = [`${head}: ${counts} (${summary.total} ${rowNoun} submitted).`]
   if (result.errors.length > 0) {
     lines.push(
       '',

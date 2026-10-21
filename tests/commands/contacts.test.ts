@@ -607,12 +607,20 @@ describe('contacts import-csv', () => {
 describe('contacts import', () => {
   const IMPORT_URL = 'https://brew.new/api/v1/contacts/import'
 
+  const DRY_RUN_ENVELOPE = {
+    summary: { inserted: 1, updated: 0, failed: 0, skipped: 0, total: 1 },
+    fieldsCreated: [],
+    errors: [],
+    warnings: [],
+    dryRun: true,
+  }
+
   it('sends --dry-run and --on-conflict over a body that sets neither', async () => {
     let body: unknown
     server.use(
       http.post(IMPORT_URL, async ({ request }) => {
         body = await request.json()
-        return HttpResponse.json({ dryRun: true })
+        return HttpResponse.json(DRY_RUN_ENVELOPE)
       })
     )
     const result = await runCli(
@@ -633,6 +641,35 @@ describe('contacts import', () => {
       dryRun: true,
       onConflict: 'skip',
     })
+  })
+
+  it('renders a dry run that --input asked for, with no flag', async () => {
+    server.use(http.post(IMPORT_URL, () => HttpResponse.json(DRY_RUN_ENVELOPE)))
+    const result = await runCli(
+      [
+        'contacts',
+        'import',
+        '--input',
+        JSON.stringify({
+          contacts: [{ email: 'a@example.com' }],
+          dryRun: true,
+        }),
+      ],
+      { env: env(), ttyOut: true }
+    )
+    expect(result.code).toBe(0)
+    expect(result.stdout).toContain(
+      'Dry run — nothing was written: 1 to add, 0 to update, 0 to fail (1 row submitted).'
+    )
+  })
+
+  it('refuses an --on-conflict mode the API does not take', async () => {
+    const result = await runCli(
+      ['contacts', 'import', '--file', '-', '--on-conflict', 'merge'],
+      { env: env(), stdin: JSON.stringify([{ email: 'a@example.com' }]) }
+    )
+    expect(result.code).toBe(2)
+    expect(result.stderr).toContain('--on-conflict takes upsert or skip')
   })
 
   it('keeps validate, consent and fileName a JSON body sets; flags win only when given', async () => {
