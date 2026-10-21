@@ -6,9 +6,8 @@ export const MAX_TERMINAL_ROWS = 20
 
 /**
  * The terminal rendering of `contacts import` and `contacts import-csv`: one
- * line of counts that add up to the rows submitted, then the rows that
- * failed and the notes (skipped CSV rows, ignored columns), each by row, so
- * a fix starts from the row number. `--json` prints the full envelope.
+ * line of counts, then the failures and warnings returned by the API.
+ * `--json` prints the full envelope.
  */
 export function renderImportResult(
   result: ImportContactsResponse,
@@ -22,17 +21,15 @@ export function renderImportResult(
     ...(summary.skipped > 0 ? [`${summary.skipped} skipped`] : []),
   ].join(', ')
   const name = fileName ? `${fileName} ` : ''
-  const lines = [
-    `Imported ${name}as ${result.importId}: ${counts} (${summary.total} row${summary.total === 1 ? '' : 's'}).`,
-  ]
+  const lines = [`Imported ${name}as ${result.importId}: ${counts}.`]
   if (result.errors.length > 0) {
     lines.push(
       '',
       'FAILED ROWS',
       limitedTable(result.errors, [
-        { key: 'row', header: 'ROW' },
         { key: 'email', header: 'EMAIL' },
         { key: 'code', header: 'CODE' },
+        { key: 'field', header: 'FIELD' },
         { key: 'message', header: 'MESSAGE' },
       ])
     )
@@ -42,8 +39,9 @@ export function renderImportResult(
       '',
       'WARNINGS',
       limitedTable(result.warnings, [
-        { key: 'row', header: 'ROW' },
+        { key: 'email', header: 'EMAIL' },
         { key: 'code', header: 'CODE' },
+        { key: 'field', header: 'FIELD' },
         { key: 'message', header: 'MESSAGE' },
       ])
     )

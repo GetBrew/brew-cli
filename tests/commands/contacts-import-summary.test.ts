@@ -9,21 +9,21 @@ function result(
   overrides: Partial<ImportContactsResponse> = {}
 ): ImportContactsResponse {
   return {
-    summary: { inserted: 2, updated: 0, failed: 1, skipped: 3, total: 6 },
+    summary: { inserted: 2, updated: 0, failed: 1, skipped: 3 },
     fieldsCreated: [],
     errors: [
       {
         email: 'grace@brewmail.dev',
-        row: 5,
         code: 'FIELD_TYPE_MISMATCH',
+        field: 'customFields.plan',
         message: "Field 'customFields.plan' is type 'number'.",
       },
     ],
     warnings: [
       {
-        code: 'CSV_ROW_SKIPPED',
-        row: 2,
-        message: 'Row 2 has no email address, so it was skipped.',
+        code: 'CSV_COLUMN_IGNORED',
+        field: 'Created At',
+        message: 'Created At is managed by Brew and was ignored.',
       },
     ],
     importId: 'imp_123',
@@ -32,20 +32,24 @@ function result(
 }
 
 describe('renderImportResult (contacts import / import-csv on a terminal)', () => {
-  it('leads with counts that add up to the rows, then names each row', () => {
+  it('renders API counts, failed addresses and warning fields without requiring row indexes', () => {
     const text = renderImportResult(result(), 'customers.csv')
     expect(text.split('\n')[0]).toBe(
-      'Imported customers.csv as imp_123: 2 added, 0 updated, 1 failed, 3 skipped (6 rows).'
+      'Imported customers.csv as imp_123: 2 added, 0 updated, 1 failed, 3 skipped.'
     )
     expect(text).toContain('FAILED ROWS')
-    expect(text).toMatch(/5\s+grace@brewmail\.dev\s+FIELD_TYPE_MISMATCH/)
-    expect(text).toMatch(/2\s+CSV_ROW_SKIPPED\s+Row 2 has no email address/)
+    expect(text).toMatch(
+      /grace@brewmail\.dev\s+FIELD_TYPE_MISMATCH\s+customFields.plan/
+    )
+    expect(text).toMatch(
+      /CSV_COLUMN_IGNORED\s+Created At\s+Created At is managed/
+    )
   })
 
   it('omits empty sections and a zero skipped count', () => {
     const text = renderImportResult(
       result({
-        summary: { inserted: 1, updated: 0, failed: 0, skipped: 0, total: 1 },
+        summary: { inserted: 1, updated: 0, failed: 0, skipped: 0 },
         errors: [],
         warnings: [],
         fieldsCreated: ['plan'],
@@ -55,7 +59,7 @@ describe('renderImportResult (contacts import / import-csv on a terminal)', () =
     )
     expect(text).toBe(
       [
-        'Imported as imp_123: 1 added, 0 updated, 0 failed (1 row).',
+        'Imported as imp_123: 1 added, 0 updated, 0 failed.',
         '',
         'New custom fields: plan.',
         '',
@@ -67,7 +71,6 @@ describe('renderImportResult (contacts import / import-csv on a terminal)', () =
   it('caps a long table and points at --json for the rest', () => {
     const errors = Array.from({ length: MAX_TERMINAL_ROWS + 5 }, (_, i) => ({
       email: `x${i}@brewmail.dev`,
-      row: i + 1,
       code: 'INVALID_EMAIL',
       message: 'Invalid.',
     }))
