@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+These import changes require an SDK release exposing `contacts.import`.
+The published SDK 13.0.0 baseline supports the existing released commands,
+but does not provide that method. Follow the contact import SDK gate in
+`RELEASING.md` before dependency validation and release.
+
 ### Added
 
 - **`contacts import`** (`POST /v1/contacts/import`): bulk-import up to 1000
@@ -19,13 +24,42 @@
 - `contacts upsert-many` says what it is for: up to 1000 contacts per call
   (its summary said 100) with no Import History entry, for recurring syncs.
 
+## 0.17.0
+
+Requires `@brew.new/sdk` `^13.0.0`. This is a minor release because it adds
+canvas commands: the published npm `0.16.0` artifact (`gitHead`
+`2213a2060ba13d378c1f11f75abb2ff303e9bf5a`) did not include them.
+
+### Added
+
+- `canvas sessions create`, `refresh`, and `revoke` manage origin-bound grants
+  for one group or email. Credentials stay out of iframe URLs; API keys stay
+  on the host backend. Revocation requires confirmation, and create/refresh
+  requests never retry credentials that cannot be replayed.
+
+### Changed
+
 - Canvas session create, refresh, and revoke use the SDK methods. JSON output,
   revocation confirmation, and create/refresh no-retry behavior are preserved.
+- The SDK dependency uses its published registry artifact instead of the
+  temporary source pin. The read-only SDK extraction waiter has no separate
+  CLI command; scripts can poll the existing `brands get` command.
 
-Requires the SDK revocation response fix, planned for 13.0.0, and
-`contacts.import` (GetBrew/typescript-sdk `claude/contact-imports`); the
-dependency pins that SDK source commit until it is published. Follow the canvas
-migration gate in `RELEASING.md` before updating the dependency and releasing.
+### Fixed
+
+- EML import help now lists the supported saved-message format. Import output
+  preserves the complete asset report, including warnings.
+- Email recovery guidance distinguishes a committed `409
+  EMAIL_RESULT_UNAVAILABLE` from an unknown outcome. Read the saved version
+  instead of repeating generation or editing.
+- List drains reject repeated or cyclic cursors with `CLI_PAGINATION` and
+  preserve safe resume information; advancing empty pages remain supported.
+- Delivery and automation confirmation preserve stdin payloads and apply
+  command deadlines to input preparation without charging human approval time.
+- Generated contracts include validation outcomes and persistence counts, plus
+  current audience count freshness and email recovery behavior.
+
+Follow the SDK migration gate in `RELEASING.md` before releasing.
 
 ## 0.16.0
 
