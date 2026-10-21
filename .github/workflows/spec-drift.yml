@@ -9,6 +9,11 @@ permissions:
   contents: read
   issues: write
 
+# An earlier match must finish reconciling before a later mismatch opens an alert.
+concurrency:
+  group: spec-drift-${{ github.workflow }}
+  cancel-in-progress: false
+
 jobs:
   drift:
     runs-on: ${{ vars.CI_RUNNER_SMALL || 'ubuntu-latest' }}
@@ -40,7 +45,7 @@ jobs:
             gh issue create --title "Spec drift: live API differs from the vendored spec" --label spec-drift --body "$BODY"
           fi
       - name: Resolve recovered drift issues
-        if: steps.compare.outcome == 'success'
+        if: steps.compare.outcome == 'success' && github.ref_name == github.event.repository.default_branch
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
