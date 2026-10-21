@@ -1,22 +1,22 @@
-import {
-  existsSync,
-  mkdtempSync,
-  readFileSync,
-  statSync,
-  writeFileSync,
-} from 'node:fs'
-import { tmpdir } from 'node:os'
+import { existsSync, statSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { HttpResponse, http } from 'msw'
 import { describe, expect, it } from 'vitest'
 import { pendingLoginPath } from '../../src/lib/auth-flow/pending'
 import { readConfig } from '../../src/lib/config-store'
-import type { InitReport } from '../../src/lib/init/report'
 import { validateBrewState } from '../../src/lib/project/state'
-import type { SpawnFn } from '../../src/lib/types'
-import { contractHandler } from '../helpers/contract-artifacts'
 import { copyFixture } from '../helpers/fixtures'
-import { loadSchema, validateSchema } from '../helpers/json-schema'
+import {
+  configEnv,
+  EXPLICIT_KEY,
+  expectValidReport,
+  init,
+  KIT_KEYS,
+  MUTATING,
+  type Recorded,
+  read,
+  recordingSpawn,
+  useBrewApi,
+} from '../helpers/init-api'
 import {
   APP_KEY,
   APPROVER_EMAIL,
@@ -27,278 +27,6 @@ import {
   USER_CODE,
   useLoginServer,
 } from '../helpers/login-server'
-import { server } from '../helpers/msw-server'
-import {
-  type RunCliOptions,
-  type RunCliResult,
-  runCli,
-} from '../helpers/run-cli'
-
-const API = 'https://brew.new/api'
-const EXPLICIT_KEY = 'brew_explicit0123456789abcdefghijklmno'
-const SECRETS = [APP_KEY, CLI_KEY, EXPLICIT_KEY]
-const REPORT_SCHEMA = loadSchema('init-report.json')
-
-const KIT_KEYS = [
-  'auth.verify-email',
-  'auth.password-reset',
-  'auth.magic-link',
-  'lifecycle.welcome',
-]
-
-type Recorded = {
-  readonly method: string
-  readonly path: string
-  readonly body: unknown
-  readonly idempotencyKey: string | null
-  readonly brandId: string | null
-  readonly authorization: string | null
-}
-
-function titleOf(key: string): string {
-  return key
-    .split(/[.-]/)
-    .slice(1)
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ')
-}
-
-/** The kit's trigger rows, as `GET /v1/automations/triggers` lists them. */
-function kitTriggerRows() {
-  return KIT_KEYS.map((key, index) => ({
-    triggerEventId: `tri_${index}`,
-    key,
-    title: titleOf(key),
-    provider: 'brew_api',
-    payloadSchema: {
-      type: 'object',
-      fields: [
-        { key: 'email', type: 'string', required: true },
-        { key: 'appName', type: 'string', required: false },
-        { key: 'userName', type: 'string', required: false },
-        ...(key.startsWith('auth.')
-          ? [
-              { key: 'confirmationUrl', type: 'string', required: false },
-              { key: 'otp', type: 'string', required: false },
-            ]
-          : []),
-      ],
-    },
-    createdAt: '2026-10-13T12:00:00.000Z',
-    updatedAt: '2026-10-13T12:00:00.000Z',
-  }))
-}
-
-/** Brew's v1 API for init: brand, domains, kit, triggers, the by-key fire. */
-function useBrewApi(
-  options: {
-    readonly domains?: ReadonlyArray<Record<string, unknown>>
-    readonly failKeys?: readonly string[]
-    /** A kit key's refusal, by key (beats `failKeys`' INTERNAL_ERROR). */
-    readonly refusals?: Readonly<
-      Record<string, { readonly code: string; readonly message: string }>
-    >
-    /** `warnings` on the `POST /v1/domains` row. */
-    readonly addWarnings?: ReadonlyArray<Record<string, unknown>>
-  } = {}
-): Recorded[] {
-  const requests: Recorded[] = []
-  const record = async (request: Request): Promise<unknown> => {
-    const text = await request.text()
-    const body = text === '' ? undefined : (JSON.parse(text) as unknown)
-    requests.push({
-      method: request.method,
-      path: new URL(request.url).pathname.replace(/^\/api/, ''),
-      body,
-      idempotencyKey: request.headers.get('idempotency-key'),
-      brandId: request.headers.get('x-brand-id'),
-      authorization: request.headers.get('authorization'),
-    })
-    return body
-  }
-  server.use(
-    contractHandler(API, kitTriggerRows),
-    http.get(`${API}/v1/brand`, async ({ request }) => {
-      await record(request)
-      return HttpResponse.json({
-        brandId: BRAND.brandId,
-        domain: 'acme.com',
-        status: 'completed',
-        ready: true,
-        identity: { brandName: BRAND.name },
-      })
-    }),
-    http.get(`${API}/v1/domains`, async ({ request }) => {
-      await record(request)
-      return HttpResponse.json({
-        data: options.domains ?? [],
-        pagination: { limit: 100, cursor: null, hasMore: false },
-      })
-    }),
-    http.post(`${API}/v1/domains`, async ({ request }) => {
-      const body = (await record(request)) as { name: string }
-      return HttpResponse.json(
-        {
-          domainId: 'dom_new',
-          domainUrl: 'https://brew.new/domains/dom_new',
-          name: body.name,
-          region: 'us-east-1',
-          status: 'not_started',
-          sendingEnabled: false,
-          sendable: false,
-          sendingPurpose: 'transactional',
-          records: [
-            {
-              record: 'DKIM',
-              name: `brew._domainkey.${body.name}`,
-              type: 'TXT',
-              ttl: 'Auto',
-              status: 'not_started',
-              value: 'p=MIGf…',
-            },
-          ],
-          createdAt: '2026-10-13T12:00:00.000Z',
-          updatedAt: '2026-10-13T12:00:00.000Z',
-          ...(options.addWarnings === undefined
-            ? {}
-            : { warnings: options.addWarnings }),
-        },
-        { status: 201 }
-      )
-    }),
-    http.post(`${API}/v1/app-emails/kit`, async ({ request }) => {
-      await record(request)
-      return HttpResponse.json({
-        results: KIT_KEYS.map((key, index) =>
-          options.refusals?.[key] !== undefined
-            ? { triggerKey: key, ok: false, error: options.refusals[key] }
-            : options.failKeys?.includes(key)
-              ? {
-                  triggerKey: key,
-                  ok: false,
-                  error: { code: 'INTERNAL_ERROR', message: 'Import failed.' },
-                }
-              : {
-                  ok: true,
-                  triggerKey: key,
-                  triggerEventId: `tri_${index}`,
-                  emailId: `eml_${index}`,
-                  emailVersionId: `emv_${index}`,
-                  automationId: `aut_${index}`,
-                  published: true,
-                  created: { trigger: true, email: true, automation: true },
-                  sender: {
-                    mode: 'sandbox',
-                    from: 'acme@email.brew.new',
-                    sandbox: { dailyLimit: 50, remainingToday: 50 },
-                  },
-                  payloadSchema: { type: 'object', fields: [] },
-                  fireExample: {
-                    method: 'POST',
-                    path: `/v1/automations/triggers/by-key/${key}/fire`,
-                    examplePayload: { email: 'jane@example.com' },
-                    curl: 'curl …',
-                    sdk: `await brew.send('${key}', { email })`,
-                  },
-                  warnings: [],
-                }
-        ),
-        stack: {
-          provider: 'better-auth',
-          authDelivery: 'code',
-          note: 'Wire the callbacks into betterAuth.',
-          keys: KIT_KEYS.filter((key) => key.startsWith('auth.')),
-          snippets: [],
-        },
-      })
-    }),
-    http.get(`${API}/v1/automations/triggers`, async ({ request }) => {
-      await record(request)
-      return HttpResponse.json({
-        data: kitTriggerRows(),
-        pagination: { limit: 100, cursor: null, hasMore: false },
-      })
-    }),
-    http.post(
-      `${API}/v1/automations/triggers/by-key/:key/fire`,
-      async ({ request, params }) => {
-        await record(request)
-        return HttpResponse.json(
-          {
-            triggerInstanceId: 'tin_1',
-            triggerEventId: 'tri_3',
-            triggerKey: String(params.key),
-            status: 'triggered',
-            automationRunIds: ['run_1'],
-            notStarted: [],
-            publishedAutomations: [{ automationId: 'aut_3' }],
-            counts: { automations: 1, skipped: 0 },
-            warnings: [],
-            receivedAt: '2026-10-13T12:00:00.000Z',
-          },
-          { status: 202 }
-        )
-      }
-    )
-  )
-  return requests
-}
-
-type SpawnCall = {
-  readonly command: string
-  readonly args: readonly string[]
-  readonly cwd: string | undefined
-}
-
-/** git is "not a repository" (the .gitignore fallback); installs succeed. */
-function recordingSpawn(): {
-  readonly calls: SpawnCall[]
-  readonly spawn: SpawnFn
-} {
-  const calls: SpawnCall[] = []
-  return {
-    calls,
-    spawn: async (command, args, options) => {
-      if (command === 'git') {
-        return { code: 128, stdout: '', stderr: 'fatal: not a git repository' }
-      }
-      calls.push({ command, args, cwd: options?.cwd })
-      return { code: 0, stdout: '', stderr: '' }
-    },
-  }
-}
-
-function configEnv(
-  extra: Record<string, string | undefined> = {}
-): Record<string, string | undefined> {
-  return {
-    BREW_CLI_CONFIG_DIR: mkdtempSync(join(tmpdir(), 'brew-cli-init-')),
-    ...extra,
-  }
-}
-
-async function init(
-  argv: readonly string[],
-  options: RunCliOptions & { readonly cwd: string }
-): Promise<RunCliResult & { readonly report: InitReport }> {
-  const result = await runCli(['init', ...argv], options)
-  // Secret canary: no key ever reaches the terminal, in any mode.
-  for (const secret of SECRETS) {
-    expect(result.stdout).not.toContain(secret)
-    expect(result.stderr).not.toContain(secret)
-  }
-  return { ...result, report: result.json as InitReport }
-}
-
-function expectValidReport(report: InitReport): void {
-  expect(validateSchema(REPORT_SCHEMA, report)).toEqual([])
-}
-
-function read(root: string, path: string): string {
-  return readFileSync(join(root, path), 'utf8')
-}
-
-const MUTATING = new Set(['POST', 'PUT', 'PATCH', 'DELETE'])
 
 describe('init: confirmation and dry run', () => {
   it('exits 4 off a terminal without --yes, with the re-run command', async () => {
@@ -876,6 +604,8 @@ describe('init --yes: the full run', () => {
     expectValidReport(result.report)
     const ids = result.report.nextSteps.map((step) => step.id)
     expect(ids).not.toContain('add-dns-records')
+    // Connect automatically would publish the same clashing DKIM record.
+    expect(ids).not.toContain('connect-dns-automatically')
     expect(
       result.report.nextSteps.find((step) => step.id === 'dkim-selector-in-use')
     ).toEqual({
