@@ -39,3 +39,18 @@ jobs:
             gh label create spec-drift --description "Live API differs from the vendored spec" --color D93F0B 2>/dev/null || true
             gh issue create --title "Spec drift: live API differs from the vendored spec" --label spec-drift --body "$BODY"
           fi
+      - name: Resolve recovered drift issues
+        if: steps.compare.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          MATCHING=$(gh issue list --label spec-drift --state open --limit 100 --json number,title,author --jq '.[] | select(.author.is_bot and .title == "Spec drift: live API differs from the vendored spec") | .number')
+          SPEC_SHA=$(sha256sum openapi/public-api-v1.yaml | cut -d ' ' -f 1)
+          BODY="The live published spec and this revision's vendored spec are byte-identical.
+
+          CLI revision: ${{ github.sha }}
+          Spec SHA256: $SPEC_SHA
+          Verification: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          for ISSUE in $MATCHING; do
+            gh issue close "$ISSUE" --comment "$BODY"
+          done
