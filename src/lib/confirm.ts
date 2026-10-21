@@ -1,5 +1,6 @@
 import type { CommandInvocation, CommandSpec } from './define-command'
 import { CommandAbortedError, ConfirmationRequiredError } from './errors'
+import { DEFAULT_INVOCATION_PREFIX, getInvocationPrefix } from './invocation'
 
 /**
  * The confirmation protocol for destructive commands:
@@ -47,21 +48,30 @@ export async function enforceConfirmation(
       resumeDeadline()
     }
   }
+  const prefix = getInvocationPrefix(ctx.io.env)
   throw new ConfirmationRequiredError({
     confirmationRequired: true,
-    command: ['brew-cli', ...spec.path].join(' '),
+    command: [prefix, ...spec.path].join(' '),
     summary,
     confirmCommand: buildConfirmCommand(
       options.confirmationArgv ??
         (invocation.flags.input === '-' && invocation.input !== undefined
           ? inlineStdinInputArgv(ctx.rawArgv, JSON.stringify(invocation.input))
-          : ctx.rawArgv)
+          : ctx.rawArgv),
+      prefix
     ),
   })
 }
 
-export function buildConfirmCommand(rawArgv: readonly string[]): string {
-  return ['brew-cli', ...rerunTokens(rawArgv), '--yes'].join(' ')
+/**
+ * `prefix` is how the CLI was invoked (`getInvocationPrefix`): `brew-cli`,
+ * or a package runner such as `npx -y @brew.new/cli@<version>`.
+ */
+export function buildConfirmCommand(
+  rawArgv: readonly string[],
+  prefix: string = DEFAULT_INVOCATION_PREFIX
+): string {
+  return [prefix, ...rerunTokens(rawArgv), '--yes'].join(' ')
 }
 
 /** Confirm stdin requests after parsing, carrying the merged body on a re-run. */
@@ -109,10 +119,11 @@ function inlineStdinInputArgv(
  */
 export function buildRetryCommand(
   rawArgv: readonly string[],
-  idempotencyKey: string
+  idempotencyKey: string,
+  prefix: string = DEFAULT_INVOCATION_PREFIX
 ): string {
   return [
-    'brew-cli',
+    prefix,
     ...rerunTokens(rawArgv, { dropIdempotencyKey: true }),
     '--idempotency-key',
     shellQuote(idempotencyKey),
