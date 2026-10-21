@@ -1,5 +1,55 @@
 # Changelog
 
+## 0.20.0
+
+Needs the same SDK release as 0.18.0, and the API from GetBrew/brew-v2#2169
+(the import modes `props: "merge_tags"`, `placeholders: "resend"` and
+`variables`, and the same modes on an app email's `source`); the bundled
+spec is #2169 @ `6f8ef50544`.
+
+### Added
+
+- **`brew-cli migrate resend`** moves a Resend account and the project
+  that sends through it to Brew. It plans by default: it reads Resend at
+  2 requests a second with a full-access key read from `RESEND_API_KEY`
+  or `--resend-key-stdin` (never sent to Brew, never printed or stored),
+  reads the Brew brand, scans the code, and writes `brew.migration.json`
+  (`--dry-run` writes nothing). `--apply` (destructive class) copies:
+  templates as app emails by key (imported with `placeholders: "resend"`
+  and their variables' fallbacks, published where they were), React Email
+  files as app emails with props as merge tags (`props: "merge_tags"`),
+  contacts (subscribed ones with an import consent record, unsubscribed
+  ones stay unsubscribed, contacts with no state are left out), segments
+  and topics as boolean contact fields with an audience each (topics read
+  each contact's choices, one request per contact), suppressions and
+  unsubscribed contacts into `--domain`'s unsubscribe list, and draft
+  broadcasts as Brew draft emails (nothing is sent). Domains, webhooks
+  and automations are reported. Every write carries an idempotency key,
+  and `brew.migration.json` keeps cursors, so a re-run resumes; it never
+  holds an address, a name or a key. A template whose key's trigger
+  already starts a published automation no setup made
+  (`APP_EMAIL_TRIGGER_IN_USE`) is left `manual` with the API's message;
+  the next run sets it up once that automation is unpublished. A Resend
+  domain that is also in
+  Brew gets the `DKIM_SELECTOR_IN_USE` advice and a subdomain to verify
+  instead. Each `resend.emails.send` / `resend.batch.send` call site is
+  reported with what carries over and a suggested
+  `getBrew().send(key, payload)`; `--rewrite-imports` moves a file to
+  `@brew.new/sdk/resend` (with `lib/brew-resend-map.ts`) only when every
+  send through it is a migrated template. `--only <phases>`,
+  `--key-prefix`, `--manifest`, `--cwd`. A sending-only Resend key exits
+  3 (`RESEND_KEY_SENDING_ONLY`); a failure exits 1 with the cursor saved.
+  Sources sit behind a `MigrationSource` interface; Resend is the only one.
+- The `brew-migrate-from-resend` agent skill (embedded; `init` installs it
+  in Claude Code projects that use Resend).
+- `app-emails upsert` takes the import modes on `source` through
+  `--input`, e.g.
+  `--source-file emails/order-shipped.tsx --input '{"source":{"props":"merge_tags"}}'`:
+  `--source-file` fills `format` and `content` and keeps the rest of
+  `--input`'s `source` (before, it replaced it), and takes the format from
+  `--input`'s `source` when it cannot infer one. `migrate resend` names
+  that command for a React Email file it leaves to move by hand.
+
 ## 0.19.0
 
 Needs the same SDK release as 0.18.0 (`appEmails.setUpKit` and the auth
