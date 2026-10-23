@@ -133,6 +133,12 @@ for the complete SDK and host authorization flow. Imports accept HTML, MJML,
 JSX, and saved EML messages; JSON output includes the import's `assetReport`
 with asset counts and warnings.
 
+`emails generate --lang <code>` names the language of the copy (ISO 639-1, or
+`zh-Hans` / `zh-Hant`); omit it and Brew detects it. `emails edit <emailId>
+--lang <code>` sets it without an AI run, and Brew keeps that value from then
+on; `--clear-lang` clears it so Brew reads the language again. `emails get`
+returns it as `lang`.
+
 Every collection with ids to look up has a real detail read — `<group> get
 <id>` returns the bare row, and an unknown id surfaces the API's own typed
 `404`. `notifications list` and `emails comments list` are list-only (one
