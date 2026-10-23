@@ -6,6 +6,8 @@
   `emails generate` and `emails edit`, sent as the body `lang`, synced with
   GetBrew/brew-v2#2225. On `emails edit`, `--lang` alone is a free envelope
   patch: no AI run, no new version, and Brew stops re-detecting the language.
+  `emails edit --clear-lang` sends `lang: null` to clear it, so Brew reads the
+  language again.
   `emails get` shows the design's `lang` once Brew has read it. Requires the
   matching API deployment.
 - Synchronize email-category and template browse-group contracts with app

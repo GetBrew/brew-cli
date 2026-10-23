@@ -763,6 +763,7 @@ AI-edit an email design, and/or set its subject line, title, language or group (
 - `--content-urls <urls...>` — Page URL(s) to pull copy and imagery from, repeatable
 - `--subject-line <text>` — The design's default inbox subject line; alone it skips the AI run
 - `--lang <code>` — Language of the copy (ISO 639-1, or zh-Hans / zh-Hant), kept from then on; alone it skips the AI run
+- `--clear-lang` — Clear a language you set (lang: null) so Brew reads it from the email again
 - `--title <text>` — Rename the design (its canvas name); alone it skips the AI run
 - `--group-id <groupId>` — Move the design into this existing group; alone it skips the AI run
 - `--ungroup` — Move the design to Ungrouped (groupId: null)
@@ -772,6 +773,7 @@ AI-edit an email design, and/or set its subject line, title, language or group (
 brew-cli emails edit eml_2SmZOWV3ZQ7W5x6g3m4p --prompt "Tighten the hero copy"
 brew-cli emails edit eml_2SmZOWV3ZQ7W5x6g3m4p --subject-line "Your September roundup"
 brew-cli emails edit eml_2SmZOWV3ZQ7W5x6g3m4p --lang fr
+brew-cli emails edit eml_2SmZOWV3ZQ7W5x6g3m4p --clear-lang
 brew-cli emails edit eml_2SmZOWV3ZQ7W5x6g3m4p --title "Fall sale v2" --group-id grp_7Hq2
 brew-cli emails edit eml_2SmZOWV3ZQ7W5x6g3m4p --ungroup
 ```

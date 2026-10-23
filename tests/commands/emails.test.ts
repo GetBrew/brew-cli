@@ -580,6 +580,33 @@ describe('emails edit', () => {
     expect(result.stderr).toContain('conflict')
   })
 
+  it('clears a named language with --clear-lang (lang: null, no AI run)', async () => {
+    let body: unknown
+    server.use(
+      http.patch(`${EMAILS_URL}/eml_1`, async ({ request }) => {
+        body = await request.json()
+        return HttpResponse.json({ emailId: 'eml_1', status: 'ready' })
+      })
+    )
+    const result = await runCli(['emails', 'edit', 'eml_1', '--clear-lang'], {
+      env: env(),
+      extraCommands: EXTRA,
+    })
+    expect(result.code).toBe(0)
+    expect(body).toEqual({ lang: null })
+    expect(result.stderr).toContain('Setting the language')
+    expect(result.stderr).not.toContain('Editing email')
+  })
+
+  it('refuses --lang with --clear-lang before any request', async () => {
+    const result = await runCli(
+      ['emails', 'edit', 'eml_1', '--lang', 'fr', '--clear-lang'],
+      { env: env(), extraCommands: EXTRA }
+    )
+    expect(result.code).toBe(2)
+    expect(result.stderr).toContain('conflict')
+  })
+
   it('requires a prompt or one envelope field (or --input)', async () => {
     const result = await runCli(['emails', 'edit', 'eml_1'], {
       env: env(),
