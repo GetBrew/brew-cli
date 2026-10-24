@@ -14,7 +14,7 @@ that response.
 
 SDK 13.0.0 preserves the revocation JSON response and is the minimum supported
 SDK release for these commands. CLI 0.17.0 consumes that published registry
-artifact. Contact-import coordination uses the separate gate below.
+artifact.
 
 For future upgrades, release the SDK first, then update the dependency and
 regenerate `bun.lock` from its actual published artifact. Run frozen
@@ -23,18 +23,11 @@ CLI. A locally packed SDK must not hide dependency failures, and future
 lockfile checksums must never be invented. The canvas tests must preserve
 `{ revoked: true }`, the `--yes` gate, and one-attempt create/refresh requests.
 
-### Contact Import SDK Gate
+### Contact Import SDK Minimum
 
-The new `contacts import` command requires `contacts.import`, which the
-published SDK 13.0.0 does not expose. This branch pins reviewed SDK source
-commit `7ca8cac2d70dd53244a343ee123b75ed9520b988` for coordinated PR validation.
-It preserves SDK 13.0.0's features and version while adding the import method.
-
-A fresh frozen install must build that source dependency without relying on
-a locally packed SDK. Do not release the CLI with this temporary source pin.
-Deploy the API contract and release the SDK first, then replace the pin with
-the actual published SDK version and regenerate `bun.lock` before releasing
-the CLI.
+`contacts import` and the `contacts import-csv` naming and row results use
+`contacts.import` and the import response from SDK 13.3.0, the minimum this
+CLI depends on (`^13.3.0`).
 
 ```bash
 # on a clean main with CI green

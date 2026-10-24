@@ -2,11 +2,8 @@
 
 ## Unreleased
 
-These import changes require an SDK release exposing `contacts.import`.
-The published SDK 13.0.0 baseline supports the existing released commands,
-but does not provide that method. This branch uses a reviewed immutable SDK
-source commit for coordinated validation. Follow the contact import SDK gate
-in `RELEASING.md` before release.
+These import changes require `@brew.new/sdk` 13.3.0 or newer, which adds
+`contacts.import` and the shared import response.
 
 ### Added
 
