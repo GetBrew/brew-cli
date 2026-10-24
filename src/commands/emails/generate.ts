@@ -40,6 +40,11 @@ export const emailsGenerateCommand = defineCommand({
       flag: '--subject-line <text>',
       summary: "The design's default inbox subject line",
     },
+    {
+      flag: '--lang <code>',
+      summary:
+        'Language of the copy (ISO 639-1, or zh-Hans / zh-Hant); omit and Brew detects it',
+    },
     INPUT_FLAG,
     IDEMPOTENCY_FLAG,
   ],
@@ -47,6 +52,7 @@ export const emailsGenerateCommand = defineCommand({
     'brew-cli emails generate --prompt "Product-launch email for the fall sale"',
     'brew-cli emails generate --prompt "Welcome email" --group-id grp_welcome',
     'brew-cli emails generate --prompt "Welcome email" --subject-line "Welcome to Brew"',
+    'brew-cli emails generate --prompt "Willkommens-E-Mail" --lang de',
     'brew-cli emails generate --prompt "Welcome email" --content-urls https://example.com/pricing',
   ],
   run: async ({ ctx, flags }) => {
@@ -57,6 +63,7 @@ export const emailsGenerateCommand = defineCommand({
       contentUrls: toStringArray(flags.contentUrls),
       groupId: flagString(flags.groupId),
       subjectLine: flagString(flags.subjectLine),
+      lang: flagString(flags.lang),
     })
     if (typeof input.prompt !== 'string' || input.prompt === '') {
       throw new CliUsageError(

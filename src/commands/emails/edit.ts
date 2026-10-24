@@ -16,7 +16,7 @@ import { progress } from '../../lib/output'
  * What a PATCH without a prompt changes in place: no AI run, no new version,
  * no credits. The API needs a prompt or at least one of these.
  */
-const ENVELOPE_FIELDS = ['title', 'subjectLine', 'groupId'] as const
+const ENVELOPE_FIELDS = ['title', 'subjectLine', 'lang', 'groupId'] as const
 
 function isText(value: unknown): boolean {
   return typeof value === 'string' && value !== ''
@@ -25,7 +25,7 @@ function isText(value: unknown): boolean {
 export const emailsEditCommand = defineCommand({
   path: ['emails', 'edit'],
   summary:
-    'AI-edit an email design, and/or set its subject line, title or group (free without a prompt)',
+    'AI-edit an email design, and/or set its subject line, title, language or group (free without a prompt)',
   sdkMethod: 'emails.edit',
   route: { method: 'PATCH', path: '/v1/emails/{emailId}' },
   commandClass: 'write',
@@ -48,6 +48,16 @@ export const emailsEditCommand = defineCommand({
         "The design's default inbox subject line; alone it skips the AI run",
     },
     {
+      flag: '--lang <code>',
+      summary:
+        'Language of the copy (ISO 639-1, or zh-Hans / zh-Hant), kept from then on; alone it skips the AI run',
+    },
+    {
+      flag: '--clear-lang',
+      summary:
+        'Clear a language you set (lang: null) so Brew reads it from the email again',
+    },
+    {
       flag: '--title <text>',
       summary: 'Rename the design (its canvas name); alone it skips the AI run',
     },
@@ -65,6 +75,8 @@ export const emailsEditCommand = defineCommand({
   examples: [
     'brew-cli emails edit eml_2SmZOWV3ZQ7W5x6g3m4p --prompt "Tighten the hero copy"',
     'brew-cli emails edit eml_2SmZOWV3ZQ7W5x6g3m4p --subject-line "Your September roundup"',
+    'brew-cli emails edit eml_2SmZOWV3ZQ7W5x6g3m4p --lang fr',
+    'brew-cli emails edit eml_2SmZOWV3ZQ7W5x6g3m4p --clear-lang',
     'brew-cli emails edit eml_2SmZOWV3ZQ7W5x6g3m4p --title "Fall sale v2" --group-id grp_7Hq2',
     'brew-cli emails edit eml_2SmZOWV3ZQ7W5x6g3m4p --ungroup',
   ],
@@ -75,24 +87,33 @@ export const emailsEditCommand = defineCommand({
         '--group-id and --ungroup conflict: pick one group move.'
       )
     }
+    const lang = flagString(flags.lang)
+    if (lang !== undefined && flags.clearLang === true) {
+      throw new CliUsageError(
+        '--lang and --clear-lang conflict: set a language or clear it.'
+      )
+    }
     const base = await readJsonFlag(ctx, flags.input, '--input')
     const input = mergeInput(base, {
       prompt: flagString(flags.prompt),
       emailVersionId: flagString(flags.emailVersionId),
       contentUrls: toStringArray(flags.contentUrls),
       subjectLine: flagString(flags.subjectLine),
+      lang: flags.clearLang === true ? null : lang,
       title: flagString(flags.title),
       groupId: flags.ungroup === true ? null : groupId,
     })
     const isPromptEdit = isText(input.prompt)
-    // `groupId: null` is a real value: it moves the design to Ungrouped.
+    // `null` is a real value for `groupId` (moves the design to Ungrouped)
+    // and `lang` (clears a named language so Brew reads it again).
     const envelope = ENVELOPE_FIELDS.filter(
       (field) =>
-        isText(input[field]) || (field === 'groupId' && input[field] === null)
+        isText(input[field]) ||
+        ((field === 'groupId' || field === 'lang') && input[field] === null)
     )
     if (!isPromptEdit && envelope.length === 0) {
       throw new CliUsageError(
-        'Pass --prompt, or at least one of --subject-line, --title, --group-id or --ungroup (or those fields via --input).'
+        'Pass --prompt, or at least one of --subject-line, --lang, --clear-lang, --title, --group-id or --ungroup (or those fields via --input).'
       )
     }
     // Without a prompt the patch is deterministic server-side: no AI run, no
@@ -103,7 +124,9 @@ export const emailsEditCommand = defineCommand({
         ? 'Editing email… (typically 30-90s)'
         : envelope.length === 1 && envelope[0] === 'subjectLine'
           ? 'Setting the subject line…'
-          : 'Updating the design (no AI run)…'
+          : envelope.length === 1 && envelope[0] === 'lang'
+            ? 'Setting the language…'
+            : 'Updating the design (no AI run)…'
     )
     const result = await ctx
       .client()
