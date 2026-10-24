@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.18.0
 
 These import changes require `@brew.new/sdk` 13.3.0 or newer, which adds
 `contacts.import` and the shared import response.
