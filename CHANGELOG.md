@@ -14,12 +14,20 @@ These import changes require `@brew.new/sdk` 13.3.0 or newer, which adds
 - **`contacts import`** (`POST /v1/contacts/import`): bulk-import up to 1000
   contacts from a JSON file (an array, or `{ "contacts": [...] }`) or stdin as
   one batch in Brew's Import History. Takes `--file-name`, `--validate` and
-  `--consent-source`, and prints the batch's `importId`. A JSON object body
+  `--consent-source`, and prints the batch's `importId` (none on a `--dry-run`). A JSON object body
   keeps its own `validate`, `consent` and `fileName`; a flag overrides them
   only when given.
 - `contacts import-csv` names its batch in Import History: `--file-name`, else
   a `fileName` in `--input`, else the `--file` name. Both imports return
-  `importId`.
+  `importId`, except on a `--dry-run`.
+- `contacts import` and `contacts import-csv` take `--dry-run` (print what
+  the import would do and write nothing: no contacts, fields or Import History
+  batch, no `importId`) and `--on-conflict upsert|skip` (`skip` creates
+  missing contacts and leaves existing ones unchanged, counted as skipped
+  with a `CONTACT_EXISTS_SKIPPED` warning). The terminal summary of a dry run
+  reads "Dry run of <file> — nothing was written: N to add, …" (or "Dry run
+  — nothing was written: …" without a file name). These flags require the
+  matching API deployment.
 - On a terminal, `contacts import` and `contacts import-csv` print the API's
   submitted total and outcome counts, plus failed rows and warnings with
   available row, email and field details. `--json` preserves the API envelope.
@@ -32,6 +40,12 @@ These import changes require `@brew.new/sdk` 13.3.0 or newer, which adds
 
 - `contacts upsert-many` says what it is for: up to 1000 contacts per call
   (its summary said 100) with no Import History entry, for recurring syncs.
+
+
+### Fixed
+
+- `flows get` takes a `<domain>/<kind>` slug from `flows list` (one send
+  stream's flow) and a `--kind` flag for a bare-domain slug.
 
 ## 0.17.0
 

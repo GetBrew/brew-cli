@@ -70,6 +70,40 @@ describe('renderImportResult (contacts import / import-csv on a terminal)', () =
     )
   })
 
+  it('renders a dry run as what the import would do, with no importId', () => {
+    const { importId: _none, ...dry } = result({
+      summary: { inserted: 2, updated: 1, failed: 0, skipped: 1, total: 4 },
+      errors: [],
+      warnings: [
+        {
+          code: 'CONTACT_EXISTS_SKIPPED',
+          email: 'ada@brewmail.dev',
+          row: 3,
+          message:
+            'ada@brewmail.dev already exists, so onConflict: "skip" left it unchanged.',
+        },
+      ],
+      fieldsCreated: ['plan'],
+    })
+    const text = renderImportResult({ ...dry, dryRun: true }, undefined)
+    expect(text.split('\n')[0]).toBe(
+      'Dry run — nothing was written: 2 to add, 1 to update, 0 to fail, 1 to skip (4 rows submitted).'
+    )
+    expect(text).toMatch(/3\s+ada@brewmail\.dev\s+CONTACT_EXISTS_SKIPPED/)
+    expect(text).toContain('Custom fields it would create: plan.')
+    expect(text).not.toContain('undefined')
+  })
+
+  it('names no batch when a real run returns no importId', () => {
+    const { importId: _none, ...noId } = result({ errors: [], warnings: [] })
+    expect(renderImportResult(noId, 'customers.csv').split('\n')[0]).toBe(
+      'Imported customers.csv: 2 added, 0 updated, 1 failed, 3 skipped (6 rows submitted).'
+    )
+    expect(renderImportResult(noId, undefined).split('\n')[0]).toBe(
+      'Imported: 2 added, 0 updated, 1 failed, 3 skipped (6 rows submitted).'
+    )
+  })
+
   it('caps a long table and points at --json for the rest', () => {
     const errors = Array.from({ length: MAX_TERMINAL_ROWS + 5 }, (_, i) => ({
       email: `x${i}@brewmail.dev`,
