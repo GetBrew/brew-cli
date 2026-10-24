@@ -7,6 +7,13 @@ These import changes require `@brew.new/sdk` 13.3.0 or newer, which adds
 
 ### Added
 
+- Add `--lang <code>` (ISO 639-1, or `zh-Hans` / `zh-Hant`) to
+  `emails generate` and `emails edit`, sent as the body `lang`, shipped in
+  GetBrew/brew-v2#2225. On `emails edit`, `--lang` alone is a free envelope
+  patch: no AI run, no new version, and Brew stops re-detecting the language.
+  `emails edit --clear-lang` sends `lang: null` to clear it, so Brew reads the
+  language again.
+  `emails get` shows the design's `lang` once Brew has read it.
 - Synchronize email-category and template browse-group contracts with app
   revision `9bf2e01f14d8260bdde0825e901a05497b66c70c`. Template reads accept
   `--group`, and `--count --group-by group` labels browse groups correctly in
