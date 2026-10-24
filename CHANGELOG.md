@@ -44,6 +44,12 @@ in `RELEASING.md` before release.
 - `contacts upsert-many` says what it is for: up to 1000 contacts per call
   (its summary said 100) with no Import History entry, for recurring syncs.
 
+
+### Fixed
+
+- `flows get` takes a `<domain>/<kind>` slug from `flows list` (one send
+  stream's flow) and a `--kind` flag for a bare-domain slug.
+
 ## 0.17.0
 
 Requires `@brew.new/sdk` `^13.0.0`. This is a minor release because it adds

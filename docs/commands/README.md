@@ -2500,12 +2500,14 @@ Fetch one public email flow by brand domain, with every step (day offset, wait, 
 - Route: `GET /v1/flows/{slug}`
 - Class: read
 - SDK: `brew.flows.get(...)`
-- Argument `slug` — The brand domain a `flows list` card carries (e.g. brew.new)
+- Argument `slug` — The slug a `flows list` card carries: a brand domain (brew.new) or <domain>/<kind> (brew.new/welcome)
 - `--include <keys>` — Comma-separated expansions: html (each step’s rendered HTML, best-effort per step)
+- `--kind <kind>` — One send stream’s flow for a bare-domain slug (e.g. welcome); a <domain>/<kind> slug already names it
 
 ```bash
 brew-cli flows get brew.new
 brew-cli flows get brew.new --include html --json
+brew-cli flows get brew.new/welcome
 ```
 
 ### brew-cli integrations list

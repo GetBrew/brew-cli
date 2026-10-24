@@ -31,7 +31,7 @@ export interface paths {
          *
          *     **Use when** you have a brief and want Brew to author on brand. For existing markup use `importEmail`; for a Figma frame use `importFigmaDesign`.
          *
-         *     **Input** `prompt`; optional `category` (steers the design treatment only: transactional categories get receipt or reset conventions, while delivery for those flows is a triggered automation on a transactional-purpose domain), `contentUrls`, `referenceEmailId`, `subjectLine` (the design-default inbox subject; `createSend` still takes a per-send `subject`), and `groupId` (`grp_…` or `ungrouped`) or `groupName` (resolve or create), not both; omit to land Ungrouped. Supports `Idempotency-Key`.
+         *     **Input** `prompt`; optional `category` (steers the design treatment only: transactional categories get receipt or reset conventions, while delivery for those flows is a triggered automation on a transactional-purpose domain), `contentUrls`, `referenceEmailId`, `subjectLine` (the design-default inbox subject; `createSend` still takes a per-send `subject`), `lang` (the language of the copy, ISO 639-1; omit and Brew detects it from the finished body), and `groupId` (`grp_…` or `ungrouped`) or `groupName` (resolve or create), not both; omit to land Ungrouped. Supports `Idempotency-Key`.
          *
          *     **Returns** `201 { emailId, emailVersionId, html, previewImage?, group, subjectLine? }` when a design was persisted, or `200 { response }` when the agent answered in prose without writing a design.
          *
@@ -55,7 +55,7 @@ export interface paths {
         };
         /**
          * Get an email design
-         * @description Reads one design as the bare `EmailDetail` row: `emailId`, the `emailVersionId` (the pin for `POST /v1/sends` and sendEmail nodes), `title`, `status`, `previewStatus`, `subjectLine`, `previewText`, `previewImage`, `updatedAt`, `group` and `createdBy` / `createdByUserId` (the design’s creator, shared by every version), plus `errorMessage` when a generation failed.
+         * @description Reads one design as the bare `EmailDetail` row: `emailId`, the `emailVersionId` (the pin for `POST /v1/sends` and sendEmail nodes), `title`, `status`, `previewStatus`, `subjectLine`, `previewText`, `lang`, `previewImage`, `updatedAt`, `group` and `createdBy` / `createdByUserId` (the design’s creator, shared by every version), plus `errorMessage` when a generation failed.
          *
          *     **Use when** inspecting a design before sending it, pinning a version, polling a generation you started, or pulling rendered HTML or version history.
          *
@@ -79,11 +79,11 @@ export interface paths {
         head?: never;
         /**
          * Edit an email design
-         * @description Updates a design: an AI edit (`prompt`), its envelope (`title`, `subjectLine`, `groupId`), or both in one call. At least one of the four is required. A design renames and moves between groups here exactly like an audience, trigger, automation or group renames through its own PATCH.
+         * @description Updates a design: an AI edit (`prompt`), its envelope (`title`, `subjectLine`, `lang`, `groupId`), or both in one call. At least one of the five is required. A design renames and moves between groups here exactly like an audience, trigger, automation or group renames through its own PATCH.
          *
          *     **Use when** changing an existing design: rewording or restyling it with a prompt, renaming it (a clone starts as `Copy of …`), setting the inbox subject the design carries by default, or filing it in another group.
          *
-         *     **Input** `prompt` runs the Brew email agent against the current latest version (or the `emailVersionId` pin, optionally grounded by `contentUrls`) and writes a new `version: "latest"` row on the same `emailId` (the previous head becomes a numeric historical version); usage-metered by actual token spend. `title` renames the design (its canvas name, 1 to 200 characters), `subjectLine` sets the default inbox subject and `groupId` moves it into an existing group (`null` = Ungrouped); any of them without `prompt` is ONE atomic in-place patch (no AI run, no new version, free). With `prompt`, the rename and move land first so the new version inherits them and the subject is applied to the new head. `emailVersionId` requires `prompt`.
+         *     **Input** `prompt` runs the Brew email agent against the current latest version (or the `emailVersionId` pin, optionally grounded by `contentUrls`) and writes a new `version: "latest"` row on the same `emailId` (the previous head becomes a numeric historical version); usage-metered by actual token spend. `title` renames the design (its canvas name, 1 to 200 characters), `subjectLine` sets the default inbox subject, `lang` sets the language of the copy (kept from then on; Brew stops re-detecting it) and `groupId` moves it into an existing group (`null` = Ungrouped); any of them without `prompt` is ONE atomic in-place patch (no AI run, no new version, free). With `prompt`, the rename and move land first so the new version inherits them and the subject is applied to the new head. `emailVersionId` requires `prompt`.
          *
          *     **Returns** `200` with the generated-email shape: the NEW head after a prompt edit, or the CURRENT head after an envelope patch (with its `title`, `subjectLine` and `group` after the patch); a text response when the agent answered in prose.
          *
@@ -1551,7 +1551,7 @@ export interface paths {
          *
          *     A date column is read in ONE day/month order: the order its own dates prove (a day over 12 anywhere in the column, `13/04/2026`), else `dateOrder` (`day_first` reads `03/04/2026` as 3 April, `month_first` as 4 March), else month/day with a `warnings[]` entry (`code: DATE_ORDER_ASSUMED`, `field`). Dotted dates (`03.04.2026`) are day-first. ISO (`2026-04-03`), Unix seconds or milliseconds, month names (`3 Apr 2026`), year-first (`2026/04/03`) and compact (`20260403`) dates need no order. Convert to `YYYY-MM-DD` to be unambiguous.
          *
-         *     A `subscribed` column reads true/false and ESP status words (`unsubscribed`, `cleaned`, `blocklisted`, `transactional`, `active`, …). An opt-out unsubscribes the contact, new or existing. A word that is not a subscription status (`maybe`) fails its row (`code: FIELD_TYPE_MISMATCH`, `field: subscribed`) instead of importing the contact subscribed. A subscribed value only applies to new contacts: a row that asks to re-subscribe a contact who opted out keeps its other fields and adds a `warnings[]` entry (`code: RESUBSCRIBE_SKIPPED`, `email`).
+         *     A `subscribed` column reads true/false and ESP status words (`unsubscribed`, `cleaned`, `blocklisted`, `transactional`, `active`, …). An opt-out unsubscribes the contact, new or existing (with `onConflict: "skip"` an existing contact is left unchanged, and its `CONTACT_EXISTS_SKIPPED` warning says so). A word that is not a subscription status (`maybe`) fails its row (`code: FIELD_TYPE_MISMATCH`, `field: subscribed`) instead of importing the contact subscribed. A subscribed value only applies to new contacts: a row that asks to re-subscribe a contact who opted out keeps its other fields and adds a `warnings[]` entry (`code: RESUBSCRIBE_SKIPPED`, `email`).
          *
          *     Two opt-in modes. `dryRun: true` returns the response this import would return (`summary`, `errors`, row `warnings`, `fieldsCreated` as fields it would create) with `dryRun: true` and no `importId`, and writes nothing: no contacts, field definitions or Import History entry; `validate` is not run and nothing is charged. Insert vs update is decided by the same address match the write uses, so a real run right after returns the same counts. `onConflict: "skip"` only creates missing contacts: each existing contact is left unchanged (an opt-out row included), counted in `summary.skipped` with a `CONTACT_EXISTS_SKIPPED` warning naming its `row`. Either way `inserted + updated + failed + skipped = total`. A dry run cannot foresee failures that only happen while writing (a concurrent change, a database refusal), so the real run can still fail where the preview succeeded. With `validate: true`, inline checks are still metered per submitted row, rows `skip` left alone included; a request that leaves no address to check is not charged.
          */
@@ -2602,7 +2602,7 @@ export interface paths {
          *     - `domain_status`, `domain_score_run`: `domains` (`emails` implies it).
          *     - `import_job`, `validation_job`: `contacts`.
          *     - `automation_pause_window_closed`: `automations`.
-         *     - `brand_extracted`, `brand_image_import`: every credential on the brand.
+         *     - `brand_extracted`, `brand_image_import`, `integration_attention` (a connected integration such as Stripe needs a reconnect, moved to another brand, or lost a permission): every credential on the brand.
          *     - `api_key_created`: the `all` scope (a signed-in member, or a key or connection holding `all`).
          *     - `send_limit_reached`: organization admins only (a signed-in admin, an admin’s organization-wide connection, or an organization-wide key holding `all`); never a brand key.
          *     - `comment_mention`, `comment_reply` (`isPersonal: true`): only the person addressed, signed in or on a personal connection; never an API key.
@@ -2677,6 +2677,11 @@ export interface components {
             subjectLine?: string;
             /** @description The design's inbox preview line, read directly from the latest version's JSX <Preview> (its single source of truth) — what a send delivers when no explicit `previewText` override is passed to POST /v1/sends. Detail-only; absent when the design has no <Preview>. */
             previewText?: string;
+            /**
+             * @description The language the email's copy is written in (ISO 639-1, or zh-Hans / zh-Hant), read by Brew's language model after each content change unless a caller set it. Rendered as the HTML document's lang. Detail-only; absent until it has been read.
+             * @enum {string}
+             */
+            lang?: "en" | "de" | "fr" | "es" | "pt" | "it" | "nl" | "pl" | "sv" | "da" | "no" | "fi" | "cs" | "sk" | "hu" | "ro" | "bg" | "el" | "tr" | "ru" | "uk" | "hr" | "sr" | "sl" | "lt" | "lv" | "et" | "ca" | "ar" | "he" | "fa" | "ur" | "hi" | "bn" | "th" | "vi" | "id" | "ms" | "tl" | "ja" | "ko" | "zh-Hans" | "zh-Hant" | "sw" | "af";
             html?: string;
             versions?: {
                 version: number | "latest";
@@ -2708,6 +2713,11 @@ export interface components {
             subjectLine?: string;
             /** @description The design's inbox preview line, read directly from the latest version's JSX <Preview> (its single source of truth) — what a send delivers when no explicit `previewText` override is passed to POST /v1/sends. Detail-only; absent when the design has no <Preview>. */
             previewText?: string;
+            /**
+             * @description The language the email's copy is written in (ISO 639-1, or zh-Hans / zh-Hant), read by Brew's language model after each content change unless a caller set it. Rendered as the HTML document's lang. Detail-only; absent until it has been read.
+             * @enum {string}
+             */
+            lang?: "en" | "de" | "fr" | "es" | "pt" | "it" | "nl" | "pl" | "sv" | "da" | "no" | "fi" | "cs" | "sk" | "hu" | "ro" | "bg" | "el" | "tr" | "ru" | "uk" | "hr" | "sr" | "sl" | "lt" | "lv" | "et" | "ca" | "ar" | "he" | "fa" | "ur" | "hi" | "bn" | "th" | "vi" | "id" | "ms" | "tl" | "ja" | "ko" | "zh-Hans" | "zh-Hant" | "sw" | "af";
             html?: string;
             versions?: {
                 version: number | "latest";
@@ -3934,6 +3944,8 @@ export interface components {
             title: string;
             /** @enum {string} */
             type: "newsletter" | "signup";
+            /** @enum {string} */
+            kind?: "onboarding" | "trial" | "events" | "product_updates" | "promotions";
             category: string;
             categoryLabel: string;
             emailCount: number;
@@ -4316,7 +4328,7 @@ export interface components {
             /** @description `ntf_` + 20 hex characters: a one-way hash, stable for the row’s life. */
             notificationId: string;
             /** @enum {string} */
-            type: "chat_stream" | "import_job" | "brand_image_import" | "validation_job" | "email_sent" | "email_scheduled" | "preview_email" | "brand_extracted" | "domain_status" | "domain_score_run" | "api_key_created" | "email_send_failed" | "gradual_send_paused" | "gradual_send_completed" | "send_limit_reached" | "automation_pause_window_closed" | "send_review_rejected" | "comment_mention" | "comment_reply";
+            type: "chat_stream" | "import_job" | "brand_image_import" | "validation_job" | "email_sent" | "email_scheduled" | "preview_email" | "brand_extracted" | "domain_status" | "domain_score_run" | "api_key_created" | "email_send_failed" | "gradual_send_paused" | "gradual_send_completed" | "send_limit_reached" | "automation_pause_window_closed" | "send_review_rejected" | "comment_mention" | "comment_reply" | "integration_attention";
             /** @enum {string} */
             status: "uploading" | "preparing" | "processing" | "finalizing" | "streaming" | "background_finalizing" | "completed" | "partial" | "failed" | "interrupted" | "stopped" | "persistence_failed";
             title: string;
@@ -4410,6 +4422,11 @@ export interface components {
                 subjectLine?: string;
                 /** @description The design's inbox preview line, read directly from the latest version's JSX <Preview> (its single source of truth) — what a send delivers when no explicit `previewText` override is passed to POST /v1/sends. Detail-only; absent when the design has no <Preview>. */
                 previewText?: string;
+                /**
+                 * @description The language the email's copy is written in (ISO 639-1, or zh-Hans / zh-Hant), read by Brew's language model after each content change unless a caller set it. Rendered as the HTML document's lang. Detail-only; absent until it has been read.
+                 * @enum {string}
+                 */
+                lang?: "en" | "de" | "fr" | "es" | "pt" | "it" | "nl" | "pl" | "sv" | "da" | "no" | "fi" | "cs" | "sk" | "hu" | "ro" | "bg" | "el" | "tr" | "ru" | "uk" | "hr" | "sr" | "sl" | "lt" | "lv" | "et" | "ca" | "ar" | "he" | "fa" | "ur" | "hi" | "bn" | "th" | "vi" | "id" | "ms" | "tl" | "ja" | "ko" | "zh-Hans" | "zh-Hant" | "sw" | "af";
                 html?: string;
                 versions?: {
                     version: number | "latest";
@@ -4478,6 +4495,11 @@ export interface components {
             category?: "welcome" | "onboarding" | "newsletter" | "content" | "event-invitation" | "event-reminder" | "event-recap" | "product-launch" | "product-update" | "product-pitch" | "promotional" | "cart-abandonment" | "re-engagement" | "subscription" | "feedback-request" | "referral" | "company-news" | "fundraising" | "order-confirmation" | "shipping-update" | "receipt" | "password-reset" | "verification" | "security-alert" | "account-update" | "notification" | "support" | "internal" | "business" | "general";
             /** @description Inbox subject line to set on the design (`subjectLine` — distinct from `title`, the canvas name). Sends still take an explicit per-send `subject`; this is the design's default, seeded into the send dialog and returned by `GET /v1/emails/{emailId}`. */
             subjectLine?: string;
+            /**
+             * @description ISO 639-1 language code of the email's copy (or zh-Hans / zh-Hant). Omit and Brew's language model reads it from the finished body; a value you set is kept and never re-detected. Becomes the HTML document's lang (and dir for right-to-left languages) on every send and export. One of: en, de, fr, es, pt, it, nl, pl, sv, da, no, fi, cs, sk, hu, ro, bg, el, tr, ru, uk, hr, sr, sl, lt, lv, et, ca, ar, he, fa, ur, hi, bn, th, vi, id, ms, tl, ja, ko, zh-Hans, zh-Hant, sw, af.
+             * @enum {string}
+             */
+            lang?: "en" | "de" | "fr" | "es" | "pt" | "it" | "nl" | "pl" | "sv" | "da" | "no" | "fi" | "cs" | "sk" | "hu" | "ro" | "bg" | "el" | "tr" | "ru" | "uk" | "hr" | "sr" | "sl" | "lt" | "lv" | "et" | "ca" | "ar" | "he" | "fa" | "ur" | "hi" | "bn" | "th" | "vi" | "id" | "ms" | "tl" | "ja" | "ko" | "zh-Hans" | "zh-Hant" | "sw" | "af";
             /** @description File the design under an existing group (`grp_…`), or `ungrouped`. Mutually exclusive with `groupName`. */
             groupId?: string;
             /** @description File the design under a group resolved (or created) by this name. Mutually exclusive with `groupId`. */
@@ -4586,7 +4608,7 @@ export interface components {
             response: string;
         };
         EmailEditRequest: {
-            /** @description The edit to make, in plain language — e.g. "swap the hero for the spring campaign image and tighten the CTA copy". Scoped edits beat full rewrites. Omit to only patch `title`, `subjectLine` or `groupId` (at least one of the four is required). */
+            /** @description The edit to make, in plain language — e.g. "swap the hero for the spring campaign image and tighten the CTA copy". Scoped edits beat full rewrites. Omit to only patch `title`, `subjectLine`, `lang` or `groupId` (at least one of the five is required). */
             prompt?: string;
             /** @description Pin the edit to a specific source version (from `GET /v1/emails/{emailId}?include=versions`). Requires `prompt`. Omit to edit the current latest. */
             emailVersionId?: string;
@@ -4596,6 +4618,11 @@ export interface components {
             title?: string;
             /** @description Inbox subject line to set on the design (`subjectLine` — distinct from `title`, the canvas name). Sends still take an explicit per-send `subject`; this is the design's default, seeded into the send dialog and returned by `GET /v1/emails/{emailId}`. */
             subjectLine?: string;
+            /**
+             * @description Set the language of the email (ISO 639-1, or zh-Hans / zh-Hant). Part of the free envelope patch: no AI run, no new version. Once set it is kept: Brew no longer re-detects it after edits. null clears a language you set, and Brew reads it again from the email.
+             * @enum {string|null}
+             */
+            lang?: "en" | "de" | "fr" | "es" | "pt" | "it" | "nl" | "pl" | "sv" | "da" | "no" | "fi" | "cs" | "sk" | "hu" | "ro" | "bg" | "el" | "tr" | "ru" | "uk" | "hr" | "sr" | "sl" | "lt" | "lv" | "et" | "ca" | "ar" | "he" | "fa" | "ur" | "hi" | "bn" | "th" | "vi" | "id" | "ms" | "tl" | "ja" | "ko" | "zh-Hans" | "zh-Hant" | "sw" | "af" | null;
             /** @description Move the design into this existing group (`grp_…`); `null` moves it to Ungrouped; omit to leave its group alone. Part of the free envelope patch: no AI run, no new version. */
             groupId?: string | null;
         };
@@ -8524,6 +8551,8 @@ export interface components {
                 title: string;
                 /** @enum {string} */
                 type: "newsletter" | "signup";
+                /** @enum {string} */
+                kind?: "onboarding" | "trial" | "events" | "product_updates" | "promotions";
                 category: string;
                 categoryLabel: string;
                 emailCount: number;
@@ -8988,7 +9017,7 @@ export interface components {
                 /** @description `ntf_` + 20 hex characters: a one-way hash, stable for the row’s life. */
                 notificationId: string;
                 /** @enum {string} */
-                type: "chat_stream" | "import_job" | "brand_image_import" | "validation_job" | "email_sent" | "email_scheduled" | "preview_email" | "brand_extracted" | "domain_status" | "domain_score_run" | "api_key_created" | "email_send_failed" | "gradual_send_paused" | "gradual_send_completed" | "send_limit_reached" | "automation_pause_window_closed" | "send_review_rejected" | "comment_mention" | "comment_reply";
+                type: "chat_stream" | "import_job" | "brand_image_import" | "validation_job" | "email_sent" | "email_scheduled" | "preview_email" | "brand_extracted" | "domain_status" | "domain_score_run" | "api_key_created" | "email_send_failed" | "gradual_send_paused" | "gradual_send_completed" | "send_limit_reached" | "automation_pause_window_closed" | "send_review_rejected" | "comment_mention" | "comment_reply" | "integration_attention";
                 /** @enum {string} */
                 status: "uploading" | "preparing" | "processing" | "finalizing" | "streaming" | "background_finalizing" | "completed" | "partial" | "failed" | "interrupted" | "stopped" | "persistence_failed";
                 title: string;
@@ -9854,7 +9883,7 @@ export interface operations {
             };
             cookie?: never;
         };
-        /** @description A natural-language `prompt` edit (optional `emailVersionId` source pin, optional `contentUrls`) and/or the envelope fields `title`, `subjectLine` and `groupId` — at least one of the four. Identity lives on the path. */
+        /** @description A natural-language `prompt` edit (optional `emailVersionId` source pin, optional `contentUrls`) and/or the envelope fields `title`, `subjectLine`, `lang` and `groupId` — at least one of the five. Identity lives on the path. */
         requestBody: {
             content: {
                 "application/json": components["schemas"]["EmailEditRequest"];
@@ -27209,6 +27238,8 @@ export interface operations {
                 category?: "verification" | "transactional" | "direct_sales" | "welcome" | "promotion" | "newsletter" | "education" | "abandoned_cart" | "winback" | "other";
                 /** @description Filter LIST by how the sequence starts: `signup` (after creating an account) or `newsletter` (after subscribing). */
                 type?: "newsletter" | "signup";
+                /** @description Filter LIST by send-stream kind. */
+                kind?: "onboarding" | "trial" | "events" | "product_updates" | "promotions";
                 /** @description Semantic search over what the sequences are about — “developer onboarding drip”, “trial expiry win-back”. Results come back in relevance order and `sort` is ignored. */
                 semantic?: string;
                 /** @description LIST order: `newest` (default), `emails` (longest sequences first), `span` (sequences that run the longest first), `remixes` (most remixed first). */
@@ -27364,12 +27395,14 @@ export interface operations {
     getFlow: {
         parameters: {
             query?: {
+                /** @description Stream segment for a bare-domain `slug`. */
+                kind?: string;
                 /** @description Detail-only expansions, comma-separated. `html` adds each step’s rendered HTML. Rendered email is bulky — over MCP only the first step or two fit one response; the rest arrive without `html` and the summary says how many were kept. A step’s `emailId` is already a valid `referenceEmailId`, so reuse needs no body; for the bodies themselves call `GET /v1/flows/{slug}?include=html` over REST, which has no cap. Best-effort per step: a step whose body is no longer servable comes back without `html` rather than failing the flow. */
                 include?: string;
             };
             header?: never;
             path: {
-                /** @description The flow’s brand domain, as returned in every `GET /v1/flows` row. Case-insensitive. */
+                /** @description The flow’s brand domain. A bare domain returns the brand’s primary flow; one send stream’s flow is `?kind=` on it (or the path `/v1/flows/{domain}/{kind}`), as each `GET /v1/flows` row’s `slug` (`<domain>/<kind>`) names it. Case-insensitive. */
                 slug: string;
             };
             cookie?: never;
@@ -31163,7 +31196,7 @@ export interface operations {
         parameters: {
             query?: {
                 /** @description Only notifications of this type. A type this credential cannot see (its scopes, or a person-only or admin-only type) is an empty page. */
-                type?: "chat_stream" | "import_job" | "brand_image_import" | "validation_job" | "email_sent" | "email_scheduled" | "preview_email" | "brand_extracted" | "domain_status" | "domain_score_run" | "api_key_created" | "email_send_failed" | "gradual_send_paused" | "gradual_send_completed" | "send_limit_reached" | "automation_pause_window_closed" | "send_review_rejected" | "comment_mention" | "comment_reply";
+                type?: "chat_stream" | "import_job" | "brand_image_import" | "validation_job" | "email_sent" | "email_scheduled" | "preview_email" | "brand_extracted" | "domain_status" | "domain_score_run" | "api_key_created" | "email_send_failed" | "gradual_send_paused" | "gradual_send_completed" | "send_limit_reached" | "automation_pause_window_closed" | "send_review_rejected" | "comment_mention" | "comment_reply" | "integration_attention";
                 /**
                  * @description Page size (1-100). Defaults to 100.
                  * @example 50
