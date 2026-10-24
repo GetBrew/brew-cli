@@ -2,10 +2,36 @@
 
 ## Unreleased
 
+These import changes require `@brew.new/sdk` 13.3.0 or newer, which adds
+`contacts.import` and the shared import response.
+
+### Added
+
 - Synchronize email-category and template browse-group contracts with app
   revision `9bf2e01f14d8260bdde0825e901a05497b66c70c`. Template reads accept
   `--group`, and `--count --group-by group` labels browse groups correctly in
   human output. These additions require the matching API deployment.
+- **`contacts import`** (`POST /v1/contacts/import`): bulk-import up to 1000
+  contacts from a JSON file (an array, or `{ "contacts": [...] }`) or stdin as
+  one batch in Brew's Import History. Takes `--file-name`, `--validate` and
+  `--consent-source`, and prints the batch's `importId`. A JSON object body
+  keeps its own `validate`, `consent` and `fileName`; a flag overrides them
+  only when given.
+- `contacts import-csv` names its batch in Import History: `--file-name`, else
+  a `fileName` in `--input`, else the `--file` name. Both imports return
+  `importId`.
+- On a terminal, `contacts import` and `contacts import-csv` print the API's
+  submitted total and outcome counts, plus failed rows and warnings with
+  available row, email and field details. `--json` preserves the API envelope.
+  CSV skip warnings list the first 100 skipped rows and summarize the rest;
+  column-wide and aggregate warnings have no row index.
+- Completed import deliverability checks show valid, risky, invalid and
+  unscored counts, plus available persistence counts, in terminal output.
+
+### Changed
+
+- `contacts upsert-many` says what it is for: up to 1000 contacts per call
+  (its summary said 100) with no Import History entry, for recurring syncs.
 
 ## 0.17.0
 

@@ -1545,7 +1545,7 @@ export interface paths {
         put?: never;
         /**
          * Bulk-import contacts from CSV
-         * @description Parse a raw CSV string and upsert the rows as contacts (≤ 1000). By default each column header maps to a field of the same name (`email` is required). A header that spells a core field, ignoring case, spaces, `_` and `-`, or whose field key equals it (`First.Name`), maps to it: `Email`, `First Name`, `Last Name` and `Subscribed` fill `email`, `firstName`, `lastName` and `subscribed`. Pass `mapping` to remap single columns; the columns it leaves out keep their default mapping, `""` leaves a column out, and a key that names no column is a `400`. A core field that `mapping` fills is filled from that column alone: another column whose default would fill it is left out with a `CSV_COLUMN_IGNORED` warning. Rows with a missing/invalid email are SKIPPED (counted in `summary.skipped`), not errored; disposable-domain rows are imported with `validationStatus: "risky"` (deliverable but flagged). Returns the same `{ summary, fieldsCreated, errors, warnings }` as batch-create — `207` when some rows fail.
+         * @description Parse a raw CSV string and upsert the rows as contacts (≤ 1000). By default each column header maps to a field of the same name (`email` is required). A header that spells a core field, ignoring case, spaces, `_` and `-`, or whose field key equals it (`First.Name`), maps to it: `Email`, `First Name`, `Last Name` and `Subscribed` fill `email`, `firstName`, `lastName` and `subscribed`. Pass `mapping` to remap single columns; the columns it leaves out keep their default mapping, `""` leaves a column out, and a key that names no column is a `400`. A core field that `mapping` fills is filled from that column alone: another column whose default would fill it is left out with a `CSV_COLUMN_IGNORED` warning. Rows with a missing/invalid email are SKIPPED (counted in `summary.skipped`), not errored; disposable-domain rows are imported with `validationStatus: "risky"` (deliverable but flagged). Returns the same `{ summary, fieldsCreated, errors, warnings }` as batch-create plus `importId` — `207` when some rows fail. The batch is listed in Import History under `fileName` (optional), and each contact it writes carries `importId` until a later import touches it (filter on it to list them; deleting the import in the app removes the contacts it created). For rows you already hold as JSON, use `POST /v1/contacts/import`.
          *
          *     CSV cells are text: a column mapped onto an EXISTING field is coerced to that field's type (dates → epoch ms, `1,234` → 1234, `yes`/`no` → booleans), and a cell that cannot be coerced (`$49` in a number column) fails ITS row with a per-row `errors[]` entry (`code: FIELD_TYPE_MISMATCH`, `field`) while the other rows still land. An undeclared column is created as a `string` field unless every value is an ISO date (→ `date`); predeclare `number` / `bool` columns with `POST /v1/fields`. A column whose field Brew manages (`Created At`, `Validation Status`) is not imported and adds a `warnings[]` entry (`code: CSV_COLUMN_IGNORED`, `field` names the column).
          *
@@ -1554,6 +1554,28 @@ export interface paths {
          *     A `subscribed` column reads true/false and ESP status words (`unsubscribed`, `cleaned`, `blocklisted`, `transactional`, `active`, …). An opt-out unsubscribes the contact, new or existing. A word that is not a subscription status (`maybe`) fails its row (`code: FIELD_TYPE_MISMATCH`, `field: subscribed`) instead of importing the contact subscribed. A subscribed value only applies to new contacts: a row that asks to re-subscribe a contact who opted out keeps its other fields and adds a `warnings[]` entry (`code: RESUBSCRIBE_SKIPPED`, `email`).
          */
         post: operations["importContactsCsv"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/contacts/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Bulk-import contacts from JSON
+         * @description Create or update up to 1000 contacts from JSON rows and record them as one Import History batch: the JSON twin of `POST /v1/contacts/import-csv`. Rows take the batch-create shape (`email`, `firstName`, `lastName`, `subscribed`, `customFields`, `consent`) and follow its rules: a missing or invalid email, or an address repeated in the batch, fails its row (`errors[]`, `207`) while the others land. New contacts are subscribed unless the row says `subscribed: false`; re-subscribing a contact who opted out keeps its other fields and adds a `RESUBSCRIBE_SKIPPED` warning.
+         *
+         *     The batch is listed in Import History under `fileName` (optional), and each contact it writes carries the returned `importId` until a later import touches it (filter on it to list them; deleting the import in the app removes the contacts it created). `POST /v1/contacts` with `contacts[]` writes the same rows without an Import History entry, for recurring syncs.
+         */
+        post: operations["importContacts"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3426,7 +3448,7 @@ export interface components {
         };
         ApiWarning: {
             /** @enum {string} */
-            code: "DRAFT_SAVED_NOT_LIVE" | "TRIGGER_EVENT_NOT_RECEIVED" | "ENFORCEMENT_LOOSENED_WHILE_PUBLISHED" | "REQUIRED_FIELD_SATISFIED_BY_FALLBACK" | "RESUBSCRIBE_SKIPPED" | "CORE_FIELD_IGNORED" | "DATE_ORDER_ASSUMED" | "CSV_COLUMN_IGNORED" | "RECIPIENTS_EXCLUDED" | "CONSENT_RECORD_MISSING";
+            code: "DRAFT_SAVED_NOT_LIVE" | "TRIGGER_EVENT_NOT_RECEIVED" | "ENFORCEMENT_LOOSENED_WHILE_PUBLISHED" | "REQUIRED_FIELD_SATISFIED_BY_FALLBACK" | "RESUBSCRIBE_SKIPPED" | "CORE_FIELD_IGNORED" | "DATE_ORDER_ASSUMED" | "CSV_ROW_SKIPPED" | "CSV_COLUMN_IGNORED" | "RECIPIENTS_EXCLUDED" | "CONSENT_RECORD_MISSING";
             message: string;
             field?: string;
         };
@@ -7099,6 +7121,8 @@ export interface components {
             fieldsCreated: string[];
             errors: {
                 email: string;
+                /** @description The 1-based row that failed: `contacts[row - 1]`, or the CSV data row (header and blank lines not counted). */
+                row?: number;
                 code: string;
                 field?: string;
                 message: string;
@@ -7106,6 +7130,8 @@ export interface components {
             warnings: {
                 code: string;
                 email?: string;
+                /** @description The 1-based row it is about (CSV: data row; header and blank lines not counted). */
+                row?: number;
                 field?: string;
                 message: string;
                 from?: string;
@@ -7186,6 +7212,8 @@ export interface components {
             warnings: {
                 code: string;
                 email?: string;
+                /** @description The 1-based row it is about (CSV: data row; header and blank lines not counted). */
+                row?: number;
                 field?: string;
                 message: string;
                 from?: string;
@@ -7640,16 +7668,21 @@ export interface components {
         ContactsValidateRequest: {
             emails: string[];
         };
-        ContactsImportCsvResponse: {
+        ContactsImportResponse: {
             summary: {
                 inserted: number;
                 updated: number;
                 failed: number;
+                /** @description CSV rows omitted for a missing/invalid email or merged into a later duplicate. Up to 100 `CSV_ROW_SKIPPED` warnings name each `row`; a final warning counts further skipped rows. Always 0 for JSON. */
                 skipped: number;
+                /** @description Rows submitted (JSON contacts, or CSV data rows). Always `inserted + updated + failed + skipped`. */
+                total: number;
             };
             fieldsCreated: string[];
             errors: {
                 email: string;
+                /** @description The 1-based row that failed: `contacts[row - 1]`, or the CSV data row (header and blank lines not counted). */
+                row?: number;
                 code: string;
                 field?: string;
                 message: string;
@@ -7657,6 +7690,8 @@ export interface components {
             warnings: {
                 code: string;
                 email?: string;
+                /** @description The 1-based row it is about (CSV: data row; header and blank lines not counted). */
+                row?: number;
                 field?: string;
                 message: string;
                 from?: string;
@@ -7676,13 +7711,15 @@ export interface components {
                 };
             };
             validationJobId?: string;
+            /** @description This batch's Import History id. Each contact it wrote carries it as `importId` until a later import touches that contact, so a contact filter on `importId` lists them. */
+            importId: string;
         };
         ContactsImportCsvRequest: {
             csv: string;
             mapping?: {
                 [key: string]: string;
             };
-            /** @description Optional deliverability check on ingestion. When true, each address is validated with the provider (2 credits per address, charged on success) and the verdict is saved to the contact’s `validationStatus`. Submissions above the inline cap (100 addresses) upsert first and validate as a background job, returning a `validationJobId`. */
+            /** @description Optional deliverability check on ingestion. When true, each imported address is validated with the provider and the verdict is saved to the contact’s `validationStatus`. Imports of at most 100 submitted CSV data rows validate inline, metered at 2 credits per submitted row on a successful response, including skipped rows and repeated addresses. Larger imports write first and use a background validation workflow billed per address as it runs; `validationJobId` is returned when a job is queued. */
             validate?: boolean;
             /** @description Consent record stamped on every imported row (typically `{ "source": "import" }`). */
             consent?: {
@@ -7704,6 +7741,53 @@ export interface components {
              * @enum {string}
              */
             dateOrder?: "month_first" | "day_first";
+            /** @description Name this batch is listed under in Import History (usually the source file name, e.g. `customers.csv`), also stamped on every contact it writes as `csvFileName`. A path keeps only its last segment. */
+            fileName?: string;
+        };
+        ContactsImportRequest: {
+            contacts: {
+                email?: string;
+                firstName?: string;
+                lastName?: string;
+                subscribed?: boolean;
+                customFields?: {
+                    [key: string]: unknown;
+                };
+                /** @description Marketing consent provenance to record on this contact. Optional at creation; an inline marketing send to this address later needs the contact to be subscribed and warns when no record exists. */
+                consent?: {
+                    /**
+                     * @description Who captured it: `api`, `form`, or `import`. (`app` is reserved for the in-app CSV wizard.)
+                     * @enum {string}
+                     */
+                    source: "api" | "form" | "import";
+                    /**
+                     * Format: date-time
+                     * @description ISO 8601; defaults to now.
+                     */
+                    capturedAt?: string;
+                    policyVersion?: string;
+                    evidence?: string;
+                };
+            }[];
+            /** @description Optional deliverability check on ingestion. When true, each imported address is validated with the provider and the verdict is saved to the contact’s `validationStatus`. Imports of at most 100 submitted contacts validate inline, metered at 2 credits per submitted contact on a successful response, including rows that fail. Larger imports write first and use a background validation workflow billed per address as it runs; `validationJobId` is returned when a job is queued. */
+            validate?: boolean;
+            /** @description Default consent record for every row that does not carry its own `consent` (typically `{ "source": "import" }`). */
+            consent?: {
+                /**
+                 * @description Who captured it: `api`, `form`, or `import`. (`app` is reserved for the in-app CSV wizard.)
+                 * @enum {string}
+                 */
+                source: "api" | "form" | "import";
+                /**
+                 * Format: date-time
+                 * @description ISO 8601; defaults to now.
+                 */
+                capturedAt?: string;
+                policyVersion?: string;
+                evidence?: string;
+            };
+            /** @description Name this batch is listed under in Import History (usually the source file name, e.g. `customers.csv`), also stamped on every contact it writes as `csvFileName`. A path keeps only its last segment. */
+            fileName?: string;
         };
         ContactsBatchDeleteResponse: {
             deletedCount: number;
@@ -22004,7 +22088,8 @@ export interface operations {
                  *         "email": "email",
                  *         "firstName": "firstName",
                  *         "lastName": "lastName"
-                 *       }
+                 *       },
+                 *       "fileName": "customers.csv"
                  *     }
                  */
                 "application/json": components["schemas"]["ContactsImportCsvRequest"];
@@ -22031,14 +22116,16 @@ export interface operations {
                      *         "inserted": 2,
                      *         "updated": 0,
                      *         "failed": 0,
-                     *         "skipped": 0
+                     *         "skipped": 0,
+                     *         "total": 2
                      *       },
                      *       "fieldsCreated": [],
                      *       "errors": [],
-                     *       "warnings": []
+                     *       "warnings": [],
+                     *       "importId": "imp_01JABCDEF0123456789XYZ"
                      *     }
                      */
-                    "application/json": components["schemas"]["ContactsImportCsvResponse"];
+                    "application/json": components["schemas"]["ContactsImportResponse"];
                 };
             };
             /** @description Partial success — some rows failed validation. */
@@ -22061,57 +22148,282 @@ export interface operations {
                      *         "inserted": 1,
                      *         "updated": 0,
                      *         "failed": 1,
-                     *         "skipped": 2
+                     *         "skipped": 2,
+                     *         "total": 4
                      *       },
                      *       "fieldsCreated": [],
                      *       "errors": [
                      *         {
                      *           "email": "john@example.com",
+                     *           "row": 2,
                      *           "code": "FIELD_TYPE_MISMATCH",
                      *           "field": "customFields.plan",
                      *           "message": "Field 'customFields.plan' is type 'number' but received string '$49'."
                      *         }
                      *       ],
-                     *       "warnings": []
+                     *       "warnings": [
+                     *         {
+                     *           "code": "CSV_ROW_SKIPPED",
+                     *           "row": 3,
+                     *           "message": "Row 3 has no email address, so it was skipped."
+                     *         },
+                     *         {
+                     *           "code": "CSV_ROW_SKIPPED",
+                     *           "row": 4,
+                     *           "email": "not-an-email",
+                     *           "message": "Row 4 holds 'not-an-email', which is not a valid email address, so it was skipped."
+                     *         }
+                     *       ],
+                     *       "importId": "imp_01JABCDEF0123456789XYZ"
                      *     }
                      */
-                    "application/json": {
-                        summary: {
-                            inserted: number;
-                            updated: number;
-                            failed: number;
-                            skipped: number;
-                        };
-                        fieldsCreated: string[];
-                        errors: {
-                            email: string;
-                            code: string;
-                            field?: string;
-                            message: string;
-                        }[];
-                        warnings: {
-                            code: string;
-                            email?: string;
-                            field?: string;
-                            message: string;
-                            from?: string;
-                            to?: string;
-                            original?: string;
-                            normalized?: string;
-                        }[];
-                        validation?: {
-                            valid: number;
-                            risky: number;
-                            invalid: number;
-                            unscored: number;
-                            persistence?: {
-                                matched: number;
-                                modified: number;
-                                failed: number;
-                            };
-                        };
-                        validationJobId?: string;
-                    };
+                    "application/json": components["schemas"]["ContactsImportResponse"];
+                };
+            };
+            /**
+             * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+             *
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             */
+            400: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `API_KEY_REVOKED`: The API key was revoked.
+             *
+             *     `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+             *
+             *     `INVALID_API_KEY`: The API key is malformed or unknown.
+             */
+            401: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed. */
+            402: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+             *
+             *     `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+             *
+             *     `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+             *
+             *     `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+             */
+            403: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization). */
+            404: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+             *
+             *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
+             */
+            409: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
+            429: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it. */
+            500: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `SERVICE_UNAVAILABLE`: A dependency the operation must consult (billing, the idempotency store) is temporarily unavailable, so the request was refused rather than run unmetered. */
+            503: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+        };
+    };
+    importContacts: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+                 * @example kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+                 */
+                "X-Brand-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "contacts": [
+                 *         {
+                 *           "email": "ada@example.com",
+                 *           "firstName": "Ada"
+                 *         },
+                 *         {
+                 *           "email": "grace@example.com",
+                 *           "firstName": "Grace",
+                 *           "customFields": {
+                 *             "plan": "pro"
+                 *           }
+                 *         }
+                 *       ],
+                 *       "consent": {
+                 *         "source": "import"
+                 *       },
+                 *       "fileName": "crm-export.json"
+                 *     }
+                 */
+                "application/json": components["schemas"]["ContactsImportRequest"];
+            };
+        };
+        responses: {
+            /** @description Import summary (all rows valid). */
+            200: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "summary": {
+                     *         "inserted": 2,
+                     *         "updated": 0,
+                     *         "failed": 0,
+                     *         "skipped": 0,
+                     *         "total": 2
+                     *       },
+                     *       "fieldsCreated": [
+                     *         "plan"
+                     *       ],
+                     *       "errors": [],
+                     *       "warnings": [],
+                     *       "importId": "imp_01JABCDEF0123456789XYZ"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ContactsImportResponse"];
+                };
+            };
+            /** @description Partial success — some rows failed validation. */
+            207: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "summary": {
+                     *         "inserted": 1,
+                     *         "updated": 0,
+                     *         "failed": 1,
+                     *         "skipped": 0,
+                     *         "total": 2
+                     *       },
+                     *       "fieldsCreated": [],
+                     *       "errors": [
+                     *         {
+                     *           "email": "not-an-email",
+                     *           "row": 2,
+                     *           "code": "INVALID_EMAIL",
+                     *           "message": "'not-an-email' is not a valid email address."
+                     *         }
+                     *       ],
+                     *       "warnings": [],
+                     *       "importId": "imp_01JABCDEF0123456789XYZ"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ContactsImportResponse"];
                 };
             };
             /**
