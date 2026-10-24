@@ -518,6 +518,18 @@ describe('contacts import-csv', () => {
     expect(result.stderr).toContain('--on-conflict takes upsert or skip')
   })
 
+  it('refuses an empty --on-conflict instead of running an upsert', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'brew-cli-csv-'))
+    const csvPath = join(dir, 'contacts.csv')
+    writeFileSync(csvPath, 'Email\njane@example.com\n')
+    const result = await runCli(
+      ['contacts', 'import-csv', '--file', csvPath, '--on-conflict', ''],
+      { env: env() }
+    )
+    expect(result.code).toBe(2)
+    expect(result.stderr).toContain('--on-conflict takes upsert or skip, not')
+  })
+
   it('refuses a call with no CSV at all', async () => {
     const result = await runCli(
       ['contacts', 'import-csv', '--date-order', 'day_first'],

@@ -1,5 +1,4 @@
 import { CliUsageError } from '../../lib/errors'
-import { flagString } from '../../lib/input'
 
 /** `--dry-run` on both imports. */
 export const DRY_RUN_FLAG = {
@@ -25,13 +24,19 @@ export function importModeFlags(flags: {
   readonly dryRun?: unknown
   readonly onConflict?: unknown
 }): { dryRun?: true; onConflict?: (typeof ON_CONFLICT_MODES)[number] } {
-  const onConflict = flagString(flags.onConflict)
+  // Any supplied value is checked before it is normalized: an empty one
+  // (an unset shell variable) must stop the import, not run an upsert.
+  const raw = flags.onConflict
+  const onConflict = typeof raw === 'string' ? raw.trim() : raw
   if (
     onConflict !== undefined &&
-    !(ON_CONFLICT_MODES as ReadonlyArray<string>).includes(onConflict)
+    !(
+      typeof onConflict === 'string' &&
+      (ON_CONFLICT_MODES as ReadonlyArray<string>).includes(onConflict)
+    )
   ) {
     throw new CliUsageError(
-      `--on-conflict takes upsert or skip, not "${onConflict}".`
+      `--on-conflict takes upsert or skip, not "${String(raw)}".`
     )
   }
   return {
