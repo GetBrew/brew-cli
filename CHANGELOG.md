@@ -4,7 +4,7 @@
 
 Needs the same SDK release as 0.19.0 (`appEmails.setUpKit` and the auth
 adapter subpaths from GetBrew/typescript-sdk#64), and the API from
-GetBrew/brew-v2#2169 (spec @ `6f8ef50544`).
+GetBrew/brew-v2#2169 (its DX delta @ `6f8ef50544`).
 
 ### Added
 
@@ -42,8 +42,8 @@ GetBrew/brew-v2#2169 (spec @ `6f8ef50544`).
   the DNS records step, and a kit key refused with
   `APP_EMAIL_TRIGGER_IN_USE` gets a human `trigger-in-use:<key>` review
   step ahead of the re-run. The generated code and the
-  install command use `@brew.new/sdk@^13.2.0`, the planned release with
-  `appEmails` and the auth adapters (on top of 13.1.0's `send`).
+  install command use `@brew.new/sdk@^13.6.0`, the planned release with
+  `appEmails` and the auth adapters (on top of 13.5.0's `send`).
 - Not in this release (they need platform work first): the Supabase and
   Clerk provider switch-over (Supabase Management API hook, Clerk
   `toggle_delivery`; init prints them as human steps), `integrations

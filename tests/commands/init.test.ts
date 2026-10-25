@@ -364,13 +364,14 @@ describe('init: confirmation and dry run', () => {
     ])
     expect(
       result.report.steps.find((step) => step.id === 'install')?.detail
-    ).toBe("npm install '@brew.new/sdk@^13.2.0'")
+    ).toBe("npm install '@brew.new/sdk@^13.6.0'")
   })
 
   it.each([
-    ['^12.3.0', "npm install '@brew.new/sdk@^13.2.0'"],
-    ['^13.1.0', "npm install '@brew.new/sdk@^13.2.0'"],
-    ['^13.2.0', '@brew.new/sdk ^13.2.0 already declared'],
+    ['^12.3.0', "npm install '@brew.new/sdk@^13.6.0'"],
+    ['^13.3.0', "npm install '@brew.new/sdk@^13.6.0'"],
+    ['^13.5.0', "npm install '@brew.new/sdk@^13.6.0'"],
+    ['^13.6.0', '@brew.new/sdk ^13.6.0 already declared'],
     ['^14.0.0', '@brew.new/sdk ^14.0.0 already declared'],
   ])(
     '--dry-run with %s declared: install unless it is the generated code range or newer',
@@ -518,7 +519,7 @@ describe('init --yes: the full run', () => {
     expect(spawn.calls).toEqual([
       {
         command: 'npm',
-        args: ['install', '@brew.new/sdk@^13.2.0'],
+        args: ['install', '@brew.new/sdk@^13.6.0'],
         cwd: root,
       },
     ])
@@ -651,7 +652,7 @@ describe('init --yes: the full run', () => {
       result.report.nextSteps.find((step) => step.id === 'install-sdk')
     ).toMatchObject({
       blocking: true,
-      command: "npm install '@brew.new/sdk@^13.2.0'",
+      command: "npm install '@brew.new/sdk@^13.6.0'",
     })
 
     useBrewApi()
@@ -808,7 +809,7 @@ describe('init --yes: the full run', () => {
       "Deno.env.get('BREW_API_KEY')"
     )
     expect(read(root, 'supabase/functions/send-email/index.ts')).toContain(
-      'npm:@brew.new/sdk@^13.2.0/supabase'
+      'npm:@brew.new/sdk@^13.6.0/supabase'
     )
     expect(result.report.patches).toMatchObject([
       { id: 'supabase-config-hook', status: 'pending' },
@@ -1153,7 +1154,7 @@ describe('init per stack', () => {
     expect(spawn.calls).toEqual([
       {
         command: 'pnpm',
-        args: ['add', '--filter', 'web', '@brew.new/sdk@^13.2.0'],
+        args: ['add', '--filter', 'web', '@brew.new/sdk@^13.6.0'],
         cwd: root,
       },
     ])
