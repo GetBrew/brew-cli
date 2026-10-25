@@ -52,6 +52,21 @@ what the spec-drift sentinel reads) matching `openapi/public-api-v1.yaml`,
 which is the #2169 @ `6f8ef50544` DX delta on main's spec (brew-v2
 `87ac2c6242`).
 
+### Hosted auth hook SDK gate
+
+`integrations connect`, `integrations connection`, `init`'s provider step
+(`--configure-supabase`, `--configure-clerk`) and `doctor --project` call
+`brew.integrations.connect` and `brew.integrations.getConnection`, which
+arrive in GetBrew/typescript-sdk#74 (planned 13.7.0, after 13.6.0 above).
+Release that SDK first, then `bun add @brew.new/sdk@^13.7.0` (never
+hand-write a lockfile entry), run a frozen install, the full checks and
+`docs:commands:check`, and release the CLI. The API side,
+GetBrew/brew-v2#2169, must be deployed first: re-fetch
+`https://brew.new/openapi/public-api-v1.yaml` and compare the two
+`/v1/integrations/{provider}/connection` operations with the bundled spec
+before tagging. Generated app code still asks for `^13.6.0`
+(`SDK_RANGE`): only the CLI itself needs 13.7.0.
+
 ```bash
 # on a clean main with CI green
 npm version <patch|minor|major> --no-git-tag-version

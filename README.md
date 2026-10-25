@@ -30,6 +30,7 @@ are attached to every [GitHub Release](https://github.com/GetBrew/brew-cli/relea
 ```bash
 brew-cli login                       # sign in through the browser (or --paste a key)
 brew-cli doctor                      # trust check: auth, reachability, CLI-vs-API drift (exit-code gated)
+brew-cli doctor --project            # this app vs its brew.json: files, key, SDK, keys, domain, auth hook
 brew-cli whoami
 brew-cli contacts search --filter email:equals:jane@example.com
 brew-cli emails list --limit 10
@@ -78,8 +79,68 @@ monorepo, editors), signs you in through the browser, and then:
 Every file is create-only: a file you changed is reported
 `kept-user-version` and left alone, and a re-run with nothing new changes
 nothing. Until a sending domain verifies, app emails reach members of
-your Brew organization only; `--domain mail.example.com` adds one and
-prints its DNS records without waiting.
+your Brew organization only; `--domain mail.example.com` adds a
+transactional domain and prints its DNS records without waiting, plus the
+domain's page in Brew, where **Connect automatically** (Entri) adds the
+records at your DNS provider. That button runs in the Brew app: the API
+has no endpoint for it, so the CLI cannot do it for you.
+
+`--app-url https://app.example.com` shows the app's URL on the sign-in
+approval page. With an organization API key (`BREW_API_KEY` or
+`--api-key`), init also picks the brand whose website is the app, or
+creates one from the URL (`POST /v1/brands`, organization keys with the
+`brands` scope) and waits for it (`--no-wait` leaves that to a re-run). A
+key bound to one brand is never moved: a mismatch is reported.
+
+### The auth provider's own emails (Supabase, Clerk)
+
+Nothing about your auth provider changes under a bare `--yes`. Without the
+flags below, init prints the manual steps.
+
+- **Supabase Auth**: `--configure-supabase` connects Brew as the hosted
+  Send Email Hook (`integrations connect supabase_auth`) and points
+  Authentication > Hooks > Send Email at it through the Supabase
+  Management API, using a Supabase personal access token from
+  `SUPABASE_ACCESS_TOKEN` on this machine (sent to api.supabase.com only,
+  never to Brew). The previous hook settings go into `brew.json` first
+  (a previous hook secret into `.env.local`, never `brew.json`).
+  `--dry-run --json` shows the exact PATCH with the secret replaced. The
+  self-hosted Edge Function init writes stays the alternative.
+- **Clerk**: connect Clerk's `email.created` webhook first
+  (`integrations connect clerk`). `--configure-clerk` then turns off
+  "Delivered by Clerk" for exactly the templates Brew publishes, through
+  Clerk's Backend API with `CLERK_SECRET_KEY` (shell or `.env.local`), and
+  only once `integrations connection clerk` reports `active`, so no email
+  is dropped in between.
+
+`init --rollback-provider --yes` puts back what either flag changed, from
+`brew.json`.
+
+### Hosted auth hooks: `integrations connect`
+
+```bash
+# the secret comes from an environment variable or stdin, never a flag value
+brew-cli integrations connect supabase_auth --signing-secret-env SEND_EMAIL_HOOK_SECRET \
+  --project-url https://<ref>.supabase.co --yes
+printenv CLERK_WEBHOOK_SIGNING_SECRET | brew-cli integrations connect clerk --signing-secret-stdin --yes
+brew-cli integrations connection clerk   # pending_verification until the first signed delivery, then active
+```
+
+`connect` prints `{ connectionId, webhookUrl, status }` (and each auth
+email it set up): paste `webhookUrl` into Supabase's hook or Clerk's
+endpoint. Running it again is safe: `connectionId` and `webhookUrl` stay
+the same for the brand and provider, the new secret replaces the old one,
+auth emails already set up are kept, and keys that failed are finished.
+
+### Check a project: `doctor --project`
+
+`brew-cli doctor --project [--json]` checks the app against its
+`brew.json`: managed files unchanged, `BREW_API_KEY` in `.env.local`,
+git-ignored and never under a `NEXT_PUBLIC_`/`VITE_`/`PUBLIC_` name,
+`@brew.new/sdk` declared and installed at the version the generated files
+need, and with the app key: every key in `brew.json` set up and published
+(`GET /v1/app-emails`), a verified sending domain, and the hosted auth
+hook's status. Any failed check exits 1.
 
 Agents run it in two steps and read one JSON report
 (`schemas/init-report.json`: `status`, `steps[]`, `files[]`, `patches[]`,
