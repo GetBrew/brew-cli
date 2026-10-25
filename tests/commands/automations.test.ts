@@ -2,7 +2,7 @@ import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { HttpResponse, http } from 'msw'
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 import { automationsCreateCommand } from '../../src/commands/automations/create'
 import { automationsDeleteCommand } from '../../src/commands/automations/delete'
 import { automationsGetCommand } from '../../src/commands/automations/get'
@@ -46,8 +46,9 @@ const EXTRA = [
   automationsRunsListCommand,
 ]
 
-function cli(argv: readonly string[]): Promise<RunCliResult> {
+function cli(argv: readonly string[], stdin = ''): Promise<RunCliResult> {
   return runCli(argv, {
+    stdin,
     env: {
       BREW_CLI_CONFIG_DIR: mkdtempSync(join(tmpdir(), 'brew-cli-test-')),
       BREW_API_KEY: KEY,
@@ -685,21 +686,147 @@ describe('automations triggers contract put', () => {
 })
 
 describe('automations triggers contract validate', () => {
-  it('rejects --enforcement passthrough client-side with the valid values', async () => {
-    const result = await cli([
-      'automations',
-      'triggers',
-      'contract',
-      'validate',
-      'tri_signup',
-      '--input',
-      '{"payload":{"email":"jane@example.com"}}',
-      '--enforcement',
-      'passthrough',
-    ])
-    expect(result.code).toBe(2)
-    expect(result.stderr).toContain('prune | strict')
+  const payload = { email: 'jane@example.com', code: 'synthetic-code' }
+  const argv = [
+    'automations',
+    'triggers',
+    'contract',
+    'validate',
+    'tri_signup',
+    '--input',
+  ]
+  let bodies: unknown[]
+
+  beforeEach(() => {
+    bodies = []
+    server.use(
+      http.post(
+        `${API}/v1/automations/triggers/tri_signup/contract/validate`,
+        async ({ request }) => {
+          bodies.push(await request.json())
+          return HttpResponse.json({
+            valid: true,
+            errors: [],
+            warnings: [],
+            resolvedPayload: payload,
+            prunedKeys: [],
+          })
+        }
+      )
+    )
   })
+
+  describe.each(['inline', 'stdin'])('%s full request body', (source) => {
+    it.each(['strict', 'prune'])('preserves %s enforcement', async (mode) => {
+      const input = { payload, enforcement: mode }
+      const json = JSON.stringify(input)
+      const result = await cli(
+        [...argv, source === 'stdin' ? '-' : json],
+        source === 'stdin' ? json : undefined
+      )
+      expect(result.code).toBe(0)
+      expect(bodies).toEqual([input])
+    })
+
+    it.each([
+      { inputMode: 'prune', flagMode: 'strict' },
+      { inputMode: 'strict', flagMode: 'prune' },
+      { inputMode: 'passthrough', flagMode: 'strict' },
+    ])(
+      'uses --enforcement $flagMode over body $inputMode',
+      async ({ inputMode, flagMode }) => {
+        const json = JSON.stringify({ payload, enforcement: inputMode })
+        const result = await cli(
+          [...argv, source === 'stdin' ? '-' : json, '--enforcement', flagMode],
+          source === 'stdin' ? json : undefined
+        )
+        expect(result.code).toBe(0)
+        expect(bodies).toEqual([{ payload, enforcement: flagMode }])
+      }
+    )
+  })
+
+  it.each(['strict', 'prune'])(
+    'keeps flag-only %s enforcement',
+    async (mode) => {
+      const result = await cli([
+        ...argv,
+        JSON.stringify({ payload }),
+        '--enforcement',
+        mode,
+      ])
+      expect(result.code).toBe(0)
+      expect(bodies).toEqual([{ payload, enforcement: mode }])
+    }
+  )
+
+  it('omits enforcement when the full body does not supply it', async () => {
+    const result = await cli([...argv, JSON.stringify({ payload })])
+    expect(result.code).toBe(0)
+    expect(bodies).toEqual([{ payload }])
+  })
+
+  it.each([
+    { name: 'plain', input: payload },
+    {
+      name: 'with an enforcement field',
+      input: { ...payload, enforcement: 'strict' },
+    },
+  ])('preserves a bare payload $name', async ({ input }) => {
+    const result = await cli([...argv, JSON.stringify(input)])
+    expect(result.code).toBe(0)
+    expect(bodies).toEqual([{ payload: input }])
+  })
+
+  it('keeps bare payload enforcement separate from the explicit flag', async () => {
+    const input = { ...payload, enforcement: 'strict' }
+    const result = await cli([
+      ...argv,
+      JSON.stringify(input),
+      '--enforcement',
+      'prune',
+    ])
+    expect(result.code).toBe(0)
+    expect(bodies).toEqual([{ payload: input, enforcement: 'prune' }])
+  })
+
+  it('keeps the positional trigger ID authoritative', async () => {
+    const result = await cli([
+      ...argv,
+      JSON.stringify({
+        triggerEventId: 'tri_other',
+        payload,
+        enforcement: 'strict',
+      }),
+    ])
+    expect(result.code).toBe(0)
+    expect(bodies).toEqual([{ payload, enforcement: 'strict' }])
+  })
+
+  it.each([null, 42, 'passthrough'])(
+    'leaves body enforcement %j schema validation to the API',
+    async (enforcement) => {
+      const input = { payload, enforcement }
+      const result = await cli([...argv, JSON.stringify(input)])
+      expect(result.code).toBe(0)
+      expect(bodies).toEqual([input])
+    }
+  )
+
+  it.each(['off', 'passthrough'])(
+    'rejects --enforcement %s before any request even with a valid body mode',
+    async (mode) => {
+      const result = await cli([
+        ...argv,
+        JSON.stringify({ payload, enforcement: 'strict' }),
+        '--enforcement',
+        mode,
+      ])
+      expect(result.code).toBe(2)
+      expect(result.stderr).toContain('prune | strict')
+      expect(bodies).toEqual([])
+    }
+  )
 })
 
 describe('automations runs list', () => {

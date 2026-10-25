@@ -1483,6 +1483,7 @@ Dry-run a payload against a trigger's contract (the fire path's validator) — n
 
 ```bash
 brew-cli automations triggers contract validate tri_signup --input '{"payload":{"email":"jane@example.com"}}'
+brew-cli automations triggers contract validate tri_signup --input '{"payload":{"email":"jane@example.com"},"enforcement":"strict"}'
 ```
 
 ### brew-cli contracts infer
