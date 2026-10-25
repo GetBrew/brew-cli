@@ -400,11 +400,14 @@ Partially update one contact (PATCH; never retried)
 - `--last-name <name>` — Last name
 - `--subscribed <bool>` — Subscription state: true | false
 - `--set <pairs...>` — Field key=value, repeatable
-- `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
+- `--input <json>` — JSON body {fields, consent} or flat fields; precedence: flat < nested fields < flags (- reads stdin)
 
 ```bash
 brew-cli contacts update jane@example.com --first-name Jane
 brew-cli contacts update j@x.com --set plan=enterprise
+brew-cli contacts update j@x.com --input '{"fields":{"firstName":"Jane"}}' --first-name Janet
+brew-cli contacts update j@x.com --input '{"consent":{"source":"api","evidence":"Signup form"}}'
+brew-cli contacts update j@x.com --input '{"firstName":"Jane"}'
 ```
 
 ### brew-cli contacts delete
