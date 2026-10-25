@@ -765,8 +765,9 @@ describe('migrate resend: the SDK the rewritten files need', () => {
   it.each([
     [undefined, true],
     ['^12.3.0', true],
-    ['^13.1.0', true],
-    ['^13.2.0', false],
+    ['^13.3.0', true],
+    ['^13.5.0', true],
+    ['^13.6.0', false],
   ])(
     'with %s declared, install-sdk is a next step: %s',
     async (declared, expected) => {
@@ -800,7 +801,7 @@ describe('migrate resend: the SDK the rewritten files need', () => {
       )
       expect(install !== undefined).toBe(expected)
       if (expected) {
-        expect(install?.command).toContain('@brew.new/sdk@^13.2.0')
+        expect(install?.command).toContain('@brew.new/sdk@^13.6.0')
       }
     }
   )
