@@ -1,0 +1,6 @@
+{
+  "name": "site",
+  "dependencies": {
+    "astro": "5.0.0"
+  }
+}

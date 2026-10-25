@@ -2,6 +2,7 @@ import { BrewApiError } from '@brew.new/sdk'
 import { maskApiKey, resolveAuth } from '../lib/client'
 import { defineCommand } from '../lib/define-command'
 import { CliApiError } from '../lib/errors'
+import { getInvocationPrefix } from '../lib/invocation'
 import type { CliContext } from '../lib/types'
 
 /** Discovery endpoints without a dedicated command route. */
@@ -117,7 +118,7 @@ export const doctorCommand = defineCommand({
       `${isReachable ? 'ok' : 'FAIL'}  api ${auth.apiUrl} (${apiVersion ?? 'unreachable'})`,
       isKeyPresent
         ? `${isAuthValid === false ? 'FAIL' : isAuthValid === true ? 'ok' : '??'}  auth ${maskApiKey(auth.apiKey)} via ${auth.apiKeySource}${plan === null ? '' : ` (${plan} plan)`}`
-        : '--  no API key (run `brew-cli login` or set BREW_API_KEY)',
+        : `--  no API key (run \`${getInvocationPrefix(ctx.io.env)} login\` or set BREW_API_KEY)`,
       isSurfaceChecked
         ? missingLocally.length === 0
           ? `ok  surface in sync (${ctx.commands.length} commands cover the live API)`

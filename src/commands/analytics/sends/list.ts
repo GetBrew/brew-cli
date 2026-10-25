@@ -61,7 +61,7 @@ export const analyticsSendsListCommand = defineCommand({
       return { data: singleRowPage(row), human: renderSends([row]) }
     }
     if (include !== undefined) {
-      throw includeRidesDetailRead('sends get', '--send')
+      throw includeRidesDetailRead(ctx.io.env, 'sends get', '--send')
     }
     const input = mergeInput(base, {
       emailId: flagString(flags.email),

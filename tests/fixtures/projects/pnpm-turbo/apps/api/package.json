@@ -1,0 +1,6 @@
+{
+  "name": "api",
+  "dependencies": {
+    "hono": "4.6.0"
+  }
+}

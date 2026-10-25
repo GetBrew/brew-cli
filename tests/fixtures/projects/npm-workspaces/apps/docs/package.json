@@ -1,0 +1,6 @@
+{
+  "name": "docs",
+  "dependencies": {
+    "markdown-it": "14.0.0"
+  }
+}

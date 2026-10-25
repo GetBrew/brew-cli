@@ -41,6 +41,7 @@ jobs:
       - run: bun run lint
       - run: bun run test
       - run: bun run docs:commands:check
+      - run: bun run generate:skills:check
       - run: bun run build
       - name: Compile standalone binaries
         run: bun run scripts/build-binaries.ts

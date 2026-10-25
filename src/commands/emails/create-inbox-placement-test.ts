@@ -8,6 +8,7 @@ import {
   requestOptions,
   toStringArray,
 } from '../../lib/input'
+import { getInvocationPrefix } from '../../lib/invocation'
 
 export const emailsCreateInboxPlacementTestCommand = defineCommand({
   path: ['emails', 'create-inbox-placement-test'],
@@ -50,7 +51,7 @@ export const emailsCreateInboxPlacementTestCommand = defineCommand({
     const domainId = flagString(flags.domain)
     if (domainId === undefined) {
       throw new CliUsageError(
-        '--domain is required (a verified sending domain id; see `brew-cli domains list`).'
+        `--domain is required (a verified sending domain id; see \`${getInvocationPrefix(ctx.io.env)} domains list\`).`
       )
     }
     const subject = flagString(flags.subject)
