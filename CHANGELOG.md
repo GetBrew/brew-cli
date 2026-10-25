@@ -1,14 +1,14 @@
 # Changelog
 
-## 0.18.0
+## 0.19.0
 
-Needs `@brew.new/sdk` 13.2.0: `brew.send` and
+Needs `@brew.new/sdk` 13.6.0: `brew.send` and
 `automations.triggers.fireByKey` (GetBrew/typescript-sdk#55, planned
-13.1.0) and `appEmails` (GetBrew/typescript-sdk#64, planned 13.2.0), both
-after the published 13.0.0. Neither PR is published yet; see the app email
-SDK gate in `RELEASING.md`. The API side is GetBrew/brew-v2#2169, one PR
-for trigger keys, fire by key, the team sandbox, app emails and browser
-sign-in.
+13.5.0) and `appEmails` (GetBrew/typescript-sdk#64, planned 13.6.0), both
+after the published 13.3.0 and the SDK's pending 13.4.0 (email `lang`).
+Neither PR is published yet; see the app email SDK gate in `RELEASING.md`.
+The API side is GetBrew/brew-v2#2169, one PR for trigger keys, fire by key,
+the team sandbox, app emails and browser sign-in.
 
 ### Added
 
@@ -57,16 +57,14 @@ sign-in.
   the payload at compile time. A workspace with no keyed triggers gets
   the same bytes as before (no `--check` drift); `--no-registry` leaves
   the block out.
-- The vendored spec is GetBrew/brew-v2#2169 @ `6f8ef50544` whole (brew-v2
-  main `2db5428b09` plus every DX route): the by-key fire and the
+- The vendored spec is the GetBrew/brew-v2#2169 @ `6f8ef50544` DX delta on
+  main's spec (brew-v2 `87ac2c6242`): the by-key fire and the
   app-emails routes, `key` / `appEmail` on trigger rows, the sandbox error
   codes (`DOMAIN_REQUIRED`, `SANDBOX_DAILY_LIMIT`), the app email refusals
   above, `DKIM_SELECTOR_IN_USE` warnings with `suggestedNames` on
   `domains add` (printed verbatim), and the hosted auth hook connection
   routes, pending in the spec parity test until `integrations connect`
-  lands. It also carries brew-v2 main's email category relabel and the
-  template `group` filter, which GetBrew/brew-cli#68 binds. Re-vendor from
-  brew-v2 main once #2169 merges.
+  lands. Re-vendor from brew-v2 main once #2169 merges.
 
 - **`brew-cli login` signs in through the browser.** On an interactive
   terminal it starts a sign-in on brew.new, prints the link and a code
