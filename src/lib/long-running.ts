@@ -10,7 +10,7 @@ export const EXPORT_EMAIL_DEFAULT_TIMEOUT_MS =
     : 800_000
 
 /**
- * `integrations.connect` also runs the auth app email kit (SDK 13.3.0's
+ * `integrations.connect` also runs the auth app email kit (SDK 13.7.0's
  * constant; older SDKs lack it, and the route runs for up to 300 s).
  */
 export const CONNECT_INTEGRATION_TIMEOUT_MS =

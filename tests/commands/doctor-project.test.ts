@@ -33,13 +33,13 @@ function healthyProject(
     join(root, 'package.json'),
     JSON.stringify({
       name: 'app',
-      dependencies: { '@brew.new/sdk': '^13.2.0' },
+      dependencies: { '@brew.new/sdk': '^13.6.0' },
     })
   )
   mkdirSync(join(root, 'node_modules/@brew.new/sdk'), { recursive: true })
   writeFileSync(
     join(root, 'node_modules/@brew.new/sdk/package.json'),
-    JSON.stringify({ name: '@brew.new/sdk', version: '13.2.1' })
+    JSON.stringify({ name: '@brew.new/sdk', version: '13.6.1' })
   )
   writeFileSync(
     join(root, 'brew.json'),
@@ -265,16 +265,16 @@ describe('doctor --project', () => {
     useProjectApi({ verifiedDomain: true })
     writeFileSync(
       join(root, 'package.json'),
-      JSON.stringify({ dependencies: { '@brew.new/sdk': '^12.3.0' } })
+      JSON.stringify({ dependencies: { '@brew.new/sdk': '^13.3.0' } })
     )
     const old = await doctor(root)
     expect(old.code).toBe(1)
     expect(
       old.report.checks.find((check) => check.id === 'sdk')?.detail
-    ).toContain('^12.3.0 is older than the ^13.2.0')
+    ).toContain('^13.3.0 is older than the ^13.6.0')
     writeFileSync(
       join(root, 'package.json'),
-      JSON.stringify({ dependencies: { '@brew.new/sdk': '^13.2.0' } })
+      JSON.stringify({ dependencies: { '@brew.new/sdk': '^13.6.0' } })
     )
     rmSync(join(root, 'node_modules'), { recursive: true })
     const notInstalled = await doctor(root)
