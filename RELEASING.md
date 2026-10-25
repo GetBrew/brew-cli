@@ -34,11 +34,12 @@ CLI depends on (`^13.3.0`).
 `send`, `app-emails` and the `types` key registry call `brew.send` and
 `brew.appEmails`, which no published SDK has yet:
 GetBrew/typescript-sdk#55 (`send`, `automations.triggers.fireByKey`) and
-GetBrew/typescript-sdk#64 (`appEmails`, the auth adapters), planned as 13.1.0
-and 13.2.0, after the SDK's 13.0.0 above. Until 13.2.0 is on npm, the
-dependency and `bun.lock` stay on the published `^13.0.0`, and typecheck and
-parity fail in CI on these commands. Publish the SDK first, then
-`bun add @brew.new/sdk@^13.2.0` (it regenerates `bun.lock` from the
+GetBrew/typescript-sdk#64 (`appEmails`, the auth adapters), planned as 13.5.0
+and 13.6.0, after the published 13.3.0 and the SDK's pending 13.4.0 (email
+`lang`). Until 13.6.0 is on npm, the dependency and `bun.lock` stay on the
+published `^13.3.0`, and typecheck and parity fail in CI on these commands.
+Publish the SDK first, then
+`bun add @brew.new/sdk@^13.6.0` (it regenerates `bun.lock` from the
 registry; never hand-write a lockfile entry), run a frozen install, the full
 checks and `docs:commands:check`, and release the CLI.
 
@@ -46,7 +47,8 @@ The API side must be live first: GetBrew/brew-v2#2169 deployed (the by-key
 fire, `/v1/app-emails`, the team sandbox), and the live spec
 (`https://brew.new/openapi/public-api-v1.yaml`, what the spec-drift
 sentinel reads) matching `openapi/public-api-v1.yaml`,
-which is #2169 at `6f8ef50544`.
+which is the #2169 @ `6f8ef50544` DX delta on main's spec (brew-v2
+`87ac2c6242`).
 
 ```bash
 # on a clean main with CI green
