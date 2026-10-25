@@ -181,6 +181,7 @@ export const automationsTriggersContractValidateCommand = defineCommand({
   ],
   examples: [
     `brew-cli automations triggers contract validate tri_signup --input '{"payload":{"email":"jane@example.com"}}'`,
+    `brew-cli automations triggers contract validate tri_signup --input '{"payload":{"email":"jane@example.com"},"enforcement":"strict"}'`,
   ],
   run: async ({ ctx, args, flags }) => {
     const input = mergeInput(
@@ -188,15 +189,19 @@ export const automationsTriggersContractValidateCommand = defineCommand({
       {}
     )
     const payload = input.payload ?? input
-    const enforcement = flagString(flags.enforcement)
+    const enforcementFlag = flagString(flags.enforcement)
     if (
-      enforcement !== undefined &&
-      !VALIDATE_ENFORCEMENT_MODES.has(enforcement)
+      enforcementFlag !== undefined &&
+      !VALIDATE_ENFORCEMENT_MODES.has(enforcementFlag)
     ) {
       throw new CliUsageError(
-        `Unknown --enforcement '${enforcement}' (expected prune | strict).`
+        `Unknown --enforcement '${enforcementFlag}' (expected prune | strict).`
       )
     }
+    // Only a full body carries request metadata; a bare payload may have
+    // its own enforcement field. Body schema validation belongs to the API.
+    const enforcement =
+      enforcementFlag ?? (input.payload != null ? input.enforcement : undefined)
     const body = await ctx.client().automations.triggers.validatePayload(
       asSdkInput<ValidateTriggerPayloadInput>({
         triggerEventId: args.triggerEventId ?? '',
