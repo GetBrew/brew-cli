@@ -1,8 +1,70 @@
 # Changelog
 
-## Unreleased
+## 0.19.0
+
+Needs `@brew.new/sdk` 13.6.0: `brew.send` and
+`automations.triggers.fireByKey` (GetBrew/typescript-sdk#55, planned
+13.5.0) and `appEmails` (GetBrew/typescript-sdk#64, planned 13.6.0), both
+after the published 13.3.0 and the SDK's pending 13.4.0 (email `lang`).
+Neither PR is published yet; see the app email SDK gate in `RELEASING.md`.
+The API side is GetBrew/brew-v2#2169, one PR for trigger keys, fire by key,
+the team sandbox, app emails and browser sign-in.
 
 ### Added
+
+- **`brew-cli send <key>`** sends the app email behind a trigger key: the
+  same call as `brew.send(key, payload)`
+  (`POST /v1/automations/triggers/by-key/{triggerKey}/fire`). `--to
+  <email>` sets `payload.email` (over `--data`), `--data <json|->` carries
+  the rest of the payload, `--idempotency-key` makes a retry replay.
+  Destructive like `automations triggers fire`: exit 4 without `--yes`.
+  A send with no recipient exits 2 before any request.
+  `automations.triggers.fireByKey` is the same route, so it is a reviewed
+  SDK skip (alias of `send`).
+- **`brew-cli app-emails list | get <key> | upsert <key> | kit`** bind
+  `GET /v1/app-emails`, `GET|PUT /v1/app-emails/{triggerKey}` and
+  `POST /v1/app-emails/kit`. `list` and `get` show each key's sender
+  (`domain`, `sandbox`, `none`) and readiness. `upsert` sets up one app
+  email (starter with `--starter`, or your own `--source-file` with
+  `--format` taken from `.html`, `.mjml`, `.jsx` or `.tsx`; `--title`,
+  `--subject`, `--preview-text`, `--domain`, `--overwrite`; `--input`
+  carries the rest, such as `payloadSchema` fields marked `secret: true`
+  for a one-time code or sign-in link) and publishes it, so it confirms;
+  `--no-publish` saves without the gate. `kit` sets up
+  the auth and lifecycle starter kit (`--sets`, `--stack`, `--keys`,
+  `--domain`, `--overwrite`, `--idempotency-key`), confirms, prints
+  per-key results and exits 1 when a key failed. Its human output says
+  what each failed key needs: run it again to finish a key that failed
+  part way, a transactional `--domain` (or none) for
+  `APP_EMAIL_DOMAIN_PURPOSE_MISMATCH`, unpublishing the automations in
+  `error.details.automationIds` for `APP_EMAIL_TRIGGER_IN_USE`, and
+  `--overwrite` for `APP_EMAIL_EDITED_IN_BREW`. `upsert` exits 1 on the
+  same refusals, `APP_EMAIL_SETUP_IN_PROGRESS` and
+  `CONTRACT_LOCKED_BY_PUBLISHED_AUTOMATIONS`; when the published version
+  keeps sending under a newer draft (`DRAFT_SAVED_NOT_LIVE`), it says so
+  and still prints the `send` line.
+  Both use the SDK's 5-minute defaults as their whole-command deadline
+  and need a key with the `automations` and `emails` scopes. A key that
+  breaks the trigger key grammar, an unknown `--format`, `--sets`,
+  `--stack` or kit key, an empty list, or `--keys` with `--sets`/`--stack`
+  exits 2 before any request; a body on stdin (`--input -`) always
+  confirms.
+- `automations triggers create --key <key>` and `automations triggers
+  update --key <key>` set the stable key code fires by; `triggers list`
+  gains a `KEY` column (`get` returns `key` and `appEmail` in the row).
+- `brew-cli types` appends a `BrewTriggerKeyRegistry` augmentation for
+  every keyed trigger, so `brew.send('order.paid', …)` checks the key and
+  the payload at compile time. A workspace with no keyed triggers gets
+  the same bytes as before (no `--check` drift); `--no-registry` leaves
+  the block out.
+- The vendored spec is the GetBrew/brew-v2#2169 @ `6f8ef50544` DX delta on
+  main's spec (brew-v2 `87ac2c6242`): the by-key fire and the
+  app-emails routes, `key` / `appEmail` on trigger rows, the sandbox error
+  codes (`DOMAIN_REQUIRED`, `SANDBOX_DAILY_LIMIT`), the app email refusals
+  above, `DKIM_SELECTOR_IN_USE` warnings with `suggestedNames` on
+  `domains add` (printed verbatim), and the hosted auth hook connection
+  routes, pending in the spec parity test until `integrations connect`
+  lands. Re-vendor from brew-v2 main once #2169 merges.
 
 - **`brew-cli login` signs in through the browser.** On an interactive
   terminal it starts a sign-in on brew.new, prints the link and a code
@@ -31,7 +93,6 @@
   `--api-key` or `BREW_API_KEY` never sends it, and `logout` or a pasted
   key drops it. A sign-in against a non-default `--api-url` stores that
   URL with the key. The `Signed in as …` line shows even under `--quiet`.
-
 - **`brew-cli mcp install`** adds the Brew MCP server to Cursor
   (`.cursor/mcp.json`), VS Code (`.vscode/mcp.json`), Claude Code
   (`.mcp.json`), Gemini CLI (`.gemini/settings.json`), and, when named,
