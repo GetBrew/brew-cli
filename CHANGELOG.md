@@ -2,13 +2,13 @@
 
 ## 0.23.0
 
-Not released yet. Needs `@brew.new/sdk` 13.3.0: `integrations.connect` and
+Not released yet. Needs `@brew.new/sdk` 13.7.0: `integrations.connect` and
 `integrations.getConnection` (GetBrew/typescript-sdk#74, on top of the
-13.2.0 that 0.18.0 needs; see the SDK gates in `RELEASING.md`), and the API
+13.6.0 that 0.19.0 needs; see the SDK gates in `RELEASING.md`), and the API
 from GetBrew/brew-v2#2169 (`GET|PUT /v1/integrations/{provider}/connection`,
 the `supabase_auth` hosted Send Email Hook, and Clerk `email.created`
-sending the app's auth emails). The bundled spec is 0.18.0's, #2169 @
-`6f8ef50544`.
+sending the app's auth emails). The bundled spec is 0.19.0's, the #2169 @
+`6f8ef50544` DX delta on main's spec (brew-v2 `87ac2c6242`).
 
 ### Added
 
@@ -65,7 +65,7 @@ sending the app's auth emails). The bundled spec is 0.18.0's, #2169 @
   the API.
 - **`brew-cli doctor --project`** checks an app against its `brew.json`:
   managed file hashes, `BREW_API_KEY` set, git-ignored and never under a
-  browser-exposed name, the SDK declared and installed at `^13.2.0`, and,
+  browser-exposed name, the SDK declared and installed at `^13.6.0`, and,
   with the app key, the brand (the key's brand is `brew.json`'s), every key
   set up and published, a verified sending domain, and the hosted hook's
   status. `--json`; any failed check exits 1, no `brew.json` exits 2.
@@ -73,7 +73,7 @@ sending the app's auth emails). The bundled spec is 0.18.0's, #2169 @
   `provider` step, `brand.domain` / `matchesAppUrl` / `created` and
   `domain.connectUrl`.
 - The spec parity test's pending-build list is empty again: these
-  commands bind the two connection routes 0.18.0's spec already carried.
+  commands bind the two connection routes 0.19.0's spec already carried.
 
 ## 0.22.0
 

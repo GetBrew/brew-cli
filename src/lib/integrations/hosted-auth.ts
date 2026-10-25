@@ -12,7 +12,7 @@ import type { CliContext } from '../types'
  * The hosted auth email hooks (`GET|PUT /v1/integrations/{provider}/
  * connection`, GetBrew/brew-v2#2169): the providers that hand an app's auth
  * emails to Brew once connected, through the SDK's `integrations.connect`
- * and `integrations.getConnection` (typescript-sdk 13.3.0).
+ * and `integrations.getConnection` (typescript-sdk 13.7.0).
  *
  * A signing secret is read from an environment variable or stdin, never
  * from argv (shell history, process lists, agent transcripts), and never
