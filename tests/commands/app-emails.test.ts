@@ -466,6 +466,95 @@ describe('app-emails upsert', () => {
     })
   })
 
+  it('passes the source import modes in --input through as given', async () => {
+    let body: unknown
+    server.use(
+      http.put(`${API}/v1/app-emails/order.paid`, async ({ request }) => {
+        body = await request.json()
+        return HttpResponse.json(
+          { ...SETUP, triggerKey: 'order.paid' },
+          { status: 201 }
+        )
+      })
+    )
+    // Typed against the vendored spec: brew-v2#2145 declares the modes.
+    const source: NonNullable<PutBody['source']> = {
+      format: 'jsx',
+      content: 'export default function E({ orderId }) { return orderId }',
+      props: 'merge_tags',
+    }
+    const result = await cli([
+      'app-emails',
+      'upsert',
+      'order.paid',
+      '--input',
+      JSON.stringify({ source }),
+      '--yes',
+    ])
+    expect(result.code).toBe(0)
+    expect(body).toEqual({ source })
+  })
+
+  it("--source-file fills format and content and keeps --input's source modes", async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'brew-upsert-'))
+    const file = join(dir, 'order-paid.tsx')
+    writeFileSync(file, 'export default function E({ orderId }) {}')
+    const bodies: unknown[] = []
+    server.use(
+      http.put(`${API}/v1/app-emails/:key`, async ({ request }) => {
+        bodies.push(await request.json())
+        return HttpResponse.json(SETUP, { status: 201 })
+      })
+    )
+    const jsx = await cli([
+      'app-emails',
+      'upsert',
+      'order.paid',
+      '--source-file',
+      file,
+      '--input',
+      '{"source":{"props":"merge_tags"}}',
+      '--yes',
+    ])
+    const variables: NonNullable<PutBody['source']>['variables'] = [
+      { key: 'INVOICE_URL', fallbackValue: 'https://acme.dev' },
+    ]
+    // The format comes from --input's source when the file is stdin.
+    const html = await cli(
+      [
+        'app-emails',
+        'upsert',
+        'invoice.ready',
+        '--source-file',
+        '-',
+        '--input',
+        JSON.stringify({
+          source: { format: 'html', placeholders: 'resend', variables },
+        }),
+        '--yes',
+      ],
+      { stdin: '<p>Hi {{{FIRST_NAME|there}}}, {{{INVOICE_URL}}}</p>' }
+    )
+    expect([jsx.code, html.code]).toEqual([0, 0])
+    expect(bodies).toEqual([
+      {
+        source: {
+          format: 'jsx',
+          content: readFileSync(file, 'utf8'),
+          props: 'merge_tags',
+        },
+      },
+      {
+        source: {
+          format: 'html',
+          content: '<p>Hi {{{FIRST_NAME|there}}}, {{{INVOICE_URL}}}</p>',
+          placeholders: 'resend',
+          variables,
+        },
+      },
+    ])
+  })
+
   it('skips the gate with --no-publish and sends publish: false', async () => {
     let body: unknown
     server.use(

@@ -770,6 +770,12 @@ export async function runInit(
     return change
   }
   const installsSkills = project.editors.includes('claude-code')
+  // The Resend migration skill only where Resend is in use.
+  const skills = EMBEDDED_SKILLS.filter(
+    (skill) =>
+      skill.name !== 'brew-migrate-from-resend' ||
+      project.existingEmail.some((email) => email.provider === 'resend')
+  )
   const paths = {
     client: clientPath(project),
     auth: wantsAuthHelper(project, { lifecycle })
@@ -825,7 +831,7 @@ export async function runInit(
     // already uses it: creating `.claude/` would make the next run detect
     // an editor nobody uses.
     if (options.agentFiles && installsSkills) {
-      for (const skill of EMBEDDED_SKILLS) {
+      for (const skill of skills) {
         writeManaged({
           path: skillInstallPath(skill.name),
           content: skill.content,
@@ -981,7 +987,7 @@ export async function runInit(
         keys,
         files: paths,
         skillPaths: installsSkills
-          ? EMBEDDED_SKILLS.map((skill) => skillInstallPath(skill.name))
+          ? skills.map((skill) => skillInstallPath(skill.name))
           : [],
       })
     )
