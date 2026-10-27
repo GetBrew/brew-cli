@@ -1,7 +1,7 @@
 import type { operations } from '../../generated/openapi-types'
 import { defineCommand } from '../../lib/define-command'
 import { IDEMPOTENCY_FLAG, INPUT_FLAG } from '../../lib/input'
-import { webhookRunner } from './request'
+import { prepareWebhookInput, webhookRunner } from './request'
 
 const route = {
   method: 'POST',
@@ -9,6 +9,8 @@ const route = {
 } as const
 type Output =
   operations['replayWebhookEvent']['responses'][202]['content']['application/json']
+type Input =
+  operations['replayWebhookEvent']['requestBody']['content']['application/json']
 
 export const webhooksReplayCommand = defineCommand({
   path: ['webhooks', 'replay'],
@@ -25,5 +27,6 @@ export const webhooksReplayCommand = defineCommand({
   examples: ['brew-cli webhooks replay ep_example msg_example --yes'],
   confirmSummary: () =>
     'Deliver the original webhook event again. This does not resend the email.',
-  run: webhookRunner<Output>(route),
+  prepareInput: prepareWebhookInput,
+  run: webhookRunner<Output, Input>(route),
 })
