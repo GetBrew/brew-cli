@@ -172,6 +172,28 @@ describe('analytics events', () => {
     const data = result.json as { data: unknown[] }
     expect(data.data).toHaveLength(2)
   })
+
+  // The SDK's row read does not send `groupBy` or `bucket`, so they are
+  // refused rather than dropped (rows back to a caller who asked for
+  // counts). No handler is registered: exit 2 also proves no request went out.
+  it.each([
+    ['groupBy', { from: '2026-10-15T00:00:00Z', groupBy: 'eventType' }],
+    ['bucket', { eventType: 'delivered', bucket: 'day' }],
+    ['groupBy', { groupBy: 'eventType', bucket: 'day' }],
+  ])('refuses %s in --input and points at event-counts', async (key, body) => {
+    for (const extra of [[], ['--all']]) {
+      const result = await cli([
+        'analytics',
+        'events',
+        '--input',
+        JSON.stringify(body),
+        ...extra,
+      ])
+      expect(result.code).toBe(2)
+      expect(result.stderr).toContain(`\`${key}\``)
+      expect(result.stderr).toContain('analytics event-counts')
+    }
+  })
 })
 
 describe('analytics sends list', () => {

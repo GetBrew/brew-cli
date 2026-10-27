@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- `analytics events` refuses `groupBy` and `bucket` in `--input` with a usage
+  error (exit 2) that points to `analytics event-counts`. It used to drop both
+  keys, return event rows and exit 0, so a caller asking for counts got rows
+  and no `count`.
+
 ## 0.18.0
 
 These import changes require `@brew.new/sdk` 13.3.0 or newer, which adds
