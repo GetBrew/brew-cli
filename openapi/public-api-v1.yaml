@@ -7353,7 +7353,7 @@ components:
             maxLength: 80
           minItems: 1
           maxItems: 12
-          description: "Client ids to render. Omit for popular Gmail, Outlook, Apple Mail and iOS clients. Supported: gmailcom-lm_chrcurrent_win10 = Gmail (Web); gmailcom-dm_chrcurrent_win10 = Gmail (Web, Dark); android16_gmailapp_pixel10_lm = Gmail (Android); android16_gmailapp_pixel10_dm = Gmail (Android, Dark); iphone16gmail_18 = Gmail (iOS); outlook2021_win11_lm_dt = Outlook 2021 (Windows); outlook2021_win11_dm_dt = Outlook 2021 (Windows, Dark); o365_w10_lm_dt = Outlook 365 (Windows); outlookcom-lm_chrcurrent_win10 = Outlook.com (Web); applemail16 = Apple Mail (macOS); applemail16_dm = Apple Mail (macOS, Dark); iphone16_18 = Apple Mail (iOS); iphone16_18_dm = Apple Mail (iOS, Dark); yahoocom-lm_chrcurrent_win10 = Yahoo Mail (Web)."
+          description: "Client ids to render. Omit for popular Gmail, Outlook, Apple Mail and iOS clients. Supported: gmailcom-lm_chrcurrent_win10 = Gmail (Web); gmailcom-dm_chrcurrent_win10 = Gmail (Web, Dark); android16_gmailapp_pixel10_lm = Gmail (Android); android16_gmailapp_pixel10_dm = Gmail (Android, Dark); outlook2021_win11_lm_dt = Outlook 2021 (Windows); outlook2021_win11_dm_dt = Outlook 2021 (Windows, Dark); o365_w10_lm_dt = Outlook 365 (Windows); outlookcom-lm_chrcurrent_win10 = Outlook.com (Web); applemail16 = Apple Mail (macOS); applemail16_dm = Apple Mail (macOS, Dark); iphone16_18 = Apple Mail (iOS); iphone16_18_dm = Apple Mail (iOS, Dark); yahoocom-lm_chrcurrent_win10 = Yahoo Mail (Web)."
       additionalProperties: false
     EmailInboxPlacementTest:
       type: object
@@ -19290,6 +19290,14 @@ paths:
   /v1/webhooks:
     get:
       operationId: listWebhooks
+      description: |-
+        List notification endpoints for the authorized brand. Signing secrets are never included.
+
+        **Use when** you need to inspect endpoint configuration or paginate endpoints.
+
+        **Returns** A page of endpoints and an opaque continuation cursor.
+
+        **Errors** `ACCOUNT_SUSPENDED`, `API_KEY_REVOKED`, `AUTHENTICATION_REQUIRED`, `BRAND_ID_REQUIRED`, `BRAND_NOT_FOUND`, `BRAND_SCOPE_MISMATCH`, `INSUFFICIENT_PERMISSIONS`, `INSUFFICIENT_ROLE`, `INTERNAL_ERROR`, `INVALID_API_KEY`, `INVALID_REQUEST`, `NOT_FOUND`, `RATE_LIMITED`, `SERVICE_UNAVAILABLE`.
       tags:
         - Webhooks
       summary: List webhooks
@@ -19684,6 +19692,14 @@ paths:
       x-brew-rate-policy: webhooks.read
     post:
       operationId: createWebhook
+      description: |-
+        Create a signed HTTPS notification endpoint for one authorized brand. The initial signing secret is returned once.
+
+        **Use when** you want to subscribe a receiver to supported email events. Supply an Idempotency-Key for this mutation.
+
+        **Returns** The created endpoint and its signing secret.
+
+        **Errors** `ACCOUNT_SUSPENDED`, `API_KEY_REVOKED`, `AUTHENTICATION_REQUIRED`, `BRAND_ID_REQUIRED`, `BRAND_NOT_FOUND`, `BRAND_SCOPE_MISMATCH`, `IDEMPOTENCY_CONFLICT`, `IDEMPOTENCY_IN_PROGRESS`, `INSUFFICIENT_PERMISSIONS`, `INSUFFICIENT_ROLE`, `INTERNAL_ERROR`, `INVALID_API_KEY`, `INVALID_REQUEST`, `NOT_FOUND`, `PAYLOAD_TOO_LARGE`, `RATE_LIMITED`, `SERVICE_UNAVAILABLE`.
       tags:
         - Webhooks
       summary: Create webhook
@@ -20166,6 +20182,14 @@ paths:
   /v1/webhooks/{webhookId}:
     get:
       operationId: getWebhook
+      description: |-
+        Read one notification endpoint within the authorized brand. Signing secrets are excluded.
+
+        **Use when** you know an endpoint ID and need its current configuration.
+
+        **Returns** The endpoint URL, subscriptions, status and metadata.
+
+        **Errors** `ACCOUNT_SUSPENDED`, `API_KEY_REVOKED`, `AUTHENTICATION_REQUIRED`, `BRAND_ID_REQUIRED`, `BRAND_NOT_FOUND`, `BRAND_SCOPE_MISMATCH`, `INSUFFICIENT_PERMISSIONS`, `INSUFFICIENT_ROLE`, `INTERNAL_ERROR`, `INVALID_API_KEY`, `INVALID_REQUEST`, `NOT_FOUND`, `RATE_LIMITED`, `SERVICE_UNAVAILABLE`.
       tags:
         - Webhooks
       summary: Get webhook
@@ -20520,6 +20544,14 @@ paths:
       x-brew-rate-policy: webhooks.read
     patch:
       operationId: updateWebhook
+      description: |-
+        Update an endpoint URL, event subscriptions, description or enabled status within the authorized brand.
+
+        **Use when** you need to change receiver configuration or pause delivery.
+
+        **Returns** The updated endpoint without its signing secret.
+
+        **Errors** `ACCOUNT_SUSPENDED`, `API_KEY_REVOKED`, `AUTHENTICATION_REQUIRED`, `BRAND_ID_REQUIRED`, `BRAND_NOT_FOUND`, `BRAND_SCOPE_MISMATCH`, `INSUFFICIENT_PERMISSIONS`, `INSUFFICIENT_ROLE`, `INTERNAL_ERROR`, `INVALID_API_KEY`, `INVALID_REQUEST`, `NOT_FOUND`, `PAYLOAD_TOO_LARGE`, `RATE_LIMITED`, `SERVICE_UNAVAILABLE`.
       tags:
         - Webhooks
       summary: Update webhook
@@ -20933,6 +20965,14 @@ paths:
       x-brew-rate-policy: webhooks.write
     delete:
       operationId: deleteWebhook
+      description: |-
+        Delete an endpoint within the authorized brand and stop its pending deliveries.
+
+        **Use when** you want to permanently remove a receiver.
+
+        **Returns** The deleted endpoint ID and deletion confirmation.
+
+        **Errors** `ACCOUNT_SUSPENDED`, `API_KEY_REVOKED`, `AUTHENTICATION_REQUIRED`, `BRAND_ID_REQUIRED`, `BRAND_NOT_FOUND`, `BRAND_SCOPE_MISMATCH`, `INSUFFICIENT_PERMISSIONS`, `INSUFFICIENT_ROLE`, `INTERNAL_ERROR`, `INVALID_API_KEY`, `INVALID_REQUEST`, `NOT_FOUND`, `RATE_LIMITED`, `SERVICE_UNAVAILABLE`.
       tags:
         - Webhooks
       summary: Delete webhook
@@ -21297,6 +21337,14 @@ paths:
   /v1/webhooks/{webhookId}/rotate-secret:
     post:
       operationId: rotateWebhookSecret
+      description: |-
+        Rotate an endpoint signing secret. The provider keeps the previous secret valid during its rotation grace period.
+
+        **Use when** you are replacing receiver credentials. Supply an Idempotency-Key and update your receiver with the returned secret.
+
+        **Returns** The new signing secret.
+
+        **Errors** `ACCOUNT_SUSPENDED`, `API_KEY_REVOKED`, `AUTHENTICATION_REQUIRED`, `BRAND_ID_REQUIRED`, `BRAND_NOT_FOUND`, `BRAND_SCOPE_MISMATCH`, `IDEMPOTENCY_CONFLICT`, `IDEMPOTENCY_IN_PROGRESS`, `INSUFFICIENT_PERMISSIONS`, `INSUFFICIENT_ROLE`, `INTERNAL_ERROR`, `INVALID_API_KEY`, `INVALID_REQUEST`, `NOT_FOUND`, `PAYLOAD_TOO_LARGE`, `RATE_LIMITED`, `SERVICE_UNAVAILABLE`.
       tags:
         - Webhooks
       summary: Rotate webhook secret
@@ -21726,6 +21774,14 @@ paths:
   /v1/webhooks/{webhookId}/events:
     get:
       operationId: listWebhookEvents
+      description: |-
+        List retained event deliveries to one endpoint within the authorized brand. Expired payloads may be absent.
+
+        **Use when** you need to inspect delivery status, payloads or the next retry time.
+
+        **Returns** A page of delivery records and an opaque continuation cursor.
+
+        **Errors** `ACCOUNT_SUSPENDED`, `API_KEY_REVOKED`, `AUTHENTICATION_REQUIRED`, `BRAND_ID_REQUIRED`, `BRAND_NOT_FOUND`, `BRAND_SCOPE_MISMATCH`, `INSUFFICIENT_PERMISSIONS`, `INSUFFICIENT_ROLE`, `INTERNAL_ERROR`, `INVALID_API_KEY`, `INVALID_REQUEST`, `NOT_FOUND`, `RATE_LIMITED`, `SERVICE_UNAVAILABLE`.
       tags:
         - Webhooks
       summary: List webhook events
@@ -21809,7 +21865,584 @@ paths:
                         id:
                           type: string
                         payload:
-                          $ref: "#/components/schemas/EmailWebhookEvent"
+                          anyOf:
+                            - type: object
+                              properties:
+                                type:
+                                  type: string
+                                  enum:
+                                    - email.sent
+                                created_at:
+                                  type: string
+                                  format: date-time
+                                data:
+                                  type: object
+                                  properties:
+                                    email_id:
+                                      type: string
+                                    created_at:
+                                      type: string
+                                      format: date-time
+                                    from:
+                                      type: string
+                                    to:
+                                      type: array
+                                      items:
+                                        type: string
+                                    subject:
+                                      type: string
+                                    tags:
+                                      type: object
+                                      additionalProperties:
+                                        type: string
+                                    brew:
+                                      type: object
+                                      properties:
+                                        event_id:
+                                          type: string
+                                        schema_version:
+                                          type: number
+                                          enum:
+                                            - 1
+                                        recipient:
+                                          type: string
+                                        send_id:
+                                          type: string
+                                        design_id:
+                                          type: string
+                                        automation_id:
+                                          type: string
+                                        provider_message_id:
+                                          type: string
+                                        test:
+                                          type: boolean
+                                          enum:
+                                            - true
+                                      required:
+                                        - event_id
+                                        - schema_version
+                                      additionalProperties: false
+                                  required:
+                                    - email_id
+                                    - created_at
+                                    - to
+                                    - brew
+                                  additionalProperties: false
+                              required:
+                                - type
+                                - created_at
+                                - data
+                              additionalProperties: false
+                            - type: object
+                              properties:
+                                type:
+                                  type: string
+                                  enum:
+                                    - email.delivered
+                                created_at:
+                                  type: string
+                                  format: date-time
+                                data:
+                                  type: object
+                                  properties:
+                                    email_id:
+                                      type: string
+                                    created_at:
+                                      type: string
+                                      format: date-time
+                                    from:
+                                      type: string
+                                    to:
+                                      type: array
+                                      items:
+                                        type: string
+                                    subject:
+                                      type: string
+                                    tags:
+                                      type: object
+                                      additionalProperties:
+                                        type: string
+                                    brew:
+                                      type: object
+                                      properties:
+                                        event_id:
+                                          type: string
+                                        schema_version:
+                                          type: number
+                                          enum:
+                                            - 1
+                                        recipient:
+                                          type: string
+                                        send_id:
+                                          type: string
+                                        design_id:
+                                          type: string
+                                        automation_id:
+                                          type: string
+                                        provider_message_id:
+                                          type: string
+                                        test:
+                                          type: boolean
+                                          enum:
+                                            - true
+                                      required:
+                                        - event_id
+                                        - schema_version
+                                      additionalProperties: false
+                                  required:
+                                    - email_id
+                                    - created_at
+                                    - to
+                                    - brew
+                                  additionalProperties: false
+                              required:
+                                - type
+                                - created_at
+                                - data
+                              additionalProperties: false
+                            - type: object
+                              properties:
+                                type:
+                                  type: string
+                                  enum:
+                                    - email.delivery_delayed
+                                created_at:
+                                  type: string
+                                  format: date-time
+                                data:
+                                  type: object
+                                  properties:
+                                    email_id:
+                                      type: string
+                                    created_at:
+                                      type: string
+                                      format: date-time
+                                    from:
+                                      type: string
+                                    to:
+                                      type: array
+                                      items:
+                                        type: string
+                                    subject:
+                                      type: string
+                                    tags:
+                                      type: object
+                                      additionalProperties:
+                                        type: string
+                                    brew:
+                                      type: object
+                                      properties:
+                                        event_id:
+                                          type: string
+                                        schema_version:
+                                          type: number
+                                          enum:
+                                            - 1
+                                        recipient:
+                                          type: string
+                                        send_id:
+                                          type: string
+                                        design_id:
+                                          type: string
+                                        automation_id:
+                                          type: string
+                                        provider_message_id:
+                                          type: string
+                                        test:
+                                          type: boolean
+                                          enum:
+                                            - true
+                                      required:
+                                        - event_id
+                                        - schema_version
+                                      additionalProperties: false
+                                  required:
+                                    - email_id
+                                    - created_at
+                                    - to
+                                    - brew
+                                  additionalProperties: false
+                              required:
+                                - type
+                                - created_at
+                                - data
+                              additionalProperties: false
+                            - type: object
+                              properties:
+                                type:
+                                  type: string
+                                  enum:
+                                    - email.complained
+                                created_at:
+                                  type: string
+                                  format: date-time
+                                data:
+                                  type: object
+                                  properties:
+                                    email_id:
+                                      type: string
+                                    created_at:
+                                      type: string
+                                      format: date-time
+                                    from:
+                                      type: string
+                                    to:
+                                      type: array
+                                      items:
+                                        type: string
+                                    subject:
+                                      type: string
+                                    tags:
+                                      type: object
+                                      additionalProperties:
+                                        type: string
+                                    brew:
+                                      type: object
+                                      properties:
+                                        event_id:
+                                          type: string
+                                        schema_version:
+                                          type: number
+                                          enum:
+                                            - 1
+                                        recipient:
+                                          type: string
+                                        send_id:
+                                          type: string
+                                        design_id:
+                                          type: string
+                                        automation_id:
+                                          type: string
+                                        provider_message_id:
+                                          type: string
+                                        test:
+                                          type: boolean
+                                          enum:
+                                            - true
+                                      required:
+                                        - event_id
+                                        - schema_version
+                                      additionalProperties: false
+                                  required:
+                                    - email_id
+                                    - created_at
+                                    - to
+                                    - brew
+                                  additionalProperties: false
+                              required:
+                                - type
+                                - created_at
+                                - data
+                              additionalProperties: false
+                            - type: object
+                              properties:
+                                type:
+                                  type: string
+                                  enum:
+                                    - email.bounced
+                                created_at:
+                                  type: string
+                                  format: date-time
+                                data:
+                                  type: object
+                                  properties:
+                                    email_id:
+                                      type: string
+                                    created_at:
+                                      type: string
+                                      format: date-time
+                                    from:
+                                      type: string
+                                    to:
+                                      type: array
+                                      items:
+                                        type: string
+                                    subject:
+                                      type: string
+                                    tags:
+                                      type: object
+                                      additionalProperties:
+                                        type: string
+                                    brew:
+                                      type: object
+                                      properties:
+                                        event_id:
+                                          type: string
+                                        schema_version:
+                                          type: number
+                                          enum:
+                                            - 1
+                                        recipient:
+                                          type: string
+                                        send_id:
+                                          type: string
+                                        design_id:
+                                          type: string
+                                        automation_id:
+                                          type: string
+                                        provider_message_id:
+                                          type: string
+                                        test:
+                                          type: boolean
+                                          enum:
+                                            - true
+                                      required:
+                                        - event_id
+                                        - schema_version
+                                      additionalProperties: false
+                                    bounce:
+                                      type: object
+                                      properties:
+                                        type:
+                                          type: string
+                                        subType:
+                                          type: string
+                                        message:
+                                          type: string
+                                      required:
+                                        - type
+                                  required:
+                                    - email_id
+                                    - created_at
+                                    - to
+                                    - brew
+                                  additionalProperties: false
+                              required:
+                                - type
+                                - created_at
+                                - data
+                              additionalProperties: false
+                            - type: object
+                              properties:
+                                type:
+                                  type: string
+                                  enum:
+                                    - email.failed
+                                created_at:
+                                  type: string
+                                  format: date-time
+                                data:
+                                  type: object
+                                  properties:
+                                    email_id:
+                                      type: string
+                                    created_at:
+                                      type: string
+                                      format: date-time
+                                    from:
+                                      type: string
+                                    to:
+                                      type: array
+                                      items:
+                                        type: string
+                                    subject:
+                                      type: string
+                                    tags:
+                                      type: object
+                                      additionalProperties:
+                                        type: string
+                                    brew:
+                                      type: object
+                                      properties:
+                                        event_id:
+                                          type: string
+                                        schema_version:
+                                          type: number
+                                          enum:
+                                            - 1
+                                        recipient:
+                                          type: string
+                                        send_id:
+                                          type: string
+                                        design_id:
+                                          type: string
+                                        automation_id:
+                                          type: string
+                                        provider_message_id:
+                                          type: string
+                                        test:
+                                          type: boolean
+                                          enum:
+                                            - true
+                                      required:
+                                        - event_id
+                                        - schema_version
+                                      additionalProperties: false
+                                    failed:
+                                      type: object
+                                      properties:
+                                        reason:
+                                          type: string
+                                      required:
+                                        - reason
+                                  required:
+                                    - email_id
+                                    - created_at
+                                    - to
+                                    - brew
+                                  additionalProperties: false
+                              required:
+                                - type
+                                - created_at
+                                - data
+                              additionalProperties: false
+                            - type: object
+                              properties:
+                                type:
+                                  type: string
+                                  enum:
+                                    - email.opened
+                                created_at:
+                                  type: string
+                                  format: date-time
+                                data:
+                                  type: object
+                                  properties:
+                                    email_id:
+                                      type: string
+                                    created_at:
+                                      type: string
+                                      format: date-time
+                                    from:
+                                      type: string
+                                    to:
+                                      type: array
+                                      items:
+                                        type: string
+                                    subject:
+                                      type: string
+                                    tags:
+                                      type: object
+                                      additionalProperties:
+                                        type: string
+                                    brew:
+                                      type: object
+                                      properties:
+                                        event_id:
+                                          type: string
+                                        schema_version:
+                                          type: number
+                                          enum:
+                                            - 1
+                                        recipient:
+                                          type: string
+                                        send_id:
+                                          type: string
+                                        design_id:
+                                          type: string
+                                        automation_id:
+                                          type: string
+                                        provider_message_id:
+                                          type: string
+                                        test:
+                                          type: boolean
+                                          enum:
+                                            - true
+                                      required:
+                                        - event_id
+                                        - schema_version
+                                      additionalProperties: false
+                                    open:
+                                      type: object
+                                      properties:
+                                        timestamp:
+                                          type: string
+                                        ipAddress:
+                                          type: string
+                                        userAgent:
+                                          type: string
+                                  required:
+                                    - email_id
+                                    - created_at
+                                    - to
+                                    - brew
+                                  additionalProperties: false
+                              required:
+                                - type
+                                - created_at
+                                - data
+                              additionalProperties: false
+                            - type: object
+                              properties:
+                                type:
+                                  type: string
+                                  enum:
+                                    - email.clicked
+                                created_at:
+                                  type: string
+                                  format: date-time
+                                data:
+                                  type: object
+                                  properties:
+                                    email_id:
+                                      type: string
+                                    created_at:
+                                      type: string
+                                      format: date-time
+                                    from:
+                                      type: string
+                                    to:
+                                      type: array
+                                      items:
+                                        type: string
+                                    subject:
+                                      type: string
+                                    tags:
+                                      type: object
+                                      additionalProperties:
+                                        type: string
+                                    brew:
+                                      type: object
+                                      properties:
+                                        event_id:
+                                          type: string
+                                        schema_version:
+                                          type: number
+                                          enum:
+                                            - 1
+                                        recipient:
+                                          type: string
+                                        send_id:
+                                          type: string
+                                        design_id:
+                                          type: string
+                                        automation_id:
+                                          type: string
+                                        provider_message_id:
+                                          type: string
+                                        test:
+                                          type: boolean
+                                          enum:
+                                            - true
+                                      required:
+                                        - event_id
+                                        - schema_version
+                                      additionalProperties: false
+                                    click:
+                                      type: object
+                                      properties:
+                                        link:
+                                          type: string
+                                        timestamp:
+                                          type: string
+                                        ipAddress:
+                                          type: string
+                                        userAgent:
+                                          type: string
+                                      required:
+                                        - link
+                                  required:
+                                    - email_id
+                                    - created_at
+                                    - to
+                                    - brew
+                                  additionalProperties: false
+                              required:
+                                - type
+                                - created_at
+                                - data
+                              additionalProperties: false
+                            - type: "null"
                         status:
                           type: string
                           enum:
@@ -22154,6 +22787,14 @@ paths:
   /v1/webhooks/{webhookId}/events/{eventId}/attempts:
     get:
       operationId: listWebhookAttempts
+      description: |-
+        List delivery attempts for one endpoint event, including receiver responses.
+
+        **Use when** you need to diagnose receiver failures or inspect retry history.
+
+        **Returns** A page of attempts with status, response, duration and continuation cursor.
+
+        **Errors** `ACCOUNT_SUSPENDED`, `API_KEY_REVOKED`, `AUTHENTICATION_REQUIRED`, `BRAND_ID_REQUIRED`, `BRAND_NOT_FOUND`, `BRAND_SCOPE_MISMATCH`, `INSUFFICIENT_PERMISSIONS`, `INSUFFICIENT_ROLE`, `INTERNAL_ERROR`, `INVALID_API_KEY`, `INVALID_REQUEST`, `NOT_FOUND`, `RATE_LIMITED`, `SERVICE_UNAVAILABLE`.
       tags:
         - Webhooks
       summary: List webhook attempts
@@ -22584,6 +23225,14 @@ paths:
   /v1/webhooks/{webhookId}/events/{eventId}/replay:
     post:
       operationId: replayWebhookEvent
+      description: |-
+        Request another delivery of a retained webhook notification with the same event identity. This never sends another email.
+
+        **Use when** you have repaired a receiver and need the notification delivered again. Supply an Idempotency-Key.
+
+        **Returns** An accepted delivery request; inspect delivery history for the result.
+
+        **Errors** `ACCOUNT_SUSPENDED`, `API_KEY_REVOKED`, `AUTHENTICATION_REQUIRED`, `BRAND_ID_REQUIRED`, `BRAND_NOT_FOUND`, `BRAND_SCOPE_MISMATCH`, `IDEMPOTENCY_CONFLICT`, `IDEMPOTENCY_IN_PROGRESS`, `INSUFFICIENT_PERMISSIONS`, `INSUFFICIENT_ROLE`, `INTERNAL_ERROR`, `INVALID_API_KEY`, `INVALID_REQUEST`, `NOT_FOUND`, `PAYLOAD_TOO_LARGE`, `RATE_LIMITED`, `SERVICE_UNAVAILABLE`.
       tags:
         - Webhooks
       summary: Replay webhook event
@@ -23023,6 +23672,14 @@ paths:
   /v1/webhooks/{webhookId}/test:
     post:
       operationId: testWebhook
+      description: |-
+        Queue a signed synthetic email event to one endpoint. The payload is marked as a test and no email is sent.
+
+        **Use when** you need to verify your receiver and signature handling. Supply an Idempotency-Key.
+
+        **Returns** An accepted test request; inspect delivery history for the result.
+
+        **Errors** `ACCOUNT_SUSPENDED`, `API_KEY_REVOKED`, `AUTHENTICATION_REQUIRED`, `BRAND_ID_REQUIRED`, `BRAND_NOT_FOUND`, `BRAND_SCOPE_MISMATCH`, `IDEMPOTENCY_CONFLICT`, `IDEMPOTENCY_IN_PROGRESS`, `INSUFFICIENT_PERMISSIONS`, `INSUFFICIENT_ROLE`, `INTERNAL_ERROR`, `INVALID_API_KEY`, `INVALID_REQUEST`, `NOT_FOUND`, `PAYLOAD_TOO_LARGE`, `RATE_LIMITED`, `SERVICE_UNAVAILABLE`.
       tags:
         - Webhooks
       summary: Test webhook

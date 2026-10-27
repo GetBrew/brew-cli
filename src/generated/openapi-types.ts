@@ -9,10 +9,28 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List webhooks */
+        /**
+         * List webhooks
+         * @description List notification endpoints for the authorized brand. Signing secrets are never included.
+         *
+         *     **Use when** you need to inspect endpoint configuration or paginate endpoints.
+         *
+         *     **Returns** A page of endpoints and an opaque continuation cursor.
+         *
+         *     **Errors** `ACCOUNT_SUSPENDED`, `API_KEY_REVOKED`, `AUTHENTICATION_REQUIRED`, `BRAND_ID_REQUIRED`, `BRAND_NOT_FOUND`, `BRAND_SCOPE_MISMATCH`, `INSUFFICIENT_PERMISSIONS`, `INSUFFICIENT_ROLE`, `INTERNAL_ERROR`, `INVALID_API_KEY`, `INVALID_REQUEST`, `NOT_FOUND`, `RATE_LIMITED`, `SERVICE_UNAVAILABLE`.
+         */
         get: operations["listWebhooks"];
         put?: never;
-        /** Create webhook */
+        /**
+         * Create webhook
+         * @description Create a signed HTTPS notification endpoint for one authorized brand. The initial signing secret is returned once.
+         *
+         *     **Use when** you want to subscribe a receiver to supported email events. Supply an Idempotency-Key for this mutation.
+         *
+         *     **Returns** The created endpoint and its signing secret.
+         *
+         *     **Errors** `ACCOUNT_SUSPENDED`, `API_KEY_REVOKED`, `AUTHENTICATION_REQUIRED`, `BRAND_ID_REQUIRED`, `BRAND_NOT_FOUND`, `BRAND_SCOPE_MISMATCH`, `IDEMPOTENCY_CONFLICT`, `IDEMPOTENCY_IN_PROGRESS`, `INSUFFICIENT_PERMISSIONS`, `INSUFFICIENT_ROLE`, `INTERNAL_ERROR`, `INVALID_API_KEY`, `INVALID_REQUEST`, `NOT_FOUND`, `PAYLOAD_TOO_LARGE`, `RATE_LIMITED`, `SERVICE_UNAVAILABLE`.
+         */
         post: operations["createWebhook"];
         delete?: never;
         options?: never;
@@ -27,15 +45,42 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get webhook */
+        /**
+         * Get webhook
+         * @description Read one notification endpoint within the authorized brand. Signing secrets are excluded.
+         *
+         *     **Use when** you know an endpoint ID and need its current configuration.
+         *
+         *     **Returns** The endpoint URL, subscriptions, status and metadata.
+         *
+         *     **Errors** `ACCOUNT_SUSPENDED`, `API_KEY_REVOKED`, `AUTHENTICATION_REQUIRED`, `BRAND_ID_REQUIRED`, `BRAND_NOT_FOUND`, `BRAND_SCOPE_MISMATCH`, `INSUFFICIENT_PERMISSIONS`, `INSUFFICIENT_ROLE`, `INTERNAL_ERROR`, `INVALID_API_KEY`, `INVALID_REQUEST`, `NOT_FOUND`, `RATE_LIMITED`, `SERVICE_UNAVAILABLE`.
+         */
         get: operations["getWebhook"];
         put?: never;
         post?: never;
-        /** Delete webhook */
+        /**
+         * Delete webhook
+         * @description Delete an endpoint within the authorized brand and stop its pending deliveries.
+         *
+         *     **Use when** you want to permanently remove a receiver.
+         *
+         *     **Returns** The deleted endpoint ID and deletion confirmation.
+         *
+         *     **Errors** `ACCOUNT_SUSPENDED`, `API_KEY_REVOKED`, `AUTHENTICATION_REQUIRED`, `BRAND_ID_REQUIRED`, `BRAND_NOT_FOUND`, `BRAND_SCOPE_MISMATCH`, `INSUFFICIENT_PERMISSIONS`, `INSUFFICIENT_ROLE`, `INTERNAL_ERROR`, `INVALID_API_KEY`, `INVALID_REQUEST`, `NOT_FOUND`, `RATE_LIMITED`, `SERVICE_UNAVAILABLE`.
+         */
         delete: operations["deleteWebhook"];
         options?: never;
         head?: never;
-        /** Update webhook */
+        /**
+         * Update webhook
+         * @description Update an endpoint URL, event subscriptions, description or enabled status within the authorized brand.
+         *
+         *     **Use when** you need to change receiver configuration or pause delivery.
+         *
+         *     **Returns** The updated endpoint without its signing secret.
+         *
+         *     **Errors** `ACCOUNT_SUSPENDED`, `API_KEY_REVOKED`, `AUTHENTICATION_REQUIRED`, `BRAND_ID_REQUIRED`, `BRAND_NOT_FOUND`, `BRAND_SCOPE_MISMATCH`, `INSUFFICIENT_PERMISSIONS`, `INSUFFICIENT_ROLE`, `INTERNAL_ERROR`, `INVALID_API_KEY`, `INVALID_REQUEST`, `NOT_FOUND`, `PAYLOAD_TOO_LARGE`, `RATE_LIMITED`, `SERVICE_UNAVAILABLE`.
+         */
         patch: operations["updateWebhook"];
         trace?: never;
     };
@@ -48,7 +93,16 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Rotate webhook secret */
+        /**
+         * Rotate webhook secret
+         * @description Rotate an endpoint signing secret. The provider keeps the previous secret valid during its rotation grace period.
+         *
+         *     **Use when** you are replacing receiver credentials. Supply an Idempotency-Key and update your receiver with the returned secret.
+         *
+         *     **Returns** The new signing secret.
+         *
+         *     **Errors** `ACCOUNT_SUSPENDED`, `API_KEY_REVOKED`, `AUTHENTICATION_REQUIRED`, `BRAND_ID_REQUIRED`, `BRAND_NOT_FOUND`, `BRAND_SCOPE_MISMATCH`, `IDEMPOTENCY_CONFLICT`, `IDEMPOTENCY_IN_PROGRESS`, `INSUFFICIENT_PERMISSIONS`, `INSUFFICIENT_ROLE`, `INTERNAL_ERROR`, `INVALID_API_KEY`, `INVALID_REQUEST`, `NOT_FOUND`, `PAYLOAD_TOO_LARGE`, `RATE_LIMITED`, `SERVICE_UNAVAILABLE`.
+         */
         post: operations["rotateWebhookSecret"];
         delete?: never;
         options?: never;
@@ -63,7 +117,16 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List webhook events */
+        /**
+         * List webhook events
+         * @description List retained event deliveries to one endpoint within the authorized brand. Expired payloads may be absent.
+         *
+         *     **Use when** you need to inspect delivery status, payloads or the next retry time.
+         *
+         *     **Returns** A page of delivery records and an opaque continuation cursor.
+         *
+         *     **Errors** `ACCOUNT_SUSPENDED`, `API_KEY_REVOKED`, `AUTHENTICATION_REQUIRED`, `BRAND_ID_REQUIRED`, `BRAND_NOT_FOUND`, `BRAND_SCOPE_MISMATCH`, `INSUFFICIENT_PERMISSIONS`, `INSUFFICIENT_ROLE`, `INTERNAL_ERROR`, `INVALID_API_KEY`, `INVALID_REQUEST`, `NOT_FOUND`, `RATE_LIMITED`, `SERVICE_UNAVAILABLE`.
+         */
         get: operations["listWebhookEvents"];
         put?: never;
         post?: never;
@@ -80,7 +143,16 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List webhook attempts */
+        /**
+         * List webhook attempts
+         * @description List delivery attempts for one endpoint event, including receiver responses.
+         *
+         *     **Use when** you need to diagnose receiver failures or inspect retry history.
+         *
+         *     **Returns** A page of attempts with status, response, duration and continuation cursor.
+         *
+         *     **Errors** `ACCOUNT_SUSPENDED`, `API_KEY_REVOKED`, `AUTHENTICATION_REQUIRED`, `BRAND_ID_REQUIRED`, `BRAND_NOT_FOUND`, `BRAND_SCOPE_MISMATCH`, `INSUFFICIENT_PERMISSIONS`, `INSUFFICIENT_ROLE`, `INTERNAL_ERROR`, `INVALID_API_KEY`, `INVALID_REQUEST`, `NOT_FOUND`, `RATE_LIMITED`, `SERVICE_UNAVAILABLE`.
+         */
         get: operations["listWebhookAttempts"];
         put?: never;
         post?: never;
@@ -99,7 +171,16 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Replay webhook event */
+        /**
+         * Replay webhook event
+         * @description Request another delivery of a retained webhook notification with the same event identity. This never sends another email.
+         *
+         *     **Use when** you have repaired a receiver and need the notification delivered again. Supply an Idempotency-Key.
+         *
+         *     **Returns** An accepted delivery request; inspect delivery history for the result.
+         *
+         *     **Errors** `ACCOUNT_SUSPENDED`, `API_KEY_REVOKED`, `AUTHENTICATION_REQUIRED`, `BRAND_ID_REQUIRED`, `BRAND_NOT_FOUND`, `BRAND_SCOPE_MISMATCH`, `IDEMPOTENCY_CONFLICT`, `IDEMPOTENCY_IN_PROGRESS`, `INSUFFICIENT_PERMISSIONS`, `INSUFFICIENT_ROLE`, `INTERNAL_ERROR`, `INVALID_API_KEY`, `INVALID_REQUEST`, `NOT_FOUND`, `PAYLOAD_TOO_LARGE`, `RATE_LIMITED`, `SERVICE_UNAVAILABLE`.
+         */
         post: operations["replayWebhookEvent"];
         delete?: never;
         options?: never;
@@ -116,7 +197,16 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Test webhook */
+        /**
+         * Test webhook
+         * @description Queue a signed synthetic email event to one endpoint. The payload is marked as a test and no email is sent.
+         *
+         *     **Use when** you need to verify your receiver and signature handling. Supply an Idempotency-Key.
+         *
+         *     **Returns** An accepted test request; inspect delivery history for the result.
+         *
+         *     **Errors** `ACCOUNT_SUSPENDED`, `API_KEY_REVOKED`, `AUTHENTICATION_REQUIRED`, `BRAND_ID_REQUIRED`, `BRAND_NOT_FOUND`, `BRAND_SCOPE_MISMATCH`, `IDEMPOTENCY_CONFLICT`, `IDEMPOTENCY_IN_PROGRESS`, `INSUFFICIENT_PERMISSIONS`, `INSUFFICIENT_ROLE`, `INTERNAL_ERROR`, `INVALID_API_KEY`, `INVALID_REQUEST`, `NOT_FOUND`, `PAYLOAD_TOO_LARGE`, `RATE_LIMITED`, `SERVICE_UNAVAILABLE`.
+         */
         post: operations["testWebhook"];
         delete?: never;
         options?: never;
@@ -5285,7 +5375,7 @@ export interface components {
         EmailClientPreviewRequest: {
             /** @description Exact email version to render; omit for latest. */
             emailVersionId?: string;
-            /** @description Client ids to render. Omit for popular Gmail, Outlook, Apple Mail and iOS clients. Supported: gmailcom-lm_chrcurrent_win10 = Gmail (Web); gmailcom-dm_chrcurrent_win10 = Gmail (Web, Dark); android16_gmailapp_pixel10_lm = Gmail (Android); android16_gmailapp_pixel10_dm = Gmail (Android, Dark); iphone16gmail_18 = Gmail (iOS); outlook2021_win11_lm_dt = Outlook 2021 (Windows); outlook2021_win11_dm_dt = Outlook 2021 (Windows, Dark); o365_w10_lm_dt = Outlook 365 (Windows); outlookcom-lm_chrcurrent_win10 = Outlook.com (Web); applemail16 = Apple Mail (macOS); applemail16_dm = Apple Mail (macOS, Dark); iphone16_18 = Apple Mail (iOS); iphone16_18_dm = Apple Mail (iOS, Dark); yahoocom-lm_chrcurrent_win10 = Yahoo Mail (Web). */
+            /** @description Client ids to render. Omit for popular Gmail, Outlook, Apple Mail and iOS clients. Supported: gmailcom-lm_chrcurrent_win10 = Gmail (Web); gmailcom-dm_chrcurrent_win10 = Gmail (Web, Dark); android16_gmailapp_pixel10_lm = Gmail (Android); android16_gmailapp_pixel10_dm = Gmail (Android, Dark); outlook2021_win11_lm_dt = Outlook 2021 (Windows); outlook2021_win11_dm_dt = Outlook 2021 (Windows, Dark); o365_w10_lm_dt = Outlook 365 (Windows); outlookcom-lm_chrcurrent_win10 = Outlook.com (Web); applemail16 = Apple Mail (macOS); applemail16_dm = Apple Mail (macOS, Dark); iphone16_18 = Apple Mail (iOS); iphone16_18_dm = Apple Mail (iOS, Dark); yahoocom-lm_chrcurrent_win10 = Yahoo Mail (Web). */
             clients?: string[];
         };
         EmailInboxPlacementTest: {
@@ -10523,7 +10613,250 @@ export interface operations {
                     "application/json": {
                         data: {
                             id: string;
-                            payload: components["schemas"]["EmailWebhookEvent"];
+                            payload: {
+                                /** @enum {string} */
+                                type: "email.sent";
+                                /** Format: date-time */
+                                created_at: string;
+                                data: {
+                                    email_id: string;
+                                    /** Format: date-time */
+                                    created_at: string;
+                                    from?: string;
+                                    to: string[];
+                                    subject?: string;
+                                    tags?: {
+                                        [key: string]: string;
+                                    };
+                                    brew: {
+                                        event_id: string;
+                                        /** @enum {number} */
+                                        schema_version: 1;
+                                        recipient?: string;
+                                        send_id?: string;
+                                        design_id?: string;
+                                        automation_id?: string;
+                                        provider_message_id?: string;
+                                        /** @enum {boolean} */
+                                        test?: true;
+                                    };
+                                };
+                            } | {
+                                /** @enum {string} */
+                                type: "email.delivered";
+                                /** Format: date-time */
+                                created_at: string;
+                                data: {
+                                    email_id: string;
+                                    /** Format: date-time */
+                                    created_at: string;
+                                    from?: string;
+                                    to: string[];
+                                    subject?: string;
+                                    tags?: {
+                                        [key: string]: string;
+                                    };
+                                    brew: {
+                                        event_id: string;
+                                        /** @enum {number} */
+                                        schema_version: 1;
+                                        recipient?: string;
+                                        send_id?: string;
+                                        design_id?: string;
+                                        automation_id?: string;
+                                        provider_message_id?: string;
+                                        /** @enum {boolean} */
+                                        test?: true;
+                                    };
+                                };
+                            } | {
+                                /** @enum {string} */
+                                type: "email.delivery_delayed";
+                                /** Format: date-time */
+                                created_at: string;
+                                data: {
+                                    email_id: string;
+                                    /** Format: date-time */
+                                    created_at: string;
+                                    from?: string;
+                                    to: string[];
+                                    subject?: string;
+                                    tags?: {
+                                        [key: string]: string;
+                                    };
+                                    brew: {
+                                        event_id: string;
+                                        /** @enum {number} */
+                                        schema_version: 1;
+                                        recipient?: string;
+                                        send_id?: string;
+                                        design_id?: string;
+                                        automation_id?: string;
+                                        provider_message_id?: string;
+                                        /** @enum {boolean} */
+                                        test?: true;
+                                    };
+                                };
+                            } | {
+                                /** @enum {string} */
+                                type: "email.complained";
+                                /** Format: date-time */
+                                created_at: string;
+                                data: {
+                                    email_id: string;
+                                    /** Format: date-time */
+                                    created_at: string;
+                                    from?: string;
+                                    to: string[];
+                                    subject?: string;
+                                    tags?: {
+                                        [key: string]: string;
+                                    };
+                                    brew: {
+                                        event_id: string;
+                                        /** @enum {number} */
+                                        schema_version: 1;
+                                        recipient?: string;
+                                        send_id?: string;
+                                        design_id?: string;
+                                        automation_id?: string;
+                                        provider_message_id?: string;
+                                        /** @enum {boolean} */
+                                        test?: true;
+                                    };
+                                };
+                            } | {
+                                /** @enum {string} */
+                                type: "email.bounced";
+                                /** Format: date-time */
+                                created_at: string;
+                                data: {
+                                    email_id: string;
+                                    /** Format: date-time */
+                                    created_at: string;
+                                    from?: string;
+                                    to: string[];
+                                    subject?: string;
+                                    tags?: {
+                                        [key: string]: string;
+                                    };
+                                    brew: {
+                                        event_id: string;
+                                        /** @enum {number} */
+                                        schema_version: 1;
+                                        recipient?: string;
+                                        send_id?: string;
+                                        design_id?: string;
+                                        automation_id?: string;
+                                        provider_message_id?: string;
+                                        /** @enum {boolean} */
+                                        test?: true;
+                                    };
+                                    bounce?: {
+                                        type: string;
+                                        subType?: string;
+                                        message?: string;
+                                    };
+                                };
+                            } | {
+                                /** @enum {string} */
+                                type: "email.failed";
+                                /** Format: date-time */
+                                created_at: string;
+                                data: {
+                                    email_id: string;
+                                    /** Format: date-time */
+                                    created_at: string;
+                                    from?: string;
+                                    to: string[];
+                                    subject?: string;
+                                    tags?: {
+                                        [key: string]: string;
+                                    };
+                                    brew: {
+                                        event_id: string;
+                                        /** @enum {number} */
+                                        schema_version: 1;
+                                        recipient?: string;
+                                        send_id?: string;
+                                        design_id?: string;
+                                        automation_id?: string;
+                                        provider_message_id?: string;
+                                        /** @enum {boolean} */
+                                        test?: true;
+                                    };
+                                    failed?: {
+                                        reason: string;
+                                    };
+                                };
+                            } | {
+                                /** @enum {string} */
+                                type: "email.opened";
+                                /** Format: date-time */
+                                created_at: string;
+                                data: {
+                                    email_id: string;
+                                    /** Format: date-time */
+                                    created_at: string;
+                                    from?: string;
+                                    to: string[];
+                                    subject?: string;
+                                    tags?: {
+                                        [key: string]: string;
+                                    };
+                                    brew: {
+                                        event_id: string;
+                                        /** @enum {number} */
+                                        schema_version: 1;
+                                        recipient?: string;
+                                        send_id?: string;
+                                        design_id?: string;
+                                        automation_id?: string;
+                                        provider_message_id?: string;
+                                        /** @enum {boolean} */
+                                        test?: true;
+                                    };
+                                    open?: {
+                                        timestamp?: string;
+                                        ipAddress?: string;
+                                        userAgent?: string;
+                                    };
+                                };
+                            } | {
+                                /** @enum {string} */
+                                type: "email.clicked";
+                                /** Format: date-time */
+                                created_at: string;
+                                data: {
+                                    email_id: string;
+                                    /** Format: date-time */
+                                    created_at: string;
+                                    from?: string;
+                                    to: string[];
+                                    subject?: string;
+                                    tags?: {
+                                        [key: string]: string;
+                                    };
+                                    brew: {
+                                        event_id: string;
+                                        /** @enum {number} */
+                                        schema_version: 1;
+                                        recipient?: string;
+                                        send_id?: string;
+                                        design_id?: string;
+                                        automation_id?: string;
+                                        provider_message_id?: string;
+                                        /** @enum {boolean} */
+                                        test?: true;
+                                    };
+                                    click?: {
+                                        link: string;
+                                        timestamp?: string;
+                                        ipAddress?: string;
+                                        userAgent?: string;
+                                    };
+                                };
+                            } | null;
                             /** @enum {string} */
                             status: "succeeded" | "pending" | "failed" | "sending" | "canceled";
                             /** Format: date-time */
