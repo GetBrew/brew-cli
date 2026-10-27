@@ -4,6 +4,10 @@
 
 ### Fixed
 
+- `emails list` in a terminal now shows the folder name in the GROUP column,
+  and "Ungrouped" for designs outside a folder. The column read a top-level
+  `groupName` the API does not send, so it was always blank. `--json` output
+  is unchanged.
 - `content gif` no longer offers `--duration`. The API makes a fixed 5-second
   clip and refused every request that carried it (`400 INVALID_REQUEST`,
   "Unrecognized key: duration").
