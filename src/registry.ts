@@ -149,6 +149,16 @@ import { templatesGetCommand } from './commands/templates/get'
 import { templatesListCommand } from './commands/templates/list'
 import { typesCommand } from './commands/types'
 import { usageCommand } from './commands/usage'
+import { webhooksAttemptsCommand } from './commands/webhooks/attempts'
+import { webhooksCreateCommand } from './commands/webhooks/create'
+import { webhooksDeleteCommand } from './commands/webhooks/delete'
+import { webhooksEventsCommand } from './commands/webhooks/events'
+import { webhooksGetCommand } from './commands/webhooks/get'
+import { webhooksListCommand } from './commands/webhooks/list'
+import { webhooksReplayCommand } from './commands/webhooks/replay'
+import { webhooksRotateSecretCommand } from './commands/webhooks/rotate-secret'
+import { webhooksTestCommand } from './commands/webhooks/test'
+import { webhooksUpdateCommand } from './commands/webhooks/update'
 import { whoamiCommand } from './commands/whoami'
 import type { CommandSpec } from './lib/define-command'
 
@@ -158,6 +168,17 @@ import type { CommandSpec } from './lib/define-command'
  * the vendored OpenAPI spec.
  */
 export const ALL_COMMANDS: readonly CommandSpec[] = [
+  webhooksListCommand,
+  webhooksCreateCommand,
+  webhooksGetCommand,
+  webhooksUpdateCommand,
+  webhooksDeleteCommand,
+  webhooksRotateSecretCommand,
+  webhooksEventsCommand,
+  webhooksAttemptsCommand,
+  webhooksReplayCommand,
+  webhooksTestCommand,
+
   loginCommand,
   logoutCommand,
   whoamiCommand,

@@ -2,7 +2,7 @@
 
 <!-- GENERATED FILE — do not edit. Regenerate with `bun run docs:commands`. -->
 
-149 commands. Classes: read (always safe), write
+159 commands. Classes: read (always safe), write
 (mutating, retry-safe), destructive (irreversible — the confirmation
 protocol applies: interactive y/N on a TTY, exit 4 + JSON envelope with
 a `confirmCommand` otherwise, `--yes` to proceed).
@@ -22,6 +22,16 @@ a `confirmCommand` otherwise, `--yes` to proceed).
 
 | Command | Class | API route | Summary |
 | --- | --- | --- | --- |
+| `brew-cli webhooks list` | read | `GET /v1/webhooks` | List webhook endpoints for the selected brand |
+| `brew-cli webhooks create` | write | `POST /v1/webhooks` | Create a webhook endpoint for the selected brand |
+| `brew-cli webhooks get` | read | `GET /v1/webhooks/{webhookId}` | Get a webhook endpoint without revealing its signing secret |
+| `brew-cli webhooks update` | write | `PATCH /v1/webhooks/{webhookId}` | Update a webhook endpoint or its event subscriptions |
+| `brew-cli webhooks delete` | destructive | `DELETE /v1/webhooks/{webhookId}` | Delete a webhook endpoint and stop future deliveries |
+| `brew-cli webhooks rotate-secret` | destructive | `POST /v1/webhooks/{webhookId}/rotate-secret` | Rotate the signing secret for a webhook endpoint |
+| `brew-cli webhooks events` | read | `GET /v1/webhooks/{webhookId}/events` | List delivery history and payloads for a webhook endpoint |
+| `brew-cli webhooks attempts` | read | `GET /v1/webhooks/{webhookId}/events/{eventId}/attempts` | List HTTP delivery attempts for a webhook event |
+| `brew-cli webhooks replay` | destructive | `POST /v1/webhooks/{webhookId}/events/{eventId}/replay` | Replay a webhook event without resending the email |
+| `brew-cli webhooks test` | destructive | `POST /v1/webhooks/{webhookId}/test` | Send a synthetic webhook event to an endpoint |
 | `brew-cli login` | write | — | Store an API key for this machine (validated against the API) |
 | `brew-cli logout` | write | — | Remove the stored API key from this machine |
 | `brew-cli whoami` | read | — | Show the resolved credential, brand, and API target |
@@ -173,6 +183,141 @@ a `confirmCommand` otherwise, `--yes` to proceed).
 | `brew-cli api` | destructive | — | Raw authenticated request against the Brew public API |
 
 ## Details
+
+### brew-cli webhooks list
+
+List webhook endpoints for the selected brand
+
+- Route: `GET /v1/webhooks`
+- Class: read
+- `--limit <n>` — Page size, 1-100 (default 100)
+- `--cursor <cursor>` — Opaque pagination cursor from a previous page
+
+```bash
+brew-cli webhooks list
+```
+
+### brew-cli webhooks create
+
+Create a webhook endpoint for the selected brand
+
+- Route: `POST /v1/webhooks`
+- Class: write
+- `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
+- `--idempotency-key <key>` — Idempotency-Key for safe retries (auto-generated otherwise)
+
+```bash
+brew-cli webhooks create --input '{"endpoint":"https://example.com/hook","events":["email.delivered"]}'
+```
+
+### brew-cli webhooks get
+
+Get a webhook endpoint without revealing its signing secret
+
+- Route: `GET /v1/webhooks/{webhookId}`
+- Class: read
+- Argument `webhookId` — Webhook endpoint ID
+
+```bash
+brew-cli webhooks get ep_example
+```
+
+### brew-cli webhooks update
+
+Update a webhook endpoint or its event subscriptions
+
+- Route: `PATCH /v1/webhooks/{webhookId}`
+- Class: write
+- Argument `webhookId` — Webhook endpoint ID
+- `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
+
+```bash
+brew-cli webhooks update ep_example --input '{"status":"disabled"}'
+```
+
+### brew-cli webhooks delete
+
+Delete a webhook endpoint and stop future deliveries
+
+- Route: `DELETE /v1/webhooks/{webhookId}`
+- Class: destructive
+- Argument `webhookId` — Webhook endpoint ID
+
+```bash
+brew-cli webhooks delete ep_example --yes
+```
+
+### brew-cli webhooks rotate-secret
+
+Rotate the signing secret for a webhook endpoint
+
+- Route: `POST /v1/webhooks/{webhookId}/rotate-secret`
+- Class: destructive
+- Argument `webhookId` — Webhook endpoint ID
+- `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
+- `--idempotency-key <key>` — Idempotency-Key for safe retries (auto-generated otherwise)
+
+```bash
+brew-cli webhooks rotate-secret ep_example --yes
+```
+
+### brew-cli webhooks events
+
+List delivery history and payloads for a webhook endpoint
+
+- Route: `GET /v1/webhooks/{webhookId}/events`
+- Class: read
+- Argument `webhookId` — Webhook endpoint ID
+- `--limit <n>` — Page size, 1-100 (default 100)
+- `--cursor <cursor>` — Opaque pagination cursor from a previous page
+
+```bash
+brew-cli webhooks events ep_example
+```
+
+### brew-cli webhooks attempts
+
+List HTTP delivery attempts for a webhook event
+
+- Route: `GET /v1/webhooks/{webhookId}/events/{eventId}/attempts`
+- Class: read
+- Argument `webhookId` — Webhook endpoint ID
+- Argument `eventId` — Webhook delivery event ID
+- `--limit <n>` — Page size, 1-100 (default 100)
+- `--cursor <cursor>` — Opaque pagination cursor from a previous page
+
+```bash
+brew-cli webhooks attempts ep_example msg_example
+```
+
+### brew-cli webhooks replay
+
+Replay a webhook event without resending the email
+
+- Route: `POST /v1/webhooks/{webhookId}/events/{eventId}/replay`
+- Class: destructive
+- Argument `webhookId` — Webhook endpoint ID
+- Argument `eventId` — Webhook delivery event ID
+- `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
+- `--idempotency-key <key>` — Idempotency-Key for safe retries (auto-generated otherwise)
+
+```bash
+brew-cli webhooks replay ep_example msg_example --yes
+```
+
+### brew-cli webhooks test
+
+Send a synthetic webhook event to an endpoint
+
+- Route: `POST /v1/webhooks/{webhookId}/test`
+- Class: destructive
+- Argument `webhookId` — Webhook endpoint ID
+- `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
+- `--idempotency-key <key>` — Idempotency-Key for safe retries (auto-generated otherwise)
+
+```bash
+brew-cli webhooks test ep_example --input '{"type":"email.delivered"}' --yes
+```
 
 ### brew-cli login
 
