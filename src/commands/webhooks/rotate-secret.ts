@@ -1,7 +1,7 @@
 import type { operations } from '../../generated/openapi-types'
 import { defineCommand } from '../../lib/define-command'
 import { IDEMPOTENCY_FLAG, INPUT_FLAG } from '../../lib/input'
-import { webhookRunner } from './request'
+import { prepareWebhookInput, webhookRunner } from './request'
 
 const route = {
   method: 'POST',
@@ -9,6 +9,8 @@ const route = {
 } as const
 type Output =
   operations['rotateWebhookSecret']['responses'][200]['content']['application/json']
+type Input =
+  operations['rotateWebhookSecret']['requestBody']['content']['application/json']
 
 export const webhooksRotateSecretCommand = defineCommand({
   path: ['webhooks', 'rotate-secret'],
@@ -24,5 +26,6 @@ export const webhooksRotateSecretCommand = defineCommand({
   examples: ['brew-cli webhooks rotate-secret ep_example --yes'],
   confirmSummary: () =>
     'Rotate the endpoint signing secret. Update your receiver with the new secret.',
-  run: webhookRunner<Output>(route),
+  prepareInput: prepareWebhookInput,
+  run: webhookRunner<Output, Input>(route),
 })

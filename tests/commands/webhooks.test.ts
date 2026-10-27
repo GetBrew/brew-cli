@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process'
 import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -10,6 +11,108 @@ const env = () => ({
   BREW_CLI_CONFIG_DIR: mkdtempSync(join(tmpdir(), 'brew-webhooks-')),
   BREW_API_KEY: 'brew_abcdefghijklmnopqrstuvwxyz012345',
   BREW_BRAND_ID: 'brand_1',
+})
+it.each(['', '   ', 'x'.repeat(101), 'invalid\nheader'])(
+  'rejects invalid retry keys before making a request: %j',
+  async (key) => {
+    let requests = 0
+    server.use(
+      http.post('https://brew.new/api/v1/webhooks', () => {
+        requests++
+        return HttpResponse.json({ id: 'ep_1' })
+      })
+    )
+    const result = await runCli(
+      [
+        'webhooks',
+        'create',
+        '--input',
+        '{"endpoint":"https://example.com/hook","events":["email.delivered"]}',
+        '--idempotency-key',
+        key,
+        '--json',
+      ],
+      { env: env() }
+    )
+    expect(result.code).toBe(2)
+    expect(requests).toBe(0)
+  }
+)
+it.each([
+  { command: 'test', ids: ['ep_1'], body: { type: 'email.delivered' } },
+  { command: 'rotate-secret', ids: ['ep_1'], body: {} },
+  { command: 'replay', ids: ['ep_1', 'msg_1'], body: {} },
+])(
+  'carries piped JSON into the returned $command confirmation command',
+  async ({ command, ids, body }) => {
+    const bodies: Array<unknown> = []
+    server.use(
+      http.post(
+        /https:\/\/brew\.new\/api\/v1\/webhooks\//,
+        async ({ request }) => {
+          bodies.push(await request.json())
+          return HttpResponse.json({ id: 'msg_1' })
+        }
+      )
+    )
+    const result = await runCli(
+      ['webhooks', command, ...ids, '--input', '-', '--json'],
+      { env: env(), stdin: JSON.stringify(body) }
+    )
+    expect(result.code).toBe(4)
+    expect(result.json).toMatchObject({
+      confirmationRequired: true,
+      command: `brew-cli webhooks ${command}`,
+      summary: expect.any(String),
+      confirmCommand: expect.any(String),
+    })
+    const confirmation = result.json
+    if (
+      typeof confirmation !== 'object' ||
+      confirmation === null ||
+      !('confirmCommand' in confirmation) ||
+      typeof confirmation.confirmCommand !== 'string'
+    )
+      throw new Error('Missing confirmation')
+    const tokens = execFileSync(
+      'sh',
+      ['-c', `set -- ${confirmation.confirmCommand}; printf '%s\\0' "$@"`],
+      { encoding: 'utf8' }
+    )
+      .split('\0')
+      .slice(1, -1)
+    expect((await runCli(tokens, { env: env() })).code).toBe(0)
+    expect(bodies).toEqual([body])
+  }
+)
+it('merges scalar endpoint flags over JSON and preserves an explicitly empty description', async () => {
+  let body: unknown
+  server.use(
+    http.post('https://brew.new/api/v1/webhooks', async ({ request }) => {
+      body = await request.json()
+      return HttpResponse.json({ id: 'ep_1' })
+    })
+  )
+  const result = await runCli(
+    [
+      'webhooks',
+      'create',
+      '--input',
+      '{"endpoint":"https://old.example.com","description":"old","events":["email.delivered"]}',
+      '--endpoint',
+      'https://new.example.com/hook',
+      '--description',
+      '',
+      '--json',
+    ],
+    { env: env() }
+  )
+  expect(result.code).toBe(0)
+  expect(body).toEqual({
+    endpoint: 'https://new.example.com/hook',
+    description: '',
+    events: ['email.delivered'],
+  })
 })
 it.each([
   {

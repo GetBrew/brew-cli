@@ -1,11 +1,17 @@
 import type { operations } from '../../generated/openapi-types'
 import { defineCommand } from '../../lib/define-command'
 import { IDEMPOTENCY_FLAG, INPUT_FLAG } from '../../lib/input'
-import { webhookRunner } from './request'
+import {
+  prepareWebhookInput,
+  WEBHOOK_ENDPOINT_FLAGS,
+  webhookRunner,
+} from './request'
 
 const route = { method: 'POST', path: '/v1/webhooks' } as const
 type Output =
   operations['createWebhook']['responses'][201]['content']['application/json']
+type Input =
+  operations['createWebhook']['requestBody']['content']['application/json']
 
 export const webhooksCreateCommand = defineCommand({
   path: ['webhooks', 'create'],
@@ -15,9 +21,10 @@ export const webhooksCreateCommand = defineCommand({
   route,
   commandClass: 'write',
   args: [],
-  flags: [INPUT_FLAG, IDEMPOTENCY_FLAG],
+  flags: [INPUT_FLAG, IDEMPOTENCY_FLAG, ...WEBHOOK_ENDPOINT_FLAGS],
   examples: [
     'brew-cli webhooks create --input \'{"endpoint":"https://example.com/hook","events":["email.delivered"]}\'',
   ],
-  run: webhookRunner<Output>(route),
+  prepareInput: prepareWebhookInput,
+  run: webhookRunner<Output, Input>(route),
 })
