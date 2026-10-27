@@ -8,6 +8,10 @@
   and "Ungrouped" for designs outside a folder. The column read a top-level
   `groupName` the API does not send, so it was always blank. `--json` output
   is unchanged.
+- `analytics events` refuses `groupBy` and `bucket` in `--input` with a usage
+  error (exit 2) that points to `analytics event-counts`. It used to drop both
+  keys, return event rows and exit 0, so a caller asking for counts got rows
+  and no `count`.
 - `content gif` no longer offers `--duration`. The API makes a fixed 5-second
   clip and refused every request that carried it (`400 INVALID_REQUEST`,
   "Unrecognized key: duration").
