@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- `emails list` in a terminal now shows the folder name in the GROUP column,
+  and "Ungrouped" for designs outside a folder. The column read a top-level
+  `groupName` the API does not send, so it was always blank. `--json` output
+  is unchanged.
+
 ## 0.18.0
 
 These import changes require `@brew.new/sdk` 13.3.0 or newer, which adds
