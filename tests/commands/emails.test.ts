@@ -120,6 +120,44 @@ describe('emails list', () => {
     expect(data.data).toHaveLength(2)
     expect(data.pagination).toEqual({ cursor: null, hasMore: false })
   })
+
+  it('shows the folder name in the GROUP column of the terminal table', async () => {
+    server.use(
+      http.get(EMAILS_URL, () =>
+        HttpResponse.json({
+          data: [
+            {
+              emailId: 'eml_1',
+              title: 'Weekly',
+              status: 'ready',
+              group: { groupId: 'grp_weekly', groupName: 'Weekly update' },
+              updatedAt: '2026-10-14T14:00:29.319Z',
+            },
+            {
+              emailId: 'eml_2',
+              title: 'Loose',
+              status: 'draft',
+              group: null,
+              updatedAt: '2026-10-13T00:00:00Z',
+            },
+          ],
+          pagination: PAGE,
+        })
+      )
+    )
+    const result = await runCli(['emails', 'list'], {
+      env: env(),
+      extraCommands: EXTRA,
+      ttyOut: true,
+    })
+    expect(result.code).toBe(0)
+    const lines = result.stdout.trimEnd().split('\n')
+    expect(lines[0]).toMatch(/GROUP/)
+    expect(lines[1]).toMatch(
+      /^eml_1\s+Weekly\s+ready\s+Weekly update\s+2026-10-14/
+    )
+    expect(lines[2]).toMatch(/^eml_2\s+Loose\s+draft\s+Ungrouped\s+2026-10-13/)
+  })
 })
 
 describe('emails groups list', () => {
