@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- `content gif` no longer offers `--duration`. The API makes a fixed 5-second
+  clip and refused every request that carried it (`400 INVALID_REQUEST`,
+  "Unrecognized key: duration").
+
 ## 0.18.0
 
 These import changes require `@brew.new/sdk` 13.3.0 or newer, which adds

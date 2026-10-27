@@ -148,7 +148,7 @@ a `confirmCommand` otherwise, `--yes` to proceed).
 | `brew-cli domains unsubscribes import` | write | `POST /v1/domains/{domainId}/unsubscribes/import` | Add every address in a CSV to a domain's unsubscribe list |
 | `brew-cli domains unsubscribes export` | read | `GET /v1/domains/{domainId}/unsubscribes/export` | A domain's unsubscribe list as CSV (truncated when capped) |
 | `brew-cli content generate-image` | write ($) | `POST /v1/content/generate-image` | Generate or edit an image from a prompt |
-| `brew-cli content gif` | write ($) | `POST /v1/content/gif` | Create an animated GIF from a prompt, image, or video |
+| `brew-cli content gif` | write ($) | `POST /v1/content/gif` | Create a 5-second animated GIF from a prompt, image, or video |
 | `brew-cli content transform` | write ($) | `POST /v1/content/transform` | Optimize or resize a hosted image |
 | `brew-cli content html-to-png` | write ($) | `POST /v1/content/html-to-png` | Render HTML to a hosted PNG |
 | `brew-cli content add-image` | write | `POST /v1/content/add-image` | Add an image to the brand library from a public URL, a batch of URLs, or an upload (free); returns its assetId |
@@ -2322,7 +2322,7 @@ brew-cli content generate-image --prompt "hero shot of a ceramic mug" --aspect-r
 
 ### brew-cli content gif
 
-Create an animated GIF from a prompt, image, or video
+Create a 5-second animated GIF from a prompt, image, or video
 
 - Route: `POST /v1/content/gif`
 - Class: write
@@ -2332,7 +2332,6 @@ Create an animated GIF from a prompt, image, or video
 - `--prompt <text>` — What to animate
 - `--image-url <url>` — Source image (from: image)
 - `--video-url <url>` — Source video (from: video)
-- `--duration <seconds>` — Clip duration in seconds
 - `--fps <n>` — Frames per second
 - `--aspect-ratio <ratio>` — e.g. 16:9, 1:1, 9:16
 - `--loop <bool>` — Loop the GIF: true | false
