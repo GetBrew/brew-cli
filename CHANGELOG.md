@@ -7,6 +7,11 @@
 - `content gif` no longer offers `--duration`. The API makes a fixed 5-second
   clip and refused every request that carried it (`400 INVALID_REQUEST`,
   "Unrecognized key: duration").
+- `content generate-image` no longer offers `--model`. Brew uses one image
+  model, and the API refused every request that carried `model` the same way.
+- A parity test now checks every flag on a command with a JSON body against
+  the request body the spec declares, so a flag cannot send an undeclared key
+  again.
 
 ## 0.18.0
 

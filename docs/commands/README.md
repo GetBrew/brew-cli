@@ -2310,7 +2310,6 @@ Generate or edit an image from a prompt
 - `--prompt <text>` — What to generate
 - `--mode <mode>` — text-to-image | image-editing
 - `--aspect-ratio <ratio>` — e.g. 16:9, 3:2, 1:1, 9:16
-- `--model <model>` — Image model override
 - `--image1 <url>` — Source image for image-editing
 - `--image2 <url>` — Second source image for image-editing
 - `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
