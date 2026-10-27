@@ -12,6 +12,24 @@ const env = () => ({
   BREW_API_KEY: 'brew_abcdefghijklmnopqrstuvwxyz012345',
   BREW_BRAND_ID: 'brand_1',
 })
+
+function confirmationArgv(confirmation: unknown): string[] {
+  if (
+    typeof confirmation !== 'object' ||
+    confirmation === null ||
+    !('confirmCommand' in confirmation) ||
+    typeof confirmation.confirmCommand !== 'string'
+  )
+    throw new Error('Missing confirmation')
+  return execFileSync(
+    'sh',
+    ['-c', `set -- ${confirmation.confirmCommand}; printf '%s\\0' "$@"`],
+    { encoding: 'utf8' }
+  )
+    .split('\0')
+    .slice(1, -1)
+}
+
 it.each(['', '   ', 'x'.repeat(101), 'invalid\nheader'])(
   'rejects invalid retry keys before making a request: %j',
   async (key) => {
@@ -66,22 +84,9 @@ it.each([
       summary: expect.any(String),
       confirmCommand: expect.any(String),
     })
-    const confirmation = result.json
-    if (
-      typeof confirmation !== 'object' ||
-      confirmation === null ||
-      !('confirmCommand' in confirmation) ||
-      typeof confirmation.confirmCommand !== 'string'
-    )
-      throw new Error('Missing confirmation')
-    const tokens = execFileSync(
-      'sh',
-      ['-c', `set -- ${confirmation.confirmCommand}; printf '%s\\0' "$@"`],
-      { encoding: 'utf8' }
-    )
-      .split('\0')
-      .slice(1, -1)
-    expect((await runCli(tokens, { env: env() })).code).toBe(0)
+    expect(
+      (await runCli(confirmationArgv(result.json), { env: env() })).code
+    ).toBe(0)
     expect(bodies).toEqual([body])
   }
 )
@@ -194,10 +199,50 @@ it.each([
 it.each(['delete', 'rotate-secret', 'test'])(
   'requires confirmation before %s can contact the provider',
   async (command) => {
+    const requests: Array<{
+      method: string
+      path: string
+      brand: string | null
+      body: string
+    }> = []
+    server.use(
+      http.all(
+        /https:\/\/brew\.new\/api\/v1\/webhooks/,
+        async ({ request }) => {
+          requests.push({
+            method: request.method,
+            path: new URL(request.url).pathname,
+            brand: request.headers.get('X-Brand-Id'),
+            body: await request.text(),
+          })
+          return HttpResponse.json({ id: 'ep_1' })
+        }
+      )
+    )
     const result = await runCli(['webhooks', command, 'ep_1', '--json'], {
       env: env(),
     })
     expect(result.code).toBe(4)
+    expect(result.json).toEqual({
+      confirmationRequired: true,
+      command: `brew-cli webhooks ${command}`,
+      summary: expect.any(String),
+      confirmCommand: `brew-cli webhooks ${command} ep_1 --json --yes`,
+    })
+    expect(requests).toEqual([])
+    if (command === 'delete') {
+      expect(
+        (await runCli(confirmationArgv(result.json), { env: env() })).code
+      ).toBe(0)
+      expect(requests).toEqual([
+        {
+          method: 'DELETE',
+          path: '/api/v1/webhooks/ep_1',
+          brand: 'brand_1',
+          body: '',
+        },
+      ])
+    }
   }
 )
 it('rejects path identities injected into a write body', async () => {
