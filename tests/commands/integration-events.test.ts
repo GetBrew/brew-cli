@@ -225,6 +225,27 @@ describe('integrations events list', () => {
   })
 })
 
+describe('integrations events list on a TTY', () => {
+  it('says more events follow when a page is empty or short before the end', async () => {
+    server.use(http.get(EVENTS, () => HttpResponse.json(page([], 'c2'))))
+    const empty = await cli(['integrations', 'events', 'list'], {
+      ttyOut: true,
+    })
+    expect(empty.code).toBe(0)
+    expect(empty.stdout.trim()).toBe(
+      'No integration events on this page. More follow: --cursor c2'
+    )
+
+    server.use(http.get(EVENTS, () => HttpResponse.json(page([EVENT], 'c3'))))
+    const short = await cli(['integrations', 'events', 'list'], {
+      ttyOut: true,
+    })
+    expect(short.stdout.trimEnd().split('\n').at(-1)).toBe(
+      'More follow: --cursor c3'
+    )
+  })
+})
+
 describe('integrations events get', () => {
   it('reads one event by id and prints the bare row', async () => {
     let pathname: string | undefined

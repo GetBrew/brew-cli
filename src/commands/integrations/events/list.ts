@@ -91,21 +91,39 @@ export const integrationsEventsListCommand = defineCommand({
           sources: sources ?? [],
           pagination: { cursor: null, hasMore: false },
         },
-        human: renderEvents(rows),
+        human: renderEvents(rows, null),
       }
     }
     const page = await events.list(
       asSdkInput<ListIntegrationEventsInput>(input)
     )
-    return { data: page, human: renderEvents(page.data) }
+    return {
+      data: page,
+      human: renderEvents(
+        page.data,
+        page.pagination.hasMore ? page.pagination.cursor : null
+      ),
+    }
   },
 })
 
-function renderEvents(rows: ReadonlyArray<unknown>): string {
+/**
+ * A page can hold fewer events than `--limit`, even none, while more follow,
+ * so the next cursor is printed whenever there is one: a short page never
+ * reads as the end of the list.
+ */
+function renderEvents(
+  rows: ReadonlyArray<unknown>,
+  nextCursor: string | null
+): string {
+  const more =
+    nextCursor === null ? undefined : `More follow: --cursor ${nextCursor}`
   if (rows.length === 0) {
-    return 'No integration events found.'
+    return more === undefined
+      ? 'No integration events found.'
+      : `No integration events on this page. ${more}`
   }
-  return renderTable(rows as ReadonlyArray<Record<string, unknown>>, [
+  const table = renderTable(rows as ReadonlyArray<Record<string, unknown>>, [
     { key: 'eventId', header: 'EVENT ID' },
     { key: 'provider', header: 'PROVIDER' },
     { key: 'eventKey', header: 'EVENT' },
@@ -114,4 +132,5 @@ function renderEvents(rows: ReadonlyArray<unknown>): string {
     { key: 'volume30d', header: '30D' },
     { key: 'triggerEventId', header: 'TRIGGER' },
   ])
+  return more === undefined ? table : `${table}\n${more}`
 }

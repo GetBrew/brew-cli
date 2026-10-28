@@ -17,8 +17,9 @@ release.
   - `integrations events list` (`GET /v1/integrations/events`) lists them
     source by source, busiest first, with `--provider`, `--query`, `--kind`,
     `--limit`, `--cursor`, `--all` and `--input`. A page can be short, even
-    empty, before the last one; `--all` follows the cursor to the end and
-    keeps the page's `sources` beside the rows.
+    empty, before the last one: on a terminal it ends with the next
+    `--cursor`, and `--all` follows the cursor to the end and keeps the
+    page's `sources` beside the rows.
   - `integrations events get <eventId>` (`GET /v1/integrations/events/{eventId}`)
     reads one event with each property's template `variable`, and whether it
     is personal data or suggested for personalization.
