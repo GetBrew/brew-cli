@@ -464,6 +464,27 @@ describe('content gif', () => {
       prompt: 'steam rising from a coffee cup',
     })
   })
+
+  it('has no --duration flag: the API clip is a fixed 5 seconds', async () => {
+    let called = false
+    server.use(
+      http.post(`${API}/v1/content/gif`, () => {
+        called = true
+        return HttpResponse.json({ url: 'https://cdn.brew.new/out.gif' })
+      })
+    )
+    const result = await cli([
+      'content',
+      'gif',
+      '--prompt',
+      'steam rising from a coffee cup',
+      '--duration',
+      '2',
+    ])
+    expect(result.code).not.toBe(0)
+    expect(result.stderr).toContain('--duration')
+    expect(called).toBe(false)
+  })
 })
 
 describe('content transform', () => {
