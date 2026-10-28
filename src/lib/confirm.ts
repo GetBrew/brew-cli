@@ -95,11 +95,7 @@ export async function enforceStdinConfirmation(
   )
 }
 
-/**
- * The command line that replays an interrupted or timed-out write: the same
- * argv with the idempotency key its request carried, so the API returns the
- * first attempt's result instead of running it again.
- */
+/** Replay the same parsed invocation with the key carried by its request. */
 export function buildRetryCommand(
   invocation: RerunInvocation,
   idempotencyKey: string,
@@ -108,4 +104,28 @@ export function buildRetryCommand(
   return buildRerunCommand(command, invocation, {
     idempotencyKey,
   })
+}
+
+/** Resume only finalization; repeating the file helper opens a new upload. */
+export function buildUploadRetryCommand(
+  input: {
+    readonly uploadId: string
+    readonly idempotencyKey: string
+    readonly brand: string | undefined
+    readonly apiUrl: string | undefined
+  },
+  command: Pick<CommandSpec, 'path' | 'flags' | 'args'>
+): string {
+  return buildRerunCommand(
+    command,
+    {
+      args: {},
+      flags: {
+        uploadId: input.uploadId,
+        brand: input.brand,
+        apiUrl: input.apiUrl,
+      },
+    },
+    { idempotencyKey: input.idempotencyKey }
+  )
 }

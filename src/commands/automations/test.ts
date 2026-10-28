@@ -18,6 +18,8 @@ export const automationsTestCommand = defineCommand({
   sdkMethod: 'automations.test',
   route: { method: 'POST', path: '/v1/automations/{automationId}/test' },
   commandClass: 'destructive',
+  // The input keys are the user's own data: a bare trigger payload is shorthand for the test body.
+  inputKeys: 'unchecked',
   args: [
     {
       name: 'automationId',

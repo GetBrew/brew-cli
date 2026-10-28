@@ -15,7 +15,7 @@ import {
 
 export const contentGifCommand = defineCommand({
   path: ['content', 'gif'],
-  summary: 'Create an animated GIF from a prompt, image, or video',
+  summary: 'Create a 5-second animated GIF from a prompt, image, or video',
   sdkMethod: 'content.gif',
   route: { method: 'POST', path: '/v1/content/gif' },
   commandClass: 'write',
@@ -26,7 +26,6 @@ export const contentGifCommand = defineCommand({
     { flag: '--prompt <text>', summary: 'What to animate' },
     { flag: '--image-url <url>', summary: 'Source image (from: image)' },
     { flag: '--video-url <url>', summary: 'Source video (from: video)' },
-    { flag: '--duration <seconds>', summary: 'Clip duration in seconds' },
     { flag: '--fps <n>', summary: 'Frames per second' },
     {
       flag: '--aspect-ratio <ratio>',
@@ -48,7 +47,6 @@ export const contentGifCommand = defineCommand({
       prompt: flagString(flags.prompt),
       imageUrl: flagString(flags.imageUrl),
       videoUrl: flagString(flags.videoUrl),
-      duration: flagNumber(flags.duration, '--duration'),
       fps: flagInt(flags.fps, '--fps'),
       aspectRatio: flagString(flags.aspectRatio),
       loop: parseBool(flags.loop),
@@ -88,15 +86,4 @@ function parseBool(value: unknown): boolean | undefined {
     return
   }
   throw new CliUsageError('--loop must be true or false')
-}
-
-function flagNumber(value: unknown, flagName: string): number | undefined {
-  if (value === undefined) {
-    return
-  }
-  const parsed = Number(value)
-  if (!Number.isFinite(parsed) || parsed <= 0) {
-    throw new CliUsageError(`${flagName} must be a positive number`)
-  }
-  return parsed
 }

@@ -27,6 +27,8 @@ export const analyticsSendsListCommand = defineCommand({
   derivedFrom: 'sends.list',
   route: { method: 'GET', path: '/v1/sends' },
   commandClass: 'read',
+  // The detail read's keys, which `run` takes from --input to switch to it.
+  inputKeys: { extra: ['sendId', 'include'] },
   flags: [
     {
       flag: '--send <sendId>',

@@ -16,6 +16,8 @@ export const contractsInferCommand = defineCommand({
   sdkMethod: 'payloadContracts.infer',
   route: { method: 'POST', path: '/v1/payload-contracts/infer' },
   commandClass: 'read',
+  // Bare examples carry application keys rather than request-envelope keys.
+  inputKeys: 'unchecked',
   flags: [
     {
       ...INPUT_FLAG,

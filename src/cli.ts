@@ -1,6 +1,11 @@
 import { BrewApiError } from '@brew.new/sdk'
 import { Command, CommanderError } from 'commander'
-import { buildRetryCommand, enforceConfirmation } from './lib/confirm'
+import { INPUT_KEYS } from './generated/input-keys'
+import {
+  buildRetryCommand,
+  buildUploadRetryCommand,
+  enforceConfirmation,
+} from './lib/confirm'
 import { makeContext, makeFallbackContext } from './lib/context'
 import type { CommandMetadata, CommandSpec } from './lib/define-command'
 import { commandMetadata, GLOBAL_FLAGS } from './lib/define-command'
@@ -13,7 +18,8 @@ import {
   printError,
   toExitCode,
 } from './lib/errors'
-import { IDEMPOTENCY_FLAG } from './lib/input'
+import { IDEMPOTENCY_FLAG, INPUT_FLAG } from './lib/input'
+import { assertKnownInputKeys } from './lib/input-keys'
 import { matchesTemplate } from './lib/long-running'
 import { printData } from './lib/output'
 import { type RerunInvocation, readsStdin } from './lib/rerun'
@@ -155,14 +161,19 @@ function errorContextFor(
   // The command bound to the route the failed request actually hit — the
   // `api` escape hatch borrows its class and replay policy from it. A
   // command with an operation of its own answers for itself: a multi-step
-  // one (`content upload-image`) must never offer to replay only its last
-  // request, whose route may replay when the command as a whole does not.
+  // file upload cannot rerun its original argv under its last request's key.
+  // Explicit upload recovery instead builds a finalization-only add-image
+  // command from the recorded identity and key in the shared error renderer.
   const bound =
     request === undefined || ctx.traits?.declaresOperation === true
       ? undefined
       : commandFor(request, commands)
   const isRead =
     bound === undefined ? ctx.traits?.isRead : bound.commandClass === 'read'
+  const finalizeUpload = commandFor(
+    { method: 'POST', path: '/v1/content/add-image' },
+    commands
+  )
   return {
     ...(request === undefined ? {} : { request }),
     ...(drain === undefined ? {} : { drain }),
@@ -177,6 +188,20 @@ function errorContextFor(
       : {
           retryCommand: (key: string) =>
             buildRetryCommand(invocation, key, activeSpec),
+        }),
+    ...(finalizeUpload === undefined
+      ? {}
+      : {
+          retryUploadCommand: (uploadId: string, idempotencyKey: string) =>
+            buildUploadRetryCommand(
+              {
+                uploadId,
+                idempotencyKey,
+                brand: request?.brandId ?? ctx.globals.brand,
+                apiUrl: ctx.globals.apiUrl,
+              },
+              finalizeUpload
+            ),
         }),
   }
 }
@@ -203,7 +228,47 @@ function traitsOf(spec: CommandSpec): CommandTraits {
       spec.sdkMethod !== null ||
       spec.derivedFrom !== undefined,
     defaultTimeoutMs: spec.defaultTimeoutMs,
+    inputKeys: inputKeysOf(spec),
   }
+}
+
+/**
+ * The top-level keys a command's `--input` object may carry: the path and
+ * query parameters and JSON body properties of its route, plus the keys it
+ * reads itself. Undefined (nothing checked) when the command takes no
+ * `--input`, declares no route, opts out, or its route's body is open.
+ */
+function inputKeysOf(spec: CommandSpec): ReadonlySet<string> | undefined {
+  if (
+    spec.inputKeys === 'unchecked' ||
+    spec.route === undefined ||
+    !(spec.flags ?? []).includes(INPUT_FLAG)
+  ) {
+    return
+  }
+  const routeKeys = INPUT_KEYS[`${spec.route.method} ${spec.route.path}`]
+  if (routeKeys === undefined) {
+    return
+  }
+  return new Set([...routeKeys, ...(spec.inputKeys?.extra ?? [])])
+}
+
+/**
+ * Inline `--input` is checked before any confirmation prompt, so a typo is
+ * not confirmed first and refused after. Stdin and malformed JSON are left
+ * to `readJsonFlag` in the command, which reads them once.
+ */
+function checkInlineInput(ctx: CliContext, value: unknown): void {
+  if (typeof value !== 'string' || value === '-') {
+    return
+  }
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(value)
+  } catch {
+    return
+  }
+  assertKnownInputKeys(ctx.traits, parsed)
 }
 
 function handleCommanderError(
@@ -350,6 +415,7 @@ function registerCommand(
     onContext?.(ctx, spec, { args: positional, flags })
     ctx.startDeadline()
     try {
+      checkInlineInput(ctx, flags.input)
       const baseInvocation = { ctx, args: positional, flags }
       const input = await spec.prepareInput?.(baseInvocation)
       ctx.signal.throwIfAborted()

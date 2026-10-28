@@ -1,8 +1,11 @@
 import {
   BrewApiError,
   BrewConnectionError,
+  BrewParseError,
   BrewTimeoutError,
+  BrewTransportError,
 } from '@brew.new/sdk'
+import { readImageUploadId } from './image-upload-recovery'
 import type { DrainProgress, RecordedRequest } from './transport'
 import type { CliContext } from './types'
 
@@ -237,6 +240,8 @@ export type CliErrorEnvelope = {
    * command that replays it instead of running it twice.
    */
   readonly idempotencyKey?: string
+  /** The original upload to finalize, never a credential-bearing upload URL. */
+  readonly uploadId?: string
   readonly retryCommand?: string
   /** How far an interrupted `--all` drain got, and the cursor to resume at. */
   readonly progress?: DrainProgress
@@ -254,6 +259,11 @@ export type ErrorContext = {
   readonly replays?: boolean
   /** Builds the re-run command line for a key. */
   readonly retryCommand?: (idempotencyKey: string) => string
+  /** Finalization uses another command when the failed call was a file helper. */
+  readonly retryUploadCommand?: (
+    uploadId: string,
+    idempotencyKey: string
+  ) => string
   /** The command read its body from stdin: the re-run needs it again. */
   readonly readsStdin?: boolean
   readonly drain?: DrainProgress
@@ -265,10 +275,11 @@ export function toErrorEnvelope(
 ): CliErrorEnvelope {
   const envelope = baseEnvelope(error, context)
   const drain = context.drain
-  return withReplayAdvice(
-    drain === undefined ? envelope : { ...envelope, progress: drain },
-    error,
-    context
+  const withProgress =
+    drain === undefined ? envelope : { ...envelope, progress: drain }
+  return (
+    withUploadReplayAdvice(withProgress, error, context) ??
+    withReplayAdvice(withProgress, error, context)
   )
 }
 
@@ -339,6 +350,15 @@ function baseEnvelope(error: unknown, context: ErrorContext): CliErrorEnvelope {
       status: error.status,
     }
   }
+  if (error instanceof BrewParseError) {
+    return {
+      code: 'UNEXPECTED_RESPONSE',
+      type: 'internal_error',
+      message: error.message,
+      status: error.status,
+      ...(error.requestId === undefined ? {} : { requestId: error.requestId }),
+    }
+  }
   if (error instanceof CliAuthError) {
     return {
       code: 'CLI_AUTH',
@@ -371,6 +391,52 @@ function baseEnvelope(error: unknown, context: ErrorContext): CliErrorEnvelope {
 }
 
 const IN_PROGRESS_CODE = 'IDEMPOTENCY_IN_PROGRESS'
+
+/**
+ * The final request is independently replayable even when its enclosing
+ * command is not. SDK metadata works after the SDK upgrade; the recorder
+ * also covers older SDKs and CLI deadlines/interrupts without changing the
+ * original abort reason. Definite refusals retain their API guidance.
+ */
+function withUploadReplayAdvice(
+  envelope: CliErrorEnvelope,
+  error: unknown,
+  context: ErrorContext
+): CliErrorEnvelope | undefined {
+  const sdkUploadId =
+    isSdkRequestError(error) && 'uploadId' in error
+      ? readImageUploadId(error.uploadId)
+      : undefined
+  const uploadId = sdkUploadId ?? context.request?.uploadId
+  if (uploadId === undefined) return undefined
+  const idempotencyKey =
+    errorIdempotencyKey(error) ?? context.request?.idempotencyKey
+  const recovery = {
+    ...envelope,
+    uploadId,
+    ...(idempotencyKey === undefined ? {} : { idempotencyKey }),
+  }
+  if (
+    idempotencyKey === undefined ||
+    (!isUnknownOutcome(envelope) &&
+      envelope.code !== 'UPLOAD_IN_PROGRESS' &&
+      envelope.code !== 'UNEXPECTED_RESPONSE')
+  ) {
+    return recovery
+  }
+  const retryCommand = context.retryUploadCommand?.(uploadId, idempotencyKey)
+  const holdNote =
+    envelope.code === 'UPLOAD_IN_PROGRESS' ||
+    envelope.code === IN_PROGRESS_CODE ||
+    (error instanceof BrewTransportError && error.inProgress)
+      ? ' Wait for the current attempt to finish before replaying finalization.'
+      : ''
+  return {
+    ...recovery,
+    suggestion: `Recover the original image finalization with content add-image, using the original upload ID and idempotency key on the same brand. A completed upload replays its result for 24 hours. Repeating content upload-image opens a new upload.${holdNote}`,
+    ...(retryCommand === undefined ? {} : { retryCommand }),
+  }
+}
 
 /**
  * Advice for an UNKNOWN outcome — a timeout, a dropped connection, an
@@ -434,14 +500,21 @@ function isUnknownOutcome(envelope: CliErrorEnvelope): boolean {
 }
 
 function errorIdempotencyKey(error: unknown): string | undefined {
-  if (
-    error instanceof BrewApiError ||
-    error instanceof BrewTimeoutError ||
-    error instanceof BrewConnectionError
-  ) {
-    return error.idempotencyKey
+  if (isSdkRequestError(error) && 'idempotencyKey' in error) {
+    const key = error.idempotencyKey
+    return typeof key === 'string' ? key : undefined
   }
   return undefined
+}
+
+function isSdkRequestError(
+  error: unknown
+): error is BrewApiError | BrewTransportError | BrewParseError {
+  return (
+    error instanceof BrewApiError ||
+    error instanceof BrewTransportError ||
+    error instanceof BrewParseError
+  )
 }
 
 function timeoutMessage(error: unknown, context: ErrorContext): string {
@@ -487,6 +560,12 @@ export function printError(
   ]
   if (envelope.suggestion) {
     lines.push(envelope.suggestion)
+  }
+  if (envelope.uploadId) {
+    lines.push(`Upload id: ${envelope.uploadId}`)
+    if (envelope.idempotencyKey) {
+      lines.push(`Idempotency key: ${envelope.idempotencyKey}`)
+    }
   }
   if (envelope.retryCommand) {
     lines.push(`Re-run: ${envelope.retryCommand}`)

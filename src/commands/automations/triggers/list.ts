@@ -25,6 +25,8 @@ export const automationsTriggersListCommand = defineCommand({
   sdkMethod: 'automations.triggers.list',
   route: { method: 'GET', path: '/v1/automations/triggers' },
   commandClass: 'read',
+  // The detail read's keys, which `run` takes from --input to switch to it.
+  inputKeys: { extra: ['triggerEventId'] },
   flags: [
     {
       flag: '--trigger <triggerEventId>',

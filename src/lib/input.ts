@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { CliUsageError } from './errors'
+import { assertKnownInputKeys } from './input-keys'
 import type { CliContext } from './types'
 
 /**
@@ -22,13 +23,18 @@ export async function readJsonFlag(
     return
   }
   const raw = value === '-' ? await ctx.io.readStdin(ctx.signal) : value
+  let parsed: unknown
   try {
-    return JSON.parse(raw) as unknown
+    parsed = JSON.parse(raw) as unknown
   } catch {
     throw new CliUsageError(
       `${flagName} must be valid JSON (or - to read stdin)`
     )
   }
+  if (flagName === '--input') {
+    assertKnownInputKeys(ctx.traits, parsed)
+  }
+  return parsed
 }
 
 /** Reads `--file <path|->`; `-` consumes stdin. */

@@ -36,6 +36,8 @@ export const flowsListCommand = defineCommand({
   sdkMethod: 'flows.list',
   route: { method: 'GET', path: '/v1/flows' },
   commandClass: 'read',
+  // The detail read's keys, which `run` takes from --input to switch to it.
+  inputKeys: { extra: ['slug', 'include'] },
   flags: [
     {
       // --brand is taken by the global brand-selection flag.

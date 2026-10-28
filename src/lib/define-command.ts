@@ -80,6 +80,15 @@ export type CommandSpec = {
    * method (and drop this marker) when the SDK ships it.
    */
   readonly isRawTransport?: boolean
+  /**
+   * How an `--input` object's top-level keys are checked against `route`
+   * (see `src/lib/input-keys.ts`). By default a key the route does not take
+   * is refused, since the SDK would drop it. `extra` names keys the command
+   * reads itself (e.g. retired filters it refuses with its own message);
+   * `unchecked` is for shorthand input whose keys are the user's own data
+   * (a bare trigger payload, flat contact fields).
+   */
+  readonly inputKeys?: { readonly extra: readonly string[] } | 'unchecked'
   readonly args?: readonly ArgSpec[]
   readonly flags?: readonly FlagSpec[]
   /** At least one realistic invocation; shown in help and the manifest. */

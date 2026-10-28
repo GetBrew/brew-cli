@@ -26,6 +26,8 @@ export const analyticsTriggerInstancesListCommand = defineCommand({
   derivedFrom: 'automations.triggerInstances.list',
   route: { method: 'GET', path: '/v1/automations/trigger-instances' },
   commandClass: 'read',
+  // The detail read's keys, which `run` takes from --input to switch to it.
+  inputKeys: { extra: ['triggerInstanceId'] },
   flags: [
     {
       flag: '--trigger <triggerEventId>',

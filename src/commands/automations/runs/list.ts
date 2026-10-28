@@ -29,6 +29,8 @@ export const automationsRunsListCommand = defineCommand({
   sdkMethod: 'automations.runs.list',
   route: { method: 'GET', path: '/v1/automations/runs' },
   commandClass: 'read',
+  // The detail read's keys, which `run` takes from --input to switch to it.
+  inputKeys: { extra: ['automationRunId', 'include'] },
   flags: [
     { flag: '--automation <automationId>', summary: 'Filter by automation' },
     {
