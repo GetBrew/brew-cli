@@ -13,7 +13,8 @@ release.
 
 - Live integration events (GetBrew/brew-v2#2411): the events a brand's
   connected live sources send, such as a PostHog project's own events or the
-  Stripe and Shopify app catalogs.
+  Stripe and Shopify app catalogs. All three commands need the
+  `automations` scope.
   - `integrations events list` (`GET /v1/integrations/events`) lists them
     source by source, busiest first, with `--provider`, `--query`, `--kind`,
     `--limit`, `--cursor`, `--all` and `--input`. A page can be short, even
@@ -22,11 +23,15 @@ release.
     page's `sources` beside the rows.
   - `integrations events get <eventId>` (`GET /v1/integrations/events/{eventId}`)
     reads one event with each property's template `variable`, and whether it
-    is personal data or suggested for personalization.
+    is personal data or suggested for personalization, plus
+    `propertiesStatus`: `current`, `stored`, `rate_limited` (with
+    `retryAfterSeconds`) or `unavailable`. Brew may read the provider first;
+    a spent read budget still answers, with what Brew stored.
   - `automations triggers ensure-integration-event --event-id <eventId>`
     (`POST /v1/automations/triggers/integration-events`) gets or creates the
-    event's trigger and prints the row with `created`. A missing `--event-id`
-    exits 2 before any request; `--idempotency-key` replays a retry.
+    event's trigger and prints the row with `created` and the same
+    `propertiesStatus`. A missing `--event-id` exits 2 before any request;
+    `--idempotency-key` replays a retry.
 
 ### Fixed
 

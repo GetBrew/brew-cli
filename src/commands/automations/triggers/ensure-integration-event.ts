@@ -13,7 +13,8 @@ import {
  * trigger: the same event always returns the same row, across reconnects of
  * the same account (`created` says whether this call made it). Brew owns its
  * title and payload contract, and the provider starts sending the event once
- * an automation using it is published.
+ * an automation using it is published. `propertiesStatus` on the row says
+ * whether Brew could read the event's properties for its payload schema.
  */
 export const automationsTriggersEnsureIntegrationEventCommand = defineCommand({
   path: ['automations', 'triggers', 'ensure-integration-event'],

@@ -160,8 +160,8 @@ a `confirmCommand` otherwise, `--yes` to proceed).
 | `brew-cli flows list` | read | `GET /v1/flows` | List public email flows (real multi-step sequences by brand) as cards; `flows get <slug>` reads one |
 | `brew-cli flows get` | read | `GET /v1/flows/{slug}` | Fetch one public email flow by brand domain, with every step (day offset, wait, subject, template id) |
 | `brew-cli integrations list` | read | `GET /v1/integrations` | List the integration catalog with per-provider connected state (connect via Settings, not this CLI) |
-| `brew-cli integrations events list` | read | `GET /v1/integrations/events` | List the live events the brand's connected sources send (PostHog, Stripe, Shopify), busiest first; `integrations events get` reads one |
-| `brew-cli integrations events get` | read | `GET /v1/integrations/events/{eventId}` | Fetch one live integration event in full: each property with its template variable and whether it is personal data |
+| `brew-cli integrations events list` | read | `GET /v1/integrations/events` | List the live events the brand's connected sources send (PostHog, Stripe, Shopify), busiest first; `integrations events get` reads one. Needs the automations scope |
+| `brew-cli integrations events get` | read | `GET /v1/integrations/events/{eventId}` | Fetch one live integration event in full: each property with its template variable and whether it is personal data, plus propertiesStatus (how current they are). Needs the automations scope |
 | `brew-cli chats list` | read | `GET /v1/chats` | List the brand's Brew chats, most recently active first; `chats get` reads one |
 | `brew-cli chats get` | read | `GET /v1/chats/{chatId}` | Brand-scoped digest of a Brew chat (artifacts + transcript tail) |
 | `brew-cli canvas sessions create` | write | `POST /v1/canvas/sessions` | Create an authenticated group or single-email canvas grant |
@@ -2562,7 +2562,7 @@ brew-cli integrations list --json
 
 ### brew-cli integrations events list
 
-List the live events the brand's connected sources send (PostHog, Stripe, Shopify), busiest first; `integrations events get` reads one
+List the live events the brand's connected sources send (PostHog, Stripe, Shopify), busiest first; `integrations events get` reads one. Needs the automations scope
 
 - Route: `GET /v1/integrations/events`
 - Class: read
@@ -2583,7 +2583,7 @@ brew-cli integrations events list --kind custom --all --json
 
 ### brew-cli integrations events get
 
-Fetch one live integration event in full: each property with its template variable and whether it is personal data
+Fetch one live integration event in full: each property with its template variable and whether it is personal data, plus propertiesStatus (how current they are). Needs the automations scope
 
 - Route: `GET /v1/integrations/events/{eventId}`
 - Class: read

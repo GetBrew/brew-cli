@@ -6,11 +6,16 @@ import { defineCommand } from '../../../lib/define-command'
  * personal data, which Brew suggests for personalization, its lifecycle
  * stage and its roles in the product model. Another brand's id is the same
  * `404 INTEGRATION_EVENT_NOT_FOUND` as an unknown one.
+ *
+ * Brew may describe the event at the provider first, on the account's read
+ * budget; `propertiesStatus` (and `retryAfterSeconds` when `rate_limited`)
+ * says how current the properties are. The row prints as the API sent it,
+ * pretty-printed on a terminal, so the status shows there too.
  */
 export const integrationsEventsGetCommand = defineCommand({
   path: ['integrations', 'events', 'get'],
   summary:
-    'Fetch one live integration event in full: each property with its template variable and whether it is personal data',
+    'Fetch one live integration event in full: each property with its template variable and whether it is personal data, plus propertiesStatus (how current they are). Needs the automations scope',
   sdkMethod: 'integrations.events.get',
   route: { method: 'GET', path: '/v1/integrations/events/{eventId}' },
   commandClass: 'read',

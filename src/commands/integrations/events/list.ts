@@ -30,7 +30,7 @@ import {
 export const integrationsEventsListCommand = defineCommand({
   path: ['integrations', 'events', 'list'],
   summary:
-    "List the live events the brand's connected sources send (PostHog, Stripe, Shopify), busiest first; `integrations events get` reads one",
+    "List the live events the brand's connected sources send (PostHog, Stripe, Shopify), busiest first; `integrations events get` reads one. Needs the automations scope",
   sdkMethod: 'integrations.events.list',
   route: { method: 'GET', path: '/v1/integrations/events' },
   commandClass: 'read',
