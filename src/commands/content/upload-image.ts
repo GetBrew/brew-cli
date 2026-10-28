@@ -20,7 +20,9 @@ import {
  * `content create-image-upload` and `content add-image` under theirs.
  *
  * No `--idempotency-key`: a re-run opens a new upload, so no single key
- * replays the whole command.
+ * replays the whole command. Finalization failures retain the original
+ * upload ID and key; the shared error renderer offers `content add-image`
+ * to recover that upload without opening another one.
  */
 export const contentUploadImageCommand = defineCommand({
   path: ['content', 'upload-image'],

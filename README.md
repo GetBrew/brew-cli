@@ -79,10 +79,10 @@ Designed for AI agents as first-class users:
   a request wherever it is.
 - **Replay, don't repeat** — the API keeps working after the CLI
   disconnects, so a write that timed out, lost its connection or was
-  interrupted may still complete. Its envelope carries the
-  `idempotencyKey` it was sent with and a `retryCommand` that replays it
-  (the first attempt's result, not a second write) instead of running it
-  twice. The replay needs the API's idempotency store: while it is
+  interrupted may still complete. When replay is supported, its envelope
+  carries the original `idempotencyKey` and a `retryCommand` that recovers
+  the first attempt's result. Use that command when present. The replay
+  needs the API's idempotency store: while it is
   degraded, writes other than sends run without it, so for a write that
   must not happen twice (creating a brand, say) pass `--max-retries 0` and
   check whether it landed before you re-run it.
@@ -96,6 +96,12 @@ Designed for AI agents as first-class users:
   saved result using `error.details.emailId` and `emailVersionId`:
   `brew-cli emails get <emailId> --email-version-id <emailVersionId> --include html`.
   The error preserves these identifiers and the API's recovery guidance.
+- **Image upload recovery** — if `content upload-image` fails during
+  finalization, its error preserves `uploadId` and `idempotencyKey`. The
+  recovery command calls `content add-image --upload-id <original-id>`
+  with the original key and brand; it never repeats the file helper.
+  This also covers finalization timeouts and interrupts. An earlier
+  upload-opening or byte-upload failure has no finalization recovery command.
 - **No fuzzy matching** — unknown commands fail hard with exit 2.
 - **Machine-readable discovery** — `brew-cli docs --agent` prints the
   full manifest (commands, flags, classes, routes, env, exit codes);

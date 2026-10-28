@@ -9,6 +9,7 @@ import {
   errorTypeForStatus,
   suggestionForStatus,
 } from './errors'
+import { imageUploadRequestContext } from './image-upload-recovery'
 import { anySignal, apiPathOf } from './transport'
 import type { CliContext } from './types'
 
@@ -44,10 +45,17 @@ export async function rawFetch(
     combined.release()
     throw signal.reason
   }
+  const path = apiPathOf(new URL(request.url))
   ctx.transport.record({
     method: request.method,
-    path: apiPathOf(new URL(request.url)),
+    path,
     idempotencyKey: request.headers.get('idempotency-key') ?? undefined,
+    ...imageUploadRequestContext({
+      method: request.method,
+      path,
+      headers: request.headers,
+      body: request.body,
+    }),
   })
   try {
     const response = await fetch(request.url, {

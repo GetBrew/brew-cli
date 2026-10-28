@@ -4,10 +4,6 @@
 
 ### Fixed
 
-- `emails list` in a terminal now shows the folder name in the GROUP column,
-  and "Ungrouped" for designs outside a folder. The column read a top-level
-  `groupName` the API does not send, so it was always blank. `--json` output
-  is unchanged.
 - `--input` refuses a top-level key the command would not send, with a usage
   error (exit 2) that names the key, suggests a close match
   (`firstname` → `firstName`) and lists the accepted keys. Such a key used to
@@ -16,6 +12,25 @@
   inputs whose keys are your own data (a bare trigger payload, flat contact
   fields, an inferred example) and array bodies are not checked. Inline
   `--input` is checked before the confirmation prompt.
+
+## 0.18.1
+
+Bug fixes only, and still `@brew.new/sdk` `^13.3.0`. `RELEASING.md` treats a
+removed flag as breaking, but `content gif --duration` and
+`content generate-image --model` failed with a `400` on every call, so no
+command that worked before stops working. They now fail before the request,
+with a usage error (exit 2) instead of the API error (exit 1).
+
+### Fixed
+
+- Image-upload finalization errors now retain the original `uploadId` and
+  idempotency key in JSON and terminal output. The recovery command uses
+  `content add-image` with that upload and brand, including after timeouts
+  or interrupts, instead of opening another upload.
+- `emails list` in a terminal now shows the folder name in the GROUP column,
+  and "Ungrouped" for designs outside a folder. The column read a top-level
+  `groupName` the API does not send, so it was always blank. `--json` output
+  is unchanged.
 - `analytics events` refuses `groupBy` and `bucket` in `--input` with a usage
   error (exit 2) that points to `analytics event-counts`. It used to drop both
   keys, return event rows and exit 0, so a caller asking for counts got rows

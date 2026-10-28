@@ -119,6 +119,25 @@ export function buildRetryCommand(
   ].join(' ')
 }
 
+/** Resume only finalization; repeating the file helper opens a new upload. */
+export function buildUploadRetryCommand(input: {
+  readonly uploadId: string
+  readonly idempotencyKey: string
+  readonly brand: string | undefined
+  readonly apiUrl: string | undefined
+}): string {
+  return [
+    'brew-cli content add-image --upload-id',
+    shellQuote(input.uploadId),
+    '--idempotency-key',
+    shellQuote(input.idempotencyKey),
+    ...(input.brand === undefined ? [] : ['--brand', shellQuote(input.brand)]),
+    ...(input.apiUrl === undefined
+      ? []
+      : ['--api-url', shellQuote(input.apiUrl)]),
+  ].join(' ')
+}
+
 /**
  * argv, shell-quoted, for a command the caller will run again. Both
  * envelopes go to stdout and into agent transcripts, so a credential is

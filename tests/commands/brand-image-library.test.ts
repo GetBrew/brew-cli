@@ -701,7 +701,7 @@ describe('content upload-image', () => {
     expect(errorOf(result).code).toBe('UPLOAD_NOT_RECEIVED')
   })
 
-  it('never offers to replay its last request alone after an unknown outcome', async () => {
+  it('recovers only the original finalization after an unknown outcome', async () => {
     server.use(
       http.post(`${API}/v1/content/image-uploads`, () =>
         HttpResponse.json(TICKET, { status: 201 })
@@ -732,11 +732,13 @@ describe('content upload-image', () => {
     expect(result.code).toBe(1)
     const error = errorOf(result)
     expect(error.code).toBe('INTERNAL_ERROR')
-    // Re-running `upload-image` with add-image's key would open a NEW
-    // upload and send a different body under that key.
-    expect(error.retryCommand).toBeUndefined()
-    expect(error.idempotencyKey).toBeUndefined()
-    expect(String(error.suggestion)).toContain('does not replay')
+    expect(error.uploadId).toBe(UPLOAD_ID)
+    expect(error.idempotencyKey).toEqual(expect.any(String))
+    expect(error.retryCommand).toBe(
+      `brew-cli content add-image --upload-id ${UPLOAD_ID} --idempotency-key ${String(error.idempotencyKey)}`
+    )
+    expect(String(error.suggestion)).toContain('finalization')
+    expect(String(error.retryCommand)).not.toContain('upload-image')
   })
 
   it('shows the added image and its assetId in human mode', async () => {
