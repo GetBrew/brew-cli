@@ -40,6 +40,7 @@ describe('resumed pagination', () => {
     ['fields', 'list'],
     ['flows', 'list'],
     ['insights', 'list'],
+    ['integrations', 'events', 'list'],
     ['integrations', 'list'],
     ['notifications', 'list'],
     ['sends', 'list'],
