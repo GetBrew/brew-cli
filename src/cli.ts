@@ -1,6 +1,10 @@
 import { BrewApiError } from '@brew.new/sdk'
 import { Command, CommanderError } from 'commander'
-import { buildRetryCommand, enforceConfirmation } from './lib/confirm'
+import {
+  buildRetryCommand,
+  buildUploadRetryCommand,
+  enforceConfirmation,
+} from './lib/confirm'
 import { makeContext, makeFallbackContext } from './lib/context'
 import type { CommandMetadata, CommandSpec } from './lib/define-command'
 import { commandMetadata, GLOBAL_FLAGS } from './lib/define-command'
@@ -144,8 +148,9 @@ function errorContextFor(
   // The command bound to the route the failed request actually hit — the
   // `api` escape hatch borrows its class and replay policy from it. A
   // command with an operation of its own answers for itself: a multi-step
-  // one (`content upload-image`) must never offer to replay only its last
-  // request, whose route may replay when the command as a whole does not.
+  // file upload cannot rerun its original argv under its last request's key.
+  // Explicit upload recovery instead builds a finalization-only add-image
+  // command from the recorded identity and key in the shared error renderer.
   const bound =
     request === undefined || ctx.traits?.declaresOperation === true
       ? undefined
@@ -162,6 +167,13 @@ function errorContextFor(
         : (bound.flags ?? []).includes(IDEMPOTENCY_FLAG),
     readsStdin: readsStdin(ctx.rawArgv),
     retryCommand: (key) => buildRetryCommand(ctx.rawArgv, key),
+    retryUploadCommand: (uploadId, idempotencyKey) =>
+      buildUploadRetryCommand({
+        uploadId,
+        idempotencyKey,
+        brand: request?.brandId ?? ctx.globals.brand,
+        apiUrl: ctx.globals.apiUrl,
+      }),
   }
 }
 

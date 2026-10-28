@@ -1,4 +1,5 @@
 import { CliUsageError } from './errors'
+import { imageUploadRequestContext } from './image-upload-recovery'
 
 /**
  * Transport plumbing shared by every command: the whole-command deadline,
@@ -23,6 +24,10 @@ export type RecordedRequest = {
   /** Path and query, never the origin (the API URL can carry a port or tunnel). */
   readonly path: string
   readonly idempotencyKey: string | undefined
+  /** Only a final `add-image` request whose body names one original upload. */
+  readonly uploadId?: string
+  /** The effective brand header for that finalization, including raw overrides. */
+  readonly brandId?: string
 }
 
 /** How far an `--all` drain got before it was stopped. */
@@ -82,11 +87,14 @@ export function recordingFetch(state: TransportState): typeof globalThis.fetch {
     const url = new URL(
       typeof input === 'string' || input instanceof URL ? input : input.url
     )
+    const method = (init?.method ?? 'GET').toUpperCase()
+    const path = apiPathOf(url)
+    const headers = new Headers(init?.headers)
     state.record({
-      method: (init?.method ?? 'GET').toUpperCase(),
-      path: apiPathOf(url),
-      idempotencyKey:
-        new Headers(init?.headers).get('idempotency-key') ?? undefined,
+      method,
+      path,
+      idempotencyKey: headers.get('idempotency-key') ?? undefined,
+      ...imageUploadRequestContext({ method, path, headers, body: init?.body }),
     })
     return globalThis.fetch(input, init)
   }
