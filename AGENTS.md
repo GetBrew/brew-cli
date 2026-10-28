@@ -64,7 +64,9 @@ of leaving a hole:
    dispatcher fans out to), `route` (exact OpenAPI path with `{braces}`; a
    fan-out over several routes declares none), `commandClass`, ≥1 realistic
    example. `destructive` ⇔ `confirmSummary`.
-3. Ergonomic flags for scalars; `INPUT_FLAG` for deep JSON;
+3. Ergonomic flags for scalars; `INPUT_FLAG` for deep JSON, whose
+   top-level keys must be the route's (`src/generated/input-keys.ts`);
+   declare `inputKeys` for keys `run` reads itself or for shorthand input;
    `IDEMPOTENCY_FLAG` on POST mutations whose route replays a keyed
    request (`x-brew-idempotency`: `replay` or `fail_closed`), and pass
    `requestOptions(flags)` to the SDK call so a `retryCommand` replays. A

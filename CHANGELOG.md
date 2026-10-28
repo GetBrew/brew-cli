@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- `--input` refuses a top-level key the command would not send, with a usage
+  error (exit 2) that names the key, suggests a close match
+  (`firstname` → `firstName`) and lists the accepted keys. Such a key used to
+  be dropped without a word and the command exited 0. The accepted keys are
+  the route's parameters and body fields from the vendored spec. Shorthand
+  inputs whose keys are your own data (a bare trigger payload, flat contact
+  fields, an inferred example) and array bodies are not checked. Inline
+  `--input` is checked before the confirmation prompt.
+
 ## 0.18.1
 
 Bug fixes only, and still `@brew.new/sdk` `^13.3.0`. `RELEASING.md` treats a

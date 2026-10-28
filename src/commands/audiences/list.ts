@@ -23,6 +23,8 @@ export const audiencesListCommand = defineCommand({
   sdkMethod: 'audiences.list',
   route: { method: 'GET', path: '/v1/audiences' },
   commandClass: 'read',
+  // The detail read's keys, which `run` takes from --input to switch to it.
+  inputKeys: { extra: ['include'] },
   flags: [
     {
       flag: '--include <tokens>',

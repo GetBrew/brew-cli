@@ -15,6 +15,8 @@ export const contractsInferCommand = defineCommand({
   sdkMethod: 'payloadContracts.infer',
   route: { method: 'POST', path: '/v1/payload-contracts/infer' },
   commandClass: 'read',
+  // The input keys are the user's own data: a bare example object is shorthand for the { example } envelope.
+  inputKeys: 'unchecked',
   flags: [INPUT_FLAG],
   examples: [
     `brew-cli contracts infer --input '{"email":"jane@example.com","order":{"total":9.5}}'`,

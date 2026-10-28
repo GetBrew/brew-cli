@@ -39,6 +39,8 @@ export const brandGetImagesCommand = defineCommand({
   sdkMethod: 'brand.getImages',
   route: { method: 'GET', path: '/v1/brand/images' },
   commandClass: 'read',
+  // Retired filters reach `run`, which refuses them with the way forward.
+  inputKeys: { extra: Object.keys(RETIRED_FILTERS) },
   flags: [
     {
       flag: '--query <text>',

@@ -53,6 +53,11 @@ export type CommandTraits = {
   readonly declaresOperation: boolean
   /** A long-running command's own whole-command deadline. */
   readonly defaultTimeoutMs: number | undefined
+  /**
+   * The top-level `--input` keys the command sends; any other key is
+   * refused. Undefined when the input is not checked.
+   */
+  readonly inputKeys?: ReadonlySet<string> | undefined
 }
 
 export type ClientOptions = {
