@@ -1,6 +1,12 @@
 # Changelog
 
-## Unreleased
+## 0.18.1
+
+Bug fixes only, and still `@brew.new/sdk` `^13.3.0`. `RELEASING.md` treats a
+removed flag as breaking, but `content gif --duration` and
+`content generate-image --model` failed with a `400` on every call, so no
+command that worked before stops working. They now fail before the request,
+with a usage error (exit 2) instead of the API error (exit 1).
 
 ### Fixed
 
