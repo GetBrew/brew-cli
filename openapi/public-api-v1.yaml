@@ -67832,7 +67832,7 @@ paths:
                       message: An unexpected failure; the x-request-id header identifies it.
                       suggestion: Retry the request. If it keeps failing, contact support with the x-request-id header.
                       docs: https://docs.brew.new/api-reference/api/errors
-      x-brew-scope: none
+      x-brew-scope: automations
       x-brew-brand-scope: brand
       x-brew-idempotency: none
       x-brew-credited: false
@@ -68201,7 +68201,7 @@ paths:
                       message: An unexpected failure; the x-request-id header identifies it.
                       suggestion: Retry the request. If it keeps failing, contact support with the x-request-id header.
                       docs: https://docs.brew.new/api-reference/api/errors
-      x-brew-scope: none
+      x-brew-scope: automations
       x-brew-brand-scope: brand
       x-brew-idempotency: none
       x-brew-credited: false
