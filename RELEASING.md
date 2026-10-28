@@ -29,6 +29,22 @@ lockfile checksums must never be invented. The canvas tests must preserve
 `contacts.import` and the import response from SDK 13.3.0, the minimum this
 CLI depends on (`^13.3.0`).
 
+### Integration Events SDK Gate
+
+`integrations events list`, `integrations events get` and
+`automations triggers ensure-integration-event` call `integrations.events.list`,
+`integrations.events.get` and `automations.triggers.ensureIntegrationEvent`,
+which the published SDK 13.3.0 does not expose. This branch pins reviewed SDK
+source commit `10393dc7f9851f7683cd89924d5c3d25926a1f70`
+(GetBrew/typescript-sdk#88) for coordinated PR validation. It preserves SDK
+13.3.0's features and version while adding those methods.
+
+A fresh frozen install must build that source dependency without relying on
+a locally packed SDK. Do not release the CLI with this temporary source pin.
+Deploy the API contract (GetBrew/brew-v2#2411) and release the SDK first, then
+replace the pin with the actual published SDK version and regenerate
+`bun.lock` before releasing the CLI.
+
 ```bash
 # on a clean main with CI green
 npm version <patch|minor|major> --no-git-tag-version
