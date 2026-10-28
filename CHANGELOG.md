@@ -10,6 +10,10 @@ with a usage error (exit 2) instead of the API error (exit 1).
 
 ### Fixed
 
+- Image-upload finalization errors now retain the original `uploadId` and
+  idempotency key in JSON and terminal output. The recovery command uses
+  `content add-image` with that upload and brand, including after timeouts
+  or interrupts, instead of opening another upload.
 - `emails list` in a terminal now shows the folder name in the GROUP column,
   and "Ungrouped" for designs outside a folder. The column read a top-level
   `groupName` the API does not send, so it was always blank. `--json` output
