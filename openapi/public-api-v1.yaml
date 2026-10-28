@@ -12105,6 +12105,82 @@ components:
         - event
         - scope
       additionalProperties: false
+    IntegrationEventTriggerSaved:
+      type: object
+      properties:
+        triggerEventId:
+          type: string
+          minLength: 1
+          maxLength: 256
+        title:
+          type: string
+          minLength: 1
+          maxLength: 120
+        description:
+          type: string
+          maxLength: 2000
+        provider:
+          type: string
+          enum:
+            - brew_api
+            - custom
+            - brew_event
+            - clerk
+            - stytch
+            - supabase
+            - workos
+            - stripe
+            - shopify
+            - revenuecat
+            - framer
+            - posthog
+        providerEventKey:
+          type: string
+        payloadSchema:
+          type: object
+          properties:
+            type:
+              type: string
+              enum:
+                - object
+            fields:
+              type: array
+              items:
+                $ref: "#/components/schemas/TriggerPayloadField"
+          required:
+            - type
+            - fields
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        created:
+          type: boolean
+          description: True when this call created the trigger; false when it already existed.
+        propertiesStatus:
+          type: string
+          enum:
+            - current
+            - stored
+            - rate_limited
+            - unavailable
+          description: "`current`: listed with the event or read in the last day. `stored`: the provider could not be read now; these are its last description. `rate_limited`: its read budget is spent; these are what Brew stored, possibly none (read again after `retryAfterSeconds`). `unavailable`: not read, and none stored."
+        retryAfterSeconds:
+          type: integer
+          exclusiveMinimum: 0
+          description: "With `rate_limited`: seconds until the provider can be read again, when it said."
+      required:
+        - triggerEventId
+        - title
+        - provider
+        - payloadSchema
+        - createdAt
+        - updatedAt
+        - created
+        - propertiesStatus
+      additionalProperties: false
     IntegrationEventTriggersPostRequest:
       type: object
       properties:
@@ -18419,6 +18495,18 @@ components:
               - isPersonal
               - isPersonalization
             additionalProperties: false
+        propertiesStatus:
+          type: string
+          enum:
+            - current
+            - stored
+            - rate_limited
+            - unavailable
+          description: "`current`: listed with the event or read in the last day. `stored`: the provider could not be read now; these are its last description. `rate_limited`: its read budget is spent; these are what Brew stored, possibly none (read again after `retryAfterSeconds`). `unavailable`: not read, and none stored."
+        retryAfterSeconds:
+          type: integer
+          exclusiveMinimum: 0
+          description: "With `rate_limited`: seconds until the provider can be read again, when it said."
       required:
         - eventId
         - provider
@@ -18428,6 +18516,7 @@ components:
         - kind
         - modelRoles
         - properties
+        - propertiesStatus
       additionalProperties: false
     ApiKeysListResponse:
       type: object
@@ -41161,7 +41250,7 @@ paths:
 
         **Input** `{ eventId }` from `listIntegrationEvents`. Never compose an id from a provider and an event name.
 
-        **Returns** `201` with the new trigger row, or `200` with the existing one (`created: false`). The same event always returns the same trigger, across reconnects of the same account. Brew owns its title and payload contract. The provider starts sending the event once an automation using it is published; saving a draft changes nothing upstream.
+        **Returns** `201` with the new trigger row, or `200` with the existing one (`created: false`). The same event always returns the same trigger, across reconnects of the same account. Brew owns its title and payload contract. The provider starts sending the event once an automation using it is published; saving a draft changes nothing upstream. An event listed bare, or described more than a day ago, is first described at the provider on the account’s read budget, so `payloadSchema` carries its properties; `propertiesStatus` says when the provider could not be read (`rate_limited` with `retryAfterSeconds`, `stored` or `unavailable`).
 
         **Errors** `404 INTEGRATION_EVENT_NOT_FOUND` for an unknown or cross-brand `eventId`; `404 NOT_FOUND` when the event left its source between the read and the write; `409 INTEGRATION_RECONNECT_REQUIRED` when a catalog event’s trigger was removed with its connection (reconnect the integration); `409 TRIGGER_LIMIT_REACHED` when the brand already holds the maximum number of triggers.
 
@@ -41228,92 +41317,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  triggerEventId:
-                    type: string
-                    minLength: 1
-                    maxLength: 256
-                  title:
-                    type: string
-                    minLength: 1
-                    maxLength: 120
-                  description:
-                    type: string
-                    maxLength: 2000
-                  provider:
-                    type: string
-                    enum:
-                      - brew_api
-                      - custom
-                      - brew_event
-                      - clerk
-                      - stytch
-                      - supabase
-                      - workos
-                      - stripe
-                      - shopify
-                      - revenuecat
-                      - framer
-                      - posthog
-                  providerEventKey:
-                    type: string
-                  brewEvent:
-                    type: object
-                    properties:
-                      event:
-                        type: string
-                        enum:
-                          - contact.unsubscribed
-                        description: The Brew event this trigger starts on.
-                      scope:
-                        type: string
-                        enum:
-                          - domain
-                          - all
-                        description: "`domain`: unsubscribes from one marketing sending domain (its list). `all`: unsubscribes from every email the brand sends."
-                      domainHost:
-                        type: string
-                        minLength: 1
-                        description: The sending domain whose list this trigger watches, e.g. `news.acme.com`. Present only when `scope` is `domain`.
-                    required:
-                      - event
-                      - scope
-                    additionalProperties: false
-                  payloadSchema:
-                    type: object
-                    properties:
-                      type:
-                        type: string
-                        enum:
-                          - object
-                      fields:
-                        type: array
-                        items:
-                          $ref: "#/components/schemas/TriggerPayloadField"
-                    required:
-                      - type
-                      - fields
-                  createdAt:
-                    type: string
-                    format: date-time
-                  updatedAt:
-                    type: string
-                    format: date-time
-                  skill:
-                    type: string
-                  created:
-                    type: boolean
-                    description: True when this call created the trigger; false when it already existed.
-                required:
-                  - triggerEventId
-                  - title
-                  - provider
-                  - payloadSchema
-                  - createdAt
-                  - updatedAt
-                  - created
-                additionalProperties: false
+                $ref: "#/components/schemas/IntegrationEventTriggerSaved"
               example:
                 triggerEventId: posthog:org_2abc:brand_9xyz:ev_3f1c9b2e7a4d8c06b5e1f2a3
                 title: created_project
@@ -41327,6 +41331,7 @@ paths:
                       required: true
                 createdAt: '2026-10-26T12:00:00.000Z'
                 updatedAt: '2026-10-26T12:00:00.000Z'
+                propertiesStatus: current
                 created: false
         "201":
           description: Created.
@@ -41362,92 +41367,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  triggerEventId:
-                    type: string
-                    minLength: 1
-                    maxLength: 256
-                  title:
-                    type: string
-                    minLength: 1
-                    maxLength: 120
-                  description:
-                    type: string
-                    maxLength: 2000
-                  provider:
-                    type: string
-                    enum:
-                      - brew_api
-                      - custom
-                      - brew_event
-                      - clerk
-                      - stytch
-                      - supabase
-                      - workos
-                      - stripe
-                      - shopify
-                      - revenuecat
-                      - framer
-                      - posthog
-                  providerEventKey:
-                    type: string
-                  brewEvent:
-                    type: object
-                    properties:
-                      event:
-                        type: string
-                        enum:
-                          - contact.unsubscribed
-                        description: The Brew event this trigger starts on.
-                      scope:
-                        type: string
-                        enum:
-                          - domain
-                          - all
-                        description: "`domain`: unsubscribes from one marketing sending domain (its list). `all`: unsubscribes from every email the brand sends."
-                      domainHost:
-                        type: string
-                        minLength: 1
-                        description: The sending domain whose list this trigger watches, e.g. `news.acme.com`. Present only when `scope` is `domain`.
-                    required:
-                      - event
-                      - scope
-                    additionalProperties: false
-                  payloadSchema:
-                    type: object
-                    properties:
-                      type:
-                        type: string
-                        enum:
-                          - object
-                      fields:
-                        type: array
-                        items:
-                          $ref: "#/components/schemas/TriggerPayloadField"
-                    required:
-                      - type
-                      - fields
-                  createdAt:
-                    type: string
-                    format: date-time
-                  updatedAt:
-                    type: string
-                    format: date-time
-                  skill:
-                    type: string
-                  created:
-                    type: boolean
-                    description: True when this call created the trigger; false when it already existed.
-                required:
-                  - triggerEventId
-                  - title
-                  - provider
-                  - payloadSchema
-                  - createdAt
-                  - updatedAt
-                  - created
-                additionalProperties: false
+                $ref: "#/components/schemas/IntegrationEventTriggerSaved"
               example:
                 triggerEventId: posthog:org_2abc:brand_9xyz:ev_3f1c9b2e7a4d8c06b5e1f2a3
                 title: created_project
@@ -41461,6 +41381,7 @@ paths:
                       required: true
                 createdAt: '2026-10-26T12:00:00.000Z'
                 updatedAt: '2026-10-26T12:00:00.000Z'
+                propertiesStatus: current
                 created: true
         "400":
           description: |-
@@ -67529,7 +67450,7 @@ paths:
       tags:
         - Integrations
       summary: List integration events
-      description: "Returns the events the brand’s connected live sources offer as automation triggers (a PostHog project’s own events; the Stripe and Shopify app catalogs) under `{ data, sources, pagination }`. Each event carries its `eventId`, the provider’s `eventKey`, Brew’s `label` and lifecycle `stage`, its roles in the brand’s product model, 30-day volume, and its `triggerEventId` once it is a trigger. Events come source by source: `query` searches names, titles and categories, and without it each source’s busiest events come first. Events a brand member hid, and internal traffic Brew suppressed, are left out, so a page can hold fewer than `limit`; follow `pagination.cursor` until `hasMore` is false to read every event. Brand-scoped (`X-Brand-Id` on an org credential). No permission scope."
+      description: "Returns the events the brand’s connected live sources offer as automation triggers (a PostHog project’s own events; the Stripe and Shopify app catalogs) under `{ data, sources, pagination }`. Each event carries its `eventId`, the provider’s `eventKey`, Brew’s `label` and lifecycle `stage`, its roles in the brand’s product model, 30-day volume, and its `triggerEventId` once it is a trigger. Events come source by source: `query` searches names, titles and categories, and without it each source’s busiest events come first. Events a brand member hid, and internal traffic Brew suppressed, are left out, so a page can hold fewer than `limit`; follow `pagination.cursor` until `hasMore` is false to read every event. Brand-scoped (`X-Brand-Id` on an org credential). Requires the `automations` scope, as `ensureIntegrationEventTrigger` does."
       parameters:
         - schema:
             type: integer
@@ -67922,7 +67843,7 @@ paths:
       tags:
         - Integrations
       summary: Describe an integration event
-      description: "Returns one live integration event in full: each property with its template `variable` (`properties.<key>` or `person.<key>` for a tenant catalog’s event, the key itself for a static catalog’s), which hold personal data, which Brew suggests for personalization, its lifecycle stage and its roles in the product model. `404 INTEGRATION_EVENT_NOT_FOUND` for an unknown or cross-brand id. Brand-scoped. No permission scope."
+      description: "Returns one live integration event in full: each property with its template `variable` (`properties.<key>` or `person.<key>` for a tenant catalog’s event, the key itself for a static catalog’s), which hold personal data, which Brew suggests for personalization, its lifecycle stage and its roles in the product model. This GET may call the provider: an event listed bare, or described more than a day ago, is described there first on the account’s read budget, and `propertiesStatus` says how current `properties` are (`rate_limited` with `retryAfterSeconds` when the budget is spent). `404 INTEGRATION_EVENT_NOT_FOUND` for an unknown or cross-brand id. Brand-scoped. Requires the `automations` scope."
       parameters:
         - schema:
             type: string
@@ -67994,6 +67915,7 @@ paths:
                 volume30d: 8100
                 lastSeenAt: '2026-10-26T09:12:00.000Z'
                 description: A person created a project.
+                propertiesStatus: current
                 properties:
                   - key: project_name
                     variable: properties.project_name
