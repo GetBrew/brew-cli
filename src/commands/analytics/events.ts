@@ -50,7 +50,7 @@ export const analyticsEventsCommand = defineCommand({
     INPUT_FLAG,
   ],
   examples: [
-    'brew-cli analytics events --since 2026-08-01 --event-type clicked',
+    'brew-cli analytics events --since 2026-08-01T00:00:00Z --event-type clicked',
     'brew-cli analytics events --recipient jane@example.com --all --json',
   ],
   run: async ({ ctx, flags }) => {

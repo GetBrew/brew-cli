@@ -48,7 +48,7 @@ export const emailsCreateInboxPlacementTestCommand = defineCommand({
   ],
   run: async ({ ctx, args, flags }) => {
     const domainId = flagString(flags.domain)
-    if (domainId === undefined) {
+    if (!domainId) {
       throw new CliUsageError(
         '--domain is required (a verified sending domain id; see `brew-cli domains list`).'
       )

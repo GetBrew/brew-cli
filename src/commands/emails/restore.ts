@@ -25,7 +25,7 @@ export const emailsRestoreCommand = defineCommand({
   ],
   run: async ({ ctx, args, flags }) => {
     const emailVersionId = flagString(flags.toVersion)
-    if (emailVersionId === undefined) {
+    if (!emailVersionId) {
       throw new CliUsageError(
         '--to-version is required (a version id; see `brew-cli emails get <emailId> --include versions`).'
       )

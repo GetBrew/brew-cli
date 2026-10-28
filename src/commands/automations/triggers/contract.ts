@@ -10,6 +10,7 @@ import {
   asSdkInput,
   flagString,
   INPUT_FLAG,
+  isInputEnvelope,
   mergeInput,
   readJsonFlag,
 } from '../../../lib/input'
@@ -175,7 +176,11 @@ export const automationsTriggersContractValidateCommand = defineCommand({
     },
   ],
   flags: [
-    INPUT_FLAG,
+    {
+      ...INPUT_FLAG,
+      summary:
+        'JSON payload or {payload, enforcement?} request (or - for stdin); nest reserved-key data in payload',
+    },
     {
       flag: '--enforcement <mode>',
       summary: 'Preview a mode other than the stored one: prune | strict',
@@ -184,13 +189,17 @@ export const automationsTriggersContractValidateCommand = defineCommand({
   examples: [
     `brew-cli automations triggers contract validate tri_signup --input '{"payload":{"email":"jane@example.com"}}'`,
     `brew-cli automations triggers contract validate tri_signup --input '{"payload":{"email":"jane@example.com"},"enforcement":"strict"}'`,
+    `brew-cli automations triggers contract validate tri_signup --input '{"payload":{"payload":{"email":"jane@example.com"}}}'`,
   ],
   run: async ({ ctx, args, flags }) => {
     const input = mergeInput(
       await readJsonFlag(ctx, flags.input, '--input'),
       {}
     )
-    const payload = input.payload ?? input
+    const isEnvelope = isInputEnvelope<
+      Omit<ValidateTriggerPayloadInput, 'triggerEventId'>
+    >(input, 'payload', { payload: true, enforcement: true })
+    const payload = isEnvelope ? input.payload : input
     const enforcementFlag = flagString(flags.enforcement)
     if (
       enforcementFlag !== undefined &&
@@ -200,10 +209,10 @@ export const automationsTriggersContractValidateCommand = defineCommand({
         `Unknown --enforcement '${enforcementFlag}' (expected prune | strict).`
       )
     }
-    // Only a full body carries request metadata; a bare payload may have
-    // its own enforcement field. Body schema validation belongs to the API.
+    // Only canonical request keys identify an envelope. Explicit nesting
+    // disambiguates raw data containing only payload/enforcement keys.
     const enforcement =
-      enforcementFlag ?? (input.payload != null ? input.enforcement : undefined)
+      enforcementFlag ?? (isEnvelope ? input.enforcement : undefined)
     const body = await ctx.client().automations.triggers.validatePayload(
       asSdkInput<ValidateTriggerPayloadInput>({
         triggerEventId: args.triggerEventId ?? '',

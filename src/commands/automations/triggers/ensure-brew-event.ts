@@ -47,7 +47,7 @@ export const automationsTriggersEnsureBrewEventCommand = defineCommand({
   ],
   run: async ({ ctx, flags }) => {
     const scope = flagString(flags.scope)
-    if (scope === undefined) {
+    if (!scope) {
       throw new CliUsageError('--scope is required (domain | all).')
     }
     if (!SCOPES.has(scope)) {
@@ -56,7 +56,7 @@ export const automationsTriggersEnsureBrewEventCommand = defineCommand({
       )
     }
     const domainId = flagString(flags.domainId)
-    if (scope === 'domain' && domainId === undefined) {
+    if (scope === 'domain' && !domainId) {
       throw new CliUsageError(
         '--scope domain needs --domain-id (ids from brew-cli domains list).'
       )

@@ -105,7 +105,7 @@ describe('brand delete-image', () => {
     expect(envelope.summary).toContain(ASSET_ID)
     expect(envelope.summary).toContain('stays hosted')
     expect(envelope.confirmCommand).toBe(
-      `brew-cli brand delete-image ${ASSET_ID} --yes`
+      `brew-cli brand delete-image --yes -- ${ASSET_ID}`
     )
   })
 
@@ -735,7 +735,7 @@ describe('content upload-image', () => {
     expect(error.uploadId).toBe(UPLOAD_ID)
     expect(error.idempotencyKey).toEqual(expect.any(String))
     expect(error.retryCommand).toBe(
-      `brew-cli content add-image --upload-id ${UPLOAD_ID} --idempotency-key ${String(error.idempotencyKey)}`
+      `brew-cli content add-image --upload-id=${UPLOAD_ID} --idempotency-key=${String(error.idempotencyKey)}`
     )
     expect(String(error.suggestion)).toContain('finalization')
     expect(String(error.retryCommand)).not.toContain('upload-image')

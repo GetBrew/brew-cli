@@ -63,9 +63,8 @@ describe('api escape hatch', () => {
     expect(result.code).toBe(4)
     const envelope = result.json as Record<string, unknown>
     expect(envelope.confirmationRequired).toBe(true)
-    expect(String(envelope.confirmCommand)).toContain('--yes')
-    expect(String(envelope.confirmCommand)).toContain(
-      'api POST /v1/contacts/search'
+    expect(envelope.confirmCommand).toBe(
+      'brew-cli api \'--data={"limit":1}\' --yes -- POST /v1/contacts/search'
     )
   })
 

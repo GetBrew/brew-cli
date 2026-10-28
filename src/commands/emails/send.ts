@@ -93,7 +93,10 @@ export const emailsSendCommand = defineCommand({
     if (input.test === true && input.to === undefined) {
       throw new CliUsageError('--to is required for a --test send.')
     }
-    if (input.test !== true && typeof input.domainId !== 'string') {
+    if (
+      input.test !== true &&
+      (typeof input.domainId !== 'string' || input.domainId === '')
+    ) {
       throw new CliUsageError(
         'Campaign sends require --domain (a verified domain id); use --test for a test delivery.'
       )

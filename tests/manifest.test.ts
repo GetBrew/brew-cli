@@ -58,4 +58,26 @@ describe('docs --agent manifest', () => {
       expect(command.confirmation).toBe(command.class === 'destructive')
     }
   })
+
+  it('marks commands with optional paid modes as credited', async () => {
+    const result = await runCli(['docs', '--agent'])
+    expect(result.code).toBe(0)
+    const manifest = result.json as {
+      commands: Array<{ command: string; credited?: boolean }>
+    }
+    const credited = new Set(
+      manifest.commands
+        .filter((command) => command.credited === true)
+        .map((command) => command.command)
+    )
+    for (const command of [
+      'contacts upsert',
+      'contacts upsert-many',
+      'contacts import',
+      'contacts import-csv',
+      'brand get-images',
+    ]) {
+      expect(credited.has(`brew-cli ${command}`), command).toBe(true)
+    }
+  })
 })

@@ -310,7 +310,7 @@ describe('emails audit', () => {
     )
     expect(error.idempotencyKey).toBe('audit-9')
     expect(error.retryCommand).toBe(
-      'brew-cli emails audit --input \'{"emailHtml":"<p>Hello</p>"}\' --timeout 150ms --idempotency-key audit-9'
+      'brew-cli emails audit \'--input={"emailHtml":"<p>Hello</p>"}\' --idempotency-key=audit-9 --timeout=150ms'
     )
   })
 })

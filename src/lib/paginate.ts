@@ -95,10 +95,15 @@ export const ALL_FLAG = {
   summary: 'Follow the cursor and return every page as one result',
 } as const
 
-export const LIMIT_FLAG = {
-  flag: '--limit <n>',
-  summary: 'Page size, 1-100 (default 100)',
-} as const
+/** Describes the server default without supplying a default request value. */
+export function limitFlag(defaultSize: number) {
+  return {
+    flag: '--limit <n>',
+    summary: `Page size, 1-100 (default ${defaultSize})`,
+  } as const
+}
+
+export const LIMIT_FLAG = limitFlag(100)
 
 export const CURSOR_FLAG = {
   flag: '--cursor <cursor>',

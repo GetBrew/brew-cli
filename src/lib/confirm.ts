@@ -1,5 +1,8 @@
 import type { CommandInvocation, CommandSpec } from './define-command'
 import { CommandAbortedError, ConfirmationRequiredError } from './errors'
+import { buildRerunCommand, type RerunInvocation } from './rerun'
+
+export { shellQuote } from './rerun'
 
 /**
  * The confirmation protocol for destructive commands:
@@ -11,7 +14,7 @@ import { CommandAbortedError, ConfirmationRequiredError } from './errors'
 export async function enforceConfirmation(
   spec: CommandSpec,
   invocation: CommandInvocation,
-  options: { readonly confirmationArgv?: readonly string[] } = {}
+  options: { readonly confirmationInput?: string } = {}
 ): Promise<void> {
   if (!spec.confirmSummary) {
     return
@@ -52,16 +55,25 @@ export async function enforceConfirmation(
     command: ['brew-cli', ...spec.path].join(' '),
     summary,
     confirmCommand: buildConfirmCommand(
-      options.confirmationArgv ??
+      invocation,
+      spec,
+      options.confirmationInput ??
         (invocation.flags.input === '-' && invocation.input !== undefined
-          ? inlineStdinInputArgv(ctx.rawArgv, JSON.stringify(invocation.input))
-          : ctx.rawArgv)
+          ? JSON.stringify(invocation.input)
+          : undefined)
     ),
   })
 }
 
-export function buildConfirmCommand(rawArgv: readonly string[]): string {
-  return ['brew-cli', ...rerunTokens(rawArgv), '--yes'].join(' ')
+export function buildConfirmCommand(
+  invocation: RerunInvocation,
+  command: Pick<CommandSpec, 'path' | 'flags' | 'args'>,
+  inlineInput?: string
+): string {
+  return buildRerunCommand(command, invocation, {
+    yes: true,
+    ...(inlineInput === undefined ? {} : { inlineInput }),
+  })
 }
 
 /** Confirm stdin requests after parsing, carrying the merged body on a re-run. */
@@ -78,144 +90,42 @@ export async function enforceStdinConfirmation(
     spec,
     { ...invocation, flags: { ...invocation.flags, input: serializedInput } },
     {
-      confirmationArgv: inlineStdinInputArgv(
-        invocation.ctx.rawArgv,
-        serializedInput
-      ),
+      confirmationInput: serializedInput,
     }
   )
 }
 
-/** Consumed JSON stdin must travel inline when confirmation reruns a command. */
-function inlineStdinInputArgv(
-  rawArgv: readonly string[],
-  input: string
-): readonly string[] {
-  return rawArgv.map((token, index) => {
-    if (token === '--input=-') {
-      return `--input=${input}`
-    }
-    if (token === '-' && rawArgv[index - 1] === '--input') {
-      return input
-    }
-    return token
+/** Replay the same parsed invocation with the key carried by its request. */
+export function buildRetryCommand(
+  invocation: RerunInvocation,
+  idempotencyKey: string,
+  command: Pick<CommandSpec, 'path' | 'flags' | 'args'>
+): string {
+  return buildRerunCommand(command, invocation, {
+    idempotencyKey,
   })
 }
 
-/**
- * The command line that replays an interrupted or timed-out write: the same
- * argv with the idempotency key its request carried, so the API returns the
- * first attempt's result instead of running it again.
- */
-export function buildRetryCommand(
-  rawArgv: readonly string[],
-  idempotencyKey: string
-): string {
-  return [
-    'brew-cli',
-    ...rerunTokens(rawArgv, { dropIdempotencyKey: true }),
-    '--idempotency-key',
-    shellQuote(idempotencyKey),
-  ].join(' ')
-}
-
 /** Resume only finalization; repeating the file helper opens a new upload. */
-export function buildUploadRetryCommand(input: {
-  readonly uploadId: string
-  readonly idempotencyKey: string
-  readonly brand: string | undefined
-  readonly apiUrl: string | undefined
-}): string {
-  return [
-    'brew-cli content add-image --upload-id',
-    shellQuote(input.uploadId),
-    '--idempotency-key',
-    shellQuote(input.idempotencyKey),
-    ...(input.brand === undefined ? [] : ['--brand', shellQuote(input.brand)]),
-    ...(input.apiUrl === undefined
-      ? []
-      : ['--api-url', shellQuote(input.apiUrl)]),
-  ].join(' ')
-}
-
-/**
- * argv, shell-quoted, for a command the caller will run again. Both
- * envelopes go to stdout and into agent transcripts, so a credential is
- * never echoed back: `--api-key` goes (the re-run resolves the key from env
- * or config) and so does any credential header passed to `api --header`.
- */
-function rerunTokens(
-  rawArgv: readonly string[],
-  options: { readonly dropIdempotencyKey?: boolean } = {}
-): string[] {
-  const tokens: string[] = []
-  for (let index = 0; index < rawArgv.length; index += 1) {
-    const token = rawArgv[index]
-    if (token === undefined) {
-      continue
-    }
-    if (
-      token === '--api-key' ||
-      (options.dropIdempotencyKey === true && token === '--idempotency-key')
-    ) {
-      index += 1
-      continue
-    }
-    if (
-      token.startsWith('--api-key=') ||
-      (options.dropIdempotencyKey === true &&
-        token.startsWith('--idempotency-key='))
-    ) {
-      continue
-    }
-    if (token.startsWith('--header=')) {
-      if (!isCredentialHeader(token.slice('--header='.length))) {
-        tokens.push(shellQuote(token))
-      }
-      continue
-    }
-    if (token === '--header') {
-      // Variadic: every value up to the next flag belongs to it.
-      const values: string[] = []
-      while (
-        index + 1 < rawArgv.length &&
-        !(rawArgv[index + 1] ?? '').startsWith('-')
-      ) {
-        index += 1
-        const value = rawArgv[index] ?? ''
-        if (!isCredentialHeader(value)) {
-          values.push(shellQuote(value))
-        }
-      }
-      if (values.length > 0) {
-        tokens.push('--header', ...values)
-      }
-      continue
-    }
-    tokens.push(shellQuote(token))
-  }
-  return tokens
-}
-
-/**
- * A header whose NAME says it can carry a credential: `Authorization` and
- * `Proxy-Authorization`, cookies, and any name mentioning an API key, auth,
- * a token, secret, password, session or signature. Dropping a harmless
- * header from a re-run costs less than printing a secret into a transcript.
- * `Idempotency-Key` is not a credential: the re-run needs it.
- */
-const CREDENTIAL_HEADER_NAME =
-  /authorization|cookie|api-?key|auth|token|secret|passw(or)?d|session|signature|credential/i
-
-function isCredentialHeader(header: string): boolean {
-  const name = /^\s*([^:\s]+)\s*:/.exec(header)?.[1]
-  return name !== undefined && CREDENTIAL_HEADER_NAME.test(name)
-}
-
-/** `token` as one shell word: as-is when safe, else single-quoted. */
-export function shellQuote(token: string): string {
-  if (/^[A-Za-z0-9@%+=:,./_-]+$/.test(token)) {
-    return token
-  }
-  return `'${token.replaceAll("'", String.raw`'\''`)}'`
+export function buildUploadRetryCommand(
+  input: {
+    readonly uploadId: string
+    readonly idempotencyKey: string
+    readonly brand: string | undefined
+    readonly apiUrl: string | undefined
+  },
+  command: Pick<CommandSpec, 'path' | 'flags' | 'args'>
+): string {
+  return buildRerunCommand(
+    command,
+    {
+      args: {},
+      flags: {
+        uploadId: input.uploadId,
+        brand: input.brand,
+        apiUrl: input.apiUrl,
+      },
+    },
+    { idempotencyKey: input.idempotencyKey }
+  )
 }

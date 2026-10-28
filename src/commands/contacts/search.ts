@@ -15,7 +15,7 @@ import {
   ALL_FLAG,
   CURSOR_FLAG,
   collectAll,
-  LIMIT_FLAG,
+  limitFlag,
 } from '../../lib/paginate'
 
 export const contactsSearchCommand = defineCommand({
@@ -39,7 +39,7 @@ export const contactsSearchCommand = defineCommand({
       summary:
         "Comma-separated expansions: openProfile (each row's smart-send open-time profile; a page then holds at most 10 rows; needs the emails scope too)",
     },
-    LIMIT_FLAG,
+    limitFlag(50),
     CURSOR_FLAG,
     ALL_FLAG,
     INPUT_FLAG,

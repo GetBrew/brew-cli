@@ -25,6 +25,7 @@ export const contactsImportCsvCommand = defineCommand({
   sdkMethod: 'contacts.importCsv',
   route: { method: 'POST', path: '/v1/contacts/import-csv' },
   commandClass: 'write',
+  isCredited: true,
   flags: [
     {
       flag: '--file <path>',

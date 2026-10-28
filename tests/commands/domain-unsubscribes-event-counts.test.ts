@@ -276,5 +276,23 @@ describe('domains unsubscribes', () => {
     )
     expect(result.code).toBe(0)
     expect(url?.searchParams.get('scope')).toBe('all')
+    expect((result.json as { csv: string }).csv).toBe(
+      'email\nada@example.com\n'
+    )
+
+    const human = await runCli(['domains', 'unsubscribes', 'export', 'dom_1'], {
+      env: env(),
+      extraCommands: EXTRA,
+      ttyOut: true,
+    })
+    expect(human.code).toBe(0)
+    expect(human.stdout).toBe('email\nada@example.com\n\n')
+
+    const json = await runCli(
+      ['domains', 'unsubscribes', 'export', 'dom_1', '--json'],
+      { env: env(), extraCommands: EXTRA, ttyOut: true }
+    )
+    expect(json.code).toBe(0)
+    expect((json.json as { csv: string }).csv).toBe('email\nada@example.com\n')
   })
 })

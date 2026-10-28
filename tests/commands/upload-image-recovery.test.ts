@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process'
 import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -8,6 +9,7 @@ import {
 } from '@brew.new/sdk'
 import { HttpResponse, http } from 'msw'
 import { describe, expect, it } from 'vitest'
+import { contentAddImageCommand } from '../../src/commands/content/add-image'
 import { buildUploadRetryCommand } from '../../src/lib/confirm'
 import { CliInterruptError, toErrorEnvelope } from '../../src/lib/errors'
 import { server } from '../helpers/msw-server'
@@ -45,6 +47,15 @@ function errorOf(stderr: string): Record<string, unknown> {
   return parsed.error
 }
 
+/** Parse the exact recovery command users run, including attached quoted values. */
+function argvOf(command: string): string[] {
+  return execFileSync('sh', ['-c', `set -- ${command}; printf '%s\\0' "$@"`], {
+    encoding: 'utf8',
+  })
+    .split('\0')
+    .slice(1, -1)
+}
+
 function flow(finalize: (request: Request) => Response) {
   const seen = { opens: 0, bytes: 0, adds: 0 }
   server.use(
@@ -73,6 +84,63 @@ function flow(finalize: (request: Request) => Response) {
 }
 
 describe('local-image finalization recovery across CLI surfaces', () => {
+  it.each(['--yes', '--api-key'])(
+    'replays key %s using the recorded brand over the original flag',
+    async (key) => {
+      const controller = new AbortController()
+      const requests: Array<{
+        body: Promise<unknown>
+        key: string | null
+        brand: string | null
+      }> = []
+      const seen = flow((request) => {
+        requests.push({
+          body: request.json(),
+          key: request.headers.get('idempotency-key'),
+          brand: request.headers.get('x-brand-id'),
+        })
+        if (requests.length === 1) {
+          controller.abort(new CliInterruptError('SIGINT'))
+        }
+        return HttpResponse.json(IMAGE)
+      })
+      const env = environment()
+      const interrupted = await runCli(
+        [
+          'api',
+          'POST',
+          '/v1/content/add-image',
+          '--data',
+          JSON.stringify({ uploadId: UPLOAD_ID }),
+          '--header',
+          'X-Brand-Id: --api-key',
+          '--brand=brand_from_flag',
+          `--idempotency-key=${key}`,
+          '--api-url=https://brew.new/api',
+          '--yes',
+        ],
+        { env, signal: controller.signal }
+      )
+      expect(interrupted.code).toBe(130)
+      const error = errorOf(interrupted.stderr)
+      const recovered = await runCli(argvOf(String(error.retryCommand)), {
+        env,
+      })
+      expect(recovered.code).toBe(0)
+      expect(recovered.json).toEqual(IMAGE)
+      expect(seen).toEqual({ opens: 0, bytes: 0, adds: 2 })
+      expect(requests.map(({ key, brand }) => ({ key, brand }))).toEqual([
+        { key, brand: '--api-key' },
+        { key, brand: '--api-key' },
+      ])
+      expect(await Promise.all(requests.map(({ body }) => body))).toEqual([
+        { uploadId: UPLOAD_ID },
+        { uploadId: UPLOAD_ID },
+      ])
+      expect(interrupted.stderr).not.toContain(KEY)
+    }
+  )
+
   it('recovers a lost result with the installed 13.3 SDK and no new upload', async () => {
     let key: string | null = null
     const bodies: Array<Promise<unknown>> = []
@@ -115,12 +183,11 @@ describe('local-image finalization recovery across CLI surfaces', () => {
         idempotencyKey: key,
       })
       expect(error.retryCommand).toBe(
-        `brew-cli content add-image --upload-id ${UPLOAD_ID} --idempotency-key ${String(key)}`
+        `brew-cli content add-image --upload-id=${UPLOAD_ID} --idempotency-key=${String(key)}`
       )
-      const recovered = await runCli(
-        String(error.retryCommand).split(' ').slice(1),
-        { env }
-      )
+      const recovered = await runCli(argvOf(String(error.retryCommand)), {
+        env,
+      })
       expect(recovered.code).toBe(0)
       expect(recovered.json).toEqual(IMAGE)
       expect(seen).toEqual({ opens: 1, bytes: 1, adds: 2 })
@@ -154,7 +221,7 @@ describe('local-image finalization recovery across CLI surfaces', () => {
         code: 'CLI_INTERRUPTED',
         uploadId: UPLOAD_ID,
         idempotencyKey: key,
-        retryCommand: `brew-cli content add-image --upload-id ${UPLOAD_ID} --idempotency-key ${String(key)}`,
+        retryCommand: `brew-cli content add-image --upload-id=${UPLOAD_ID} --idempotency-key=${String(key)}`,
       })
       expect(result.stderr).not.toContain(TOKEN)
     }
@@ -192,7 +259,7 @@ describe('local-image finalization recovery across CLI surfaces', () => {
     })
     expect(error.idempotencyKey).toEqual(expect.any(String))
     expect(error.retryCommand).toBe(
-      `brew-cli content add-image --upload-id ${UPLOAD_ID} --idempotency-key ${String(error.idempotencyKey)} --brand brand_one --api-url https://brew.new/api`
+      `brew-cli content add-image --upload-id=${UPLOAD_ID} --idempotency-key=${String(error.idempotencyKey)} --brand=brand_one --api-url=https://brew.new/api`
     )
     expect(result.stderr).not.toContain(KEY)
   })
@@ -243,7 +310,7 @@ describe('local-image finalization recovery across CLI surfaces', () => {
           code: 'CLI_TIMEOUT',
           uploadId: UPLOAD_ID,
           idempotencyKey: 'stable-key',
-          retryCommand: `brew-cli content add-image --upload-id ${UPLOAD_ID} --idempotency-key stable-key${surface === 'api' ? ' --brand raw_brand' : ''}`,
+          retryCommand: `brew-cli content add-image --upload-id=${UPLOAD_ID} --idempotency-key=stable-key${surface === 'api' ? ' --brand=raw_brand' : ''}`,
         })
       } finally {
         globalThis.fetch = originalFetch
@@ -258,7 +325,7 @@ describe('local-image finalization recovery across CLI surfaces', () => {
       { env: environment(), ttyOut: true }
     )
     expect(result.stderr).toContain(
-      `Re-run: brew-cli content add-image --upload-id ${UPLOAD_ID} --idempotency-key `
+      `Re-run: brew-cli content add-image --upload-id=${UPLOAD_ID} --idempotency-key=`
     )
     expect(result.stderr).not.toContain(TOKEN)
   })
@@ -308,14 +375,17 @@ describe('local-image finalization recovery across CLI surfaces', () => {
 describe('newer SDK recovery metadata', () => {
   it('quotes the recovery key and target selectors as shell arguments', () => {
     expect(
-      buildUploadRetryCommand({
-        uploadId: UPLOAD_ID,
-        idempotencyKey: 'key with spaces',
-        brand: 'brand with spaces',
-        apiUrl: 'https://brew.test/api?tenant=one&mode=two',
-      })
+      buildUploadRetryCommand(
+        {
+          uploadId: UPLOAD_ID,
+          idempotencyKey: 'key with spaces',
+          brand: 'brand with spaces',
+          apiUrl: 'https://brew.test/api?tenant=one&mode=two',
+        },
+        contentAddImageCommand
+      )
     ).toBe(
-      `brew-cli content add-image --upload-id ${UPLOAD_ID} --idempotency-key 'key with spaces' --brand 'brand with spaces' --api-url 'https://brew.test/api?tenant=one&mode=two'`
+      `brew-cli content add-image --upload-id=${UPLOAD_ID} '--idempotency-key=key with spaces' '--brand=brand with spaces' '--api-url=https://brew.test/api?tenant=one&mode=two'`
     )
   })
   it.each(['api', 'connection', 'parse'] as const)(

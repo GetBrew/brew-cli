@@ -8,6 +8,7 @@ import { defineCommand } from '../../lib/define-command'
 import {
   asSdkInput,
   flagInt,
+  flagNonEmptyString,
   flagString,
   INPUT_FLAG,
   mergeInput,
@@ -82,7 +83,8 @@ export const flowsListCommand = defineCommand({
   run: async ({ ctx, flags }) => {
     const flows = ctx.client().flows
     const base = await readJsonFlag(ctx, flags.input, '--input')
-    const slug = flagString(flags.slug) ?? inputField(base, 'slug')
+    const slug =
+      flagNonEmptyString(flags.slug, '--slug') ?? inputField(base, 'slug')
     const include = flagString(flags.include) ?? inputField(base, 'include')
     if (slug !== undefined) {
       const flow = await flows.get(

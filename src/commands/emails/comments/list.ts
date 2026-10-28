@@ -6,7 +6,12 @@ import type {
 } from '@brew.new/sdk'
 import { defineCommand } from '../../../lib/define-command'
 import { CliUsageError } from '../../../lib/errors'
-import { asSdkInput, flagInt, flagString } from '../../../lib/input'
+import {
+  asSdkInput,
+  flagInt,
+  flagNonEmptyString,
+  flagString,
+} from '../../../lib/input'
 import { progress, renderTable } from '../../../lib/output'
 import {
   assertPaginationProgress,
@@ -78,7 +83,7 @@ export const emailsCommentsListCommand = defineCommand({
   ],
   run: async ({ ctx, args, flags }) => {
     const emailId = args.emailId ?? ''
-    const commentId = flagString(flags.commentId)
+    const commentId = flagNonEmptyString(flags.commentId, '--comment-id')
     const messagesCursor = flagString(flags.messagesCursor)
     const cursor = flagString(flags.cursor)
     const isAll = flags.all === true

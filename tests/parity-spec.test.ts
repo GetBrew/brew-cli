@@ -21,7 +21,10 @@ const PENDING_BUILD_ROUTES: readonly string[] = []
  */
 const PENDING_SPEC_ROUTES: readonly string[] = []
 
-function specOperations(): readonly string[] {
+function specOperations(): ReadonlyMap<
+  string,
+  { readonly isCredited: boolean }
+> {
   const raw = readFileSync(
     join(import.meta.dirname, '../openapi/public-api-v1.yaml'),
     'utf8'
@@ -29,19 +32,25 @@ function specOperations(): readonly string[] {
   const doc = parse(raw) as {
     paths?: Record<string, Record<string, unknown>>
   }
-  const ops: string[] = []
+  const ops = new Map<string, { readonly isCredited: boolean }>()
   for (const [path, item] of Object.entries(doc.paths ?? {})) {
     for (const method of ['get', 'post', 'patch', 'delete', 'put']) {
-      if (method in item) {
-        ops.push(`${method.toUpperCase()} ${path}`)
+      const operation = item[method] as
+        | { readonly 'x-brew-credited'?: boolean }
+        | undefined
+      if (operation !== undefined) {
+        ops.set(`${method.toUpperCase()} ${path}`, {
+          isCredited: operation['x-brew-credited'] === true,
+        })
       }
     }
   }
-  return ops.sort()
+  return ops
 }
 
 describe('parity: vendored OpenAPI spec ↔ CLI commands', () => {
-  const ops = specOperations()
+  const operations = specOperations()
+  const ops = [...operations.keys()].sort()
   const commandRoutes = new Set(
     ALL_COMMANDS.flatMap((spec) =>
       spec.route === undefined
@@ -69,6 +78,21 @@ describe('parity: vendored OpenAPI spec ↔ CLI commands', () => {
       (route) => !(opSet.has(route) || PENDING_SPEC_ROUTES.includes(route))
     )
     expect(phantom).toEqual([])
+  })
+
+  it('matches credit metadata for every command binding, including shared routes', () => {
+    for (const command of ALL_COMMANDS) {
+      if (command.route === undefined) {
+        continue
+      }
+      const route = `${command.route.method} ${command.route.path}`
+      const operation = operations.get(route)
+      if (operation !== undefined) {
+        expect(command.isCredited === true, command.path.join(' ')).toBe(
+          operation.isCredited
+        )
+      }
+    }
   })
 
   it('keeps pending-spec routes only while the spec lacks them', () => {

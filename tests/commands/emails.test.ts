@@ -694,7 +694,9 @@ describe('emails delete (confirmation protocol)', () => {
     const envelope = result.json as Record<string, unknown>
     expect(envelope.confirmationRequired).toBe(true)
     expect(envelope.summary).toContain('eml_1')
-    expect(envelope.confirmCommand).toBe('brew-cli emails delete eml_1 --yes')
+    expect(envelope.confirmCommand).toBe(
+      'brew-cli emails delete --yes -- eml_1'
+    )
   })
 
   it('deletes with --yes', async () => {

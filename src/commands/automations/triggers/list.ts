@@ -4,6 +4,7 @@ import { defineCommand } from '../../../lib/define-command'
 import {
   asSdkInput,
   flagInt,
+  flagNonEmptyString,
   flagString,
   INPUT_FLAG,
   mergeInput,
@@ -45,7 +46,8 @@ export const automationsTriggersListCommand = defineCommand({
     const triggers = ctx.client().automations.triggers
     const base = await readJsonFlag(ctx, flags.input, '--input')
     const triggerEventId =
-      flagString(flags.trigger) ?? inputField(base, 'triggerEventId')
+      flagNonEmptyString(flags.trigger, '--trigger') ??
+      inputField(base, 'triggerEventId')
     if (triggerEventId !== undefined) {
       const row = await triggers.get(triggerEventId)
       return { data: singleRowPage(row), human: renderTriggers([row]) }
