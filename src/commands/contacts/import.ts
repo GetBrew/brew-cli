@@ -24,6 +24,7 @@ export const contactsImportCommand = defineCommand({
   sdkMethod: 'contacts.import',
   route: { method: 'POST', path: '/v1/contacts/import' },
   commandClass: 'write',
+  isCredited: true,
   flags: [
     {
       flag: '--file <path>',

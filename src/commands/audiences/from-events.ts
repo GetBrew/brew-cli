@@ -28,19 +28,25 @@ export const audiencesFromEventsCommand = defineCommand({
     },
     {
       flag: '--since <datetime>',
-      summary: 'Cohort window start (ISO-8601, max 90 days back)',
+      summary:
+        'Cohort window start (ISO-8601, max 90 days back; optional with --send-id)',
     },
     {
       flag: '--until <datetime>',
       summary: 'Cohort window end (ISO-8601, default now)',
     },
-    { flag: '--send-id <sendId>', summary: 'Scope to one campaign send' },
+    {
+      flag: '--send-id <sendId>',
+      summary:
+        'Scope to one campaign send; derives the window when --since is omitted',
+    },
     { flag: '--email-id <emailId>', summary: 'Scope to one email design' },
     INPUT_FLAG,
     IDEMPOTENCY_FLAG,
   ],
   examples: [
     'brew-cli audiences from-events --name "Opened in July" --event-types opened --since 2026-07-01T00:00:00Z --until 2026-08-01T00:00:00Z',
+    'brew-cli audiences from-events --name "Send openers" --event-types opened --send-id snd_123',
     'brew-cli audiences from-events --event-types opened clicked --since 2026-07-01T00:00:00Z --input \'{"cohort":{"recipient":["@acme.com"]}}\'',
   ],
   run: async ({ ctx, flags }) => {
@@ -59,9 +65,12 @@ export const audiencesFromEventsCommand = defineCommand({
         '--event-types is required (or provide cohort.eventTypes via --input).'
       )
     }
-    if (typeof cohort.from !== 'string' || cohort.from === '') {
+    if (
+      (typeof cohort.from !== 'string' || cohort.from === '') &&
+      (typeof cohort.sendId !== 'string' || cohort.sendId.trim() === '')
+    ) {
       throw new CliUsageError(
-        '--since is required (or provide cohort.from via --input).'
+        '--since or --send-id is required (or provide cohort.from or cohort.sendId via --input).'
       )
     }
     return {

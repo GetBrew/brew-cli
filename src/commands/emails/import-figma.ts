@@ -64,7 +64,7 @@ export const emailsImportFigmaCommand = defineCommand({
       groupId: flagString(flags.groupId),
       groupName: flagString(flags.groupName),
     })
-    if (flagString(input.figmaUrl) === undefined) {
+    if (!flagString(input.figmaUrl)) {
       throw new CliUsageError(
         '--url is required (a Figma frame link containing node-id).'
       )

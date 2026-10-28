@@ -42,6 +42,15 @@ jobs:
       - run: bun run test
       - run: bun run docs:commands:check
       - run: bun run build
+      - name: Bin smoke
+        run: |
+          node dist/bin.js --version
+          node dist/bin.js --help > /dev/null
+          node dist/bin.js docs --agent > /dev/null
+      - name: Signal smoke
+        run: bun run smoke:signals
+      - name: CLI regression smoke
+        run: bun run smoke:regressions
       - name: Compile standalone binaries
         run: bun run scripts/build-binaries.ts
       - name: Create GitHub Release

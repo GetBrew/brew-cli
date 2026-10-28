@@ -50,3 +50,5 @@ jobs:
       # prove the process dies by the signal after printing its envelope.
       - name: Signal smoke
         run: bun run smoke:signals
+      - name: CLI regression smoke
+        run: bun run smoke:regressions

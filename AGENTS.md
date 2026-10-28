@@ -15,7 +15,8 @@ construction. `src/lib/` holds the shared behavior: `client.ts` (SDK
 client factory + auth resolution + native SDK brand scoping),
 `output.ts` (stdout=data, stderr=progress, `--json` + auto-JSON on
 non-TTY), `errors.ts` (exit codes 0/1/2/3/4 + envelopes), `confirm.ts`
-(exit-4 protocol), `input.ts` (`--input <json|->`, `--file <path|->`,
+(exit-4 protocol), `rerun.ts` (serialize parsed invocations for confirmation
+and retry; never reparse argv), `input.ts` (`--input <json|->`, `--file <path|->`,
 `k=v`, the single `asSdkInput` boundary cast), `paginate.ts` (`--all`),
 `manifest.ts` (`docs --agent`).
 
@@ -96,7 +97,11 @@ bun run tsc          # strict typecheck
 bun run lint         # biome check (also formatting)
 bun run test -- tests/<file>.test.ts  # relevant vitest + MSW tests
 bun run docs:commands:check
+bun run build && bun run smoke:regressions  # built Node CLI against loopback
 ```
+
+The regression smoke uses dummy credentials and no live API. It executes the
+CSV recipe with `jq`; Linux terminal checks use the `script` utility.
 
 `bun run fix` applies formatting + safe lint fixes. Never `bun test`
 (Bun's own runner bypasses the vitest/MSW setup) — always `bun run test`.

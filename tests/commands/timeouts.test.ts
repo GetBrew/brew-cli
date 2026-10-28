@@ -201,7 +201,7 @@ describe('--timeout', () => {
       expect(error.code).toBe('CLI_TIMEOUT')
       expect(error.idempotencyKey).toBe('stdin-test-retry')
       expect(error.suggestion).toContain('pipe the same input to it again')
-      expect(error.retryCommand).toContain(inputArgs.join(' '))
+      expect(error.retryCommand).toContain('--input=-')
     }
   )
 
@@ -291,7 +291,7 @@ describe('failed connections', () => {
     // replaying --idempotency-key), so the raw call gets the replay advice.
     expect(error.idempotencyKey).toBe(sentKey)
     expect(String(error.retryCommand)).toBe(
-      `brew-cli api POST /v1/emails --data '{"prompt":"Hi"}' --yes --idempotency-key ${String(sentKey)}`
+      `brew-cli api '--data={"prompt":"Hi"}' --idempotency-key=${String(sentKey)} --yes -- POST /v1/emails`
     )
   })
 })

@@ -34,14 +34,14 @@ a `confirmCommand` otherwise, `--yes` to proceed).
 | `brew-cli contacts get` | read | `GET /v1/contacts/{email}` | Fetch one contact by email — the bare row |
 | `brew-cli contacts count` | read | `POST /v1/contacts/search` | Count contacts matching a filter |
 | `brew-cli contacts count-by` | read | `POST /v1/contacts/search` | Count contacts per field value, email domain, or signup period (largest group first) |
-| `brew-cli contacts upsert` | write | `POST /v1/contacts` | Create or update one contact by email |
-| `brew-cli contacts upsert-many` | write | `POST /v1/contacts` | Create or update up to 1000 contacts per call, with no Import History entry (for syncs; use contacts import for a batch you want listed) |
+| `brew-cli contacts upsert` | write ($) | `POST /v1/contacts` | Create or update one contact by email |
+| `brew-cli contacts upsert-many` | write ($) | `POST /v1/contacts` | Create or update up to 1000 contacts per call, with no Import History entry (for syncs; use contacts import for a batch you want listed) |
 | `brew-cli contacts update` | write | `PATCH /v1/contacts/{email}` | Partially update one contact (PATCH; never retried) |
 | `brew-cli contacts delete` | destructive | `DELETE /v1/contacts/{email}` | Delete one contact by email (idempotent) |
 | `brew-cli contacts delete-many` | destructive | `POST /v1/contacts/batch-delete` | Delete up to 1000 contacts by email |
 | `brew-cli contacts validate` | write ($) | `POST /v1/contacts/validate` | Batch-validate email deliverability (no contacts created) |
-| `brew-cli contacts import` | write | `POST /v1/contacts/import` | Bulk-import up to 1000 contacts from a JSON file or stdin as one Import History batch (free; --validate costs 2 credits per address) |
-| `brew-cli contacts import-csv` | write | `POST /v1/contacts/import-csv` | Bulk-import contacts from a CSV file or stdin as one Import History batch (free; validation charged separately) |
+| `brew-cli contacts import` | write ($) | `POST /v1/contacts/import` | Bulk-import up to 1000 contacts from a JSON file or stdin as one Import History batch (free; --validate costs 2 credits per address) |
+| `brew-cli contacts import-csv` | write ($) | `POST /v1/contacts/import-csv` | Bulk-import contacts from a CSV file or stdin as one Import History batch (free; validation charged separately) |
 | `brew-cli fields list` | read | `GET /v1/fields` | List custom contact fields |
 | `brew-cli fields get` | read | `GET /v1/fields/{fieldName}` | Fetch one contact field definition by name — the bare row |
 | `brew-cli fields create` | write | `POST /v1/fields` | Create a custom contact field |
@@ -127,7 +127,7 @@ a `confirmCommand` otherwise, `--yes` to proceed).
 | `brew-cli insights get` | read | `GET /v1/insights/{insightId}` | Fetch one Brew Insights finding in full: rationale, frozen metrics, evidence, method |
 | `brew-cli brand get` | read | `GET /v1/brand` | Fetch the key's brand + extraction readiness (`ready` flag) |
 | `brew-cli brand update` | write | `PATCH /v1/brand` | Update brand identity and/or design-system markdown (PATCH) |
-| `brew-cli brand get-images` | read | `GET /v1/brand/images` | Browse or semantically search the brand's assets (logos, brand images, images made with Brew) |
+| `brew-cli brand get-images` | read ($) | `GET /v1/brand/images` | Browse or semantically search the brand's assets (logos, brand images, images made with Brew) |
 | `brew-cli brand delete-image` | destructive | `DELETE /v1/brand/images/{assetId}` | Remove one image from the brand library by assetId (free, idempotent, not logos); its file stays hosted at its URL |
 | `brew-cli brands list` | read | `GET /v1/brands` | List every brand in the organization |
 | `brew-cli brands get` | read | `GET /v1/brands/{brandId}` | One brand's lifecycle state (the extraction polling endpoint) |
@@ -287,7 +287,7 @@ Search contacts with structured filters (the contacts read)
 - `--sort <field>` — Sort field
 - `--order <order>` — Sort order: asc | desc
 - `--include <tokens>` — Comma-separated expansions: openProfile (each row's smart-send open-time profile; a page then holds at most 10 rows; needs the emails scope too)
-- `--limit <n>` — Page size, 1-100 (default 100)
+- `--limit <n>` — Page size, 1-100 (default 50)
 - `--cursor <cursor>` — Opaque pagination cursor from a previous page
 - `--all` — Follow the cursor and return every page as one result
 - `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
@@ -359,6 +359,7 @@ Create or update one contact by email
 
 - Route: `POST /v1/contacts`
 - Class: write
+- Can consume Brew credits
 - SDK: `brew.contacts.upsert(...)`
 - `--email <email>` — Email address (the identity)
 - `--first-name <name>` — First name
@@ -379,6 +380,7 @@ Create or update up to 1000 contacts per call, with no Import History entry (for
 
 - Route: `POST /v1/contacts`
 - Class: write
+- Can consume Brew credits
 - SDK: `brew.contacts.upsertMany(...)`
 - `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
 - `--idempotency-key <key>` — Idempotency-Key for safe retries (auto-generated otherwise)
@@ -444,7 +446,7 @@ Batch-validate email deliverability (no contacts created)
 
 - Route: `POST /v1/contacts/validate`
 - Class: write
-- Consumes Brew credits
+- Can consume Brew credits
 - SDK: `brew.contacts.validate(...)`
 - `--emails <emails...>` — Email address(es) to validate, repeatable
 - `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
@@ -461,6 +463,7 @@ Bulk-import up to 1000 contacts from a JSON file or stdin as one Import History 
 
 - Route: `POST /v1/contacts/import`
 - Class: write
+- Can consume Brew credits
 - SDK: `brew.contacts.import(...)`
 - `--file <path>` — JSON file of contacts (an array, or { "contacts": [...] }), or - for stdin
 - `--file-name <name>` — Name the batch in Brew's Import History (default: the --file name)
@@ -483,6 +486,7 @@ Bulk-import contacts from a CSV file or stdin as one Import History batch (free;
 
 - Route: `POST /v1/contacts/import-csv`
 - Class: write
+- Can consume Brew credits
 - SDK: `brew.contacts.importCsv(...)`
 - `--file <path>` — CSV file to import, or - for stdin (or csv in --input)
 - `--file-name <name>` — Name the batch in Brew's Import History (default: the --file name)
@@ -718,7 +722,7 @@ Generate a new on-brand email design from a prompt
 
 - Route: `POST /v1/emails`
 - Class: write
-- Consumes Brew credits
+- Can consume Brew credits
 - SDK: `brew.emails.generate(...)`
 - `--prompt <text>` — What the email should be
 - `--reference-email-id <emailId>` — Existing design or template to base the layout on
@@ -786,7 +790,7 @@ AI-edit an email design, and/or set its subject line, title, language or group (
 
 - Route: `PATCH /v1/emails/{emailId}`
 - Class: write
-- Consumes Brew credits
+- Can consume Brew credits
 - SDK: `brew.emails.edit(...)`
 - Argument `emailId` — Design id to edit
 - `--prompt <text>` — The edit instruction
@@ -883,7 +887,7 @@ Audit HTML, JSX, or a saved email for production readiness (5 credits when compl
 
 - Route: `POST /v1/emails/audit`
 - Class: write
-- Consumes Brew credits
+- Can consume Brew credits
 - SDK: `brew.emails.auditEmail(...)`
 - `--file <path>` — Email HTML file to audit, or - for stdin
 - `--jsx-file <path>` — React Email JSX file to audit, or - for stdin
@@ -925,7 +929,7 @@ Start a rendering job across real email clients (10 credits); poll it with `emai
 
 - Route: `POST /v1/emails/{emailId}/client-previews`
 - Class: write
-- Consumes Brew credits
+- Can consume Brew credits
 - SDK: `brew.emails.previewClients(...)`
 - Argument `emailId` — Design id to preview
 - `--clients <ids...>` — Client id(s) to render, repeatable (e.g. applemail16 iphone16_18); default: a popular spread
@@ -958,7 +962,7 @@ Seed-test where the design lands (inbox vs spam) via a real small send (10 credi
 
 - Route: `POST /v1/emails/{emailId}/inbox-placement-tests`
 - Class: write
-- Consumes Brew credits
+- Can consume Brew credits
 - SDK: `brew.emails.inboxPlacementTests.create(...)`
 - Argument `emailId` — Design id to test
 - `--domain <domainId>` — Verified sending domain id the seed send goes out on
@@ -1220,15 +1224,16 @@ Create a frozen audience snapshot from analytics events (async build)
 - SDK: `brew.audiences.fromEvents(...)`
 - `--name <name>` — Audience name
 - `--event-types <types...>` — Event type(s), repeatable: sent, delivered, delivery_delayed, opened, clicked, bounced, complained, failed, skipped, unsubscribed
-- `--since <datetime>` — Cohort window start (ISO-8601, max 90 days back)
+- `--since <datetime>` — Cohort window start (ISO-8601, max 90 days back; optional with --send-id)
 - `--until <datetime>` — Cohort window end (ISO-8601, default now)
-- `--send-id <sendId>` — Scope to one campaign send
+- `--send-id <sendId>` — Scope to one campaign send; derives the window when --since is omitted
 - `--email-id <emailId>` — Scope to one email design
 - `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
 - `--idempotency-key <key>` — Idempotency-Key for safe retries (auto-generated otherwise)
 
 ```bash
 brew-cli audiences from-events --name "Opened in July" --event-types opened --since 2026-07-01T00:00:00Z --until 2026-08-01T00:00:00Z
+brew-cli audiences from-events --name "Send openers" --event-types opened --send-id snd_123
 brew-cli audiences from-events --event-types opened clicked --since 2026-07-01T00:00:00Z --input '{"cohort":{"recipient":["@acme.com"]}}'
 ```
 
@@ -1478,12 +1483,13 @@ Dry-run a payload against a trigger's contract (the fire path's validator) — n
 - Class: read
 - SDK: `brew.automations.triggers.validatePayload(...)`
 - Argument `triggerEventId` — Trigger id (tri_…)
-- `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
+- `--input <json>` — JSON payload or {payload, enforcement?} request (or - for stdin); nest reserved-key data in payload
 - `--enforcement <mode>` — Preview a mode other than the stored one: prune | strict
 
 ```bash
 brew-cli automations triggers contract validate tri_signup --input '{"payload":{"email":"jane@example.com"}}'
 brew-cli automations triggers contract validate tri_signup --input '{"payload":{"email":"jane@example.com"},"enforcement":"strict"}'
+brew-cli automations triggers contract validate tri_signup --input '{"payload":{"payload":{"email":"jane@example.com"}}}'
 ```
 
 ### brew-cli contracts infer
@@ -1493,10 +1499,12 @@ Draft a payload contract from a real example payload — nothing is saved; PUT t
 - Route: `POST /v1/payload-contracts/infer`
 - Class: read
 - SDK: `brew.payloadContracts.infer(...)`
-- `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
+- `--input <json>` — JSON example or {example, subjectKind?} request (or - for stdin); nest reserved-key data in example
 
 ```bash
+brew-cli contracts infer --input '{"example":{"email":"jane@example.com"},"subjectKind":"trigger"}'
 brew-cli contracts infer --input '{"email":"jane@example.com","order":{"total":9.5}}'
+brew-cli contracts infer --input '{"example":{"example":{"label":"Demo"}}}'
 ```
 
 ### brew-cli automations triggers create
@@ -1810,7 +1818,7 @@ Windowed per-automation performance + totals
 
 ```bash
 brew-cli analytics automations
-brew-cli analytics automations --since 2026-07-01 --until 2026-08-01
+brew-cli analytics automations --since 2026-07-01T00:00:00Z --until 2026-08-01T00:00:00Z
 ```
 
 ### brew-cli analytics events
@@ -1832,7 +1840,7 @@ Unified event explorer (email, automation, trigger, inbound)
 - `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
 
 ```bash
-brew-cli analytics events --since 2026-08-01 --event-type clicked
+brew-cli analytics events --since 2026-08-01T00:00:00Z --event-type clicked
 brew-cli analytics events --recipient jane@example.com --all --json
 ```
 
@@ -1987,6 +1995,7 @@ Browse or semantically search the brand's assets (logos, brand images, images ma
 
 - Route: `GET /v1/brand/images`
 - Class: read
+- Can consume Brew credits
 - SDK: `brew.brand.getImages(...)`
 - `--query <text>` — Semantic search over what the images show (1 credit per new search; logos are not searchable)
 - `--kind <kind>` — logo, brand (from the site or uploaded) or generated
@@ -2295,7 +2304,7 @@ A domain's unsubscribe list as CSV (truncated when capped)
 - `--scope <scope>` — any (default), domain or all
 
 ```bash
-brew-cli domains unsubscribes export dom_123 > optouts.csv
+brew-cli domains unsubscribes export dom_123 --json | jq -j '.csv' > optouts.csv
 brew-cli domains unsubscribes export dom_123 --scope all --json
 ```
 
@@ -2305,7 +2314,7 @@ Generate or edit an image from a prompt
 
 - Route: `POST /v1/content/generate-image`
 - Class: write
-- Consumes Brew credits
+- Can consume Brew credits
 - SDK: `brew.content.generateImage(...)`
 - `--prompt <text>` — What to generate
 - `--mode <mode>` — text-to-image | image-editing
@@ -2326,7 +2335,7 @@ Create an animated GIF from a prompt, image, or video
 
 - Route: `POST /v1/content/gif`
 - Class: write
-- Consumes Brew credits
+- Can consume Brew credits
 - SDK: `brew.content.gif(...)`
 - `--from <source>` — prompt | image | video
 - `--prompt <text>` — What to animate
@@ -2351,7 +2360,7 @@ Optimize or resize a hosted image
 
 - Route: `POST /v1/content/transform`
 - Class: write
-- Consumes Brew credits
+- Can consume Brew credits
 - SDK: `brew.content.transform(...)`
 - `--url <url>` — Image URL to transform
 - `--operation <op>` — optimize | resize (default: optimize)
@@ -2374,7 +2383,7 @@ Render HTML to a hosted PNG
 
 - Route: `POST /v1/content/html-to-png`
 - Class: write
-- Consumes Brew credits
+- Can consume Brew credits
 - SDK: `brew.content.htmlToPng(...)`
 - `--file <path>` — HTML file to render, or - for stdin
 - `--width <n>` — Viewport width in pixels
@@ -2450,7 +2459,7 @@ List public templates (each row carries the rendered html)
 - `--semantic <text>` — Semantic search over the gallery
 - `--count` — Return matching template counts instead of rows
 - `--group-by <field>` — Group counts by brand, category or group (requires --count)
-- `--limit <n>` — Page size, 1-100 (default 100)
+- `--limit <n>` — Page size, 1-100 (default 50)
 - `--cursor <cursor>` — Opaque pagination cursor from a previous page
 - `--all` — Follow the cursor and return every page as one result
 - `--input <json>` — Full JSON request body, or - to read stdin (flags override it)

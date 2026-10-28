@@ -66,7 +66,7 @@ export type CommandSpec = {
     readonly path: string
   }
   readonly commandClass: CommandClass
-  /** True when the operation consumes Brew credits. */
+  /** True when the operation can consume Brew credits, including optional modes. */
   readonly isCredited?: boolean
   /**
    * A long-running command's whole-command deadline when `--timeout` is not

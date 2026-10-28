@@ -98,16 +98,68 @@ describe('analytics automations', () => {
       'analytics',
       'automations',
       '--since',
-      '2026-07-01',
+      '2026-07-01T00:00:00Z',
       '--until',
-      '2026-08-01',
+      '2026-08-01T00:00:00Z',
       '--automation',
       'am_1',
     ])
     expect(result.code).toBe(0)
-    expect(query?.get('from')).toBe('2026-07-01')
-    expect(query?.get('to')).toBe('2026-08-01')
+    expect(query?.get('from')).toBe('2026-07-01T00:00:00Z')
+    expect(query?.get('to')).toBe('2026-08-01T00:00:00Z')
     expect(query?.get('automationId')).toBe('am_1')
+  })
+
+  it.each([true, false])(
+    'reports partial metrics with hasRows=%s, even when quiet',
+    async (hasRows) => {
+      const body = {
+        data: hasRows
+          ? [{ automationId: 'am_1', name: 'Welcome', runs: 1, completed: 1 }]
+          : [],
+        totals: { runs: 1 },
+        range: RANGE,
+        truncated: true,
+      }
+      server.use(
+        http.get(`${API}/v1/analytics/automations`, () =>
+          HttpResponse.json(body)
+        )
+      )
+      const human = await cli(['analytics', 'automations', '--quiet'], {
+        ttyOut: true,
+      })
+      expect(human.code).toBe(0)
+      expect(human.stdout).toContain(
+        'Partial results: scan budgets clipped the requested window.'
+      )
+      expect(human.stdout).toContain(
+        hasRows ? 'Welcome' : 'No automation analytics rows.'
+      )
+      expect(human.stderr).toBe('')
+
+      const json = await cli(['analytics', 'automations', '--json'], {
+        ttyOut: true,
+      })
+      expect(json.code).toBe(0)
+      expect(json.json).toEqual(body)
+    }
+  )
+
+  it('does not mark complete metrics as partial', async () => {
+    server.use(
+      http.get(`${API}/v1/analytics/automations`, () =>
+        HttpResponse.json({
+          data: [],
+          totals: { runs: 0 },
+          range: RANGE,
+          truncated: false,
+        })
+      )
+    )
+    const result = await cli(['analytics', 'automations'], { ttyOut: true })
+    expect(result.code).toBe(0)
+    expect(result.stdout).toBe('No automation analytics rows.\n')
   })
 })
 
@@ -128,9 +180,9 @@ describe('analytics events', () => {
       'analytics',
       'events',
       '--since',
-      '2026-08-01',
+      '2026-08-01T00:00:00Z',
       '--until',
-      '2026-08-10',
+      '2026-08-10T00:00:00Z',
       '--recipient',
       'jane@example.com',
       '--event-type',
@@ -139,8 +191,8 @@ describe('analytics events', () => {
       'snd_1',
     ])
     expect(result.code).toBe(0)
-    expect(query?.get('from')).toBe('2026-08-01')
-    expect(query?.get('to')).toBe('2026-08-10')
+    expect(query?.get('from')).toBe('2026-08-01T00:00:00Z')
+    expect(query?.get('to')).toBe('2026-08-10T00:00:00Z')
     expect(query?.get('recipient')).toBe('jane@example.com')
     expect(query?.get('eventType')).toBe('clicked')
     expect(query?.get('sendId')).toBe('snd_1')
@@ -573,6 +625,7 @@ describe('templates list', () => {
     expect(query?.get('brand')).toBe('Brew')
     expect(query?.get('category')).toBe('welcome')
     expect(query?.get('semantic')).toBe('minimal launch')
+    expect(query?.has('limit')).toBe(false)
     const data = result.json as { data: Array<{ emailId: string }> }
     expect(data.data[0]?.emailId).toBe('em_1')
   })

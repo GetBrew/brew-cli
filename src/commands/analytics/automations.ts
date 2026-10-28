@@ -1,4 +1,7 @@
-import type { AutomationAnalyticsInput } from '@brew.new/sdk'
+import type {
+  AutomationAnalyticsInput,
+  AutomationAnalyticsResponse,
+} from '@brew.new/sdk'
 import { defineCommand } from '../../lib/define-command'
 import {
   asSdkInput,
@@ -29,7 +32,7 @@ export const analyticsAutomationsCommand = defineCommand({
   ],
   examples: [
     'brew-cli analytics automations',
-    'brew-cli analytics automations --since 2026-07-01 --until 2026-08-01',
+    'brew-cli analytics automations --since 2026-07-01T00:00:00Z --until 2026-08-01T00:00:00Z',
   ],
   run: async ({ ctx, flags }) => {
     const base = await readJsonFlag(ctx, flags.input, '--input')
@@ -42,9 +45,16 @@ export const analyticsAutomationsCommand = defineCommand({
     const result = await ctx
       .client()
       .analytics.automations(asSdkInput<AutomationAnalyticsInput>(input))
-    return { data: result, human: renderAutomationRows(result.data) }
+    return { data: result, human: renderAutomationAnalytics(result) }
   },
 })
+
+function renderAutomationAnalytics(body: AutomationAnalyticsResponse): string {
+  const rows = renderAutomationRows(body.data)
+  return body.truncated
+    ? `${rows}\nPartial results: scan budgets clipped the requested window.`
+    : rows
+}
 
 function renderAutomationRows(rows: ReadonlyArray<unknown>): string {
   if (rows.length === 0) {

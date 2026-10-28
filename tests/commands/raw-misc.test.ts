@@ -362,7 +362,7 @@ describe('automations run (confirmation protocol)', () => {
     const envelope = result.json as Record<string, unknown>
     expect(envelope.confirmationRequired).toBe(true)
     expect(envelope.confirmCommand).toBe(
-      'brew-cli automations run auto_1 --yes'
+      'brew-cli automations run --yes -- auto_1'
     )
   })
 })

@@ -5,6 +5,7 @@ import { defineCommand } from '../../../lib/define-command'
 import {
   asSdkInput,
   flagInt,
+  flagNonEmptyString,
   flagString,
   INPUT_FLAG,
   mergeInput,
@@ -57,7 +58,8 @@ export const automationsAudienceRunsListCommand = defineCommand({
     const audienceRuns = ctx.client().automations.audienceRuns
     const base = await readJsonFlag(ctx, flags.input, '--input')
     const audienceRunId =
-      flagString(flags.audienceRunId) ?? inputField(base, 'audienceRunId')
+      flagNonEmptyString(flags.audienceRunId, '--audience-run-id') ??
+      inputField(base, 'audienceRunId')
     if (audienceRunId !== undefined) {
       const row = await audienceRuns.get(audienceRunId)
       return { data: singleRowPage(row), human: renderAudienceRuns([row]) }

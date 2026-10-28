@@ -50,7 +50,8 @@
     "docs:commands:check": "bun run scripts/generate-command-docs.ts --check",
     "generate:types": "node scripts/generate-types.mjs",
     "prepublishOnly": "bun run clean && bun run tsc && bun run lint && bun run test && bun run build",
-    "smoke:signals": "bun run scripts/signal-smoke.ts"
+    "smoke:signals": "bun run scripts/signal-smoke.ts",
+    "smoke:regressions": "bun run scripts/regression-smoke.ts"
   },
   "dependencies": {
     "@brew.new/sdk": "^13.3.0",

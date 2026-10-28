@@ -22,7 +22,7 @@ export const domainsUnsubscribesExportCommand = defineCommand({
     },
   ],
   examples: [
-    'brew-cli domains unsubscribes export dom_123 > optouts.csv',
+    "brew-cli domains unsubscribes export dom_123 --json | jq -j '.csv' > optouts.csv",
     'brew-cli domains unsubscribes export dom_123 --scope all --json',
   ],
   run: async ({ ctx, args, flags }) => {

@@ -20,10 +20,6 @@ const AUDIT_SOURCE_FIELDS = ['emailHtml', 'emailJsx', 'emailId'] as const
 
 export { AUDIT_EMAIL_DEFAULT_TIMEOUT_MS }
 
-function optionalText(value: unknown): string | undefined {
-  return typeof value === 'string' ? value : undefined
-}
-
 export const emailsAuditCommand = defineCommand({
   path: ['emails', 'audit'],
   summary:
@@ -107,8 +103,8 @@ export const emailsAuditCommand = defineCommand({
       emailJsx,
       emailId: flagString(flags.emailId),
       emailVersionId: flagString(flags.emailVersionId),
-      subject: optionalText(flags.subject),
-      previewText: optionalText(flags.previewText),
+      subject: flagString(flags.subject),
+      previewText: flagString(flags.previewText),
       sendingPurpose,
     })
     const sources = AUDIT_SOURCE_FIELDS.filter(

@@ -105,7 +105,7 @@ describe('brand delete-image', () => {
     expect(envelope.summary).toContain(ASSET_ID)
     expect(envelope.summary).toContain('stays hosted')
     expect(envelope.confirmCommand).toBe(
-      `brew-cli brand delete-image ${ASSET_ID} --yes`
+      `brew-cli brand delete-image --yes -- ${ASSET_ID}`
     )
   })
 

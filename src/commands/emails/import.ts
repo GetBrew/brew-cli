@@ -62,7 +62,7 @@ export const emailsImportCommand = defineCommand({
         '--file is required (a path, or - for stdin), or content via --input.'
       )
     }
-    if (typeof input.format !== 'string') {
+    if (typeof input.format !== 'string' || input.format === '') {
       throw new CliUsageError('--format is required: html | mjml | jsx | eml.')
     }
     const result = await ctx

@@ -69,7 +69,7 @@ describe('Ctrl-C / SIGTERM mid-request', () => {
     expect(sentKey).toEqual(expect.any(String))
     expect(error.idempotencyKey).toBe(sentKey)
     expect(error.retryCommand).toBe(
-      `brew-cli emails generate --prompt Welcome --idempotency-key ${String(sentKey)}`
+      `brew-cli emails generate --prompt=Welcome --idempotency-key=${String(sentKey)}`
     )
     expect(String(error.retryCommand)).not.toContain(KEY)
     expect(String(error.suggestion)).toContain('may still complete')
@@ -209,7 +209,7 @@ describe('Ctrl-C / SIGTERM mid-request', () => {
     expect(String(error.suggestion)).toContain(
       'pipe the same input to it again'
     )
-    expect(String(error.retryCommand)).toContain('--input -')
+    expect(String(error.retryCommand)).toContain('--input=-')
   })
 
   it('prints the re-run command for a human', async () => {
@@ -226,7 +226,7 @@ describe('Ctrl-C / SIGTERM mid-request', () => {
       'brew-cli: Interrupted (SIGINT) while waiting for POST /v1/emails.'
     )
     expect(result.stderr).toContain(
-      'Re-run: brew-cli emails generate --prompt Hi --idempotency-key k-7'
+      'Re-run: brew-cli emails generate --prompt=Hi --idempotency-key=k-7'
     )
   })
 })

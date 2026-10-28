@@ -18,6 +18,36 @@ function env(): Record<string, string | undefined> {
 const SEARCH_URL = 'https://brew.new/api/v1/contacts/search'
 
 describe('contacts search', () => {
+  it.each([undefined, 7])(
+    'leaves the request limit at %s when its flag is omitted',
+    async (limit) => {
+      let body: unknown
+      server.use(
+        http.post(SEARCH_URL, async ({ request }) => {
+          body = await request.json()
+          return HttpResponse.json({
+            data: [],
+            pagination: { limit: limit ?? 50, cursor: null, hasMore: false },
+          })
+        })
+      )
+      const result = await runCli(
+        [
+          'contacts',
+          'search',
+          '--input',
+          JSON.stringify(limit === undefined ? {} : { limit }),
+        ],
+        { env: env() }
+      )
+      expect(result.code).toBe(0)
+      expect(body).toEqual({
+        count: false,
+        ...(limit === undefined ? {} : { limit }),
+      })
+    }
+  )
+
   it('builds the filter body from --filter flags', async () => {
     let body: unknown
     server.use(
@@ -210,7 +240,7 @@ describe('contacts delete (confirmation protocol)', () => {
     expect(envelope.confirmationRequired).toBe(true)
     expect(envelope.summary).toContain('jane@example.com')
     expect(envelope.confirmCommand).toBe(
-      'brew-cli contacts delete jane@example.com --yes'
+      'brew-cli contacts delete --yes -- jane@example.com'
     )
   })
 

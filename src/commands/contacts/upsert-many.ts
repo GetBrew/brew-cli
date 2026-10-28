@@ -16,6 +16,7 @@ export const contactsUpsertManyCommand = defineCommand({
   sdkMethod: 'contacts.upsertMany',
   route: { method: 'POST', path: '/v1/contacts' },
   commandClass: 'write',
+  isCredited: true,
   flags: [INPUT_FLAG, IDEMPOTENCY_FLAG],
   examples: [
     `brew-cli contacts upsert-many --input '{"contacts":[{"email":"a@x.com"}]}'`,

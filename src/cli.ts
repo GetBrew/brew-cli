@@ -16,6 +16,7 @@ import {
 import { IDEMPOTENCY_FLAG } from './lib/input'
 import { matchesTemplate } from './lib/long-running'
 import { printData } from './lib/output'
+import { type RerunInvocation, readsStdin } from './lib/rerun'
 import type { CliContext, CliIo, CommandTraits } from './lib/types'
 import { ALL_COMMANDS } from './registry'
 import { CLI_NAME, CLI_VERSION } from './version'
@@ -76,6 +77,8 @@ export async function run(
   commands: readonly CommandSpec[] = ALL_COMMANDS
 ): Promise<number> {
   let activeContext: CliContext | undefined
+  let activeSpec: CommandSpec | undefined
+  let activeInvocation: RerunInvocation | undefined
   let commandExitCode: number | undefined
   // Commander's own stderr (usage errors, error-mode help) is buffered so
   // JSON mode can replace it with a structured envelope instead of mixing
@@ -84,8 +87,10 @@ export async function run(
   const program = buildProgram(
     io,
     argv,
-    (ctx) => {
+    (ctx, spec, invocation) => {
       activeContext = ctx
+      activeSpec = spec
+      activeInvocation = invocation
     },
     commands,
     (text) => {
@@ -113,7 +118,11 @@ export async function run(
     flushCommanderStderr()
     const ctx = activeContext ?? makeFallbackContext(io, argv)
     const reported = reportedError(ctx, error)
-    printError(ctx, reported, errorContextFor(ctx, commands))
+    printError(
+      ctx,
+      reported,
+      errorContextFor(ctx, commands, activeSpec, activeInvocation)
+    )
     return toExitCode(reported)
   }
 }
@@ -137,7 +146,9 @@ function reportedError(ctx: CliContext, error: unknown): unknown {
 /** What the error envelope needs to know about the command that failed. */
 function errorContextFor(
   ctx: CliContext,
-  commands: readonly CommandSpec[]
+  commands: readonly CommandSpec[],
+  activeSpec: CommandSpec | undefined,
+  invocation: RerunInvocation | undefined
 ): ErrorContext {
   const request = ctx.transport.lastRequest()
   const drain = ctx.transport.drain()
@@ -160,8 +171,13 @@ function errorContextFor(
       bound === undefined
         ? ctx.traits?.replays === true
         : (bound.flags ?? []).includes(IDEMPOTENCY_FLAG),
-    readsStdin: readsStdin(ctx.rawArgv),
-    retryCommand: (key) => buildRetryCommand(ctx.rawArgv, key),
+    readsStdin: invocation !== undefined && readsStdin(invocation),
+    ...(activeSpec === undefined || invocation === undefined
+      ? {}
+      : {
+          retryCommand: (key: string) =>
+            buildRetryCommand(invocation, key, activeSpec),
+        }),
   }
 }
 
@@ -175,16 +191,6 @@ function commandFor(
       spec.route !== undefined &&
       spec.route.method === request.method &&
       matchesTemplate(spec.route.path, apiPath)
-  )
-}
-
-/** Split or equals-form stdin flags require the same input on a re-run. */
-function readsStdin(rawArgv: readonly string[]): boolean {
-  return rawArgv.some(
-    (token, index) =>
-      ['--input=-', '--file=-', '--data=-'].includes(token) ||
-      (token === '-' &&
-        ['--input', '--file', '--data'].includes(rawArgv[index - 1] ?? ''))
   )
 }
 
@@ -237,7 +243,11 @@ function handleCommanderError(
 export function buildProgram(
   io: CliIo,
   rawArgv: readonly string[],
-  onContext?: (ctx: CliContext) => void,
+  onContext?: (
+    ctx: CliContext,
+    spec: CommandSpec,
+    invocation: RerunInvocation
+  ) => void,
   commands: readonly CommandSpec[] = ALL_COMMANDS,
   errSink?: (text: string) => void,
   onExitCode?: (code: number) => void
@@ -275,7 +285,11 @@ function registerCommand(
   spec: CommandSpec,
   io: CliIo,
   rawArgv: readonly string[],
-  onContext?: (ctx: CliContext) => void,
+  onContext?: (
+    ctx: CliContext,
+    spec: CommandSpec,
+    invocation: RerunInvocation
+  ) => void,
   onExitCode?: (code: number) => void,
   metadata: readonly CommandMetadata[] = []
 ): void {
@@ -333,7 +347,7 @@ function registerCommand(
       traits: traitsOf(spec),
       commands: metadata,
     })
-    onContext?.(ctx)
+    onContext?.(ctx, spec, { args: positional, flags })
     ctx.startDeadline()
     try {
       const baseInvocation = { ctx, args: positional, flags }
@@ -386,7 +400,7 @@ function buildCommandHelpFooter(spec: CommandSpec): string {
     lines.push('Destructive: requires --yes in non-interactive sessions.')
   }
   if (spec.isCredited === true) {
-    lines.push('Credits: this operation consumes Brew credits.')
+    lines.push('Credits: this operation can consume Brew credits.')
   }
   lines.push('', 'Examples:')
   for (const example of spec.examples) {

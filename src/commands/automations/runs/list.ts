@@ -8,6 +8,7 @@ import { defineCommand } from '../../../lib/define-command'
 import {
   asSdkInput,
   flagInt,
+  flagNonEmptyString,
   flagString,
   INPUT_FLAG,
   mergeInput,
@@ -74,7 +75,9 @@ export const automationsRunsListCommand = defineCommand({
   run: async ({ ctx, flags }) => {
     const runs = ctx.client().automations.runs
     const base = await readJsonFlag(ctx, flags.input, '--input')
-    const runId = flagString(flags.run) ?? inputField(base, 'automationRunId')
+    const runId =
+      flagNonEmptyString(flags.run, '--run') ??
+      inputField(base, 'automationRunId')
     const include = flagString(flags.include) ?? inputField(base, 'include')
     if (runId !== undefined) {
       const row = await runs.get(

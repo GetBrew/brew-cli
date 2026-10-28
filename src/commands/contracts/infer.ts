@@ -4,6 +4,7 @@ import { CliUsageError } from '../../lib/errors'
 import {
   asSdkInput,
   INPUT_FLAG,
+  isInputEnvelope,
   mergeInput,
   readJsonFlag,
 } from '../../lib/input'
@@ -15,20 +16,30 @@ export const contractsInferCommand = defineCommand({
   sdkMethod: 'payloadContracts.infer',
   route: { method: 'POST', path: '/v1/payload-contracts/infer' },
   commandClass: 'read',
-  flags: [INPUT_FLAG],
-  examples: [
-    `brew-cli contracts infer --input '{"email":"jane@example.com","order":{"total":9.5}}'`,
+  flags: [
+    {
+      ...INPUT_FLAG,
+      summary:
+        'JSON example or {example, subjectKind?} request (or - for stdin); nest reserved-key data in example',
+    },
   ],
-  // Accepts either the bare example object or `{ example: {...} }`; only the
-  // envelope carries `subjectKind` (a bare example may have its own field of
-  // that name). Un-inferable spots (nulls, empty arrays) come back under
-  // `issues`.
+  examples: [
+    `brew-cli contracts infer --input '{"example":{"email":"jane@example.com"},"subjectKind":"trigger"}'`,
+    `brew-cli contracts infer --input '{"email":"jane@example.com","order":{"total":9.5}}'`,
+    `brew-cli contracts infer --input '{"example":{"example":{"label":"Demo"}}}'`,
+  ],
+  // Only canonical request keys identify an envelope; siblings stay in raw
+  // data. Data containing only reserved keys needs an explicit outer example.
   run: async ({ ctx, flags }) => {
     const input = mergeInput(
       await readJsonFlag(ctx, flags.input, '--input'),
       {}
     )
-    const isEnvelope = input.example !== undefined
+    const isEnvelope = isInputEnvelope<InferPayloadContractInput>(
+      input,
+      'example',
+      { example: true, subjectKind: true }
+    )
     const example = isEnvelope ? input.example : input
     if (
       typeof example !== 'object' ||

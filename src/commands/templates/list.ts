@@ -15,7 +15,7 @@ import {
   ALL_FLAG,
   CURSOR_FLAG,
   collectAll,
-  LIMIT_FLAG,
+  limitFlag,
 } from '../../lib/paginate'
 
 type TemplatesCountResponse = Extract<
@@ -55,7 +55,7 @@ export const templatesListCommand = defineCommand({
       flag: '--group-by <field>',
       summary: 'Group counts by brand, category or group (requires --count)',
     },
-    LIMIT_FLAG,
+    limitFlag(50),
     CURSOR_FLAG,
     ALL_FLAG,
     INPUT_FLAG,

@@ -182,7 +182,7 @@ describe('canvas sessions', () => {
     expect(result.json).toMatchObject({
       confirmationRequired: true,
       command: 'brew-cli canvas sessions revoke',
-      confirmCommand: 'brew-cli canvas sessions revoke session_test --yes',
+      confirmCommand: 'brew-cli canvas sessions revoke --yes -- session_test',
     })
   })
 

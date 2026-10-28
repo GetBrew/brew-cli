@@ -51,7 +51,7 @@ function generate(): string {
     }
     lines.push(`- Class: ${spec.commandClass}`)
     if (spec.isCredited === true) {
-      lines.push('- Consumes Brew credits')
+      lines.push('- Can consume Brew credits')
     }
     if (spec.sdkMethod !== null) {
       lines.push(`- SDK: \`brew.${spec.sdkMethod}(...)\``)

@@ -4,6 +4,23 @@
 
 ### Fixed
 
+- Explicit empty string flags now override `--input`, including clearable
+  descriptions and sender names. Required values remain validated locally;
+  invalid empty email settings are forwarded for API validation.
+- Confirmation and retry commands serialize the effective parsed invocation,
+  preserving dash-prefixed IDs, option-like values, variadic arguments and
+  idempotency keys while redacting credentials.
+- Contract infer and validate recognize only canonical request wrappers;
+  application fields named `example` or `payload` no longer discard siblings.
+  Help shows explicit nesting for payloads shaped like wrappers.
+- `doctor` exits 1 when a configured key cannot be checked, retaining
+  `authValid: null` and explaining the failure in `authCheckError`.
+- `audiences from-events` accepts `--send-id` without `--since` and leaves
+  the send-derived window to the API.
+- Correct page-size defaults, analytics datetime examples, CSV extraction,
+  partial analytics notices and conditional credit metadata in help and
+  `docs --agent`. CI and releases now exercise the built Node CLI against a
+  disposable local API, including shell reruns and terminal output.
 - `emails list` in a terminal now shows the folder name in the GROUP column,
   and "Ungrouped" for designs outside a folder. The column read a top-level
   `groupName` the API does not send, so it was always blank. `--json` output

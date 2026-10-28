@@ -39,6 +39,7 @@ export const brandGetImagesCommand = defineCommand({
   sdkMethod: 'brand.getImages',
   route: { method: 'GET', path: '/v1/brand/images' },
   commandClass: 'read',
+  isCredited: true,
   flags: [
     {
       flag: '--query <text>',

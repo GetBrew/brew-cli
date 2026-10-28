@@ -117,8 +117,33 @@ export function mergeInput(
   return merged
 }
 
+/** Preserve supplied strings, including empty values that clear API fields. */
 export function flagString(value: unknown): string | undefined {
-  return typeof value === 'string' && value !== '' ? value : undefined
+  return typeof value === 'string' ? value : undefined
+}
+
+/** Resource selectors must not turn an empty id into a collection read. */
+export function flagNonEmptyString(
+  value: unknown,
+  flagName: string
+): string | undefined {
+  const parsed = flagString(value)
+  if (parsed === '') {
+    throw new CliUsageError(`${flagName} must not be empty.`)
+  }
+  return parsed
+}
+
+/** Exhaustive SDK request keys distinguish envelopes from shorthand data. */
+export function isInputEnvelope<T extends object>(
+  input: Readonly<Record<string, unknown>>,
+  requiredKey: keyof T & string,
+  allowedKeys: Readonly<Record<keyof T, true>>
+): boolean {
+  return (
+    Object.hasOwn(input, requiredKey) &&
+    Object.keys(input).every((key) => Object.hasOwn(allowedKeys, key))
+  )
 }
 
 export function flagInt(value: unknown, flagName: string): number | undefined {

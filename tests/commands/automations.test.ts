@@ -268,7 +268,7 @@ describe('automations delete (confirmation protocol)', () => {
     const envelope = result.json as Record<string, unknown>
     expect(envelope.confirmationRequired).toBe(true)
     expect(envelope.confirmCommand).toBe(
-      'brew-cli automations delete am_1 --yes'
+      'brew-cli automations delete --yes -- am_1'
     )
   })
 
@@ -790,17 +790,15 @@ describe('automations triggers contract validate', () => {
     expect(bodies).toEqual([{ payload: input, enforcement: 'prune' }])
   })
 
-  it('keeps the positional trigger ID authoritative', async () => {
-    const result = await cli([
-      ...argv,
-      JSON.stringify({
-        triggerEventId: 'tri_other',
-        payload,
-        enforcement: 'strict',
-      }),
-    ])
+  it('keeps an extra trigger ID inside raw payload data', async () => {
+    const input = {
+      triggerEventId: 'tri_other',
+      payload,
+      enforcement: 'strict',
+    }
+    const result = await cli([...argv, JSON.stringify(input)])
     expect(result.code).toBe(0)
-    expect(bodies).toEqual([{ payload, enforcement: 'strict' }])
+    expect(bodies).toEqual([{ payload: input }])
   })
 
   it.each([null, 42, 'passthrough'])(

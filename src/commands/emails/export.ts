@@ -48,7 +48,7 @@ export const emailsExportCommand = defineCommand({
   ],
   run: async ({ ctx, args, flags }) => {
     const provider = flagString(flags.provider)
-    if (provider === undefined) {
+    if (!provider) {
       throw new CliUsageError(
         '--provider is required: braze, brevo, hubspot, klaviyo, loops, mailchimp, mailjet, iterable, postmark, onesignal, mailgun, or sendgrid.'
       )
