@@ -1,5 +1,6 @@
 import { BrewApiError } from '@brew.new/sdk'
 import { Command, CommanderError } from 'commander'
+import { INPUT_KEYS } from './generated/input-keys'
 import { buildRetryCommand, enforceConfirmation } from './lib/confirm'
 import { makeContext, makeFallbackContext } from './lib/context'
 import type { CommandMetadata, CommandSpec } from './lib/define-command'
@@ -13,7 +14,6 @@ import {
   printError,
   toExitCode,
 } from './lib/errors'
-import { INPUT_KEYS } from './generated/input-keys'
 import { IDEMPOTENCY_FLAG, INPUT_FLAG } from './lib/input'
 import { assertKnownInputKeys } from './lib/input-keys'
 import { matchesTemplate } from './lib/long-running'
