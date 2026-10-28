@@ -56,6 +56,7 @@ const SOURCE: EventsPage['sources'][number] = {
 const DETAIL: components['schemas']['IntegrationEventDetailResponse'] = {
   ...EVENT,
   description: 'A person created a project.',
+  propertiesStatus: 'current',
   properties: [
     {
       key: 'project_name',
@@ -68,7 +69,8 @@ const DETAIL: components['schemas']['IntegrationEventDetailResponse'] = {
   ],
 }
 
-// Typed as the SDK row, which has no `brewEvent` or `skill`.
+// Typed as the SDK row (`IntegrationEventTriggerSaved`), which has no
+// `brewEvent` or `skill` and always says how current the properties are.
 const TRIGGER: EnsureIntegrationEventTriggerResponse = {
   triggerEventId: 'posthog:org_2abc:brand_9xyz:ev_3f1c9b2e7a4d8c06b5e1f2a3',
   title: 'created_project',
@@ -81,6 +83,7 @@ const TRIGGER: EnsureIntegrationEventTriggerResponse = {
   createdAt: '2026-10-26T12:00:00.000Z',
   updatedAt: '2026-10-26T12:00:00.000Z',
   created: true,
+  propertiesStatus: 'current',
 }
 
 function page(
@@ -263,6 +266,28 @@ describe('integrations events get', () => {
     expect(result.json).toEqual(DETAIL)
   })
 
+  it('prints propertiesStatus and retryAfterSeconds as sent when the provider read budget is spent', async () => {
+    const stored: components['schemas']['IntegrationEventDetailResponse'] = {
+      ...DETAIL,
+      properties: [],
+      propertiesStatus: 'rate_limited',
+      retryAfterSeconds: 120,
+    }
+    server.use(http.get(`${EVENTS}/:eventId`, () => HttpResponse.json(stored)))
+
+    // A spent budget is a 200 with what Brew stored, not an error.
+    const json = await cli(['integrations', 'events', 'get', EVENT_ID])
+    expect(json.code).toBe(0)
+    expect(json.json).toEqual(stored)
+
+    const tty = await cli(['integrations', 'events', 'get', EVENT_ID], {
+      ttyOut: true,
+    })
+    expect(tty.code).toBe(0)
+    expect(tty.stdout).toContain('"propertiesStatus": "rate_limited"')
+    expect(tty.stdout).toContain('"retryAfterSeconds": 120')
+  })
+
   it('exits 1 with INTEGRATION_EVENT_NOT_FOUND for an unknown or other-brand id', async () => {
     server.use(
       http.get(`${EVENTS}/:eventId`, () =>
@@ -342,6 +367,29 @@ describe('automations triggers ensure-integration-event', () => {
     expect(result.code).toBe(0)
     expect(key).toBe('ensure-created-project')
     expect((result.json as { created: boolean }).created).toBe(false)
+  })
+
+  it('prints the row with propertiesStatus when the event could not be described', async () => {
+    const saved: EnsureIntegrationEventTriggerResponse = {
+      ...TRIGGER,
+      payloadSchema: { type: 'object', fields: [] },
+      propertiesStatus: 'rate_limited',
+      retryAfterSeconds: 120,
+    }
+    server.use(
+      http.post(ENSURE, () => HttpResponse.json(saved, { status: 201 }))
+    )
+
+    const result = await cli([
+      'automations',
+      'triggers',
+      'ensure-integration-event',
+      '--event-id',
+      EVENT_ID,
+    ])
+
+    expect(result.code).toBe(0)
+    expect(result.json).toEqual(saved)
   })
 
   it('refuses a missing --event-id as a usage error before any request', async () => {

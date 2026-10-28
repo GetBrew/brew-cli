@@ -35,7 +35,7 @@ CLI depends on (`^13.3.0`).
 `automations triggers ensure-integration-event` call `integrations.events.list`,
 `integrations.events.get` and `automations.triggers.ensureIntegrationEvent`,
 which the published SDK 13.3.0 does not expose. This branch pins reviewed SDK
-source commit `bc5b7434848481d08e3f65a62a1af9bd110685da`
+source commit `474d91e134868580e90cce2ea92bc2a7c10ce74a`
 (GetBrew/typescript-sdk#88) for coordinated PR validation. It preserves SDK
 13.3.0's features and version while adding those methods.
 
