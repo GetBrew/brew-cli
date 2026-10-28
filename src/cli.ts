@@ -13,7 +13,9 @@ import {
   printError,
   toExitCode,
 } from './lib/errors'
-import { IDEMPOTENCY_FLAG } from './lib/input'
+import { INPUT_KEYS } from './generated/input-keys'
+import { IDEMPOTENCY_FLAG, INPUT_FLAG } from './lib/input'
+import { assertKnownInputKeys } from './lib/input-keys'
 import { matchesTemplate } from './lib/long-running'
 import { printData } from './lib/output'
 import type { CliContext, CliIo, CommandTraits } from './lib/types'
@@ -197,7 +199,47 @@ function traitsOf(spec: CommandSpec): CommandTraits {
       spec.sdkMethod !== null ||
       spec.derivedFrom !== undefined,
     defaultTimeoutMs: spec.defaultTimeoutMs,
+    inputKeys: inputKeysOf(spec),
   }
+}
+
+/**
+ * The top-level keys a command's `--input` object may carry: the path and
+ * query parameters and JSON body properties of its route, plus the keys it
+ * reads itself. Undefined (nothing checked) when the command takes no
+ * `--input`, declares no route, opts out, or its route's body is open.
+ */
+function inputKeysOf(spec: CommandSpec): ReadonlySet<string> | undefined {
+  if (
+    spec.inputKeys === 'unchecked' ||
+    spec.route === undefined ||
+    !(spec.flags ?? []).includes(INPUT_FLAG)
+  ) {
+    return
+  }
+  const routeKeys = INPUT_KEYS[`${spec.route.method} ${spec.route.path}`]
+  if (routeKeys === undefined) {
+    return
+  }
+  return new Set([...routeKeys, ...(spec.inputKeys?.extra ?? [])])
+}
+
+/**
+ * Inline `--input` is checked before any confirmation prompt, so a typo is
+ * not confirmed first and refused after. Stdin and malformed JSON are left
+ * to `readJsonFlag` in the command, which reads them once.
+ */
+function checkInlineInput(ctx: CliContext, value: unknown): void {
+  if (typeof value !== 'string' || value === '-') {
+    return
+  }
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(value)
+  } catch {
+    return
+  }
+  assertKnownInputKeys(ctx.traits, parsed)
 }
 
 function handleCommanderError(
@@ -336,6 +378,7 @@ function registerCommand(
     onContext?.(ctx)
     ctx.startDeadline()
     try {
+      checkInlineInput(ctx, flags.input)
       const baseInvocation = { ctx, args: positional, flags }
       const input = await spec.prepareInput?.(baseInvocation)
       ctx.signal.throwIfAborted()

@@ -8,6 +8,14 @@
   and "Ungrouped" for designs outside a folder. The column read a top-level
   `groupName` the API does not send, so it was always blank. `--json` output
   is unchanged.
+- `--input` refuses a top-level key the command would not send, with a usage
+  error (exit 2) that names the key, suggests a close match
+  (`firstname` → `firstName`) and lists the accepted keys. Such a key used to
+  be dropped without a word and the command exited 0. The accepted keys are
+  the route's parameters and body fields from the vendored spec. Shorthand
+  inputs whose keys are your own data (a bare trigger payload, flat contact
+  fields, an inferred example) and array bodies are not checked. Inline
+  `--input` is checked before the confirmation prompt.
 - `analytics events` refuses `groupBy` and `bucket` in `--input` with a usage
   error (exit 2) that points to `analytics event-counts`. It used to drop both
   keys, return event rows and exit 0, so a caller asking for counts got rows

@@ -25,6 +25,8 @@ export const automationsAudienceRunsListCommand = defineCommand({
   sdkMethod: 'automations.audienceRuns.list',
   route: { method: 'GET', path: '/v1/automations/audience-runs' },
   commandClass: 'read',
+  // The detail read's keys, which `run` takes from --input to switch to it.
+  inputKeys: { extra: ['audienceRunId'] },
   flags: [
     {
       flag: '--automation <automationId>',

@@ -35,7 +35,7 @@ jobs:
       - name: Generated types freshness
         run: |
           bun run generate:types
-          git diff --exit-code src/generated/openapi-types.ts
+          git diff --exit-code src/generated/openapi-types.ts src/generated/input-keys.ts
       - run: bun run tsc
       - run: bun run lint
       - run: bun run test
