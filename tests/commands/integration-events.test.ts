@@ -1,6 +1,7 @@
 import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import type { EnsureIntegrationEventTriggerResponse } from '@brew.new/sdk'
 import { HttpResponse, http } from 'msw'
 import { describe, expect, it } from 'vitest'
 import type { components } from '../../src/generated/openapi-types'
@@ -67,7 +68,8 @@ const DETAIL: components['schemas']['IntegrationEventDetailResponse'] = {
   ],
 }
 
-const TRIGGER = {
+// Typed as the SDK row, which has no `brewEvent` or `skill`.
+const TRIGGER: EnsureIntegrationEventTriggerResponse = {
   triggerEventId: 'posthog:org_2abc:brand_9xyz:ev_3f1c9b2e7a4d8c06b5e1f2a3',
   title: 'created_project',
   provider: 'posthog',
