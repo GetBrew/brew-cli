@@ -125,7 +125,7 @@ a `confirmCommand` otherwise, `--yes` to proceed).
 | `brew-cli analytics trigger-instances list` | read | `GET /v1/automations/trigger-instances` | List fired-trigger instances with their lifecycle `state` (`automations trigger-instances list`) |
 | `brew-cli insights list` | read | `GET /v1/insights` | List Brew Insights findings, most severe first, with the engine's freshness; `insights get` reads one |
 | `brew-cli insights get` | read | `GET /v1/insights/{insightId}` | Fetch one Brew Insights finding in full: rationale, frozen metrics, evidence, method |
-| `brew-cli brand get` | read | `GET /v1/brand` | Fetch the key's brand + extraction readiness (`ready` flag) |
+| `brew-cli brand get` | read | `GET /v1/brand` | Fetch the key's brand: saved name, tagline and links, plus extraction readiness (`ready` flag) |
 | `brew-cli brand update` | write | `PATCH /v1/brand` | Update brand identity and/or design-system markdown (PATCH) |
 | `brew-cli brand get-images` | read ($) | `GET /v1/brand/images` | Browse or semantically search the brand's assets (logos, brand images, images made with Brew) |
 | `brew-cli brand delete-image` | destructive | `DELETE /v1/brand/images/{assetId}` | Remove one image from the brand library by assetId (free, idempotent, not logos); its file stays hosted at its URL |
@@ -1963,16 +1963,16 @@ brew-cli insights get k17a8m2v4w5x6y7z8a9b0c1d2e3f4g5h --json | jq .metrics
 
 ### brew-cli brand get
 
-Fetch the key's brand + extraction readiness (`ready` flag)
+Fetch the key's brand: saved name, tagline and links, plus extraction readiness (`ready` flag)
 
 - Route: `GET /v1/brand`
 - Class: read
 - SDK: `brew.brand.get(...)`
-- `--include <tokens>` — Comma-separated embeds: identity | emailDesign | imageStyle | logos
+- `--include <tokens>` — Comma-separated embeds: identity | emailDesign | imageStyle | logos (identity is always returned; naming it changes nothing)
 
 ```bash
 brew-cli brand get
-brew-cli brand get --include identity,logos
+brew-cli brand get --include emailDesign,logos
 ```
 
 ### brew-cli brand update
