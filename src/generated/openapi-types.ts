@@ -703,7 +703,7 @@ export interface paths {
          * Unified events feed
          * @description Read-only feed of the brand's analytics events (email, automation, trigger, inbound), newest first, over a `from`/`to` window that defaults to the last 7 days. Email rows carry the send behind them (`sendId`, `emailId`), so a page joins back to `GET /v1/sends/{sendId}`.
          *
-         *     **Use when** you need per-event or per-recipient detail. For windowed totals and rates use `getAnalyticsOverview`; for one send's feed use `listSends` with `?sendId=&include=events`.
+         *     **Use when** you need per-event or per-recipient detail. For windowed totals and rates use `getAnalyticsOverview`; for one send's events in one bounded page use `GET /v1/sends/{sendId}?include=events` (`getSend`).
          *
          *     **Input** Equality filters: `eventType`, `sendId`, `emailId`, `automationId`, `messageClass` (`marketing` or `transactional`; absent stamps count as marketing). Run scope: `automationRunId` returns one run’s events across every domain (its lifecycle rows and the deliveries it produced), newest first and not windowed unless `from`/`to` are given; only `eventType` combines with it. Recipient rules `recipient` (csv, max 10): a full address matches exactly, `@domain` matches everyone on the domain, other text matches as a substring, a `!` prefix excludes (`recipient=@clay.com,!ceo@clay.com`); includes OR together, excludes always apply. Send facets `source` (csv), `audienceId` (csv, max 20), `domain` (sending domain), `triggerEventId` (csv, max 10, resolved to the automations they wire). Any facet or recipient rule narrows the feed to email events and adds `sendSource`, `sendContext` and `messageClass` to each row (plus `triggerProvider` and `triggerTitle` on triggered rows). Machine-classified opens and clicks (scanner detonation, Apple proxy prefetch) are excluded unless `includeMachineOpens=true` or `includeMachineClicks=true` (audit only).
          *
@@ -1284,7 +1284,7 @@ export interface paths {
          *
          *     **Use when** you want generated types, a dry-run validator (`validateTriggerPayload`) and drift detection for the JSON your service fires, or when you flip `enforcement`. Draft the tree from a real payload with `inferPayloadContract`. Trigger contracts MUST keep a top-level `{ key: "email", type: "string", required: true }` field so automations can resolve a recipient.
          *
-         *     **Input** `fields` is a tree: scalars (`string`, `int`, `float`, `boolean`, `date`, `enum`), `object` nodes with `children`, `array` nodes with `children` (object elements), `itemType` (scalar elements) or neither. The tree is validated BEFORE any write: unknown-typed nodes are refused, keys are unique per level, an `object` declares at least one child. `enforcement`: `off` (advisory, the default for a new contract), `prune` (drop undeclared keys before the run), `strict` (reject a payload carrying them). A `fallbackValue` satisfies `required` in EVERY mode: a producer that omits the key never fails a fire, every recipient gets the fallback. The version bumps only when the behavioral surface changes (keys, types, required, fallbacks; not descriptions or examples). Declaring a contract never changes fire behavior by itself. Loosening is the escape hatch when `strict` rejects a drifted producer in production.
+         *     **Input** `fields` is a tree: scalars (`string`, `int`, `float`, `boolean`, `date`, `enum`), `object` nodes with `children`, `array` nodes with `children` (object elements), `itemType` (scalar elements) or neither. The tree is validated BEFORE any write: unknown-typed nodes are refused, keys are unique per level, an `object` declares at least one child, and no two top-level fields that a fire copies onto the contact fold to one contact field (`plan` and `Plan`, `team_size` and `Team Size`; rename one or set `syncToContact: false` on one). `enforcement`: `off` (advisory, the default for a new contract), `prune` (drop undeclared keys before the run), `strict` (reject a payload carrying them). A `fallbackValue` satisfies `required` in EVERY mode: a producer that omits the key never fails a fire, every recipient gets the fallback. The version bumps only when the behavioral surface changes (keys, types, required, fallbacks; not descriptions or examples). Declaring a contract never changes fire behavior by itself. Loosening is the escape hatch when `strict` rejects a drifted producer in production.
          *
          *     **Returns** `200` with the same body a follow-up `getTriggerContract` returns plus `warnings[]` (always present, often empty): `ENFORCEMENT_LOOSENED_WHILE_PUBLISHED` when enforcement went down while published automations consume the trigger (tightening back is refused until they are unpublished or detached), and one `REQUIRED_FIELD_SATISFIED_BY_FALLBACK` per required field that declares a fallback (`field` is its dotted path). Ratchet while a published automation consumes the trigger: tighten `off→prune`, `off→strict`, `prune→strict` = `409`; loosen = `200` + warning; remove, retype or enum-narrow a field, or add a required field WITHOUT a fallback = `409`; add an optional field, widen a type, add an enum value, or add a required field WITH a fallback = `200` (+ warning per fallback). With no published consumer every change is `200`.
          *
@@ -1429,9 +1429,11 @@ export interface paths {
         put?: never;
         /**
          * Create or update contacts
-         * @description Upserts a single contact OR a batch (`{ contacts: [...] }`, up to 1000 rows). Unknown custom fields auto-create field definitions on the brand, typed from the batch (native booleans/numbers, ISO-date strings → `date`, anything else `string`).
+         * @description Upserts a single contact OR a batch (`{ contacts: [...] }`, up to 1000 rows). Unknown custom fields auto-create field definitions on the brand, typed from the batch (native booleans/numbers, ISO-date strings → `date`, anything else `string`). `fieldsCreated` names only the definitions this request created: when two requests create the same new field at once, the first definition wins and the values in the other request are coerced or refused against it, exactly as if it had been sent second. Create the field first with `POST /v1/fields` to pin its type.
          *
-         *     Custom-field values are coerced to the definition's type (dates → epoch ms, `"1,234"` → 1234, `yes`/`no` → booleans). A value that cannot be coerced (`"$49"` in a number field) is a `409 FIELD_TYPE_MISMATCH` on a single upsert and a per-row `errors[]` entry (`code: FIELD_TYPE_MISMATCH`, `field`) in a batch — the other rows still land. A `customFields` key is never stored under a core field name. One whose loss would change the contact (`subscribed`, `First Name`, `consent`, a suppression flag or domain opt-out, or an `email` naming another address) is a `422 CORE_FIELD_IMMUTABLE` on a single upsert (nothing written) and a per-row `errors[]` entry (`code: CORE_FIELD_IMMUTABLE`, `field`) in a batch; send `firstName`, `lastName`, `subscribed` and `consent` at the top level. A key naming a field Brew manages (`createdAt`, `validationStatus`) is dropped with a `warnings[]` entry (`code: CORE_FIELD_IGNORED`, `field`) and the contact is still written, and an `email` key repeating the contact address is ignored.
+         *     Custom-field names are folded to one key: words split at spaces, `_`, `-` and a lower-to-upper letter change, then joined camelCase (`Plan`, `PLAN` and `plan` are the field `plan`; `team_size` and `Team Size` are `teamSize`). A key written under its folded name adds a `FIELD_NAME_NORMALIZED` warning (`original`, `normalized`). Two keys that fold to one field (`plan` and `Plan`) would lose one value, so they are a `422 FIELD_NAME_COLLISION` on a single upsert (nothing written) and a per-row `errors[]` entry (`code: FIELD_NAME_COLLISION`) in a batch.
+         *
+         *     Custom-field values are coerced to the definition's type (dates → epoch ms, `"1,234"` → 1234, `yes`/`no` → booleans). A value that cannot be coerced (`"$49"` in a number field) is a `409 FIELD_TYPE_MISMATCH` on a single upsert and a per-row `errors[]` entry (`code: FIELD_TYPE_MISMATCH`, `field`) in a batch — the other rows still land. A value that was converted adds one `warnings[]` entry per field (`code: FIELD_TYPE_COERCED`, `field`, `from`, `to`). A `customFields` key is never stored under a core field name. One whose loss would change the contact (`subscribed`, `First Name`, `consent`, a suppression flag or domain opt-out, or an `email` naming another address) is a `422 CORE_FIELD_IMMUTABLE` on a single upsert (nothing written) and a per-row `errors[]` entry (`code: CORE_FIELD_IMMUTABLE`, `field`) in a batch; send `firstName`, `lastName`, `subscribed` and `consent` at the top level. A key naming a field Brew manages (`createdAt`, `validationStatus`) is dropped with a `warnings[]` entry (`code: CORE_FIELD_IGNORED`, `field`) and the contact is still written, and an `email` key repeating the contact address is ignored.
          *
          *     Dates: a JSON number is epoch milliseconds. A string may be ISO (`2026-04-03`, with or without a time and offset), a Unix timestamp in seconds (10 digits) or milliseconds (13), a month name (`3 Apr 2026`, `April 3, 2026`, `03-Apr-26`), year-first (`2026/04/03`), compact (`20260403`), month and year read as the 1st (`2026-04`), dotted day-first (`03.04.2026`), or a slash or dash date. A slash or dash date with a day over 12 reads that way (`13/04/2026` is 13 April). One that reads either way (`03/04/2026`) follows the day/month order the batch's other dates in that field prove, else month/day, with a `warnings[]` entry (`code: DATE_ORDER_ASSUMED`, `field`). Send `YYYY-MM-DD` to be unambiguous.
          *
@@ -1481,7 +1483,7 @@ export interface paths {
         head?: never;
         /**
          * Update a contact
-         * @description Patches fields on the contact (`{ fields: { <name>: <value> } }` — core columns or custom fields) and/or records marketing consent provenance (`{ consent: { source, capturedAt?, policyVersion?, evidence? } }`, never re-subscribing an opt-out). Send one or both. Returns `{ contact, updated }` where `updated` lists the field names that changed (`consent` included). `fields.subscribed: false` unsubscribes; `true` on a contact who opted out is a `422 RESUBSCRIBE_NOT_ALLOWED` (they re-subscribe through their own action, or from their contact page in the Brew app).
+         * @description Patches fields on the contact (`{ fields: { <name>: <value> } }` — core columns or custom fields) and/or records marketing consent provenance (`{ consent: { source, capturedAt?, policyVersion?, evidence? } }`, never re-subscribing an opt-out). Send one or both. Returns `{ contact, updated }` where `updated` lists the field names that changed (`consent` included). `fields.subscribed: false` unsubscribes; `true` on a contact who opted out is a `422 RESUBSCRIBE_NOT_ALLOWED` (they re-subscribe through their own action, or from their contact page in the Brew app). Two `fields` keys that name one field (`plan` and `Plan`, `customFields.plan` and `plan`) are a `422 FIELD_NAME_COLLISION`, nothing written.
          */
         patch: operations["updateContact"];
         trace?: never;
@@ -1545,9 +1547,9 @@ export interface paths {
         put?: never;
         /**
          * Bulk-import contacts from CSV
-         * @description Parse a raw CSV string and upsert the rows as contacts (≤ 1000). By default each column header maps to a field of the same name (`email` is required). A header that spells a core field, ignoring case, spaces, `_` and `-`, or whose field key equals it (`First.Name`), maps to it: `Email`, `First Name`, `Last Name` and `Subscribed` fill `email`, `firstName`, `lastName` and `subscribed`. Pass `mapping` to remap single columns; the columns it leaves out keep their default mapping, `""` leaves a column out, and a key that names no column is a `400`. A core field that `mapping` fills is filled from that column alone: another column whose default would fill it is left out with a `CSV_COLUMN_IGNORED` warning. Rows with a missing/invalid email are SKIPPED (counted in `summary.skipped`), not errored; disposable-domain rows are imported with `validationStatus: "risky"` (deliverable but flagged). Returns the same `{ summary, fieldsCreated, errors, warnings }` as batch-create plus `importId` — `207` when some rows fail. The batch is listed in Import History under `fileName` (optional), and each contact it writes carries `importId` until a later import touches it (filter on it to list them; deleting the import in the app removes the contacts it created). For rows you already hold as JSON, use `POST /v1/contacts/import`.
+         * @description Parse a raw CSV string and upsert the rows as contacts (≤ 1000). By default each column header maps to a field of the same name (`email` is required). A header that spells a core field, ignoring case, spaces, `_` and `-`, or whose field key equals it (`First.Name`), maps to it: `Email`, `First Name`, `Last Name` and `Subscribed` fill `email`, `firstName`, `lastName` and `subscribed`. Pass `mapping` to remap single columns; the columns it leaves out keep their default mapping, `""` leaves a column out, and a key that names no column is a `400`. Two columns that land on one custom field (`plan,Plan`: names fold as on `POST /v1/contacts`) are a `422 FIELD_NAME_COLLISION` before any row is read: map one to another name or leave it out with `""`. A core field that `mapping` fills is filled from that column alone: another column whose default would fill it is left out with a `CSV_COLUMN_IGNORED` warning. Rows with a missing/invalid email are SKIPPED (counted in `summary.skipped`), not errored; disposable-domain rows are imported with `validationStatus: "risky"` (deliverable but flagged). Returns the same `{ summary, fieldsCreated, errors, warnings }` as batch-create plus `importId` — `207` when some rows fail. The batch is listed in Import History under `fileName` (optional), and each contact it writes carries `importId` until a later import touches it (filter on it to list them; deleting the import in the app removes the contacts it created). For rows you already hold as JSON, use `POST /v1/contacts/import`.
          *
-         *     CSV cells are text: a column mapped onto an EXISTING field is coerced to that field's type (dates → epoch ms, `1,234` → 1234, `yes`/`no` → booleans), and a cell that cannot be coerced (`$49` in a number column) fails ITS row with a per-row `errors[]` entry (`code: FIELD_TYPE_MISMATCH`, `field`) while the other rows still land. An undeclared column is created as a `string` field unless every value is an ISO date (→ `date`); predeclare `number` / `bool` columns with `POST /v1/fields`. A column whose field Brew manages (`Created At`, `Validation Status`) is not imported and adds a `warnings[]` entry (`code: CSV_COLUMN_IGNORED`, `field` names the column).
+         *     CSV cells are text: a column mapped onto an EXISTING field is coerced to that field's type (dates → epoch ms, `1,234` → 1234, `yes`/`no` → booleans), and a cell that cannot be coerced (`$49` in a number column) fails ITS row with a per-row `errors[]` entry (`code: FIELD_TYPE_MISMATCH`, `field`) while the other rows still land. A converted cell adds a `warnings[]` entry (`code: FIELD_TYPE_COERCED`, `field`, `from`, `to`). An undeclared column is created as a `string` field unless every value is an ISO date (→ `date`); predeclare `number` / `bool` columns with `POST /v1/fields`. A column whose field Brew manages (`Created At`, `Validation Status`) is not imported and adds a `warnings[]` entry (`code: CSV_COLUMN_IGNORED`, `field` names the column).
          *
          *     A date column is read in ONE day/month order: the order its own dates prove (a day over 12 anywhere in the column, `13/04/2026`), else `dateOrder` (`day_first` reads `03/04/2026` as 3 April, `month_first` as 4 March), else month/day with a `warnings[]` entry (`code: DATE_ORDER_ASSUMED`, `field`). Dotted dates (`03.04.2026`) are day-first. ISO (`2026-04-03`), Unix seconds or milliseconds, month names (`3 Apr 2026`), year-first (`2026/04/03`) and compact (`20260403`) dates need no order. Convert to `YYYY-MM-DD` to be unambiguous.
          *
@@ -2091,9 +2093,11 @@ export interface paths {
         };
         /**
          * Get the brand bound to this API key
-         * @description Returns `{ brand }` — the single brand bound to the API key. Check `ready` (`status === "completed"`) before calling `POST /v1/emails`, which returns `422 BRAND_NOT_READY` until brand extraction finishes.
+         * @description Returns the bare brand row for the single brand bound to the API key. Check `ready` (`status === "completed"`) before calling `POST /v1/emails`, which returns `422 BRAND_NOT_READY` until brand extraction finishes.
          *
-         *     Embed the design context in the same call with `?include=identity,emailDesign,imageStyle,logos` (comma-separated). `identity` is the structured brand facts; `emailDesign` / `imageStyle` are the markdown design system the email agent follows; `logos` is the CDN logo set. The paginated image library is a separate read (`GET /v1/brand/images`).
+         *     `identity` is always returned: the brand name and tagline saved in Brew (`identity.brandName`, `identity.tagline`), plus its description, contact details and links. `domain` is the website the brand was extracted from, not its name.
+         *
+         *     Embed the design context in the same call with `?include=emailDesign,imageStyle,logos` (comma-separated). `emailDesign` / `imageStyle` are the markdown design system the email agent follows; `logos` is the CDN logo set. `include=identity` is still accepted and changes nothing. The paginated image library is a separate read (`GET /v1/brand/images`).
          */
         get: operations["getBrand"];
         put?: never;
@@ -2103,7 +2107,7 @@ export interface paths {
         head?: never;
         /**
          * Update brand identity + design system
-         * @description Partial update of the writable design artifacts in one call. `identity` shallow-merges the provided fields; `emailDesign` / `imageStyle` replace the markdown design-system documents the email agent follows. Provide at least one. Returns the touched fields in the `GET /v1/brand` shape.
+         * @description Partial update of the writable design artifacts in one call. `identity` shallow-merges the provided fields; `emailDesign` / `imageStyle` replace the markdown design-system documents the email agent follows. Provide at least one. Returns the brand in the `GET /v1/brand` shape: `identity` always, plus the markdown documents the call wrote.
          */
         patch: operations["updateBrand"];
         trace?: never;
@@ -2117,7 +2121,7 @@ export interface paths {
         };
         /**
          * Get brand images
-         * @description The brand’s asset library, as the Assets page shows it: logos, brand images (from the site or uploaded, including the social preview and site screenshot) and images made with Brew. Omit `?q=` to BROWSE it (free), newest first or `?sort=oldest`. Pass `?q=` for SEMANTIC search over brand and generated images (the query is embedded + vector-searched), in relevance order — this path is **credit-metered** on its first page (`402 INSUFFICIENT_CREDITS` when out of credits). `?kind=logo|brand|generated` narrows either mode; logos are not searchable. Each row carries `assetId` (the id the app opens at `/assets?image=<assetId>`), `kind`, `url` and what is known: description, dimensions, category, page, when it was added, and a logo’s variant. (The smaller `identity` / `emailDesign` / `imageStyle` / `logos` sub-resources embed into `GET /v1/brand?include=…`; images stay separate because they paginate.)
+         * @description The brand’s asset library, as the Assets page shows it: logos, brand images (from the site or uploaded, including the social preview and site screenshot) and images made with Brew. Omit `?q=` to BROWSE it (free), newest first or `?sort=oldest`. Pass `?q=` for SEMANTIC search over brand and generated images (the query is embedded + vector-searched), in relevance order — this path is **credit-metered** on its first page (`402 INSUFFICIENT_CREDITS` when out of credits). `?kind=logo|brand|generated` narrows either mode; logos are not searchable. Each row carries `assetId` (the id the app opens at `/assets?image=<assetId>`), `kind`, `url` and what is known: description, dimensions, category, page, when it was added, and a logo’s variant. (`GET /v1/brand` returns the brand `identity`, and the smaller `emailDesign` / `imageStyle` / `logos` sub-resources embed with `?include=…`; images stay separate because they paginate.)
          */
         get: operations["getBrandImages"];
         put?: never;
@@ -2379,7 +2383,7 @@ export interface paths {
         };
         /**
          * List integrations
-         * @description Returns the product integration catalog for the brand in scope under `{ data, pagination }`, with a `connected` flag per provider. Connecting is a human Settings hop at `/integrations/{provider}` — never paste a connect URL into model output. Brand-scoped (`X-Brand-Id` on an org credential). No permission scope.
+         * @description Returns the product integration catalog for the brand in scope under `{ data, pagination }`, with a `connected` flag per provider. Canonical providers also expose active, ready installation counts and readiness per capability. Connecting is a human Settings hop at `/integrations/{provider}`; never paste a connect URL into model output. Brand-scoped (`X-Brand-Id` on an org credential). No permission scope.
          */
         get: operations["listIntegrations"];
         put?: never;
@@ -3462,7 +3466,7 @@ export interface components {
         };
         ApiWarning: {
             /** @enum {string} */
-            code: "DRAFT_SAVED_NOT_LIVE" | "TRIGGER_EVENT_NOT_RECEIVED" | "ENFORCEMENT_LOOSENED_WHILE_PUBLISHED" | "REQUIRED_FIELD_SATISFIED_BY_FALLBACK" | "RESUBSCRIBE_SKIPPED" | "CORE_FIELD_IGNORED" | "DATE_ORDER_ASSUMED" | "CSV_ROW_SKIPPED" | "CONTACT_EXISTS_SKIPPED" | "CSV_COLUMN_IGNORED" | "RECIPIENTS_EXCLUDED" | "CONSENT_RECORD_MISSING";
+            code: "DRAFT_SAVED_NOT_LIVE" | "TRIGGER_EVENT_NOT_RECEIVED" | "ENFORCEMENT_LOOSENED_WHILE_PUBLISHED" | "REQUIRED_FIELD_SATISFIED_BY_FALLBACK" | "RESUBSCRIBE_SKIPPED" | "CORE_FIELD_IGNORED" | "DATE_ORDER_ASSUMED" | "FIELD_TYPE_COERCED" | "CSV_ROW_SKIPPED" | "CONTACT_EXISTS_SKIPPED" | "CSV_COLUMN_IGNORED" | "VALIDATION_SKIPPED" | "RECIPIENTS_EXCLUDED" | "CONSENT_RECORD_MISSING";
             message: string;
             field?: string;
         };
@@ -3637,7 +3641,7 @@ export interface components {
             title: string;
             description?: string;
             /** @enum {string} */
-            provider: "brew_api" | "clerk" | "stripe" | "shopify" | "stytch" | "supabase" | "workos" | "framer" | "revenuecat" | "custom" | "brew_event";
+            provider: "brew_api" | "custom" | "brew_event" | "clerk" | "stytch" | "supabase" | "workos" | "stripe" | "shopify" | "revenuecat" | "framer";
             providerEventKey?: string;
             brewEvent?: {
                 /**
@@ -3665,7 +3669,7 @@ export interface components {
             skill?: string;
         };
         TriggerPayloadField: {
-            /** @description Variable name used by emails and automations, e.g. email or firstName. Prefer self-descriptive keys; this column has no separate description field. */
+            /** @description Email/automation variable name, e.g. firstName. Use descriptive keys; fields have no separate description. */
             key: string;
             /** @enum {string} */
             type: "string" | "int" | "boolean" | "object" | "array";
@@ -4464,7 +4468,7 @@ export interface components {
             };
         };
         /** @enum {string} */
-        ApiErrorCode: "ACCOUNT_SUSPENDED" | "API_KEY_REVOKED" | "AUDIENCE_BUILD_ACTIVE" | "AUDIENCE_BUILD_ALREADY_ACTIVE" | "AUDIENCE_EDIT_CONFLICT" | "AUDIENCE_MEMBERSHIP_NOT_EXPRESSIBLE" | "AUDIENCE_NOT_FOUND" | "AUDIENCE_RUN_NOT_FOUND" | "AUDIT_NOT_FOUND" | "AUTHENTICATION_REQUIRED" | "AUTOMATION_GRAPH_INVALID" | "AUTOMATION_NOT_FOUND" | "AUTOMATION_NOT_PAUSABLE" | "AUTOMATION_NOT_PUBLISHED" | "AUTOMATION_RUN_NOT_FOUND" | "AUTOMATION_VERSION_CONFLICT" | "AUTOMATION_VERSION_NOT_FOUND" | "BATCH_TOO_LARGE" | "BRAND_DOMAIN_CONFLICT" | "BRAND_ID_REQUIRED" | "BRAND_LIMIT_REACHED" | "BRAND_NOT_FOUND" | "BRAND_NOT_READY" | "BRAND_SCOPE_MISMATCH" | "CHAT_NOT_FOUND" | "COMMENT_NOT_FOUND" | "CONSENT_REQUIRED" | "CONTACT_NOT_FOUND" | "CONTENT_OPERATION_FAILED" | "CONTRACT_LOCKED_BY_PUBLISHED_AUTOMATIONS" | "CORE_FIELD_IMMUTABLE" | "DOMAIN_ALREADY_EXISTS" | "DOMAIN_CLAIMED_ELSEWHERE" | "DOMAIN_NOT_FOUND" | "DOMAIN_NOT_READY" | "DOMAIN_OTHER_BRAND" | "DOMAIN_PROVIDER_ERROR" | "DOMAIN_PURPOSE_NOT_ALLOWED" | "DOMAIN_VERIFICATION_FAILED" | "DOMAIN_VERIFIED_ELSEWHERE" | "EMAIL_GENERATION_FAILED" | "EMAIL_GROUP_NAME_CONFLICT" | "EMAIL_GROUP_NOT_FOUND" | "EMAIL_IMAGES_MISSING" | "EMAIL_IMPORT_FAILED" | "EMAIL_IN_PROGRESS" | "EMAIL_IN_USE_BY_AUTOMATION" | "EMAIL_NOT_FOUND" | "EMAIL_NOT_READY" | "EMAIL_RESULT_UNAVAILABLE" | "EMAIL_RUN_AMBIGUOUS" | "EMAIL_TEMPLATE_INVALID" | "EMAIL_VERSION_NOT_FOUND" | "EXPORT_PROVIDER_ERROR" | "EXPORT_UNSUPPORTED" | "FIELD_NOT_FOUND" | "FIELD_TYPE_MISMATCH" | "FIGMA_ACCESS_DENIED" | "FIGMA_CONVERSION_FAILED" | "FIGMA_FRAME_NOT_FOUND" | "FIGMA_NOT_CONNECTED" | "FIGMA_UNAVAILABLE" | "FIGMA_URL_INVALID" | "FLOW_NOT_FOUND" | "IDEMPOTENCY_CONFLICT" | "IDEMPOTENCY_IN_PROGRESS" | "INSIGHT_NOT_FOUND" | "INSUFFICIENT_CREDITS" | "INSUFFICIENT_PERMISSIONS" | "INSUFFICIENT_ROLE" | "INTEGRATION_NOT_CONNECTED" | "INTERNAL_ERROR" | "INVALID_API_KEY" | "INVALID_EMAIL" | "INVALID_PAYLOAD" | "INVALID_REQUEST" | "LIQUID_RENDER_ERROR" | "METHOD_NOT_ALLOWED" | "MISSING_EMAIL" | "NO_ELIGIBLE_RECIPIENTS" | "NO_PUBLISHED_AUTOMATION" | "NOT_FOUND" | "NOT_IMPLEMENTED" | "ORG_SCOPE_REQUIRED" | "PAYLOAD_SCHEMA_EMAIL_REQUIRED" | "PAYLOAD_TOO_LARGE" | "PREVIEW_NOT_FOUND" | "PUBLISH_VALIDATION_FAILED" | "RATE_LIMITED" | "RECIPIENT_UNSUBSCRIBED" | "REFERENCE_EMAIL_NOT_FOUND" | "RESUBSCRIBE_NOT_ALLOWED" | "RUN_IN_PROGRESS" | "RUN_NOT_CANCELLABLE" | "RUN_NOT_PAUSABLE" | "RUN_NOT_PAUSED" | "RUN_NOT_RESUMABLE" | "RUN_START_FAILED" | "RUN_STOP_FAILED" | "SEND_NOT_CANCELLABLE" | "SEND_NOT_FOUND" | "SEND_NOT_PAUSABLE" | "SEND_NOT_RESUMABLE" | "SEND_QUOTA_EXCEEDED" | "SERVICE_UNAVAILABLE" | "TEMPLATE_NOT_FOUND" | "TRIGGER_ALREADY_EXISTS" | "TRIGGER_EVENT_NOT_FOUND" | "TRIGGER_HAS_DEPENDENT_AUTOMATIONS" | "TRIGGER_IMMUTABLE" | "TRIGGER_INSTANCE_NOT_FOUND" | "TRIGGER_LIMIT_REACHED" | "TRIGGER_NOT_FIREABLE" | "UPLOAD_IN_PROGRESS" | "UPLOAD_NOT_FOUND" | "UPLOAD_NOT_RECEIVED";
+        ApiErrorCode: "ACCOUNT_SUSPENDED" | "API_KEY_REVOKED" | "AUDIENCE_BUILD_ACTIVE" | "AUDIENCE_BUILD_ALREADY_ACTIVE" | "AUDIENCE_EDIT_CONFLICT" | "AUDIENCE_MEMBERSHIP_NOT_EXPRESSIBLE" | "AUDIENCE_NOT_FOUND" | "AUDIENCE_RUN_NOT_FOUND" | "AUDIT_NOT_FOUND" | "AUTHENTICATION_REQUIRED" | "AUTOMATION_GRAPH_INVALID" | "AUTOMATION_NOT_FOUND" | "AUTOMATION_NOT_PAUSABLE" | "AUTOMATION_NOT_PUBLISHED" | "AUTOMATION_RUN_NOT_FOUND" | "AUTOMATION_VERSION_CONFLICT" | "AUTOMATION_VERSION_NOT_FOUND" | "BATCH_TOO_LARGE" | "BRAND_DOMAIN_CONFLICT" | "BRAND_ID_REQUIRED" | "BRAND_LIMIT_REACHED" | "BRAND_NOT_FOUND" | "BRAND_NOT_READY" | "BRAND_SCOPE_MISMATCH" | "CHAT_NOT_FOUND" | "COMMENT_NOT_FOUND" | "CONSENT_REQUIRED" | "CONTACT_NOT_FOUND" | "CONTENT_OPERATION_FAILED" | "CONTRACT_LOCKED_BY_PUBLISHED_AUTOMATIONS" | "CORE_FIELD_IMMUTABLE" | "DOMAIN_ALREADY_EXISTS" | "DOMAIN_CLAIMED_ELSEWHERE" | "DOMAIN_NOT_FOUND" | "DOMAIN_NOT_READY" | "DOMAIN_OTHER_BRAND" | "DOMAIN_PROVIDER_ERROR" | "DOMAIN_PURPOSE_NOT_ALLOWED" | "DOMAIN_VERIFICATION_FAILED" | "DOMAIN_VERIFIED_ELSEWHERE" | "EMAIL_GENERATION_FAILED" | "EMAIL_GROUP_NAME_CONFLICT" | "EMAIL_GROUP_NOT_FOUND" | "EMAIL_IMAGES_MISSING" | "EMAIL_IMPORT_FAILED" | "EMAIL_IN_PROGRESS" | "EMAIL_IN_USE_BY_AUTOMATION" | "EMAIL_NOT_FOUND" | "EMAIL_NOT_READY" | "EMAIL_RESULT_UNAVAILABLE" | "EMAIL_RUN_AMBIGUOUS" | "EMAIL_TEMPLATE_INVALID" | "EMAIL_VERSION_NOT_FOUND" | "EXPORT_PROVIDER_ERROR" | "EXPORT_UNSUPPORTED" | "FIELD_NAME_COLLISION" | "FIELD_NOT_FOUND" | "FIELD_TYPE_MISMATCH" | "FIGMA_ACCESS_DENIED" | "FIGMA_CONVERSION_FAILED" | "FIGMA_FRAME_NOT_FOUND" | "FIGMA_NOT_CONNECTED" | "FIGMA_UNAVAILABLE" | "FIGMA_URL_INVALID" | "FLOW_NOT_FOUND" | "IDEMPOTENCY_CONFLICT" | "IDEMPOTENCY_IN_PROGRESS" | "INSIGHT_NOT_FOUND" | "INSUFFICIENT_CREDITS" | "INSUFFICIENT_PERMISSIONS" | "INSUFFICIENT_ROLE" | "INTEGRATION_NOT_CONNECTED" | "INTERNAL_ERROR" | "INVALID_API_KEY" | "INVALID_EMAIL" | "INVALID_PAYLOAD" | "INVALID_REQUEST" | "LIQUID_RENDER_ERROR" | "METHOD_NOT_ALLOWED" | "MISSING_EMAIL" | "NO_ELIGIBLE_RECIPIENTS" | "NO_PUBLISHED_AUTOMATION" | "NOT_FOUND" | "NOT_IMPLEMENTED" | "ORG_SCOPE_REQUIRED" | "PAYLOAD_SCHEMA_EMAIL_REQUIRED" | "PAYLOAD_TOO_LARGE" | "PREVIEW_NOT_FOUND" | "PUBLISH_VALIDATION_FAILED" | "RATE_LIMITED" | "RECIPIENT_UNSUBSCRIBED" | "REFERENCE_EMAIL_NOT_FOUND" | "RESUBSCRIBE_NOT_ALLOWED" | "RUN_IN_PROGRESS" | "RUN_NOT_CANCELLABLE" | "RUN_NOT_PAUSABLE" | "RUN_NOT_PAUSED" | "RUN_NOT_RESUMABLE" | "RUN_START_FAILED" | "RUN_STOP_FAILED" | "SEND_NOT_CANCELLABLE" | "SEND_NOT_FOUND" | "SEND_NOT_PAUSABLE" | "SEND_NOT_RESUMABLE" | "SEND_QUOTA_EXCEEDED" | "SERVICE_UNAVAILABLE" | "TEMPLATE_NOT_FOUND" | "TRIGGER_ALREADY_EXISTS" | "TRIGGER_EVENT_NOT_FOUND" | "TRIGGER_HAS_DEPENDENT_AUTOMATIONS" | "TRIGGER_IMMUTABLE" | "TRIGGER_INSTANCE_NOT_FOUND" | "TRIGGER_LIMIT_REACHED" | "TRIGGER_NOT_FIREABLE" | "UPLOAD_IN_PROGRESS" | "UPLOAD_NOT_FOUND" | "UPLOAD_NOT_RECEIVED";
         EmailGenerateTextResponse: {
             response: string;
         };
@@ -4909,7 +4913,7 @@ export interface components {
         EmailClientPreviewRequest: {
             /** @description Exact email version to render; omit for latest. */
             emailVersionId?: string;
-            /** @description Client ids to render. Omit for popular Gmail, Outlook, Apple Mail and iOS clients. Supported: gmailcom-lm_chrcurrent_win10 = Gmail (Web); gmailcom-dm_chrcurrent_win10 = Gmail (Web, Dark); android16_gmailapp_pixel10_lm = Gmail (Android); android16_gmailapp_pixel10_dm = Gmail (Android, Dark); iphone16gmail_18 = Gmail (iOS); outlook2021_win11_lm_dt = Outlook 2021 (Windows); outlook2021_win11_dm_dt = Outlook 2021 (Windows, Dark); o365_w10_lm_dt = Outlook 365 (Windows); outlookcom-lm_chrcurrent_win10 = Outlook.com (Web); applemail16 = Apple Mail (macOS); applemail16_dm = Apple Mail (macOS, Dark); iphone16_18 = Apple Mail (iOS); iphone16_18_dm = Apple Mail (iOS, Dark); yahoocom-lm_chrcurrent_win10 = Yahoo Mail (Web). */
+            /** @description Client ids to render. Omit for popular Gmail, Outlook, Apple Mail and iOS clients. Supported: gmailcom-lm_chrcurrent_win10 = Gmail (Web); gmailcom-dm_chrcurrent_win10 = Gmail (Web, Dark); android16_gmailapp_pixel10_lm = Gmail (Android); android16_gmailapp_pixel10_dm = Gmail (Android, Dark); outlook2021_win11_lm_dt = Outlook 2021 (Windows); outlook2021_win11_dm_dt = Outlook 2021 (Windows, Dark); o365_w10_lm_dt = Outlook 365 (Windows); outlookcom-lm_chrcurrent_win10 = Outlook.com (Web); applemail16 = Apple Mail (macOS); applemail16_dm = Apple Mail (macOS, Dark); iphone16_18 = Apple Mail (iOS); iphone16_18_dm = Apple Mail (iOS, Dark); yahoocom-lm_chrcurrent_win10 = Yahoo Mail (Web). */
             clients?: string[];
         };
         EmailInboxPlacementTest: {
@@ -6802,7 +6806,7 @@ export interface components {
             title: string;
             description?: string;
             /** @enum {string} */
-            provider: "brew_api" | "clerk" | "stripe" | "shopify" | "stytch" | "supabase" | "workos" | "framer" | "revenuecat" | "custom" | "brew_event";
+            provider: "brew_api" | "custom" | "brew_event" | "clerk" | "stytch" | "supabase" | "workos" | "stripe" | "shopify" | "revenuecat" | "framer";
             providerEventKey?: string;
             brewEvent?: {
                 /**
@@ -6860,7 +6864,7 @@ export interface components {
                 title: string;
                 description?: string;
                 /** @enum {string} */
-                provider: "brew_api" | "clerk" | "stripe" | "shopify" | "stytch" | "supabase" | "workos" | "framer" | "revenuecat" | "custom" | "brew_event";
+                provider: "brew_api" | "custom" | "brew_event" | "clerk" | "stytch" | "supabase" | "workos" | "stripe" | "shopify" | "revenuecat" | "framer";
                 providerEventKey?: string;
                 brewEvent?: {
                     /**
@@ -7755,7 +7759,7 @@ export interface components {
             mapping?: {
                 [key: string]: string;
             };
-            /** @description Optional deliverability check on ingestion. When true, each imported address is validated with the provider and the verdict is saved to the contact’s `validationStatus`. Imports of at most 100 submitted CSV data rows validate inline, metered at 2 credits per submitted row on a successful response, including skipped rows and repeated addresses. Larger imports write first and use a background validation workflow billed per address as it runs; `validationJobId` is returned when a job is queued. */
+            /** @description Optional deliverability check on ingestion. When true, each imported address is validated with the provider and the verdict is saved to the contact’s `validationStatus`. Imports of at most 100 submitted CSV data rows validate inline, metered at 2 credits per submitted row on a successful response, including skipped rows and repeated addresses. Larger imports write first and use a background validation workflow billed per address as it runs; `validationJobId` is returned when a job is queued. The job skips unsubscribed, suppressed and recently validated addresses, and a `VALIDATION_SKIPPED` warning gives the counts; when every address is skipped no job is queued and `validationJobId` is absent. */
             validate?: boolean;
             /** @description Consent record stamped on every imported row (typically `{ "source": "import" }`). */
             consent?: {
@@ -7812,7 +7816,7 @@ export interface components {
                     evidence?: string;
                 };
             }[];
-            /** @description Optional deliverability check on ingestion. When true, each imported address is validated with the provider and the verdict is saved to the contact’s `validationStatus`. Imports of at most 100 submitted contacts validate inline, metered at 2 credits per submitted contact on a successful response, including rows that fail. Larger imports write first and use a background validation workflow billed per address as it runs; `validationJobId` is returned when a job is queued. */
+            /** @description Optional deliverability check on ingestion. When true, each imported address is validated with the provider and the verdict is saved to the contact’s `validationStatus`. Imports of at most 100 submitted contacts validate inline, metered at 2 credits per submitted contact on a successful response, including rows that fail. Larger imports write first and use a background validation workflow billed per address as it runs; `validationJobId` is returned when a job is queued. The job skips unsubscribed, suppressed and recently validated addresses, and a `VALIDATION_SKIPPED` warning gives the counts; when every address is skipped no job is queued and `validationJobId` is absent. */
             validate?: boolean;
             /** @description Default consent record for every row that does not carry its own `consent` (typically `{ "source": "import" }`). */
             consent?: {
@@ -8602,7 +8606,7 @@ export interface components {
             createdAt?: string;
             /** Format: date-time */
             updatedAt?: string;
-            identity?: {
+            identity: {
                 brandName?: string;
                 description?: string;
                 tagline?: string;
@@ -8923,13 +8927,22 @@ export interface components {
         IntegrationsListResponse: {
             data: {
                 /** @enum {string} */
-                provider: "braze" | "brevo" | "clerk" | "customerio" | "figma" | "framer" | "slack" | "hubspot" | "typeform" | "klaviyo" | "iterable" | "postmark" | "onesignal" | "mailgun" | "sendgrid" | "mailjet" | "mailchimp" | "loops" | "stripe" | "stytch" | "supabase" | "workos" | "shopify" | "revenuecat";
+                provider: "braze" | "brevo" | "clerk" | "customerio" | "figma" | "framer" | "slack" | "hubspot" | "typeform" | "klaviyo" | "iterable" | "postmark" | "onesignal" | "mailgun" | "sendgrid" | "mailjet" | "mailchimp" | "loops" | "stripe" | "stytch" | "supabase" | "workos" | "shopify" | "revenuecat" | "notion";
                 name: string;
                 /** @enum {string} */
                 category: "data_in" | "data_out";
                 connected: boolean;
                 /** @enum {boolean} */
                 comingSoon?: true;
+                /** @enum {boolean} */
+                inviteOnly?: true;
+                /** @enum {boolean} */
+                paused?: true;
+                installationCount?: number;
+                capabilities?: {
+                    capabilityId: string;
+                    isReady: boolean;
+                }[];
             }[];
             pagination: {
                 limit: number;
@@ -16901,7 +16914,7 @@ export interface operations {
                 "X-Brand-Id"?: string;
             };
             path: {
-                /** @description The audience run id (from `POST /v1/automations/{automationId}/run` or `GET /v1/automations/audience-runs`). */
+                /** @description The audience run id (from `POST /v1/automations/{automationId}/run` or `GET /v1/automations/audience-runs`), passed exactly as returned. A launch with an `Idempotency-Key` returns a longer id (`arun_` plus 64 hex characters). */
                 audienceRunId: string;
             };
             cookie?: never;
@@ -17049,7 +17062,7 @@ export interface operations {
                 "X-Brand-Id"?: string;
             };
             path: {
-                /** @description The audience run id (from `POST /v1/automations/{automationId}/run` or `GET /v1/automations/audience-runs`). */
+                /** @description The audience run id (from `POST /v1/automations/{automationId}/run` or `GET /v1/automations/audience-runs`), passed exactly as returned. A launch with an `Idempotency-Key` returns a longer id (`arun_` plus 64 hex characters). */
                 audienceRunId: string;
             };
             cookie?: never;
@@ -17205,7 +17218,7 @@ export interface operations {
                 "X-Brand-Id"?: string;
             };
             path: {
-                /** @description The audience run id (from `POST /v1/automations/{automationId}/run` or `GET /v1/automations/audience-runs`). */
+                /** @description The audience run id (from `POST /v1/automations/{automationId}/run` or `GET /v1/automations/audience-runs`), passed exactly as returned. A launch with an `Idempotency-Key` returns a longer id (`arun_` plus 64 hex characters). */
                 audienceRunId: string;
             };
             cookie?: never;
@@ -17392,7 +17405,7 @@ export interface operations {
                 "X-Brand-Id"?: string;
             };
             path: {
-                /** @description The audience run id (from `POST /v1/automations/{automationId}/run` or `GET /v1/automations/audience-runs`). */
+                /** @description The audience run id (from `POST /v1/automations/{automationId}/run` or `GET /v1/automations/audience-runs`), passed exactly as returned. A launch with an `Idempotency-Key` returns a longer id (`arun_` plus 64 hex characters). */
                 audienceRunId: string;
             };
             cookie?: never;
@@ -21191,6 +21204,8 @@ export interface operations {
              *
              *     `CORE_FIELD_IMMUTABLE`: The field is a core contact column and cannot be created, changed, or deleted as a custom field.
              *
+             *     `FIELD_NAME_COLLISION`: Two keys in one request name the same contact field (`plan` and `Plan`, `team_size` and `Team Size`), so one value would be lost.
+             *
              *     `INVALID_EMAIL`: A contact email is not a deliverable address shape.
              *
              *     `MISSING_EMAIL`: A contact row has no `email`, the primary key.
@@ -21700,6 +21715,8 @@ export interface operations {
              * @description `BATCH_TOO_LARGE`: A batch write exceeds the per-request row cap.
              *
              *     `CORE_FIELD_IMMUTABLE`: The field is a core contact column and cannot be created, changed, or deleted as a custom field.
+             *
+             *     `FIELD_NAME_COLLISION`: Two keys in one request name the same contact field (`plan` and `Plan`, `team_size` and `Team Size`), so one value would be lost.
              *
              *     `RESUBSCRIBE_NOT_ALLOWED`: The write set `subscribed` to true on a contact who unsubscribed, and Brew never re-subscribes an opt-out through the API, MCP or an import; `details.email` names the contact.
              */
@@ -22311,6 +22328,17 @@ export interface operations {
              *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
              */
             409: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `FIELD_NAME_COLLISION`: Two keys in one request name the same contact field (`plan` and `Plan`, `team_size` and `Team Size`), so one value would be lost. */
+            422: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
                     "x-request-id": string;
@@ -27558,7 +27586,7 @@ export interface operations {
     getBrand: {
         parameters: {
             query?: {
-                /** @description Comma-separated sub-resources to embed: `identity`, `emailDesign`, `imageStyle`, `logos`. */
+                /** @description Comma-separated sub-resources to embed: `emailDesign`, `imageStyle`, `logos`. `identity` (saved name, tagline, description, links) is always returned; naming it is accepted and changes nothing. */
                 include?: string;
             };
             header?: {
@@ -27573,7 +27601,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description The brand bound to this API key, plus any sub-resources named in `?include=`. */
+            /** @description The brand bound to this API key with its saved `identity`, plus any sub-resources named in `?include=`. */
             200: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -27715,7 +27743,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description The updated brand (only the touched fields are echoed). */
+            /** @description The updated brand with its `identity`, plus the markdown documents the call wrote. */
             200: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -29863,14 +29891,35 @@ export interface operations {
                      * @example {
                      *       "data": [
                      *         {
+                     *           "provider": "hubspot",
+                     *           "name": "HubSpot",
+                     *           "category": "data_out",
+                     *           "connected": true,
+                     *           "installationCount": 1,
+                     *           "capabilities": [
+                     *             {
+                     *               "capabilityId": "contacts_import",
+                     *               "isReady": true
+                     *             },
+                     *             {
+                     *               "capabilityId": "crm_context",
+                     *               "isReady": true
+                     *             },
+                     *             {
+                     *               "capabilityId": "export_template",
+                     *               "isReady": true
+                     *             }
+                     *           ]
+                     *         },
+                     *         {
                      *           "provider": "klaviyo",
                      *           "name": "Klaviyo",
                      *           "category": "data_out",
                      *           "connected": true
                      *         },
                      *         {
-                     *           "provider": "slack",
-                     *           "name": "Slack",
+                     *           "provider": "typeform",
+                     *           "name": "Typeform",
                      *           "category": "data_in",
                      *           "connected": false,
                      *           "comingSoon": true

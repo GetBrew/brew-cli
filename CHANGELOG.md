@@ -4,6 +4,14 @@
 
 ### Fixed
 
+- Vendored spec and generated API types follow app revision `3d6a8e188d`,
+  clearing the spec drift sentinel. Contact write and import warnings include
+  `FIELD_TYPE_COERCED` and `VALIDATION_SKIPPED`; when two requests create the
+  same new custom field at once, only the import that created it lists the
+  field under "New custom fields", and the other request's values are
+  converted or refused against the stored type (GetBrew/brew-v2#2472). Error
+  codes include `FIELD_NAME_COLLISION` (#2469), and `brand get` always
+  returns `identity` (#2470). No command changed.
 - Explicit empty string flags now override `--input`, including clearable
   descriptions and sender names. Required values remain validated locally;
   invalid empty email settings are forwarded for API validation.
