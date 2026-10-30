@@ -2093,9 +2093,11 @@ export interface paths {
         };
         /**
          * Get the brand bound to this API key
-         * @description Returns `{ brand }` — the single brand bound to the API key. Check `ready` (`status === "completed"`) before calling `POST /v1/emails`, which returns `422 BRAND_NOT_READY` until brand extraction finishes.
+         * @description Returns the bare brand row for the single brand bound to the API key. Check `ready` (`status === "completed"`) before calling `POST /v1/emails`, which returns `422 BRAND_NOT_READY` until brand extraction finishes.
          *
-         *     Embed the design context in the same call with `?include=identity,emailDesign,imageStyle,logos` (comma-separated). `identity` is the structured brand facts; `emailDesign` / `imageStyle` are the markdown design system the email agent follows; `logos` is the CDN logo set. The paginated image library is a separate read (`GET /v1/brand/images`).
+         *     `identity` is always returned: the brand name and tagline saved in Brew (`identity.brandName`, `identity.tagline`), plus its description, contact details and links. `domain` is the website the brand was extracted from, not its name.
+         *
+         *     Embed the design context in the same call with `?include=emailDesign,imageStyle,logos` (comma-separated). `emailDesign` / `imageStyle` are the markdown design system the email agent follows; `logos` is the CDN logo set. `include=identity` is still accepted and changes nothing. The paginated image library is a separate read (`GET /v1/brand/images`).
          */
         get: operations["getBrand"];
         put?: never;
@@ -2105,7 +2107,7 @@ export interface paths {
         head?: never;
         /**
          * Update brand identity + design system
-         * @description Partial update of the writable design artifacts in one call. `identity` shallow-merges the provided fields; `emailDesign` / `imageStyle` replace the markdown design-system documents the email agent follows. Provide at least one. Returns the touched fields in the `GET /v1/brand` shape.
+         * @description Partial update of the writable design artifacts in one call. `identity` shallow-merges the provided fields; `emailDesign` / `imageStyle` replace the markdown design-system documents the email agent follows. Provide at least one. Returns the brand in the `GET /v1/brand` shape: `identity` always, plus the markdown documents the call wrote.
          */
         patch: operations["updateBrand"];
         trace?: never;
@@ -2119,7 +2121,7 @@ export interface paths {
         };
         /**
          * Get brand images
-         * @description The brand’s asset library, as the Assets page shows it: logos, brand images (from the site or uploaded, including the social preview and site screenshot) and images made with Brew. Omit `?q=` to BROWSE it (free), newest first or `?sort=oldest`. Pass `?q=` for SEMANTIC search over brand and generated images (the query is embedded + vector-searched), in relevance order — this path is **credit-metered** on its first page (`402 INSUFFICIENT_CREDITS` when out of credits). `?kind=logo|brand|generated` narrows either mode; logos are not searchable. Each row carries `assetId` (the id the app opens at `/assets?image=<assetId>`), `kind`, `url` and what is known: description, dimensions, category, page, when it was added, and a logo’s variant. (The smaller `identity` / `emailDesign` / `imageStyle` / `logos` sub-resources embed into `GET /v1/brand?include=…`; images stay separate because they paginate.)
+         * @description The brand’s asset library, as the Assets page shows it: logos, brand images (from the site or uploaded, including the social preview and site screenshot) and images made with Brew. Omit `?q=` to BROWSE it (free), newest first or `?sort=oldest`. Pass `?q=` for SEMANTIC search over brand and generated images (the query is embedded + vector-searched), in relevance order — this path is **credit-metered** on its first page (`402 INSUFFICIENT_CREDITS` when out of credits). `?kind=logo|brand|generated` narrows either mode; logos are not searchable. Each row carries `assetId` (the id the app opens at `/assets?image=<assetId>`), `kind`, `url` and what is known: description, dimensions, category, page, when it was added, and a logo’s variant. (`GET /v1/brand` returns the brand `identity`, and the smaller `emailDesign` / `imageStyle` / `logos` sub-resources embed with `?include=…`; images stay separate because they paginate.)
          */
         get: operations["getBrandImages"];
         put?: never;
@@ -8604,7 +8606,7 @@ export interface components {
             createdAt?: string;
             /** Format: date-time */
             updatedAt?: string;
-            identity?: {
+            identity: {
                 brandName?: string;
                 description?: string;
                 tagline?: string;
@@ -27584,7 +27586,7 @@ export interface operations {
     getBrand: {
         parameters: {
             query?: {
-                /** @description Comma-separated sub-resources to embed: `identity`, `emailDesign`, `imageStyle`, `logos`. */
+                /** @description Comma-separated sub-resources to embed: `emailDesign`, `imageStyle`, `logos`. `identity` (saved name, tagline, description, links) is always returned; naming it is accepted and changes nothing. */
                 include?: string;
             };
             header?: {
@@ -27599,7 +27601,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description The brand bound to this API key, plus any sub-resources named in `?include=`. */
+            /** @description The brand bound to this API key with its saved `identity`, plus any sub-resources named in `?include=`. */
             200: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -27741,7 +27743,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description The updated brand (only the touched fields are echoed). */
+            /** @description The updated brand with its `identity`, plus the markdown documents the call wrote. */
             200: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
