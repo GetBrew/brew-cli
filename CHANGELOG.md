@@ -1,6 +1,11 @@
 # Changelog
 
-## Unreleased
+## 0.19.0
+
+Minor release, still `@brew.new/sdk` `^13.3.0`. `--input` now refuses a
+top-level key the command would not send, with a usage error (exit 2), where
+it used to drop the key silently: a script that passed such a key now fails
+before the request instead of sending without it.
 
 ### Fixed
 
