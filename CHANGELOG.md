@@ -4,6 +4,11 @@
 
 ### Fixed
 
+- Generated API types follow app revision `e958a02fc8`: contact write and
+  import warnings include `FIELD_TYPE_COERCED` (GetBrew/brew-v2#2472). When two
+  requests create the same new custom field at once, only the import that
+  created it lists the field under "New custom fields", and the other
+  request's values are converted or refused against the stored type.
 - Explicit empty string flags now override `--input`, including clearable
   descriptions and sender names. Required values remain validated locally;
   invalid empty email settings are forwarded for API validation.
