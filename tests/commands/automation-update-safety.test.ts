@@ -36,6 +36,24 @@ describe('resolved automation update confirmation', () => {
       expect(bodies).toEqual([])
     }
   })
+  it('words the stopInFlight prompt so it holds for a draft too', async () => {
+    const result = await runCli(
+      [
+        'automations',
+        'update',
+        'am_1',
+        '--input',
+        JSON.stringify({ published: false, stopInFlight: true }),
+      ],
+      { env }
+    )
+    expect(result.code).toBe(4)
+    expect(result.json).toMatchObject({
+      summary:
+        'Permanently stop every contact already mid-flow in automation am_1, and unpublish it if it is live?',
+    })
+    expect(bodies).toEqual([])
+  })
   it('returns confirmation-required after consuming interactive stdin', async () => {
     const result = await runCli(
       ['automations', 'update', 'am_1', '--input', '-'],

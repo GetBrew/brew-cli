@@ -1,6 +1,6 @@
 {
   "name": "@brew.new/cli",
-  "version": "0.18.1",
+  "version": "0.19.0",
   "description": "Official agent-first command-line interface for the Brew public API.",
   "license": "MIT",
   "author": "Brew",
@@ -54,7 +54,7 @@
     "smoke:regressions": "bun run scripts/regression-smoke.ts"
   },
   "dependencies": {
-    "@brew.new/sdk": "git+https://github.com/GetBrew/typescript-sdk.git#474d91e134868580e90cce2ea92bc2a7c10ce74a",
+    "@brew.new/sdk": "git+https://github.com/GetBrew/typescript-sdk.git#9fbe435d9b135791861739d322fa648c521bdb98",
     "commander": "^14.0.0"
   },
   "devDependencies": {

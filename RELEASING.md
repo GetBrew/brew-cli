@@ -34,10 +34,10 @@ CLI depends on (`^13.3.0`).
 `integrations events list`, `integrations events get` and
 `automations triggers ensure-integration-event` call `integrations.events.list`,
 `integrations.events.get` and `automations.triggers.ensureIntegrationEvent`,
-which the published SDK 13.3.0 does not expose. This branch pins reviewed SDK
-source commit `474d91e134868580e90cce2ea92bc2a7c10ce74a`
+which the published SDK 13.4.0 does not expose. This branch pins reviewed SDK
+source commit `9fbe435d9b135791861739d322fa648c521bdb98`
 (GetBrew/typescript-sdk#88) for coordinated PR validation. It preserves SDK
-13.3.0's features and version while adding those methods.
+13.4.0's features and version while adding those methods.
 
 A fresh frozen install must build that source dependency without relying on
 a locally packed SDK. Do not release the CLI with this temporary source pin.

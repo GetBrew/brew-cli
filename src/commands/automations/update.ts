@@ -47,7 +47,9 @@ export const automationsUpdateCommand = defineCommand({
   confirmSummary: ({ args, input }) => {
     if (input?.dryRun === true) return undefined
     if (input?.stopInFlight === true) {
-      return `Unpublish automation ${args.automationId} and permanently stop every contact already mid-flow?`
+      // On a draft, stopInFlight only stops the contacts in flight; nothing
+      // is unpublished then, so the prompt must hold for both cases.
+      return `Permanently stop every contact already mid-flow in automation ${args.automationId}${input?.published === false ? ', and unpublish it if it is live' : ''}?`
     }
     if (input?.published === true) {
       return `Publish automation ${args.automationId}? Its triggers will send real email.`

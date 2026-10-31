@@ -39,14 +39,13 @@ export const brandGetImagesCommand = defineCommand({
   sdkMethod: 'brand.getImages',
   route: { method: 'GET', path: '/v1/brand/images' },
   commandClass: 'read',
-  isCredited: true,
   // Retired filters reach `run`, which refuses them with the way forward.
   inputKeys: { extra: Object.keys(RETIRED_FILTERS) },
   flags: [
     {
       flag: '--query <text>',
       summary:
-        'Semantic search over what the images show (1 credit per new search; logos are not searchable)',
+        'Semantic search over what the images show (free; logos are not searchable)',
     },
     {
       flag: '--kind <kind>',

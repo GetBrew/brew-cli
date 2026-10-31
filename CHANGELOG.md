@@ -4,7 +4,7 @@
 
 The live integration event commands require an SDK release exposing
 `integrations.events` and `automations.triggers.ensureIntegrationEvent`
-(GetBrew/typescript-sdk#88). The published SDK 13.3.0 does not provide them.
+(GetBrew/typescript-sdk#88). The published SDK 13.4.0 does not provide them.
 This branch pins that PR's immutable source commit for coordinated
 validation. Follow the integration events SDK gate in `RELEASING.md` before
 release.
@@ -35,6 +35,43 @@ release.
 
 ### Fixed
 
+- `brand get-images --query` is free: semantic image search no longer costs
+  a credit on its first page or answers `402 INSUFFICIENT_CREDITS`
+  (GetBrew/brew-v2#2492). The command is no longer marked credited in help,
+  `docs --agent` and the command reference. Its search cursor is the same
+  opaque `--cursor` value as before.
+- Vendored spec and generated API types follow app revision `373e900a9a`.
+  `contacts update` returns `warnings[]`, and `updated` is empty when nothing
+  changed (#2488); automation warnings include `NODE_ID_REPLACED` (#2486);
+  `stopInFlight` on a draft with nobody in flight is a `422
+  AUTOMATION_NOT_PUBLISHED` (#2489); a date written to a `date` field no
+  longer warns `FIELD_TYPE_COERCED` (#2490); `emails import` lists markup it
+  could not keep as `element_dropped` asset warnings (#2471); `sends pause`
+  on a send you already paused returns `200` and changes nothing, while a
+  send held at the plan limit or for its domain is still `409
+  SEND_NOT_PAUSABLE` (#2492). No command's flags changed.
+- A contact write with a JSON number past 9007199254740991 (2^53 - 1) is now
+  refused with `409 FIELD_TYPE_MISMATCH` instead of being stored rounded; send
+  large ids as strings to a `string` field (#2488). This applies to
+  `contacts upsert`, `upsert-many`, `update` and `import`.
+
+## 0.19.0
+
+Minor release, still `@brew.new/sdk` `^13.3.0`. `--input` now refuses a
+top-level key the command would not send, with a usage error (exit 2), where
+it used to drop the key silently: a script that passed such a key now fails
+before the request instead of sending without it.
+
+### Fixed
+
+- Vendored spec and generated API types follow app revision `3d6a8e188d`,
+  clearing the spec drift sentinel. Contact write and import warnings include
+  `FIELD_TYPE_COERCED` and `VALIDATION_SKIPPED`; when two requests create the
+  same new custom field at once, only the import that created it lists the
+  field under "New custom fields", and the other request's values are
+  converted or refused against the stored type (GetBrew/brew-v2#2472). Error
+  codes include `FIELD_NAME_COLLISION` (#2469), and `brand get` always
+  returns `identity` (#2470). No command changed.
 - Explicit empty string flags now override `--input`, including clearable
   descriptions and sender names. Required values remain validated locally;
   invalid empty email settings are forwarded for API validation.
