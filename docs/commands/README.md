@@ -2,7 +2,7 @@
 
 <!-- GENERATED FILE — do not edit. Regenerate with `bun run docs:commands`. -->
 
-149 commands. Classes: read (always safe), write
+152 commands. Classes: read (always safe), write
 (mutating, retry-safe), destructive (irreversible — the confirmation
 protocol applies: interactive y/N on a TTY, exit 4 + JSON envelope with
 a `confirmCommand` otherwise, `--yes` to proceed).
@@ -101,6 +101,7 @@ a `confirmCommand` otherwise, `--yes` to proceed).
 | `brew-cli contracts infer` | read | `POST /v1/payload-contracts/infer` | Draft a payload contract from a real example payload — nothing is saved; PUT the draft on a trigger |
 | `brew-cli automations triggers create` | write | `POST /v1/automations/triggers` | Create a trigger event (title + typed payload schema) |
 | `brew-cli automations triggers ensure-brew-event` | write | `POST /v1/automations/triggers/brew-events` | Get or create the brand's trigger for a contact unsubscribing (one domain's list, or all emails) |
+| `brew-cli automations triggers ensure-integration-event` | write | `POST /v1/automations/triggers/integration-events` | Get or create the trigger for one live integration event (an eventId from `integrations events list`) |
 | `brew-cli automations triggers update` | write | `PATCH /v1/automations/triggers/{triggerEventId}` | Update a trigger event (title, description, payload schema) |
 | `brew-cli automations triggers delete` | destructive | `DELETE /v1/automations/triggers/{triggerEventId}` | Delete a trigger event (rejected while automations depend on it) |
 | `brew-cli automations triggers fire` | destructive | `POST /v1/automations/triggers/{triggerEventId}/fire` | Fire a trigger event with a payload (starts LIVE runs) |
@@ -159,6 +160,8 @@ a `confirmCommand` otherwise, `--yes` to proceed).
 | `brew-cli flows list` | read | `GET /v1/flows` | List public email flows (real multi-step sequences by brand) as cards; `flows get <slug>` reads one |
 | `brew-cli flows get` | read | `GET /v1/flows/{slug}` | Fetch one public email flow by brand domain, with every step (day offset, wait, subject, template id) |
 | `brew-cli integrations list` | read | `GET /v1/integrations` | List the integration catalog with per-provider connected state (connect via Settings, not this CLI) |
+| `brew-cli integrations events list` | read | `GET /v1/integrations/events` | List the live events the brand's connected sources send (PostHog, Stripe, Shopify), busiest first; `integrations events get` reads one. Needs the automations scope |
+| `brew-cli integrations events get` | read | `GET /v1/integrations/events/{eventId}` | Fetch one live integration event in full: each property with its template variable and whether it is personal data, plus propertiesStatus (how current they are). Needs the automations scope |
 | `brew-cli chats list` | read | `GET /v1/chats` | List the brand's Brew chats, most recently active first; `chats get` reads one |
 | `brew-cli chats get` | read | `GET /v1/chats/{chatId}` | Brand-scoped digest of a Brew chat (artifacts + transcript tail) |
 | `brew-cli canvas sessions create` | write | `POST /v1/canvas/sessions` | Create an authenticated group or single-email canvas grant |
@@ -1540,6 +1543,20 @@ brew-cli automations triggers ensure-brew-event --scope domain --domain-id jd7f0
 brew-cli automations triggers ensure-brew-event --scope all
 ```
 
+### brew-cli automations triggers ensure-integration-event
+
+Get or create the trigger for one live integration event (an eventId from `integrations events list`)
+
+- Route: `POST /v1/automations/triggers/integration-events`
+- Class: write
+- SDK: `brew.automations.triggers.ensureIntegrationEvent(...)`
+- `--event-id <eventId>` — The live event, from `integrations events list` (never composed from a provider and an event name)
+- `--idempotency-key <key>` — Idempotency-Key for safe retries (auto-generated otherwise)
+
+```bash
+brew-cli automations triggers ensure-integration-event --event-id k5714pq3vm8x2n6c9d0b7f1h4j6g2r8t
+```
+
 ### brew-cli automations triggers update
 
 Update a trigger event (title, description, payload schema)
@@ -2540,6 +2557,41 @@ List the integration catalog with per-provider connected state (connect via Sett
 ```bash
 brew-cli integrations list
 brew-cli integrations list --json
+```
+
+### brew-cli integrations events list
+
+List the live events the brand's connected sources send (PostHog, Stripe, Shopify), busiest first; `integrations events get` reads one. Needs the automations scope
+
+- Route: `GET /v1/integrations/events`
+- Class: read
+- SDK: `brew.integrations.events.list(...)`
+- `--provider <provider>` — Only this provider's events, e.g. posthog
+- `--query <text>` — Search event names, titles and categories (without it, the busiest events come first)
+- `--kind <kind>` — standard | custom | action (a saved provider action) | derived (computed from another event) | observed (seen in deliveries only)
+- `--limit <n>` — Page size, 1-100 (default 100)
+- `--cursor <cursor>` — Opaque pagination cursor from a previous page
+- `--all` — Follow the cursor and return every page as one result
+- `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
+
+```bash
+brew-cli integrations events list
+brew-cli integrations events list --provider posthog --query signup --json
+brew-cli integrations events list --kind custom --all --json
+```
+
+### brew-cli integrations events get
+
+Fetch one live integration event in full: each property with its template variable and whether it is personal data, plus propertiesStatus (how current they are). Needs the automations scope
+
+- Route: `GET /v1/integrations/events/{eventId}`
+- Class: read
+- SDK: `brew.integrations.events.get(...)`
+- Argument `eventId` — The eventId an `integrations events list` row carries
+
+```bash
+brew-cli integrations events get k5714pq3vm8x2n6c9d0b7f1h4j6g2r8t
+brew-cli integrations events get k5714pq3vm8x2n6c9d0b7f1h4j6g2r8t --json | jq .properties
 ```
 
 ### brew-cli chats list

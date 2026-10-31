@@ -2802,6 +2802,7 @@ components:
             - shopify
             - revenuecat
             - framer
+            - posthog
         providerEventKey:
           type: string
         brewEvent:
@@ -3952,6 +3953,7 @@ components:
                     - validate_contacts
                     - create_campaign
                     - repeat_campaign
+                    - draft_automation
                     - review_recommendation
                 prompt:
                   type: string
@@ -4365,6 +4367,7 @@ components:
                     - validate_contacts
                     - create_campaign
                     - repeat_campaign
+                    - draft_automation
                     - review_recommendation
                 prompt:
                   type: string
@@ -5253,7 +5256,9 @@ components:
         - INSUFFICIENT_CREDITS
         - INSUFFICIENT_PERMISSIONS
         - INSUFFICIENT_ROLE
+        - INTEGRATION_EVENT_NOT_FOUND
         - INTEGRATION_NOT_CONNECTED
+        - INTEGRATION_RECONNECT_REQUIRED
         - INTERNAL_ERROR
         - INVALID_API_KEY
         - INVALID_EMAIL
@@ -12024,6 +12029,7 @@ components:
             - shopify
             - revenuecat
             - framer
+            - posthog
         providerEventKey:
           type: string
         brewEvent:
@@ -12104,6 +12110,93 @@ components:
         - event
         - scope
       additionalProperties: false
+    IntegrationEventTriggerSaved:
+      type: object
+      properties:
+        triggerEventId:
+          type: string
+          minLength: 1
+          maxLength: 256
+        title:
+          type: string
+          minLength: 1
+          maxLength: 120
+        description:
+          type: string
+          maxLength: 2000
+        provider:
+          type: string
+          enum:
+            - brew_api
+            - custom
+            - brew_event
+            - clerk
+            - stytch
+            - supabase
+            - workos
+            - stripe
+            - shopify
+            - revenuecat
+            - framer
+            - posthog
+        providerEventKey:
+          type: string
+        payloadSchema:
+          type: object
+          properties:
+            type:
+              type: string
+              enum:
+                - object
+            fields:
+              type: array
+              items:
+                $ref: "#/components/schemas/TriggerPayloadField"
+          required:
+            - type
+            - fields
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        created:
+          type: boolean
+          description: True when this call created the trigger; false when it already existed.
+        propertiesStatus:
+          type: string
+          enum:
+            - current
+            - stored
+            - rate_limited
+            - unavailable
+          description: "`current`: listed with the event or read in the last day. `stored`: the provider could not be read now; these are its last description. `rate_limited`: its read budget is spent; these are what Brew stored, possibly none (read again after `retryAfterSeconds`). `unavailable`: not read, and none stored."
+        retryAfterSeconds:
+          type: integer
+          exclusiveMinimum: 0
+          description: "With `rate_limited`: seconds until the provider can be read again, when it said."
+      required:
+        - triggerEventId
+        - title
+        - provider
+        - payloadSchema
+        - createdAt
+        - updatedAt
+        - created
+        - propertiesStatus
+      additionalProperties: false
+    IntegrationEventTriggersPostRequest:
+      type: object
+      properties:
+        eventId:
+          type: string
+          minLength: 1
+          maxLength: 64
+          description: The live event id from `GET /v1/integrations/events` (`eventId`). Never compose one from a provider and an event name.
+      required:
+        - eventId
+      additionalProperties: false
     TriggersPostRequest:
       type: object
       properties:
@@ -12165,6 +12258,7 @@ components:
                   - shopify
                   - revenuecat
                   - framer
+                  - posthog
               providerEventKey:
                 type: string
               brewEvent:
@@ -18139,6 +18233,7 @@ components:
                   - shopify
                   - revenuecat
                   - notion
+                  - posthog
               name:
                 type: string
                 minLength: 1
@@ -18205,6 +18300,267 @@ components:
       required:
         - data
         - pagination
+      additionalProperties: false
+    IntegrationEventsListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              eventId:
+                type: string
+                minLength: 1
+              provider:
+                type: string
+                minLength: 1
+              sourceId:
+                type: string
+                minLength: 1
+                description: The connected account this event comes from.
+              eventKey:
+                type: string
+                minLength: 1
+                description: The provider’s own event name, e.g. `created_project`.
+              title:
+                type: string
+                minLength: 1
+              label:
+                type: string
+                description: Brew’s human name for the event, when it has one.
+              kind:
+                type: string
+                enum:
+                  - standard
+                  - custom
+                  - action
+                  - derived
+                  - observed
+              category:
+                type: string
+              stage:
+                type: string
+                enum:
+                  - signup
+                  - activation
+                  - engagement
+                  - conversion
+                  - retention
+                  - churn_risk
+                  - none
+                description: The lifecycle stage Brew inferred (a brand member’s correction wins).
+              modelRoles:
+                type: array
+                items:
+                  type: string
+                  enum:
+                    - signup
+                    - activation
+                    - conversion
+                    - key_event
+                description: "This event’s roles in the brand’s product model: `signup`, `activation`, `conversion`, `key_event`."
+              volume30d:
+                type: integer
+                minimum: 0
+                description: Occurrences in the last 30 days, as the provider reported.
+              lastSeenAt:
+                type: string
+                format: date-time
+              triggerEventId:
+                type: string
+                description: Present once the event is a trigger. Otherwise get one with `POST /v1/automations/triggers/integration-events`.
+            required:
+              - eventId
+              - provider
+              - sourceId
+              - eventKey
+              - title
+              - kind
+              - modelRoles
+            additionalProperties: false
+        sources:
+          type: array
+          items:
+            type: object
+            properties:
+              sourceId:
+                type: string
+                minLength: 1
+              provider:
+                type: string
+                minLength: 1
+              mode:
+                type: string
+                enum:
+                  - static_catalog
+                  - tenant_catalog
+              definitionCount:
+                type: integer
+                minimum: 0
+              isTruncated:
+                type: boolean
+              lastSyncedAt:
+                type: string
+                format: date-time
+            required:
+              - sourceId
+              - provider
+              - mode
+              - definitionCount
+              - isTruncated
+            additionalProperties: false
+        pagination:
+          type: object
+          properties:
+            limit:
+              type: integer
+              minimum: 1
+              maximum: 100
+            cursor:
+              type:
+                - string
+                - "null"
+            hasMore:
+              type: boolean
+          required:
+            - limit
+            - cursor
+            - hasMore
+          additionalProperties: false
+      required:
+        - data
+        - sources
+        - pagination
+      additionalProperties: false
+    IntegrationEventDetailResponse:
+      type: object
+      properties:
+        eventId:
+          type: string
+          minLength: 1
+        provider:
+          type: string
+          minLength: 1
+        sourceId:
+          type: string
+          minLength: 1
+          description: The connected account this event comes from.
+        eventKey:
+          type: string
+          minLength: 1
+          description: The provider’s own event name, e.g. `created_project`.
+        title:
+          type: string
+          minLength: 1
+        label:
+          type: string
+          description: Brew’s human name for the event, when it has one.
+        kind:
+          type: string
+          enum:
+            - standard
+            - custom
+            - action
+            - derived
+            - observed
+        category:
+          type: string
+        stage:
+          type: string
+          enum:
+            - signup
+            - activation
+            - engagement
+            - conversion
+            - retention
+            - churn_risk
+            - none
+          description: The lifecycle stage Brew inferred (a brand member’s correction wins).
+        modelRoles:
+          type: array
+          items:
+            type: string
+            enum:
+              - signup
+              - activation
+              - conversion
+              - key_event
+          description: "This event’s roles in the brand’s product model: `signup`, `activation`, `conversion`, `key_event`."
+        volume30d:
+          type: integer
+          minimum: 0
+          description: Occurrences in the last 30 days, as the provider reported.
+        lastSeenAt:
+          type: string
+          format: date-time
+        triggerEventId:
+          type: string
+          description: Present once the event is a trigger. Otherwise get one with `POST /v1/automations/triggers/integration-events`.
+        description:
+          type: string
+        derivedFromKey:
+          type: string
+          description: "For a derived event: the provider event it is computed from."
+        properties:
+          type: array
+          items:
+            type: object
+            properties:
+              key:
+                type: string
+                minLength: 1
+              variable:
+                type: string
+                minLength: 1
+                description: "Its template variable, `{{ <variable> | fallback }}`: `properties.<key>` or `person.<key>` for a tenant catalog’s event, the key itself for a static catalog’s."
+              scope:
+                type: string
+                enum:
+                  - event
+                  - person
+                description: "`event`: a value the event carried. `person`: the person’s value when it fired."
+              type:
+                type: string
+                minLength: 1
+              description:
+                type: string
+              isPersonal:
+                type: boolean
+                description: "Personal data: never put it in an email’s subject."
+              isPersonalization:
+                type: boolean
+                description: Brew suggests this value to personalize an email.
+            required:
+              - key
+              - variable
+              - scope
+              - type
+              - isPersonal
+              - isPersonalization
+            additionalProperties: false
+        propertiesStatus:
+          type: string
+          enum:
+            - current
+            - stored
+            - rate_limited
+            - unavailable
+          description: "`current`: listed with the event or read in the last day. `stored`: the provider could not be read now; these are its last description. `rate_limited`: its read budget is spent; these are what Brew stored, possibly none (read again after `retryAfterSeconds`). `unavailable`: not read, and none stored."
+        retryAfterSeconds:
+          type: integer
+          exclusiveMinimum: 0
+          description: "With `rate_limited`: seconds until the provider can be read again, when it said."
+      required:
+        - eventId
+        - provider
+        - sourceId
+        - eventKey
+        - title
+        - kind
+        - modelRoles
+        - properties
+        - propertiesStatus
       additionalProperties: false
     ApiKeysListResponse:
       type: object
@@ -40836,6 +41192,486 @@ paths:
                       type: invalid_request
                       message: The sending domain is admitted for a different purpose than this send (marketing vs transactional).
                       suggestion: Use a marketing domain for campaigns and audience sends. For transactional flows, wire the design into a published automation with a trigger and fire POST /v1/automations/triggers/{triggerEventId}/fire.
+                      docs: https://docs.brew.new/api-reference/api/errors
+        "429":
+          description: "`RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot."
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+            X-RateLimit-Limit:
+              schema:
+                type: integer
+                description: Requests allowed in the current rolling rate limit window.
+                example: 60
+              required: true
+              description: Requests allowed in the current rolling rate limit window.
+            X-RateLimit-Remaining:
+              schema:
+                type: integer
+                description: Requests remaining in the current rolling rate limit window.
+                example: 0
+              required: true
+              description: Requests remaining in the current rolling rate limit window.
+            X-RateLimit-Reset:
+              schema:
+                type: integer
+                description: Unix timestamp in seconds when the oldest recorded request leaves the rolling window.
+                example: 1712592360
+              required: true
+              description: Unix timestamp in seconds when the oldest recorded request leaves the rolling window.
+            Retry-After:
+              schema:
+                type: integer
+                description: Seconds to wait before retrying the request.
+                example: 42
+              required: true
+              description: Seconds to wait before retrying the request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                rateLimited:
+                  summary: RATE_LIMITED
+                  value:
+                    error:
+                      code: RATE_LIMITED
+                      type: rate_limit
+                      message: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot.
+                      suggestion: Wait the Retry-After time, then retry the same request.
+                      docs: https://docs.brew.new/api-reference/api/rate-limits
+                      retryAfter: 42
+                      details:
+                        scope: credential
+                        limit: 60
+                        remaining: 0
+                        reset: 1712592360
+                        consumed: false
+        "500":
+          description: "`INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it."
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                internalError:
+                  summary: INTERNAL_ERROR
+                  value:
+                    error:
+                      code: INTERNAL_ERROR
+                      type: internal_error
+                      message: An unexpected failure; the x-request-id header identifies it.
+                      suggestion: Retry the request. If it keeps failing, contact support with the x-request-id header.
+                      docs: https://docs.brew.new/api-reference/api/errors
+      x-brew-scope: automations
+      x-brew-brand-scope: brand
+      x-brew-idempotency: replay
+      x-brew-credited: false
+      x-brew-rate-policy: triggers.write
+  /v1/automations/triggers/integration-events:
+    post:
+      operationId: ensureIntegrationEventTrigger
+      tags:
+        - Automations
+      summary: Get or create an integration event trigger
+      description: |-
+        Returns the trigger for one live integration event, creating it the first time: an event a connected live source sends, such as a PostHog project’s own events or the Stripe and Shopify app catalogs.
+
+        **Use when** an automation should start on such an event. Find it with `listIntegrationEvents`; read its variables with `describeIntegrationEvent`.
+
+        **Input** `{ eventId }` from `listIntegrationEvents`. Never compose an id from a provider and an event name.
+
+        **Returns** `201` with the new trigger row, or `200` with the existing one (`created: false`). The same event always returns the same trigger, across reconnects of the same account. Brew owns its title and payload contract. The provider starts sending the event once an automation using it is published; saving a draft changes nothing upstream. An event listed bare, or described more than a day ago, is first described at the provider on the account’s read budget, so `payloadSchema` carries its properties; `propertiesStatus` says when the provider could not be read (`rate_limited` with `retryAfterSeconds`, `stored` or `unavailable`).
+
+        **Errors** `404 INTEGRATION_EVENT_NOT_FOUND` for an unknown or cross-brand `eventId`; `404 NOT_FOUND` when the event left its source between the read and the write; `409 INTEGRATION_RECONNECT_REQUIRED` when a catalog event’s trigger was removed with its connection (reconnect the integration); `409 TRIGGER_LIMIT_REACHED` when the brand already holds the maximum number of triggers.
+
+        **See also** `listIntegrationEvents`, `describeIntegrationEvent`, `createAutomation`.
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: false
+          description: Optional idempotency key for safe retries. Reusing the same key with the same request body returns the original response for 24 hours.
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 100
+          example: api-request-2026-04-08-001
+        - name: X-Brand-Id
+          in: header
+          required: false
+          description: The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 64
+          example: kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/IntegrationEventTriggersPostRequest"
+            example:
+              eventId: k5714pq3vm8x2n6c9d0b7f1h4j6g2r8t
+      responses:
+        "200":
+          description: The trigger already existed for this event.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+            X-RateLimit-Limit:
+              schema:
+                type: integer
+                description: Requests allowed in the current rolling rate limit window.
+                example: 100
+              required: true
+              description: Requests allowed in the current rolling rate limit window.
+            X-RateLimit-Remaining:
+              schema:
+                type: integer
+                description: Requests remaining in the current rolling rate limit window.
+                example: 99
+              required: true
+              description: Requests remaining in the current rolling rate limit window.
+            X-RateLimit-Reset:
+              schema:
+                type: integer
+                description: Unix timestamp in seconds when the oldest recorded request leaves the rolling window.
+                example: 1712592360
+              required: true
+              description: Unix timestamp in seconds when the oldest recorded request leaves the rolling window.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IntegrationEventTriggerSaved"
+              example:
+                triggerEventId: posthog:org_2abc:brand_9xyz:ev_3f1c9b2e7a4d8c06b5e1f2a3
+                title: created_project
+                provider: posthog
+                providerEventKey: created_project
+                payloadSchema:
+                  type: object
+                  fields:
+                    - key: email
+                      type: string
+                      required: true
+                createdAt: '2026-10-26T12:00:00.000Z'
+                updatedAt: '2026-10-26T12:00:00.000Z'
+                propertiesStatus: current
+                created: false
+        "201":
+          description: Created.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+            X-RateLimit-Limit:
+              schema:
+                type: integer
+                description: Requests allowed in the current rolling rate limit window.
+                example: 100
+              required: true
+              description: Requests allowed in the current rolling rate limit window.
+            X-RateLimit-Remaining:
+              schema:
+                type: integer
+                description: Requests remaining in the current rolling rate limit window.
+                example: 99
+              required: true
+              description: Requests remaining in the current rolling rate limit window.
+            X-RateLimit-Reset:
+              schema:
+                type: integer
+                description: Unix timestamp in seconds when the oldest recorded request leaves the rolling window.
+                example: 1712592360
+              required: true
+              description: Unix timestamp in seconds when the oldest recorded request leaves the rolling window.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IntegrationEventTriggerSaved"
+              example:
+                triggerEventId: posthog:org_2abc:brand_9xyz:ev_3f1c9b2e7a4d8c06b5e1f2a3
+                title: created_project
+                provider: posthog
+                providerEventKey: created_project
+                payloadSchema:
+                  type: object
+                  fields:
+                    - key: email
+                      type: string
+                      required: true
+                createdAt: '2026-10-26T12:00:00.000Z'
+                updatedAt: '2026-10-26T12:00:00.000Z'
+                propertiesStatus: current
+                created: true
+        "400":
+          description: |-
+            `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+
+            `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                brandIdRequired:
+                  summary: BRAND_ID_REQUIRED
+                  value:
+                    error:
+                      code: BRAND_ID_REQUIRED
+                      type: invalid_request
+                      message: An organization-scoped credential called a brand-scoped operation without naming the brand.
+                      suggestion: List brands with GET /v1/brands, then name one with the X-Brand-Id header. There is no default brand.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                invalidRequest:
+                  summary: INVALID_REQUEST
+                  value:
+                    error:
+                      code: INVALID_REQUEST
+                      type: invalid_request
+                      message: "The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender."
+                      suggestion: Fix the field reported in `param` and retry.
+                      docs: https://docs.brew.new/api-reference/api/errors
+        "401":
+          description: |-
+            `API_KEY_REVOKED`: The API key was revoked.
+
+            `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+
+            `INVALID_API_KEY`: The API key is malformed or unknown.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                apiKeyRevoked:
+                  summary: API_KEY_REVOKED
+                  value:
+                    error:
+                      code: API_KEY_REVOKED
+                      type: authentication_error
+                      message: The API key was revoked.
+                      suggestion: Create a new active API key and retry.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                authenticationRequired:
+                  summary: AUTHENTICATION_REQUIRED
+                  value:
+                    error:
+                      code: AUTHENTICATION_REQUIRED
+                      type: authentication_error
+                      message: No API key or session accompanied the request.
+                      suggestion: Provide a valid API key or sign in with an organization session.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                invalidApiKey:
+                  summary: INVALID_API_KEY
+                  value:
+                    error:
+                      code: INVALID_API_KEY
+                      type: authentication_error
+                      message: The API key is malformed or unknown.
+                      suggestion: Check the API key format and retry with a valid active key.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+        "403":
+          description: |-
+            `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+
+            `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+
+            `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+
+            `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                accountSuspended:
+                  summary: ACCOUNT_SUSPENDED
+                  value:
+                    error:
+                      code: ACCOUNT_SUSPENDED
+                      type: authorization_error
+                      message: The organization behind the credential is suspended.
+                      suggestion: The organization behind this credential is suspended. Contact support@brew.new; do not retry.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                brandScopeMismatch:
+                  summary: BRAND_SCOPE_MISMATCH
+                  value:
+                    error:
+                      code: BRAND_SCOPE_MISMATCH
+                      type: authorization_error
+                      message: A brand-scoped credential named a brand other than the one it is bound to.
+                      suggestion: Omit the brand to use the one this credential is bound to, or use an organization-scoped credential to reach other brands.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                insufficientPermissions:
+                  summary: INSUFFICIENT_PERMISSIONS
+                  value:
+                    error:
+                      code: INSUFFICIENT_PERMISSIONS
+                      type: authorization_error
+                      message: The credential lacks the permission scope the operation needs.
+                      suggestion: Use an API key or session with the required permission.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                insufficientRole:
+                  summary: INSUFFICIENT_ROLE
+                  value:
+                    error:
+                      code: INSUFFICIENT_ROLE
+                      type: authorization_error
+                      message: "The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role)."
+                      suggestion: Ask an organization admin to run this, to add you to the brand, or to make you an admin.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+        "404":
+          description: |-
+            `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+
+            `INTEGRATION_EVENT_NOT_FOUND`: No live integration event with that id exists in the brand.
+
+            `NOT_FOUND`: No v1 resource lives at this path.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                brandNotFound:
+                  summary: BRAND_NOT_FOUND
+                  value:
+                    error:
+                      code: BRAND_NOT_FOUND
+                      type: not_found
+                      message: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+                      suggestion: List the brands this credential can reach with GET /v1/brands.
+                      docs: https://docs.brew.new/api-reference/api/errors
+                integrationEventNotFound:
+                  summary: INTEGRATION_EVENT_NOT_FOUND
+                  value:
+                    error:
+                      code: INTEGRATION_EVENT_NOT_FOUND
+                      type: not_found
+                      message: No live integration event with that id exists in the brand.
+                      suggestion: List the brand’s live integration events with GET /v1/integrations/events and pass an `eventId` from it.
+                      docs: https://docs.brew.new/api-reference/api/errors
+                notFound:
+                  summary: NOT_FOUND
+                  value:
+                    error:
+                      code: NOT_FOUND
+                      type: not_found
+                      message: No v1 resource lives at this path.
+                      suggestion: Check the request path and HTTP method against the API reference.
+                      docs: https://docs.brew.new/api-reference/api/api-introduction
+        "409":
+          description: |-
+            `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+
+            `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
+
+            `INTEGRATION_RECONNECT_REQUIRED`: This catalog event’s trigger comes from its integration’s connection, which no longer holds it.
+
+            `TRIGGER_LIMIT_REACHED`: The brand already holds the maximum number of trigger events.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                idempotencyConflict:
+                  summary: IDEMPOTENCY_CONFLICT
+                  value:
+                    error:
+                      code: IDEMPOTENCY_CONFLICT
+                      type: conflict
+                      message: The same Idempotency-Key was reused with a different request body.
+                      suggestion: Reuse the original payload or send a new idempotency key.
+                      docs: https://docs.brew.new/api-reference/api/idempotency
+                idempotencyInProgress:
+                  summary: IDEMPOTENCY_IN_PROGRESS
+                  value:
+                    error:
+                      code: IDEMPOTENCY_IN_PROGRESS
+                      type: conflict
+                      message: A request with this Idempotency-Key is still executing.
+                      suggestion: Wait for the original request to finish, then retry the same key to replay its response.
+                      docs: https://docs.brew.new/api-reference/api/idempotency
+                integrationReconnectRequired:
+                  summary: INTEGRATION_RECONNECT_REQUIRED
+                  value:
+                    error:
+                      code: INTEGRATION_RECONNECT_REQUIRED
+                      type: conflict
+                      message: This catalog event’s trigger comes from its integration’s connection, which no longer holds it.
+                      suggestion: Reconnect the integration on its Brew Integrations page, then retry.
+                      docs: https://docs.brew.new/api-reference/api/errors
+                triggerLimitReached:
+                  summary: TRIGGER_LIMIT_REACHED
+                  value:
+                    error:
+                      code: TRIGGER_LIMIT_REACHED
+                      type: conflict
+                      message: The brand already holds the maximum number of trigger events.
+                      suggestion: Delete an unused trigger with `DELETE /v1/automations/triggers/{triggerEventId}`, then retry. Each brand holds at most 100.
                       docs: https://docs.brew.new/api-reference/api/errors
         "429":
           description: "`RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot."
@@ -66640,6 +67476,768 @@ paths:
                       suggestion: Retry the request. If it keeps failing, contact support with the x-request-id header.
                       docs: https://docs.brew.new/api-reference/api/errors
       x-brew-scope: none
+      x-brew-brand-scope: brand
+      x-brew-idempotency: none
+      x-brew-credited: false
+      x-brew-rate-policy: integrations.read
+  /v1/integrations/events:
+    get:
+      operationId: listIntegrationEvents
+      tags:
+        - Integrations
+      summary: List integration events
+      description: "Returns the events the brand’s connected live sources offer as automation triggers (a PostHog project’s own events; the Stripe and Shopify app catalogs) under `{ data, sources, pagination }`. Each event carries its `eventId`, the provider’s `eventKey`, Brew’s `label` and lifecycle `stage`, its roles in the brand’s product model, 30-day volume, and its `triggerEventId` once it is a trigger. Events come source by source: `query` searches names, titles and categories, and without it each source’s busiest events come first. Events a brand member hid, and internal traffic Brew suppressed, are left out, so a page can hold fewer than `limit`; follow `pagination.cursor` until `hasMore` is false to read every event. Brand-scoped (`X-Brand-Id` on an org credential). Requires the `automations` scope, as `ensureIntegrationEventTrigger` does."
+      parameters:
+        - schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            description: Page size (1-100). Defaults to 100.
+            example: 50
+          required: false
+          description: Page size (1-100). Defaults to 100.
+          name: limit
+          in: query
+          example: 50
+        - schema:
+            type: string
+            minLength: 1
+            maxLength: 8192
+          required: false
+          name: cursor
+          in: query
+        - schema:
+            type: string
+            minLength: 1
+            maxLength: 64
+            description: Only this provider’s events, e.g. `posthog`.
+          required: false
+          description: Only this provider’s events, e.g. `posthog`.
+          name: provider
+          in: query
+        - schema:
+            type: string
+            minLength: 1
+            maxLength: 100
+            description: Search event names, titles and categories. Without it, the busiest events come first.
+          required: false
+          description: Search event names, titles and categories. Without it, the busiest events come first.
+          name: query
+          in: query
+        - schema:
+            type: string
+            enum:
+              - standard
+              - custom
+              - action
+              - derived
+              - observed
+            description: "`custom`, `standard`, `action` (a saved provider action), `derived` (Brew computes it from another event) or `observed` (seen in deliveries only)."
+          required: false
+          description: "`custom`, `standard`, `action` (a saved provider action), `derived` (Brew computes it from another event) or `observed` (seen in deliveries only)."
+          name: kind
+          in: query
+        - name: X-Brand-Id
+          in: header
+          required: false
+          description: The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 64
+          example: kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+      responses:
+        "200":
+          description: Live integration events, source by source.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+            X-RateLimit-Limit:
+              schema:
+                type: integer
+                description: Requests allowed in the current rolling rate limit window.
+                example: 100
+              required: true
+              description: Requests allowed in the current rolling rate limit window.
+            X-RateLimit-Remaining:
+              schema:
+                type: integer
+                description: Requests remaining in the current rolling rate limit window.
+                example: 99
+              required: true
+              description: Requests remaining in the current rolling rate limit window.
+            X-RateLimit-Reset:
+              schema:
+                type: integer
+                description: Unix timestamp in seconds when the oldest recorded request leaves the rolling window.
+                example: 1712592360
+              required: true
+              description: Unix timestamp in seconds when the oldest recorded request leaves the rolling window.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IntegrationEventsListResponse"
+              example:
+                data:
+                  - eventId: k5714pq3vm8x2n6c9d0b7f1h4j6g2r8t
+                    provider: posthog
+                    sourceId: cgr_4f2a9c
+                    eventKey: created_project
+                    title: created_project
+                    label: Created a project
+                    kind: custom
+                    stage: activation
+                    modelRoles:
+                      - activation
+                      - key_event
+                    volume30d: 8100
+                    lastSeenAt: '2026-10-26T09:12:00.000Z'
+                sources:
+                  - sourceId: cgr_4f2a9c
+                    provider: posthog
+                    mode: tenant_catalog
+                    definitionCount: 214
+                    isTruncated: false
+                    lastSyncedAt: '2026-10-26T06:00:00.000Z'
+                pagination:
+                  limit: 100
+                  cursor: null
+                  hasMore: false
+        "400":
+          description: |-
+            `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+
+            `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                brandIdRequired:
+                  summary: BRAND_ID_REQUIRED
+                  value:
+                    error:
+                      code: BRAND_ID_REQUIRED
+                      type: invalid_request
+                      message: An organization-scoped credential called a brand-scoped operation without naming the brand.
+                      suggestion: List brands with GET /v1/brands, then name one with the X-Brand-Id header. There is no default brand.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                invalidRequest:
+                  summary: INVALID_REQUEST
+                  value:
+                    error:
+                      code: INVALID_REQUEST
+                      type: invalid_request
+                      message: "The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender."
+                      suggestion: Fix the field reported in `param` and retry.
+                      docs: https://docs.brew.new/api-reference/api/errors
+        "401":
+          description: |-
+            `API_KEY_REVOKED`: The API key was revoked.
+
+            `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+
+            `INVALID_API_KEY`: The API key is malformed or unknown.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                apiKeyRevoked:
+                  summary: API_KEY_REVOKED
+                  value:
+                    error:
+                      code: API_KEY_REVOKED
+                      type: authentication_error
+                      message: The API key was revoked.
+                      suggestion: Create a new active API key and retry.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                authenticationRequired:
+                  summary: AUTHENTICATION_REQUIRED
+                  value:
+                    error:
+                      code: AUTHENTICATION_REQUIRED
+                      type: authentication_error
+                      message: No API key or session accompanied the request.
+                      suggestion: Provide a valid API key or sign in with an organization session.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                invalidApiKey:
+                  summary: INVALID_API_KEY
+                  value:
+                    error:
+                      code: INVALID_API_KEY
+                      type: authentication_error
+                      message: The API key is malformed or unknown.
+                      suggestion: Check the API key format and retry with a valid active key.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+        "403":
+          description: |-
+            `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+
+            `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+
+            `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+
+            `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                accountSuspended:
+                  summary: ACCOUNT_SUSPENDED
+                  value:
+                    error:
+                      code: ACCOUNT_SUSPENDED
+                      type: authorization_error
+                      message: The organization behind the credential is suspended.
+                      suggestion: The organization behind this credential is suspended. Contact support@brew.new; do not retry.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                brandScopeMismatch:
+                  summary: BRAND_SCOPE_MISMATCH
+                  value:
+                    error:
+                      code: BRAND_SCOPE_MISMATCH
+                      type: authorization_error
+                      message: A brand-scoped credential named a brand other than the one it is bound to.
+                      suggestion: Omit the brand to use the one this credential is bound to, or use an organization-scoped credential to reach other brands.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                insufficientPermissions:
+                  summary: INSUFFICIENT_PERMISSIONS
+                  value:
+                    error:
+                      code: INSUFFICIENT_PERMISSIONS
+                      type: authorization_error
+                      message: The credential lacks the permission scope the operation needs.
+                      suggestion: Use an API key or session with the required permission.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                insufficientRole:
+                  summary: INSUFFICIENT_ROLE
+                  value:
+                    error:
+                      code: INSUFFICIENT_ROLE
+                      type: authorization_error
+                      message: "The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role)."
+                      suggestion: Ask an organization admin to run this, to add you to the brand, or to make you an admin.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+        "404":
+          description: |-
+            `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+
+            `NOT_FOUND`: No v1 resource lives at this path.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                brandNotFound:
+                  summary: BRAND_NOT_FOUND
+                  value:
+                    error:
+                      code: BRAND_NOT_FOUND
+                      type: not_found
+                      message: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+                      suggestion: List the brands this credential can reach with GET /v1/brands.
+                      docs: https://docs.brew.new/api-reference/api/errors
+                notFound:
+                  summary: NOT_FOUND
+                  value:
+                    error:
+                      code: NOT_FOUND
+                      type: not_found
+                      message: No v1 resource lives at this path.
+                      suggestion: Check the request path and HTTP method against the API reference.
+                      docs: https://docs.brew.new/api-reference/api/api-introduction
+        "429":
+          description: "`RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot."
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+            X-RateLimit-Limit:
+              schema:
+                type: integer
+                description: Requests allowed in the current rolling rate limit window.
+                example: 100
+              required: true
+              description: Requests allowed in the current rolling rate limit window.
+            X-RateLimit-Remaining:
+              schema:
+                type: integer
+                description: Requests remaining in the current rolling rate limit window.
+                example: 0
+              required: true
+              description: Requests remaining in the current rolling rate limit window.
+            X-RateLimit-Reset:
+              schema:
+                type: integer
+                description: Unix timestamp in seconds when the oldest recorded request leaves the rolling window.
+                example: 1712592360
+              required: true
+              description: Unix timestamp in seconds when the oldest recorded request leaves the rolling window.
+            Retry-After:
+              schema:
+                type: integer
+                description: Seconds to wait before retrying the request.
+                example: 42
+              required: true
+              description: Seconds to wait before retrying the request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                rateLimited:
+                  summary: RATE_LIMITED
+                  value:
+                    error:
+                      code: RATE_LIMITED
+                      type: rate_limit
+                      message: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot.
+                      suggestion: Wait the Retry-After time, then retry the same request.
+                      docs: https://docs.brew.new/api-reference/api/rate-limits
+                      retryAfter: 42
+                      details:
+                        scope: credential
+                        limit: 100
+                        remaining: 0
+                        reset: 1712592360
+                        consumed: false
+        "500":
+          description: "`INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it."
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                internalError:
+                  summary: INTERNAL_ERROR
+                  value:
+                    error:
+                      code: INTERNAL_ERROR
+                      type: internal_error
+                      message: An unexpected failure; the x-request-id header identifies it.
+                      suggestion: Retry the request. If it keeps failing, contact support with the x-request-id header.
+                      docs: https://docs.brew.new/api-reference/api/errors
+      x-brew-scope: automations
+      x-brew-brand-scope: brand
+      x-brew-idempotency: none
+      x-brew-credited: false
+      x-brew-rate-policy: integrations.read
+  /v1/integrations/events/{eventId}:
+    get:
+      operationId: describeIntegrationEvent
+      tags:
+        - Integrations
+      summary: Describe an integration event
+      description: "Returns one live integration event in full: each property with its template `variable` (`properties.<key>` or `person.<key>` for a tenant catalog’s event, the key itself for a static catalog’s), which hold personal data, which Brew suggests for personalization, its lifecycle stage and its roles in the product model. This GET may call the provider: an event listed bare, or described more than a day ago, is described there first on the account’s read budget, and `propertiesStatus` says how current `properties` are (`rate_limited` with `retryAfterSeconds` when the budget is spent). `404 INTEGRATION_EVENT_NOT_FOUND` for an unknown or cross-brand id. Brand-scoped. Requires the `automations` scope."
+      parameters:
+        - schema:
+            type: string
+            minLength: 1
+            maxLength: 64
+            description: The live event id from `GET /v1/integrations/events`. Never compose one.
+            example: k5714pq3vm8x2n6c9d0b7f1h4j6g2r8t
+          required: true
+          description: The live event id from `GET /v1/integrations/events`. Never compose one.
+          name: eventId
+          in: path
+        - name: X-Brand-Id
+          in: header
+          required: false
+          description: The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 64
+          example: kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+      responses:
+        "200":
+          description: The live integration event.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+            X-RateLimit-Limit:
+              schema:
+                type: integer
+                description: Requests allowed in the current rolling rate limit window.
+                example: 100
+              required: true
+              description: Requests allowed in the current rolling rate limit window.
+            X-RateLimit-Remaining:
+              schema:
+                type: integer
+                description: Requests remaining in the current rolling rate limit window.
+                example: 99
+              required: true
+              description: Requests remaining in the current rolling rate limit window.
+            X-RateLimit-Reset:
+              schema:
+                type: integer
+                description: Unix timestamp in seconds when the oldest recorded request leaves the rolling window.
+                example: 1712592360
+              required: true
+              description: Unix timestamp in seconds when the oldest recorded request leaves the rolling window.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IntegrationEventDetailResponse"
+              example:
+                eventId: k5714pq3vm8x2n6c9d0b7f1h4j6g2r8t
+                provider: posthog
+                sourceId: cgr_4f2a9c
+                eventKey: created_project
+                title: created_project
+                label: Created a project
+                kind: custom
+                stage: activation
+                modelRoles:
+                  - activation
+                  - key_event
+                volume30d: 8100
+                lastSeenAt: '2026-10-26T09:12:00.000Z'
+                description: A person created a project.
+                propertiesStatus: current
+                properties:
+                  - key: project_name
+                    variable: properties.project_name
+                    scope: event
+                    type: string
+                    description: The name of the new project
+                    isPersonal: false
+                    isPersonalization: true
+                  - key: first_name
+                    variable: person.first_name
+                    scope: person
+                    type: string
+                    isPersonal: true
+                    isPersonalization: false
+        "400":
+          description: |-
+            `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+
+            `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                brandIdRequired:
+                  summary: BRAND_ID_REQUIRED
+                  value:
+                    error:
+                      code: BRAND_ID_REQUIRED
+                      type: invalid_request
+                      message: An organization-scoped credential called a brand-scoped operation without naming the brand.
+                      suggestion: List brands with GET /v1/brands, then name one with the X-Brand-Id header. There is no default brand.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                invalidRequest:
+                  summary: INVALID_REQUEST
+                  value:
+                    error:
+                      code: INVALID_REQUEST
+                      type: invalid_request
+                      message: "The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender."
+                      suggestion: Fix the field reported in `param` and retry.
+                      docs: https://docs.brew.new/api-reference/api/errors
+        "401":
+          description: |-
+            `API_KEY_REVOKED`: The API key was revoked.
+
+            `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+
+            `INVALID_API_KEY`: The API key is malformed or unknown.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                apiKeyRevoked:
+                  summary: API_KEY_REVOKED
+                  value:
+                    error:
+                      code: API_KEY_REVOKED
+                      type: authentication_error
+                      message: The API key was revoked.
+                      suggestion: Create a new active API key and retry.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                authenticationRequired:
+                  summary: AUTHENTICATION_REQUIRED
+                  value:
+                    error:
+                      code: AUTHENTICATION_REQUIRED
+                      type: authentication_error
+                      message: No API key or session accompanied the request.
+                      suggestion: Provide a valid API key or sign in with an organization session.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                invalidApiKey:
+                  summary: INVALID_API_KEY
+                  value:
+                    error:
+                      code: INVALID_API_KEY
+                      type: authentication_error
+                      message: The API key is malformed or unknown.
+                      suggestion: Check the API key format and retry with a valid active key.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+        "403":
+          description: |-
+            `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+
+            `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+
+            `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+
+            `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                accountSuspended:
+                  summary: ACCOUNT_SUSPENDED
+                  value:
+                    error:
+                      code: ACCOUNT_SUSPENDED
+                      type: authorization_error
+                      message: The organization behind the credential is suspended.
+                      suggestion: The organization behind this credential is suspended. Contact support@brew.new; do not retry.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                brandScopeMismatch:
+                  summary: BRAND_SCOPE_MISMATCH
+                  value:
+                    error:
+                      code: BRAND_SCOPE_MISMATCH
+                      type: authorization_error
+                      message: A brand-scoped credential named a brand other than the one it is bound to.
+                      suggestion: Omit the brand to use the one this credential is bound to, or use an organization-scoped credential to reach other brands.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                insufficientPermissions:
+                  summary: INSUFFICIENT_PERMISSIONS
+                  value:
+                    error:
+                      code: INSUFFICIENT_PERMISSIONS
+                      type: authorization_error
+                      message: The credential lacks the permission scope the operation needs.
+                      suggestion: Use an API key or session with the required permission.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                insufficientRole:
+                  summary: INSUFFICIENT_ROLE
+                  value:
+                    error:
+                      code: INSUFFICIENT_ROLE
+                      type: authorization_error
+                      message: "The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role)."
+                      suggestion: Ask an organization admin to run this, to add you to the brand, or to make you an admin.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+        "404":
+          description: |-
+            `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+
+            `INTEGRATION_EVENT_NOT_FOUND`: No live integration event with that id exists in the brand.
+
+            `NOT_FOUND`: No v1 resource lives at this path.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                brandNotFound:
+                  summary: BRAND_NOT_FOUND
+                  value:
+                    error:
+                      code: BRAND_NOT_FOUND
+                      type: not_found
+                      message: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+                      suggestion: List the brands this credential can reach with GET /v1/brands.
+                      docs: https://docs.brew.new/api-reference/api/errors
+                integrationEventNotFound:
+                  summary: INTEGRATION_EVENT_NOT_FOUND
+                  value:
+                    error:
+                      code: INTEGRATION_EVENT_NOT_FOUND
+                      type: not_found
+                      message: No live integration event with that id exists in the brand.
+                      suggestion: List the brand’s live integration events with GET /v1/integrations/events and pass an `eventId` from it.
+                      docs: https://docs.brew.new/api-reference/api/errors
+                notFound:
+                  summary: NOT_FOUND
+                  value:
+                    error:
+                      code: NOT_FOUND
+                      type: not_found
+                      message: No v1 resource lives at this path.
+                      suggestion: Check the request path and HTTP method against the API reference.
+                      docs: https://docs.brew.new/api-reference/api/api-introduction
+        "429":
+          description: "`RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot."
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+            X-RateLimit-Limit:
+              schema:
+                type: integer
+                description: Requests allowed in the current rolling rate limit window.
+                example: 100
+              required: true
+              description: Requests allowed in the current rolling rate limit window.
+            X-RateLimit-Remaining:
+              schema:
+                type: integer
+                description: Requests remaining in the current rolling rate limit window.
+                example: 0
+              required: true
+              description: Requests remaining in the current rolling rate limit window.
+            X-RateLimit-Reset:
+              schema:
+                type: integer
+                description: Unix timestamp in seconds when the oldest recorded request leaves the rolling window.
+                example: 1712592360
+              required: true
+              description: Unix timestamp in seconds when the oldest recorded request leaves the rolling window.
+            Retry-After:
+              schema:
+                type: integer
+                description: Seconds to wait before retrying the request.
+                example: 42
+              required: true
+              description: Seconds to wait before retrying the request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                rateLimited:
+                  summary: RATE_LIMITED
+                  value:
+                    error:
+                      code: RATE_LIMITED
+                      type: rate_limit
+                      message: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot.
+                      suggestion: Wait the Retry-After time, then retry the same request.
+                      docs: https://docs.brew.new/api-reference/api/rate-limits
+                      retryAfter: 42
+                      details:
+                        scope: credential
+                        limit: 100
+                        remaining: 0
+                        reset: 1712592360
+                        consumed: false
+        "500":
+          description: "`INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it."
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                internalError:
+                  summary: INTERNAL_ERROR
+                  value:
+                    error:
+                      code: INTERNAL_ERROR
+                      type: internal_error
+                      message: An unexpected failure; the x-request-id header identifies it.
+                      suggestion: Retry the request. If it keeps failing, contact support with the x-request-id header.
+                      docs: https://docs.brew.new/api-reference/api/errors
+      x-brew-scope: automations
       x-brew-brand-scope: brand
       x-brew-idempotency: none
       x-brew-credited: false

@@ -2,6 +2,37 @@
 
 ## Unreleased
 
+The live integration event commands require an SDK release exposing
+`integrations.events` and `automations.triggers.ensureIntegrationEvent`
+(GetBrew/typescript-sdk#88). The published SDK 13.4.0 does not provide them.
+This branch pins that PR's immutable source commit for coordinated
+validation. Follow the integration events SDK gate in `RELEASING.md` before
+release.
+
+### Added
+
+- Live integration events (GetBrew/brew-v2#2411): the events a brand's
+  connected live sources send, such as a PostHog project's own events or the
+  Stripe and Shopify app catalogs. All three commands need the
+  `automations` scope.
+  - `integrations events list` (`GET /v1/integrations/events`) lists them
+    source by source, busiest first, with `--provider`, `--query`, `--kind`,
+    `--limit`, `--cursor`, `--all` and `--input`. A page can be short, even
+    empty, before the last one: on a terminal it ends with the next
+    `--cursor`, and `--all` follows the cursor to the end and keeps the
+    page's `sources` beside the rows.
+  - `integrations events get <eventId>` (`GET /v1/integrations/events/{eventId}`)
+    reads one event with each property's template `variable`, and whether it
+    is personal data or suggested for personalization, plus
+    `propertiesStatus`: `current`, `stored`, `rate_limited` (with
+    `retryAfterSeconds`) or `unavailable`. Brew may read the provider first;
+    a spent read budget still answers, with what Brew stored.
+  - `automations triggers ensure-integration-event --event-id <eventId>`
+    (`POST /v1/automations/triggers/integration-events`) gets or creates the
+    event's trigger and prints the row with `created` and the same
+    `propertiesStatus`. A missing `--event-id` exits 2 before any request;
+    `--idempotency-key` replays a retry.
+
 ### Fixed
 
 - `brand get-images --query` is free: semantic image search no longer costs
