@@ -99,7 +99,7 @@ describe('send', () => {
     )
     expect(envelope.summary).toContain('REAL')
     expect(envelope.confirmCommand).toBe(
-      'brew-cli send auth.password-reset --to jane@example.com --yes'
+      'brew-cli send --to=jane@example.com --yes -- auth.password-reset'
     )
   })
 
