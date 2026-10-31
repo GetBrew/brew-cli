@@ -463,6 +463,14 @@ describe('brand get-images', () => {
     expect(result.code).toBe(2)
     expect(result.stderr).toContain('--kind')
   })
+
+  it('is free, search included: no credits note in its help', async () => {
+    expect(brandGetImagesCommand.isCredited).not.toBe(true)
+    const result = await cli(['brand', 'get-images', '--help'])
+    expect(result.code).toBe(0)
+    expect(result.stdout).not.toContain('Brew credits')
+    expect(result.stdout).not.toContain('1 credit')
+  })
 })
 
 describe('content generate-image', () => {
