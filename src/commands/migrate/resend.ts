@@ -125,7 +125,7 @@ export const migrateResendCommand = defineCommand({
       .filter((part) => part !== '')
       .join(' ')
   },
-  run: async ({ ctx, flags }) => {
+  run: async ({ ctx, args, flags }) => {
     const apply = flags.apply === true
     const dryRun = flags.dryRun === true
     if (apply && dryRun) {
@@ -168,6 +168,10 @@ export const migrateResendCommand = defineCommand({
       rewriteImports: flags.rewriteImports === true,
       cwd,
       sourceKey,
+      rerun: {
+        command: migrateResendCommand,
+        invocation: { args, flags },
+      },
     })
   },
 })

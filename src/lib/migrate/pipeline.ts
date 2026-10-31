@@ -3,13 +3,14 @@ import { join, resolve } from 'node:path'
 import type { BrewClient } from '../client'
 import { type Clock, systemClock } from '../clock'
 import { buildConfirmCommand } from '../confirm'
-import type { CommandOutcome } from '../define-command'
+import type { CommandOutcome, CommandSpec } from '../define-command'
 import { CliAuthError, CliUsageError } from '../errors'
 import { detectProject } from '../init/detect'
 import type { NextStep } from '../init/report'
 import { reachesSdkRange, SDK_PACKAGE, SDK_RANGE } from '../init/templates'
 import { getInvocationPrefix } from '../invocation'
 import { addCommand, formatCommandLine } from '../project/package-manager'
+import type { RerunInvocation } from '../rerun'
 import type { CliContext } from '../types'
 import {
   createManifest,
@@ -66,6 +67,11 @@ export type MigrateInput = MigrateOptions & {
     readonly from: 'stdin' | 'env'
   } | null
   readonly clock?: Clock
+  /** The parsed invocation, re-serialized into the apply command it prints. */
+  readonly rerun: {
+    readonly command: Pick<CommandSpec, 'path' | 'flags' | 'args'>
+    readonly invocation: RerunInvocation
+  }
 }
 
 const PHASE_RUNNERS: Readonly<
@@ -469,12 +475,16 @@ export async function runMigration(
       actor: 'agent',
       kind: 'run-command',
       command: buildConfirmCommand(
-        [
-          ...ctx.rawArgv.filter(
-            (token) => token !== '--yes' && token !== '--dry-run'
-          ),
-          '--apply',
-        ],
+        {
+          args: input.rerun.invocation.args,
+          flags: {
+            ...input.rerun.invocation.flags,
+            dryRun: undefined,
+            apply: true,
+          },
+        },
+        input.rerun.command,
+        undefined,
         prefix
       ),
       title: `After the person reviews ${input.manifestPath}, apply the plan (nothing in ${source.displayName} is changed or deleted)${input.sourceKey?.from === 'stdin' ? '; pipe the Resend key in again' : ''}`,

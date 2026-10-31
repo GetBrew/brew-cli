@@ -383,7 +383,7 @@ describe('migrate resend: the plan (default)', () => {
     expect(report.nextSteps[0]).toMatchObject({
       id: 'apply',
       blocking: true,
-      command: 'brew-cli migrate resend --json --apply --yes',
+      command: 'brew-cli migrate resend --apply --json --yes',
     })
   })
 
