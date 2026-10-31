@@ -6,6 +6,7 @@ import type {
   SetUpAppEmailKitResponse,
 } from '@brew.new/sdk'
 import { BrewApiError } from '@brew.new/sdk'
+import { Option } from 'commander'
 import { installOne, type McpInstallResult } from '../../commands/mcp/install'
 import {
   buildContractsFile,
@@ -31,7 +32,7 @@ import {
 import { readConfig, updateConfig } from '../config-store'
 import { buildConfirmCommand } from '../confirm'
 import { sdkTransportFor } from '../context'
-import type { CommandOutcome } from '../define-command'
+import type { CommandOutcome, CommandSpec } from '../define-command'
 import { CliApiError, CliUsageError } from '../errors'
 import { getInvocationPrefix } from '../invocation'
 import { mcpUrlFromApiUrl, USER_SCOPE_ONLY } from '../mcp-clients'
@@ -50,6 +51,7 @@ import {
   readBrewState,
   serializeBrewState,
 } from '../project/state'
+import type { RerunInvocation } from '../rerun'
 import type { CliContext } from '../types'
 import { type AuthId, detectProject, type ProjectDetection } from './detect'
 import {
@@ -108,6 +110,13 @@ export type InitOptions = {
   readonly noWait: boolean
   readonly resume: boolean
   readonly openBrowser: boolean
+  /** The parsed `init` invocation, re-serialized into the commands it prints. */
+  readonly rerun: InitRerun
+}
+
+export type InitRerun = {
+  readonly command: Pick<CommandSpec, 'path' | 'flags' | 'args'>
+  readonly invocation: RerunInvocation
 }
 
 /** The kit's auth stack for a detected auth library. */
@@ -149,29 +158,37 @@ function describeError(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
 }
 
-/** The command an agent re-runs to continue: same flags, `--yes`. */
 /** Flags of `init` whose value is the next token (`--apply-patches a@b`). */
-const VALUE_FLAGS: ReadonlySet<string> = new Set(['--apply-patches'])
+const VALUE_FLAGS: ReadonlySet<string> = new Set(['--apply-patches', '--app'])
 
+/**
+ * The command an agent re-runs to continue: the parsed invocation with
+ * `drop` removed and `add` set, plus `--yes`. It goes through the shared
+ * serializer, so credentials never reach it and values stay one shell word.
+ */
 function rerunCommand(
   ctx: CliContext,
+  rerun: InitRerun,
   options: { readonly drop: readonly string[]; readonly add: readonly string[] }
 ): string {
-  const argv: string[] = []
-  for (let index = 0; index < ctx.rawArgv.length; index++) {
-    const token = ctx.rawArgv[index] ?? ''
-    const name = token.split('=')[0] ?? token
-    if (token === '--yes' || options.drop.includes(name)) {
-      // A dropped flag that takes a value drops its value too.
-      if (VALUE_FLAGS.has(token)) {
-        index++
-      }
-      continue
+  const flags: Record<string, unknown> = { ...rerun.invocation.flags }
+  for (const flag of options.drop) {
+    delete flags[new Option(flag).attributeName()]
+  }
+  for (let index = 0; index < options.add.length; index++) {
+    const flag = options.add[index] ?? ''
+    const option = new Option(flag)
+    if (VALUE_FLAGS.has(flag)) {
+      index++
+      flags[option.attributeName()] = options.add[index]
+    } else {
+      flags[option.attributeName()] = !option.negate
     }
-    argv.push(token)
   }
   return buildConfirmCommand(
-    [...argv, ...options.add],
+    { args: rerun.invocation.args, flags },
+    rerun.command,
+    undefined,
     getInvocationPrefix(ctx.io.env)
   )
 }
@@ -201,7 +218,7 @@ export async function runInit(
     )
   }
   if (detected.kind === 'ambiguous') {
-    const report = ambiguousReport(detected, ctx, dryRun)
+    const report = ambiguousReport(detected, ctx, dryRun, options.rerun)
     return finish(report)
   }
   const project = detected.project
@@ -347,13 +364,13 @@ export async function runInit(
         ? ['cli', 'app']
         : ['app']
     ) as Array<'cli' | 'app'>
-    const resumeCommand = rerunCommand(ctx, {
+    const resumeCommand = rerunCommand(ctx, options.rerun, {
       drop: ['--no-wait', '--resume'],
       add: ['--resume'],
     })
     const loginCommands = {
       resumeCommand,
-      restartCommand: rerunCommand(ctx, {
+      restartCommand: rerunCommand(ctx, options.rerun, {
         drop: ['--no-wait', '--resume'],
         add: [],
       }),
@@ -719,7 +736,7 @@ export async function runInit(
           id: 'rerun-init',
           actor: 'agent',
           kind: 'run-command',
-          command: rerunCommand(ctx, {
+          command: rerunCommand(ctx, options.rerun, {
             drop: ['--resume', '--no-wait'],
             add: [],
           }),
@@ -893,7 +910,7 @@ export async function runInit(
         patchId: patch.id,
         path: patch.path,
         title: `${patch.title} (review the diff, then apply)`,
-        command: rerunCommand(ctx, {
+        command: rerunCommand(ctx, options.rerun, {
           drop: ['--resume', '--no-wait', '--dry-run', '--apply-patches'],
           add: [
             '--apply-patches',
@@ -1609,13 +1626,14 @@ function baseReport(input: {
 function ambiguousReport(
   detected: Extract<ReturnType<typeof detectProject>, { kind: 'ambiguous' }>,
   ctx: CliContext,
-  dryRun: boolean
+  dryRun: boolean,
+  rerun: InitRerun
 ): InitReport {
   const nextSteps: NextStep[] = detected.candidates.map((candidate) => ({
     id: `init-${candidate.dir.replaceAll('/', '-')}`,
     actor: 'agent',
     kind: 'run-command',
-    command: rerunCommand(ctx, {
+    command: rerunCommand(ctx, rerun, {
       drop: ['--resume', '--no-wait'],
       add: ['--app', candidate.dir],
     }),

@@ -556,7 +556,7 @@ describe('init --yes: the full run', () => {
       kind: 'apply-patch',
       patchId: 'better-auth-config',
       // Pinned to the reviewed file: the hash of lib/auth.ts it was computed on.
-      command: `brew-cli init --json --apply-patches better-auth-config@${report.patches[0]?.baseSha256?.slice(0, 12)} --yes`,
+      command: `brew-cli init --apply-patches=better-auth-config@${report.patches[0]?.baseSha256?.slice(0, 12)} --json --yes`,
     })
     expect(report.domain).toMatchObject({ mode: 'sandbox' })
     expect(report.nextSteps.map((step) => step.id)).toContain('verify-domain')
@@ -978,7 +978,7 @@ describe('init: sign-in for agents (exit 3)', () => {
         id: 'resume-init',
         actor: 'agent',
         kind: 'run-command',
-        command: 'brew-cli init --json --no-test-email --resume --yes',
+        command: 'brew-cli init --no-test-email --resume --json --yes',
         title: expect.any(String),
         blocking: true,
       },
@@ -1019,7 +1019,7 @@ describe('init: sign-in for agents (exit 3)', () => {
     expect(result.code).toBe(3)
     expect(
       result.report.nextSteps.find((step) => step.id === 'resume-init')?.command
-    ).toBe('npx -y brew.new@0.18.0 init --json --resume --yes')
+    ).toBe('npx -y brew.new@0.18.0 init --resume --json --yes')
   })
 })
 
@@ -1038,8 +1038,8 @@ describe('init: projects it cannot set up as they are', () => {
       { name: 'web', dir: 'apps/web', framework: 'next' },
     ])
     expect(result.report.nextSteps.map((step) => step.command)).toEqual([
-      'brew-cli init --json --app apps/api --yes',
-      'brew-cli init --json --app apps/web --yes',
+      'brew-cli init --app=apps/api --json --yes',
+      'brew-cli init --app=apps/web --json --yes',
     ])
   })
 

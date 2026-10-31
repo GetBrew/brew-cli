@@ -194,7 +194,7 @@ export const initCommand = defineCommand({
       .filter((part) => part !== '')
       .join(' ')
   },
-  run: async ({ ctx, flags }) => {
+  run: async ({ ctx, args, flags }) => {
     const resume = flags.resume === true
     const noWait = ctx.rawArgv.includes('--no-wait')
     if (resume && flags.dryRun === true) {
@@ -216,6 +216,7 @@ export const initCommand = defineCommand({
       noWait,
       resume,
       openBrowser: flags.open !== false,
+      rerun: { command: initCommand, invocation: { args, flags } },
     })
   },
 })
