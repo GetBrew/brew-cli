@@ -15,8 +15,14 @@
   `stopInFlight` on a draft with nobody in flight is a `422
   AUTOMATION_NOT_PUBLISHED` (#2489); a date written to a `date` field no
   longer warns `FIELD_TYPE_COERCED` (#2490); `emails import` lists markup it
-  could not keep as `element_dropped` asset warnings (#2471); pausing an
-  already paused send returns `200` (#2492). No command's flags changed.
+  could not keep as `element_dropped` asset warnings (#2471); `sends pause`
+  on a send you already paused returns `200` and changes nothing, while a
+  send held at the plan limit or for its domain is still `409
+  SEND_NOT_PAUSABLE` (#2492). No command's flags changed.
+- A contact write with a JSON number past 9007199254740991 (2^53 - 1) is now
+  refused with `409 FIELD_TYPE_MISMATCH` instead of being stored rounded; send
+  large ids as strings to a `string` field (#2488). This applies to
+  `contacts upsert`, `upsert-many`, `update` and `import`.
 
 ## 0.19.0
 
