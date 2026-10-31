@@ -113,9 +113,9 @@ export interface paths {
          *
          *     **Input** `content` (the raw source as a string) and `format`: `html` (a document or fragment), `mjml`, `jsx` (a module with a default-exported component or a bare `<Html>` element; static values, `PreviewProps` and local sub-components fold, anything executable is rejected with the offending line) or `eml` (the HTML body is imported, inline `cid:` images are rehosted, other attachments are dropped, and the Subject becomes the title). HTML, MJML and EML land as source-preserved designs with an editable projection; JSX lands as a native React Email design. Optional `baseUrl` resolves relative image paths; optional `title` and `subjectLine` (the design-default inbox subject; an EML Subject is the default); optional `groupId` (`grp_…` or `ungrouped`) or `groupName` (resolve or create), not both; omit to land Ungrouped. Limits: 5,000,000 UTF-8 bytes, 256 remote resources, 8 concurrent fetches, 10 MB per resource and 50 MB aggregate downloads.
          *
-         *     **Returns** `201 { emailId, emailVersionId, html, previewImage?, assetReport, group, subjectLine? }`.
+         *     **Returns** `201 { emailId, emailVersionId, html, previewImage?, assetReport, group, subjectLine? }`. Each source element with content that a design could not keep is listed once in `assetReport.warnings` as `{ code: "element_dropped", location: "markup", host: "<tag>" }`: inline `svg`, `math` and `canvas`, and `button`, `select`, `textarea` or table `caption` holding text are left out of the editable projection (the original source keeps them); `audio`, `video`, `iframe`, `object` and `embed` are removed from both, with `audio`/`video` fallback content kept.
          *
-         *     **Errors** `422 EMAIL_IMPORT_FAILED` when the markup cannot become an editable design (a lossy round trip persists nothing); `404 EMAIL_GROUP_NOT_FOUND` for an unknown `groupId`; `413 PAYLOAD_TOO_LARGE` over the byte cap; `422 BRAND_NOT_READY` while the brand is still extracting.
+         *     **Errors** `422 EMAIL_IMPORT_FAILED` when the markup cannot be compiled into a design or its editable model is over the size budget (nothing is persisted); `404 EMAIL_GROUP_NOT_FOUND` for an unknown `groupId`; `413 PAYLOAD_TOO_LARGE` over the byte cap; `422 BRAND_NOT_READY` while the brand is still extracting.
          *
          *     **See also** `generateEmail`, `importFigmaDesign`, `auditEmail`.
          */
@@ -613,7 +613,7 @@ export interface paths {
         put?: never;
         /**
          * Pause a gradual send
-         * @description Manually pauses an in-flight GRADUAL (domain-warmup) send. The ramp stops before its next chunk and holds its current batch until `POST /v1/sends/{sendId}/resume` (or a cancel). A send that is not a `running` gradual send returns `409 SEND_NOT_PAUSABLE`. Brand-scoped: an unknown / cross-brand `sendId` is `404`.
+         * @description Manually pauses an in-flight GRADUAL (domain-warmup) send. The ramp stops before its next chunk and holds its current batch until `POST /v1/sends/{sendId}/resume` (or a cancel). A send its operator already paused returns the same 200 and changes nothing; any other send that is not a `running` gradual send (including one held at the plan limit or for its domain) returns `409 SEND_NOT_PAUSABLE`. Brand-scoped: an unknown / cross-brand `sendId` is `404`.
          */
         post: operations["pauseSend"];
         delete?: never;
@@ -753,7 +753,7 @@ export interface paths {
          *
          *     **Use when** you have minted every design a `sendEmail` node references (`generateEmail` first). Publish afterwards with `updateAutomation` (`{ "published": true }`), or launch a manual-audience automation with `runAutomation`.
          *
-         *     **Input** Trigger binding, exactly one: an EVENT automation passes `triggerEventId`; a MANUAL-AUDIENCE automation omits it and gives the trigger node `config: { "mode": "manualAudience", "audienceId": "…" }`. Typed conditions: every filter and condition-mode split uses a non-empty `conditions` array; each condition needs `field`, `type` (`string`, `number`, `date` or `bool`) and a canonical snake_case `operator`; unary operators omit `value`, comparisons require a type-correct scalar, a non-empty array, or an exact two-value `between` tuple (see `AutomationNode`). Every `sendEmail` node carries `emailId`, `emailVersionId` and `subject` (`previewText` is optional; the design's `<Preview>` is the source of truth). `domainId` is optional at create time; publishing or running requires a verified one from `listDomains`. There is no `messageClass` key: the delivery class derives from the sending domain's `sendingPurpose` (a transactional-purpose domain sends with no unsubscribe link and delivers to unsubscribed contacts), so pick the class by picking the domain. `dryRun: true` validates without persisting.
+         *     **Input** Trigger binding, exactly one: an EVENT automation passes `triggerEventId`; a MANUAL-AUDIENCE automation omits it and gives the trigger node `config: { "mode": "manualAudience", "audienceId": "…" }`. Typed conditions: every filter and condition-mode split uses a non-empty `conditions` array; each condition needs `field`, `type` (`string`, `number`, `date` or `bool`) and a canonical snake_case `operator`; unary operators omit `value`, comparisons require a type-correct scalar, a non-empty array, or an exact two-value `between` tuple (see `AutomationNode`). Every `sendEmail` node carries `emailId`, `emailVersionId` and `subject` (`previewText` is optional; the design's `<Preview>` is the source of truth). `domainId` is optional at create time; publishing or running requires a verified one from `listDomains`. There is no `messageClass` key: the delivery class derives from the sending domain's `sendingPurpose` (a transactional-purpose domain sends with no unsubscribe link and delivers to unsubscribed contacts), so pick the class by picking the domain. Node ids are stored as sent, except the two shapes `NODE_ID_REPLACED` reports. `dryRun: true` validates without persisting.
          *
          *     **Returns** `201` with the bare `AutomationRow`; with `dryRun: true`, `200` with an `AutomationDryRunReport` `{ valid, blockers[], warnings[], blockingIssues[], nodeCounts }` (`blockers[]` fail publish, `warnings[]` are advisory, `blockingIssues[]` lists per-node references the bound trigger or contact catalog cannot provide, each of which also fails publish; `valid` is false when any blocker or blocking issue is present).
          *
@@ -805,11 +805,11 @@ export interface paths {
          *
          *     **Use when** editing a graph or changing runtime state of an automation created with `createAutomation`. Manual-audience runs are controlled with `pauseAudienceRun`, `resumeAudienceRun` and `cancelAudienceRun`, not here.
          *
-         *     **Input** Update: one or more of `name`, `description`, `nodes`, `connections`, `triggerEventId`, under the same typed condition contract as create (explicit `type`, canonical snake_case `operator`, no `value` for unary operators, type-correct values elsewhere); `dryRun: true` validates without persisting. Lifecycle: `published: true` promotes the stored latest version live (optionally pin `automationVersionId`; the graph is validated first), `published: false` unpublishes, `paused: true` or `false` freezes or resumes future send steps (`stopInFlight` also stops runs already in progress).
+         *     **Input** Update: one or more of `name`, `description`, `nodes`, `connections`, `triggerEventId`, under the same typed condition contract as create (explicit `type`, canonical snake_case `operator`, no `value` for unary operators, type-correct values elsewhere); `dryRun: true` validates without persisting. Node ids are stored as sent, so renamed nodes keep their new ids, except the two shapes `NODE_ID_REPLACED` reports. Lifecycle: `published: true` promotes the stored latest version live (optionally pin `automationVersionId`; the graph is validated first), `published: false` unpublishes, `paused: true` or `false` freezes or resumes future send steps (`stopInFlight` also stops runs already in progress).
          *
          *     **Returns** the bare automation row, or with `dryRun: true` a `200 AutomationDryRunReport` `{ valid, blockers[], warnings[], blockingIssues[], nodeCounts }`: `blockingIssues[]` lists per-node references the effective trigger or contact catalog cannot provide, and publish refuses every one of them, fallback or not (`fatal` says what the reference would do: `true` for filter or split conditions and triple-brace `{{{ }}}` body tokens would break the run, `false` for subject, previewText, fromName, replyTo and double-brace body tags would render empty); `valid` is false when any blocker or blocking issue is present. Updating a LIVE automation saves a draft and does not go live: the previously published version keeps serving until you republish, `published` describes the returned row, `isLive`, `liveVersion` and `liveAutomationVersionId` describe the automation, and `warnings[]` carries `DRAFT_SAVED_NOT_LIVE`. Publishing an automation whose integration trigger has not received its event on the current connection (a Shopify topic with no webhook) still succeeds, and `warnings[]` carries `TRIGGER_EVENT_NOT_RECEIVED` saying what to set up.
          *
-         *     **Errors** `404 AUTOMATION_NOT_FOUND`, `AUTOMATION_VERSION_NOT_FOUND` (pin `liveAutomationVersionId`, a `versions[]` id, or a run row's `automationVersionId`), `TRIGGER_EVENT_NOT_FOUND`; `400 AUTOMATION_GRAPH_INVALID` (`details.issues[]`); `409 AUTOMATION_VERSION_CONFLICT` (re-read, reapply, retry); `422 PUBLISH_VALIDATION_FAILED` (`details.blockers[]`; a cdn.brew.new image a step would send that does not exist is a blocker, listed in `details.missingImages[]`, and a dead icon whose real file sits elsewhere in its pack is moved there instead when the key has `emails` access), `AUTOMATION_NOT_PUBLISHED` (nothing to unpublish), `AUTOMATION_NOT_PAUSABLE` (a manual-audience automation pauses through its runs).
+         *     **Errors** `404 AUTOMATION_NOT_FOUND`, `AUTOMATION_VERSION_NOT_FOUND` (pin `liveAutomationVersionId`, a `versions[]` id, or a run row's `automationVersionId`), `TRIGGER_EVENT_NOT_FOUND`; `400 AUTOMATION_GRAPH_INVALID` (`details.issues[]`); `409 AUTOMATION_VERSION_CONFLICT` (re-read, reapply, retry); `422 PUBLISH_VALIDATION_FAILED` (`details.blockers[]`; a cdn.brew.new image a step would send that does not exist is a blocker, listed in `details.missingImages[]`, and a dead icon whose real file sits elsewhere in its pack is moved there instead when the key has `emails` access), `AUTOMATION_NOT_PUBLISHED` (nothing to unpublish; with `stopInFlight: true` on a draft, also no contacts in flight to stop), `AUTOMATION_NOT_PAUSABLE` (a manual-audience automation pauses through its runs).
          *
          *     **See also** `createAutomation`, `testAutomation`, `runAutomation`, `listAutomationRuns`.
          */
@@ -1433,7 +1433,7 @@ export interface paths {
          *
          *     Custom-field names are folded to one key: words split at spaces, `_`, `-` and a lower-to-upper letter change, then joined camelCase (`Plan`, `PLAN` and `plan` are the field `plan`; `team_size` and `Team Size` are `teamSize`). A key written under its folded name adds a `FIELD_NAME_NORMALIZED` warning (`original`, `normalized`). Two keys that fold to one field (`plan` and `Plan`) would lose one value, so they are a `422 FIELD_NAME_COLLISION` on a single upsert (nothing written) and a per-row `errors[]` entry (`code: FIELD_NAME_COLLISION`) in a batch.
          *
-         *     Custom-field values are coerced to the definition's type (dates → epoch ms, `"1,234"` → 1234, `yes`/`no` → booleans). A value that cannot be coerced (`"$49"` in a number field) is a `409 FIELD_TYPE_MISMATCH` on a single upsert and a per-row `errors[]` entry (`code: FIELD_TYPE_MISMATCH`, `field`) in a batch — the other rows still land. A value that was converted adds one `warnings[]` entry per field (`code: FIELD_TYPE_COERCED`, `field`, `from`, `to`). A `customFields` key is never stored under a core field name. One whose loss would change the contact (`subscribed`, `First Name`, `consent`, a suppression flag or domain opt-out, or an `email` naming another address) is a `422 CORE_FIELD_IMMUTABLE` on a single upsert (nothing written) and a per-row `errors[]` entry (`code: CORE_FIELD_IMMUTABLE`, `field`) in a batch; send `firstName`, `lastName`, `subscribed` and `consent` at the top level. A key naming a field Brew manages (`createdAt`, `validationStatus`) is dropped with a `warnings[]` entry (`code: CORE_FIELD_IGNORED`, `field`) and the contact is still written, and an `email` key repeating the contact address is ignored.
+         *     Custom-field values are coerced to the definition's type (dates → epoch ms, `"1,234"` → 1234, `yes`/`no` → booleans). A value that cannot be coerced (`"$49"` in a number field) is a `409 FIELD_TYPE_MISMATCH` on a single upsert and a per-row `errors[]` entry (`code: FIELD_TYPE_MISMATCH`, `field`) in a batch — the other rows still land. A value that was converted adds one `warnings[]` entry per field (`code: FIELD_TYPE_COERCED`, `field`, `from`, `to`); a date written to a `date` field is not reported. A `customFields` key is never stored under a core field name. One whose loss would change the contact (`subscribed`, `First Name`, `consent`, a suppression flag or domain opt-out, or an `email` naming another address) is a `422 CORE_FIELD_IMMUTABLE` on a single upsert (nothing written) and a per-row `errors[]` entry (`code: CORE_FIELD_IMMUTABLE`, `field`) in a batch; send `firstName`, `lastName`, `subscribed` and `consent` at the top level. A key naming a field Brew manages (`createdAt`, `validationStatus`) is dropped with a `warnings[]` entry (`code: CORE_FIELD_IGNORED`, `field`) and the contact is still written, and an `email` key repeating the contact address is ignored.
          *
          *     Dates: a JSON number is epoch milliseconds. A string may be ISO (`2026-04-03`, with or without a time and offset), a Unix timestamp in seconds (10 digits) or milliseconds (13), a month name (`3 Apr 2026`, `April 3, 2026`, `03-Apr-26`), year-first (`2026/04/03`), compact (`20260403`), month and year read as the 1st (`2026-04`), dotted day-first (`03.04.2026`), or a slash or dash date. A slash or dash date with a day over 12 reads that way (`13/04/2026` is 13 April). One that reads either way (`03/04/2026`) follows the day/month order the batch's other dates in that field prove, else month/day, with a `warnings[]` entry (`code: DATE_ORDER_ASSUMED`, `field`). Send `YYYY-MM-DD` to be unambiguous.
          *
@@ -1483,7 +1483,7 @@ export interface paths {
         head?: never;
         /**
          * Update a contact
-         * @description Patches fields on the contact (`{ fields: { <name>: <value> } }` — core columns or custom fields) and/or records marketing consent provenance (`{ consent: { source, capturedAt?, policyVersion?, evidence? } }`, never re-subscribing an opt-out). Send one or both. Returns `{ contact, updated }` where `updated` lists the field names that changed (`consent` included). `fields.subscribed: false` unsubscribes; `true` on a contact who opted out is a `422 RESUBSCRIBE_NOT_ALLOWED` (they re-subscribe through their own action, or from their contact page in the Brew app). Two `fields` keys that name one field (`plan` and `Plan`, `customFields.plan` and `plan`) are a `422 FIELD_NAME_COLLISION`, nothing written.
+         * @description Patches fields on the contact (`{ fields: { <name>: <value> } }` — core columns or custom fields) and/or records marketing consent provenance (`{ consent: { source, capturedAt?, policyVersion?, evidence? } }`, never re-subscribing an opt-out). Send one or both. Returns `{ contact, updated, warnings }`: `updated` lists the fields whose stored value changed (`consent` included), and is empty when every value sent matched what was stored (nothing is written then). `warnings` carries the same `DATE_ORDER_ASSUMED` and `FIELD_TYPE_COERCED` caveats a single upsert reports: an ambiguous date such as `03/04/2026` reads month/day, so send `YYYY-MM-DD`. A JSON number past 9007199254740991 (2^53 - 1) arrives already rounded, so a `number` or `string` field refuses it with `409 FIELD_TYPE_MISMATCH`; send large ids as JSON strings to a `string` field. `fields.subscribed: false` unsubscribes; `true` on a contact who opted out is a `422 RESUBSCRIBE_NOT_ALLOWED` (they re-subscribe through their own action, or from their contact page in the Brew app). Two `fields` keys that name one field (`plan` and `Plan`, `customFields.plan` and `plan`) are a `422 FIELD_NAME_COLLISION`, nothing written.
          */
         patch: operations["updateContact"];
         trace?: never;
@@ -1549,7 +1549,7 @@ export interface paths {
          * Bulk-import contacts from CSV
          * @description Parse a raw CSV string and upsert the rows as contacts (≤ 1000). By default each column header maps to the custom field its name folds to, the same camelCase name `POST /v1/contacts` stores (`Plan` → `plan`, `Team Size` → `teamSize`); `email` is required. A header that spells a core field, ignoring case, spaces, `_` and `-`, or whose field key equals it (`First.Name`), maps to it: `Email`, `First Name`, `Last Name` and `Subscribed` fill `email`, `firstName`, `lastName` and `subscribed`. Pass `mapping` to remap single columns; the columns it leaves out keep their default mapping, `""` leaves a column out, and a key that names no column is a `400`. Two columns that land on one custom field (`plan,Plan`: names fold as on `POST /v1/contacts`) are a `422 FIELD_NAME_COLLISION` before any row is read: map one to another name or leave it out with `""`. A core field that `mapping` fills is filled from that column alone: another column whose default would fill it is left out with a `CSV_COLUMN_IGNORED` warning. Rows with a missing/invalid email are SKIPPED (counted in `summary.skipped`), not errored; disposable-domain rows are imported with `validationStatus: "risky"` (deliverable but flagged). Returns the same `{ summary, fieldsCreated, errors, warnings }` as batch-create plus `importId` — `207` when some rows fail. The batch is listed in Import History under `fileName` (optional), and each contact it writes carries `importId` until a later import touches it (filter on it to list them; deleting the import in the app removes the contacts it created). For rows you already hold as JSON, use `POST /v1/contacts/import`.
          *
-         *     CSV cells are text: a column mapped onto an EXISTING field is coerced to that field's type (dates → epoch ms, `1,234` → 1234, `yes`/`no` → booleans), and a cell that cannot be coerced (`$49` in a number column) fails ITS row with a per-row `errors[]` entry (`code: FIELD_TYPE_MISMATCH`, `field`) while the other rows still land. A converted cell adds a `warnings[]` entry (`code: FIELD_TYPE_COERCED`, `field`, `from`, `to`). An undeclared column is created as a `string` field unless every value is an ISO date (→ `date`); predeclare `number` / `bool` columns with `POST /v1/fields`. A column whose field Brew manages (`Created At`, `Validation Status`) is not imported and adds a `warnings[]` entry (`code: CSV_COLUMN_IGNORED`, `field` names the column).
+         *     CSV cells are text: a column mapped onto an EXISTING field is coerced to that field's type (dates → epoch ms, `1,234` → 1234, `yes`/`no` → booleans), and a cell that cannot be coerced (`$49` in a number column) fails ITS row with a per-row `errors[]` entry (`code: FIELD_TYPE_MISMATCH`, `field`) while the other rows still land. A converted cell adds a `warnings[]` entry (`code: FIELD_TYPE_COERCED`, `field`, `from`, `to`); a date written to a `date` field is not reported. An undeclared column is created as a `string` field unless every value is an ISO date (→ `date`); predeclare `number` / `bool` columns with `POST /v1/fields`. A column whose field Brew manages (`Created At`, `Validation Status`) is not imported and adds a `warnings[]` entry (`code: CSV_COLUMN_IGNORED`, `field` names the column).
          *
          *     A date column is read in ONE day/month order: the order its own dates prove (a day over 12 anywhere in the column, `13/04/2026`), else `dateOrder` (`day_first` reads `03/04/2026` as 3 April, `month_first` as 4 March), else month/day with a `warnings[]` entry (`code: DATE_ORDER_ASSUMED`, `field`). Dotted dates (`03.04.2026`) are day-first. ISO (`2026-04-03`), Unix seconds or milliseconds, month names (`3 Apr 2026`), year-first (`2026/04/03`) and compact (`20260403`) dates need no order. Convert to `YYYY-MM-DD` to be unambiguous.
          *
@@ -1623,7 +1623,7 @@ export interface paths {
         put?: never;
         /**
          * Create a contact field
-         * @description Creates a custom field definition (`{ fieldName, fieldType: "string" | "number" | "date" | "bool" }`). Returns `201` with the bare definition. (Contact upserts also auto-create unknown fields — explicit creation is for pinning the type up front.)
+         * @description Creates a custom field definition (`{ fieldName, fieldType: "string" | "number" | "date" | "bool" }`). A `number` field holds values up to 9007199254740991 (2^53 - 1) in magnitude, the largest integer it stores exactly; a contact write with a larger JSON number is refused (in a `string` field too, since it arrives already rounded), so send 64-bit ids and counters as JSON strings to a `string` field. Returns `201` with the bare definition. (Contact upserts also auto-create unknown fields — explicit creation is for pinning the type up front.)
          */
         post: operations["createContactField"];
         delete?: never;
@@ -2121,7 +2121,7 @@ export interface paths {
         };
         /**
          * Get brand images
-         * @description The brand’s asset library, as the Assets page shows it: logos, brand images (from the site or uploaded, including the social preview and site screenshot) and images made with Brew. Omit `?q=` to BROWSE it (free), newest first or `?sort=oldest`. Pass `?q=` for SEMANTIC search over brand and generated images (the query is embedded + vector-searched), in relevance order — this path is **credit-metered** on its first page (`402 INSUFFICIENT_CREDITS` when out of credits). `?kind=logo|brand|generated` narrows either mode; logos are not searchable. Each row carries `assetId` (the id the app opens at `/assets?image=<assetId>`), `kind`, `url` and what is known: description, dimensions, category, page, when it was added, and a logo’s variant. (`GET /v1/brand` returns the brand `identity`, and the smaller `emailDesign` / `imageStyle` / `logos` sub-resources embed with `?include=…`; images stay separate because they paginate.)
+         * @description The brand’s asset library, as the Assets page shows it: logos, brand images (from the site or uploaded, including the social preview and site screenshot) and images made with Brew. Omit `?q=` to BROWSE it, newest first or `?sort=oldest`. Pass `?q=` for SEMANTIC search over brand and generated images (the query is embedded + vector-searched), in relevance order. Both are free. `?kind=logo|brand|generated` narrows either mode; logos are not searchable. Each row carries `assetId` (the id the app opens at `/assets?image=<assetId>`), `kind`, `url` and what is known: description, dimensions, category, page, when it was added, and a logo’s variant. (`GET /v1/brand` returns the brand `identity`, and the smaller `emailDesign` / `imageStyle` / `logos` sub-resources embed with `?include=…`; images stay separate because they paginate.)
          */
         get: operations["getBrandImages"];
         put?: never;
@@ -3466,7 +3466,7 @@ export interface components {
         };
         ApiWarning: {
             /** @enum {string} */
-            code: "DRAFT_SAVED_NOT_LIVE" | "TRIGGER_EVENT_NOT_RECEIVED" | "ENFORCEMENT_LOOSENED_WHILE_PUBLISHED" | "REQUIRED_FIELD_SATISFIED_BY_FALLBACK" | "RESUBSCRIBE_SKIPPED" | "CORE_FIELD_IGNORED" | "DATE_ORDER_ASSUMED" | "FIELD_TYPE_COERCED" | "CSV_ROW_SKIPPED" | "CONTACT_EXISTS_SKIPPED" | "CSV_COLUMN_IGNORED" | "VALIDATION_SKIPPED" | "RECIPIENTS_EXCLUDED" | "CONSENT_RECORD_MISSING";
+            code: "DRAFT_SAVED_NOT_LIVE" | "NODE_ID_REPLACED" | "TRIGGER_EVENT_NOT_RECEIVED" | "ENFORCEMENT_LOOSENED_WHILE_PUBLISHED" | "REQUIRED_FIELD_SATISFIED_BY_FALLBACK" | "RESUBSCRIBE_SKIPPED" | "CORE_FIELD_IGNORED" | "DATE_ORDER_ASSUMED" | "FIELD_TYPE_COERCED" | "CSV_ROW_SKIPPED" | "CONTACT_EXISTS_SKIPPED" | "CSV_COLUMN_IGNORED" | "VALIDATION_SKIPPED" | "RECIPIENTS_EXCLUDED" | "CONSENT_RECORD_MISSING";
             message: string;
             field?: string;
         };
@@ -4530,9 +4530,9 @@ export interface components {
                 dropped?: number;
                 warnings: {
                     /** @enum {string} */
-                    code: "fetch_failed_retained" | "non_image_resource_retained" | "social_icon_substituted" | "tracking_pixel_dropped" | "unsafe_url_stripped" | "unsupported_resource_retained" | "upload_failed_retained" | "inline_asset_retained" | "attachment_dropped" | "embedded_reference_unresolved" | "tailwind_config_unresolved" | "tailwind_class_dropped" | "foreign_component_dropped";
+                    code: "fetch_failed_retained" | "non_image_resource_retained" | "social_icon_substituted" | "tracking_pixel_dropped" | "unsafe_url_stripped" | "unsupported_resource_retained" | "upload_failed_retained" | "inline_asset_retained" | "attachment_dropped" | "embedded_reference_unresolved" | "tailwind_config_unresolved" | "tailwind_class_dropped" | "foreign_component_dropped" | "element_dropped";
                     /** @enum {string} */
-                    location: "background" | "css-url" | "data-src" | "data-srcset" | "module" | "preload" | "src" | "srcset" | "stylesheet" | "vml-src";
+                    location: "background" | "css-url" | "data-src" | "data-srcset" | "markup" | "module" | "preload" | "src" | "srcset" | "stylesheet" | "vml-src";
                     host?: string;
                 }[];
             };
@@ -6437,7 +6437,7 @@ export interface components {
             published?: boolean;
             /** @description Exact version to publish; requires `published: true`. */
             automationVersionId?: string;
-            /** @description With `published: false` only — ALSO permanently stop contacts already mid-flow (default: they drain to completion). */
+            /** @description With `published: false` only — ALSO permanently stop contacts already mid-flow (default: they drain to completion). On an automation that is already a draft it only stops those contacts, and is a 422 AUTOMATION_NOT_PUBLISHED when none are in flight. */
             stopInFlight?: boolean;
             /** @description Freeze (`true`) / resume (`false`) a LIVE automation without unpublishing; held contacts resume from the same point. */
             paused?: boolean;
@@ -7393,7 +7393,20 @@ export interface components {
                     [key: string]: unknown;
                 };
             };
+            /** @description The fields whose stored value changed (`consent` included). Empty when every value sent matched what was stored; nothing is written then and `updatedAt` stays the same. */
             updated: string[];
+            warnings: {
+                code: string;
+                email?: string;
+                /** @description The 1-based row it is about (CSV: data row; header and blank lines not counted). */
+                row?: number;
+                field?: string;
+                message: string;
+                from?: string;
+                to?: string;
+                original?: string;
+                normalized?: string;
+            }[];
         };
         ContactsPatchRequest: {
             fields?: {
@@ -16265,7 +16278,7 @@ export interface operations {
             /**
              * @description `AUTOMATION_NOT_PAUSABLE`: The automation runs against a manual audience, so it is paused through its runs, not the automation.
              *
-             *     `AUTOMATION_NOT_PUBLISHED`: The automation is not live, so there is nothing to unpublish.
+             *     `AUTOMATION_NOT_PUBLISHED`: The automation is not live, so there is nothing to unpublish; with `stopInFlight: true` it also has no contacts in flight to stop.
              *
              *     `PUBLISH_VALIDATION_FAILED`: The saved graph cannot go live; `details.blockers[]` lists what publish requires.
              */
@@ -21626,7 +21639,8 @@ export interface operations {
                      *         "firstName",
                      *         "plan",
                      *         "consent"
-                     *       ]
+                     *       ],
+                     *       "warnings": []
                      *     }
                      */
                     "application/json": components["schemas"]["ContactsPatchResponse"];
@@ -27869,7 +27883,7 @@ export interface operations {
     getBrandImages: {
         parameters: {
             query?: {
-                /** @description Semantic search over what the images show. Costs 1 credit per new search; results come back in relevance order and `sort` is ignored. Logos are not searchable. */
+                /** @description Semantic search over what the images show. Results come back in relevance order and `sort` is ignored. Logos are not searchable. */
                 q?: string;
                 /** @description `logo`, `brand` (images from the site or uploaded, including the social preview and site screenshot) or `generated` (made with Brew). Omit for every kind. */
                 kind?: "logo" | "brand" | "generated";
@@ -27974,17 +27988,6 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed. */
-            402: {
-                headers: {
-                    /** @description Unique request identifier. Share this with support when debugging a request. */
-                    "x-request-id": string;
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiErrorEnvelope"];
-                };
-            };
             /**
              * @description `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
              *
@@ -28039,19 +28042,6 @@ export interface operations {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
                     "x-request-id": string;
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiErrorEnvelope"];
-                };
-            };
-            /** @description `SERVICE_UNAVAILABLE`: A dependency the operation must consult (billing, the idempotency store) is temporarily unavailable, so the request was refused rather than run unmetered. */
-            503: {
-                headers: {
-                    /** @description Unique request identifier. Share this with support when debugging a request. */
-                    "x-request-id": string;
-                    /** @description Seconds to wait before retrying the request. */
-                    "Retry-After": number;
                     [name: string]: unknown;
                 };
                 content: {

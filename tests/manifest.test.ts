@@ -75,7 +75,6 @@ describe('docs --agent manifest', () => {
       'contacts upsert-many',
       'contacts import',
       'contacts import-csv',
-      'brand get-images',
     ]) {
       expect(credited.has(`brew-cli ${command}`), command).toBe(true)
     }

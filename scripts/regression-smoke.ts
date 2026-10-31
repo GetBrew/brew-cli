@@ -602,7 +602,6 @@ try {
         'contacts upsert-many',
         'contacts import',
         'contacts import-csv',
-        'brand get-images',
       ]) {
         const metadata = commands.find(
           (item: unknown) => object(item).command === `brew-cli ${command}`

@@ -1,5 +1,21 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- `brand get-images --query` is free: semantic image search no longer costs
+  a credit on its first page or answers `402 INSUFFICIENT_CREDITS`
+  (GetBrew/brew-v2#2492). The command is no longer marked credited in help,
+  `docs --agent` and the command reference. Its search cursor is the same
+  opaque `--cursor` value as before.
+- Vendored spec and generated API types follow app revision `373e900a9a`.
+  `contacts update` returns `warnings[]`, and `updated` is empty when nothing
+  changed (#2488); automation warnings include `NODE_ID_REPLACED` (#2486);
+  `stopInFlight` on a draft with nobody in flight is a `422
+  AUTOMATION_NOT_PUBLISHED` (#2489); pausing an already paused send returns
+  `200` (#2492). No other command changed.
+
 ## 0.19.0
 
 Minor release, still `@brew.new/sdk` `^13.3.0`. `--input` now refuses a
