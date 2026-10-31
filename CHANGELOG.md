@@ -13,8 +13,10 @@
   `contacts update` returns `warnings[]`, and `updated` is empty when nothing
   changed (#2488); automation warnings include `NODE_ID_REPLACED` (#2486);
   `stopInFlight` on a draft with nobody in flight is a `422
-  AUTOMATION_NOT_PUBLISHED` (#2489); pausing an already paused send returns
-  `200` (#2492). No other command changed.
+  AUTOMATION_NOT_PUBLISHED` (#2489); a date written to a `date` field no
+  longer warns `FIELD_TYPE_COERCED` (#2490); `emails import` lists markup it
+  could not keep as `element_dropped` asset warnings (#2471); pausing an
+  already paused send returns `200` (#2492). No command's flags changed.
 
 ## 0.19.0
 
