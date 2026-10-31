@@ -192,7 +192,7 @@ describe('integrations connect', () => {
     expect(result.json).toMatchObject({
       confirmationRequired: true,
       confirmCommand:
-        'brew-cli integrations connect supabase_auth --signing-secret-env HOOK_SECRET --json --yes',
+        'brew-cli integrations connect --signing-secret-env=HOOK_SECRET --json --yes -- supabase_auth',
     })
   })
 

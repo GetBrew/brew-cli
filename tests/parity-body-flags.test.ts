@@ -150,6 +150,11 @@ const MAPPED: Readonly<
     '--no-publish': 'publish',
   },
   'app-emails kit': { '--domain': 'domainId' },
+  'integrations connect': {
+    '--signing-secret-env': 'signingSecret',
+    '--signing-secret-stdin': 'signingSecret',
+    '--project-url': 'settings.projectUrl',
+  },
 }
 
 type Command = (typeof ALL_COMMANDS)[number]
