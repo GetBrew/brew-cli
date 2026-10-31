@@ -1,11 +1,12 @@
 # Changelog
 
-## 0.19.0
+## 0.20.0
 
 Needs `@brew.new/sdk` 13.6.0: `brew.send` and
 `automations.triggers.fireByKey` (GetBrew/typescript-sdk#55, planned
 13.5.0) and `appEmails` (GetBrew/typescript-sdk#64, planned 13.6.0), both
-after the published 13.3.0 and the SDK's pending 13.4.0 (email `lang`).
+after the published 13.4.0 (email `lang`). npm already has CLI 0.19.0
+(released from `main` without this work), so this is 0.20.0.
 Neither PR is published yet; see the app email SDK gate in `RELEASING.md`.
 The API side is GetBrew/brew-v2#2169, one PR for trigger keys, fire by key,
 the team sandbox, app emails and browser sign-in.
@@ -58,7 +59,7 @@ the team sandbox, app emails and browser sign-in.
   the same bytes as before (no `--check` drift); `--no-registry` leaves
   the block out.
 - The vendored spec is the GetBrew/brew-v2#2169 @ `6f8ef50544` DX delta on
-  main's spec (brew-v2 `87ac2c6242`): the by-key fire and the
+  main's spec (brew-v2 `373e900a9a`): the by-key fire and the
   app-emails routes, `key` / `appEmail` on trigger rows, the sandbox error
   codes (`DOMAIN_REQUIRED`, `SANDBOX_DAILY_LIMIT`), the app email refusals
   above, `DKIM_SELECTOR_IN_USE` warnings with `suggestedNames` on

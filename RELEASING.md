@@ -35,8 +35,8 @@ CLI depends on (`^13.3.0`).
 `brew.appEmails`, which no published SDK has yet:
 GetBrew/typescript-sdk#55 (`send`, `automations.triggers.fireByKey`) and
 GetBrew/typescript-sdk#64 (`appEmails`, the auth adapters), planned as 13.5.0
-and 13.6.0, after the published 13.3.0 and the SDK's pending 13.4.0 (email
-`lang`). Until 13.6.0 is on npm, the dependency and `bun.lock` stay on the
+and 13.6.0, after the published 13.4.0 (email `lang`). Until 13.6.0 is on
+npm, the dependency and `bun.lock` stay on the
 published `^13.3.0`, and typecheck and parity fail in CI on these commands.
 Publish the SDK first, then
 `bun add @brew.new/sdk@^13.6.0` (it regenerates `bun.lock` from the
@@ -48,7 +48,7 @@ fire, `/v1/app-emails`, the team sandbox), and the live spec
 (`https://brew.new/openapi/public-api-v1.yaml`, what the spec-drift
 sentinel reads) matching `openapi/public-api-v1.yaml`,
 which is the #2169 @ `6f8ef50544` DX delta on main's spec (brew-v2
-`87ac2c6242`).
+`373e900a9a`).
 
 ```bash
 # on a clean main with CI green
