@@ -63,7 +63,7 @@ function healthyProject(
         files: {
           'lib/brew.ts': {
             sha256: sha256Hex(CLIENT_FILE),
-            generator: 'init@0.20.0:lib/brew.ts',
+            generator: 'init@0.21.0:lib/brew.ts',
           },
         },
         ...(options.providerConfig === undefined

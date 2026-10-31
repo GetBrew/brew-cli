@@ -4,11 +4,11 @@
 
 Not released yet. Needs `@brew.new/sdk` 13.7.0: `integrations.connect` and
 `integrations.getConnection` (GetBrew/typescript-sdk#74, on top of the
-13.6.0 that 0.19.0 needs; see the SDK gates in `RELEASING.md`), and the API
+13.6.0 that 0.20.0 needs; see the SDK gates in `RELEASING.md`), and the API
 from GetBrew/brew-v2#2169 (`GET|PUT /v1/integrations/{provider}/connection`,
 the `supabase_auth` hosted Send Email Hook, and Clerk `email.created`
-sending the app's auth emails). The bundled spec is 0.19.0's, the #2169 @
-`6f8ef50544` DX delta on main's spec (brew-v2 `87ac2c6242`).
+sending the app's auth emails). The bundled spec is 0.20.0's, the #2169 @
+`6f8ef50544` DX delta on main's spec (brew-v2 `373e900a9a`).
 
 ### Added
 
