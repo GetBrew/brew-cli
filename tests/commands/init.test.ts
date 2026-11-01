@@ -1305,6 +1305,23 @@ describe('init: what a run must not get wrong', () => {
     expect(result.stderr).toContain('https://brew.new/api')
   })
 
+  it('refuses to sign in for another server than the BREW_API_URL .env.local keeps (exit 2)', async () => {
+    const root = copyFixture('express-resend')
+    writeFileSync(
+      join(root, '.env.local'),
+      'BREW_API_URL=http://localhost:3000/api\n'
+    )
+    const result = await init(
+      ['--yes', '--json', '--no-test-email', '--api-url', API],
+      { cwd: root, env: configEnv(), spawn: recordingSpawn().spawn }
+    )
+    expect(result.code).toBe(2)
+    expect(result.stderr).toContain('http://localhost:3000/api')
+    expect(read(root, '.env.local')).toBe(
+      'BREW_API_URL=http://localhost:3000/api\n'
+    )
+  })
+
   it('--stack wires the auth library it names, over detection', async () => {
     const root = keyed('express-resend')
     useBrewApi()

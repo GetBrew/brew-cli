@@ -360,25 +360,30 @@ export async function runInit(
   const stored = readConfig(env)
   const explicitKey =
     ctx.globals.apiKey ?? nonEmpty(env.BREW_API_KEY ?? undefined)
-  // The app key in .env.local is for the server saved beside it
-  // (BREW_API_URL; none = the default). A run acting as that key uses that
-  // server, and another server named explicitly is refused before any
-  // request carries the key there.
+  // .env.local is set up for one server: the BREW_API_URL saved there, or
+  // the default beside a key saved without one. A run acting as that key,
+  // or signing in for a new one, uses that server, and another server named
+  // explicitly is refused before any request (a new key beside the old URL
+  // would send to the wrong server).
   let apiUrl = resolveAuth({
     globals: ctx.globals,
     env,
     allowAnonymous: true,
   }).apiUrl
-  if (explicitKey === undefined && existingAppKey !== undefined) {
-    const saved =
-      nonEmpty(getEnvValue(parseEnv(envLocalText ?? ''), API_URL_VARIABLE)) ??
-      DEFAULT_API_URL
+  const savedApiUrl = nonEmpty(
+    getEnvValue(parseEnv(envLocalText ?? ''), API_URL_VARIABLE)
+  )
+  if (
+    explicitKey === undefined &&
+    (existingAppKey !== undefined || savedApiUrl !== undefined)
+  ) {
+    const saved = savedApiUrl ?? DEFAULT_API_URL
     const named = ctx.globals.apiUrl ?? nonEmpty(env.BREW_API_URL)
     const same = (a: string, b: string) =>
       a.replace(/\/+$/, '') === b.replace(/\/+$/, '')
     if (named !== undefined && !same(named, saved)) {
       throw new CliUsageError(
-        `${APP_KEY_VARIABLE} in .env.local is for ${printable(saved)}, not ${printable(named)}. Run init without --api-url and BREW_API_URL (or with ${printable(saved)}), or remove the key from .env.local to set up the other server.`
+        `.env.local is set up for ${printable(saved)}, not ${printable(named)}. Run init without --api-url and BREW_API_URL (or with ${printable(saved)}), or remove ${APP_KEY_VARIABLE} and ${API_URL_VARIABLE} from .env.local to set up the other server.`
       )
     }
     apiUrl = saved
