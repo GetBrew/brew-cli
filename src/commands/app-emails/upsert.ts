@@ -67,6 +67,13 @@ export const appEmailsUpsertCommand = defineCommand({
       summary:
         'Sending domain id (default: a verified domain for the purpose, else the team-only sandbox). A kit key refuses a domain of the other purpose (transactional: auth, trial ending, payment failed; marketing: welcome, win-back)',
     },
+    // `--publish` comes first so the default stays unset: Commander gives a
+    // lone `--no-publish` a default of true.
+    {
+      flag: '--publish',
+      summary:
+        'Publish it even if it was unpublished in Brew since setup, which a re-run otherwise leaves off',
+    },
     {
       flag: '--no-publish',
       summary: 'Save the setup without publishing the automation',
@@ -142,7 +149,7 @@ export const appEmailsUpsertCommand = defineCommand({
       subject: flagString(flags.subject),
       previewText: flagString(flags.previewText),
       domainId: flagString(flags.domain),
-      publish: flags.publish === false ? false : undefined,
+      publish: typeof flags.publish === 'boolean' ? flags.publish : undefined,
       overwrite: flags.overwrite === true ? true : undefined,
     })
     if (input.starter !== undefined && input.source !== undefined) {

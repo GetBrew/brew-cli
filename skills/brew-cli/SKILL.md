@@ -97,7 +97,9 @@ another setup of the key was writing; run it again later.
 `409 CONTRACT_LOCKED_BY_PUBLISHED_AUTOMATIONS`: a `payloadSchema` that drops
 or retypes a field the live automation reads. A `DRAFT_SAVED_NOT_LIVE`
 warning means the published version keeps sending until the draft is
-published.
+published. An `APP_EMAIL_NOT_PUBLISHED` warning names why the email is off;
+one unpublished in Brew stays off on a re-run (and `kit`) until
+`upsert <key> --publish`.
 `automations triggers create --key <key>` gives any trigger a key.
 
 ## The contract you can rely on

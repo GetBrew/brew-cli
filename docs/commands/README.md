@@ -1668,6 +1668,7 @@ Set up one app email by key in one idempotent call (trigger, contract, design, a
 - `--subject <text>` — Subject line
 - `--preview-text <text>` — Inbox preview text
 - `--domain <domainId>` — Sending domain id (default: a verified domain for the purpose, else the team-only sandbox). A kit key refuses a domain of the other purpose (transactional: auth, trial ending, payment failed; marketing: welcome, win-back)
+- `--publish` — Publish it even if it was unpublished in Brew since setup, which a re-run otherwise leaves off
 - `--no-publish` — Save the setup without publishing the automation
 - `--overwrite` — Replace a design that was edited in Brew since setup
 - `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
