@@ -8,6 +8,7 @@ import type {
 } from '@brew.new/sdk'
 import { BrewApiError } from '@brew.new/sdk'
 import { Option } from 'commander'
+import { keepsSending } from '../../commands/app-emails/upsert'
 import { installOne, type McpInstallResult } from '../../commands/mcp/install'
 import {
   buildContractsFile,
@@ -781,14 +782,30 @@ export async function runInit(
         )
       }
       const failed = emails.filter((email) => !email.ok)
+      // The kit never publishes a key someone unpublished in Brew; a draft
+      // over a live version still sends.
+      const off = kit.results.flatMap((entry) =>
+        entry.ok && !entry.published && !keepsSending(entry)
+          ? [entry.triggerKey]
+          : []
+      )
       steps.push({
         id: 'kit',
         status: failed.length > 0 ? 'failed' : 'done',
         detail:
           failed.length > 0
             ? `${failed.length} of ${emails.length} keys failed: ${failed.map((email) => email.key).join(', ')}`
-            : `${emails.length} app emails published`,
+            : `${emails.length - off.length} app emails published${off.length > 0 ? `; not published: ${off.join(', ')}` : ''}`,
       })
+      if (off.length > 0) {
+        nextSteps.push({
+          id: 'publish-app-emails',
+          actor: 'human',
+          kind: 'review',
+          title: `Not published: ${off.join(', ')}. Publish ${off.length === 1 ? 'it' : 'them'} in Brew, or run \`${prefix} app-emails upsert <key> --publish --yes\``,
+          blocking: false,
+        })
+      }
       for (const email of failed) {
         // A re-run alone cannot set up a key whose trigger another published
         // automation already sends from: a person picks which one stays.

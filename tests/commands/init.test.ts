@@ -103,6 +103,8 @@ function useBrewApi(
     >
     /** `warnings` on the `POST /v1/domains` row. */
     readonly addWarnings?: ReadonlyArray<Record<string, unknown>>
+    /** Kit keys someone unpublished in Brew, which the kit leaves off. */
+    readonly unpublished?: readonly string[]
   } = {}
 ): Recorded[] {
   const requests: Recorded[] = []
@@ -188,7 +190,7 @@ function useBrewApi(
                   emailId: `eml_${index}`,
                   emailVersionId: `emv_${index}`,
                   automationId: `aut_${index}`,
-                  published: true,
+                  published: !options.unpublished?.includes(key),
                   created: { trigger: true, email: true, automation: true },
                   sender: {
                     mode: 'sandbox',
@@ -203,7 +205,9 @@ function useBrewApi(
                     curl: 'curl …',
                     sdk: `await brew.send('${key}', { email })`,
                   },
-                  warnings: [],
+                  warnings: options.unpublished?.includes(key)
+                    ? [{ code: 'APP_EMAIL_NOT_PUBLISHED', message: 'Off.' }]
+                    : [],
                 }
         ),
         stack: {
@@ -946,6 +950,34 @@ describe('init --yes: the full run', () => {
     expect(ids.indexOf('trigger-in-use:lifecycle.welcome')).toBeLessThan(
       ids.indexOf('rerun-init')
     )
+  })
+
+  it('names a kit key unpublished in Brew instead of counting it published', async () => {
+    const root = copyFixture('express-resend')
+    useBrewApi({ unpublished: ['lifecycle.welcome'] })
+    writeFileSync(join(root, '.env.local'), `BREW_API_KEY=${APP_KEY}\n`)
+    const result = await init(['--yes', '--json', '--no-test-email'], {
+      cwd: root,
+      env: configEnv(),
+      spawn: recordingSpawn().spawn,
+    })
+    expect(result.code).toBe(0)
+    expectValidReport(result.report)
+    expect(result.report.steps.find((step) => step.id === 'kit')).toEqual({
+      id: 'kit',
+      status: 'done',
+      detail: '3 app emails published; not published: lifecycle.welcome',
+    })
+    expect(
+      result.report.nextSteps.find((step) => step.id === 'publish-app-emails')
+    ).toEqual({
+      id: 'publish-app-emails',
+      actor: 'human',
+      kind: 'review',
+      title:
+        'Not published: lifecycle.welcome. Publish it in Brew, or run `brew-cli app-emails upsert <key> --publish --yes`',
+      blocking: false,
+    })
   })
 })
 
