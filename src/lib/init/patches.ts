@@ -390,8 +390,8 @@ export function authjsPatch(
   }
   // Auth.js refuses an email provider without a database adapter at
   // startup (MissingAdapter): adding one to an adapter-less config would
-  // break sign-in for every provider.
-  if (!/\badapter\s*:/.test(text)) {
+  // break sign-in for every provider. A commented-out adapter is none.
+  if (!/\badapter\s*:/.test(uncommented)) {
     return manual(
       config.path,
       {

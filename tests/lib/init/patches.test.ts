@@ -47,6 +47,22 @@ describe('authjsPatch', () => {
     expect(next).toBeUndefined()
   })
 
+  it('stays manual when the only adapter is commented out', () => {
+    const root = copyFixture('next-app-authjs-v5')
+    const path = join(root, 'src/auth.ts')
+    writeFileSync(
+      path,
+      readFileSync(path, 'utf8').replace(
+        '  providers: [GitHub],',
+        '  // adapter: PrismaAdapter(prisma),\n  /* adapter: DrizzleAdapter(db), */\n  providers: [GitHub],'
+      )
+    )
+    const { patch, next } = authjsPatch(detect(root), 'src/lib/brew-auth.ts')
+    expect(patch.status).toBe('manual')
+    expect(patch.description).toContain('no database adapter')
+    expect(next).toBeUndefined()
+  })
+
   it('adds the provider when the config has an adapter', () => {
     const root = copyFixture('next-app-authjs-v5')
     const path = join(root, 'src/auth.ts')
