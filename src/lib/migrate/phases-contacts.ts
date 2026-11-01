@@ -39,6 +39,21 @@ function subscription(contact: SourceContact) {
 }
 
 /** Rows Brew refused: the next run reads every page again to retry them. */
+/**
+ * The idempotency scope prefix of a pass: none for the first, `r<n>-` after
+ * n passes that ended with refused rows. A replayed key would return the
+ * old refusal for 24 hours; an interrupted pass (outcome unknown) keeps its
+ * keys, since its cursor is kept.
+ */
+function pass(target: { retry?: number }): string {
+  return target.retry === undefined ? '' : `r${target.retry}-`
+}
+
+/** Counts a finished pass that left rows refused. */
+function refusedPass(target: { retry?: number }): void {
+  target.retry = (target.retry ?? 0) + 1
+}
+
 function refusedRows(failed: number): { code: string; message: string } {
   return {
     code: 'CONTACT_ROWS_FAILED',
@@ -170,7 +185,7 @@ export async function contactsPhase(run: RunContext): Promise<void> {
         const result = await brew.contacts.upsertMany(body, {
           idempotencyKey: idempotencyKey(
             run,
-            `contacts-${after ?? 'start'}`,
+            `${pass(phase)}contacts-${after ?? 'start'}`,
             body
           ),
         })
@@ -191,7 +206,7 @@ export async function contactsPhase(run: RunContext): Promise<void> {
         const result = await brew.contacts.upsertMany(body, {
           idempotencyKey: idempotencyKey(
             run,
-            `contacts-unsub-${after ?? 'start'}`,
+            `${pass(phase)}contacts-unsub-${after ?? 'start'}`,
             body
           ),
         })
@@ -208,7 +223,7 @@ export async function contactsPhase(run: RunContext): Promise<void> {
             {
               idempotencyKey: idempotencyKey(
                 run,
-                `contacts-optout-${after ?? 'start'}`,
+                `${pass(phase)}contacts-optout-${after ?? 'start'}`,
                 csv
               ),
             }
@@ -239,6 +254,7 @@ export async function contactsPhase(run: RunContext): Promise<void> {
   if (failed > 0) {
     phase.status = 'partial'
     phase.error = refusedRows(failed)
+    refusedPass(phase)
   } else {
     phase.status = 'done'
   }
@@ -372,7 +388,7 @@ export async function segmentsPhase(run: RunContext): Promise<void> {
             const result = await brew.contacts.upsertMany(body, {
               idempotencyKey: idempotencyKey(
                 run,
-                `segment-${item.sourceId}-${after ?? 'start'}`,
+                `${pass(item)}segment-${item.sourceId}-${after ?? 'start'}`,
                 body
               ),
             })
@@ -391,6 +407,7 @@ export async function segmentsPhase(run: RunContext): Promise<void> {
         if (failed > 0) {
           item.status = 'failed'
           item.error = refusedRows(failed)
+          refusedPass(item)
         } else {
           const { audienceId, audienceName } = await ensureAudience(
             run,
@@ -636,7 +653,7 @@ export async function topicsPhase(run: RunContext): Promise<void> {
           const result = await brew.contacts.upsertMany(body, {
             idempotencyKey: idempotencyKey(
               run,
-              `topics-${after ?? 'start'}`,
+              `${pass(phase)}topics-${after ?? 'start'}`,
               body
             ),
           })
@@ -664,6 +681,7 @@ export async function topicsPhase(run: RunContext): Promise<void> {
     if (failed > 0) {
       phase.error = refusedRows(failed)
       phase.status = 'failed'
+      refusedPass(phase)
       run.persist()
       return
     }

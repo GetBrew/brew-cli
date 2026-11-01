@@ -177,6 +177,28 @@ describe('migrate resend: unfinished work is retried', () => {
     })
   })
 
+  it('a pass after refused rows sends new idempotency keys, so Brew tries them again', async () => {
+    const { run } = setUp()
+    const brew = useBrewApi({ refuseRow: 'ada@example.com' })
+    const contacts = [...APPLY, '--only', 'contacts']
+    await migrate(contacts, run)
+    const keysOf = (from: number) =>
+      brew.calls
+        .slice(from)
+        .filter(
+          (call) => call.method === 'POST' && call.path === '/v1/contacts'
+        )
+        .map((call) => call.idempotencyKey)
+    const first = keysOf(0)
+    const before = brew.calls.length
+    brew.heal()
+    await migrate(contacts, run)
+    const second = keysOf(before)
+    expect(first.length).toBeGreaterThan(0)
+    expect(second.some((key) => first.includes(key))).toBe(false)
+    // An interrupted pass (outcome unknown) keeps its keys: see the resume test.
+  })
+
   it('a plan between an interrupted apply and its retry keeps the rows still to land', async () => {
     const { root, clock, run } = setUp()
     server.use(useResendApi({ key: RESEND_KEY, clock, pageSize: 1 }).handler)

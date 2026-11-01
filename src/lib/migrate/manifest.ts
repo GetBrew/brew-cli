@@ -75,6 +75,8 @@ export type MigrationItem = {
   /** Resume cursor for an item read page by page (a segment's members). */
   cursor?: string | null
   counts?: Record<string, number>
+  /** Passes that ended with rows Brew refused: the next one sends new keys. */
+  retry?: number
 }
 
 export type PhaseState = {
@@ -84,6 +86,8 @@ export type PhaseState = {
   /** Resume cursor of a phase read page by page (contacts, suppressions). */
   cursor?: string | null
   counts?: Record<string, number>
+  /** Passes that ended with rows Brew refused: the next one sends new keys. */
+  retry?: number
   warnings?: MigrationWarning[]
   error?: { code: string; message: string }
 }
