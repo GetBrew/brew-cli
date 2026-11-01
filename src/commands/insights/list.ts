@@ -1,5 +1,8 @@
-import { BrewApiError, type ListInsightsInput } from '@brew.new/sdk'
-import type { operations } from '../../generated/openapi-types'
+import {
+  BrewApiError,
+  type ListInsightsInput,
+  type ListInsightsResponse,
+} from '@brew.new/sdk'
 import type { BrewClient } from '../../lib/client'
 import { shellQuote } from '../../lib/confirm'
 import { defineCommand } from '../../lib/define-command'
@@ -22,8 +25,7 @@ import {
 import type { CliContext } from '../../lib/types'
 
 type InsightsResource = BrewClient['insights']
-type InsightsPage =
-  operations['listInsights']['responses'][200]['content']['application/json']
+type InsightsPage = ListInsightsResponse
 
 /**
  * What a page says beside its rows: the engine's `freshness` on every page,
@@ -315,10 +317,9 @@ function renderPulse(pulse: Pulse | null): string {
     now === null
       ? undefined
       : `${label} ${now}% (prior ${prior === null ? '-' : `${prior}%`}, ${direction})`
-  // Older responses use the conservative global flag for both signals.
-  const isOpenMeasured = pulse.opensMeasured ?? pulse.measured
-  const isClickMeasured = pulse.clicksMeasured ?? pulse.measured
-  const opens = isOpenMeasured
+  // The public response has one conservative flag for both signals.
+  // Unknown measurements must not be shown as numeric activity.
+  const opens = pulse.measured
     ? [
         pair('unique opens', pulse.uniqueOpens, pulse.priorUniqueOpens),
         rate(
@@ -329,7 +330,7 @@ function renderPulse(pulse: Pulse | null): string {
         ),
       ]
     : ['opens not measured']
-  const clicks = isClickMeasured
+  const clicks = pulse.measured
     ? [
         pair('unique clicks', pulse.uniqueClicks, pulse.priorUniqueClicks),
         rate(

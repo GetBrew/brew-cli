@@ -385,10 +385,10 @@ describe('insights list', () => {
   })
 
   it.each([
-    ['legacy measured', { measured: true }, true, true],
-    ['legacy unmeasured', { measured: false }, false, false],
+    ['measured activity', { measured: true }],
+    ['unknown activity', { measured: false }],
     [
-      'legacy unavailable numeric zeros',
+      'unknown numeric zeros',
       {
         measured: false,
         uniqueOpens: 0,
@@ -396,51 +396,21 @@ describe('insights list', () => {
         openRatePct: 0,
         clickRatePct: 0,
       },
-      false,
-      false,
-    ],
-    [
-      'omitted click flag falls back independently',
-      { measured: false, opensMeasured: true },
-      true,
-      false,
-    ],
-    [
-      'opens available',
-      { measured: false, opensMeasured: true, clicksMeasured: false },
-      true,
-      false,
-    ],
-    [
-      'clicks available',
-      { measured: false, opensMeasured: false, clicksMeasured: true },
-      false,
-      true,
-    ],
-    [
-      'neither available',
-      { measured: false, opensMeasured: false, clicksMeasured: false },
-      false,
-      false,
     ],
     [
       'healthy measured zeros',
       {
         measured: true,
-        opensMeasured: true,
-        clicksMeasured: true,
         uniqueOpens: 0,
         uniqueClicks: 0,
         openRatePct: 0,
         clickRatePct: 0,
       },
-      true,
-      true,
     ],
   ] as const)(
-    'renders signal availability for %s while preserving the JSON response',
-    async (_name, availability, isOpenMeasured, isClickMeasured) => {
-      const pulse = { ...PULSE, ...availability }
+    'renders legacy measurement for %s while preserving the JSON response',
+    async (_name, measurement) => {
+      const pulse = { ...PULSE, ...measurement }
       server.use(
         http.get(`${API}/v1/insights`, () =>
           HttpResponse.json({
@@ -455,21 +425,22 @@ describe('insights list', () => {
         ttyOut: true,
       })
       expect(human.code).toBe(0)
-      if (isOpenMeasured) {
+      if (pulse.measured) {
         expect(human.stdout).toContain(`unique opens ${pulse.uniqueOpens}`)
         expect(human.stdout).toContain(`open rate ${pulse.openRatePct}%`)
-      } else {
-        expect(human.stdout).toContain('opens not measured')
-        expect(human.stdout).not.toContain('unique opens')
-        expect(human.stdout).not.toContain('open rate')
-      }
-      if (isClickMeasured) {
         expect(human.stdout).toContain(`unique clicks ${pulse.uniqueClicks}`)
         expect(human.stdout).toContain(`click rate ${pulse.clickRatePct}%`)
       } else {
+        expect(human.stdout).toContain('opens not measured')
         expect(human.stdout).toContain('clicks not measured')
-        expect(human.stdout).not.toContain('unique clicks')
-        expect(human.stdout).not.toContain('click rate')
+        for (const label of [
+          'unique opens',
+          'open rate',
+          'unique clicks',
+          'click rate',
+        ]) {
+          expect(human.stdout).not.toContain(label)
+        }
       }
       expect(human.stdout).not.toContain('tracking is off')
       const json = await cli(['insights', 'list', '--include', 'pulse'])

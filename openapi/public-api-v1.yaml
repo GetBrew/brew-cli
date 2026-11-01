@@ -4104,13 +4104,7 @@ components:
               description: Too few deliveries for rates; read the counts.
             measured:
               type: boolean
-              description: "Legacy conservative flag: true only when both engagement signals are measured."
-            opensMeasured:
-              type: boolean
-              description: Open-count and rate availability; older pulses use measured.
-            clicksMeasured:
-              type: boolean
-              description: Click-count and rate availability; older pulses use measured.
+              description: "False when engagement tracking is off: opens are unknown."
           required:
             - windowEnd
             - delivered
