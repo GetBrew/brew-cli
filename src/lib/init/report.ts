@@ -283,12 +283,16 @@ export function renderReport(report: InitReport): string {
         `Patch ${patch.id} (${patch.path}): ${patch.title}`,
         patch.diff.trimEnd()
       )
-    } else if (patch.status === 'manual' && patch.snippet !== undefined) {
+    } else if (
+      patch.status === 'manual' &&
+      (patch.snippet ?? patch.diff) !== undefined
+    ) {
+      // A patch held back over an edited helper keeps its diff instead.
       lines.push(
         '',
         `Add by hand to ${patch.path}: ${patch.title}`,
         patch.description,
-        patch.snippet
+        patch.snippet ?? patch.diff?.trimEnd() ?? ''
       )
     }
   }

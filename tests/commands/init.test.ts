@@ -1356,6 +1356,12 @@ describe('init: what a run must not get wrong', () => {
     const result = await init([...argv, '--apply-patches', pin], options)
     expect(result.report.patches[0]?.status).toBe(status)
     expect(read(root, 'lib/auth.ts')).toBe(before)
+    // The terminal shows the change to make, pending or by hand.
+    const human = await init(
+      argv.filter((arg) => arg !== '--json'),
+      { ...options, ttyOut: true }
+    )
+    expect(human.stdout).toContain(result.report.patches[0]?.diff?.trimEnd())
   })
 
   it('asks to move an SDK declared only in devDependencies', async () => {
