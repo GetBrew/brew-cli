@@ -360,6 +360,48 @@ describe('migrate resend --rewrite-imports: the template map', () => {
     )
   })
 
+  it('leaves a sender edited while the migration ran, and moves it on a re-run', async () => {
+    const { root, run } = setUp()
+    useBrewApi()
+    const client = join(root, 'src/lib/resend.ts')
+    let edited = false
+    // A formatter touches the client while the React Email imports run
+    // (after the scan); the handler falls through to the Brew mock.
+    server.use(
+      http.post(
+        'https://brew.new/api/v1/emails/import',
+        async ({ request }) => {
+          const body = (await request.clone().json()) as { props?: string }
+          if (!edited && body.props === 'merge_tags') {
+            edited = true
+            writeFileSync(
+              client,
+              `${readFileSync(client, 'utf8')}// formatted\n`
+            )
+          }
+        }
+      )
+    )
+    const first = await migrate(REWRITE, run)
+    expect(edited).toBe(true)
+    const kept = readFileSync(client, 'utf8')
+    expect(kept).toContain('// formatted')
+    expect(kept).toContain("from 'resend'")
+    expect(
+      phase(first.report, 'code')?.items?.find(
+        (item) => item.file === 'src/lib/resend.ts' && item.kind === 'rewrite'
+      )
+    ).toMatchObject({
+      status: 'failed',
+      error: { code: 'FILE_CHANGED' },
+    })
+    useBrewApi({ appEmailKeys: ['reset-password', 'receipt'] })
+    await migrate(REWRITE, run)
+    const moved = readFileSync(client, 'utf8')
+    expect(moved).toContain("from '@brew.new/sdk/resend'")
+    expect(moved).toContain('// formatted')
+  })
+
   it('counts the sends through a moved client as done on a re-run', async () => {
     const { root, run } = setUp()
     useBrewApi()

@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { join, relative, sep } from 'node:path'
 import { SDK_PACKAGE, SDK_RANGE } from '../init/templates'
-import { ProjectWriter } from '../project/fs-writer'
+import { ProjectWriter, sha256Hex } from '../project/fs-writer'
 import type { MessageAnalysis } from './code/analyze'
 import {
   absoluteIn,
@@ -565,7 +565,19 @@ function rewriteImports(
     }
     const mapPath = pathOf(kindOf(item))
     const next = rewriteFile({ file, scanned, mapFile: mapPath })
-    const change = writer.writeFile(file, next, { overwrite: true })
+    // Replaced only while it still holds the text the scan read: an edit
+    // made while the imports ran is kept, and a re-run scans it again.
+    const change = writer.writeFile(file, next, {
+      managedSha256: sha256Hex(scanned.text),
+    })
+    if (change.action === 'kept-user-version') {
+      item.status = 'failed'
+      item.error = {
+        code: 'FILE_CHANGED',
+        message: `${file} changed while the migration ran, so it was left as is; run the migration again to rewrite it`,
+      }
+      continue
+    }
     if (change.action === 'refused') {
       item.status = 'failed'
       item.error = {
