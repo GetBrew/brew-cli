@@ -77,6 +77,8 @@ function healthyProject(
   return root
 }
 
+const READY = { ready: true, teamOnly: false, blockers: [] }
+
 function useProjectApi(
   options: {
     readonly brandId?: string
@@ -123,11 +125,13 @@ function useProjectApi(
             triggerKey: 'auth.verify-email',
             triggerEventId: 'tri_0',
             published: true,
+            readiness: READY,
           },
           {
             triggerKey: 'lifecycle.welcome',
             triggerEventId: 'tri_1',
             published: true,
+            readiness: READY,
           },
         ],
         pagination: { limit: 100, cursor: null, hasMore: false },
@@ -290,6 +294,7 @@ describe('doctor --project', () => {
           triggerKey: 'lifecycle.welcome',
           triggerEventId: 'tri_1',
           published: true,
+          readiness: READY,
         },
       ],
     })
@@ -350,6 +355,32 @@ describe('doctor --project', () => {
     useProjectApi({ connection: null })
     const notConnected = await doctor(root)
     expect(statusOf(notConnected.report, 'provider')).toEqual(['warn'])
+  })
+
+  it('warns on a key still in the sandbox although a domain of the other purpose verified', async () => {
+    const root = healthyProject()
+    useProjectApi({
+      verifiedDomain: true,
+      appEmails: [
+        {
+          triggerKey: 'auth.verify-email',
+          triggerEventId: 'tri_0',
+          published: true,
+          readiness: { ...READY, teamOnly: true },
+        },
+        {
+          triggerKey: 'lifecycle.welcome',
+          triggerEventId: 'tri_1',
+          published: true,
+          readiness: READY,
+        },
+      ],
+    })
+    const result = await doctor(root)
+    expect(result.code).toBe(0)
+    expect(
+      result.report.checks.find((check) => check.id === 'app-emails')
+    ).toMatchObject({ status: 'warn', items: ['auth.verify-email'] })
   })
 
   it('exits 2 outside a project with brew.json', async () => {

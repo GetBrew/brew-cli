@@ -452,7 +452,10 @@ async function checkAppEmails(
       detail: 'brew.json lists no keys',
     }
   }
-  const rows = new Map<string, { triggerEventId: string; published: boolean }>()
+  const rows = new Map<
+    string,
+    { triggerEventId: string; published: boolean; teamOnly: boolean }
+  >()
   try {
     let cursor: string | undefined
     for (let page = 0; page < 20; page += 1) {
@@ -464,6 +467,7 @@ async function checkAppEmails(
         rows.set(row.triggerKey, {
           triggerEventId: row.triggerEventId,
           published: row.published,
+          teamOnly: row.readiness.teamOnly,
         })
       }
       if (!result.pagination.hasMore || result.pagination.cursor === null) {
@@ -502,6 +506,17 @@ async function checkAppEmails(
       detail: `${unpublished.length} key(s) are not published: sends answer NO_PUBLISHED_AUTOMATION`,
       items: unpublished,
       fix: 'Publish them in Brew, or run `app-emails upsert <key> --yes`.',
+    }
+  }
+  // A verified domain of the other purpose leaves a key in the sandbox.
+  const teamOnly = keys.filter((key) => rows.get(key)?.teamOnly === true)
+  if (teamOnly.length > 0) {
+    return {
+      id: 'app-emails',
+      status: 'warn',
+      detail: `${teamOnly.length} key(s) reach your Brew team only (sandbox): no verified domain of their purpose (transactional for auth emails)`,
+      items: teamOnly,
+      fix: 'Verify a domain of their purpose, then run init again: their sender moves to it.',
     }
   }
   return moved.length > 0
