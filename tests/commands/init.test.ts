@@ -1,8 +1,10 @@
 import {
   existsSync,
+  mkdirSync,
   mkdtempSync,
   readFileSync,
   statSync,
+  symlinkSync,
   writeFileSync,
 } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -15,7 +17,7 @@ import type { InitReport } from '../../src/lib/init/report'
 import { validateBrewState } from '../../src/lib/project/state'
 import type { SpawnFn } from '../../src/lib/types'
 import { contractHandler } from '../helpers/contract-artifacts'
-import { copyFixture } from '../helpers/fixtures'
+import { copyFixture, tempProject } from '../helpers/fixtures'
 import { loadSchema, validateSchema } from '../helpers/json-schema'
 import {
   APP_KEY,
@@ -500,9 +502,8 @@ describe('init --yes: the full run', () => {
       sets: ['auth', 'lifecycle'],
       stack: 'better-auth',
     })
-    expect(kit?.idempotencyKey).toMatch(
-      new RegExp(`^init:${projectId}:kit:[0-9a-f]{12}$`)
-    )
+    // The SDK's own key: a re-run must reach the kit, not its replay.
+    expect(kit?.idempotencyKey).not.toContain('init:')
     const fire = requests[3]
     expect(fire?.body).toEqual({ payload: { email: APPROVER_EMAIL } })
     expect(fire?.idempotencyKey).toMatch(
@@ -562,7 +563,7 @@ describe('init --yes: the full run', () => {
     expect(report.nextSteps.map((step) => step.id)).toContain('verify-domain')
     expect(report.emails.map((email) => email.key)).toEqual(KIT_KEYS)
 
-    // Re-run: nothing changes, the same idempotency keys, no sign-in.
+    // Re-run: nothing changes, no sign-in, the test email replays.
     const firstState = read(root, 'brew.json')
     const again = useBrewApi()
     const rerun = await init(['--yes', '--json'], {
@@ -593,11 +594,10 @@ describe('init --yes: the full run', () => {
     expect(rerun.report.mcp).toMatchObject([
       { client: 'cursor', action: 'unchanged' },
     ])
-    const keysOf = (list: Recorded[]) =>
-      list
-        .filter((request) => request.method === 'POST')
-        .map((request) => request.idempotencyKey)
-    expect(keysOf(again)).toEqual(keysOf(requests))
+    const keyOf = (list: Recorded[], path: string) =>
+      list.find((request) => request.path.endsWith(path))?.idempotencyKey
+    expect(keyOf(again, '/fire')).toBe(keyOf(requests, '/fire'))
+    expect(keyOf(again, '/kit')).not.toBe(keyOf(requests, '/kit'))
     expect(again.every((request) => request.brandId === BRAND.brandId)).toBe(
       true
     )
@@ -753,7 +753,7 @@ describe('init --yes: the full run', () => {
     ])
   })
 
-  it('a changed request gets a new idempotency key under the same project id', async () => {
+  it('a re-run reaches the kit again to finish the keys that failed', async () => {
     const root = copyFixture('express-resend')
     writeFileSync(join(root, '.env.local'), `BREW_API_KEY=${APP_KEY}\n`)
     const options = {
@@ -761,8 +761,11 @@ describe('init --yes: the full run', () => {
       env: configEnv(),
       spawn: recordingSpawn().spawn,
     }
-    const first = useBrewApi()
+    const first = useBrewApi({ failKeys: ['lifecycle.welcome'] })
     const created = await init(['--yes', '--json', '--no-test-email'], options)
+    expect(created.report.nextSteps.map((step) => step.id)).toContain(
+      'rerun-init'
+    )
     // No .gitignore yet: init creates one that ignores .env.local.
     expect(
       created.report.files.find((file) => file.path === '.gitignore')
@@ -776,20 +779,13 @@ describe('init --yes: the full run', () => {
       '# brew:start\n.env.local\n# brew:end\n'
     )
     const second = useBrewApi()
-    await init(
-      ['--yes', '--json', '--no-test-email', '--sets', 'lifecycle'],
-      options
-    )
+    const rerun = await init(['--yes', '--json', '--no-test-email'], options)
+    expect(rerun.report.emails.every((email) => email.ok)).toBe(true)
+    // A new key: the same one would replay the failed response for 24 hours.
     const kitKey = (list: Recorded[]) =>
       list.find((request) => request.path === '/v1/app-emails/kit')
-        ?.idempotencyKey ?? ''
+        ?.idempotencyKey
     expect(kitKey(second)).not.toBe(kitKey(first))
-    expect(kitKey(second).split(':').slice(0, 3)).toEqual(
-      kitKey(first).split(':').slice(0, 3)
-    )
-    expect(
-      second.find((request) => request.path === '/v1/app-emails/kit')?.body
-    ).toEqual({ sets: ['lifecycle'], stack: 'custom' })
   })
 
   it('Supabase Edge Functions only: the hook and a Deno client, nothing to install', async () => {
@@ -877,6 +873,7 @@ describe('init --yes: the full run', () => {
     expectValidReport(result.report)
     const ids = result.report.nextSteps.map((step) => step.id)
     expect(ids).not.toContain('add-dns-records')
+    expect(result.report.domain.records).toEqual([])
     expect(
       result.report.nextSteps.find((step) => step.id === 'dkim-selector-in-use')
     ).toEqual({
@@ -1160,5 +1157,214 @@ describe('init per stack', () => {
     ])
     expect(existsSync(join(root, 'apps/web/lib/brew.js'))).toBe(true)
     expect(existsSync(join(root, 'apps/web/brew.json'))).toBe(true)
+  })
+})
+
+describe('init: what a run must not get wrong', () => {
+  /** A project with an app key in .env.local: no sign-in. */
+  function keyed(fixture: string): string {
+    const root = copyFixture(fixture)
+    writeFileSync(join(root, '.env.local'), `BREW_API_KEY=${APP_KEY}\n`)
+    return root
+  }
+
+  it('--stack wires the auth library it names, over detection', async () => {
+    const root = keyed('express-resend')
+    useBrewApi()
+    const result = await init(
+      ['--yes', '--json', '--no-test-email', '--stack', 'better-auth'],
+      { cwd: root, env: configEnv(), spawn: recordingSpawn().spawn }
+    )
+    expectValidReport(result.report)
+    expect(result.report.project.auth).toBe('better-auth')
+    expect(read(root, 'src/lib/brew-auth.ts')).toContain(
+      'export const brewEmails = brewAuthEmails({'
+    )
+    expect(result.report.patches.map((patch) => patch.id)).toEqual([
+      'better-auth-config',
+    ])
+  })
+
+  it.each([
+    ['vite-supabase-lovable', 'supabase-config-hook'],
+    ['next-app-authjs-v5', 'authjs-config'],
+  ])(
+    '--sets lifecycle leaves the auth emails of %s to it',
+    async (fixture, patchId) => {
+      const root = copyFixture(fixture)
+      useBrewApi()
+      const result = await init(
+        ['--dry-run', '--json', '--sets', 'lifecycle'],
+        { cwd: root, env: configEnv({ BREW_API_KEY: EXPLICIT_KEY }) }
+      )
+      expectValidReport(result.report)
+      expect(result.report.patches.map((patch) => patch.id)).not.toContain(
+        patchId
+      )
+      expect(result.report.files.map((file) => file.path)).not.toContain(
+        'supabase/functions/send-email/index.ts'
+      )
+      expect(result.report.nextSteps.map((step) => step.id)).not.toContain(
+        'deploy-supabase-hook'
+      )
+    }
+  )
+
+  it('a generated file or brew.json it may not write fails the run, and no patch applies', async () => {
+    const root = keyed('next-better-auth')
+    const outside = tempProject()
+    symlinkSync(join(outside, 'brew-auth.ts'), join(root, 'lib/brew-auth.ts'))
+    symlinkSync(join(outside, 'brew.json'), join(root, 'brew.json'))
+    const argv = ['--yes', '--json', '--no-test-email', '--no-install']
+    const options = {
+      cwd: root,
+      env: configEnv(),
+      spawn: recordingSpawn().spawn,
+    }
+    useBrewApi()
+    const first = await init(argv, options)
+    expect(first.code).toBe(1)
+    expectValidReport(first.report)
+    expect(
+      first.report.steps.filter((step) => step.status === 'failed')
+    ).toMatchObject([
+      { id: 'files', detail: expect.stringContaining('lib/brew-auth.ts') },
+      { id: 'state', detail: expect.stringContaining('brew.json') },
+    ])
+    const before = read(root, 'lib/auth.ts')
+    const pin = `better-auth-config@${first.report.patches[0]?.baseSha256?.slice(0, 12)}`
+    useBrewApi()
+    const applied = await init([...argv, '--apply-patches', pin], options)
+    expect(applied.report.patches[0]?.status).toBe('pending')
+    expect(read(root, 'lib/auth.ts')).toBe(before)
+    expect(existsSync(join(outside, 'brew-auth.ts'))).toBe(false)
+  })
+
+  it('on Windows, hands the SDK install to the agent instead of failing', async () => {
+    const platform = Object.getOwnPropertyDescriptor(process, 'platform')
+    Object.defineProperty(process, 'platform', { value: 'win32' })
+    try {
+      const root = keyed('express-resend')
+      useBrewApi()
+      const spawn = recordingSpawn()
+      const result = await init(
+        ['--yes', '--json', '--no-test-email', '--no-mcp'],
+        { cwd: root, env: configEnv(), spawn: spawn.spawn }
+      )
+      expect(spawn.calls).toEqual([])
+      expect(
+        result.report.steps.find((step) => step.id === 'install')
+      ).toMatchObject({ status: 'skipped' })
+      expect(
+        result.report.nextSteps.find((step) => step.id === 'install-sdk')
+      ).toMatchObject({
+        command: "npm install '@brew.new/sdk@^13.6.0'",
+        blocking: true,
+      })
+    } finally {
+      if (platform !== undefined) {
+        Object.defineProperty(process, 'platform', platform)
+      }
+    }
+  })
+
+  it('retries a test email that did not go out as the same account, quoted', async () => {
+    const root = keyed('express-resend')
+    useBrewApi()
+    server.use(
+      http.post(`${API}/v1/automations/triggers/by-key/:key/fire`, () =>
+        HttpResponse.json(
+          {
+            error: {
+              code: 'INVALID_PAYLOAD',
+              type: 'invalid_request_error',
+              message: 'The payload does not match the contract.',
+            },
+          },
+          { status: 400 }
+        )
+      )
+    )
+    const result = await init(
+      ['--yes', '--json', '--no-install', '--test-to', "o'connor@acme.com"],
+      {
+        cwd: root,
+        env: configEnv(),
+        spawn: recordingSpawn().spawn,
+      }
+    )
+    expect(result.report.testEmail.status).toBe('failed')
+    expect(
+      result.report.nextSteps.find((step) => step.id === 'send-test-email')
+        ?.command
+    ).toBe(
+      "brew-cli init '--test-to=o'\\''connor@acme.com' --no-install --json --yes"
+    )
+  })
+
+  it('finds a --domain on a later page instead of adding it again', async () => {
+    const root = keyed('express-resend')
+    const requests = useBrewApi()
+    server.use(
+      http.get(`${API}/v1/domains`, ({ request }) => {
+        const later = new URL(request.url).searchParams.get('cursor') !== null
+        return HttpResponse.json({
+          data: later
+            ? [
+                {
+                  domainId: 'dom_later',
+                  domainUrl: 'https://brew.new/domains/dom_later',
+                  name: 'mail.acme.com',
+                  region: 'us-east-1',
+                  status: 'verified',
+                  sendingEnabled: true,
+                  sendable: true,
+                  sendingPurpose: 'transactional',
+                  records: [],
+                  createdAt: '2026-10-13T12:00:00.000Z',
+                  updatedAt: '2026-10-13T12:00:00.000Z',
+                },
+              ]
+            : [],
+          pagination: {
+            limit: 100,
+            cursor: later ? null : 'page-2',
+            hasMore: !later,
+          },
+        })
+      })
+    )
+    const result = await init(
+      ['--yes', '--json', '--no-test-email', '--domain', 'mail.acme.com'],
+      { cwd: root, env: configEnv(), spawn: recordingSpawn().spawn }
+    )
+    expect(result.report.domain).toMatchObject({
+      domainId: 'dom_later',
+      mode: 'domain',
+      added: false,
+    })
+    expect(
+      requests.filter((request) => request.path === '/v1/domains')
+    ).toEqual([])
+  })
+
+  it('tells how to finish an editor whose config init only reports on', async () => {
+    const root = keyed('express-resend')
+    mkdirSync(join(root, '.codex'))
+    useBrewApi()
+    const result = await init(['--yes', '--json', '--no-test-email'], {
+      cwd: root,
+      env: configEnv(),
+      spawn: recordingSpawn().spawn,
+    })
+    expect(result.report.mcp).toMatchObject([
+      { client: 'codex', action: 'manual' },
+    ])
+    expect(
+      result.report.nextSteps.find((step) => step.id === 'mcp-install-codex')
+    ).toMatchObject({
+      command: 'brew-cli mcp install --client codex',
+      blocking: false,
+    })
   })
 })

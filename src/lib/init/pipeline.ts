@@ -37,6 +37,7 @@ import { CliApiError, CliUsageError } from '../errors'
 import { getInvocationPrefix } from '../invocation'
 import { mcpUrlFromApiUrl, USER_SCOPE_ONLY } from '../mcp-clients'
 import { progress } from '../output'
+import { collectAll } from '../paginate'
 import { ensureEnvVars, getEnvValue, parseEnv } from '../project/env-file'
 import { type PlannedChange, ProjectWriter } from '../project/fs-writer'
 import { ensureIgnored } from '../project/gitignore'
@@ -159,7 +160,11 @@ function describeError(error: unknown): string {
 }
 
 /** Flags of `init` whose value is the next token (`--apply-patches a@b`). */
-const VALUE_FLAGS: ReadonlySet<string> = new Set(['--apply-patches', '--app'])
+const VALUE_FLAGS: ReadonlySet<string> = new Set([
+  '--apply-patches',
+  '--app',
+  '--test-to',
+])
 
 /**
  * The command an agent re-runs to continue: the parsed invocation with
@@ -193,6 +198,17 @@ function rerunCommand(
   )
 }
 
+/**
+ * The test email again: init re-run with `--test-to`, so it acts as the
+ * same credential (maybe only in .env.local, which `send` never reads).
+ */
+function retryTestEmail(ctx: CliContext, rerun: InitRerun, to: string): string {
+  return rerunCommand(ctx, rerun, {
+    drop: ['--resume', '--no-wait'],
+    add: ['--test-to', to],
+  })
+}
+
 type Credential = {
   readonly auth: ResolvedAuth | undefined
   readonly source: InitReport['credential']['source']
@@ -221,7 +237,16 @@ export async function runInit(
     const report = ambiguousReport(detected, ctx, dryRun, options.rerun)
     return finish(report)
   }
-  const project = detected.project
+  // --stack picks the auth library the kit, helpers and patches are for.
+  const project: ProjectDetection =
+    options.stack === undefined ||
+    options.stack === kitStackFor(detected.project.auth)
+      ? detected.project
+      : {
+          ...detected.project,
+          auth: options.stack === 'custom' ? 'none' : options.stack,
+          authVersion: null,
+        }
   progress(
     ctx,
     `Setting up Brew in ${project.root} (${project.framework}, auth: ${project.auth})…`
@@ -241,8 +266,8 @@ export async function runInit(
   const state = stateRead?.state ?? null
   const projectId = state?.projectId ?? randomUUID()
   // `init:<projectId>:<step>:<body hash>`: an identical re-run replays the
-  // first request; a different body (another --stack, recipient or domain)
-  // is a new request, never an idempotency conflict.
+  // first request; a different body (another recipient or domain) is a new
+  // request, never an idempotency conflict.
   const idempotencyKey = (step: string, body: unknown): string =>
     `init:${projectId}:${step}:${createHash('sha256').update(JSON.stringify(body)).digest('hex').slice(0, 12)}`
   const steps: InitStep[] = [
@@ -255,7 +280,11 @@ export async function runInit(
   const nextSteps: NextStep[] = []
   const sets: readonly AppEmailKitSet[] = options.sets ?? ['auth', 'lifecycle']
   const lifecycle = sets.includes('lifecycle')
-  const stack = options.stack ?? kitStackFor(project.auth)
+  // Without the auth set the auth library keeps sending its own emails:
+  // nothing may route them to keys the kit did not set up.
+  const authSet = sets.includes('auth')
+  const supabaseHook = authSet && project.auth === 'supabase'
+  const stack = kitStackFor(project.auth)
 
   // ---- App key: .env.local must be git-ignored before a key goes in it.
   const envLocalText = writer.read('.env.local')
@@ -560,8 +589,13 @@ export async function runInit(
     steps.push({ id: 'domain', status: 'planned', detail: afterSignIn })
   } else {
     try {
-      const list = await client.domains.list({ limit: 100 })
-      const verified = list.data.filter(
+      const rows = await collectAll(ctx, (cursor) =>
+        client.domains.list({
+          limit: 100,
+          ...(cursor === undefined ? {} : { cursor }),
+        })
+      )
+      const verified = rows.filter(
         (row) => row.status === 'verified' && row.sendable
       )
       const chosen =
@@ -570,7 +604,7 @@ export async function runInit(
       let target =
         options.domain === undefined
           ? undefined
-          : list.data.find(
+          : rows.find(
               (row) => row.name.toLowerCase() === options.domain?.toLowerCase()
             )
       let selectorInUse: DkimSelectorInUse | undefined
@@ -594,7 +628,9 @@ export async function runInit(
         domain.domainId = shown.domainId
         domain.name = shown.name
         domain.status = shown.status
-        if (shown.status !== 'verified') {
+        // A conflicting DKIM record is never shown: publishing it would
+        // replace the key another sender signs with.
+        if (shown.status !== 'verified' && selectorInUse === undefined) {
           domain.records = shown.records.map((record) => ({
             type: record.type,
             name: record.name,
@@ -683,10 +719,10 @@ export async function runInit(
         ctx,
         `Setting up the ${sets.join(' + ')} app emails for ${stack}…`
       )
-      const body = { sets: [...sets], stack }
-      kit = await client.appEmails.setUpKit(body, {
-        idempotencyKey: idempotencyKey('kit', body),
-      })
+      // No key of init's own: a re-run must reach the kit, which finishes
+      // the keys that failed, not replay the failed response for 24 hours.
+      // The SDK keys each call, so its own retries stay safe.
+      kit = await client.appEmails.setUpKit({ sets: [...sets], stack })
       for (const entry of kit.results) {
         emails.push(
           entry.ok
@@ -789,7 +825,7 @@ export async function runInit(
   const installsSkills = project.editors.includes('claude-code')
   const paths = {
     client: clientPath(project),
-    auth: wantsAuthHelper(project, { lifecycle })
+    auth: wantsAuthHelper(project, { lifecycle, auth: authSet })
       ? authHelperPath(project)
       : null,
     contracts: contractsPath(project),
@@ -805,11 +841,11 @@ export async function runInit(
     if (paths.auth !== null) {
       writeManaged({
         path: paths.auth,
-        content: authHelperFile(project, { lifecycle }),
+        content: authHelperFile(project, { lifecycle, auth: authSet }),
         role: 'auth',
       })
     }
-    if (project.auth === 'supabase') {
+    if (supabaseHook) {
       writeManaged({
         path: SUPABASE_FUNCTION_PATH,
         content: supabaseHookFile(),
@@ -853,7 +889,7 @@ export async function runInit(
     const exampleText = writer.read('.env.example')
     const example = ensureEnvVars(exampleText, [
       { name: APP_KEY_VARIABLE, value: '', secret: false },
-      ...(project.auth === 'supabase'
+      ...(supabaseHook
         ? [{ name: SUPABASE_HOOK_SECRET_VARIABLE, value: '', secret: false }]
         : []),
     ])
@@ -866,13 +902,18 @@ export async function runInit(
       role: 'env-example',
     })
     const kept = files.filter((file) => file.action === 'kept-user-version')
+    // A generated file init may not write (a link out of the project) is
+    // missing, and the patches that import it must wait for it.
+    const refused = managed.filter(({ change }) => change.action === 'refused')
     steps.push({
       id: 'files',
-      status: dryRun ? 'planned' : 'done',
+      status: refused.length > 0 ? 'failed' : dryRun ? 'planned' : 'done',
       detail:
-        kept.length > 0
-          ? `kept your version of ${kept.map((file) => file.path).join(', ')}`
-          : `${files.filter((file) => file.action === 'created' || file.action === 'updated').length} ${dryRun ? 'to write' : 'written'}`,
+        refused.length > 0
+          ? `not written: ${refused.map(({ change }) => `${change.path} (${change.note ?? 'unsafe path'})`).join(', ')}`
+          : kept.length > 0
+            ? `kept your version of ${kept.map((file) => file.path).join(', ')}`
+            : `${files.filter((file) => file.action === 'created' || file.action === 'updated').length} ${dryRun ? 'to write' : 'written'}`,
     })
   } catch (error) {
     rethrowIfFatal(ctx, error)
@@ -882,17 +923,26 @@ export async function runInit(
   // ---- Patches to the user's own config: printed, applied on request.
   const computedPatches: ComputedPatch[] = []
   if (paths.auth !== null && project.auth === 'better-auth') {
-    computedPatches.push(betterAuthPatch(project, paths.auth, { lifecycle }))
+    computedPatches.push(
+      betterAuthPatch(project, paths.auth, { lifecycle, auth: authSet })
+    )
   }
-  if (paths.auth !== null && project.auth === 'authjs') {
+  if (authSet && paths.auth !== null && project.auth === 'authjs') {
     computedPatches.push(authjsPatch(project, paths.auth))
   }
-  if (project.auth === 'supabase' && project.hasSupabaseDir) {
+  if (supabaseHook && project.hasSupabaseDir) {
     computedPatches.push(supabaseConfigPatch(project))
   }
+  const filesFailed = steps.some(
+    (step) => step.id === 'files' && step.status === 'failed'
+  )
   const patches: InitPatch[] = computedPatches.map((computed) => {
     const pin = options.applyPatches.get(computed.patch.id)
-    if (pin === undefined || computed.patch.status !== 'pending') {
+    if (
+      pin === undefined ||
+      computed.patch.status !== 'pending' ||
+      filesFailed
+    ) {
       return computed.patch
     }
     // Applied only when the file still hashes to what was reviewed: a file
@@ -981,6 +1031,20 @@ export async function runInit(
       status: dryRun ? 'planned' : 'done',
       detail: mcp.map((entry) => `${entry.client} ${entry.action}`).join(', '),
     })
+    // An editor init only reports on (its config is in the home directory)
+    // or could not update: `mcp install` finishes it.
+    for (const entry of mcp) {
+      if (entry.action === 'manual') {
+        nextSteps.push({
+          id: `mcp-install-${entry.client}`,
+          actor: 'agent',
+          kind: 'run-command',
+          command: `${prefix} mcp install --client ${entry.client}`,
+          title: `Connect ${entry.client} to the Brew MCP server${entry.note === undefined ? '' : ` (${entry.note})`}`,
+          blocking: false,
+        })
+      }
+    }
   }
 
   // ---- AGENTS.md block.
@@ -1094,10 +1158,18 @@ export async function runInit(
     action: stateChange.action,
     role: 'state',
   })
-  steps.push({ id: 'state', status: dryRun ? 'planned' : 'done' })
+  steps.push(
+    stateChange.action === 'refused'
+      ? {
+          id: 'state',
+          status: 'failed',
+          detail: `${BREW_STATE_FILE} not written: ${stateChange.note ?? 'unsafe path'}`,
+        }
+      : { id: 'state', status: dryRun ? 'planned' : 'done' }
+  )
 
   // ---- Project next steps that do not depend on a step's outcome.
-  projectNextSteps({ project, nextSteps, siteUrl, paths, prefix })
+  projectNextSteps({ project, nextSteps, siteUrl, paths, prefix, supabaseHook })
 
   // ---- A sandbox test email to the person who signed in.
   const testEmail = await sendTestEmail({
@@ -1109,7 +1181,6 @@ export async function runInit(
     idempotencyKey: (body) => idempotencyKey('test-email', body),
     steps,
     nextSteps,
-    prefix,
   })
 
   const report = baseReport({
@@ -1203,8 +1274,14 @@ function planInstall(input: {
   )
   const base = project.monorepo?.root ?? project.root
   const command = formatCommandLine(line)
-  if (!options.install) {
-    steps.push({ id: 'install', status: 'skipped', detail: '--no-install' })
+  // On Windows npm, pnpm and yarn are `.cmd` shims, which start only
+  // through a shell, and init starts none: the command is the agent's.
+  if (!options.install || process.platform === 'win32') {
+    steps.push({
+      id: 'install',
+      status: 'skipped',
+      detail: options.install ? 'on Windows, run it yourself' : '--no-install',
+    })
     nextSteps.push({
       id: 'install-sdk',
       actor: 'agent',
@@ -1266,9 +1343,10 @@ function projectNextSteps(input: {
   readonly siteUrl: string
   readonly paths: { readonly client: string | null }
   readonly prefix: string
+  readonly supabaseHook: boolean
 }): void {
   const { project, nextSteps } = input
-  if (project.auth === 'supabase') {
+  if (input.supabaseHook) {
     nextSteps.push(
       {
         id: 'deploy-supabase-hook',
@@ -1358,7 +1436,6 @@ async function sendTestEmail(input: {
   readonly idempotencyKey: (body: unknown) => string
   readonly steps: InitStep[]
   readonly nextSteps: NextStep[]
-  readonly prefix: string
 }): Promise<InitReport['testEmail']> {
   const { ctx, client, options, steps } = input
   const ready = input.emails.filter(
@@ -1413,7 +1490,7 @@ async function sendTestEmail(input: {
       id: 'send-test-email',
       actor: 'agent',
       kind: 'run-command',
-      command: `${input.prefix} send ${key} --to <you@example.com> --yes`,
+      command: retryTestEmail(ctx, options.rerun, '<you@example.com>'),
       title:
         'Send yourself a test email (a member of your Brew organization while in the sandbox)',
       blocking: false,
@@ -1463,7 +1540,7 @@ async function sendTestEmail(input: {
       id: 'send-test-email',
       actor: 'agent',
       kind: 'run-command',
-      command: `${input.prefix} send ${key} --to ${to} --yes`,
+      command: retryTestEmail(ctx, options.rerun, to),
       title: 'Send the test email again later',
       blocking: false,
     })

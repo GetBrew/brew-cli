@@ -50,21 +50,30 @@ export type GeneratedFile = {
   readonly role: 'client' | 'auth' | 'contracts' | 'supabase-hook' | 'skill'
 }
 
-/** `ts` or `js`, from whether the project uses TypeScript. */
-export function sourceExtension(project: ProjectDetection): 'js' | 'ts' {
-  return project.typescript ? 'ts' : 'js'
+/** `ts`, `js`, or `mjs` for a CommonJS JavaScript server (see importSuffix). */
+export function sourceExtension(project: ProjectDetection): string {
+  return project.typescript
+    ? 'ts'
+    : importSuffix(project) === '.mjs'
+      ? 'mjs'
+      : 'js'
 }
 
 /**
- * The suffix a relative import needs: Node ESM resolution (an Express or
- * Hono server with `"type": "module"`) wants `.js`; bundlers want none.
+ * The suffix a relative import needs. Node resolves an Express or Hono
+ * server's own imports: with `"type": "module"` it wants `.js`, and a
+ * JavaScript server without it loads `.js` as CommonJS, so the generated
+ * ES modules there are `.mjs`. Bundlers want none.
  */
 export function importSuffix(project: ProjectDetection): string {
   const isNodeServer =
     project.framework === 'express' ||
     project.framework === 'hono' ||
     project.framework === 'node'
-  return isNodeServer && project.esm && project.runtime === 'node' ? '.js' : ''
+  if (!isNodeServer || project.runtime !== 'node') {
+    return ''
+  }
+  return project.esm ? '.js' : project.typescript ? '' : '.mjs'
 }
 
 /** A relative import specifier from one root-relative file to another. */
@@ -198,11 +207,13 @@ type HelperContext = {
   readonly workers: boolean
 }
 
+/** The Worker request's `env`, as a parameter. */
+function envArg(context: HelperContext): string {
+  return context.ts ? 'env: { BREW_API_KEY?: string }' : 'env'
+}
+
 function envParam(context: HelperContext): string {
-  if (!context.workers) {
-    return ''
-  }
-  return context.ts ? 'env: { BREW_API_KEY?: string }, ' : 'env, '
+  return context.workers ? `${envArg(context)}, ` : ''
 }
 
 function brewCall(context: HelperContext): string {
@@ -273,7 +284,7 @@ const AUTH_NOTES: Readonly<
   Record<Exclude<AuthId, 'better-auth' | 'authjs'>, string>
 > = {
   supabase:
-    'Supabase Auth emails go through the Send Email Hook in supabase/functions/send-email.',
+    'With the auth set, Supabase Auth emails go through the Send Email Hook in supabase/functions/send-email.',
   clerk:
     'Clerk keeps sending its own sign-in and verification emails; connect Clerk in Brew (Integrations) to start lifecycle automations from Clerk events, or send them from your code.',
   firebase:
@@ -288,6 +299,8 @@ const AUTH_NOTES: Readonly<
 export type AuthHelperOptions = {
   /** The lifecycle set is set up, so `lifecycle.welcome` exists. */
   readonly lifecycle: boolean
+  /** The auth set is set up, so the auth library's keys exist. */
+  readonly auth: boolean
 }
 
 /**
@@ -338,26 +351,49 @@ export function authHelperFile(
             ]
           : []),
         ' */',
-        'export const brewEmails = brewAuthEmails({',
-        '  client: getBrew,',
-        ...(after ? ['  waitUntil: after,'] : []),
-        '})',
+        // A Worker's client needs the request's `env`: one per request.
+        ...(context.workers
+          ? [
+              `export function createBrewEmails(${envArg(context)}) {`,
+              '  return brewAuthEmails({ client: () => getBrew(env) })',
+              '}',
+            ]
+          : [
+              'export const brewEmails = brewAuthEmails({',
+              '  client: getBrew,',
+              ...(after ? ['  waitUntil: after,'] : []),
+              '})',
+            ]),
         '',
       ].join('\n')
     }
     case 'authjs': {
       const v4 = project.authVersion === 'v4'
+      const provider = `BrewEmail({ client: ${context.workers ? '() => getBrew(env)' : 'getBrew'}${v4 ? ", id: 'email'" : ''} })`
+      // Without the auth set, no `auth.magic-link` exists to sign in with.
       return [
         HEADER,
-        "import { BrewEmail } from '@brew.new/sdk/next-auth'",
+        ...(options.auth
+          ? ["import { BrewEmail } from '@brew.new/sdk/next-auth'"]
+          : []),
         clientImport,
-        '',
-        '/**',
-        ' * Auth.js email sign-in through Brew (`auth.magic-link`). Add it to',
-        ` * \`providers\` and sign in with signIn('${v4 ? 'email' : 'brew'}', { email }).`,
-        ' * Email sign-in needs a database adapter.',
-        ' */',
-        `export const brewEmailProvider = BrewEmail({ client: getBrew${v4 ? ", id: 'email'" : ''} })`,
+        ...(options.auth
+          ? [
+              '',
+              '/**',
+              ' * Auth.js email sign-in through Brew (`auth.magic-link`). Add it to',
+              ` * \`providers\` and sign in with signIn('${v4 ? 'email' : 'brew'}', { email }).`,
+              ' * Email sign-in needs a database adapter.',
+              ' */',
+              ...(context.workers
+                ? [
+                    `export function createBrewEmailProvider(${envArg(context)}) {`,
+                    `  return ${provider}`,
+                    '}',
+                  ]
+                : [`export const brewEmailProvider = ${provider}`]),
+            ]
+          : []),
         ...welcome,
         '',
       ].join('\n')

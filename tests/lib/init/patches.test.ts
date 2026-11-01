@@ -2,8 +2,14 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { detectProject } from '../../../src/lib/init/detect'
-import { authjsPatch, betterAuthPatch } from '../../../src/lib/init/patches'
+import {
+  authjsPatch,
+  betterAuthPatch,
+  supabaseConfigPatch,
+} from '../../../src/lib/init/patches'
 import { copyFixture } from '../../helpers/fixtures'
+
+const BOTH = { auth: true, lifecycle: true }
 
 /** A fixture with one file's text replaced. */
 function edited(fixture: string, path: string, text: string): string {
@@ -57,7 +63,19 @@ describe('authjsPatch', () => {
   })
 })
 
-describe('patch diffs never print a secret', () => {
+describe('authjsPatch: the providers line', () => {
+  it('keeps the comma when only a provider option is an empty list', () => {
+    const root = edited(
+      'next-app-authjs-v5',
+      'src/auth.ts',
+      ADAPTER_CONFIG('[GitHub({ checks: [] })]')
+    )
+    const { next } = authjsPatch(detect(root), 'src/lib/brew-auth.ts')
+    expect(next).toContain(
+      'providers: [brewEmailProvider, GitHub({ checks: [] })],'
+    )
+  })
+
   it('never prints a secret on the edited line, and no context lines', () => {
     const root = edited(
       'next-app-authjs-v5',
@@ -73,6 +91,22 @@ describe('patch diffs never print a secret', () => {
     )
   })
 
+  it('on Workers, leaves the per-request provider to the user', () => {
+    const root = edited(
+      'next-app-authjs-v5',
+      'src/auth.ts',
+      ADAPTER_CONFIG('[GitHub]')
+    )
+    const { patch } = authjsPatch(
+      { ...detect(root), runtime: 'workers' },
+      'src/lib/brew-auth.ts'
+    )
+    expect(patch.status).toBe('manual')
+    expect(patch.snippet).toContain('createBrewEmailProvider(env)')
+  })
+})
+
+describe('betterAuthPatch', () => {
   const config = (body: readonly string[]) =>
     [
       "import { betterAuth } from 'better-auth'",
@@ -92,11 +126,95 @@ describe('patch diffs never print a secret', () => {
         "  database: new Pool({ connectionString: 'postgres://u:p@db/app' }),",
       ])
     )
-    const { patch } = betterAuthPatch(detect(root), 'lib/brew-auth.ts', {
-      lifecycle: true,
-    })
+    const { patch } = betterAuthPatch(detect(root), 'lib/brew-auth.ts', BOTH)
     expect(patch.status).toBe('pending')
     expect(patch.diff).not.toContain('ba-secret-456')
     expect(patch.diff).not.toContain('postgres://')
+  })
+
+  it('wires only the welcome email without the auth set', () => {
+    const root = copyFixture('next-better-auth')
+    const { patch, next } = betterAuthPatch(detect(root), 'lib/brew-auth.ts', {
+      auth: false,
+      lifecycle: true,
+    })
+    expect(patch.status).toBe('pending')
+    expect(next).toContain('brewEmails.onUserCreated')
+    expect(next).not.toContain('sendVerificationEmail')
+    expect(next).not.toContain('sendResetPassword')
+  })
+
+  it('leaves an emailAndPassword it cannot edit to the user', () => {
+    const root = edited(
+      'next-better-auth',
+      'lib/auth.ts',
+      config(['  emailAndPassword: { enabled: true },'])
+    )
+    const { patch } = betterAuthPatch(detect(root), 'lib/brew-auth.ts', BOTH)
+    expect(patch.status).toBe('manual')
+    expect(patch.description).toContain('sendResetPassword')
+  })
+
+  it('a re-run with the lifecycle set asks for the welcome hook it lacks', () => {
+    const root = edited(
+      'next-better-auth',
+      'lib/auth.ts',
+      [
+        "import { brewEmails } from './brew-auth'",
+        config([
+          '  emailVerification: { sendVerificationEmail: brewEmails.sendVerificationEmail },',
+        ]),
+      ].join('\n')
+    )
+    const authOnly = { auth: true, lifecycle: false }
+    expect(
+      betterAuthPatch(detect(root), 'lib/brew-auth.ts', authOnly).patch.status
+    ).toBe('already-applied')
+    const { patch } = betterAuthPatch(detect(root), 'lib/brew-auth.ts', BOTH)
+    expect(patch.status).toBe('manual')
+    expect(patch.description).toContain('onUserCreated')
+  })
+
+  it('on Workers, leaves the per-request callbacks to the user', () => {
+    const root = copyFixture('next-better-auth')
+    const { patch } = betterAuthPatch(
+      { ...detect(root), runtime: 'workers' },
+      'lib/brew-auth.ts',
+      BOTH
+    )
+    expect(patch.status).toBe('manual')
+    expect(patch.snippet).toContain('createBrewEmails(env)')
+  })
+})
+
+describe('supabaseConfigPatch', () => {
+  const HOOK = [
+    '[auth.hook.send_email]',
+    'enabled = true',
+    'uri = "http://host.docker.internal:54321/functions/v1/send-email"',
+  ]
+
+  it.each([
+    ['commented out', HOOK.map((line) => `# ${line}`)],
+    ['turned off', HOOK.map((line) => line.replace('true', 'false'))],
+  ])('a hook %s is not applied', (_, lines) => {
+    const root = edited(
+      'supabase-functions',
+      'supabase/config.toml',
+      `project_id = "fnonly"\n\n${lines.join('\n')}\n`
+    )
+    const { patch } = supabaseConfigPatch(detect(root))
+    expect(patch.status).not.toBe('already-applied')
+  })
+
+  it('never adds a second [functions.send-email] table', () => {
+    const root = edited(
+      'supabase-functions',
+      'supabase/config.toml',
+      'project_id = "fnonly"\n\n[functions.send-email]\nverify_jwt = false\n'
+    )
+    const { patch, next } = supabaseConfigPatch(detect(root))
+    expect(patch.status).toBe('manual')
+    expect(next).toBeUndefined()
   })
 })

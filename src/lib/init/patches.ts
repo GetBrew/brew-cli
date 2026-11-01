@@ -146,42 +146,88 @@ function manual(
   return { patch: { ...meta, path, status: 'manual', snippet } }
 }
 
-const BETTER_AUTH_SNIPPET = (lifecycle: boolean): string =>
-  [
+/** The kit sets a patch wires. */
+export type AuthPatchOptions = {
+  /** `lifecycle.welcome` exists: wire the welcome email. */
+  readonly lifecycle: boolean
+  /** The auth keys exist: wire the auth library's own emails. */
+  readonly auth: boolean
+}
+
+/** The generated auth helper, as a relative import from `from`. */
+function helperImport(
+  project: ProjectDetection,
+  from: string,
+  authHelper: string
+): string {
+  return relativeImport(
+    from,
+    authHelper.replace(/\.(ts|m?js)$/, ''),
+    importSuffix(project)
+  )
+}
+
+function betterAuthSnippet(
+  options: AuthPatchOptions,
+  workers: boolean
+): string {
+  return [
+    ...(workers
+      ? ['const brewEmails = createBrewEmails(env) // per request']
+      : []),
     'betterAuth({',
-    '  emailVerification: { sendVerificationEmail: brewEmails.sendVerificationEmail },',
-    '  emailAndPassword: { enabled: true, sendResetPassword: brewEmails.sendResetPassword },',
-    ...(lifecycle
+    ...(options.auth
+      ? [
+          '  emailVerification: { sendVerificationEmail: brewEmails.sendVerificationEmail },',
+          '  emailAndPassword: { enabled: true, sendResetPassword: brewEmails.sendResetPassword },',
+        ]
+      : []),
+    ...(options.lifecycle
       ? [
           '  databaseHooks: { user: { create: { after: brewEmails.onUserCreated } } },',
         ]
       : []),
-    '  plugins: [magicLink({ sendMagicLink: brewEmails.sendMagicLink })],',
+    ...(options.auth
+      ? ['  plugins: [magicLink({ sendMagicLink: brewEmails.sendMagicLink })],']
+      : []),
     '})',
   ].join('\n')
+}
 
-/** Wires `brewEmails` into the Better Auth config. */
+/** Wires `brewEmails` into the Better Auth config, for the sets set up. */
 export function betterAuthPatch(
   project: ProjectDetection,
   authHelper: string,
-  options: { readonly lifecycle: boolean }
+  options: AuthPatchOptions
 ): ComputedPatch {
   const config = findAuthConfig(project.root, 'better-auth')
+  const workers = project.runtime === 'workers'
   const meta = {
     id: 'better-auth-config',
     title: 'Send Better Auth emails through Brew',
-    description:
-      'Adds the brewEmails callbacks to betterAuth({ … }): verification email, password reset' +
-      (options.lifecycle ? ', and the welcome email on sign-up' : '') +
-      '. Magic-link and one-time-code plugins take brewEmails.sendMagicLink and brewEmails.sendVerificationOTP.',
+    description: `Adds the brewEmails callbacks to betterAuth({ … }): ${[
+      ...(options.auth ? ['verification email', 'password reset'] : []),
+      ...(options.lifecycle ? ['the welcome email on sign-up'] : []),
+    ].join(', ')}.${
+      options.auth
+        ? ' Magic-link and one-time-code plugins take brewEmails.sendMagicLink and brewEmails.sendVerificationOTP.'
+        : ''
+    }`,
   }
-  const snippet = BETTER_AUTH_SNIPPET(options.lifecycle)
+  const snippet = betterAuthSnippet(options, workers)
   if (config === null) {
     return manual('auth.ts', meta, snippet)
   }
   const text = normalizeEol(config.text)
-  const importLine = `import { brewEmails } from '${relativeImport(config.path, authHelper.replace(/\.(ts|js)$/, ''), importSuffix(project))}'`
-  if (text.includes('brewEmails')) {
+  const importLine = `import { ${workers ? 'createBrewEmails' : 'brewEmails'} } from '${helperImport(project, config.path, authHelper)}'`
+  const password = /\bemailAndPassword\b/.test(text)
+  // What the sets need: a re-run with another set finds what is missing.
+  const missing = [
+    ...(options.auth ? ['sendVerificationEmail'] : []),
+    ...(options.auth && password ? ['sendResetPassword'] : []),
+    ...(options.lifecycle ? ['onUserCreated'] : []),
+  ].filter((name) => !text.includes(`brewEmails.${name}`))
+  if (missing.length === 0) {
     return {
       patch: { ...meta, path: config.path, status: 'already-applied' },
     }
@@ -190,64 +236,67 @@ export function betterAuthPatch(
   const openers = lines.flatMap((line, index) =>
     /\bbetterAuth\(\s*\{\s*$/.test(line) ? [index] : []
   )
+  const opener = openers.length === 1 ? openers[0] : undefined
+  const passwordLines = lines.flatMap((line, index) =>
+    /^\s*emailAndPassword\s*:\s*\{\s*$/.test(line) ? [index] : []
+  )
   const owned = [
-    'sendVerificationEmail',
-    'sendResetPassword',
-    'emailVerification',
+    ...(options.auth
+      ? ['sendVerificationEmail', 'sendResetPassword', 'emailVerification']
+      : []),
     ...(options.lifecycle ? ['databaseHooks'] : []),
   ].filter((name) => text.includes(name))
-  const opener = openers[0]
-  if (openers.length !== 1 || opener === undefined || owned.length > 0) {
+  const reason = workers
+    ? 'On Workers, build brewEmails per request with createBrewEmails(env) where betterAuth({ … }) is built, then add the callbacks.'
+    : text.includes('brewEmails')
+      ? `The config already uses brewEmails: add ${missing.join(', ')} by hand.`
+      : owned.length > 0
+        ? `The config already sets ${owned.join(', ')}: replace your sender by hand.`
+        : opener === undefined
+          ? 'The betterAuth({ … }) call could not be located safely.'
+          : options.auth && password && passwordLines.length !== 1
+            ? 'emailAndPassword is not on its own lines: add sendResetPassword: brewEmails.sendResetPassword to it by hand.'
+            : undefined
+  if (reason !== undefined || opener === undefined) {
     return manual(
       config.path,
       {
         ...meta,
-        description: `${meta.description} ${
-          owned.length > 0
-            ? `The config already sets ${owned.join(', ')}: replace your sender by hand.`
-            : 'The betterAuth({ … }) call could not be located safely.'
-        } Import: ${importLine}`,
+        description: `${meta.description} ${reason} Import: ${importLine}`,
       },
       snippet
     )
   }
   const indent = innerIndent(lines, opener)
-  const inserted = [
-    `${indent}emailVerification: { sendVerificationEmail: brewEmails.sendVerificationEmail },`,
-    ...(options.lifecycle
-      ? [
-          `${indent}databaseHooks: { user: { create: { after: brewEmails.onUserCreated } } },`,
-        ]
-      : []),
-  ]
   const next = [...lines]
   // Bottom-up, so earlier indexes stay valid.
-  const passwordLines = next.flatMap((line, index) =>
-    /^\s*emailAndPassword\s*:\s*\{\s*$/.test(line) ? [index] : []
-  )
   const passwordLine = passwordLines[0]
-  const resetInserted = passwordLines.length === 1 && passwordLine !== undefined
-  if (resetInserted) {
+  if (options.auth && passwordLine !== undefined) {
     next.splice(
       passwordLine + 1,
       0,
       `${innerIndent(next, passwordLine)}sendResetPassword: brewEmails.sendResetPassword,`
     )
   }
-  next.splice(opener + 1, 0, ...inserted)
-  // The description must not promise a reset hook the diff does not add.
-  const described =
-    resetInserted || !/\bemailAndPassword\b/.test(text)
-      ? meta
-      : {
-          ...meta,
-          description: `${meta.description} emailAndPassword is not on its own lines here, so the patch leaves it alone: add sendResetPassword: brewEmails.sendResetPassword to it by hand.`,
-        }
+  next.splice(
+    opener + 1,
+    0,
+    ...(options.auth
+      ? [
+          `${indent}emailVerification: { sendVerificationEmail: brewEmails.sendVerificationEmail },`,
+        ]
+      : []),
+    ...(options.lifecycle
+      ? [
+          `${indent}databaseHooks: { user: { create: { after: brewEmails.onUserCreated } } },`,
+        ]
+      : [])
+  )
   return computed(
     config.path,
     config.text,
     insertImport(next.join('\n'), importLine),
-    described
+    meta
   )
 }
 
@@ -257,13 +306,14 @@ export function authjsPatch(
   authHelper: string
 ): ComputedPatch {
   const config = findAuthConfig(project.root, 'authjs')
+  const workers = project.runtime === 'workers'
   const meta = {
     id: 'authjs-config',
     title: 'Send Auth.js sign-in links through Brew',
     description:
       'Adds brewEmailProvider to providers. Email sign-in needs a database adapter; send the welcome email from events.createUser with sendWelcomeEmail.',
   }
-  const snippet = 'providers: [brewEmailProvider, /* your other providers */],'
+  const snippet = `providers: [${workers ? 'createBrewEmailProvider(env)' : 'brewEmailProvider'}, /* your other providers */],`
   if (config === null) {
     return manual(
       project.authVersion === 'v4'
@@ -274,7 +324,8 @@ export function authjsPatch(
     )
   }
   const text = normalizeEol(config.text)
-  const importLine = `import { brewEmailProvider } from '${relativeImport(config.path, authHelper.replace(/\.(ts|js)$/, ''), importSuffix(project))}'`
+  const importLine = `import { ${workers ? 'createBrewEmailProvider' : 'brewEmailProvider'} } from '${helperImport(project, config.path, authHelper)}'`
+  // Also finds createBrewEmailProvider(…), the Workers form.
   if (text.includes('brewEmailProvider')) {
     return {
       patch: { ...meta, path: config.path, status: 'already-applied' },
@@ -302,15 +353,22 @@ export function authjsPatch(
     /\bproviders\s*:\s*\[/.test(line) ? [index] : []
   )
   const at = providerLines[0]
-  if (existingSender || providerLines.length !== 1 || at === undefined) {
+  if (
+    workers ||
+    existingSender ||
+    providerLines.length !== 1 ||
+    at === undefined
+  ) {
     return manual(
       config.path,
       {
         ...meta,
         description: `${meta.description} ${
-          existingSender
-            ? 'The config already has an email provider: replace it by hand.'
-            : 'The providers list could not be located safely.'
+          workers
+            ? 'On Workers, add createBrewEmailProvider(env) to the providers you build per request.'
+            : existingSender
+              ? 'The config already has an email provider: replace it by hand.'
+              : 'The providers list could not be located safely.'
         } Import: ${importLine}`,
       },
       snippet
@@ -322,7 +380,7 @@ export function authjsPatch(
     next.splice(at + 1, 0, `${innerIndent(lines, at)}brewEmailProvider,`)
   } else {
     next[at] = line.replace(/\bproviders\s*:\s*\[\s*/, (match) =>
-      /\[\s*\]/.test(line)
+      /\bproviders\s*:\s*\[\s*\]/.test(line)
         ? `${match}brewEmailProvider`
         : `${match}brewEmailProvider, `
     )
@@ -333,6 +391,14 @@ export function authjsPatch(
     insertImport(next.join('\n'), importLine),
     meta
   )
+}
+
+/** A TOML table's header line, when in effect (not commented out). */
+function tomlTable(text: string, name: string): RegExpExecArray | null {
+  return new RegExp(
+    `^[ \\t]*\\[[ \\t]*${name.replaceAll('.', '\\.')}[ \\t]*\\][ \\t]*(?:#.*)?$`,
+    'm'
+  ).exec(text)
 }
 
 /** Turns the Send Email Hook on in `supabase/config.toml` (local dev). */
@@ -349,17 +415,33 @@ export function supabaseConfigPatch(project: ProjectDetection): ComputedPatch {
     return manual(path, meta, SUPABASE_CONFIG_BLOCK)
   }
   const normalized = normalizeEol(text)
-  if (normalized.includes('[auth.hook.send_email]')) {
-    return normalized.includes('/functions/v1/send-email')
+  const hook = tomlTable(normalized, 'auth.hook.send_email')
+  if (hook !== null) {
+    // The table's own lines, up to the next table.
+    const rest = normalized.slice(hook.index + hook[0].length)
+    const body = rest.slice(0, /^[ \t]*\[/m.exec(rest)?.index ?? rest.length)
+    return /^[ \t]*enabled[ \t]*=[ \t]*true\b/m.test(body) &&
+      /^[ \t]*uri[ \t]*=[ \t]*"[^"]*\/functions\/v1\/send-email"/m.test(body)
       ? { patch: { ...meta, path, status: 'already-applied' } }
       : manual(
           path,
           {
             ...meta,
-            description: `${meta.description} A send_email hook is already configured: point it at send-email by hand.`,
+            description: `${meta.description} A send_email hook is already configured: enable it and point it at send-email by hand.`,
           },
           SUPABASE_CONFIG_BLOCK
         )
+  }
+  // A second [functions.send-email] table would make the file invalid TOML.
+  if (tomlTable(normalized, 'functions.send-email') !== null) {
+    return manual(
+      path,
+      {
+        ...meta,
+        description: `${meta.description} The file already has [functions.send-email]: add the [auth.hook.send_email] table, and verify_jwt = false to the function's, by hand.`,
+      },
+      SUPABASE_CONFIG_BLOCK
+    )
   }
   const separator = normalized.endsWith('\n') ? '\n' : '\n\n'
   return computed(
