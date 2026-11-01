@@ -89,6 +89,45 @@ function indentOf(line: string): string {
   return /^\s*/.exec(line)?.[0] ?? ''
 }
 
+/** Source text with its `//` and `/* *\/` comments left out (strings kept). */
+function withoutComments(text: string): string {
+  let out = ''
+  let index = 0
+  while (index < text.length) {
+    const char = text[index] ?? ''
+    const next = text[index + 1]
+    if (char === '/' && next === '/') {
+      const end = text.indexOf('\n', index)
+      index = end === -1 ? text.length : end
+    } else if (char === '/' && next === '*') {
+      const end = text.indexOf('*/', index + 2)
+      index = end === -1 ? text.length : end + 2
+      out += ' '
+    } else if (char === '"' || char === "'" || char === '`') {
+      let end = index + 1
+      while (end < text.length && text[end] !== char) {
+        end += text[end] === '\\' ? 2 : 1
+      }
+      out += text.slice(index, end + 1)
+      index = end + 1
+    } else {
+      out += char
+      index += 1
+    }
+  }
+  return out
+}
+
+/** Code with its import declarations and `require` destructurings left out. */
+function withoutImports(code: string): string {
+  return code
+    .replace(/\bimport\s[\s\S]*?\bfrom\s*(['"])[^'"]*\1/g, '')
+    .replace(
+      /\b(?:const|let|var)\s*\{[^}]*\}\s*=\s*require\(\s*(['"])[^'"]*\1\s*\)/g,
+      ''
+    )
+}
+
 /** The indent of the first line inside an object opened on `lines[index]`. */
 function innerIndent(lines: readonly string[], index: number): string {
   const opener = indentOf(lines[index] ?? '')
@@ -221,12 +260,14 @@ export function betterAuthPatch(
   const text = normalizeEol(config.text)
   const importLine = `import { ${workers ? 'createBrewEmails' : 'brewEmails'} } from '${helperImport(project, config.path, authHelper)}'`
   const password = /\bemailAndPassword\b/.test(text)
-  // What the sets need: a re-run with another set finds what is missing.
+  // What the sets need: a re-run with another set finds what is missing
+  // (a commented-out callback is missing).
+  const uncommented = withoutComments(text)
   const missing = [
     ...(options.auth ? ['sendVerificationEmail'] : []),
     ...(options.auth && password ? ['sendResetPassword'] : []),
     ...(options.lifecycle ? ['onUserCreated'] : []),
-  ].filter((name) => !text.includes(`brewEmails.${name}`))
+  ].filter((name) => !uncommented.includes(`brewEmails.${name}`))
   if (missing.length === 0) {
     return {
       patch: { ...meta, path: config.path, status: 'already-applied' },
@@ -325,11 +366,27 @@ export function authjsPatch(
   }
   const text = normalizeEol(config.text)
   const importLine = `import { ${workers ? 'createBrewEmailProvider' : 'brewEmailProvider'} } from '${helperImport(project, config.path, authHelper)}'`
-  // Also finds createBrewEmailProvider(…), the Workers form.
-  if (text.includes('brewEmailProvider')) {
+  // Wired only where the config's code uses it: an import or a comment
+  // naming it is not. Also finds createBrewEmailProvider(…), the Workers form.
+  const uncommented = withoutComments(text)
+  if (
+    /\b(?:brewEmailProvider|createBrewEmailProvider)\b/.test(
+      withoutImports(uncommented)
+    )
+  ) {
     return {
       patch: { ...meta, path: config.path, status: 'already-applied' },
     }
+  }
+  if (/\b(?:brewEmailProvider|createBrewEmailProvider)\b/.test(uncommented)) {
+    return manual(
+      config.path,
+      {
+        ...meta,
+        description: `${meta.description} The config imports the provider but does not use it: add it to providers by hand.`,
+      },
+      snippet
+    )
   }
   // Auth.js refuses an email provider without a database adapter at
   // startup (MissingAdapter): adding one to an adapter-less config would

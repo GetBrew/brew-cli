@@ -104,6 +104,28 @@ describe('authjsPatch: the providers line', () => {
     expect(patch.status).toBe('manual')
     expect(patch.snippet).toContain('createBrewEmailProvider(env)')
   })
+
+  it('an import or a comment naming the provider is not a wired provider', () => {
+    const imported = edited(
+      'next-app-authjs-v5',
+      'src/auth.ts',
+      `import { brewEmailProvider } from './lib/brew-auth'\n${ADAPTER_CONFIG('[GitHub]')}`
+    )
+    const onlyImport = authjsPatch(detect(imported), 'src/lib/brew-auth.ts')
+    expect(onlyImport.patch.status).toBe('manual')
+    expect(onlyImport.patch.description).toContain('add it to providers')
+    const commented = edited(
+      'next-app-authjs-v5',
+      'src/auth.ts',
+      ADAPTER_CONFIG('[GitHub /* , brewEmailProvider */]')
+    )
+    const { patch, next } = authjsPatch(
+      detect(commented),
+      'src/lib/brew-auth.ts'
+    )
+    expect(patch.status).toBe('pending')
+    expect(next).toContain('providers: [brewEmailProvider, GitHub')
+  })
 })
 
 describe('betterAuthPatch', () => {
@@ -173,6 +195,27 @@ describe('betterAuthPatch', () => {
     const { patch } = betterAuthPatch(detect(root), 'lib/brew-auth.ts', BOTH)
     expect(patch.status).toBe('manual')
     expect(patch.description).toContain('onUserCreated')
+  })
+
+  it('a commented-out callback is not wired', () => {
+    const root = edited(
+      'next-better-auth',
+      'lib/auth.ts',
+      [
+        "import { brewEmails } from './brew-auth'",
+        config([
+          '  // emailVerification: { sendVerificationEmail: brewEmails.sendVerificationEmail },',
+        ]),
+      ].join('\n')
+    )
+    const authOnly = { auth: true, lifecycle: false }
+    const { patch } = betterAuthPatch(
+      detect(root),
+      'lib/brew-auth.ts',
+      authOnly
+    )
+    expect(patch.status).toBe('manual')
+    expect(patch.description).toContain('sendVerificationEmail')
   })
 
   it('on Workers, leaves the per-request callbacks to the user', () => {
