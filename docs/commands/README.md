@@ -2,7 +2,7 @@
 
 <!-- GENERATED FILE — do not edit. Regenerate with `bun run docs:commands`. -->
 
-149 commands. Classes: read (always safe), write
+157 commands. Classes: read (always safe), write
 (mutating, retry-safe), destructive (irreversible — the confirmation
 protocol applies: interactive y/N on a TTY, exit 4 + JSON envelope with
 a `confirmCommand` otherwise, `--yes` to proceed).
@@ -22,6 +22,14 @@ a `confirmCommand` otherwise, `--yes` to proceed).
 
 | Command | Class | API route | Summary |
 | --- | --- | --- | --- |
+| `brew-cli agent-goals list` | read | `GET /v1/agent-goals` | List marketing goal records |
+| `brew-cli agent-goals get` | read | `GET /v1/agent-goals/{goalId}` | Read a marketing goal, tasks, permissions and workspace |
+| `brew-cli agent-goals create` | write | `POST /v1/agent-goals` | Create a marketing goal; live execution requires a standing permission |
+| `brew-cli agent-goals update` | destructive | `PATCH /v1/agent-goals/{goalId}` | Pause, resume or cancel a marketing goal |
+| `brew-cli agent-goals tasks` | read | `GET /v1/agent-goals/{goalId}/tasks` | List marketing goal tasks |
+| `brew-cli agent-goals documents` | read | `GET /v1/agent-goals/{goalId}/documents` | List marketing goal documents |
+| `brew-cli agent-goals follow-up` | write | `POST /v1/agent-goals/{goalId}/follow-ups` | Schedule a follow-up within a marketing goal |
+| `brew-cli agent-goals publish-document` | write | `POST /v1/agent-goals/{goalId}/documents` | Publish a workspace document with an expected revision |
 | `brew-cli login` | write | — | Store an API key for this machine (validated against the API) |
 | `brew-cli logout` | write | — | Remove the stored API key from this machine |
 | `brew-cli whoami` | read | — | Show the resolved credential, brand, and API target |
@@ -173,6 +181,129 @@ a `confirmCommand` otherwise, `--yes` to proceed).
 | `brew-cli api` | destructive | — | Raw authenticated request against the Brew public API |
 
 ## Details
+
+### brew-cli agent-goals list
+
+List marketing goal records
+
+- Route: `GET /v1/agent-goals`
+- Class: read
+- `--limit <n>` — Page size, 1-100 (default 100)
+- `--cursor <cursor>` — Opaque pagination cursor from a previous page
+- `--all` — Follow the cursor and return every page as one result
+
+```bash
+brew-cli agent-goals list --all
+```
+
+### brew-cli agent-goals get
+
+Read a marketing goal, tasks, permissions and workspace
+
+- Route: `GET /v1/agent-goals/{goalId}`
+- Class: read
+- Argument `goalId` — Marketing goal id
+
+```bash
+brew-cli agent-goals get goal_123
+```
+
+### brew-cli agent-goals create
+
+Create a marketing goal; live execution requires a standing permission
+
+- Route: `POST /v1/agent-goals`
+- Class: write
+- `--name <name>` — Goal name
+- `--objective <objective>` — Marketing objective
+- `--audience-id <audienceId>` — Saved audience id
+- `--success-metric <metric>` — Outcome to measure
+- `--planning-horizon-days <days>` — Planning horizon in days
+- `--chat-id <chatId>` — Existing chat to link to the goal
+- `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
+- `--idempotency-key <key>` — Idempotency-Key for safe retries (auto-generated otherwise)
+
+```bash
+brew-cli agent-goals create --input - < goal.json
+```
+
+### brew-cli agent-goals update
+
+Pause, resume or cancel a marketing goal
+
+- Route: `PATCH /v1/agent-goals/{goalId}`
+- Class: destructive
+- Argument `goalId` — Marketing goal id
+- `--status <status>` — active, paused or cancelled
+
+```bash
+brew-cli agent-goals update goal_123 --status paused --yes
+```
+
+### brew-cli agent-goals tasks
+
+List marketing goal tasks
+
+- Route: `GET /v1/agent-goals/{goalId}/tasks`
+- Class: read
+- Argument `goalId` — Marketing goal id
+- `--limit <n>` — Page size, 1-100 (default 100)
+- `--cursor <cursor>` — Opaque pagination cursor from a previous page
+- `--all` — Follow the cursor and return every page as one result
+
+```bash
+brew-cli agent-goals tasks goal_123 --all
+```
+
+### brew-cli agent-goals documents
+
+List marketing goal documents
+
+- Route: `GET /v1/agent-goals/{goalId}/documents`
+- Class: read
+- Argument `goalId` — Marketing goal id
+- `--limit <n>` — Page size, 1-25 (default 25)
+- `--cursor <cursor>` — Opaque pagination cursor from a previous page
+- `--all` — Follow the cursor and return every page as one result
+
+```bash
+brew-cli agent-goals documents goal_123 --all
+```
+
+### brew-cli agent-goals follow-up
+
+Schedule a follow-up within a marketing goal
+
+- Route: `POST /v1/agent-goals/{goalId}/follow-ups`
+- Class: write
+- Argument `goalId` — Marketing goal id
+- `--message <message>` — Work to revisit
+- `--source-id <sourceId>` — Stable occurrence identity for deduplication
+- `--due-at <timestamp>` — ISO 8601 timestamp with a timezone
+- `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
+- `--idempotency-key <key>` — Idempotency-Key for safe retries (auto-generated otherwise)
+
+```bash
+brew-cli agent-goals follow-up goal_123 --message "Review campaign results" --source-id send_123:review --due-at 2027-01-01T00:00:00.000Z
+```
+
+### brew-cli agent-goals publish-document
+
+Publish a workspace document with an expected revision
+
+- Route: `POST /v1/agent-goals/{goalId}/documents`
+- Class: write
+- Argument `goalId` — Marketing goal id
+- `--path <path>` — Relative workspace document path
+- `--expected-revision <revision>` — Current revision; 0 creates a document
+- `--file <path|->` — UTF-8 document content from a file or stdin
+- `--source <source>` — Source reference for this revision
+- `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
+- `--idempotency-key <key>` — Idempotency-Key for safe retries (auto-generated otherwise)
+
+```bash
+brew-cli agent-goals publish-document goal_123 --path plan.md --expected-revision 2 --file ./plan.md
+```
 
 ### brew-cli login
 
