@@ -177,6 +177,26 @@ describe('migrate resend: unfinished work is retried', () => {
     })
   })
 
+  it('a plan between an interrupted apply and its retry keeps the rows still to land', async () => {
+    const { root, clock, run } = setUp()
+    server.use(useResendApi({ key: RESEND_KEY, clock, pageSize: 1 }).handler)
+    // Page 1 has a refused row; page 2 interrupts the pass.
+    const brew = useBrewApi({
+      refuseRow: 'ada@example.com',
+      failContact: 'bob@example.com',
+    })
+    const contacts = ['--only', 'contacts']
+    expect((await migrate([...APPLY, ...contacts], run)).code).toBe(1)
+    expect(readManifest(root).phases.contacts?.cursor).toBe('ct_1')
+    await migrate(['--json', ...contacts], run)
+    brew.heal()
+    await migrate([...APPLY, ...contacts], run)
+    // Ada's refused row has not landed: the phase stays open for it.
+    expect(readManifest(root).phases.contacts?.status).not.toBe('done')
+    await migrate([...APPLY, ...contacts], run)
+    expect(readManifest(root).phases.contacts?.status).toBe('done')
+  })
+
   it('a topic added since the contact pass sends every contact through it again', async () => {
     const { root, clock } = setUp()
     useBrewApi()

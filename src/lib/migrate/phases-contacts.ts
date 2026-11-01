@@ -103,7 +103,9 @@ export async function contactsPhase(run: RunContext): Promise<void> {
   delete phase.error
   const inventory = inventoryOf(run)
   if (!run.apply) {
-    if (phase.status === 'done') {
+    // An interrupted apply keeps its counts with its cursor: the plan's
+    // estimates would drop the rows it has not landed yet.
+    if (phase.status === 'done' || typeof phase.cursor === 'string') {
       return
     }
     const counts: Record<string, number> = {}
@@ -421,7 +423,8 @@ export async function suppressionsPhase(run: RunContext): Promise<void> {
   delete phase.error
   const inventory = inventoryOf(run)
   if (!run.apply) {
-    if (phase.status === 'done') {
+    // As for contacts: an interrupted apply keeps its counts and cursor.
+    if (phase.status === 'done' || typeof phase.cursor === 'string') {
       return
     }
     const counts: Record<string, number> = {}
