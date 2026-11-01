@@ -2,6 +2,7 @@ import type { AppEmailKitSet, AppEmailKitStackProvider } from '@brew.new/sdk'
 import { defineCommand } from '../lib/define-command'
 import { CliUsageError } from '../lib/errors'
 import { runInit } from '../lib/init/pipeline'
+import { SUPABASE_REF_PATTERN } from '../lib/init/providers/supabase'
 import { flagString } from '../lib/input'
 
 const SETS: readonly AppEmailKitSet[] = ['auth', 'lifecycle']
@@ -99,9 +100,15 @@ export const initCommand = defineCommand({
   sdkMethod: null,
   derivedFrom: [
     'brand.get',
+    'brands.list',
+    'brands.create',
+    'brands.get',
     'domains.list',
     'domains.add',
     'appEmails.setUpKit',
+    'appEmails.list',
+    'integrations.getConnection',
+    'integrations.connect',
     'automations.triggers.list',
     'automations.triggers.getContract',
     'send',
@@ -120,7 +127,7 @@ export const initCommand = defineCommand({
     {
       flag: '--domain <host>',
       summary:
-        'Add this sending domain and print its DNS records (init does not wait for verification)',
+        'Add this transactional sending domain, print its DNS records and the Brew page that can add them for you (init does not wait for verification; the team sandbox applies until then)',
     },
     {
       flag: '--sets <sets>',
@@ -144,7 +151,27 @@ export const initCommand = defineCommand({
     {
       flag: '--app-url <url>',
       summary:
-        "Your app's URL, shown on the brew.new approval page so the right brand is picked",
+        "Your app's URL: shown on the approval page so the right brand is picked; with an organization key, init uses the brand with this website or creates one",
+    },
+    {
+      flag: '--configure-supabase',
+      summary:
+        "Point Supabase Auth's Send Email hook at Brew through the Supabase Management API (needs SUPABASE_ACCESS_TOKEN locally; the old hook settings are saved in brew.json for --rollback-provider)",
+    },
+    {
+      flag: '--supabase-project <ref>',
+      summary:
+        'The Supabase project ref (the <ref> in https://<ref>.supabase.co) when init cannot find it',
+    },
+    {
+      flag: '--configure-clerk',
+      summary:
+        "Turn off Clerk's delivery for exactly the templates Brew sends, only once Brew's Clerk connection is active (needs CLERK_SECRET_KEY locally; saved for --rollback-provider)",
+    },
+    {
+      flag: '--rollback-provider',
+      summary:
+        'Put back the Supabase hook or Clerk delivery settings init saved in brew.json, and nothing else',
     },
     { flag: '--no-install', summary: 'Do not install @brew.new/sdk' },
     { flag: '--no-mcp', summary: 'Do not configure MCP for detected editors' },
@@ -175,10 +202,18 @@ export const initCommand = defineCommand({
     'brew-cli init --resume --yes --json',
     'brew-cli init --app apps/web --domain mail.example.com --yes',
     'brew-cli init --yes --apply-patches better-auth-config@3f9c2a7d1b04',
+    'brew-cli init --configure-supabase --dry-run --json',
+    'brew-cli init --configure-supabase --yes --json',
+    'brew-cli init --configure-clerk --yes --json',
+    'brew-cli init --rollback-provider --yes --json',
+    'BREW_API_KEY=<org key> brew-cli init --app-url https://acme.com --yes --json',
   ],
   confirmSummary: ({ flags }) => {
     if (flags.dryRun === true) {
       return
+    }
+    if (flags.rollbackProvider === true) {
+      return 'Put back the auth provider settings init saved in brew.json: the Supabase Send Email hook as it was, or Clerk delivery back on for the templates init turned off.'
     }
     return [
       'Set up Brew in this project:',
@@ -189,6 +224,12 @@ export const initCommand = defineCommand({
       flags.applyPatches !== undefined
         ? 'and apply the reviewed auth config patches;'
         : 'and print patches for your auth config;',
+      flags.configureSupabase === true
+        ? "point Supabase Auth's Send Email hook at Brew (the old settings go into brew.json for --rollback-provider);"
+        : '',
+      flags.configureClerk === true
+        ? "once Brew's Clerk connection is active, turn off Clerk's delivery for the templates Brew sends (saved for --rollback-provider);"
+        : '',
       flags.testEmail === false ? '' : 'then send you a sandbox test email.',
     ]
       .filter((part) => part !== '')
@@ -199,6 +240,28 @@ export const initCommand = defineCommand({
     const noWait = ctx.rawArgv.includes('--no-wait')
     if (resume && flags.dryRun === true) {
       throw new CliUsageError('--resume cannot be combined with --dry-run.')
+    }
+    if (
+      flags.rollbackProvider === true &&
+      (flags.configureSupabase === true || flags.configureClerk === true)
+    ) {
+      throw new CliUsageError(
+        '--rollback-provider undoes --configure-supabase / --configure-clerk; pass one or the other.'
+      )
+    }
+    if (flags.configureSupabase === true && flags.configureClerk === true) {
+      throw new CliUsageError(
+        'Pass --configure-supabase or --configure-clerk: a project has one auth provider.'
+      )
+    }
+    const supabaseProject = flagString(flags.supabaseProject)
+    if (
+      supabaseProject !== undefined &&
+      !SUPABASE_REF_PATTERN.test(supabaseProject)
+    ) {
+      throw new CliUsageError(
+        `--supabase-project takes a project ref: 20 lowercase letters, the <ref> in https://<ref>.supabase.co; got "${supabaseProject}".`
+      )
     }
     return await runInit(ctx, {
       dryRun: flags.dryRun === true,
@@ -216,6 +279,10 @@ export const initCommand = defineCommand({
       noWait,
       resume,
       openBrowser: flags.open !== false,
+      configureSupabase: flags.configureSupabase === true,
+      configureClerk: flags.configureClerk === true,
+      supabaseProject,
+      rollbackProvider: flags.rollbackProvider === true,
       rerun: { command: initCommand, invocation: { args, flags } },
     })
   },

@@ -1,5 +1,103 @@
 # Changelog
 
+## 0.23.0
+
+Not released yet. Needs `@brew.new/sdk` 13.7.0: `integrations.connect` and
+`integrations.getConnection` (GetBrew/typescript-sdk#74, on top of the
+13.6.0 that 0.20.0 needs; see the SDK gates in `RELEASING.md`), and the API
+from GetBrew/brew-v2#2169 (`GET|PUT /v1/integrations/{provider}/connection`,
+the `supabase_auth` hosted Send Email Hook, and Clerk `email.created`
+sending the app's auth emails). The bundled spec is 0.20.0's, the #2169
+head `6e4accea4c` (main's spec, brew-v2 `373e900a9a`, plus the DX delta).
+
+### Added
+
+- **`brew-cli integrations connect <provider>`** connects a hosted auth
+  email hook, `supabase_auth` or `clerk` (`PUT
+  /v1/integrations/{provider}/connection`, destructive class: a new secret
+  replaces the old one), and sets up its auth app emails. The signing
+  secret comes from `--signing-secret-env <VAR>` or
+  `--signing-secret-stdin`, never a flag value; a value shaped wrong (or
+  pasted where the variable name goes) is a usage error that never echoes
+  it. `--project-url` sets Supabase's confirmation link base. Prints
+  `{ connectionId, webhookUrl, status, authEmails }`. 5-minute default
+  deadline, as the SDK's. Re-running it is safe: `connectionId` and
+  `webhookUrl` stay the same for the brand and provider, the new secret
+  replaces the old one in place, auth emails already set up are kept (one
+  unpublished in Brew stays off), and keys that failed are finished; while
+  one has failed it exits 1, with the full response. The human output
+  counts auth emails set up and points at `app-emails list` for which
+  send. A Clerk connected on its integration page
+  in Brew keeps its secret there: another secret exits 1 with `409
+  INTEGRATION_CONNECTED_IN_APP` (rotate it on that page).
+- **`brew-cli integrations connection <provider>`** reads it:
+  `pending_verification` until the first signed delivery, then `active`
+  (404 `NOT_FOUND` when not connected).
+- **`init --configure-supabase`** (with `SUPABASE_ACCESS_TOKEN` on this
+  machine, sent to api.supabase.com only) connects Brew as the Send Email
+  Hook with a freshly generated `v1,whsec_` secret, then points the
+  project's hook at it through the Supabase Management API (`PATCH
+  /v1/projects/{ref}/config/auth`: `hook_send_email_enabled`,
+  `hook_send_email_uri`, `hook_send_email_secrets`). The previous hook
+  settings are saved to `brew.json#providerConfig` before the change (a
+  previous secret goes to `.env.local` as
+  `BREW_SUPABASE_PREVIOUS_HOOK_SECRETS`, never `brew.json`); a re-run that
+  finds the hook already on Brew changes nothing. The hook is left as it
+  is while an auth email failed or reaches the team only (sandbox), while
+  Brew's connection is active for another hook (a new secret would stop
+  it), or when that backup cannot be saved. `--dry-run --json`
+  lists the exact requests with the secret replaced. The project ref comes
+  from `--supabase-project <ref>`, `supabase link`, a `*SUPABASE_URL`, or
+  Lovable's files.
+- **`init --configure-clerk`** turns off "Delivered by Clerk" (Clerk
+  Backend API `POST /templates/email/{slug}/toggle_delivery`, with
+  `CLERK_SECRET_KEY` from the shell or `.env.local`) for exactly the
+  templates whose kit key's app email reaches every user (published, not
+  the team-only sandbox), and only once Brew's Clerk connection is
+  `active`; otherwise it refuses and says what is missing. The templates
+  it turned off are saved in `brew.json`, with a fingerprint of the
+  `CLERK_SECRET_KEY` used (never the key).
+- **`init --rollback-provider`** puts back the Supabase hook settings or
+  Clerk delivery saved in `brew.json`, and nothing else. It refuses, and
+  keeps the saved settings, while an enabled hook's old secret is missing
+  or `CLERK_SECRET_KEY` is another instance's. A `brew.json` it cannot
+  write (a symbolic link) fails the `state` step, exit 1.
+- Without those flags, init prints the manual steps for Supabase (the
+  hosted hook first; the self-hosted Edge Function it writes is now the
+  non-blocking alternative) and Clerk. A bare `--yes` never changes a
+  provider. The commands those steps print (`integrations connect`,
+  `integrations connection`, `init --configure-…`) carry `--brand` and
+  `--api-url` when the CLI's own key would resolve another brand or
+  server than this run.
+- **`init --app-url`** with an organization key picks the brand whose
+  website is the app (a subdomain counts), or creates one (`POST
+  /v1/brands`) and waits for it to be ready (`--no-wait`: the kit waits for
+  a re-run). A 403 (`ORG_SCOPE_REQUIRED`, no `brands` scope) becomes a next
+  step; a key bound to one brand is never moved, a mismatch is reported.
+  The app's own key in `.env.local` is one: when it is another brand's,
+  the kit waits for a `replace-app-key` next step. When the brand lookup
+  or an organization key's brand list fails, the domain, kit and provider
+  steps wait for a re-run (exit 1).
+  While the kit waits for the brand, so does every `--apply-patches` patch.
+- **`init --domain`** also returns the domain's page in Brew
+  (`domain.connectUrl`, a `connect-dns-automatically` next step), where
+  Connect automatically (Entri) adds the records: it runs in the app, not
+  the API. A `DKIM_SELECTOR_IN_USE` domain gets neither (`connectUrl:
+  null`): its records would replace another sender's key.
+- **`brew-cli doctor --project`** checks an app against its `brew.json`:
+  managed file hashes, `BREW_API_KEY` set, git-ignored and never under a
+  browser-exposed name, the SDK declared and installed at `^13.6.0`, and,
+  with the app key, the brand (the key's brand is `brew.json`'s), every key
+  set up, published and past the sandbox (a warning names a key whose
+  purpose has no verified domain), a verified sending domain, and the
+  hosted hook's status. `--json`; any failed check (a brand read that
+  fails included) exits 1, no `brew.json` exits 2.
+- The init report (schema version 1, additive) gains `providers[]`, the
+  `provider` step, `brand.domain` / `matchesAppUrl` / `created` and
+  `domain.connectUrl`.
+- The spec parity test's pending-build list is empty again: these
+  commands bind the two connection routes 0.19.0's spec already carried.
+
 ## 0.22.0
 
 Needs the same SDK release as 0.20.0, and the API from GetBrew/brew-v2#2169
