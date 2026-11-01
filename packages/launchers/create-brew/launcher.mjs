@@ -15,6 +15,8 @@ const VALUE_FLAGS = new Set([
   '--sets',
   '--stack',
   '--test-to',
+  '--apply-patches',
+  '--app-url',
 ])
 
 const VERSION_FLAGS = new Set(['--version', '-V'])

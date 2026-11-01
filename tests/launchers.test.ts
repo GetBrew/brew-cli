@@ -10,6 +10,7 @@ import {
   launcherArgv,
 } from '../packages/launchers/launcher.mjs'
 import { LAUNCHER_PACKAGES, launcherDrift } from '../scripts/sync-launchers'
+import { initCommand } from '../src/commands/init'
 import { getInvocationPrefix } from '../src/lib/invocation'
 import { copyFixture } from './helpers/fixtures'
 import { runCli } from './helpers/run-cli'
@@ -66,6 +67,15 @@ describe('launcher argv', () => {
   it('treats a flag value as a value, not a subcommand', () => {
     expect(hasSubcommand(['--domain', 'mail.acme.com'])).toBe(false)
     expect(hasSubcommand(['--domain=mail.acme.com', 'init'])).toBe(true)
+  })
+
+  it.each(
+    initCommand.flags
+      .map((spec) => spec.flag.split(' '))
+      .filter(([, value]) => value !== undefined)
+      .map(([name]) => name)
+  )('treats the value of init %s as a value', (name) => {
+    expect(hasSubcommand([name, 'https://acme.com'])).toBe(false)
   })
 })
 
