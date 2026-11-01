@@ -3,6 +3,7 @@ import {
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  rmSync,
   statSync,
   symlinkSync,
   writeFileSync,
@@ -1370,6 +1371,17 @@ describe('init: what a run must not get wrong', () => {
         ),
       [],
       'manual',
+    ],
+    [
+      '.env.local cannot be written (the app key may be missing)',
+      (root: string) => {
+        const outside = join(tempProject(), '.env.local')
+        writeFileSync(outside, read(root, '.env.local'))
+        rmSync(join(root, '.env.local'))
+        symlinkSync(outside, join(root, '.env.local'))
+      },
+      [],
+      'pending',
     ],
   ])('no patch applies when %s', async (_case, edit, failKeys, status) => {
     const root = keyed('next-better-auth')

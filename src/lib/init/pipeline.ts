@@ -983,11 +983,13 @@ export async function runInit(
   if (supabaseHook && project.hasSupabaseDir) {
     computedPatches.push(supabaseConfigPatch(project))
   }
-  // No patch applies while a generated file failed or a kit key failed (the
-  // patch would hand that email to a key that does not exist).
+  // No patch applies while a generated file, a kit key or the app key in
+  // .env.local failed (the patch would hand that email to a key that does
+  // not exist, or to a client with no API key).
   const patchesHeld = steps.some(
     (step) =>
-      (step.id === 'files' || step.id === 'kit') && step.status === 'failed'
+      (step.id === 'files' || step.id === 'kit' || step.id === 'env') &&
+      step.status === 'failed'
   )
   const helperKept = files.some(
     (file) => file.role === 'auth' && file.action === 'kept-user-version'
