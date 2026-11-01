@@ -9,8 +9,9 @@ import { type RunCliOptions, runCli } from '../helpers/run-cli'
 /**
  * `app-emails upsert` and an email unpublished in Brew: a re-run leaves it
  * off (`APP_EMAIL_NOT_PUBLISHED`), and only the same setup with
- * `publish: true` turns it back on. A bare `publish: true` is no remedy: the
- * API puts a kit key back on its starter design and refuses any other key.
+ * `publish: true` turns it back on. A bare `publish: true` repeats only a kit
+ * key's starter setup: the API replaces a kit key's design built from source
+ * with the starter, and refuses any other key.
  */
 
 function cli(argv: readonly string[], options: RunCliOptions = {}) {
