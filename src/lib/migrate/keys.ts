@@ -113,7 +113,11 @@ export function deriveKey(input: {
   let candidate = key
   for (let n = 2; input.taken.has(candidate); n += 1) {
     const suffix = `-${n}`
-    candidate = `${fitKey(key, MAX_KEY_LENGTH - suffix.length)}${suffix}`
+    // A suffixed kit key (`auth.password-reset-2`) is no kit key: Brew
+    // refuses it as reserved, so it leaves auth.* as any other auth. key.
+    candidate = clearOfReserved(
+      `${fitKey(key, MAX_KEY_LENGTH - suffix.length)}${suffix}`
+    )
   }
   input.taken.add(candidate)
   return candidate

@@ -36,6 +36,15 @@ describe('migration keys', () => {
     expect(long.startsWith('resend.')).toBe(true)
   })
 
+  it('a second item on a canonical kit key gets a key outside auth.*', () => {
+    const taken = new Set<string>()
+    expect(key('auth.password-reset', '', taken)).toBe('auth.password-reset')
+    const second = key('auth.password-reset', '', taken)
+    expect(second).toBe('auth-password-reset-2')
+    expect(key('auth.password-reset', '', taken)).toBe('auth-password-reset-3')
+    expect(second.startsWith('auth.')).toBe(false)
+  })
+
   it('names React Email files in kebab case', () => {
     expect(slugifyFileName('OrderShipped')).toBe('order-shipped')
     expect(slugifyFileName('HTMLDigest')).toBe('html-digest')
