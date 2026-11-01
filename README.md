@@ -188,7 +188,8 @@ Use `agent-goals list` and `agent-goals get <goalId>` to inspect ongoing work,
 `agent-goals tasks <goalId>` for execution progress, and
 `agent-goals documents <goalId>` for published workspace files.
 
-`agent-goals follow-up <goalId>` records a future wake using a stable source
+`agent-goals follow-up <goalId>` records a future wake using an ISO 8601
+`--due-at` timestamp and a stable source
 identity. `agent-goals publish-document <goalId> --path plan.md
 --expected-revision 2 --file ./plan.md` publishes with a revision check; a conflict
 requires reading and reconciling the current document.

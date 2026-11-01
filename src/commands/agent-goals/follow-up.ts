@@ -2,7 +2,6 @@ import type { operations } from '../../generated/openapi-types'
 import { defineCommand } from '../../lib/define-command'
 import {
   asSdkInput,
-  flagInt,
   flagString,
   IDEMPOTENCY_FLAG,
   INPUT_FLAG,
@@ -31,12 +30,15 @@ export const agentGoalsFollowUpCommand = defineCommand({
       flag: '--source-id <sourceId>',
       summary: 'Stable occurrence identity for deduplication',
     },
-    { flag: '--due-at <milliseconds>', summary: 'UTC epoch milliseconds' },
+    {
+      flag: '--due-at <timestamp>',
+      summary: 'ISO 8601 timestamp with a timezone',
+    },
     INPUT_FLAG,
     IDEMPOTENCY_FLAG,
   ],
   examples: [
-    'brew-cli agent-goals follow-up goal_123 --message "Review campaign results" --source-id send_123:review --due-at 1793404800000',
+    'brew-cli agent-goals follow-up goal_123 --message "Review campaign results" --source-id send_123:review --due-at 2027-01-01T00:00:00.000Z',
   ],
   run: async ({ ctx, args, flags }) => {
     const base = await readJsonFlag(ctx, flags.input, '--input')
@@ -44,7 +46,7 @@ export const agentGoalsFollowUpCommand = defineCommand({
       mergeInput(base, {
         message: flagString(flags.message),
         sourceId: flagString(flags.sourceId),
-        dueAt: flagInt(flags.dueAt, '--due-at'),
+        dueAt: flagString(flags.dueAt),
       })
     )
     return {

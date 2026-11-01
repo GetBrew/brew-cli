@@ -330,7 +330,7 @@ describe('agent-goals commands', () => {
         expect(await request.json()).toEqual({
           message: 'Review results',
           sourceId: 'send_1:review',
-          dueAt: 1793404800000,
+          dueAt: '2027-01-01T00:00:00.000Z',
         })
         return HttpResponse.json({ goalId: 'goal_1', wakeId: 'wake_1' })
       })
@@ -345,7 +345,7 @@ describe('agent-goals commands', () => {
         '--source-id',
         'send_1:review',
         '--due-at',
-        '1793404800000',
+        '2027-01-01T00:00:00.000Z',
       ],
       { env }
     )

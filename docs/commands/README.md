@@ -279,12 +279,12 @@ Schedule a follow-up within a marketing goal
 - Argument `goalId` — Marketing goal id
 - `--message <message>` — Work to revisit
 - `--source-id <sourceId>` — Stable occurrence identity for deduplication
-- `--due-at <milliseconds>` — UTC epoch milliseconds
+- `--due-at <timestamp>` — ISO 8601 timestamp with a timezone
 - `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
 - `--idempotency-key <key>` — Idempotency-Key for safe retries (auto-generated otherwise)
 
 ```bash
-brew-cli agent-goals follow-up goal_123 --message "Review campaign results" --source-id send_123:review --due-at 1793404800000
+brew-cli agent-goals follow-up goal_123 --message "Review campaign results" --source-id send_123:review --due-at 2027-01-01T00:00:00.000Z
 ```
 
 ### brew-cli agent-goals publish-document

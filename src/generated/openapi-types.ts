@@ -2487,13 +2487,25 @@ export interface paths {
         };
         /**
          * List marketing goals
-         * @description List marketing goals. Goal state and permissions are enforced by Brew on every operation.
+         * @description List ongoing marketing goals in the selected brand.
+         *
+         *     **Use when** you need to find a goal before inspecting its work or status.
+         *
+         *     **Returns** `200 { data, pagination }` with goal summaries; follow the cursor for further pages.
+         *
+         *     **Errors** `AGENT_GOAL_NOT_FOUND` when the goal or brand is unavailable; `AGENT_GOAL_CONFLICT` when lifecycle state or document revision changed; `SERVICE_UNAVAILABLE` when durable goal storage is temporarily unavailable.
          */
         get: operations["listAgentGoals"];
         put?: never;
         /**
          * Create a marketing goal
-         * @description Create a marketing goal. API keys create a paused goal. Activate it and set standing permissions as a verified member in Brew.
+         * @description Create a marketing goal with an objective, audience, cadence, success metric, and resource budget. API keys create paused goals without standing permissions; a verified member activates them in Brew.
+         *
+         *     **Use when** you want to prepare an ongoing marketing mandate for a brand.
+         *
+         *     **Returns** `201` with the new goal and its current lifecycle state.
+         *
+         *     **Errors** `AGENT_GOAL_NOT_FOUND` when the goal or brand is unavailable; `AGENT_GOAL_CONFLICT` when lifecycle state or document revision changed; `SERVICE_UNAVAILABLE` when durable goal storage is temporarily unavailable.
          */
         post: operations["createAgentGoal"];
         delete?: never;
@@ -2511,7 +2523,13 @@ export interface paths {
         };
         /**
          * Get a marketing goal
-         * @description Get a marketing goal. Goal state and permissions are enforced by Brew on every operation.
+         * @description Read a marketing goal and its current work, permissions, document metadata, updates, and approval requests.
+         *
+         *     **Use when** you need current goal state before steering, scheduling, or reviewing work.
+         *
+         *     **Returns** `200 { goal, grant, executions, files, updates, approvals }`. Files contain metadata; the documents endpoint loads content.
+         *
+         *     **Errors** `AGENT_GOAL_NOT_FOUND` when the goal or brand is unavailable; `AGENT_GOAL_CONFLICT` when lifecycle state or document revision changed; `SERVICE_UNAVAILABLE` when durable goal storage is temporarily unavailable.
          */
         get: operations["getAgentGoal"];
         put?: never;
@@ -2521,7 +2539,13 @@ export interface paths {
         head?: never;
         /**
          * Update a marketing goal status
-         * @description Update a marketing goal status. Goal state and permissions are enforced by Brew on every operation.
+         * @description Pause, activate, or cancel a marketing goal. Verified member authority is required; changing status cannot grant permissions.
+         *
+         *     **Use when** you need to change whether an existing goal may continue work.
+         *
+         *     **Returns** `200` with the goal and its updated lifecycle state.
+         *
+         *     **Errors** `AGENT_GOAL_NOT_FOUND` when the goal or brand is unavailable; `AGENT_GOAL_CONFLICT` when lifecycle state or document revision changed; `SERVICE_UNAVAILABLE` when durable goal storage is temporarily unavailable.
          */
         patch: operations["updateAgentGoal"];
         trace?: never;
@@ -2535,7 +2559,13 @@ export interface paths {
         };
         /**
          * List goal tasks
-         * @description List goal tasks. Goal state and permissions are enforced by Brew on every operation.
+         * @description List durable execution tasks for a marketing goal.
+         *
+         *     **Use when** you need progress, waiting states, or previous execution outcomes.
+         *
+         *     **Returns** `200 { data, pagination }` with tasks; follow the cursor for further pages.
+         *
+         *     **Errors** `AGENT_GOAL_NOT_FOUND` when the goal or brand is unavailable; `AGENT_GOAL_CONFLICT` when lifecycle state or document revision changed; `SERVICE_UNAVAILABLE` when durable goal storage is temporarily unavailable.
          */
         get: operations["listAgentGoalTasks"];
         put?: never;
@@ -2557,7 +2587,13 @@ export interface paths {
         put?: never;
         /**
          * Schedule a goal follow-up
-         * @description Schedule a goal follow-up. Goal state and permissions are enforced by Brew on every operation.
+         * @description Schedule a future wake for a marketing goal using a stable source identity. Send dueAt as an ISO 8601 timestamp with a timezone.
+         *
+         *     **Use when** delivery or measurement work should resume at a known future instant.
+         *
+         *     **Returns** `201 { goalId, wakeId }`; the wake retains the goal's current scope and permissions.
+         *
+         *     **Errors** `AGENT_GOAL_NOT_FOUND` when the goal or brand is unavailable; `AGENT_GOAL_CONFLICT` when lifecycle state or document revision changed; `SERVICE_UNAVAILABLE` when durable goal storage is temporarily unavailable.
          */
         post: operations["scheduleAgentGoalFollowUp"];
         delete?: never;
@@ -2575,13 +2611,25 @@ export interface paths {
         };
         /**
          * List goal documents
-         * @description List goal documents. Goal state and permissions are enforced by Brew on every operation.
+         * @description Read published document content and current revisions for a marketing goal.
+         *
+         *     **Use when** you need a saved brief, plan, research note, or report before editing it.
+         *
+         *     **Returns** `200 { data, pagination }` with at most 25 complete documents per page.
+         *
+         *     **Errors** `AGENT_GOAL_NOT_FOUND` when the goal or brand is unavailable; `AGENT_GOAL_CONFLICT` when lifecycle state or document revision changed; `SERVICE_UNAVAILABLE` when durable goal storage is temporarily unavailable.
          */
         get: operations["listAgentGoalDocuments"];
         put?: never;
         /**
          * Publish a goal document revision
-         * @description Publish a goal document revision. Goal state and permissions are enforced by Brew on every operation.
+         * @description Publish a goal document using its expected revision. Use revision 0 for a new path; reconcile conflicts rather than overwriting another writer.
+         *
+         *     **Use when** you need to save working knowledge or a report for the goal. Documents cannot authorize campaigns or change grants.
+         *
+         *     **Returns** `200 { goalId, path, revision }` with the committed document revision.
+         *
+         *     **Errors** `AGENT_GOAL_NOT_FOUND` when the goal or brand is unavailable; `AGENT_GOAL_CONFLICT` when lifecycle state or document revision changed; `SERVICE_UNAVAILABLE` when durable goal storage is temporarily unavailable.
          */
         post: operations["publishAgentGoalDocument"];
         delete?: never;
@@ -30846,7 +30894,7 @@ export interface operations {
                      *       "goalId": "goal_123",
                      *       "name": "Weekly newsletter",
                      *       "objective": "Grow engaged readership",
-                     *       "audienceId": "aud_123",
+                     *       "audienceId": "jn7a8w4q8m9k2p1x7c3b5v6n9h7s2d4f",
                      *       "cadence": {
                      *         "intervalDays": 7,
                      *         "timeZone": "Asia/Seoul"
@@ -31069,7 +31117,7 @@ export interface operations {
                      *         "goalId": "goal_123",
                      *         "name": "Weekly newsletter",
                      *         "objective": "Grow engaged readership",
-                     *         "audienceId": "aud_123",
+                     *         "audienceId": "jn7a8w4q8m9k2p1x7c3b5v6n9h7s2d4f",
                      *         "cadence": {
                      *           "intervalDays": 7,
                      *           "timeZone": "Asia/Seoul"
@@ -31347,7 +31395,7 @@ export interface operations {
                      *       "goalId": "goal_123",
                      *       "name": "Weekly newsletter",
                      *       "objective": "Grow engaged readership",
-                     *       "audienceId": "aud_123",
+                     *       "audienceId": "jn7a8w4q8m9k2p1x7c3b5v6n9h7s2d4f",
                      *       "cadence": {
                      *         "intervalDays": 7,
                      *         "timeZone": "Asia/Seoul"
@@ -31736,8 +31784,12 @@ export interface operations {
                 "application/json": {
                     message: string;
                     sourceId: string;
-                    /** @description Due time in Unix milliseconds. */
-                    dueAt: number;
+                    /**
+                     * Format: date-time
+                     * @description Future follow-up time as an ISO 8601 instant with a timezone.
+                     * @example 2027-01-01T00:00:00.000Z
+                     */
+                    dueAt: string;
                 };
             };
         };
