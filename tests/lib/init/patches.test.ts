@@ -143,6 +143,19 @@ describe('authjsPatch: the providers line', () => {
     expect(next).toContain('providers: [brewEmailProvider, GitHub')
   })
 
+  it('a comment that opens after providers: [ and runs on keeps the provider before it', () => {
+    const root = edited(
+      'next-app-authjs-v5',
+      'src/auth.ts',
+      ADAPTER_CONFIG('[ /* GitHub first:\n    it is the default */ GitHub]')
+    )
+    const { patch, next } = authjsPatch(detect(root), 'src/lib/brew-auth.ts')
+    expect(patch.status).toBe('pending')
+    expect(next).toContain(
+      '  providers: [ brewEmailProvider, /* GitHub first:\n    it is the default */ GitHub],'
+    )
+  })
+
   it('never edits a providers list in a comment', () => {
     const root = edited(
       'next-app-authjs-v5',
@@ -290,6 +303,47 @@ describe('betterAuthPatch', () => {
       ].join('\n')
     )
     expect(next).toContain('// const example = betterAuth({\nexport const')
+  })
+
+  it('leaves a betterAuth({ line that ends inside a block comment to the user', () => {
+    const root = edited(
+      'next-better-auth',
+      'lib/auth.ts',
+      config(['  see the docs */', '  database: db,']).replace(
+        'betterAuth({',
+        'betterAuth({ /* options:'
+      )
+    )
+    const { patch, next } = betterAuthPatch(detect(root), 'lib/brew-auth.ts', {
+      auth: false,
+      lifecycle: true,
+    })
+    expect(patch.status).toBe('manual')
+    expect(next).toBeUndefined()
+  })
+
+  it('puts the import before a last import whose line opens a comment that runs on', () => {
+    const root = edited(
+      'next-better-auth',
+      'lib/auth.ts',
+      config(['  database: db,']).replace(
+        "from 'better-auth'\n",
+        "from 'better-auth' /* the auth\nlibrary */\n"
+      )
+    )
+    const { next } = betterAuthPatch(detect(root), 'lib/brew-auth.ts', {
+      auth: false,
+      lifecycle: true,
+    })
+    expect(
+      next?.startsWith(
+        [
+          "import { brewEmails } from './brew-auth'",
+          "import { betterAuth } from 'better-auth' /* the auth",
+          'library */',
+        ].join('\n')
+      )
+    ).toBe(true)
   })
 
   it('adds the import after the last import in code, not one in a comment', () => {

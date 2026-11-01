@@ -57,22 +57,27 @@ export type ComputedPatch = {
 function insertImport(text: string, statement: string): string {
   const lines = text.split('\n')
   // Imports are read from code: one in a comment is not the last import.
-  const code = withoutComments(text, true).split('\n')
+  const { code, endsInComment } = codeLines(text)
   const semicolon = code.some((line) => /^import\s.*;\s*$/.test(line))
   const line = semicolon ? `${statement};` : statement
+  let lastImportStart = -1
   let lastImportEnd = -1
+  let start = -1
   let isOpen = false
   const closes =
     /\bfrom\s+['"][^'"]+['"]\s*;?\s*$|^import\s+['"][^'"]+['"]\s*;?\s*$/
   code.forEach((current, index) => {
     if (/^import\s/.test(current)) {
+      start = index
       if (closes.test(current)) {
+        lastImportStart = start
         lastImportEnd = index
         isOpen = false
       } else {
         isOpen = true
       }
     } else if (isOpen && closes.test(current)) {
+      lastImportStart = start
       lastImportEnd = index
       isOpen = false
     }
@@ -83,7 +88,13 @@ function insertImport(text: string, statement: string): string {
     lines.splice(directive ? 1 : 0, 0, line)
     return lines.join('\n')
   }
-  lines.splice(lastImportEnd + 1, 0, line)
+  // A block comment running on past the last import would swallow a line
+  // after it: the import goes before that import instead.
+  lines.splice(
+    endsInComment[lastImportEnd] ? lastImportStart : lastImportEnd + 1,
+    0,
+    line
+  )
   return lines.join('\n')
 }
 
@@ -91,42 +102,86 @@ function indentOf(line: string): string {
   return /^\s*/.exec(line)?.[0] ?? ''
 }
 
-/**
- * Source text with its `//` and `/* *\/` comments left out (strings kept).
- * `keepLines` blanks each comment to spaces instead, newlines kept, so a
- * line found in the result is the same line of `text`, at the same columns.
- */
-function withoutComments(text: string, keepLines = false): string {
-  const blank = (from: number, to: number) =>
-    text.slice(from, to).replace(/[^\n]/g, ' ')
-  let out = ''
+type CommentSpan = {
+  readonly from: number
+  readonly to: number
+  readonly block: boolean
+}
+
+/** Each `//` and `/* *\/` comment in `text`, in order (strings skipped). */
+function commentSpans(text: string): CommentSpan[] {
+  const spans: CommentSpan[] = []
   let index = 0
   while (index < text.length) {
     const char = text[index] ?? ''
     const next = text[index + 1]
     if (char === '/' && next === '/') {
       const end = text.indexOf('\n', index)
-      const stop = end === -1 ? text.length : end
-      out += keepLines ? blank(index, stop) : ''
-      index = stop
+      const to = end === -1 ? text.length : end
+      spans.push({ from: index, to, block: false })
+      index = to
     } else if (char === '/' && next === '*') {
       const end = text.indexOf('*/', index + 2)
-      const stop = end === -1 ? text.length : end + 2
-      out += keepLines ? blank(index, stop) : ' '
-      index = stop
+      const to = end === -1 ? text.length : end + 2
+      spans.push({ from: index, to, block: true })
+      index = to
     } else if (char === '"' || char === "'" || char === '`') {
       let end = index + 1
       while (end < text.length && text[end] !== char) {
         end += text[end] === '\\' ? 2 : 1
       }
-      out += text.slice(index, end + 1)
       index = end + 1
     } else {
-      out += char
       index += 1
     }
   }
-  return out
+  return spans
+}
+
+/** Source text with its `//` and `/* *\/` comments left out (strings kept). */
+function withoutComments(text: string): string {
+  let out = ''
+  let at = 0
+  for (const span of commentSpans(text)) {
+    out += `${text.slice(at, span.from)}${span.block ? ' ' : ''}`
+    at = span.to
+  }
+  return out + text.slice(at)
+}
+
+/**
+ * `text`'s lines with their comments blanked to spaces (newlines kept, so
+ * each is the same line of `text`, at the same columns), and whether each
+ * line ends inside a block comment: a line inserted after it would be
+ * commented out too.
+ */
+function codeLines(text: string): {
+  readonly code: readonly string[]
+  readonly endsInComment: readonly boolean[]
+} {
+  let masked = ''
+  let at = 0
+  const openNewlines = new Set<number>()
+  for (const span of commentSpans(text)) {
+    masked += `${text.slice(at, span.from)}${text
+      .slice(span.from, span.to)
+      .replace(/[^\n]/g, ' ')}`
+    at = span.to
+    for (
+      let newline = span.block ? text.indexOf('\n', span.from) : -1;
+      newline !== -1 && newline < span.to;
+      newline = text.indexOf('\n', newline + 1)
+    ) {
+      openNewlines.add(newline)
+    }
+  }
+  const code = `${masked}${text.slice(at)}`.split('\n')
+  let offset = 0
+  const endsInComment = code.map((line) => {
+    offset += line.length + 1
+    return openNewlines.has(offset - 1)
+  })
+  return { code, endsInComment }
 }
 
 /** Code with its import declarations and `require` destructurings left out. */
@@ -286,12 +341,16 @@ export function betterAuthPatch(
   }
   const lines = text.split('\n')
   // Insertion points come from code only: a commented-out example is never
-  // the config.
-  const code = withoutComments(text, true).split('\n')
+  // the config, and a line ending inside a block comment would swallow the
+  // lines added after it.
+  const { code, endsInComment } = codeLines(text)
   const openers = code.flatMap((line, index) =>
     /\bbetterAuth\(\s*\{\s*$/.test(line) ? [index] : []
   )
-  const opener = openers.length === 1 ? openers[0] : undefined
+  const opener =
+    openers.length === 1 && !endsInComment[openers[0] ?? -1]
+      ? openers[0]
+      : undefined
   const passwordLines = code.flatMap((line, index) =>
     /^\s*emailAndPassword\s*:\s*\{\s*$/.test(line) ? [index] : []
   )
@@ -309,7 +368,10 @@ export function betterAuthPatch(
         ? `The config already sets ${owned.join(', ')}: replace your sender by hand.`
         : opener === undefined
           ? 'The betterAuth({ … }) call could not be located safely.'
-          : options.auth && password && passwordLines.length !== 1
+          : options.auth &&
+              password &&
+              (passwordLines.length !== 1 ||
+                endsInComment[passwordLines[0] ?? -1])
             ? 'emailAndPassword is not on its own lines: add sendResetPassword: brewEmails.sendResetPassword to it by hand.'
             : undefined
   if (reason !== undefined || opener === undefined) {
@@ -422,7 +484,7 @@ export function authjsPatch(
   const lines = text.split('\n')
   // Insertion points come from code only: a providers list in a comment is
   // never the config's.
-  const code = withoutComments(text, true).split('\n')
+  const { code } = codeLines(text)
   const providerLines = code.flatMap((line, index) =>
     /\bproviders\s*:\s*\[/.test(line) ? [index] : []
   )
@@ -450,13 +512,17 @@ export function authjsPatch(
   }
   const line = lines[at] ?? ''
   const codeLine = code[at] ?? ''
+  // The list's `[`, at its column in code (columns match `line`'s).
+  const open = /\bproviders\s*:\s*\[/.exec(codeLine)
+  const bracket = (open?.index ?? 0) + (open?.[0].length ?? 0)
+  // What the source has after `[`: a comment there may run on past the
+  // line, so the provider then goes right after `[`, never on a new line.
+  const rest = line.slice(bracket)
   const next = [...lines]
-  if (/\bproviders\s*:\s*\[\s*$/.test(codeLine)) {
+  if (rest.trim() === '') {
     next.splice(at + 1, 0, `${innerIndent(lines, at)}brewEmailProvider,`)
   } else {
-    // At the list's column in code (columns match `line`'s).
-    const open = /\bproviders\s*:\s*\[\s*/.exec(codeLine)
-    const end = (open?.index ?? 0) + (open?.[0].length ?? 0)
+    const end = bracket + (/^\s*/.exec(rest)?.[0].length ?? 0)
     next[at] = `${line.slice(0, end)}${
       /\bproviders\s*:\s*\[\s*\]/.test(codeLine)
         ? 'brewEmailProvider'
