@@ -58,8 +58,8 @@ the team sandbox, app emails and browser sign-in.
   the payload at compile time. A workspace with no keyed triggers gets
   the same bytes as before (no `--check` drift); `--no-registry` leaves
   the block out.
-- The vendored spec is the GetBrew/brew-v2#2169 @ `6f8ef50544` DX delta on
-  main's spec (brew-v2 `373e900a9a`): the by-key fire and the
+- The vendored spec is the GetBrew/brew-v2#2169 head `5084a5202f` (main's
+  spec, brew-v2 `373e900a9a`, plus the DX delta): the by-key fire and the
   app-emails routes, `key` / `appEmail` on trigger rows, the sandbox error
   codes (`DOMAIN_REQUIRED`, `SANDBOX_DAILY_LIMIT`), the app email refusals
   above, `DKIM_SELECTOR_IN_USE` warnings with `suggestedNames` on
