@@ -7,6 +7,7 @@ import {
   writeFileSync,
 } from 'node:fs'
 import { join } from 'node:path'
+import { HttpResponse, http } from 'msw'
 import { describe, expect, it } from 'vitest'
 import {
   pendingLoginPath,
@@ -17,6 +18,7 @@ import { renderReport } from '../../src/lib/init/report'
 import { validateBrewState } from '../../src/lib/project/state'
 import { copyFixture, tempProject } from '../helpers/fixtures'
 import {
+  API,
   configEnv,
   EXPLICIT_KEY,
   expectValidReport,
@@ -39,6 +41,7 @@ import {
   USER_CODE,
   useLoginServer,
 } from '../helpers/login-server'
+import { server } from '../helpers/msw-server'
 
 describe('init: confirmation and dry run', () => {
   it('exits 4 off a terminal without --yes, with the re-run command', async () => {
