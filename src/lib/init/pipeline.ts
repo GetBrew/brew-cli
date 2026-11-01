@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto'
+import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import type {
   AppEmailKitSet,
@@ -20,6 +21,7 @@ import {
   resumeBrowserLogin,
   startBrowserLogin,
 } from '../auth-flow/login'
+import { deletePendingLogin } from '../auth-flow/pending'
 import type { ApprovedLogin } from '../auth-flow/poll'
 import { siteUrlFromApiUrl } from '../auth-flow/session'
 import {
@@ -283,6 +285,14 @@ export async function runInit(
   // Without the auth set the auth library keeps sending its own emails:
   // nothing may route them to keys the kit did not set up.
   const authSet = sets.includes('auth')
+  // The helper keeps what a set an earlier run set up exports: the app may
+  // already import it (Auth.js's provider, the welcome helper).
+  const earlierKeys = Object.keys(state?.emails ?? {})
+  const helperSets = {
+    lifecycle:
+      lifecycle || earlierKeys.some((key) => key.startsWith('lifecycle.')),
+    auth: authSet || earlierKeys.some((key) => key.startsWith('auth.')),
+  }
   const supabaseHook = authSet && project.auth === 'supabase'
   const stack = kitStackFor(project.auth)
 
@@ -471,12 +481,26 @@ export async function runInit(
     signedInEmail = approved.approver.email
     const cliKey = approved.keys.cli
     if (cliKey !== undefined && keys.includes('cli')) {
-      updateConfig(env, {
-        apiKey: cliKey.key,
-        brandId: approved.brand.brandId,
-        userEmail: approved.approver.email,
-        brandName: approved.brand.name,
-      })
+      try {
+        updateConfig(env, {
+          apiKey: cliKey.key,
+          brandId: approved.brand.brandId,
+          userEmail: approved.approver.email,
+          brandName: approved.brand.name,
+        })
+        // An older sign-in still waiting would replace this key when resumed.
+        deletePendingLogin(env)
+      } catch (error) {
+        // The app key still goes into .env.local; only the CLI's key is lost.
+        nextSteps.push({
+          id: 'save-cli-key',
+          actor: 'human',
+          kind: 'run-command',
+          command: `${prefix} login`,
+          title: `The CLI key could not be saved (${describeError(error)}): revoke the "CLI · …" key under Settings, API keys, then sign the CLI in`,
+          blocking: false,
+        })
+      }
     }
     // The kit, contracts and test email must land in the brand the new app
     // key is bound to, so the rest of the run acts as that key, even when
@@ -825,9 +849,7 @@ export async function runInit(
   const installsSkills = project.editors.includes('claude-code')
   const paths = {
     client: clientPath(project),
-    auth: wantsAuthHelper(project, { lifecycle, auth: authSet })
-      ? authHelperPath(project)
-      : null,
+    auth: wantsAuthHelper(project, helperSets) ? authHelperPath(project) : null,
     contracts: contractsPath(project),
   }
   try {
@@ -841,7 +863,7 @@ export async function runInit(
     if (paths.auth !== null) {
       writeManaged({
         path: paths.auth,
-        content: authHelperFile(project, { lifecycle, auth: authSet }),
+        content: authHelperFile(project, helperSets),
         role: 'auth',
       })
     }
@@ -1267,10 +1289,16 @@ function planInstall(input: {
           dir: project.monorepo.workspace,
         }
       : undefined
+  // An app at a workspace root: pnpm and Yarn 1 refuse a root add unless
+  // told, and pnpm refuses the flag outside a pnpm workspace.
+  const workspaceRoot =
+    project.monorepo?.workspace === null &&
+    (project.packageManager.name !== 'pnpm' ||
+      existsSync(join(project.monorepo.root, 'pnpm-workspace.yaml')))
   const line = addCommand(
     project.packageManager,
     [`${SDK_PACKAGE}@${SDK_RANGE}`],
-    workspace === undefined ? {} : { workspace }
+    workspace === undefined ? { workspaceRoot } : { workspace }
   )
   const base = project.monorepo?.root ?? project.root
   const command = formatCommandLine(line)

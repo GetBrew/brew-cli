@@ -26,6 +26,7 @@ import {
   CLI_KEY,
   fakeClock,
   SESSION_ID,
+  T0,
   USER_CODE,
   useLoginServer,
 } from '../helpers/login-server'
@@ -991,7 +992,8 @@ describe('init: sign-in for agents (exit 3)', () => {
       {
         cwd: root,
         env,
-        clock: fakeClock(),
+        // One poll interval later: a resume never polls before the server allows.
+        clock: fakeClock(T0 + 2000),
         spawn: recordingSpawn().spawn,
       }
     )
@@ -1017,6 +1019,45 @@ describe('init: sign-in for agents (exit 3)', () => {
     expect(
       result.report.nextSteps.find((step) => step.id === 'resume-init')?.command
     ).toBe('npx -y brew.new@0.18.0 init --resume --json --yes')
+  })
+
+  it('a sign-in that saves the CLI key drops an older one still pending', async () => {
+    const root = copyFixture('next-better-auth')
+    useLoginServer({ steps: ['approved'] })
+    useBrewApi()
+    const env = configEnv()
+    const options = {
+      cwd: root,
+      env,
+      clock: fakeClock(),
+      spawn: recordingSpawn().spawn,
+    }
+    const argv = ['--yes', '--json', '--no-test-email']
+    expect((await init(argv, options)).code).toBe(3)
+    const signedIn = await init(argv, { ...options, ttyIn: true })
+    expect(signedIn.code).toBe(0)
+    expect(readConfig(env).apiKey).toBe(CLI_KEY)
+    expect(existsSync(pendingLoginPath(env))).toBe(false)
+  })
+
+  it('a CLI key it cannot save still leaves the app key, and says to revoke it', async () => {
+    const root = copyFixture('next-better-auth')
+    useLoginServer({ steps: ['approved'] })
+    useBrewApi()
+    const notADirectory = join(tempProject(), 'file')
+    writeFileSync(notADirectory, '')
+    const result = await init(['--yes', '--json', '--no-test-email'], {
+      cwd: root,
+      env: { BREW_CLI_CONFIG_DIR: join(notADirectory, 'brew-cli') },
+      ttyIn: true,
+      clock: fakeClock(),
+      spawn: recordingSpawn().spawn,
+    })
+    expect(result.code).toBe(0)
+    expect(read(root, '.env.local')).toBe(`BREW_API_KEY=${APP_KEY}\n`)
+    expect(result.report.nextSteps).toContainEqual(
+      expect.objectContaining({ id: 'save-cli-key', command: 'brew-cli login' })
+    )
   })
 })
 
@@ -1158,6 +1199,32 @@ describe('init per stack', () => {
     expect(existsSync(join(root, 'apps/web/lib/brew.js'))).toBe(true)
     expect(existsSync(join(root, 'apps/web/brew.json'))).toBe(true)
   })
+
+  it('an app at a pnpm workspace root installs with --workspace-root', async () => {
+    const root = tempProject()
+    writeFileSync(
+      join(root, 'package.json'),
+      JSON.stringify({ name: 'acme', dependencies: { next: '15.0.0' } })
+    )
+    writeFileSync(join(root, 'pnpm-workspace.yaml'), 'packages:\n  - pkgs/*\n')
+    writeFileSync(join(root, 'pnpm-lock.yaml'), "lockfileVersion: '9.0'\n")
+    writeFileSync(join(root, '.env.local'), `BREW_API_KEY=${APP_KEY}\n`)
+    useBrewApi()
+    const spawn = recordingSpawn()
+    const result = await init(['--yes', '--json', '--no-test-email'], {
+      cwd: root,
+      env: configEnv(),
+      spawn: spawn.spawn,
+    })
+    expect(result.code).toBe(0)
+    expect(spawn.calls).toEqual([
+      {
+        command: 'pnpm',
+        args: ['add', '--workspace-root', '@brew.new/sdk@^13.6.0'],
+        cwd: root,
+      },
+    ])
+  })
 })
 
 describe('init: what a run must not get wrong', () => {
@@ -1209,6 +1276,26 @@ describe('init: what a run must not get wrong', () => {
       )
     }
   )
+
+  it('--sets lifecycle after the auth set keeps the Auth.js provider the app imports', async () => {
+    const root = keyed('next-app-authjs-v5')
+    useBrewApi()
+    const options = {
+      cwd: root,
+      env: configEnv(),
+      spawn: recordingSpawn().spawn,
+    }
+    const first = await init(['--yes', '--json', '--no-test-email'], options)
+    const helper = first.report.files.find((file) => file.role === 'auth')
+    expect(read(root, helper?.path ?? '')).toContain('brewEmailProvider')
+    const rerun = await init(
+      ['--yes', '--json', '--no-test-email', '--sets', 'lifecycle'],
+      options
+    )
+    expect(
+      rerun.report.files.find((file) => file.path === helper?.path)?.action
+    ).toBe('unchanged')
+  })
 
   it('a generated file or brew.json it may not write fails the run, and no patch applies', async () => {
     const root = keyed('next-better-auth')
