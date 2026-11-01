@@ -16,6 +16,7 @@ import {
 import { readConfig, writeConfig } from '../../src/lib/config-store'
 import { renderReport } from '../../src/lib/init/report'
 import { validateBrewState } from '../../src/lib/project/state'
+import type { SpawnFn } from '../../src/lib/types'
 import { copyFixture, tempProject } from '../helpers/fixtures'
 import {
   API,
