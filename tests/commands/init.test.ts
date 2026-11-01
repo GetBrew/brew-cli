@@ -1361,7 +1361,18 @@ describe('init: what a run must not get wrong', () => {
   })
 
   it.each([
-    ['a kit key failed', () => {}, ['auth.verify-email'], 'pending'],
+    [
+      'a kit key failed',
+      () => {},
+      { failKeys: ['auth.verify-email'] },
+      'pending',
+    ],
+    [
+      'a kit key is unpublished in Brew',
+      () => {},
+      { unpublished: ['auth.password-reset'] },
+      'pending',
+    ],
     [
       'the helper keeps your edits',
       (root: string) =>
@@ -1369,7 +1380,7 @@ describe('init: what a run must not get wrong', () => {
           join(root, 'lib/brew-auth.ts'),
           `${read(root, 'lib/brew-auth.ts')}// mine\n`
         ),
-      [],
+      {},
       'manual',
     ],
     [
@@ -1380,10 +1391,10 @@ describe('init: what a run must not get wrong', () => {
         rmSync(join(root, '.env.local'))
         symlinkSync(outside, join(root, '.env.local'))
       },
-      [],
+      {},
       'pending',
     ],
-  ])('no patch applies when %s', async (_case, edit, failKeys, status) => {
+  ])('no patch applies when %s', async (_case, edit, api, status) => {
     const root = keyed('next-better-auth')
     const argv = ['--yes', '--json', '--no-test-email', '--no-install']
     const options = {
@@ -1396,7 +1407,7 @@ describe('init: what a run must not get wrong', () => {
     const pin = `better-auth-config@${first.report.patches[0]?.baseSha256?.slice(0, 12)}`
     const before = read(root, 'lib/auth.ts')
     edit(root)
-    useBrewApi({ failKeys })
+    useBrewApi(api)
     const result = await init([...argv, '--apply-patches', pin], options)
     expect(result.report.patches[0]?.status).toBe(status)
     expect(read(root, 'lib/auth.ts')).toBe(before)
@@ -1406,6 +1417,18 @@ describe('init: what a run must not get wrong', () => {
       { ...options, ttyOut: true }
     )
     expect(human.stdout).toContain(result.report.patches[0]?.diff?.trimEnd())
+  })
+
+  it('makes publishing a key left off blocking while a patch waits for it', async () => {
+    const root = keyed('next-better-auth')
+    useBrewApi({ unpublished: ['auth.password-reset'] })
+    const result = await init(
+      ['--yes', '--json', '--no-test-email', '--no-install'],
+      { cwd: root, env: configEnv(), spawn: recordingSpawn().spawn }
+    )
+    expect(
+      result.report.nextSteps.find((step) => step.id === 'publish-app-emails')
+    ).toMatchObject({ blocking: true })
   })
 
   it('asks to move an SDK declared only in devDependencies', async () => {

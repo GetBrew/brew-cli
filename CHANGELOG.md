@@ -46,8 +46,9 @@ GetBrew/brew-v2#2169 (its head `02a3946b18`, the spec 0.20.0 vendors).
   `APP_EMAIL_TRIGGER_IN_USE` gets a human `trigger-in-use:<key>` review
   step ahead of the re-run. A kit key someone unpublished in Brew stays
   off: the kit step counts only published keys, names the others, and a
-  human `publish-app-emails` step says how to turn them back on. The
-  generated code and the
+  human `publish-app-emails` step says how to turn them back on. Until
+  they are on, no auth config patch applies (`--apply-patches` leaves it
+  pending) and that step is blocking. The generated code and the
   install command use `@brew.new/sdk@^13.6.0`, the planned release with
   `appEmails` and the auth adapters (on top of 13.5.0's `send`).
 - Not in this release (they need platform work first): the Supabase and

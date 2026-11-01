@@ -743,6 +743,8 @@ export async function runInit(
   // ---- The starter kit.
   let kit: SetUpAppEmailKitResponse | undefined
   const emails: InitEmail[] = []
+  // Kit keys someone unpublished in Brew: the kit never publishes them.
+  const off: string[] = []
   if (client === undefined || dryRun) {
     steps.push({
       id: 'kit',
@@ -782,12 +784,13 @@ export async function runInit(
         )
       }
       const failed = emails.filter((email) => !email.ok)
-      // The kit never publishes a key someone unpublished in Brew; a draft
-      // over a live version still sends.
-      const off = kit.results.flatMap((entry) =>
-        entry.ok && !entry.published && !keepsSending(entry)
-          ? [entry.triggerKey]
-          : []
+      // A draft over a live version still sends.
+      off.push(
+        ...kit.results.flatMap((entry) =>
+          entry.ok && !entry.published && !keepsSending(entry)
+            ? [entry.triggerKey]
+            : []
+        )
       )
       steps.push({
         id: 'kit',
@@ -797,15 +800,6 @@ export async function runInit(
             ? `${failed.length} of ${emails.length} keys failed: ${failed.map((email) => email.key).join(', ')}`
             : `${emails.length - off.length} app emails published${off.length > 0 ? `; not published: ${off.join(', ')}` : ''}`,
       })
-      if (off.length > 0) {
-        nextSteps.push({
-          id: 'publish-app-emails',
-          actor: 'human',
-          kind: 'review',
-          title: `Not published: ${off.join(', ')}. Publish ${off.length === 1 ? 'it' : 'them'} in Brew, or run \`${prefix} app-emails upsert <key> --publish --yes\``,
-          blocking: false,
-        })
-      }
       for (const email of failed) {
         // A re-run alone cannot set up a key whose trigger another published
         // automation already sends from: a person picks which one stays.
@@ -984,13 +978,16 @@ export async function runInit(
     computedPatches.push(supabaseConfigPatch(project))
   }
   // No patch applies while a generated file, a kit key or the app key in
-  // .env.local failed (the patch would hand that email to a key that does
-  // not exist, or to a client with no API key).
-  const patchesHeld = steps.some(
-    (step) =>
-      (step.id === 'files' || step.id === 'kit' || step.id === 'env') &&
-      step.status === 'failed'
-  )
+  // .env.local failed, or a kit key is unpublished (the patch would hand
+  // that email to a key that does not exist or sends nothing, or to a
+  // client with no API key).
+  const patchesHeld =
+    off.length > 0 ||
+    steps.some(
+      (step) =>
+        (step.id === 'files' || step.id === 'kit' || step.id === 'env') &&
+        step.status === 'failed'
+    )
   const helperKept = files.some(
     (file) => file.role === 'auth' && file.action === 'kept-user-version'
   )
@@ -1022,6 +1019,16 @@ export async function runInit(
       ? applyPatch(writer, computed)
       : { ...computed.patch, status: 'stale' }
   })
+  if (off.length > 0) {
+    nextSteps.push({
+      id: 'publish-app-emails',
+      actor: 'human',
+      kind: 'review',
+      title: `Not published: ${off.join(', ')}. Publish ${off.length === 1 ? 'it' : 'them'} in Brew, or run \`${prefix} app-emails upsert <key> --publish --yes\``,
+      // A pending patch waits for the publish (patchesHeld above).
+      blocking: patches.some((patch) => patch.status === 'pending'),
+    })
+  }
   for (const patch of patches) {
     if (patch.status === 'pending' || patch.status === 'stale') {
       nextSteps.push({
