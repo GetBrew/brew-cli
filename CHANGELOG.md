@@ -4,7 +4,7 @@
 
 Needs the same SDK release as 0.20.0 (`appEmails.setUpKit` and the auth
 adapter subpaths from GetBrew/typescript-sdk#64), and the API from
-GetBrew/brew-v2#2169 (its head `02a3946b18`, the spec 0.20.0 vendors).
+GetBrew/brew-v2#2169 (its head `6e4accea4c`, the spec 0.20.0 vendors).
 
 ### Added
 
