@@ -1322,6 +1322,28 @@ describe('init: what a run must not get wrong', () => {
     )
   })
 
+  it("a dry run never sends the CLI's saved key to the server .env.local names", async () => {
+    const root = copyFixture('express-resend')
+    const other = 'https://other.example/api'
+    writeFileSync(join(root, '.env.local'), `BREW_API_URL=${other}\n`)
+    const env = configEnv()
+    writeConfig(env, { apiKey: EXPLICIT_KEY })
+    const sent: Array<string | null> = []
+    server.use(
+      http.all(`${other}/*`, ({ request }) => {
+        sent.push(request.headers.get('authorization'))
+        return HttpResponse.json({}, { status: 404 })
+      })
+    )
+    const result = await init(['--dry-run', '--json'], {
+      cwd: root,
+      env,
+      spawn: recordingSpawn().spawn,
+    })
+    expect(sent).toEqual([])
+    expect(result.stdout).not.toContain(EXPLICIT_KEY)
+  })
+
   it('--stack wires the auth library it names, over detection', async () => {
     const root = keyed('express-resend')
     useBrewApi()

@@ -370,6 +370,8 @@ export async function runInit(
     env,
     allowAnonymous: true,
   }).apiUrl
+  // The server the CLI's saved key belongs to (with no override named).
+  const storedKeyApiUrl = apiUrl
   const savedApiUrl = nonEmpty(
     getEnvValue(parseEnv(envLocalText ?? ''), API_URL_VARIABLE)
   )
@@ -414,7 +416,12 @@ export async function runInit(
     )
   } else if (existingAppKey !== undefined) {
     credential = authFor(existingAppKey, 'env-file', state?.brandId)
-  } else if (dryRun && stored.apiKey !== undefined) {
+  } else if (
+    dryRun &&
+    stored.apiKey !== undefined &&
+    // The CLI's own key never goes to the server .env.local names instead.
+    apiUrl === storedKeyApiUrl
+  ) {
     credential = authFor(
       stored.apiKey,
       'config',
