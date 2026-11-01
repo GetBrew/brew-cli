@@ -242,9 +242,12 @@ export async function runProjectDoctor(
           }
   )
   const exposed: string[] = []
+  // A key: a value shaped like one, the app key itself, or any value under
+  // a Brew key-like name. A URL or an empty placeholder is not one.
   const looksLikeKey = (name: string, value: string): boolean =>
     isClientExposedName(name) &&
-    (/BREW/i.test(name) ||
+    value !== '' &&
+    (/BREW.*(?:KEY|SECRET|TOKEN)/i.test(name) ||
       value.startsWith('brew_') ||
       (envLocalKey !== undefined && value === envLocalKey))
   for (const file of files) {

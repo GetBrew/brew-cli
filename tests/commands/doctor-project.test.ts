@@ -273,6 +273,19 @@ describe('doctor --project', () => {
     })
   })
 
+  it('passes a public Brew setting that holds no key (a URL, an empty placeholder)', async () => {
+    const root = healthyProject()
+    useProjectApi({ verifiedDomain: true })
+    writeFileSync(
+      join(root, '.env'),
+      'VITE_BREW_API_URL=https://brew.new/api\nVITE_BREW_API_KEY=\n'
+    )
+    const result = await doctor(root)
+    expect(
+      result.report.checks.find((check) => check.id === 'env-exposure')
+    ).toMatchObject({ status: 'ok' })
+  })
+
   it('fails when the shell hands the build a key under a public name', async () => {
     useProjectApi({ verifiedDomain: true })
     const result = await doctor(healthyProject(), {
