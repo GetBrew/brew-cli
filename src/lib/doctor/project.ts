@@ -306,6 +306,19 @@ export async function runProjectDoctor(
       status: 'skipped',
       detail: `no package.json (Edge Functions import npm:${SDK_PACKAGE}@${SDK_RANGE})`,
     })
+  } else if (
+    state.framework === 'vite-react' ||
+    state.framework === 'supabase-functions'
+  ) {
+    // init installs no SDK where the app's own code never sends.
+    checks.push({
+      id: 'sdk',
+      status: 'skipped',
+      detail:
+        state.framework === 'vite-react'
+          ? 'browser-only app: send from your server or Supabase Edge Functions'
+          : `Edge Functions import npm:${SDK_PACKAGE}@${SDK_RANGE}`,
+    })
   } else if (declared.range === null) {
     checks.push({
       id: 'sdk',

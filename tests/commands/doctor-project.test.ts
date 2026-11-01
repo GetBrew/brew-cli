@@ -1,4 +1,10 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { HttpResponse, http } from 'msw'
@@ -215,6 +221,20 @@ describe('doctor --project', () => {
     })
     expect(seen.every((request) => request.brandId === null)).toBe(true)
     expect(result.report.apiKey).toMatch(/^brew_/)
+  })
+
+  it('skips the SDK check for a browser-only app, which init installs no SDK for', async () => {
+    const root = healthyProject()
+    writeFileSync(join(root, 'package.json'), JSON.stringify({ name: 'app' }))
+    const state = JSON.parse(readFileSync(join(root, 'brew.json'), 'utf8'))
+    writeFileSync(
+      join(root, 'brew.json'),
+      `${JSON.stringify({ ...state, framework: 'vite-react' }, null, 2)}\n`
+    )
+    useProjectApi({ verifiedDomain: true })
+    const result = await doctor(root)
+    expect(statusOf(result.report, 'sdk')).toEqual(['skipped'])
+    expect(result.code).toBe(0)
   })
 
   it('fails on a deleted managed file, warns on an edited one', async () => {
