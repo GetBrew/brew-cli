@@ -131,6 +131,20 @@ export async function contactsPhase(run: RunContext): Promise<void> {
   if (phase.status === 'done') {
     return
   }
+  // Opt-outs join the --domain's unsubscribe list: while the Brew domain
+  // list cannot be read, contacts wait rather than finish without them.
+  if (
+    run.targetDomain === null &&
+    (run.options.domain ?? run.manifest.options.domain) != null
+  ) {
+    run.findings.push({
+      code: 'CONTACTS_WAIT_FOR_DOMAIN',
+      severity: 'error',
+      message:
+        'Contacts were not moved: their opt-outs join the --domain unsubscribe list, and the Brew domains could not be read. Run the migration again.',
+    })
+    return
+  }
   const brew = brewOf(run)
   let after = phase.cursor ?? null
   if (after === null) {

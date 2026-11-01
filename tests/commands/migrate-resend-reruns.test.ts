@@ -85,6 +85,32 @@ describe('migrate resend: a re-run keeps its destination', () => {
       '/v1/domains/dom_news/unsubscribes/import'
     )
   })
+
+  it('contacts wait while the recorded --domain cannot be read, then get their opt-outs', async () => {
+    const { run } = setUp()
+    useBrewApi()
+    const only = ['--only', 'contacts']
+    await migrate(['--json', ...only, '--domain', 'news.acme.dev'], run)
+    server.use(
+      http.get('https://brew.new/api/v1/domains', () =>
+        HttpResponse.json(
+          { error: { code: 'SERVICE_UNAVAILABLE', message: 'Try again.' } },
+          { status: 503 }
+        )
+      )
+    )
+    const blocked = await migrate(
+      [...APPLY, ...only, '--max-retries', '0'],
+      run
+    )
+    expect(blocked.code).toBe(1)
+    expect(phase(blocked.report, 'contacts')?.status).not.toBe('done')
+    const brew = useBrewApi()
+    expect((await migrate([...APPLY, ...only], run)).code).toBe(0)
+    expect(brew.calls.map((call) => call.path)).toContain(
+      '/v1/domains/dom_news/unsubscribes/import'
+    )
+  })
 })
 
 describe('migrate resend: unfinished work is retried', () => {
