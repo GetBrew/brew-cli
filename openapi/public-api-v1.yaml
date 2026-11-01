@@ -33762,7 +33762,7 @@ paths:
           example: kx7b3s7fapqz8mjm12ekz1kxdx87yceg
       x-brew-scope: contacts
       x-brew-brand-scope: brand
-      x-brew-idempotency: none
+      x-brew-idempotency: disabled
       x-brew-credited: false
       x-brew-rate-policy: analytics.identity
   /v1/analytics/overview:
