@@ -1327,6 +1327,36 @@ describe('init: what a run must not get wrong', () => {
     expect(existsSync(join(outside, 'brew-auth.ts'))).toBe(false)
   })
 
+  it.each([
+    ['a kit key failed', () => {}, ['auth.verify-email']],
+    [
+      'the helper keeps your edits',
+      (root: string) =>
+        writeFileSync(
+          join(root, 'lib/brew-auth.ts'),
+          `${read(root, 'lib/brew-auth.ts')}// mine\n`
+        ),
+      [],
+    ],
+  ])('no patch applies when %s', async (_case, edit, failKeys) => {
+    const root = keyed('next-better-auth')
+    const argv = ['--yes', '--json', '--no-test-email', '--no-install']
+    const options = {
+      cwd: root,
+      env: configEnv(),
+      spawn: recordingSpawn().spawn,
+    }
+    useBrewApi()
+    const first = await init(argv, options)
+    const pin = `better-auth-config@${first.report.patches[0]?.baseSha256?.slice(0, 12)}`
+    const before = read(root, 'lib/auth.ts')
+    edit(root)
+    useBrewApi({ failKeys })
+    const result = await init([...argv, '--apply-patches', pin], options)
+    expect(result.report.patches[0]?.status).toBe('pending')
+    expect(read(root, 'lib/auth.ts')).toBe(before)
+  })
+
   it('on Windows, hands the SDK install to the agent instead of failing', async () => {
     const platform = Object.getOwnPropertyDescriptor(process, 'platform')
     Object.defineProperty(process, 'platform', { value: 'win32' })

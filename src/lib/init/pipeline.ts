@@ -955,15 +955,23 @@ export async function runInit(
   if (supabaseHook && project.hasSupabaseDir) {
     computedPatches.push(supabaseConfigPatch(project))
   }
-  const filesFailed = steps.some(
-    (step) => step.id === 'files' && step.status === 'failed'
-  )
+  // No patch applies while a generated file failed or kept the user's
+  // edits (the helper may lack what the patch imports), or a kit key failed
+  // (the patch would hand that email to a key that does not exist).
+  const patchesHeld =
+    steps.some(
+      (step) =>
+        (step.id === 'files' || step.id === 'kit') && step.status === 'failed'
+    ) ||
+    files.some(
+      (file) => file.role === 'auth' && file.action === 'kept-user-version'
+    )
   const patches: InitPatch[] = computedPatches.map((computed) => {
     const pin = options.applyPatches.get(computed.patch.id)
     if (
       pin === undefined ||
       computed.patch.status !== 'pending' ||
-      filesFailed
+      patchesHeld
     ) {
       return computed.patch
     }
