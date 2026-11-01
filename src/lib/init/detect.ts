@@ -87,6 +87,8 @@ export type ProjectDetection = {
   readonly esm: boolean
   /** Next.js major version from the dependency range, when Next. */
   readonly nextMajor: number | null
+  /** The minor of `next`'s declared range (`after` is stable from 15.1). */
+  readonly nextMinor: number | null
   /** Root-relative directory for server-only helpers; null = no server. */
   readonly libDir: string | null
   readonly hasSupabaseDir: boolean
@@ -484,6 +486,9 @@ export function detectProject(
       esm: pkg?.type === 'module',
       nextMajor: framework.startsWith('next-')
         ? rangeMajor(deps.get('next'))
+        : null,
+      nextMinor: framework.startsWith('next-')
+        ? (rangeVersion(deps.get('next'))?.[1] ?? null)
         : null,
       libDir: libDirFor(root, framework, hasSupabaseDir),
       hasSupabaseDir,

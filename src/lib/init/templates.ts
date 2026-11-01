@@ -22,6 +22,15 @@ export const SDK_PACKAGE = '@brew.new/sdk'
  * and migrate install SDK_RANGE over it.
  */
 export function reachesSdkRange(declared: string | null | undefined): boolean {
+  // Only a floor (`^`, `~`, `>=` or an exact version) names the lowest
+  // release it installs; anything else (`<13.6.0`, `a || b`) gets SDK_RANGE.
+  if (
+    !/^\s*(?:[\^~]|>=)?\s*v?\d+\.\d+(?:\.\d+)?(?:[-+][\w.-]*)?\s*$/.test(
+      declared ?? ''
+    )
+  ) {
+    return false
+  }
   const version = rangeVersion(declared ?? undefined)
   const needed = rangeVersion(SDK_RANGE)
   return (
@@ -333,7 +342,10 @@ export function authHelperFile(
   const welcome = options.lifecycle ? ['', ...welcomeHelper(context)] : []
   switch (project.auth) {
     case 'better-auth': {
-      const after = (project.nextMajor ?? 0) >= 15
+      // `after` is stable from Next.js 15.1; 15.0 only has `unstable_after`.
+      const major = project.nextMajor ?? 0
+      const after =
+        major > 15 || (major === 15 && (project.nextMinor ?? 0) >= 1)
       return [
         HEADER,
         "import { brewAuthEmails } from '@brew.new/sdk/better-auth'",

@@ -6,6 +6,7 @@ import {
   authHelperFile,
   authHelperPath,
   clientPath,
+  reachesSdkRange,
 } from '../../../src/lib/init/templates'
 import { copyFixture, tempProject } from '../../helpers/fixtures'
 
@@ -55,5 +56,41 @@ describe('generated helpers', () => {
     const file = authHelperFile(project, { auth: false, lifecycle: true })
     expect(file).not.toContain('BrewEmail')
     expect(file).toContain('export async function sendWelcomeEmail(')
+  })
+})
+
+describe('reachesSdkRange', () => {
+  it.each([
+    ['^13.6.0', true],
+    ['~13.6.2', true],
+    ['>=13.6.0', true],
+    ['14.0.0', true],
+    ['^13.5.0', false],
+    ['<13.6.0', false],
+    ['<=13.6.0', false],
+    ['^12.0.0 || ^13.6.0', false],
+  ])('%s: %s (only a floor says which release installs)', (range, reaches) => {
+    expect(reachesSdkRange(range)).toBe(reaches)
+  })
+})
+
+describe('the Better Auth helper on Next.js', () => {
+  it.each([
+    ['15.0.3', false],
+    ['^15.1.0', true],
+    ['16.0.0', true],
+  ])('next %s imports `after`: %s (stable from 15.1)', (next, imports) => {
+    const root = tempProject()
+    writeFileSync(
+      join(root, 'package.json'),
+      JSON.stringify({ dependencies: { next, 'better-auth': '1.2.0' } })
+    )
+    const project = detect(root)
+    expect(project.auth).toBe('better-auth')
+    expect(
+      authHelperFile(project, BOTH).includes(
+        "import { after } from 'next/server'"
+      )
+    ).toBe(imports)
   })
 })
