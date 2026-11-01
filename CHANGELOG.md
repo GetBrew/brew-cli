@@ -8,7 +8,7 @@ Not released yet. Needs `@brew.new/sdk` 13.7.0: `integrations.connect` and
 from GetBrew/brew-v2#2169 (`GET|PUT /v1/integrations/{provider}/connection`,
 the `supabase_auth` hosted Send Email Hook, and Clerk `email.created`
 sending the app's auth emails). The bundled spec is 0.20.0's, the #2169
-head `b884e78157` (main's spec, brew-v2 `373e900a9a`, plus the DX delta).
+head `02a3946b18` (main's spec, brew-v2 `373e900a9a`, plus the DX delta).
 
 ### Added
 
