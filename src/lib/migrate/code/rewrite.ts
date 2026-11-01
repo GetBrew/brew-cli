@@ -100,6 +100,17 @@ function blockingReason(
       return `it imports ${other.length > 0 ? other.join(', ') : 'the whole module'} from resend, which the Brew client does not provide`
     }
   }
+  // A rewrite swaps the class itself: a client another file builds from
+  // the export would get the Brew client with the Resend key and no map.
+  const ctorNames = new Set(
+    locations.imports.flatMap((entry) =>
+      entry.typeOnly ? [] : entry.ctorNames
+    )
+  )
+  const exported = locations.exports.find((entry) => ctorNames.has(entry.local))
+  if (exported !== undefined) {
+    return `it exports the Resend class (as ${exported.exported}), so a client another file builds from it would stop sending`
+  }
   const clients = scan.clients.filter((client) => client.file === file)
   const sites = [
     ...scan.callSites.filter((site) => site.file === file),

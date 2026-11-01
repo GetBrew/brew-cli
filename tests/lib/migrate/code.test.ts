@@ -148,6 +148,43 @@ ${other}`,
     }
   )
 
+  it.each([
+    [
+      'export { Resend }',
+      `${CLIENT}export const go = () => resend.emails.send({ to: 'x', template: { id: 'welcome' } })
+export { Resend }
+`,
+    ],
+    [
+      'module.exports',
+      `const { Resend } = require('resend')
+const resend = new Resend(process.env.RESEND_API_KEY)
+const go = () => resend.emails.send({ to: 'x', template: { id: 'welcome' } })
+module.exports = { go, Resend }
+`,
+    ],
+  ])(
+    'a file that exports the Resend class stays on Resend (%s)',
+    (_case, client) => {
+      const scan = project({
+        'src/resend.js': client,
+        // Builds its own client from the exported class: a rewrite would
+        // hand it Brew's client with the Resend key and no template map.
+        'src/other.js': `const { Resend } = require('./resend')
+const mailer = new Resend(process.env.RESEND_API_KEY)
+module.exports = { mailer }
+`,
+      })
+      expect(decideRewrites(scan, new Set(['welcome']), true)).toEqual([
+        {
+          file: 'src/resend.js',
+          rewritable: false,
+          reason: expect.stringContaining('exports the Resend class'),
+        },
+      ])
+    }
+  )
+
   it('a comment or a string naming another client member moves the client anyway', () => {
     const scan = project({
       'src/resend.ts': CLIENT,
