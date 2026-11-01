@@ -4,13 +4,19 @@ import { BrewApiError } from '@brew.new/sdk'
 import {
   type BrewClient,
   buildSdkClient,
+  DEFAULT_API_URL,
   maskApiKey,
   type ResolvedAuth,
   resolveAuth,
 } from '../client'
 import { sdkTransportFor } from '../context'
 import { CliApiError, CliUsageError } from '../errors'
-import { reachesSdkRange, SDK_PACKAGE, SDK_RANGE } from '../init/templates'
+import {
+  API_URL_VARIABLE,
+  reachesSdkRange,
+  SDK_PACKAGE,
+  SDK_RANGE,
+} from '../init/templates'
 import {
   findConnection,
   type HostedAuthProvider,
@@ -205,12 +211,15 @@ export async function runProjectDoctor(
 
   // ---- The app key: present, and never under a browser-exposed name.
   const files = envFiles(root)
-  const envLocalKey = (() => {
-    const text = readTextFile(join(root, '.env.local'))
+  const envLocalText = readTextFile(join(root, '.env.local'))
+  const envLocalValue = (name: string): string | undefined => {
     const value =
-      text === null ? undefined : getEnvValue(parseEnv(text), APP_KEY_VARIABLE)
+      envLocalText === null
+        ? undefined
+        : getEnvValue(parseEnv(envLocalText), name)
     return value === undefined || value.trim() === '' ? undefined : value.trim()
-  })()
+  }
+  const envLocalKey = envLocalValue(APP_KEY_VARIABLE)
   const processKey = ctx.io.env[APP_KEY_VARIABLE]?.trim() || undefined
   checks.push(
     envLocalKey !== undefined
@@ -360,7 +369,11 @@ export async function runProjectDoctor(
   }
 
   // ---- The brand's side, with the app's key.
-  const auth = resolveProjectAuth(ctx, { envLocalKey, state })
+  const auth = resolveProjectAuth(ctx, {
+    envLocalKey,
+    envLocalApiUrl: envLocalValue(API_URL_VARIABLE),
+    state,
+  })
   if (auth === undefined) {
     for (const id of ['auth', 'app-emails', 'domain', 'provider'] as const) {
       checks.push({
@@ -431,6 +444,8 @@ function resolveProjectAuth(
   ctx: CliContext,
   input: {
     readonly envLocalKey: string | undefined
+    /** The server the .env.local key is for (BREW_API_URL beside it). */
+    readonly envLocalApiUrl: string | undefined
     readonly state: BrewProjectState
   }
 ): ResolvedAuth | undefined {
@@ -443,11 +458,24 @@ function resolveProjectAuth(
     return { ...resolved, brandId: resolved.brandId ?? input.state.brandId }
   }
   if (input.envLocalKey !== undefined) {
+    // The key goes only to the server it is for (none saved = the default);
+    // another server named explicitly is refused before any request.
+    const saved = input.envLocalApiUrl ?? DEFAULT_API_URL
+    const named =
+      ctx.globals.apiUrl ?? (ctx.io.env.BREW_API_URL?.trim() || undefined)
+    if (
+      named !== undefined &&
+      named.replace(/\/+$/, '') !== saved.replace(/\/+$/, '')
+    ) {
+      throw new CliUsageError(
+        `${APP_KEY_VARIABLE} in .env.local is for ${saved}, not ${named}: run doctor --project without --api-url and BREW_API_URL (or with ${saved}).`
+      )
+    }
     return {
       apiKey: input.envLocalKey,
       apiKeySource: 'env',
       brandId: ctx.globals.brand,
-      apiUrl: resolved.apiUrl,
+      apiUrl: saved,
     }
   }
   if (resolved.apiKeySource === 'config') {

@@ -9,6 +9,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { HttpResponse, http } from 'msw'
 import { describe, expect, it } from 'vitest'
+import { writeConfig } from '../../src/lib/config-store'
 import type { ProjectDoctorReport } from '../../src/lib/doctor/project'
 import { sha256Hex } from '../../src/lib/project/fs-writer'
 import { tempProject } from '../helpers/fixtures'
@@ -424,6 +425,38 @@ describe('doctor --project', () => {
     useProjectApi({ connection: null })
     const notConnected = await doctor(root)
     expect(statusOf(notConnected.report, 'provider')).toEqual(['warn'])
+  })
+
+  it('checks with the .env.local key on the server saved beside it, and refuses another (exit 2)', async () => {
+    const root = healthyProject()
+    writeFileSync(
+      join(root, '.env.local'),
+      `BREW_API_KEY=${APP_KEY}\nBREW_API_URL=${API}\n`
+    )
+    const configDir = mkdtempSync(join(tmpdir(), 'brew-doctor-config-'))
+    // The CLI itself is pointed at a local server.
+    writeConfig(
+      { BREW_CLI_CONFIG_DIR: configDir },
+      { apiUrl: 'http://localhost:3000/api' }
+    )
+    const seen = useProjectApi()
+    const result = await doctor(root, {
+      env: { BREW_CLI_CONFIG_DIR: configDir },
+    })
+    expect(statusOf(result.report, 'auth')).toEqual(['ok'])
+    expect(seen.length).toBeGreaterThan(0)
+    const refused = await runCli(
+      [
+        'doctor',
+        '--project',
+        '--json',
+        '--api-url',
+        'http://localhost:3000/api',
+      ],
+      { cwd: root, env: { BREW_CLI_CONFIG_DIR: configDir } }
+    )
+    expect(refused.code).toBe(2)
+    expect(refused.stderr).toContain(API)
   })
 
   it('finds a verified sending domain past the first page of domains', async () => {
