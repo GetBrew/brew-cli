@@ -113,46 +113,16 @@ function blockingReason(
     return 'it sends nothing through Resend here'
   }
   for (const site of sites) {
-    const where = `${site.file}:${site.line}`
-    if (site.analysis.kind !== 'template') {
-      return `the send at ${where} is ${site.analysis.kind === 'mixed' ? 'a mixed batch' : `a ${site.analysis.kind} send`}, not a template`
-    }
-    for (const message of site.analysis.messages) {
-      if (message.unsupported.length > 0) {
-        return `the send at ${where} uses ${message.unsupported.join(', ')}, which Brew app email does not take`
-      }
-      if (message.templateId === null && !allTemplatesMigrated) {
-        return `the send at ${where} computes its template id, and not every template migrated`
-      }
-      if (
-        message.templateId !== null &&
-        !knownTemplates.has(message.templateId)
-      ) {
-        return `the send at ${where} uses template ${message.templateId}, which has no Brew key yet`
-      }
+    const reason = sendBlocker(site, knownTemplates, allTemplatesMigrated)
+    if (reason !== null) {
+      return reason
     }
   }
   // The Brew client has emails.send and batch.send only: a client also
   // used for anything else (contacts, emails.get) stays on Resend.
-  for (const client of clients) {
-    const uses = [
-      ...(client.binding === null ? [] : [{ file, name: client.binding }]),
-      ...[...scan.files].flatMap(([other, { locations }]) =>
-        locations.localImports
-          .filter((entry) => entry.imported === client.exportName)
-          .map((entry) => ({ file: other, name: entry.local }))
-      ),
-    ]
-    const literal = (text: string) =>
-      text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-    const other = uses.find(({ file: user, name: local }) =>
-      new RegExp(
-        `(?<![\\w$.])${literal(local)}\\s*\\??\\.\\s*(?!(?:emails|batch)\\s*\\??\\.\\s*send\\b)[A-Za-z_$]`
-      ).test(scan.files.get(user)?.text ?? '')
-    )
-    if (other !== undefined) {
-      return `${other.file} uses the client for more than emails.send and batch.send, which the Brew client does not provide`
-    }
+  const shared = clients.find((client) => client.usedBeyondSendIn !== null)
+  if (shared !== undefined) {
+    return `${shared.usedBeyondSendIn} uses the client for more than emails.send and batch.send, which the Brew client does not provide`
   }
   for (const client of clients) {
     const args = scanned.text.slice(
@@ -161,6 +131,33 @@ function blockingReason(
     )
     if (keyArgument(args) === null) {
       return `the client at ${file}:${client.line} reads its key from somewhere other than RESEND_API_KEY; point it at your Brew key by hand`
+    }
+  }
+  return null
+}
+
+/** Why the Brew client cannot make this send as it is, or null when it can. */
+export function sendBlocker(
+  site: ScannedCallSite,
+  knownTemplates: ReadonlySet<string>,
+  allTemplatesMigrated: boolean
+): string | null {
+  const where = `${site.file}:${site.line}`
+  if (site.analysis.kind !== 'template') {
+    return `the send at ${where} is ${site.analysis.kind === 'mixed' ? 'a mixed batch' : `a ${site.analysis.kind} send`}, not a template`
+  }
+  for (const message of site.analysis.messages) {
+    if (message.unsupported.length > 0) {
+      return `the send at ${where} uses ${message.unsupported.join(', ')}, which Brew app email does not take`
+    }
+    if (message.templateId === null && !allTemplatesMigrated) {
+      return `the send at ${where} computes its template id, and not every template migrated`
+    }
+    if (
+      message.templateId !== null &&
+      !knownTemplates.has(message.templateId)
+    ) {
+      return `the send at ${where} uses template ${message.templateId}, which has no Brew key yet`
     }
   }
   return null

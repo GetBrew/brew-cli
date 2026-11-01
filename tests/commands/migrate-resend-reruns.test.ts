@@ -260,6 +260,23 @@ describe('migrate resend --rewrite-imports: the template map', () => {
     )
   })
 
+  it('counts the sends through a moved client as done on a re-run', async () => {
+    const { root, run } = setUp()
+    useBrewApi()
+    expect((await migrate(REWRITE, run)).code).toBe(0)
+    useBrewApi({ appEmailKeys: ['reset-password', 'receipt'] })
+    const { report } = await migrate(REWRITE, run)
+    const notify = (sites: ReadonlyArray<{ file: string; status: string }>) =>
+      sites
+        .filter((site) => site.file === 'src/lib/notify.ts')
+        .map((site) => site.status)
+    expect(notify(report.callSites)).toEqual(['done', 'done'])
+    expect(notify(readManifest(root).callSites)).toEqual(['done', 'done'])
+    expect(
+      report.nextSteps.filter((step) => step.path === 'src/lib/notify.ts')
+    ).toEqual([])
+  })
+
   it('in JavaScript, keeps the ESM map current after a CommonJS client moves', async () => {
     const { root, clock } = setUp()
     rmSync(join(root, 'tsconfig.json'))

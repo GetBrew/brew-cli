@@ -10,6 +10,7 @@ import {
   mapFileContent,
   mapFilePath,
   rewriteFile,
+  sendBlocker,
 } from './code/rewrite'
 import {
   type CodeScan,
@@ -134,16 +135,16 @@ function keyIndex(run: RunContext): KeyIndex {
   return { templates, reactEmail }
 }
 
-/** The React Email file a `<Component />` in `file` comes from. */
-function componentFile(
+/** The project file `name` (`Component`, `resend`) in `file` is imported from. */
+function importedFile(
   run: RunContext,
   scan: CodeScan,
   file: string,
-  component: string
+  name: string
 ): string | null {
   const scanned = scan.files.get(file)
   const imported = scanned?.locations.localImports.find(
-    (entry) => entry.local === component.split('.')[0]
+    (entry) => entry.local === name
   )
   if (imported === undefined) {
     return null
@@ -203,7 +204,7 @@ function callSiteRecord(
       const file =
         component === null
           ? null
-          : componentFile(run, scan, site.file, component)
+          : importedFile(run, scan, site.file, component.split('.')[0] ?? '')
       const item = file === null ? undefined : index.reactEmail.get(file)
       key = item?.key ?? null
       if (key === null) {
@@ -432,16 +433,31 @@ export async function codePhase(run: RunContext): Promise<CodePhaseResult> {
     rewriteImports(run, scan, rewritable, templateItems, rewritten)
   }
 
-  // Call sites in files now on the Brew client are done.
+  // Call sites in files now on the Brew client are done. A re-run no longer
+  // sees a moved client as Resend's, so a send through one it imports is
+  // done when the Brew client can make it.
   const doneClients = new Set(
     scan.clients
       .filter((entry) => rewritten.has(entry.file))
       .map((entry) => entry.id)
   )
-  for (const record of records) {
+  for (const [position, record] of records.entries()) {
+    const site = scan.callSites[position] as ScannedCallSite
+    const through =
+      record.client === null
+        ? importedFile(
+            run,
+            scan,
+            site.file,
+            site.receiver.split(/\??\./)[0] ?? ''
+          )
+        : null
     if (
       rewritten.has(record.file) ||
-      (record.client !== null && doneClients.has(record.client))
+      (record.client !== null && doneClients.has(record.client)) ||
+      (through !== null &&
+        rewritten.has(through) &&
+        sendBlocker(site, knownTemplates, allMigrated) === null)
     ) {
       record.status = 'done'
       record.replacement = `unchanged: @brew.new/sdk/resend sends template ${record.templateIds.join(', ') || '(computed id)'} by its Brew key`

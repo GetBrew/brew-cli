@@ -38,6 +38,10 @@ function rewritten(scan: CodeScan, file: string, mapFile: string): string {
 const CLIENT = `import { Resend } from 'resend'
 export const resend = new Resend(process.env.RESEND_API_KEY)
 `
+const DEFAULT_CLIENT = `import { Resend } from 'resend'
+const resend = new Resend(process.env.RESEND_API_KEY)
+export default resend
+`
 
 describe('analyzeArgument', () => {
   it('a spread beside a template may carry anything: it does not carry over', () => {
@@ -108,6 +112,56 @@ ${other}`,
       ])
     }
   )
+
+  it('a comment or a string naming another client member moves the client anyway', () => {
+    const scan = project({
+      'src/resend.ts': CLIENT,
+      'src/notify.ts': `import { resend } from './resend'
+// resend.contacts.create({ email }) once the list exists
+const hint = 'resend.emails.get(id)' + \`resend.contacts.list()\`
+export const go = () => resend.emails.send({ to: 'x', template: { id: 'welcome' } })
+`,
+    })
+    expect(decideRewrites(scan, new Set(['welcome']), true)).toEqual([
+      { file: 'src/resend.ts', rewritable: true },
+    ])
+  })
+
+  it('a contact-only caller that never names Resend keeps the client on Resend', () => {
+    const scan = project({
+      'src/mail.ts': DEFAULT_CLIENT,
+      'src/notify.ts': `import mailer from './mail'
+export const go = () => mailer.emails.send({ to: 'x', template: { id: 'welcome' } })
+`,
+      'src/contacts.ts': `import mailer from './mail'
+export const add = () => mailer.contacts.create({ email: 'x' })
+`,
+    })
+    expect(decideRewrites(scan, new Set(['welcome']), true)).toEqual([
+      {
+        file: 'src/mail.ts',
+        rewritable: false,
+        reason: expect.stringContaining('src/contacts.ts uses the client'),
+      },
+    ])
+  })
+
+  it('an import of another module is not the client', () => {
+    const scan = project({
+      'src/mail.ts': DEFAULT_CLIENT,
+      'src/logger.ts': 'export default { info: (_: string) => {} }\n',
+      'src/notify.ts': `import mailer from './mail'
+import logger from './logger'
+export const go = () => {
+  logger.info('sending')
+  return mailer.emails.send({ to: 'x', template: { id: 'welcome' } })
+}
+`,
+    })
+    expect(decideRewrites(scan, new Set(['welcome']), true)).toEqual([
+      { file: 'src/mail.ts', rewritable: true },
+    ])
+  })
 })
 
 describe('rewriteFile', () => {

@@ -17,6 +17,7 @@ import {
   locateWithTypeScript,
   type TypeScriptModule,
 } from './locate-typescript'
+import { allowsJsx, type Token, tokenize } from './tokenize'
 import type { ClientSite, FileLocations, ScanEngine } from './types'
 
 /**
@@ -68,6 +69,8 @@ export type ScannedClient = {
   readonly column: number
   readonly inline: boolean
   readonly site: ClientSite
+  /** The first file that uses it for more than emails.send and batch.send, or null. */
+  readonly usedBeyondSendIn: string | null
 }
 
 export type ScannedCallSite = {
@@ -284,10 +287,10 @@ export function scanProject(
   }
 
   // Clients, by file and by the name other files import them as.
-  const clients: ScannedClient[] = []
+  const found: Array<Omit<ScannedClient, 'usedBeyondSendIn'>> = []
   for (const [file, scanned] of files) {
     for (const site of scanned.locations.clients) {
-      clients.push({
+      found.push({
         id:
           site.binding === null
             ? `${file}:${site.line}`
@@ -302,6 +305,12 @@ export function scanProject(
       })
     }
   }
+  const users = clientUsers(root, ts, listed.files, files, found)
+  truncated ||= users.truncated
+  const clients: ScannedClient[] = found.map((client) => ({
+    ...client,
+    usedBeyondSendIn: users.byClient.get(client.id) ?? null,
+  }))
   const clientByBinding = new Map(
     clients
       .filter((client) => client.binding !== null)
@@ -385,6 +394,145 @@ export function scanProject(
     callSites,
     reactEmail,
   }
+}
+
+function isDot(token: Token | undefined): boolean {
+  return (
+    token?.type === 'punct' && (token.value === '.' || token.value === '?.')
+  )
+}
+
+/** The index after `a.b.c` (or `a?.b`) at `at`, or -1. */
+function pathEnd(
+  tokens: readonly Token[],
+  at: number,
+  names: readonly string[]
+): number {
+  let index = at
+  for (const [position, name] of names.entries()) {
+    if (position > 0) {
+      if (!isDot(tokens[index])) {
+        return -1
+      }
+      index += 1
+    }
+    const token = tokens[index]
+    if (token?.type !== 'ident' || token.value !== name) {
+      return -1
+    }
+    index += 1
+  }
+  return index
+}
+
+/**
+ * Whether code (never a comment or a string) reaches `path`, a client's
+ * binding or import, for more than `emails.send` and `batch.send`.
+ */
+function reachesBeyondSend(
+  tokens: readonly Token[],
+  path: readonly string[]
+): boolean {
+  return tokens.some((token, index) => {
+    if (
+      token.children !== undefined &&
+      reachesBeyondSend(token.children, path)
+    ) {
+      return true
+    }
+    const end = isDot(tokens[index - 1]) ? -1 : pathEnd(tokens, index, path)
+    return (
+      end !== -1 &&
+      isDot(tokens[end]) &&
+      pathEnd(tokens, end + 1, ['emails', 'send']) === -1 &&
+      pathEnd(tokens, end + 1, ['batch', 'send']) === -1
+    )
+  })
+}
+
+/**
+ * The first file that uses each client for more than `emails.send` and
+ * `batch.send` (all the Brew client has): its own file through its binding,
+ * or any project file whose import resolves to its module. Such an import
+ * names the module (its folder for an index file) or is `./`, so only files
+ * holding that are parsed; `truncated` when one is too big to.
+ */
+function clientUsers(
+  root: string,
+  ts: TypeScriptModule | null,
+  listed: readonly string[],
+  files: ReadonlyMap<string, ScannedFile>,
+  clients: ReadonlyArray<Omit<ScannedClient, 'usedBeyondSendIn'>>
+): {
+  readonly byClient: ReadonlyMap<string, string>
+  readonly truncated: boolean
+} {
+  const byClient = new Map<string, string>()
+  let truncated = false
+  const uses = (file: string, text: string, path: readonly string[]) => {
+    try {
+      return reachesBeyondSend(tokenize(text, { jsx: allowsJsx(file) }), path)
+    } catch {
+      return true
+    }
+  }
+  for (const client of clients) {
+    const own = files.get(client.file)
+    if (
+      client.binding !== null &&
+      own !== undefined &&
+      uses(client.file, own.text, client.binding.split('.'))
+    ) {
+      byClient.set(client.id, client.file)
+    }
+  }
+  const shared = clients.filter((client) => client.exportName !== null)
+  for (const absolute of shared.length === 0 ? [] : listed) {
+    const file = toPosix(relative(root, absolute))
+    let text: string
+    try {
+      text = files.get(file)?.text ?? readFileSync(absolute, 'utf8')
+    } catch {
+      continue
+    }
+    const named = shared.filter(
+      (client) =>
+        client.file !== file &&
+        !byClient.has(client.id) &&
+        (text.includes(reactEmailBaseName(client.file)) ||
+          /['"](?:\.{1,2}|[@~])\/['"]/.test(text))
+    )
+    if (named.length === 0) {
+      continue
+    }
+    if (text.length > MAX_FILE_BYTES) {
+      truncated = true
+      continue
+    }
+    const { localImports } =
+      files.get(file)?.locations ?? locate(ts, text, file).locations
+    for (const entry of localImports) {
+      const target = resolveProjectModule(root, absolute, entry.from)
+      for (const client of named) {
+        const path =
+          target === null || toPosix(relative(root, target)) !== client.file
+            ? null
+            : entry.imported === '*'
+              ? [entry.local, client.exportName ?? '']
+              : entry.imported === client.exportName
+                ? [entry.local]
+                : null
+        if (
+          path !== null &&
+          !byClient.has(client.id) &&
+          uses(file, text, path)
+        ) {
+          byClient.set(client.id, file)
+        }
+      }
+    }
+  }
+  return { byClient, truncated }
 }
 
 /** The key a React Email file migrates under (before prefix and uniqueness). */
