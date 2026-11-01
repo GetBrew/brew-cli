@@ -355,14 +355,15 @@ describe('insights list', () => {
       [
         'Pulse, 7 days to 2026-10-01T00:00:00.000Z:',
         '  delivered 1200 (prior 1100)',
-        '  opens not measured (engagement tracking is off)',
-        '  unique clicks 60 (prior 66)',
-        '  click rate 5% (prior -, steady)',
+        '  opens not measured',
+        '  clicks not measured',
         '  unsubscribed 3 (prior 4)',
       ].join('\n')
     )
     expect(unmeasured.stdout).not.toContain('unique opens')
     expect(unmeasured.stdout).not.toContain('open rate')
+    expect(unmeasured.stdout).not.toContain('unique clicks')
+    expect(unmeasured.stdout).not.toContain('click rate')
     // JSON stays the API's answer, verbatim.
     const json = await cli(['insights', 'list', '--include', 'pulse'])
     expect((json.json as { pulse: unknown }).pulse).toEqual(pulses.unmeasured)
@@ -382,6 +383,81 @@ describe('insights list', () => {
     )
     expect(countsOnly.stdout).not.toContain('rate ')
   })
+
+  it.each([
+    ['legacy measured', { measured: true }, true, true],
+    ['legacy unmeasured', { measured: false }, false, false],
+    [
+      'opens available',
+      { measured: false, opensMeasured: true, clicksMeasured: false },
+      true,
+      false,
+    ],
+    [
+      'clicks available',
+      { measured: false, opensMeasured: false, clicksMeasured: true },
+      false,
+      true,
+    ],
+    [
+      'neither available',
+      { measured: false, opensMeasured: false, clicksMeasured: false },
+      false,
+      false,
+    ],
+    [
+      'healthy measured zeros',
+      {
+        measured: true,
+        opensMeasured: true,
+        clicksMeasured: true,
+        uniqueOpens: 0,
+        uniqueClicks: 0,
+        openRatePct: 0,
+        clickRatePct: 0,
+      },
+      true,
+      true,
+    ],
+  ] as const)(
+    'renders signal availability for %s while preserving the JSON response',
+    async (_name, availability, isOpenMeasured, isClickMeasured) => {
+      const pulse = { ...PULSE, ...availability }
+      server.use(
+        http.get(`${API}/v1/insights`, () =>
+          HttpResponse.json({
+            data: [],
+            pagination: PAGE_DONE,
+            freshness: FRESHNESS,
+            pulse,
+          })
+        )
+      )
+      const human = await cli(['insights', 'list', '--include', 'pulse'], {
+        ttyOut: true,
+      })
+      expect(human.code).toBe(0)
+      if (isOpenMeasured) {
+        expect(human.stdout).toContain(`unique opens ${pulse.uniqueOpens}`)
+        expect(human.stdout).toContain(`open rate ${pulse.openRatePct}%`)
+      } else {
+        expect(human.stdout).toContain('opens not measured')
+        expect(human.stdout).not.toContain('unique opens')
+        expect(human.stdout).not.toContain('open rate')
+      }
+      if (isClickMeasured) {
+        expect(human.stdout).toContain(`unique clicks ${pulse.uniqueClicks}`)
+        expect(human.stdout).toContain(`click rate ${pulse.clickRatePct}%`)
+      } else {
+        expect(human.stdout).toContain('clicks not measured')
+        expect(human.stdout).not.toContain('unique clicks')
+        expect(human.stdout).not.toContain('click rate')
+      }
+      expect(human.stdout).not.toContain('tracking is off')
+      const json = await cli(['insights', 'list', '--include', 'pulse'])
+      expect((json.json as { pulse: unknown }).pulse).toEqual(pulse)
+    }
+  )
 
   it('--all merges every page, asks for the expansions once and keeps them beside the rows', async () => {
     const seen: Array<URLSearchParams> = []

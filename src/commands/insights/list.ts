@@ -1,8 +1,5 @@
-import {
-  BrewApiError,
-  type ListInsightsInput,
-  type ListInsightsResponse,
-} from '@brew.new/sdk'
+import { BrewApiError, type ListInsightsInput } from '@brew.new/sdk'
+import type { operations } from '../../generated/openapi-types'
 import type { BrewClient } from '../../lib/client'
 import { shellQuote } from '../../lib/confirm'
 import { defineCommand } from '../../lib/define-command'
@@ -25,7 +22,8 @@ import {
 import type { CliContext } from '../../lib/types'
 
 type InsightsResource = BrewClient['insights']
-type InsightsPage = ListInsightsResponse
+type InsightsPage =
+  operations['listInsights']['responses'][200]['content']['application/json']
 
 /**
  * What a page says beside its rows: the engine's `freshness` on every page,
@@ -317,10 +315,10 @@ function renderPulse(pulse: Pulse | null): string {
     now === null
       ? undefined
       : `${label} ${now}% (prior ${prior === null ? '-' : `${prior}%`}, ${direction})`
-  // `measured: false` means engagement tracking is off: the open counts are
-  // not zero, they are unknown, so neither they nor anything derived from
-  // them (the open rate, its direction) is printed as a number.
-  const opens = pulse.measured
+  // Older responses use the conservative global flag for both signals.
+  const isOpenMeasured = pulse.opensMeasured ?? pulse.measured
+  const isClickMeasured = pulse.clicksMeasured ?? pulse.measured
+  const opens = isOpenMeasured
     ? [
         pair('unique opens', pulse.uniqueOpens, pulse.priorUniqueOpens),
         rate(
@@ -330,17 +328,22 @@ function renderPulse(pulse: Pulse | null): string {
           pulse.openDirection
         ),
       ]
-    : ['opens not measured (engagement tracking is off)']
+    : ['opens not measured']
+  const clicks = isClickMeasured
+    ? [
+        pair('unique clicks', pulse.uniqueClicks, pulse.priorUniqueClicks),
+        rate(
+          'click rate',
+          pulse.clickRatePct,
+          pulse.priorClickRatePct,
+          pulse.clickDirection
+        ),
+      ]
+    : ['clicks not measured']
   const parts = [
     pair('delivered', pulse.delivered, pulse.priorDelivered),
     ...opens,
-    pair('unique clicks', pulse.uniqueClicks, pulse.priorUniqueClicks),
-    rate(
-      'click rate',
-      pulse.clickRatePct,
-      pulse.priorClickRatePct,
-      pulse.clickDirection
-    ),
+    ...clicks,
     pair('unsubscribed', pulse.unsubscribed, pulse.priorUnsubscribed),
     // `countsOnly`: too few deliveries for rates (the API sends them null).
     pulse.countsOnly ? 'too few deliveries for rates; read the counts' : '',
