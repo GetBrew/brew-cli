@@ -9,6 +9,7 @@ import {
   EXPLICIT_KEY,
   expectValidReport,
   init,
+  read,
   recordingSpawn,
   useBrewApi,
 } from '../helpers/init-api'
@@ -34,10 +35,28 @@ const TWO_BRANDS = [
 ]
 
 /** An app with its key in .env.local, so no sign-in runs. */
-function project(): string {
-  const root = copyFixture('express-resend')
+function project(fixture = 'express-resend'): string {
+  const root = copyFixture(fixture)
   writeFileSync(join(root, '.env.local'), `BREW_API_KEY=${APP_KEY}\n`)
   return root
+}
+
+/** `GET /v1/brand` is unavailable (after the SDK's retries). */
+function failBrandLookup(): void {
+  server.use(
+    http.get(`${API}/v1/brand`, () =>
+      HttpResponse.json(
+        {
+          error: {
+            code: 'SERVICE_UNAVAILABLE',
+            type: 'api_error',
+            message: 'Try again.',
+          },
+        },
+        { status: 503 }
+      )
+    )
+  )
 }
 
 describe('init --app-url: the brand', () => {
@@ -305,20 +324,7 @@ describe('init --app-url: the brand', () => {
   it('a brand lookup that fails sets nothing up in whatever brand the key acts as', async () => {
     const root = project()
     const requests = useBrewApi()
-    server.use(
-      http.get(`${API}/v1/brand`, () =>
-        HttpResponse.json(
-          {
-            error: {
-              code: 'SERVICE_UNAVAILABLE',
-              type: 'api_error',
-              message: 'Try again.',
-            },
-          },
-          { status: 503 }
-        )
-      )
-    )
+    failBrandLookup()
     const result = await init(
       [
         ...['--yes', '--json', '--no-test-email', '--app-url', APP_URL],
@@ -335,6 +341,28 @@ describe('init --app-url: the brand', () => {
         ['/v1/app-emails/kit', '/v1/domains'].includes(request.path)
       )
     ).toBe(false)
+  })
+
+  it('a reviewed auth patch waits while the kit waits for the brand', async () => {
+    const root = project('next-better-auth')
+    const argv = [
+      ...['--yes', '--json', '--no-test-email', '--no-install'],
+      ...['--app-url', APP_URL],
+    ]
+    const options = {
+      cwd: root,
+      env: configEnv(),
+      spawn: recordingSpawn().spawn,
+    }
+    useBrewApi()
+    const first = await init(argv, options)
+    const pin = `better-auth-config@${first.report.patches[0]?.baseSha256?.slice(0, 12)}`
+    const before = read(root, 'lib/auth.ts')
+    useBrewApi()
+    failBrandLookup()
+    const result = await init([...argv, '--apply-patches', pin], options)
+    expect(result.report.patches[0]?.status).toBe('pending')
+    expect(read(root, 'lib/auth.ts')).toBe(before)
   })
 
   it('--dry-run plans the brand without creating it', async () => {

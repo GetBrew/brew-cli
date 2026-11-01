@@ -71,6 +71,7 @@ head `5084a5202f` (main's spec, brew-v2 `373e900a9a`, plus the DX delta).
   The app's own key in `.env.local` is one: when it is another brand's,
   the kit waits for a `replace-app-key` next step. When the brand lookup
   fails, the domain, kit and provider steps wait for a re-run (exit 1).
+  While the kit waits for the brand, so does every `--apply-patches` patch.
 - **`init --domain`** also returns the domain's page in Brew
   (`domain.connectUrl`, a `connect-dns-automatically` next step), where
   Connect automatically (Entri) adds the records: it runs in the app, not
