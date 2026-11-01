@@ -86,6 +86,50 @@ describe('migrate resend: a re-run keeps its destination', () => {
     )
   })
 
+  it('another Resend key reads the contacts again instead of skipping them as done', async () => {
+    const { root, clock, run } = setUp()
+    const brew = useBrewApi()
+    const contacts = [...APPLY, '--only', 'contacts']
+    expect((await migrate(contacts, run)).code).toBe(0)
+    // A second account, read with its own key, against the same manifest.
+    const otherKey = 're_OTHER_account_key_0123456789'
+    server.use(
+      useResendApi({
+        key: otherKey,
+        clock,
+        account: {
+          ...RESEND_ACCOUNT,
+          contacts: [
+            {
+              id: 'ct_b1',
+              email: 'cy@example.org',
+              first_name: null,
+              last_name: null,
+              unsubscribed: false,
+              properties: {},
+            },
+          ],
+        },
+      }).handler
+    )
+    const before = brew.calls.length
+    const second = await migrate(contacts, {
+      ...run,
+      env: env({ RESEND_API_KEY: otherKey }),
+    })
+    expect(second.code).toBe(0)
+    const upserted = brew.calls
+      .slice(before)
+      .filter((call) => call.method === 'POST' && call.path === '/v1/contacts')
+      .flatMap(
+        (call) => (call.body as { contacts: { email: string }[] }).contacts
+      )
+    expect(upserted.map((row) => row.email)).toEqual(['cy@example.org'])
+    expect(
+      readFileSync(join(root, 'brew.migration.json'), 'utf8')
+    ).not.toContain(otherKey)
+  })
+
   it('contacts wait while the recorded --domain cannot be read, then get their opt-outs', async () => {
     const { run } = setUp()
     useBrewApi()

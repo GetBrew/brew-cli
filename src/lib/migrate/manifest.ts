@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import { dirname } from 'node:path'
 import { readTextFile, stripBom, writeFileAtomic } from '../project/fs-writer'
 
@@ -113,6 +113,8 @@ export type MigrationManifest = {
   readonly createdAt: string
   updatedAt: string
   brandId: string | null
+  /** A salted hash of the Resend key the account was read with (never the key). */
+  sourceKeyHash?: string
   options: { keyPrefix: string; domain: string | null }
   phases: Partial<Record<PhaseId, PhaseState>>
   callSites: CallSiteRecord[]
@@ -203,6 +205,33 @@ export function readManifest(path: string): MigrationManifest | null {
           : null,
     },
   }
+}
+
+/**
+ * Binds the manifest to the Resend key it reads with. Contacts and
+ * suppressions keep one cursor and one done flag for the whole account, so
+ * under another key (another account, or the same account's new key) both
+ * passes run again, which their upserts and imports make safe to repeat.
+ * Items keyed by Resend ids (templates, segments, topics) need nothing.
+ */
+export function bindSourceKey(
+  manifest: MigrationManifest,
+  apiKey: string
+): void {
+  const hash = createHash('sha256')
+    .update(`${manifest.migrationId}\n${apiKey}`)
+    .digest('hex')
+    .slice(0, 16)
+  if (manifest.sourceKeyHash !== undefined && manifest.sourceKeyHash !== hash) {
+    for (const id of ['contacts', 'suppressions'] as const) {
+      const phase = manifest.phases[id]
+      if (phase !== undefined) {
+        phase.status = 'planned'
+        phase.cursor = null
+      }
+    }
+  }
+  manifest.sourceKeyHash = hash
 }
 
 export function serializeManifest(manifest: MigrationManifest): string {

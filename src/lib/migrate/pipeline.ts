@@ -13,6 +13,7 @@ import { addCommand, formatCommandLine } from '../project/package-manager'
 import type { RerunInvocation } from '../rerun'
 import type { CliContext } from '../types'
 import {
+  bindSourceKey,
   createManifest,
   type MigrationManifest,
   MigrationManifestError,
@@ -347,6 +348,9 @@ export async function runMigration(
     throw new CliUsageError(
       `Reading the ${source.displayName} account needs its API key: set ${source.envKey}, or pipe it with --resend-key-stdin. (--only code scans the project without one.)`
     )
+  }
+  if (input.sourceKey !== null) {
+    bindSourceKey(manifest, input.sourceKey.value)
   }
 
   let brew: BrewClient | undefined
