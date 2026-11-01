@@ -2548,7 +2548,7 @@ export interface paths {
          *
          *     **Input** `signingSecret`, the secret the provider signs deliveries with (Supabase: `v1,whsec_…` from Authentication > Hooks; Clerk: `whsec_…` from the endpoint). Supabase only: `settings.projectUrl`, the URL confirmation links point at (default: the one Supabase sends with each email).
          *
-         *     **Re-runs** are safe: the `connectionId` and `webhookUrl` never change for a brand and provider, a new secret replaces the old one, and the auth app emails already set up are kept (a design edited in Brew is never replaced). Until the first signed delivery the connection is `pending_verification`.
+         *     **Re-runs** are safe: the `connectionId` and `webhookUrl` never change for a brand and provider, a new secret replaces the old one, and the auth app emails already set up are kept (a design edited in Brew is never replaced). An auth app email unpublished in Brew stays off, so that auth email is refused until it is published again (in Brew, or `upsertAppEmail` with `publish: true`); this response carries no warning for it, so check `published` with `listAppEmails`. Until the first signed delivery the connection is `pending_verification`.
          *
          *     **Scopes** an API key needs `emails` and `automations` (`x-brew-scopes`): the call also runs the app email kit.
          *
