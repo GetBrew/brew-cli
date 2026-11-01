@@ -32953,6 +32953,25 @@ paths:
         **Errors** `400 INVALID_REQUEST` for invalid events or an inactive project; `404 NOT_FOUND` for projects outside the selected brand; `503 SERVICE_UNAVAILABLE` when the region cannot acknowledge ingestion.
 
         **See also** `createProductAnalyticsIdentityToken` for binding browser activity to an existing contact. These events do not create contacts or grant marketing consent.
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: false
+          description: Optional idempotency key for safe retries. Reusing the same key with the same request body returns the original response for 24 hours.
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 100
+          example: api-request-2026-04-08-001
+        - name: X-Brand-Id
+          in: header
+          required: false
+          description: The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 64
+          example: kx7b3s7fapqz8mjm12ekz1kxdx87yceg
       requestBody:
         required: true
         content:
@@ -33350,16 +33369,6 @@ paths:
                       message: A dependency the operation must consult (billing, the idempotency store) is temporarily unavailable, so the request was refused rather than run unmetered.
                       suggestion: Retry the request after a short delay.
                       docs: https://docs.brew.new/api-reference/api/errors
-      parameters:
-        - name: X-Brand-Id
-          in: header
-          required: false
-          description: The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
-          schema:
-            type: string
-            minLength: 1
-            maxLength: 64
-          example: kx7b3s7fapqz8mjm12ekz1kxdx87yceg
       x-brew-scope: automations
       x-brew-brand-scope: brand
       x-brew-idempotency: replay

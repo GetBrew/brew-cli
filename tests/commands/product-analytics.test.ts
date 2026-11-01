@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process'
 import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -45,6 +46,47 @@ describe('product analytics commands', () => {
       confirmationRequired: true,
       confirmCommand: expect.stringContaining('--yes'),
     })
+  })
+
+  it('replays stdin events from the confirmation command without reading stdin again', async () => {
+    const bodies: unknown[] = []
+    const batch = {
+      events: [
+        {
+          ...event,
+          properties: { label: "Customer's order", nested: { total: 4900 } },
+        },
+      ],
+    }
+    server.use(
+      http.post(`${API}/v1/analytics/track`, async ({ request }) => {
+        bodies.push(await request.json())
+        return HttpResponse.json(
+          { accepted: [event.id], rejected: [] },
+          { status: 202 }
+        )
+      })
+    )
+    const initial = await cli(
+      ['analytics', 'track', '--project-id', 'project-1', '--input', '-'],
+      JSON.stringify(batch)
+    )
+    expect(initial.code).toBe(4)
+    expect(bodies).toEqual([])
+    const { confirmCommand } = initial.json as { confirmCommand: string }
+    const argv = execFileSync(
+      '/bin/sh',
+      ['-c', `set -- ${confirmCommand}; printf '%s\\0' "$@"`],
+      { encoding: 'utf8' }
+    )
+      .split('\0')
+      .filter(Boolean)
+      .slice(1)
+
+    const replay = await cli(argv)
+    expect(replay.code).toBe(0)
+    expect(bodies).toEqual([{ projectId: 'project-1', ...batch }])
+    expect(replay.json).toEqual({ accepted: [event.id], rejected: [] })
   })
 
   it('posts the canonical batch with brand scope and a stable retry key', async () => {

@@ -34,9 +34,7 @@ export const analyticsTrackCommand = defineCommand({
   examples: [
     'brew-cli analytics track --project-id pap_project --input - --idempotency-key order-123 --yes < events.json',
   ],
-  confirmSummary: () =>
-    'Submit trusted analytics events — matching published rules can start REAL flows. Keep event IDs stable when retrying.',
-  run: async ({ ctx, flags }) => {
+  prepareInput: async ({ ctx, flags }) => {
     const input = mergeInput(await readJsonFlag(ctx, flags.input, '--input'), {
       projectId: flagString(flags.projectId),
     })
@@ -49,6 +47,14 @@ export const analyticsTrackCommand = defineCommand({
       throw new CliUsageError(
         '--input must contain a non-empty events array using the product analytics event contract.'
       )
+    }
+    return input
+  },
+  confirmSummary: () =>
+    'Submit trusted analytics events — matching published rules can start REAL flows. Keep event IDs stable when retrying.',
+  run: async ({ ctx, flags, input }) => {
+    if (!input) {
+      throw new CliUsageError('Analytics track input was not prepared.')
     }
     return {
       data: await rawRequest<Response>(ctx, {
