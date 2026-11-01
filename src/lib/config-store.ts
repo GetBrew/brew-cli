@@ -6,9 +6,21 @@ export type StoredConfig = {
   readonly apiKey?: string
   readonly brandId?: string
   readonly apiUrl?: string
+  /**
+   * Who approved the stored key's browser sign-in, and the brand it is bound
+   * to: display only (`whoami`), never sent. A pasted key clears both.
+   */
+  readonly userEmail?: string
+  readonly brandName?: string
 }
 
-const CONFIG_KEYS = ['apiKey', 'brandId', 'apiUrl'] as const
+const CONFIG_KEYS = [
+  'apiKey',
+  'brandId',
+  'apiUrl',
+  'userEmail',
+  'brandName',
+] as const
 
 export type ConfigKey = (typeof CONFIG_KEYS)[number]
 

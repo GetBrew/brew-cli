@@ -4,6 +4,36 @@
 
 ### Added
 
+- **`brew-cli login` signs in through the browser.** On an interactive
+  terminal it starts a sign-in on brew.new, prints the link and a code
+  ("Check the code in your browser matches: WDJB-MJHT"), opens the page,
+  and polls until the person approves; then it stores a new brand key
+  (`CLI · <computer>`) in the config at mode 0600 and prints
+  `Signed in as <email> to <brand>`. The key is encrypted to a one-time
+  P-256 key pair the CLI makes for the sign-in and travels only through
+  the poll, so it also works from Codespaces, Replit, Gitpod, SSH and CI,
+  where the CLI prints the link instead of opening a browser. New flags:
+  `--browser`, `--paste` (the old prompt), `--no-open`, `--wait
+  <duration>`, `--no-wait` (exit 3 at once with `{ status: "pending",
+  verificationUrl, userCode, expiresAt, resumeCommand }`, keeping the
+  pending sign-in in `pending-auth.json`, mode 0600) and `--resume`.
+  Denied, expired and unknown sign-ins exit 3 with `CLI_LOGIN_DENIED`,
+  `CLI_LOGIN_EXPIRED` or `CLI_LOGIN_INVALID_GRANT`; a server without
+  browser sign-in exits 3 with `CLI_LOGIN_UNAVAILABLE`. `--api-key`, a
+  piped key and `BREW_API_KEY` work as before, and `login` off a terminal
+  with no key still exits 2. JSON output gains `method` (`browser`,
+  `api-key`, `stdin`, `paste`) and, after a browser sign-in, `brandId`,
+  `brandName`, `userEmail` and `keyId`.
+- `whoami` shows `userEmail` and `brandName` for a key stored by a browser
+  sign-in (`null` otherwise); `config get|list` read them, and `logout`
+  clears them and any pending sign-in.
+- The brand id a browser sign-in stores belongs to that key: a key from
+  `--api-key` or `BREW_API_KEY` never sends it, and `logout` or a pasted
+  key drops it; one set with `config set brandId` holds for any key. A
+  login that stores a key drops an older pending sign-in. A sign-in
+  against a non-default `--api-url` stores that URL with the key. The
+  `Signed in as …` line shows even under `--quiet`.
+
 - **`brew-cli mcp install`** adds the Brew MCP server to Cursor
   (`.cursor/mcp.json`), VS Code (`.vscode/mcp.json`), Claude Code
   (`.mcp.json`), Gemini CLI (`.gemini/settings.json`), and, when named,
