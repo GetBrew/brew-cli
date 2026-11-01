@@ -938,3 +938,28 @@ describe('init: a provider changes only when nothing breaks', () => {
     ])
   })
 })
+
+describe('init: without the auth set, the provider keeps its auth emails', () => {
+  it.each([
+    ['Supabase', supabaseProject],
+    ['Clerk', clerkProject],
+  ])('--sets lifecycle prints no %s provider step', async (_name, project) => {
+    useBrewApi({ connections: { clerk: ACTIVE_CLERK } })
+    const result = await init(
+      ['--yes', '--json', '--no-test-email', '--sets', 'lifecycle'],
+      { cwd: project(), env: configEnv(), spawn: recordingSpawn().spawn }
+    )
+    expect(result.code).toBe(0)
+    expect(result.report.providers ?? []).toEqual([])
+  })
+
+  it('--configure-clerk without the auth set is a usage error (exit 2)', async () => {
+    const requests = useBrewApi()
+    const result = await init(
+      ['--configure-clerk', '--sets', 'lifecycle', '--yes', '--json'],
+      { cwd: clerkProject(), env: configEnv() }
+    )
+    expect(result.code).toBe(2)
+    expect(requests).toEqual([])
+  })
+})

@@ -344,6 +344,14 @@ export async function runInit(
       `--configure-clerk is for Clerk projects; this one's auth stack is ${stack} (pass --stack clerk if detection is wrong).`
     )
   }
+  if (
+    !authSet &&
+    (options.configureSupabase === true || options.configureClerk === true)
+  ) {
+    throw new CliUsageError(
+      `--configure-${stack} hands the auth emails to Brew, which needs the auth set: drop --sets, or include auth in it.`
+    )
+  }
   if (options.rollbackProvider === true) {
     return finish(
       await rollbackOnly({ ctx, project, state, stateRead, writer, dryRun })
@@ -1274,7 +1282,7 @@ export async function runInit(
     {}) as ProviderConfig
   let providers: readonly InitProvider[] = []
   let stateWrittenEarly = false
-  if (stack === 'supabase' || stack === 'clerk') {
+  if (authSet && (stack === 'supabase' || stack === 'clerk')) {
     if (!brandReady) {
       steps.push({
         id: 'provider',
