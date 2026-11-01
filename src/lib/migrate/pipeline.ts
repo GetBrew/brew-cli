@@ -226,7 +226,6 @@ function resolveTargetDomain(
       `${run.options.manifestPath} records --domain ${recorded}. Pass --domain ${recorded}, or start a separate migration with --manifest <path>.`
     )
   }
-  run.manifest.options.domain = domain
   if (run.brewDomains === null) {
     return
   }
@@ -235,6 +234,14 @@ function resolveTargetDomain(
       `--domain ${domain} is not a domain of this Brew brand. List them with \`${run.prefix} domains list\`.`
     )
   }
+  // Contacts moved before any domain was named never reached its
+  // unsubscribe list: their pass runs again (an upsert's consent never
+  // re-subscribes an opt-out).
+  const contacts = run.manifest.phases.contacts
+  if (recorded === null && contacts?.status === 'done') {
+    contacts.status = 'planned'
+  }
+  run.manifest.options.domain = domain
   run.targetDomain = match
 }
 

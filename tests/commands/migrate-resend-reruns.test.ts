@@ -63,6 +63,17 @@ describe('migrate resend: a re-run keeps its destination', () => {
     expect(second.stderr).toContain('--domain news.acme.dev')
     expect((await migrate([...APPLY, ...only, 'dom_news'], run)).code).toBe(0)
   })
+
+  it('a --domain first named after the contacts moved gets their opt-outs', async () => {
+    const { run } = setUp()
+    const brew = useBrewApi()
+    const contacts = [...APPLY, '--only', 'contacts']
+    expect((await migrate(contacts, run)).code).toBe(0)
+    await migrate([...contacts, '--domain', 'news.acme.dev'], run)
+    expect(brew.calls.map((call) => call.path)).toContain(
+      '/v1/domains/dom_news/unsubscribes/import'
+    )
+  })
 })
 
 describe('migrate resend: unfinished work is retried', () => {
@@ -193,6 +204,13 @@ describe('migrate resend: app email keys', () => {
 describe('migrate resend --rewrite-imports: the template map', () => {
   const REWRITE = [...APPLY, '--rewrite-imports', '--only', 'templates', 'code']
   const MAP = 'src/lib/brew-resend-map.ts'
+  /** A CommonJS job that sends a migrated template. */
+  const RECEIPT_CJS = [
+    "const { Resend } = require('resend')",
+    'const resend = new Resend(process.env.RESEND_API_KEY)',
+    "module.exports = (to) => resend.emails.send({ to, template: { id: 'tmpl_receipt_1' } })",
+    '',
+  ].join('\n')
   /** The account after a template was added since the clients moved. */
   const WITH_INVITE: ResendAccount = {
     ...RESEND_ACCOUNT,
@@ -241,10 +259,7 @@ describe('migrate resend --rewrite-imports: the template map', () => {
     useBrewApi()
     const run = { cwd: root, env: env(), clock }
     expect((await migrate(REWRITE, run)).code).toBe(0)
-    writeFileSync(
-      join(root, 'src/jobs/receipt.cjs'),
-      "const { Resend } = require('resend')\nconst resend = new Resend(process.env.RESEND_API_KEY)\nmodule.exports = (to) => resend.emails.send({ to, template: { id: 'tmpl_receipt_1' } })\n"
-    )
+    writeFileSync(join(root, 'src/jobs/receipt.cjs'), RECEIPT_CJS)
     server.use(
       useResendApi({ key: RESEND_KEY, clock, account: WITH_INVITE }).handler
     )
@@ -258,6 +273,19 @@ describe('migrate resend --rewrite-imports: the template map', () => {
         '"tmpl_new": "invite"'
       )
     }
+  })
+
+  it('in TypeScript, a CommonJS job reads a .cjs map Node can load', async () => {
+    const { root, run } = setUp()
+    writeFileSync(join(root, 'src/jobs/receipt.cjs'), RECEIPT_CJS)
+    useBrewApi()
+    expect((await migrate(REWRITE, run)).code).toBe(0)
+    expect(readFileSync(join(root, 'src/jobs/receipt.cjs'), 'utf8')).toContain(
+      "require('../lib/brew-resend-map.cjs').brewResendTemplates"
+    )
+    expect(
+      readFileSync(join(root, 'src/lib/brew-resend-map.cjs'), 'utf8')
+    ).toContain('exports.brewResendTemplates = {')
   })
 
   it('moves no client to a map the migration did not write', async () => {

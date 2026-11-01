@@ -473,20 +473,28 @@ function rewriteImports(
 ): void {
   const writer = new ProjectWriter({ root: run.project.root })
   const { libDir, typescript } = run.project
-  const syntaxOf = (item: MigrationItem) =>
-    scan.files.get(item.file ?? '')?.locations.moduleSyntax ?? 'esm'
-  // One map per module syntax a moved client uses (a .ts map serves both):
-  // a map an earlier rewrite wrote keeps following the templates.
-  const maps = new Map<string, 'esm' | 'cjs'>()
-  for (const syntax of ['esm', 'cjs'] as const) {
-    const path = mapFilePath(libDir, typescript, syntax)
-    if (
-      !maps.has(path) &&
-      (items.some((item) => syntaxOf(item) === syntax) ||
-        run.manifest.files[path] !== undefined)
-    ) {
-      maps.set(path, syntax)
-    }
+  type MapKind = { typescript: boolean; moduleSyntax: 'esm' | 'cjs' }
+  // A TypeScript sender reads the .ts map; a JavaScript one, which Node may
+  // run as it is, the .js or .cjs map of its own module syntax.
+  const kindOf = (item: MigrationItem): MapKind => ({
+    typescript: typescript && /\.[cm]?tsx?$/.test(item.file ?? ''),
+    moduleSyntax:
+      scan.files.get(item.file ?? '')?.locations.moduleSyntax ?? 'esm',
+  })
+  const pathOf = (kind: MapKind) =>
+    mapFilePath(libDir, kind.typescript, kind.moduleSyntax)
+  // Every map a moved client reads, including one an earlier rewrite wrote,
+  // follows the templates.
+  const earlier = (
+    [
+      { typescript: true, moduleSyntax: 'esm' },
+      { typescript: false, moduleSyntax: 'esm' },
+      { typescript: false, moduleSyntax: 'cjs' },
+    ] satisfies MapKind[]
+  ).filter((kind) => run.manifest.files[pathOf(kind)] !== undefined)
+  const maps = new Map<string, MapKind>()
+  for (const kind of [...items.map(kindOf), ...earlier]) {
+    maps.set(pathOf(kind), maps.get(pathOf(kind)) ?? kind)
   }
   const entries = new Map<string, string>()
   for (const item of templateItems) {
@@ -500,11 +508,10 @@ function rewriteImports(
       entries.set(item.alias, item.key)
     }
   }
-  for (const [mapPath, moduleSyntax] of maps) {
+  for (const [mapPath, kind] of maps) {
     const content = mapFileContent({
       entries: [...entries.entries()],
-      typescript,
-      moduleSyntax,
+      ...kind,
       rerunCommand: `${run.prefix} migrate resend --apply --rewrite-imports`,
     })
     const recorded = run.manifest.files[mapPath]?.sha256
@@ -540,7 +547,7 @@ function rewriteImports(
     if (scanned === undefined) {
       continue
     }
-    const mapPath = mapFilePath(libDir, typescript, syntaxOf(item))
+    const mapPath = pathOf(kindOf(item))
     const next = rewriteFile({ file, scanned, mapFile: mapPath })
     const change = writer.writeFile(file, next, { overwrite: true })
     if (change.action === 'refused') {
