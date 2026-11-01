@@ -47,7 +47,7 @@ The API side must be live first: GetBrew/brew-v2#2169 deployed (the by-key
 fire, `/v1/app-emails`, the team sandbox), and the live spec
 (`https://brew.new/openapi/public-api-v1.yaml`, what the spec-drift
 sentinel reads) matching `openapi/public-api-v1.yaml`,
-which is the #2169 head `02a3946b18` (main's spec, brew-v2 `373e900a9a`,
+which is the #2169 head `6e4accea4c` (main's spec, brew-v2 `373e900a9a`,
 plus the DX delta).
 
 ```bash
