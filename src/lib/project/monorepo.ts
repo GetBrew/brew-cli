@@ -275,6 +275,93 @@ function expandGlob(root: string, pattern: string): string[] {
   return results
 }
 
+/** Whether a root-relative dir matches one workspace glob (`**` spans any depth). */
+function matchesGlob(dir: string, glob: string): boolean {
+  const segments = glob
+    .replace(/^\.\//, '')
+    .replace(/\/+$/, '')
+    .split('/')
+    .filter((segment) => segment !== '')
+  const parts = dir.split('/')
+  const match = (i: number, j: number): boolean => {
+    const segment = segments[i]
+    if (segment === undefined) {
+      return j === parts.length
+    }
+    if (segment === '**') {
+      for (let k = j; k <= parts.length; k += 1) {
+        if (k > j && SKIP_DIRS.has(parts[k - 1] ?? '')) {
+          return false
+        }
+        if (match(i + 1, k)) {
+          return true
+        }
+      }
+      return false
+    }
+    const part = parts[j]
+    if (part === undefined) {
+      return false
+    }
+    if (!/[*?[]/.test(segment)) {
+      return part === segment && match(i + 1, j + 1)
+    }
+    return (
+      !SKIP_DIRS.has(part) &&
+      segmentRegex(segment).test(part) &&
+      match(i + 1, j + 1)
+    )
+  }
+  return match(0, 0)
+}
+
+/** A workspace package at `dir`, or null when it holds no package.json. */
+function workspacePackage(root: string, dir: string): WorkspacePackage | null {
+  const pkg = readJsonObject(join(root, dir, 'package.json'))
+  if (pkg === null) {
+    return null
+  }
+  const name =
+    typeof pkg.name === 'string' && pkg.name !== ''
+      ? pkg.name
+      : (dir.split('/').at(-1) ?? dir)
+  return { name, dir }
+}
+
+/**
+ * The workspace package holding `relativeCwd`: its deepest folder with a
+ * package.json that the globs include and no negation excludes. Matched
+ * directly, so no search depth can lose the package the cwd is in.
+ */
+function workspaceOf(
+  root: string,
+  relativeCwd: string,
+  patterns: readonly string[]
+): WorkspacePackage | null {
+  const include: string[] = []
+  const exclude: string[] = []
+  for (const pattern of patterns) {
+    const negated = pattern.startsWith('!')
+    ;(negated ? exclude : include).push(
+      ...expandBraces(negated ? pattern.slice(1) : pattern)
+    )
+  }
+  const parts = relativeCwd.split('/')
+  for (let length = parts.length; length > 0; length -= 1) {
+    const dir = parts.slice(0, length).join('/')
+    if (
+      include.some((glob) => matchesGlob(dir, glob)) &&
+      !exclude.some((glob) => matchesGlob(dir, glob))
+    ) {
+      const pkg = workspacePackage(root, dir)
+      if (pkg !== null) {
+        return pkg
+      }
+    }
+  }
+  return null
+}
+
 function listDirs(dir: string): string[] {
   try {
     return readdirSync(dir, { withFileTypes: true })
@@ -354,15 +441,10 @@ export function listWorkspacePackages(
     if (dir === '' || exclude.has(dir)) {
       continue
     }
-    const pkg = readJsonObject(join(root, dir, 'package.json'))
-    if (pkg === null) {
-      continue
+    const pkg = workspacePackage(root, dir)
+    if (pkg !== null) {
+      packages.push(pkg)
     }
-    const name =
-      typeof pkg.name === 'string' && pkg.name !== ''
-        ? pkg.name
-        : (dir.split('/').at(-1) ?? dir)
-    packages.push({ name, dir })
   }
   return packages
 }
@@ -404,16 +486,8 @@ export function findMonorepo(cwd: string): MonorepoInfo | null {
         ? workspaces.patterns
         : ['apps/*', 'packages/*', 'libs/*']
     const relativeCwd = toPosix(relative(dir, resolve(cwd)))
-    const packages = listWorkspacePackages(dir, patterns)
     const workspace =
-      relativeCwd === ''
-        ? null
-        : (packages
-            .filter(
-              (pkg) =>
-                relativeCwd === pkg.dir || relativeCwd.startsWith(`${pkg.dir}/`)
-            )
-            .sort((a, b) => b.dir.length - a.dir.length)[0] ?? null)
+      relativeCwd === '' ? null : workspaceOf(dir, relativeCwd, patterns)
     return { tool, root: dir, workspace, patterns }
   }
   return null

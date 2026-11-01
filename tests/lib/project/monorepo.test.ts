@@ -215,6 +215,25 @@ describe('workspace helpers', () => {
     ).toEqual([{ name: 'deep-api', dir }])
   })
 
+  it('finds the workspace the cwd is in below the ** search depth', () => {
+    const root = tempProject()
+    writeFileSync(
+      join(root, 'package.json'),
+      JSON.stringify({ workspaces: ['packages/**', '!packages/skip/**'] })
+    )
+    const dir = 'packages/a/b/c/d/e/f/g/api'
+    mkdirSync(join(root, dir, 'src'), { recursive: true })
+    writeFileSync(join(root, dir, 'package.json'), '{"name":"deep-api"}')
+    expect(findMonorepo(join(root, dir, 'src'))?.workspace).toEqual({
+      name: 'deep-api',
+      dir,
+    })
+    const skipped = 'packages/skip/x/y/z/q/r/s/api'
+    mkdirSync(join(root, skipped), { recursive: true })
+    writeFileSync(join(root, skipped, 'package.json'), '{"name":"skipped"}')
+    expect(findMonorepo(join(root, skipped))?.workspace).toBeNull()
+  })
+
   it('expands brace patterns', () => {
     expect(expandBraces('{apps,packages}/*')).toEqual(['apps/*', 'packages/*'])
     expect(expandBraces('a/{b,{c,d}}/e')).toEqual(['a/b/e', 'a/c/e', 'a/d/e'])
