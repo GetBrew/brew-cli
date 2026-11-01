@@ -737,11 +737,12 @@ describe('app-emails kit', () => {
     expect(data.results.map((entry) => entry.ok)).toEqual([true, false])
   })
 
-  it('names the change a refused key needs instead of a plain re-run', async () => {
+  it('prints snippet code and names what each failed key needs before a re-run', async () => {
+    // Only APP_EMAIL_TRIGGER_IN_USE details name automations to unpublish.
     const failure = (triggerKey: string, code: string) => ({
       triggerKey,
       ok: false,
-      error: { code, message: `${code} for ${triggerKey}.` },
+      error: { code, message: code, details: { automationIds: ['aut_9'] } },
     })
     server.use(
       http.post(`${API}/v1/app-emails/kit`, () =>
@@ -757,17 +758,20 @@ describe('app-emails kit', () => {
         })
       )
     )
-    const result = await cli(
-      ['app-emails', 'kit', '--domain', 'dom_mkt', '--yes'],
-      { ttyOut: true }
-    )
+    const argv = 'app-emails kit --domain dom_mkt --idempotency-key kit:1 --yes'
+    const result = await cli(argv.split(' '), { ttyOut: true })
     expect(result.code).toBe(1)
     expect(result.stdout).toContain('failed: APP_EMAIL_DOMAIN_PURPOSE_MISMATCH')
+    expect(result.stdout).toContain(
+      'Snippet: Better Auth callbacks (lib/auth.ts)\n…'
+    )
     const lines = result.stdout.trimEnd().split('\n')
-    expect(lines.slice(-3)).toEqual([
+    expect(lines.slice(-4)).toEqual([
       'auth.password-reset, auth.verify-email: a kit key never sends from a domain of the other purpose (auth, trial ending and payment failed are transactional; welcome and win-back are marketing). Run `brew-cli app-emails kit` again without --domain, or with a --domain of their purpose.',
-      'lifecycle.win-back: the trigger already starts a published automation no setup made, so every send would go out twice. Unpublish or delete the automations in error.details.automationIds, then run the kit again.',
+      'lifecycle.win-back: the trigger already starts a published automation no setup made, so every send would go out twice. Unpublish or delete aut_9, then run the kit again.',
       '1 key failed. Run `brew-cli app-emails kit` again with the same flags to finish them.',
+      // The same key replays the stored, partly failed response.
+      'A re-run with the same --idempotency-key replays this result for 24 hours: pass a new key.',
     ])
   })
 })
@@ -878,6 +882,11 @@ describe('local input checks (exit 2 before any request)', () => {
     [['app-emails', 'kit', '--keys', 'order.paid', '--yes']],
     [['app-emails', 'kit', '--keys', 'auth.otp', '--sets', 'auth', '--yes']],
     [
+      'app-emails kit --sets lifecycle --input {"keys":["auth.otp"]} --yes'.split(
+        ' '
+      ),
+    ],
+    [
       [
         'automations',
         'triggers',
@@ -892,6 +901,16 @@ describe('local input checks (exit 2 before any request)', () => {
     // MSW fails any request: nothing reaches the API.
     const result = await cli(argv)
     expect(result.code).toBe(2)
+  })
+
+  it('upsert refuses --input - with --source-file -: stdin holds one body', async () => {
+    const argv =
+      'app-emails upsert order.paid --input - --source-file - --format html --yes'
+    const result = await cli(argv.split(' '), { stdin: '{}' })
+    expect(result.code).toBe(2)
+    expect(result.stderr).toContain(
+      'Only one of --input and --source-file can read stdin.'
+    )
   })
 
   it('upsert with the body on stdin always confirms (it may overwrite)', async () => {

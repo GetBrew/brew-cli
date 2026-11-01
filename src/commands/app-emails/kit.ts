@@ -21,6 +21,7 @@ import {
   mergeInput,
   readJsonFlag,
   requestOptions,
+  toStringArray,
 } from '../../lib/input'
 import { getInvocationPrefix } from '../../lib/invocation'
 import { renderTable } from '../../lib/output'
@@ -91,12 +92,6 @@ export const appEmailsKitCommand = defineCommand({
     const sets = listFlag(flags.sets, '--sets', APP_EMAIL_KIT_SETS)
     const keys = listFlag(flags.keys, '--keys', APP_EMAIL_KIT_KEYS)
     const stack = oneOfFlag(flags.stack, '--stack', APP_EMAIL_AUTH_STACKS)
-    if (keys !== undefined && (sets !== undefined || stack !== undefined)) {
-      // The API takes `keys` instead of `sets` and `stack`, silently.
-      throw new CliUsageError(
-        '--keys names exact kit keys: pass it without --sets and --stack.'
-      )
-    }
     const base = await readJsonFlag(ctx, flags.input, '--input')
     const input = mergeInput(base, {
       sets,
@@ -105,6 +100,15 @@ export const appEmailsKitCommand = defineCommand({
       domainId: flagString(flags.domain),
       overwrite: flags.overwrite === true ? true : undefined,
     })
+    if (
+      input.keys !== undefined &&
+      (input.sets !== undefined || input.stack !== undefined)
+    ) {
+      // The API takes `keys` instead of `sets` and `stack`, silently.
+      throw new CliUsageError(
+        '--keys names exact kit keys: pass it without --sets and --stack, as flags or in --input.'
+      )
+    }
     const result = await ctx
       .client()
       .appEmails.setUpKit(
@@ -114,7 +118,11 @@ export const appEmailsKitCommand = defineCommand({
     const failed = result.results.filter((entry) => !entry.ok)
     return {
       data: result,
-      human: renderKit(result, getInvocationPrefix(ctx.io.env)),
+      human: renderKit(
+        result,
+        getInvocationPrefix(ctx.io.env),
+        flags.idempotencyKey !== undefined
+      ),
       ...(failed.length > 0 ? { exitCode: 1 } : {}),
     }
   },
@@ -129,7 +137,11 @@ function selection(value: unknown): string[] | undefined {
   return items.length === 0 ? undefined : items
 }
 
-function renderKit(result: SetUpAppEmailKitResponse, prefix: string): string {
+function renderKit(
+  result: SetUpAppEmailKitResponse,
+  prefix: string,
+  keyed: boolean
+): string {
   const rows = result.results.map((entry) =>
     entry.ok
       ? {
@@ -153,7 +165,7 @@ function renderKit(result: SetUpAppEmailKitResponse, prefix: string): string {
     `Stack ${result.stack.provider} (${result.stack.authDelivery}): ${result.stack.note}`,
   ]
   for (const snippet of result.stack.snippets) {
-    lines.push(`Snippet: ${snippet.title} (${snippet.file})`)
+    lines.push('', `Snippet: ${snippet.title} (${snippet.file})`, snippet.code)
   }
   const hints = kitFailureHints(
     result.results.flatMap((entry) => (entry.ok ? [] : [entry])),
@@ -161,6 +173,13 @@ function renderKit(result: SetUpAppEmailKitResponse, prefix: string): string {
   )
   if (hints.length > 0) {
     lines.push('', ...hints)
+    if (keyed) {
+      // The API stores this response under the key: a same-key re-run
+      // gets it back instead of retrying the failed keys.
+      lines.push(
+        'A re-run with the same --idempotency-key replays this result for 24 hours: pass a new key.'
+      )
+    }
   }
   return lines.join('\n')
 }
@@ -173,7 +192,10 @@ function renderKit(result: SetUpAppEmailKitResponse, prefix: string): string {
 function kitFailureHints(
   failures: ReadonlyArray<{
     readonly triggerKey: string
-    readonly error: { readonly code: string }
+    readonly error: {
+      readonly code: string
+      readonly details?: Readonly<Record<string, unknown>>
+    }
   }>,
   prefix: string
 ): string[] {
@@ -190,8 +212,13 @@ function kitFailureHints(
   }
   const inUse = keysWith('APP_EMAIL_TRIGGER_IN_USE')
   if (inUse.length > 0) {
+    const automations = failures.flatMap((entry) =>
+      entry.error.code === 'APP_EMAIL_TRIGGER_IN_USE'
+        ? (toStringArray(entry.error.details?.automationIds) ?? [])
+        : []
+    )
     hints.push(
-      `${inUse.join(', ')}: the trigger already starts a published automation no setup made, so every send would go out twice. Unpublish or delete the automations in error.details.automationIds, then run the kit again.`
+      `${inUse.join(', ')}: the trigger already starts a published automation no setup made, so every send would go out twice. Unpublish or delete ${automations.length > 0 ? automations.join(', ') : 'those automations'}, then run the kit again.`
     )
   }
   const edited = keysWith('APP_EMAIL_EDITED_IN_BREW')

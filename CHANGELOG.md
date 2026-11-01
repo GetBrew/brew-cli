@@ -34,13 +34,16 @@ the team sandbox, app emails and browser sign-in.
   `--no-publish` saves without the gate. `kit` sets up
   the auth and lifecycle starter kit (`--sets`, `--stack`, `--keys`,
   `--domain`, `--overwrite`, `--idempotency-key`), confirms, prints
-  per-key results and exits 1 when a key failed. Its human output says
+  per-key results and the stack's code snippets, and exits 1 when a key
+  failed. Its human output says
   what each failed key needs: run it again to finish a key that failed
   part way, a `--domain` of the key's purpose (or none) for
   `APP_EMAIL_DOMAIN_PURPOSE_MISMATCH` (a transactional domain on welcome
-  or win-back is refused too), unpublishing the automations in
-  `error.details.automationIds` for `APP_EMAIL_TRIGGER_IN_USE`, and
-  `--overwrite` for `APP_EMAIL_EDITED_IN_BREW`. `upsert` exits 1 on the
+  or win-back is refused too), unpublishing the automations it names
+  (`error.details.automationIds`) for `APP_EMAIL_TRIGGER_IN_USE`, and
+  `--overwrite` for `APP_EMAIL_EDITED_IN_BREW`; after an
+  `--idempotency-key` run, a new key, since the same one replays the
+  result for 24 hours. `upsert` exits 1 on the
   same refusals, `APP_EMAIL_SETUP_IN_PROGRESS` and
   `CONTRACT_LOCKED_BY_PUBLISHED_AUTOMATIONS`; when the published version
   keeps sending under a newer draft (`DRAFT_SAVED_NOT_LIVE`), it says so
@@ -48,9 +51,9 @@ the team sandbox, app emails and browser sign-in.
   Both use the SDK's 5-minute defaults as their whole-command deadline
   and need a key with the `automations` and `emails` scopes. A key that
   breaks the trigger key grammar, an unknown `--format`, `--sets`,
-  `--stack` or kit key, an empty list, or `--keys` with `--sets`/`--stack`
-  exits 2 before any request; a body on stdin (`--input -`) always
-  confirms.
+  `--stack` or kit key, an empty list, `keys` with `sets`/`stack` (as
+  flags or in `--input`), or `--input -` with `--source-file -` exits 2
+  before any request; a body on stdin (`--input -`) always confirms.
 - `automations triggers create --key <key>` and `automations triggers
   update --key <key>` set the stable key code fires by; `triggers list`
   gains a `KEY` column (`get` returns `key` and `appEmail` in the row).

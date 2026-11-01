@@ -106,6 +106,11 @@ export const appEmailsUpsertCommand = defineCommand({
   },
   run: async ({ ctx, args, flags }) => {
     const triggerKey = triggerKeyArg(args.triggerKey, 'The app email key')
+    if (flags.input === '-' && flags.sourceFile === '-') {
+      throw new CliUsageError(
+        'Only one of --input and --source-file can read stdin.'
+      )
+    }
     const explicitFormat = oneOfFlag(
       flags.format,
       '--format',
