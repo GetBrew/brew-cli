@@ -514,8 +514,11 @@ async function checkAppEmails(
     }
   >()
   try {
+    // Every page until each brew.json key is found (a repeated cursor ends it).
     let cursor: string | undefined
-    for (let page = 0; page < 20; page += 1) {
+    const seen = new Set<string>()
+    for (;;) {
+      ctx.signal.throwIfAborted()
       const result = await client.appEmails.list({
         limit: 100,
         ...(cursor === undefined ? {} : { cursor }),
@@ -526,10 +529,17 @@ async function checkAppEmails(
           readiness: row.readiness,
         })
       }
-      if (!result.pagination.hasMore || result.pagination.cursor === null) {
+      const next = result.pagination.cursor
+      if (
+        keys.every((key) => rows.has(key)) ||
+        !result.pagination.hasMore ||
+        next === null ||
+        seen.has(next)
+      ) {
         break
       }
-      cursor = result.pagination.cursor
+      seen.add(next)
+      cursor = next
     }
   } catch (error) {
     ctx.signal.throwIfAborted()

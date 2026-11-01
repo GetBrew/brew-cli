@@ -472,6 +472,40 @@ describe('doctor --project', () => {
     expect(refused.stderr).toContain(API)
   })
 
+  it('finds an app email past the twentieth page of app emails', async () => {
+    const root = healthyProject()
+    useProjectApi({ verifiedDomain: true })
+    const row = (triggerKey: string, index: number) => ({
+      triggerKey,
+      triggerEventId: `tri_${index}`,
+      published: true,
+      readiness: READY,
+    })
+    server.use(
+      http.get(`${API}/v1/app-emails`, ({ request }) => {
+        const page = Number(
+          new URL(request.url).searchParams.get('cursor') ?? '0'
+        )
+        const key =
+          page === 0
+            ? 'auth.verify-email'
+            : page === 20
+              ? 'lifecycle.welcome'
+              : `order.page-${page}`
+        return HttpResponse.json({
+          data: [row(key, page === 20 ? 1 : page === 0 ? 0 : 100 + page)],
+          pagination: {
+            limit: 100,
+            cursor: page < 25 ? String(page + 1) : null,
+            hasMore: page < 25,
+          },
+        })
+      })
+    )
+    const result = await doctor(root)
+    expect(statusOf(result.report, 'app-emails')).toEqual(['ok'])
+  })
+
   it('finds a verified sending domain past the first page of domains', async () => {
     const root = healthyProject()
     useProjectApi({ verifiedDomain: true })
