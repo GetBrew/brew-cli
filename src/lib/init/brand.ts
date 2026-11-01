@@ -152,8 +152,12 @@ export async function resolveAppBrand(input: {
       }
     | undefined
   try {
+    // Every page until a match or the list's end (a cursor seen before
+    // ends it too): a match past any fixed page count would be re-created
+    // and refused as BRAND_DOMAIN_CONFLICT.
     let cursor: string | undefined
-    for (let page = 0; page < 10 && match === undefined; page += 1) {
+    const seen = new Set<string>()
+    while (match === undefined) {
       const result = await client.brands.list({
         limit: 100,
         ...(cursor === undefined ? {} : { cursor }),
@@ -164,10 +168,12 @@ export async function resolveAppBrand(input: {
           row.status !== 'failed' &&
           brandMatchesApp(row.domain, appUrl)
       )
-      if (!result.pagination.hasMore || result.pagination.cursor === null) {
+      const next = result.pagination.cursor
+      if (!result.pagination.hasMore || next === null || seen.has(next)) {
         break
       }
-      cursor = result.pagination.cursor
+      seen.add(next)
+      cursor = next
     }
   } catch (error) {
     ctx.signal.throwIfAborted()

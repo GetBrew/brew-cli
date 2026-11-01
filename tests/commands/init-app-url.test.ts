@@ -150,6 +150,85 @@ describe('init --app-url: the brand', () => {
     ).toMatchObject({ actor: 'human', path: '.env.local', blocking: true })
   })
 
+  it('an organization key reads every brand page: a match past 1,000 brands is found, not re-created', async () => {
+    const requests = useBrewApi({
+      orgKeyWithoutBrand: true,
+      keyBrands: { [APP_KEY]: 'brand_lovable' },
+    })
+    let pages = 0
+    server.use(
+      http.get(`${API}/v1/brands`, ({ request }) => {
+        pages += 1
+        const page = Number(
+          new URL(request.url).searchParams.get('cursor') ?? 0
+        )
+        const last = page === 10
+        return HttpResponse.json({
+          data: Array.from({ length: 100 }, (_, index) =>
+            last && index === 99
+              ? TWO_BRANDS[1]
+              : {
+                  brandId: `brand_${page}_${index}`,
+                  domain: `shop-${page}-${index}.example`,
+                  status: 'completed',
+                  ready: true,
+                }
+          ),
+          pagination: {
+            limit: 100,
+            cursor: last ? null : String(page + 1),
+            hasMore: !last,
+          },
+        })
+      })
+    )
+    const result = await init(
+      ['--yes', '--json', '--no-test-email', '--app-url', APP_URL],
+      {
+        cwd: project(),
+        env: configEnv({ BREW_API_KEY: EXPLICIT_KEY }),
+        spawn: recordingSpawn().spawn,
+        clock: fakeClock(),
+      }
+    )
+    expect(pages).toBe(11)
+    expect(result.report.brand).toMatchObject({
+      brandId: 'brand_lovable',
+      matchesAppUrl: true,
+      created: false,
+    })
+    expect(
+      requests.some(
+        (request) => request.method === 'POST' && request.path === '/v1/brands'
+      )
+    ).toBe(false)
+  })
+
+  it('a brand list that repeats its cursor ends the search', async () => {
+    useBrewApi({ orgKeyWithoutBrand: true })
+    let pages = 0
+    server.use(
+      http.get(`${API}/v1/brands`, () => {
+        pages += 1
+        return HttpResponse.json({
+          data: [TWO_BRANDS[0]],
+          pagination: { limit: 100, cursor: 'same', hasMore: true },
+        })
+      })
+    )
+    const result = await init(
+      ['--yes', '--json', '--no-test-email', '--app-url', APP_URL],
+      {
+        cwd: project(),
+        env: configEnv({ BREW_API_KEY: EXPLICIT_KEY }),
+        spawn: recordingSpawn().spawn,
+        clock: fakeClock(),
+      }
+    )
+    expect(pages).toBe(2)
+    expect(result.report.brand).toMatchObject({ created: true })
+  })
+
   it('keeps an app key already bound to the brand --app-url picks', async () => {
     const requests = useBrewApi({
       orgKeyWithoutBrand: true,
