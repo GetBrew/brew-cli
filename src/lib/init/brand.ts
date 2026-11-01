@@ -174,9 +174,27 @@ export async function resolveAppBrand(input: {
     if (isForbidden(error)) {
       throw error
     }
-    return mismatch(
-      `Could not list brands (${describe(error)}); pick the brand for ${host} with --brand <brandId>`
-    )
+    // Not a mismatch: the app's brand is unknown, so nothing brand-specific
+    // runs in the brand the key acts as now.
+    return {
+      brand: null,
+      ready: false,
+      step: {
+        id: 'brand',
+        status: 'failed',
+        detail: `could not list brands: ${describe(error)}`,
+      },
+      nextSteps: [
+        {
+          id: 'brand-app-url',
+          actor: 'human',
+          kind: 'open-url',
+          url: `${input.siteUrl}/brands`,
+          title: `Could not list brands (${describe(error)}); run init again, or pick the brand for ${host} with --brand <brandId>`,
+          blocking: true,
+        },
+      ],
+    }
   }
   let created = false
   let brandId = match?.brandId

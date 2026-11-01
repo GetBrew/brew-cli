@@ -41,10 +41,10 @@ function project(fixture = 'express-resend'): string {
   return root
 }
 
-/** `GET /v1/brand` is unavailable (after the SDK's retries). */
-function failBrandLookup(): void {
+/** `GET /v1/brand` (or `path`) is unavailable (after the SDK's retries). */
+function failBrandLookup(path = '/v1/brand'): void {
   server.use(
-    http.get(`${API}/v1/brand`, () =>
+    http.get(`${API}${path}`, () =>
       HttpResponse.json(
         {
           error: {
@@ -331,6 +331,32 @@ describe('init --app-url: the brand', () => {
         ...['--domain', 'mail.my-app.dev'],
       ],
       { cwd: root, env: configEnv(), spawn: recordingSpawn().spawn }
+    )
+    expect(result.code).toBe(1)
+    expect(
+      result.report.steps.find((step) => step.id === 'brand')
+    ).toMatchObject({ status: 'failed' })
+    expect(
+      requests.some((request) =>
+        ['/v1/app-emails/kit', '/v1/domains'].includes(request.path)
+      )
+    ).toBe(false)
+  })
+
+  it("an organization key whose brand list fails sets nothing up in the key's brand", async () => {
+    const root = project()
+    const requests = useBrewApi({ brands: TWO_BRANDS })
+    failBrandLookup('/v1/brands')
+    const result = await init(
+      [
+        ...['--yes', '--json', '--no-test-email', '--app-url', APP_URL],
+        ...['--domain', 'mail.my-app.dev'],
+      ],
+      {
+        cwd: root,
+        env: configEnv({ BREW_API_KEY: EXPLICIT_KEY }),
+        spawn: recordingSpawn().spawn,
+      }
     )
     expect(result.code).toBe(1)
     expect(
