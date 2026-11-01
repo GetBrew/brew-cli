@@ -15,6 +15,7 @@ import {
   findConnection,
   type HostedAuthProvider,
 } from '../integrations/hosted-auth'
+import { collectAll } from '../paginate'
 import { getEnvValue, isClientExposedName, parseEnv } from '../project/env-file'
 import { readTextFile, sha256Hex } from '../project/fs-writer'
 import { isIgnored } from '../project/gitignore'
@@ -564,8 +565,14 @@ async function checkDomain(
   client: BrewClient
 ): Promise<ProjectCheck> {
   try {
-    const list = await client.domains.list({ limit: 100 })
-    const sending = list.data.find(
+    // Every page: a verified domain past the first is still the sender.
+    const rows = await collectAll(ctx, (cursor) =>
+      client.domains.list({
+        limit: 100,
+        ...(cursor === undefined ? {} : { cursor }),
+      })
+    )
+    const sending = rows.find(
       (row) => row.status === 'verified' && row.sendable
     )
     if (sending !== undefined) {
@@ -575,7 +582,7 @@ async function checkDomain(
         detail: `sending from ${sending.name}`,
       }
     }
-    const pending = list.data.map((row) => `${row.name} (${row.status})`)
+    const pending = rows.map((row) => `${row.name} (${row.status})`)
     return {
       id: 'domain',
       status: 'warn',

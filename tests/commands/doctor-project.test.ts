@@ -426,6 +426,35 @@ describe('doctor --project', () => {
     expect(statusOf(notConnected.report, 'provider')).toEqual(['warn'])
   })
 
+  it('finds a verified sending domain past the first page of domains', async () => {
+    const root = healthyProject()
+    useProjectApi({ verifiedDomain: true })
+    server.use(
+      http.get(`${API}/v1/domains`, ({ request }) => {
+        const cursor = new URL(request.url).searchParams.get('cursor')
+        return HttpResponse.json(
+          cursor === 'page2'
+            ? {
+                data: [
+                  { name: 'mail.acme.com', status: 'verified', sendable: true },
+                ],
+                pagination: { limit: 100, cursor: null, hasMore: false },
+              }
+            : {
+                data: [
+                  { name: 'old.acme.com', status: 'pending', sendable: false },
+                ],
+                pagination: { limit: 100, cursor: 'page2', hasMore: true },
+              }
+        )
+      })
+    )
+    const result = await doctor(root)
+    expect(
+      result.report.checks.find((check) => check.id === 'domain')
+    ).toMatchObject({ status: 'ok', detail: 'sending from mail.acme.com' })
+  })
+
   it('warns on a key still in the sandbox although a domain of the other purpose verified', async () => {
     const root = healthyProject()
     useProjectApi({
