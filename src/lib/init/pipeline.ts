@@ -744,15 +744,22 @@ export async function runInit(
       brandReady = resolution.ready
       steps.push(resolution.step)
       nextSteps.push(...resolution.nextSteps)
+      // The brand this run sets up for the app: the one it switches to, or
+      // the key's own when that already has the app's website.
+      const target =
+        resolution.switchTo ??
+        (resolution.brand?.matchesAppUrl === true
+          ? resolution.brand.brandId
+          : undefined)
       // The server the .env.local key sends to: a brand id it reports there
       // says nothing about a brand on this run's server.
       const keyApiUrl = savedApiUrl ?? DEFAULT_API_URL
       const keyOnThisServer = same(keyApiUrl, apiUrl)
       if (
-        resolution.switchTo !== undefined &&
+        target !== undefined &&
         existingAppKey !== undefined &&
-        (!keyOnThisServer ||
-          (await brandOfKey(existingAppKey)) !== resolution.switchTo)
+        existingAppKey !== credential.auth.apiKey &&
+        (!keyOnThisServer || (await brandOfKey(existingAppKey)) !== target)
       ) {
         // The app sends with its own key, bound to one brand: setting up
         // another brand here would leave the app sending from the old one.
