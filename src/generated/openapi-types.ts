@@ -4109,8 +4109,12 @@ export interface components {
                 clickDirection: "up" | "down" | "steady";
                 /** @description Too few deliveries for rates; read the counts. */
                 countsOnly: boolean;
-                /** @description False when engagement tracking is off: opens are unknown. */
+                /** @description Legacy conservative flag: true only when both engagement signals are measured. */
                 measured: boolean;
+                /** @description Open-count and rate availability; older pulses use measured. */
+                opensMeasured?: boolean;
+                /** @description Click-count and rate availability; older pulses use measured. */
+                clicksMeasured?: boolean;
             } | null;
             /** @description With `include` report: the latest intelligence report, or null when none was published. */
             report?: {
