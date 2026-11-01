@@ -96,7 +96,10 @@ export const appEmailsUpsertCommand = defineCommand({
       return `Set up app email ${args.triggerKey ?? ''} from the body on stdin, which may publish it (\`send\` then sends real email) or replace a design edited in Brew.`
     }
     const inline = inlineInput(flags.input)
-    const publishes = flags.publish !== false && inline.publish !== false
+    // A flag wins over `--input`, as in the request `run` sends.
+    const publish =
+      typeof flags.publish === 'boolean' ? flags.publish : inline.publish
+    const publishes = publish !== false
     const overwrites = flags.overwrite === true || inline.overwrite === true
     if (!(publishes || overwrites)) {
       return

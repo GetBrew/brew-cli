@@ -100,4 +100,17 @@ describe('app-emails upsert --publish', () => {
       'brew-cli app-emails upsert --no-publish --overwrite --yes -- order.paid'
     )
   })
+
+  it('confirms --publish over an inline publish: false, since the flag wins', async () => {
+    const result = await cli([
+      'app-emails',
+      'upsert',
+      'order.paid',
+      '--publish',
+      '--input',
+      '{"publish":false}',
+    ])
+    expect(result.code).toBe(4)
+    expect((result.json as { summary: string }).summary).toContain('publish it')
+  })
 })
