@@ -1020,11 +1020,13 @@ export async function runInit(
       : { ...computed.patch, status: 'stale' }
   })
   if (off.length > 0) {
+    // The kit set each key up from its own starter with no other input, so
+    // a bare upsert plus --publish repeats exactly that setup.
     nextSteps.push({
       id: 'publish-app-emails',
       actor: 'human',
       kind: 'review',
-      title: `Not published: ${off.join(', ')}. Publish ${off.length === 1 ? 'it' : 'them'} in Brew, or run \`${prefix} app-emails upsert <key> --publish --yes\``,
+      title: `Not published: ${off.join(', ')}. Publish ${off.length === 1 ? 'it' : 'them'} in Brew, or repeat the kit's setup of ${off.length === 1 ? 'it' : 'each'} with --publish: \`${prefix} app-emails upsert <key> --publish --yes\``,
       // A pending patch waits for the publish (patchesHeld above).
       blocking: patches.some((patch) => patch.status === 'pending'),
     })

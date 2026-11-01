@@ -63,7 +63,7 @@ A design edited in Brew is never replaced: `upsert` answers
 | Error | Meaning | Fix |
 | --- | --- | --- |
 | `TRIGGER_KEY_NOT_FOUND` (404) | No trigger has the key in this brand | `npx @brew.new/cli app-emails list`; set it up with `app-emails upsert` or `init` |
-| `NO_PUBLISHED_AUTOMATION` (422) | The key exists, nothing publishes it | Publish it in Brew, or `npx @brew.new/cli app-emails upsert <key> --publish --yes` (a re-run without `--publish` leaves one unpublished in Brew off) |
+| `NO_PUBLISHED_AUTOMATION` (422) | The key exists, nothing publishes it | Publish it in Brew, or run the same `app-emails upsert` command that set it up, plus `--publish` (for a kit key `init` set up: `npx @brew.new/cli app-emails upsert <key> --publish --yes`). Without the setup's `--source-file` or `--starter`, a kit key goes back to its starter design and any other key is refused (400) |
 | `DOMAIN_REQUIRED` | Sandbox: the recipient is not in your Brew organization | Verify a sending domain (`npx @brew.new/cli domains add <host>`) |
 | `SANDBOX_DAILY_LIMIT` (429) | The team sandbox's daily cap is spent | Verify a domain, or wait for the UTC day |
 | `INVALID_PAYLOAD` | The payload misses a required field | Check `lib/brew-contracts.ts`; `details.errors[]` names the field |

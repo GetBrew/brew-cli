@@ -976,7 +976,7 @@ describe('init --yes: the full run', () => {
       actor: 'human',
       kind: 'review',
       title:
-        'Not published: lifecycle.welcome. Publish it in Brew, or run `brew-cli app-emails upsert <key> --publish --yes`',
+        "Not published: lifecycle.welcome. Publish it in Brew, or repeat the kit's setup of it with --publish: `brew-cli app-emails upsert <key> --publish --yes`",
       blocking: false,
     })
   })
