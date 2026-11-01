@@ -21,12 +21,13 @@ import {
   resumeBrowserLogin,
   startBrowserLogin,
 } from '../auth-flow/login'
-import { deletePendingLogin } from '../auth-flow/pending'
+import { deletePendingLogin, readPendingLogin } from '../auth-flow/pending'
 import type { ApprovedLogin } from '../auth-flow/poll'
-import { siteUrlFromApiUrl } from '../auth-flow/session'
+import { printable, siteUrlFromApiUrl } from '../auth-flow/session'
 import {
   type BrewClient,
   buildSdkClient,
+  DEFAULT_API_URL,
   maskApiKey,
   type ResolvedAuth,
   resolveAuth,
@@ -415,6 +416,14 @@ export async function runInit(
       }),
     }
     const waitMs = options.noWait || !ctx.io.isTtyIn ? 0 : undefined
+    // The keys a resumed sign-in collects belong to the server it started
+    // on: refuse, before polling, to send them to another one.
+    const waiting = options.resume ? readPendingLogin(env) : undefined
+    if (waiting !== undefined && waiting.apiUrl !== apiUrl) {
+      throw new CliUsageError(
+        `The sign-in waiting to be resumed is for ${printable(waiting.apiUrl)}, but this run targets ${printable(apiUrl)}. Resume with --api-url ${printable(waiting.apiUrl)}, or start over with \`${loginCommands.restartCommand}\`.`
+      )
+    }
     const result: BrowserLoginResult = options.resume
       ? await resumeBrowserLogin(ctx, { waitMs, ...loginCommands })
       : await startBrowserLogin(ctx, {
@@ -487,6 +496,8 @@ export async function runInit(
           brandId: approved.brand.brandId,
           userEmail: approved.approver.email,
           brandName: approved.brand.name,
+          // The key lives on the server that minted it, as `login` saves it.
+          apiUrl: result.apiUrl === DEFAULT_API_URL ? undefined : result.apiUrl,
         })
         // An older sign-in still waiting would replace this key when resumed.
         deletePendingLogin(env)

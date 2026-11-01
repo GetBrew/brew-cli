@@ -32,9 +32,12 @@ GetBrew/brew-v2#2169 (its head `b884e78157`, the spec 0.20.0 vendors).
   follows `schemas/init-report.json` (`schemaVersion: 1`). Re-runs reuse
   the idempotency keys `init:<projectId>:<step>:<body hash>`. After a
   browser sign-in the run acts as the new app key, so the kit lands in the
-  brand that key is bound to. `lib/brew.ts` reads the key through
-  `$env/dynamic/private` in SvelteKit and `import.meta.env` in Astro;
-  Express, Hono and plain Node get a blocking step to load `.env.local`.
+  brand that key is bound to. The CLI key is saved with the API URL it
+  signed in against (as `login` saves it), and `--resume` against another
+  API URL than the sign-in started on exits 2 before polling.
+  `lib/brew.ts` reads the key through `$env/dynamic/private` in SvelteKit
+  and `import.meta.env` in Astro; Express, Hono and plain Node get a
+  blocking step to load `.env.local`.
   A test email that does not go out (say `SANDBOX_DAILY_LIMIT`) is a
   non-blocking retry step, not a failed run. A domain `--domain` adds that
   already publishes another DKIM key (`DKIM_SELECTOR_IN_USE`) gets a
