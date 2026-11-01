@@ -668,6 +668,17 @@ export async function runInit(
   // False while a brand this run created is still being extracted: the
   // kit and everything after it wait for a re-run.
   let brandReady = true
+  /** The brand a key is bound to, or undefined when it cannot tell. */
+  const brandOfKey = async (apiKey: string): Promise<string | undefined> => {
+    try {
+      const auth = authFor(apiKey, 'env-file', undefined).auth as ResolvedAuth
+      return (await buildSdkClient(auth, sdkTransportFor(ctx)).brand.get())
+        .brandId
+    } catch (error) {
+      rethrowIfFatal(ctx, error)
+      return undefined
+    }
+  }
 
   // ---- Brand.
   if (
@@ -724,7 +735,11 @@ export async function runInit(
       brandReady = resolution.ready
       steps.push(resolution.step)
       nextSteps.push(...resolution.nextSteps)
-      if (resolution.switchTo !== undefined && existingAppKey !== undefined) {
+      if (
+        resolution.switchTo !== undefined &&
+        existingAppKey !== undefined &&
+        (await brandOfKey(existingAppKey)) !== resolution.switchTo
+      ) {
         // The app sends with its own key, bound to one brand: setting up
         // another brand here would leave the app sending from the old one.
         brandReady = false

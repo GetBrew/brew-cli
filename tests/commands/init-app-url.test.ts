@@ -14,6 +14,22 @@ import { APP_KEY, BRAND, fakeClock } from '../helpers/login-server'
 
 const APP_URL = 'https://my-app.lovable.app'
 
+/** The signed-in brand and the one whose website is the app. */
+const TWO_BRANDS = [
+  {
+    brandId: BRAND.brandId,
+    domain: 'acme.com',
+    status: 'completed',
+    ready: true,
+  },
+  {
+    brandId: 'brand_lovable',
+    domain: 'my-app.lovable.app',
+    status: 'completed',
+    ready: true,
+  },
+]
+
 /** An app with its key in .env.local, so no sign-in runs. */
 function project(): string {
   const root = copyFixture('express-resend')
@@ -74,20 +90,8 @@ describe('init --app-url: the brand', () => {
     const root = project()
     const requests = useBrewApi({
       orgKeyWithoutBrand: true,
-      brands: [
-        {
-          brandId: BRAND.brandId,
-          domain: 'acme.com',
-          status: 'completed',
-          ready: true,
-        },
-        {
-          brandId: 'brand_lovable',
-          domain: 'my-app.lovable.app',
-          status: 'completed',
-          ready: true,
-        },
-      ],
+      keyBrands: { [APP_KEY]: BRAND.brandId },
+      brands: TWO_BRANDS,
     })
     const result = await init(
       [
@@ -122,6 +126,28 @@ describe('init --app-url: the brand', () => {
     expect(
       result.report.nextSteps.find((step) => step.id === 'replace-app-key')
     ).toMatchObject({ actor: 'human', path: '.env.local', blocking: true })
+  })
+
+  it('keeps an app key already bound to the brand --app-url picks', async () => {
+    const requests = useBrewApi({
+      orgKeyWithoutBrand: true,
+      keyBrands: { [APP_KEY]: 'brand_lovable' },
+      brands: TWO_BRANDS,
+    })
+    const result = await init(
+      ['--yes', '--json', '--no-test-email', '--app-url', APP_URL],
+      {
+        cwd: project(),
+        env: configEnv({ BREW_API_KEY: EXPLICIT_KEY }),
+        spawn: recordingSpawn().spawn,
+      }
+    )
+    expect(result.report.nextSteps.map((step) => step.id)).not.toContain(
+      'replace-app-key'
+    )
+    expect(
+      requests.some((request) => request.path === '/v1/app-emails/kit')
+    ).toBe(true)
   })
 
   it('an organization key with no matching brand creates one, waits for it, and a re-run finds it instead of creating another', async () => {

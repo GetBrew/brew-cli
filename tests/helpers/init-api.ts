@@ -92,6 +92,9 @@ export function useBrewApi(
     readonly brandReady?: boolean
     /** `GET /v1/brand` answers 400 BRAND_ID_REQUIRED (an organization key). */
     readonly orgKeyWithoutBrand?: boolean
+    /** Brand-bound keys: `GET /v1/brand` with one of them answers its brand. */
+    readonly keyBrands?: Readonly<Record<string, string>>
+
     /** `GET /v1/brands` rows (default: the signed-in brand only). */
     readonly brands?: ReadonlyArray<Record<string, unknown>>
     /** `POST /v1/brands` answers this status (default 201). */
@@ -126,9 +129,14 @@ export function useBrewApi(
     contractHandler(API, kitTriggerRows),
     http.get(`${API}/v1/brand`, async ({ request }) => {
       await record(request)
+      const keyBrand =
+        options.keyBrands?.[
+          (request.headers.get('authorization') ?? '').replace(/^Bearer /, '')
+        ]
       if (
         options.orgKeyWithoutBrand === true &&
-        request.headers.get('x-brand-id') === null
+        request.headers.get('x-brand-id') === null &&
+        keyBrand === undefined
       ) {
         return HttpResponse.json(
           {
@@ -142,7 +150,7 @@ export function useBrewApi(
         )
       }
       return HttpResponse.json({
-        brandId: request.headers.get('x-brand-id') ?? BRAND.brandId,
+        brandId: request.headers.get('x-brand-id') ?? keyBrand ?? BRAND.brandId,
         domain: options.brandDomain ?? 'acme.com',
         status: options.brandReady === false ? 'extracting' : 'completed',
         ready: options.brandReady ?? true,

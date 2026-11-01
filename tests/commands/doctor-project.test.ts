@@ -383,6 +383,35 @@ describe('doctor --project', () => {
     ).toMatchObject({ status: 'warn', items: ['auth.verify-email'] })
   })
 
+  it('fails on a published key that cannot send, naming its blockers', async () => {
+    const root = healthyProject()
+    useProjectApi({
+      appEmails: [
+        {
+          triggerKey: 'auth.verify-email',
+          triggerEventId: 'tri_0',
+          published: true,
+          readiness: { ...READY, ready: false, blockers: ['DOMAIN_REQUIRED'] },
+        },
+        {
+          triggerKey: 'lifecycle.welcome',
+          triggerEventId: 'tri_1',
+          published: true,
+          readiness: READY,
+        },
+      ],
+    })
+    const result = await doctor(root)
+    const check = result.report.checks.find(
+      (entry) => entry.id === 'app-emails'
+    )
+    expect(check).toMatchObject({
+      status: 'fail',
+      items: ['auth.verify-email'],
+    })
+    expect(check?.detail).toContain('auth.verify-email (DOMAIN_REQUIRED)')
+  })
+
   it('exits 2 outside a project with brew.json', async () => {
     const root = tempProject('brew-doctor-empty-')
     const result = await runCli(['doctor', '--project', '--json'], {

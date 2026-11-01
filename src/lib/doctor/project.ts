@@ -452,9 +452,18 @@ async function checkAppEmails(
       detail: 'brew.json lists no keys',
     }
   }
+  // `readiness` is how a fire sends now: a draft over a live version still
+  // sends, a published key without a domain of its purpose does not.
   const rows = new Map<
     string,
-    { triggerEventId: string; published: boolean; teamOnly: boolean }
+    {
+      triggerEventId: string
+      readiness: {
+        ready: boolean
+        teamOnly: boolean
+        blockers: readonly string[]
+      }
+    }
   >()
   try {
     let cursor: string | undefined
@@ -466,8 +475,7 @@ async function checkAppEmails(
       for (const row of result.data) {
         rows.set(row.triggerKey, {
           triggerEventId: row.triggerEventId,
-          published: row.published,
-          teamOnly: row.readiness.teamOnly,
+          readiness: row.readiness,
         })
       }
       if (!result.pagination.hasMore || result.pagination.cursor === null) {
@@ -489,7 +497,7 @@ async function checkAppEmails(
       rows.has(key) &&
       rows.get(key)?.triggerEventId !== state.emails[key]?.triggerEventId
   )
-  const unpublished = keys.filter((key) => rows.get(key)?.published === false)
+  const blocked = keys.filter((key) => rows.get(key)?.readiness.ready === false)
   if (missing.length > 0) {
     return {
       id: 'app-emails',
@@ -499,17 +507,19 @@ async function checkAppEmails(
       fix: 'Run init again (it sets the kit up idempotently), or `app-emails upsert <key>`.',
     }
   }
-  if (unpublished.length > 0) {
+  if (blocked.length > 0) {
     return {
       id: 'app-emails',
       status: 'fail',
-      detail: `${unpublished.length} key(s) are not published: sends answer NO_PUBLISHED_AUTOMATION`,
-      items: unpublished,
-      fix: 'Publish them in Brew, or run `app-emails upsert <key> --yes`.',
+      detail: `${blocked.length} key(s) cannot send: ${blocked.map((key) => `${key} (${rows.get(key)?.readiness.blockers.join(', ')})`).join('; ')}`,
+      items: blocked,
+      fix: 'Publish their automations in Brew (or run `app-emails upsert <key> --yes`); DOMAIN_REQUIRED needs a verified domain of their purpose.',
     }
   }
   // A verified domain of the other purpose leaves a key in the sandbox.
-  const teamOnly = keys.filter((key) => rows.get(key)?.teamOnly === true)
+  const teamOnly = keys.filter(
+    (key) => rows.get(key)?.readiness.teamOnly === true
+  )
   if (teamOnly.length > 0) {
     return {
       id: 'app-emails',
@@ -529,7 +539,7 @@ async function checkAppEmails(
     : {
         id: 'app-emails',
         status: 'ok',
-        detail: `${keys.length} key(s) set up and published`,
+        detail: `${keys.length} key(s) set up and ready to send`,
       }
 }
 
