@@ -1,8 +1,15 @@
-import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { HttpResponse, http } from 'msw'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import ts from 'typescript'
+import { beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest'
 import { automationsTriggersReadyCommand } from '../../src/commands/automations/triggers/ready'
 import { typesCommand } from '../../src/commands/types'
 import type { components } from '../../src/generated/openapi-types'
@@ -616,6 +623,50 @@ describe('types — trigger key registry', () => {
       ].join('\n')
     )
   })
+
+  it('type-checks brew.send keys and payloads against the installed SDK', async () => {
+    mockTriggers(KEYED)
+    // Inside the repo, so `@brew.new/sdk` resolves as it does in an app.
+    const cache = join(import.meta.dirname, '../../node_modules/.cache')
+    mkdirSync(cache, { recursive: true })
+    const dir = mkdtempSync(join(cache, 'brew-types-'))
+    onTestFinished(() => rmSync(dir, { recursive: true, force: true }))
+    const out = join(dir, 'brew-contracts.ts')
+    const result = await runCli(['types', '--out', out], {
+      extraCommands: [typesCommand],
+      env: env(),
+    })
+    expect(result.code).toBe(0)
+    const app = join(dir, 'app.ts')
+    writeFileSync(
+      app,
+      [
+        "import { createBrewClient } from '@brew.new/sdk'",
+        "const brew = createBrewClient({ apiKey: 'brew_x' })",
+        "void brew.send('user.signup', { email: 'jane@example.com', seats: 2 })",
+        '// @ts-expect-error no trigger has this key',
+        "void brew.send('user.signin', { email: 'jane@example.com' })",
+        '// @ts-expect-error the payload lacks email',
+        "void brew.send('auth.password-reset', { seats: 2 })",
+        '',
+      ].join('\n')
+    )
+    const program = ts.createProgram([out, app], {
+      strict: true,
+      noEmit: true,
+      skipLibCheck: true,
+      types: [],
+      target: ts.ScriptTarget.ES2022,
+      module: ts.ModuleKind.ESNext,
+      moduleResolution: ts.ModuleResolutionKind.Bundler,
+    })
+    // A registry that stopped reaching `send` leaves both expect-error
+    // lines unused, which is itself a diagnostic.
+    const diagnostics = ts
+      .getPreEmitDiagnostics(program)
+      .map((d) => ts.flattenDiagnosticMessageText(d.messageText, '\n'))
+    expect(diagnostics).toEqual([])
+  }, 30_000)
 
   it('--no-registry leaves the augmentation out', async () => {
     mockTriggers(KEYED)
