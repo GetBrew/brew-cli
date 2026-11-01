@@ -416,14 +416,14 @@ export async function runInit(
   const savedApiUrl = nonEmpty(
     getEnvValue(parseEnv(envLocalText ?? ''), API_URL_VARIABLE)
   )
+  const same = (a: string, b: string) =>
+    a.replace(/\/+$/, '') === b.replace(/\/+$/, '')
   if (
     explicitKey === undefined &&
     (existingAppKey !== undefined || savedApiUrl !== undefined)
   ) {
     const saved = savedApiUrl ?? DEFAULT_API_URL
     const named = ctx.globals.apiUrl ?? nonEmpty(env.BREW_API_URL)
-    const same = (a: string, b: string) =>
-      a.replace(/\/+$/, '') === b.replace(/\/+$/, '')
     if (named !== undefined && !same(named, saved)) {
       throw new CliUsageError(
         `.env.local is set up for ${printable(saved)}, not ${printable(named)}. Run init without --api-url and BREW_API_URL (or with ${printable(saved)}), or remove ${APP_KEY_VARIABLE} and ${API_URL_VARIABLE} from .env.local to set up the other server.`
@@ -744,10 +744,15 @@ export async function runInit(
       brandReady = resolution.ready
       steps.push(resolution.step)
       nextSteps.push(...resolution.nextSteps)
+      // The server the .env.local key sends to: a brand id it reports there
+      // says nothing about a brand on this run's server.
+      const keyApiUrl = savedApiUrl ?? DEFAULT_API_URL
+      const keyOnThisServer = same(keyApiUrl, apiUrl)
       if (
         resolution.switchTo !== undefined &&
         existingAppKey !== undefined &&
-        (await brandOfKey(existingAppKey)) !== resolution.switchTo
+        (!keyOnThisServer ||
+          (await brandOfKey(existingAppKey)) !== resolution.switchTo)
       ) {
         // The app sends with its own key, bound to one brand: setting up
         // another brand here would leave the app sending from the old one.
@@ -757,7 +762,9 @@ export async function runInit(
           actor: 'human',
           kind: 'edit-file',
           path: '.env.local',
-          title: `${APP_KEY_VARIABLE} in .env.local is bound to another brand: to send from ${resolution.brand?.domain ?? 'this brand'}, remove it and run init again, picking that brand when you approve the sign-in`,
+          title: keyOnThisServer
+            ? `${APP_KEY_VARIABLE} in .env.local is bound to another brand: to send from ${resolution.brand?.domain ?? 'this brand'}, remove it and run init again, picking that brand when you approve the sign-in`
+            : `${APP_KEY_VARIABLE} in .env.local sends to ${printable(keyApiUrl)}, not ${printable(apiUrl)}, where this run sets up ${resolution.brand?.domain ?? 'the brand'}: to send from there, remove ${APP_KEY_VARIABLE} and ${API_URL_VARIABLE} from .env.local and run init again, picking that brand when you approve the sign-in`,
           blocking: true,
         })
       } else if (resolution.switchTo !== undefined) {

@@ -251,7 +251,7 @@ describe('init --app-url: the brand', () => {
     ).toBe(true)
   })
 
-  it('asks about the app key only on the server saved beside it', async () => {
+  it('an app key saved for another server holds the kit, even when that server has the same brand id', async () => {
     const staging = 'https://staging.example/api'
     const root = copyFixture('express-resend')
     writeFileSync(
@@ -274,17 +274,32 @@ describe('init --app-url: the brand', () => {
         })
       })
     )
-    await init(['--yes', '--json', '--no-test-email', '--app-url', APP_URL], {
-      cwd: root,
-      env: configEnv({ BREW_API_KEY: EXPLICIT_KEY }),
-      spawn: recordingSpawn().spawn,
-    })
+    const result = await init(
+      ['--yes', '--json', '--no-test-email', '--app-url', APP_URL],
+      {
+        cwd: root,
+        env: configEnv({ BREW_API_KEY: EXPLICIT_KEY }),
+        spawn: recordingSpawn().spawn,
+      }
+    )
+    // The app key goes to no server: staging's brand ids say nothing about
+    // the brand this run (on brew.new) sets up.
     expect(
       requests.filter(
         (request) => request.authorization === `Bearer ${APP_KEY}`
       )
     ).toEqual([])
-    expect(asked).toEqual([`Bearer ${APP_KEY}`])
+    expect(asked).toEqual([])
+    expect(
+      requests.some((request) =>
+        ['/v1/app-emails/kit', '/v1/domains'].includes(request.path)
+      )
+    ).toBe(false)
+    const step = result.report.nextSteps.find(
+      (entry) => entry.id === 'replace-app-key'
+    )
+    expect(step).toMatchObject({ path: '.env.local', blocking: true })
+    expect(step?.title).toContain(staging)
   })
 
   it('an organization key with no matching brand creates one, waits for it, and a re-run finds it instead of creating another', async () => {
