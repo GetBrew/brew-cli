@@ -9,6 +9,7 @@ import {
 import { tmpdir } from 'node:os'
 import { basename, dirname, join } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { writeConfig } from '../../src/lib/config-store'
 import { copyFixture } from '../helpers/fixtures'
 import {
   configEnv,
@@ -525,6 +526,45 @@ describe('init: Clerk delivery', () => {
       blocking: false,
     })
   })
+
+  it.each([
+    [
+      'connect-clerk',
+      {},
+      'integrations connect clerk --brand bd_acme --api-url https://brew.new/api --signing-secret-env',
+    ],
+    [
+      'configure-clerk-delivery',
+      { connections: { clerk: ACTIVE_CLERK } },
+      'brew-cli init --brand bd_acme --api-url https://brew.new/api --configure-clerk --yes',
+    ],
+  ])(
+    "%s names this run's brand and server when the CLI's own key resolves to others",
+    async (id, api, expected) => {
+      const root = clerkProject()
+      useBrewApi(api)
+      const env = configEnv()
+      // The CLI's saved key belongs to another brand and server.
+      writeConfig(env, {
+        apiKey: 'brew_cli_other0123456789abcdefghijklmn',
+        brandId: 'bd_other',
+        apiUrl: 'http://localhost:3000/api',
+      })
+      const result = await init(
+        [
+          '--yes',
+          '--json',
+          '--no-test-email',
+          '--api-url',
+          'https://brew.new/api',
+        ],
+        { cwd: root, env, spawn: recordingSpawn().spawn }
+      )
+      expect(result.code).toBe(0)
+      const step = result.report.nextSteps.find((entry) => entry.id === id)
+      expect(`${step?.title} ${step?.command ?? ''}`).toContain(expected)
+    }
+  )
 
   it('without a Clerk connection, prints how to connect it; Clerk keeps its emails', async () => {
     const root = clerkProject()

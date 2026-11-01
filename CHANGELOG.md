@@ -65,7 +65,10 @@ head `02a3946b18` (main's spec, brew-v2 `373e900a9a`, plus the DX delta).
 - Without those flags, init prints the manual steps for Supabase (the
   hosted hook first; the self-hosted Edge Function it writes is now the
   non-blocking alternative) and Clerk. A bare `--yes` never changes a
-  provider.
+  provider. The commands those steps print (`integrations connect`,
+  `integrations connection`, `init --configure-…`) carry `--brand` and
+  `--api-url` when the CLI's own key would resolve another brand or
+  server than this run.
 - **`init --app-url`** with an organization key picks the brand whose
   website is the app (a subdomain counts), or creates one (`POST
   /v1/brands`) and waits for it to be ready (`--no-wait`: the kit waits for

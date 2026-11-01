@@ -125,7 +125,12 @@ export type ProviderStepInput = {
   readonly client: BrewClient | undefined
   readonly writer: ProjectWriter
   readonly prefix: string
-  /** `<prefix> init`, with the run's `--app <dir>`. */
+  /**
+   * ` --brand <id> --api-url <url>` (either part, or empty): this run's
+   * brand and server, where a follow-up command would resolve others.
+   */
+  readonly scope: string
+  /** `<prefix> init`, with the run's `--app <dir>` and `scope`. */
   readonly init: string
   readonly providerConfig: ProviderConfig
   /**
@@ -249,7 +254,7 @@ async function supabaseStep(
         actor: 'human',
         kind: 'open-url',
         url: supabaseHooksUrl(ref),
-        title: `Hand Supabase's auth emails to Brew: in Supabase, add a Send Email hook (Authentication > Hooks, HTTPS) and generate its secret; put the secret in SEND_EMAIL_HOOK_SECRET and run \`${prefix} integrations connect supabase_auth --signing-secret-env SEND_EMAIL_HOOK_SECRET${ref === null ? '' : ` --project-url ${supabaseProjectUrl(ref)}`} --yes\`; paste the webhook URL it prints as the hook URL, enable the hook and save`,
+        title: `Hand Supabase's auth emails to Brew: in Supabase, add a Send Email hook (Authentication > Hooks, HTTPS) and generate its secret; put the secret in SEND_EMAIL_HOOK_SECRET and run \`${prefix} integrations connect supabase_auth${input.scope} --signing-secret-env SEND_EMAIL_HOOK_SECRET${ref === null ? '' : ` --project-url ${supabaseProjectUrl(ref)}`} --yes\`; paste the webhook URL it prints as the hook URL, enable the hook and save`,
         blocking: true,
       },
       {
@@ -402,7 +407,7 @@ async function supabaseStep(
       actor: 'human',
       kind: 'open-url',
       url: supabaseHooksUrl(ref),
-      title: `Brew's Supabase connection is active for a Send Email hook that is not project ${ref}'s. To move it here on purpose, run \`${prefix} integrations connect supabase_auth\` with a new secret and point every project's hook at ${connection.webhookUrl} with it`,
+      title: `Brew's Supabase connection is active for a Send Email hook that is not project ${ref}'s. To move it here on purpose, run \`${prefix} integrations connect supabase_auth${input.scope}\` with a new secret and point every project's hook at ${connection.webhookUrl} with it`,
       blocking: true,
     })
     return refused(
@@ -576,7 +581,7 @@ async function supabaseStep(
       id: 'verify-supabase-hook',
       actor: 'human',
       kind: 'review',
-      title: `Sign up (or request a magic link) with a test address: Supabase now hands the email to Brew, and \`${prefix} integrations connection supabase_auth\` turns active`,
+      title: `Sign up (or request a magic link) with a test address: Supabase now hands the email to Brew, and \`${prefix} integrations connection supabase_auth${input.scope}\` turns active`,
       blocking: false,
     },
     {
@@ -632,7 +637,7 @@ async function clerkStep(
         actor: 'human',
         kind: 'open-url',
         url: 'https://dashboard.clerk.com/last-active?path=webhooks',
-        title: `Hand Clerk's auth emails to Brew (Clerk keeps sending them until then): in the Clerk Dashboard, add a webhook endpoint subscribed to email.created (any https URL for now) and copy its signing secret into CLERK_WEBHOOK_SIGNING_SECRET; run \`${prefix} integrations connect clerk --signing-secret-env CLERK_WEBHOOK_SIGNING_SECRET --yes\`, then change the endpoint URL to the webhook URL it prints`,
+        title: `Hand Clerk's auth emails to Brew (Clerk keeps sending them until then): in the Clerk Dashboard, add a webhook endpoint subscribed to email.created (any https URL for now) and copy its signing secret into CLERK_WEBHOOK_SIGNING_SECRET; run \`${prefix} integrations connect clerk${input.scope} --signing-secret-env CLERK_WEBHOOK_SIGNING_SECRET --yes\`, then change the endpoint URL to the webhook URL it prints`,
         blocking: false,
       })
     } else if (connection.status !== 'active') {
@@ -641,7 +646,7 @@ async function clerkStep(
         actor: 'human',
         kind: 'open-url',
         url: 'https://dashboard.clerk.com/last-active?path=webhooks',
-        title: `Make sure the Clerk endpoint URL is ${connection.webhookUrl}, then send it a test email.created (endpoint > Testing) or sign up a test user: \`${prefix} integrations connection clerk\` turns active`,
+        title: `Make sure the Clerk endpoint URL is ${connection.webhookUrl}, then send it a test email.created (endpoint > Testing) or sign up a test user: \`${prefix} integrations connection clerk${input.scope}\` turns active`,
         blocking: false,
       })
     }

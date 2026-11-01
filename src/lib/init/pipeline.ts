@@ -1316,6 +1316,28 @@ export async function runInit(
         detail: 'after the brand is ready',
       })
     } else {
+      // A printed follow-up resolves its own brand and server (the CLI's
+      // saved key, BREW_BRAND_ID, BREW_API_URL): name this run's where they
+      // would differ, so it never acts on another brand.
+      const plain = resolveAuth({
+        globals: {
+          ...ctx.globals,
+          apiKey: undefined,
+          brand: undefined,
+          apiUrl: undefined,
+        },
+        env,
+        allowAnonymous: true,
+      })
+      const runBrand = brand?.brandId ?? state?.brandId
+      const scope = [
+        plain.apiKeySource !== 'anonymous' &&
+        runBrand !== undefined &&
+        plain.brandId !== runBrand
+          ? ` --brand ${shellQuote(runBrand)}`
+          : '',
+        plain.apiUrl === apiUrl ? '' : ` --api-url ${shellQuote(apiUrl)}`,
+      ].join('')
       const result = await runProviderStep({
         ctx,
         root: project.root,
@@ -1327,7 +1349,8 @@ export async function runInit(
         client,
         writer,
         prefix,
-        init: `${prefix} init${options.app === undefined ? '' : ` --app ${shellQuote(options.app)}`}`,
+        scope,
+        init: `${prefix} init${options.app === undefined ? '' : ` --app ${shellQuote(options.app)}`}${scope}`,
         providerConfig,
         // brew.json holds the provider's old settings BEFORE they change.
         persist: (config) => {
