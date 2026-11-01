@@ -1,7 +1,12 @@
 import { randomBytes } from 'node:crypto'
 import { join } from 'node:path'
-import { getEnvValue, parseEnv } from '../../project/env-file'
-import { readTextFile } from '../../project/fs-writer'
+import {
+  ensureEnvVars,
+  getEnvValue,
+  parseEnv,
+  serializeEnv,
+} from '../../project/env-file'
+import { type ProjectWriter, readTextFile } from '../../project/fs-writer'
 import { vendorFetch } from '../../project/vendor-http'
 import type { CliContext } from '../../types'
 
@@ -60,6 +65,52 @@ export function supabaseProjectUrl(ref: string): string {
 /** The dashboard page where the hook lives, for manual steps. */
 export function supabaseHooksUrl(ref: string | null): string {
   return `https://supabase.com/dashboard/project/${ref ?? '_'}/auth/hooks`
+}
+
+/** A local value (a token, a saved secret): the shell, then `.env.local`. */
+export function localValue(
+  ctx: Pick<CliContext, 'io'>,
+  writer: ProjectWriter,
+  name: string
+): string | undefined {
+  const fromEnv = ctx.io.env[name]?.trim()
+  if (fromEnv !== undefined && fromEnv !== '') {
+    return fromEnv
+  }
+  const text = writer.read('.env.local')
+  const value =
+    text === null ? undefined : getEnvValue(parseEnv(text), name)?.trim()
+  return value === undefined || value === '' ? undefined : value
+}
+
+/**
+ * Keeps a replaced hook's secret in `.env.local` (git-ignored, never
+ * brew.json) for `--rollback-provider`, replacing a backup an earlier run
+ * left (another hook's). False when it could not be saved as it is.
+ */
+export function backupHookSecret(
+  writer: ProjectWriter,
+  secrets: string
+): boolean {
+  const env = parseEnv(writer.read('.env.local') ?? '')
+  const lines = env.lines.filter(
+    (line) =>
+      line.kind !== 'var' || line.key !== SUPABASE_PREVIOUS_SECRETS_VARIABLE
+  )
+  const { text } = ensureEnvVars(serializeEnv({ ...env, lines }), [
+    { name: SUPABASE_PREVIOUS_SECRETS_VARIABLE, value: secrets },
+  ])
+  if (
+    getEnvValue(parseEnv(text), SUPABASE_PREVIOUS_SECRETS_VARIABLE) !== secrets
+  ) {
+    return false
+  }
+  const change = writer.writeFile('.env.local', text, {
+    overwrite: true,
+    mode: 0o600,
+    sensitive: true,
+  })
+  return change.action !== 'refused'
 }
 
 /** A fresh Standard Webhooks secret, generated here and never printed. */

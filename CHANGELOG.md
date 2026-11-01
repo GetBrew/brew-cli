@@ -39,19 +39,25 @@ head `5084a5202f` (main's spec, brew-v2 `373e900a9a`, plus the DX delta).
   settings are saved to `brew.json#providerConfig` before the change (a
   previous secret goes to `.env.local` as
   `BREW_SUPABASE_PREVIOUS_HOOK_SECRETS`, never `brew.json`); a re-run that
-  finds the hook already on Brew changes nothing. `--dry-run --json`
+  finds the hook already on Brew changes nothing. The hook is left as it
+  is while an auth email failed or reaches the team only (sandbox), while
+  Brew's connection is active for another hook (a new secret would stop
+  it), or when that backup cannot be saved. `--dry-run --json`
   lists the exact requests with the secret replaced. The project ref comes
   from `--supabase-project <ref>`, `supabase link`, a `*SUPABASE_URL`, or
   Lovable's files.
 - **`init --configure-clerk`** turns off "Delivered by Clerk" (Clerk
   Backend API `POST /templates/email/{slug}/toggle_delivery`, with
   `CLERK_SECRET_KEY` from the shell or `.env.local`) for exactly the
-  templates whose kit key has a published app email in the brand, and
-  only once Brew's Clerk connection is `active`; otherwise it refuses and
-  says what is missing. The templates it turned off are saved in
-  `brew.json`.
+  templates whose kit key's app email reaches every user (published, not
+  the team-only sandbox), and only once Brew's Clerk connection is
+  `active`; otherwise it refuses and says what is missing. The templates
+  it turned off are saved in `brew.json`, with a fingerprint of the
+  `CLERK_SECRET_KEY` used (never the key).
 - **`init --rollback-provider`** puts back the Supabase hook settings or
-  Clerk delivery saved in `brew.json`, and nothing else.
+  Clerk delivery saved in `brew.json`, and nothing else. It refuses, and
+  keeps the saved settings, while an enabled hook's old secret is missing
+  or `CLERK_SECRET_KEY` is another instance's.
 - Without those flags, init prints the manual steps for Supabase (the
   hosted hook first; the self-hosted Edge Function it writes is now the
   non-blocking alternative) and Clerk. A bare `--yes` never changes a
@@ -61,16 +67,20 @@ head `5084a5202f` (main's spec, brew-v2 `373e900a9a`, plus the DX delta).
   /v1/brands`) and waits for it to be ready (`--no-wait`: the kit waits for
   a re-run). A 403 (`ORG_SCOPE_REQUIRED`, no `brands` scope) becomes a next
   step; a key bound to one brand is never moved, a mismatch is reported.
+  The app's own key in `.env.local` is one: when it is another brand's,
+  the kit waits for a `replace-app-key` next step.
 - **`init --domain`** also returns the domain's page in Brew
   (`domain.connectUrl`, a `connect-dns-automatically` next step), where
   Connect automatically (Entri) adds the records: it runs in the app, not
-  the API.
+  the API. A `DKIM_SELECTOR_IN_USE` domain gets neither (`connectUrl:
+  null`): its records would replace another sender's key.
 - **`brew-cli doctor --project`** checks an app against its `brew.json`:
   managed file hashes, `BREW_API_KEY` set, git-ignored and never under a
   browser-exposed name, the SDK declared and installed at `^13.6.0`, and,
   with the app key, the brand (the key's brand is `brew.json`'s), every key
-  set up and published, a verified sending domain, and the hosted hook's
-  status. `--json`; any failed check exits 1, no `brew.json` exits 2.
+  set up, published and past the sandbox (a warning names a key whose
+  purpose has no verified domain), a verified sending domain, and the
+  hosted hook's status. `--json`; any failed check exits 1, no `brew.json` exits 2.
 - The init report (schema version 1, additive) gains `providers[]`, the
   `provider` step, `brand.domain` / `matchesAppUrl` / `created` and
   `domain.connectUrl`.

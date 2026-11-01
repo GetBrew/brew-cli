@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import { join } from 'node:path'
 import { CliVendorError } from '../../errors'
 import { getEnvValue, parseEnv } from '../../project/env-file'
@@ -33,8 +34,8 @@ export const CLERK_SECRET_VARIABLE = 'CLERK_SECRET_KEY'
 /**
  * Clerk email template slug → the kit key Brew sends for it: brew-v2
  * `lib/app-emails/auth-routing.ts` `CLERK_EMAIL_SLUG_ROUTES`
- * (GetBrew/brew-v2#2169). Delivery is turned off only for a slug whose key
- * has a published app email in the brand.
+ * (GetBrew/brew-v2#2169). Delivery is turned off only for a slug whose key's
+ * app email reaches every user (published, not the team-only sandbox).
  */
 export const CLERK_EMAIL_SLUG_KEYS: Readonly<Record<string, string>> = {
   verification_code: 'auth.otp',
@@ -86,6 +87,15 @@ export function readClerkSecret(input: {
     }
   }
   return undefined
+}
+
+/**
+ * Which key, so which Clerk instance, changed delivery: a SHA-256 prefix
+ * brew.json keeps (the key cannot be recovered from it), so a rollback
+ * never turns delivery on in another instance.
+ */
+export function clerkKeyId(secretKey: string): string {
+  return createHash('sha256').update(secretKey).digest('hex').slice(0, 16)
 }
 
 /** `delivered_by_clerk` for one email template; `null` when it does not exist. */

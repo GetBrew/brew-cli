@@ -88,6 +88,8 @@ export function useBrewApi(
     readonly unpublished?: readonly string[]
     /** `GET /v1/brand`'s website (default acme.com). */
     readonly brandDomain?: string
+    /** `GET /v1/brand`'s `ready` (default true). */
+    readonly brandReady?: boolean
     /** `GET /v1/brand` answers 400 BRAND_ID_REQUIRED (an organization key). */
     readonly orgKeyWithoutBrand?: boolean
     /** `GET /v1/brands` rows (default: the signed-in brand only). */
@@ -98,6 +100,10 @@ export function useBrewApi(
     readonly connections?: Partial<
       Record<'supabase_auth' | 'clerk', Record<string, unknown>>
     >
+    /** Keys whose app email reaches the team only (sandbox). */
+    readonly teamOnlyKeys?: readonly string[]
+    /** Auth keys `PUT …/connection` answers `ok: false` for. */
+    readonly connectFailKeys?: readonly string[]
     /** `GET /v1/app-emails` rows (default: every kit key, published). */
     readonly appEmails?: ReadonlyArray<Record<string, unknown>>
   } = {}
@@ -138,8 +144,8 @@ export function useBrewApi(
       return HttpResponse.json({
         brandId: request.headers.get('x-brand-id') ?? BRAND.brandId,
         domain: options.brandDomain ?? 'acme.com',
-        status: 'completed',
-        ready: true,
+        status: options.brandReady === false ? 'extracting' : 'completed',
+        ready: options.brandReady ?? true,
         identity: { brandName: BRAND.name },
       })
     }),
@@ -215,7 +221,14 @@ export function useBrewApi(
           webhookUrl: webhookUrlFor(provider),
           status: 'pending_verification',
           authEmails: KIT_KEYS.filter((key) => key.startsWith('auth.')).map(
-            (triggerKey) => ({ triggerKey, ok: true })
+            (triggerKey) =>
+              options.connectFailKeys?.includes(triggerKey) === true
+                ? {
+                    triggerKey,
+                    ok: false,
+                    error: { code: 'INTERNAL_ERROR', message: 'Failed.' },
+                  }
+                : { triggerKey, ok: true }
           ),
         })
       }
@@ -232,6 +245,11 @@ export function useBrewApi(
             emailId: `eml_${index}`,
             automationId: `aut_${index}`,
             published: true,
+            readiness: {
+              ready: true,
+              teamOnly: options.teamOnlyKeys?.includes(key) === true,
+              blockers: [],
+            },
           })),
         pagination: { limit: 100, cursor: null, hasMore: false },
       })

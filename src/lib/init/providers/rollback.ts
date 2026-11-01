@@ -1,18 +1,19 @@
 import { CliUsageError } from '../../errors'
 import { progress } from '../../output'
-import { getEnvValue, parseEnv } from '../../project/env-file'
 import type { ProjectWriter } from '../../project/fs-writer'
 import type { CliContext } from '../../types'
 import type { InitStep, NextStep } from '../report'
 import {
   CLERK_EMAILS_DASHBOARD_URL,
   CLERK_SECRET_VARIABLE,
+  clerkKeyId,
   clerkToggleUrl,
   readClerkSecret,
   setClerkDelivery,
 } from './clerk'
 import type { InitProvider, ProviderConfig, ProviderRequest } from './step'
 import {
+  localValue,
   patchSendEmailHook,
   REDACTED_SECRET,
   type SendEmailHookBody,
@@ -36,21 +37,6 @@ export type RollbackResult = {
   readonly nextSteps: readonly NextStep[]
   readonly providers: readonly InitProvider[]
   readonly providerConfig: ProviderConfig
-}
-
-function localValue(
-  ctx: CliContext,
-  writer: ProjectWriter,
-  name: string
-): string | undefined {
-  const fromEnv = ctx.io.env[name]?.trim()
-  if (fromEnv !== undefined && fromEnv !== '') {
-    return fromEnv
-  }
-  const text = writer.read('.env.local')
-  const value =
-    text === null ? undefined : getEnvValue(parseEnv(text), name)?.trim()
-  return value === undefined || value === '' ? undefined : value
 }
 
 export async function runProviderRollback(input: {
@@ -98,21 +84,27 @@ export async function runProviderRollback(input: {
           ? sendable(body)
           : { ...sendable(body), hook_send_email_secrets: REDACTED_SECRET },
     }
+    // A hook that was on goes back only with its secret: enabled with
+    // Brew's, it would reject every email.
     const secretMissing =
       previous.hook_send_email_enabled && previousSecrets === undefined
+    const refusals: string[] = []
     if (secretMissing) {
+      refusals.push("the previous hook's secret is not on this machine")
       nextSteps.push({
         id: 'restore-supabase-hook-secret',
         actor: 'human',
         kind: 'open-url',
         url: supabaseHooksUrl(supabase.projectRef),
         title:
-          "Re-enter the previous Send Email hook's secret in Supabase (Authentication > Hooks): this machine did not keep it",
+          supabase.previousSecretsVariable === undefined
+            ? 'Set the previous Send Email hook back by hand in Supabase (Authentication > Hooks), with its secret: this machine did not keep it'
+            : `Put the previous Send Email hook's secret back in ${supabase.previousSecretsVariable} (this shell or .env.local), then run the rollback again`,
         blocking: true,
       })
     }
     if (token === undefined) {
-      problems.push(`${SUPABASE_TOKEN_VARIABLE} is not set`)
+      refusals.push(`${SUPABASE_TOKEN_VARIABLE} is not set`)
       nextSteps.push({
         id: 'supabase-access-token',
         actor: 'human',
@@ -121,6 +113,9 @@ export async function runProviderRollback(input: {
         title: `Export a Supabase personal access token as ${SUPABASE_TOKEN_VARIABLE}, then run the rollback again`,
         blocking: true,
       })
+    }
+    if (token === undefined || secretMissing) {
+      problems.push(...refusals)
       providers.push({
         provider: 'supabase_auth',
         action: 'refused',
@@ -129,7 +124,7 @@ export async function runProviderRollback(input: {
         previous,
         requests: [],
         rollbackCommand: null,
-        detail: `${SUPABASE_TOKEN_VARIABLE} is not set`,
+        detail: refusals.join('; '),
       })
     } else if (dryRun) {
       providers.push({
@@ -194,13 +189,21 @@ export async function runProviderRollback(input: {
       url: clerkToggleUrl(slug),
       body: { delivered_by_clerk: true },
     }))
-    if (secretKey === undefined) {
-      problems.push(`${CLERK_SECRET_VARIABLE} not found`)
+    // Another key is another instance: never turn delivery on there.
+    const otherKey =
+      secretKey !== undefined &&
+      clerk.keyId !== undefined &&
+      clerkKeyId(secretKey) !== clerk.keyId
+    if (secretKey === undefined || otherKey) {
+      const detail = otherKey
+        ? `${CLERK_SECRET_VARIABLE} is not the key of the Clerk instance init changed`
+        : `${CLERK_SECRET_VARIABLE} not found`
+      problems.push(detail)
       nextSteps.push({
         id: 'clerk-secret-key',
         actor: 'human',
         kind: 'set-secret',
-        title: `Make ${CLERK_SECRET_VARIABLE} available in this shell or .env.local, then run the rollback again (or turn "Delivered by Clerk" back on in the dashboard for: ${clerk.templates.join(', ')})`,
+        title: `Make the ${CLERK_SECRET_VARIABLE} of the Clerk instance init changed available in this shell or .env.local, then run the rollback again (or turn "Delivered by Clerk" back on in that instance's dashboard for: ${clerk.templates.join(', ')})`,
         url: CLERK_EMAILS_DASHBOARD_URL,
         blocking: true,
       })
@@ -211,7 +214,7 @@ export async function runProviderRollback(input: {
         templates: clerk.templates,
         requests: [],
         rollbackCommand: null,
-        detail: `${CLERK_SECRET_VARIABLE} not found`,
+        detail,
       })
     } else if (dryRun) {
       providers.push({
@@ -253,7 +256,7 @@ export async function runProviderRollback(input: {
         const left = clerk.templates.filter((slug) => !restored.includes(slug))
         remaining = {
           ...remaining,
-          clerk: { savedAt: clerk.savedAt, templates: left },
+          clerk: { ...clerk, templates: left },
         }
         providers.push({
           provider: 'clerk',

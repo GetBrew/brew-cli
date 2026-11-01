@@ -13,6 +13,7 @@ import {
   readPendingLogin,
 } from '../../src/lib/auth-flow/pending'
 import { readConfig, writeConfig } from '../../src/lib/config-store'
+import { renderReport } from '../../src/lib/init/report'
 import { validateBrewState } from '../../src/lib/project/state'
 import { copyFixture, tempProject } from '../helpers/fixtures'
 import {
@@ -613,6 +614,8 @@ describe('init --yes: the full run', () => {
     expect(result.report.domain.records).toEqual([])
     // Connect automatically would publish the same clashing DKIM record.
     expect(ids).not.toContain('connect-dns-automatically')
+    expect(result.report.domain.connectUrl).toBeNull()
+    expect(renderReport(result.report)).not.toContain('Connect automatically')
     expect(
       result.report.nextSteps.find((step) => step.id === 'dkim-selector-in-use')
     ).toEqual({

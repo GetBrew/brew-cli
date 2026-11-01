@@ -6,7 +6,6 @@ import {
   type HostedAuthProvider,
 } from '../../integrations/hosted-auth'
 import { progress } from '../../output'
-import { ensureEnvVars, getEnvValue, parseEnv } from '../../project/env-file'
 import type { ProjectWriter } from '../../project/fs-writer'
 import type { CliContext } from '../../types'
 import type { InitStep, NextStep } from '../report'
@@ -14,14 +13,17 @@ import {
   CLERK_EMAIL_SLUG_KEYS,
   CLERK_EMAILS_DASHBOARD_URL,
   CLERK_SECRET_VARIABLE,
+  clerkKeyId,
   clerkToggleUrl,
   readClerkDelivery,
   readClerkSecret,
   setClerkDelivery,
 } from './clerk'
 import {
+  backupHookSecret,
   detectSupabaseRef,
   generateHookSecret,
+  localValue,
   patchSendEmailHook,
   REDACTED_SECRET,
   readSendEmailHook,
@@ -100,6 +102,8 @@ export type SupabaseRollback = {
 
 export type ClerkRollback = {
   readonly savedAt: string
+  /** `clerkKeyId` of the key whose instance init changed. */
+  readonly keyId?: string
   /** Templates init turned off; a rollback turns them back on. */
   readonly templates: readonly string[]
 }
@@ -121,11 +125,19 @@ export type ProviderStepInput = {
   readonly client: BrewClient | undefined
   readonly writer: ProjectWriter
   readonly prefix: string
+  /** `<prefix> init`, with the run's `--app <dir>`. */
+  readonly init: string
   readonly providerConfig: ProviderConfig
-  /** Writes `brew.json` with this provider config now (before a change). */
-  readonly persist: (config: ProviderConfig) => void
+  /**
+   * Writes `brew.json` with this provider config now (before a change);
+   * false when it was not written.
+   */
+  readonly persist: (config: ProviderConfig) => boolean
   readonly now: () => number
 }
+
+const NOT_SAVED =
+  'left as it is: brew.json was not written, so --rollback-provider could not undo the change'
 
 export type ProviderStepResult = {
   readonly step: InitStep | null
@@ -166,21 +178,6 @@ function connectionOf(
         webhookUrl: connection.webhookUrl,
         status: connection.status,
       }
-}
-
-/** A local token: the shell first, then the app's `.env.local`. */
-function localToken(
-  input: Pick<ProviderStepInput, 'ctx' | 'writer'>,
-  name: string
-): string | undefined {
-  const fromEnv = input.ctx.io.env[name]?.trim()
-  if (fromEnv !== undefined && fromEnv !== '') {
-    return fromEnv
-  }
-  const text = input.writer.read('.env.local')
-  const value =
-    text === null ? undefined : getEnvValue(parseEnv(text), name)?.trim()
-  return value === undefined || value === '' ? undefined : value
 }
 
 export async function runProviderStep(
@@ -253,7 +250,7 @@ async function supabaseStep(
         id: 'configure-supabase-hook',
         actor: 'agent',
         kind: 'run-command',
-        command: `${prefix} init --configure-supabase${ref === null ? ' --supabase-project <ref>' : ''} --yes`,
+        command: `${input.init} --configure-supabase${ref === null ? ' --supabase-project <ref>' : ''} --yes`,
         title: `Or let init do it: with ${SUPABASE_TOKEN_VARIABLE} (a Supabase personal access token, supabase.com/dashboard/account/tokens) in the environment, init connects Brew and points the Send Email hook at it through the Management API, saving the old hook settings for --rollback-provider`,
         blocking: false,
       }
@@ -314,7 +311,7 @@ async function supabaseStep(
       id: 'supabase-project',
       actor: 'agent',
       kind: 'run-command',
-      command: `${prefix} init --configure-supabase --supabase-project <ref> --yes`,
+      command: `${input.init} --configure-supabase --supabase-project <ref> --yes`,
       title:
         'Name the Supabase project: its ref is the <ref> in https://<ref>.supabase.co (or run `supabase link`)',
       blocking: true,
@@ -328,7 +325,7 @@ async function supabaseStep(
       nextSteps
     )
   }
-  const token = localToken(input, SUPABASE_TOKEN_VARIABLE)
+  const token = localValue(ctx, input.writer, SUPABASE_TOKEN_VARIABLE)
   if (token === undefined) {
     nextSteps.push({
       id: 'supabase-access-token',
@@ -391,6 +388,26 @@ async function supabaseStep(
       providerConfig: input.providerConfig,
     }
   }
+  if (connection?.status === 'active') {
+    // A hook that is not this project's verifies with the connection's
+    // secret: a new one would stop that hook's emails.
+    nextSteps.push({
+      id: 'supabase-connection-in-use',
+      actor: 'human',
+      kind: 'open-url',
+      url: supabaseHooksUrl(ref),
+      title: `Brew's Supabase connection is active for a Send Email hook that is not project ${ref}'s. To move it here on purpose, run \`${prefix} integrations connect supabase_auth\` with a new secret and point every project's hook at ${connection.webhookUrl} with it`,
+      blocking: true,
+    })
+    return refused(
+      input,
+      'supabase_auth',
+      connection,
+      ref,
+      "hook left as it is: Brew's connection is active for another hook, which a new secret would stop",
+      nextSteps
+    )
+  }
   const projectUrl = supabaseProjectUrl(ref)
   const webhookPlaceholder =
     connection?.webhookUrl ??
@@ -445,20 +462,17 @@ async function supabaseStep(
   if (saved === undefined || saved.projectRef !== ref) {
     let previousSecretsVariable: string | undefined
     if (hook.config.hook_send_email_enabled && hook.secrets !== null) {
-      // The replaced hook's secret stays on this machine, git-ignored, so a
-      // rollback can put the old hook back whole. Never in brew.json.
-      const envText = input.writer.read('.env.local')
-      const { text } = ensureEnvVars(envText, [
-        { name: SUPABASE_PREVIOUS_SECRETS_VARIABLE, value: hook.secrets },
-      ])
-      const change = input.writer.writeFile('.env.local', text, {
-        overwrite: true,
-        mode: 0o600,
-        sensitive: true,
-      })
-      if (change.action !== 'refused') {
-        previousSecretsVariable = SUPABASE_PREVIOUS_SECRETS_VARIABLE
+      // A rollback puts the old hook back whole, secret included.
+      if (!backupHookSecret(input.writer, hook.secrets)) {
+        return failed(
+          input,
+          'supabase_auth',
+          `hook left as it is: its secret could not be saved to .env.local (${SUPABASE_PREVIOUS_SECRETS_VARIABLE}) for --rollback-provider`,
+          ref,
+          connection
+        )
       }
+      previousSecretsVariable = SUPABASE_PREVIOUS_SECRETS_VARIABLE
     }
     providerConfig = {
       ...providerConfig,
@@ -471,7 +485,9 @@ async function supabaseStep(
           : { previousSecretsVariable }),
       },
     }
-    input.persist(providerConfig)
+    if (!input.persist(providerConfig)) {
+      return failed(input, 'supabase_auth', NOT_SAVED, ref, connection)
+    }
   }
 
   const signingSecret = generateHookSecret()
@@ -492,6 +508,36 @@ async function supabaseStep(
       ref,
       connection,
       providerConfig
+    )
+  }
+  // The hook hands Brew every auth email: each must be set up and reach
+  // every user (not the team-only sandbox) before Supabase stops sending.
+  let reachable: Set<string>
+  try {
+    reachable = await publicKeys(client)
+  } catch (error) {
+    rethrowIfFatal(ctx, error)
+    return failed(input, 'supabase_auth', describe(error), ref, connection)
+  }
+  const notReady = connected.authEmails
+    .filter((email) => !email.ok || !reachable.has(email.triggerKey))
+    .map((email) => email.triggerKey)
+  if (notReady.length > 0) {
+    nextSteps.push({
+      id: 'rerun-supabase-connect',
+      actor: 'agent',
+      kind: 'run-command',
+      command: `${input.init} --configure-supabase --yes`,
+      title: `Run again once these auth emails reach every user (set up, and a verified transactional domain, not the sandbox): ${notReady.join(', ')}. Supabase keeps sending its own until then`,
+      blocking: true,
+    })
+    return refused(
+      input,
+      'supabase_auth',
+      connectionOf(connected),
+      ref,
+      `hook left as it is: ${notReady.join(', ')} cannot reach every user yet`,
+      nextSteps
     )
   }
   const requests = plannedRequests(connected.webhookUrl)
@@ -517,7 +563,6 @@ async function supabaseStep(
       providerConfig
     )
   }
-  const failedKeys = connected.authEmails.filter((email) => !email.ok)
   nextSteps.push(
     {
       id: 'verify-supabase-hook',
@@ -536,16 +581,6 @@ async function supabaseStep(
       blocking: false,
     }
   )
-  if (failedKeys.length > 0) {
-    nextSteps.push({
-      id: 'rerun-supabase-connect',
-      actor: 'agent',
-      kind: 'run-command',
-      command: `${prefix} init --configure-supabase --yes`,
-      title: `Run again to finish the auth emails that failed (${failedKeys.map((email) => email.triggerKey).join(', ')}); until then Supabase sign-ups that need them fail`,
-      blocking: true,
-    })
-  }
   return {
     step: {
       id: 'provider',
@@ -610,7 +645,7 @@ async function clerkStep(
         id: 'configure-clerk-delivery',
         actor: 'agent',
         kind: 'run-command',
-        command: `${prefix} init --configure-clerk --yes`,
+        command: `${input.init} --configure-clerk --yes`,
         title: `Brew receives Clerk's emails now. To have Brew send them, turn off "Delivered by Clerk" for the templates Brew sends: run this with ${CLERK_SECRET_VARIABLE} available (saved for --rollback-provider), or switch them off in the Clerk Dashboard`,
         blocking: false,
       })
@@ -688,17 +723,29 @@ async function clerkStep(
       nextSteps
     )
   }
-  // Exactly the templates Brew sends: a slug whose key has a published app
-  // email in this brand.
-  let published: Set<string>
+  // A later run adds templates to the saved list: only from the same key.
+  const keyId = clerkKeyId(secretKey)
+  if ((input.providerConfig.clerk?.keyId ?? keyId) !== keyId) {
+    return refused(
+      input,
+      'clerk',
+      connection,
+      undefined,
+      `${CLERK_SECRET_VARIABLE} is not the key of the Clerk instance brew.json saved; roll that instance back first`,
+      nextSteps
+    )
+  }
+  // Exactly the templates Brew sends to every user: a slug whose key's app
+  // email is published and not in the team-only sandbox.
+  let reachable: Set<string>
   try {
-    published = await publishedKeys(input.client)
+    reachable = await publicKeys(input.client)
   } catch (error) {
     rethrowIfFatal(ctx, error)
     return failed(input, 'clerk', describe(error), undefined, connection)
   }
   const slugs = Object.entries(CLERK_EMAIL_SLUG_KEYS)
-    .filter(([, key]) => published.has(key))
+    .filter(([, key]) => reachable.has(key))
     .map(([slug]) => slug)
   const toTurnOff: string[] = []
   try {
@@ -725,7 +772,7 @@ async function clerkStep(
         status: 'done',
         detail:
           slugs.length === 0
-            ? 'no published Brew app email matches a Clerk template; Clerk delivery left on'
+            ? 'no Brew app email for a Clerk template reaches every user yet (published, with a verified domain); Clerk delivery left on'
             : 'Clerk delivery is already off for the templates Brew sends',
       },
       nextSteps,
@@ -775,6 +822,7 @@ async function clerkStep(
       savedAt:
         input.providerConfig.clerk?.savedAt ??
         new Date(input.now()).toISOString(),
+      keyId,
       templates: [
         ...new Set([
           ...(input.providerConfig.clerk?.templates ?? []),
@@ -783,7 +831,9 @@ async function clerkStep(
       ].sort(),
     },
   }
-  input.persist(providerConfig)
+  if (!input.persist(providerConfig)) {
+    return failed(input, 'clerk', NOT_SAVED, undefined, connection)
+  }
   const done: string[] = []
   try {
     for (const slug of toTurnOff) {
@@ -859,7 +909,8 @@ async function clerkStep(
   }
 }
 
-async function publishedKeys(client: BrewClient): Promise<Set<string>> {
+/** Keys whose app email a fire sends now to anyone, not the sandbox only. */
+async function publicKeys(client: BrewClient): Promise<Set<string>> {
   const keys = new Set<string>()
   let cursor: string | undefined
   for (let page = 0; page < 20; page += 1) {
@@ -868,7 +919,7 @@ async function publishedKeys(client: BrewClient): Promise<Set<string>> {
       ...(cursor === undefined ? {} : { cursor }),
     })
     for (const row of result.data) {
-      if (row.published) {
+      if (row.readiness.ready && !row.readiness.teamOnly) {
         keys.add(row.triggerKey)
       }
     }
@@ -883,9 +934,9 @@ async function publishedKeys(client: BrewClient): Promise<Set<string>> {
 // ---------------------------------------------------------------- shared
 
 export function rollbackCommandFor(
-  input: Pick<ProviderStepInput, 'prefix'>
+  input: Pick<ProviderStepInput, 'init'>
 ): string {
-  return `${input.prefix} init --rollback-provider --yes`
+  return `${input.init} --rollback-provider --yes`
 }
 
 function refused(

@@ -83,6 +83,8 @@ export async function resolveAppBrand(input: {
   readonly appUrl: string
   /** The brand the credential acts on now, if it resolved to one. */
   readonly current: AppBrand | null
+  /** `current`'s `ready` (`GET /v1/brand`). */
+  readonly currentReady: boolean
   /** False for a key bound to one brand (sign-in, `.env.local`). */
   readonly canSwitch: boolean
   readonly dryRun: boolean
@@ -95,15 +97,18 @@ export async function resolveAppBrand(input: {
   const host = normalizeHost(appUrl) ?? appUrl
   const nextSteps: NextStep[] = []
   if (current !== null && brandMatchesApp(current.domain, appUrl)) {
+    // A brand a `--no-wait` run created may still be extracting.
+    const ready =
+      input.currentReady || (await waitForBrand(input, current.brandId))
     return {
       brand: { ...current, matchesAppUrl: true, created: false },
-      ready: true,
+      ready,
       step: {
         id: 'brand',
         status: 'done',
-        detail: `${current.name ?? current.brandId} (matches ${host})`,
+        detail: `${current.name ?? current.brandId} (matches ${host})${ready ? '' : ' (still extracting)'}`,
       },
-      nextSteps,
+      nextSteps: ready ? nextSteps : [extracting(input.rerunCommand, host)],
     }
   }
   const mismatch = (detail: string): BrandResolution => {
@@ -226,14 +231,7 @@ export async function resolveAppBrand(input: {
   }
   const name = domain
   if (!ready) {
-    nextSteps.push({
-      id: 'brand-extracting',
-      actor: 'agent',
-      kind: 'run-command',
-      command: input.rerunCommand,
-      title: `Brew is still reading ${host} to build the brand (1 to 3 minutes); run init again when it is ready`,
-      blocking: true,
-    })
+    nextSteps.push(extracting(input.rerunCommand, host))
   }
   return {
     brand: { brandId, name, domain, matchesAppUrl: true, created },
@@ -245,6 +243,17 @@ export async function resolveAppBrand(input: {
       detail: `${created ? 'created' : 'using'} ${domain} for ${host}${ready ? '' : ' (still extracting)'}`,
     },
     nextSteps,
+  }
+}
+
+function extracting(rerunCommand: string, host: string): NextStep {
+  return {
+    id: 'brand-extracting',
+    actor: 'agent',
+    kind: 'run-command',
+    command: rerunCommand,
+    title: `Brew is still reading ${host} to build the brand (1 to 3 minutes); run init again when it is ready`,
+    blocking: true,
   }
 }
 

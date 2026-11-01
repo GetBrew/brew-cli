@@ -35,7 +35,7 @@ import {
 } from '../client'
 import { systemClock } from '../clock'
 import { readConfig, updateConfig } from '../config-store'
-import { buildConfirmCommand } from '../confirm'
+import { buildConfirmCommand, shellQuote } from '../confirm'
 import { sdkTransportFor } from '../context'
 import type { CommandOutcome, CommandSpec } from '../define-command'
 import { CliApiError, CliUsageError } from '../errors'
@@ -668,6 +668,7 @@ export async function runInit(
     credential.auth !== undefined
   ) {
     let current: AppBrand | null = null
+    let currentReady = false
     let lookupError: string | undefined
     try {
       const row = await client.brand.get()
@@ -676,6 +677,7 @@ export async function runInit(
         name: brand?.name ?? row.identity?.brandName ?? row.domain ?? null,
         domain: row.domain ?? null,
       }
+      currentReady = row.ready
     } catch (error) {
       rethrowIfFatal(ctx, error)
       // 400 BRAND_ID_REQUIRED: an organization key with no brand picked yet.
@@ -696,6 +698,7 @@ export async function runInit(
         client,
         appUrl: options.appUrl,
         current,
+        currentReady,
         canSwitch:
           credential.source === 'flag' ||
           credential.source === 'env' ||
@@ -713,7 +716,19 @@ export async function runInit(
       brandReady = resolution.ready
       steps.push(resolution.step)
       nextSteps.push(...resolution.nextSteps)
-      if (resolution.switchTo !== undefined) {
+      if (resolution.switchTo !== undefined && existingAppKey !== undefined) {
+        // The app sends with its own key, bound to one brand: setting up
+        // another brand here would leave the app sending from the old one.
+        brandReady = false
+        nextSteps.push({
+          id: 'replace-app-key',
+          actor: 'human',
+          kind: 'edit-file',
+          path: '.env.local',
+          title: `${APP_KEY_VARIABLE} in .env.local is bound to another brand: to send from ${resolution.brand?.domain ?? 'this brand'}, remove it and run init again, picking that brand when you approve the sign-in`,
+          blocking: true,
+        })
+      } else if (resolution.switchTo !== undefined) {
         credential = authFor(
           credential.auth.apiKey,
           credential.source,
@@ -816,9 +831,12 @@ export async function runInit(
         domain.domainId = shown.domainId
         domain.name = shown.name
         domain.status = shown.status
-        domain.connectUrl = shown.domainUrl ?? `${siteUrl}/domains`
-        // A conflicting DKIM record is never shown: publishing it would
-        // replace the key another sender signs with.
+        // A DKIM key conflict needs a subdomain: these records, shown or
+        // added automatically, would replace another sender's key.
+        domain.connectUrl =
+          selectorInUse === undefined
+            ? (shown.domainUrl ?? `${siteUrl}/domains`)
+            : null
         if (shown.status !== 'verified' && selectorInUse === undefined) {
           domain.records = shown.records.map((record) => ({
             type: record.type,
@@ -912,7 +930,7 @@ export async function runInit(
     steps.push({
       id: 'kit',
       status: 'skipped',
-      detail: 'the brand is still being built; run init again when it is ready',
+      detail: 'waits for the brand (see the next steps); run init again then',
     })
   } else if (client === undefined || dryRun) {
     steps.push({
@@ -1275,11 +1293,11 @@ export async function runInit(
         client,
         writer,
         prefix,
+        init: `${prefix} init${options.app === undefined ? '' : ` --app ${shellQuote(options.app)}`}`,
         providerConfig,
         // brew.json holds the provider's old settings BEFORE they change.
         persist: (config) => {
-          stateWrittenEarly = true
-          writer.writeFile(
+          const change = writer.writeFile(
             BREW_STATE_FILE,
             serializeBrewState(
               createBrewState({
@@ -1291,6 +1309,8 @@ export async function runInit(
             ),
             { overwrite: true }
           )
+          stateWrittenEarly ||= change.action !== 'refused'
+          return change.action !== 'refused'
         },
         now: () => (ctx.io.clock ?? systemClock).now(),
       })

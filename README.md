@@ -90,7 +90,9 @@ approval page. With an organization API key (`BREW_API_KEY` or
 `--api-key`), init also picks the brand whose website is the app, or
 creates one from the URL (`POST /v1/brands`, organization keys with the
 `brands` scope) and waits for it (`--no-wait` leaves that to a re-run). A
-key bound to one brand is never moved: a mismatch is reported.
+key bound to one brand is never moved: a mismatch is reported. The app's
+own key in `.env.local` is one: when the app's brand is another, init
+stops before the kit and says to replace that key.
 
 ### The auth provider's own emails (Supabase, Clerk)
 
@@ -103,12 +105,16 @@ flags below, init prints the manual steps.
   Management API, using a Supabase personal access token from
   `SUPABASE_ACCESS_TOKEN` on this machine (sent to api.supabase.com only,
   never to Brew). The previous hook settings go into `brew.json` first
-  (a previous hook secret into `.env.local`, never `brew.json`).
+  (a previous hook secret into `.env.local`, never `brew.json`). The hook
+  changes only once every auth email reaches every user (set up, with a
+  verified domain, not the team-only sandbox), and never takes over a
+  connection that is active for another hook.
   `--dry-run --json` shows the exact PATCH with the secret replaced. The
   self-hosted Edge Function init writes stays the alternative.
 - **Clerk**: connect Clerk's `email.created` webhook first
   (`integrations connect clerk`). `--configure-clerk` then turns off
-  "Delivered by Clerk" for exactly the templates Brew publishes, through
+  "Delivered by Clerk" for exactly the templates whose Brew email reaches
+  every user (published, not the team-only sandbox), through
   Clerk's Backend API with `CLERK_SECRET_KEY` (shell or `.env.local`), and
   only once `integrations connection clerk` reports `active`, so no email
   is dropped in between.

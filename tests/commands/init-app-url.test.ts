@@ -70,7 +70,7 @@ describe('init --app-url: the brand', () => {
     expect(step?.title).toContain('my-app.lovable.app')
   })
 
-  it('an organization key picks the brand whose website is the app, and the kit lands there', async () => {
+  it("an organization key picks the brand whose website is the app; the app's own key, bound to another brand, holds the kit until it is replaced", async () => {
     const root = project()
     const requests = useBrewApi({
       orgKeyWithoutBrand: true,
@@ -108,11 +108,15 @@ describe('init --app-url: the brand', () => {
         (request) => request.method === 'POST' && request.path === '/v1/brands'
       )
     ).toBe(false)
-    const kit = requests.find(
-      (request) => request.path === '/v1/app-emails/kit'
-    )
-    expect(kit?.brandId).toBe('brand_lovable')
-    expect(kit?.authorization).toBe(`Bearer ${EXPLICIT_KEY}`)
+    // .env.local's key still sends from its own brand: no kit lands in
+    // brand_lovable while the app could not send from it.
+    expect(
+      requests.some((request) => request.path === '/v1/app-emails/kit')
+    ).toBe(false)
+    expect(result.report.status).toBe('action_required')
+    expect(
+      result.report.nextSteps.find((step) => step.id === 'replace-app-key')
+    ).toMatchObject({ actor: 'human', path: '.env.local', blocking: true })
   })
 
   it('an organization key with no matching brand creates one, waits for it, and a re-run finds it instead of creating another', async () => {
@@ -147,8 +151,8 @@ describe('init --app-url: the brand', () => {
       created: true,
     })
     expect(
-      requests.find((request) => request.path === '/v1/app-emails/kit')?.brandId
-    ).toBe('brand_new')
+      requests.some((request) => request.path === '/v1/app-emails/kit')
+    ).toBe(false)
 
     // The brand exists now: a re-run reuses it.
     const again = useBrewApi({
@@ -241,6 +245,27 @@ describe('init --app-url: the brand', () => {
     expect(
       requests.find((request) => request.path === '/v1/app-emails/kit')?.brandId
     ).toBe(null)
+  })
+
+  it('a matching brand still being extracted (a re-run after --no-wait) holds the kit too', async () => {
+    const root = project()
+    const requests = useBrewApi({
+      brandDomain: 'my-app.lovable.app',
+      brandReady: false,
+    })
+    const result = await init(
+      ['--yes', '--json', '--no-wait', '--app-url', APP_URL],
+      { cwd: root, env: configEnv(), spawn: recordingSpawn().spawn }
+    )
+    expect(result.code).toBe(0)
+    expectValidReport(result.report)
+    expect(result.report.status).toBe('action_required')
+    expect(
+      requests.some((request) => request.path === '/v1/app-emails/kit')
+    ).toBe(false)
+    expect(
+      result.report.nextSteps.find((step) => step.id === 'brand-extracting')
+    ).toMatchObject({ blocking: true })
   })
 
   it('--dry-run plans the brand without creating it', async () => {
