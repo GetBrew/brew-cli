@@ -5,8 +5,9 @@ description: Drive the Brew email platform from the terminal with brew-cli — e
 
 # brew-cli for agents
 
-One typed command per public-API operation (145 commands, generated docs in
-`docs/commands/README.md`). JSON output is automatic when stdout is piped.
+One typed command per public-API operation (the generated reference is
+`docs/commands/README.md`; `brew-cli docs --agent` lists every command).
+JSON output is automatic when stdout is piped.
 
 ## Start every session with the trust check
 
@@ -27,6 +28,28 @@ this build lacks (update the CLI); auth/reachability failures name the fix.
 - Organization-scoped keys need `--brand <brandId>` / `BREW_BRAND_ID` on
   brand-scoped commands (`brands list` shows ids).
 
+## Connect your editor to the Brew MCP server
+
+```bash
+brew-cli mcp install                          # the clients this project uses (.cursor/, .vscode/, .claude/, .gemini/)
+brew-cli mcp install --client cursor claude-code --dry-run --json
+brew-cli mcp install --client codex --auth env   # header filled from BREW_API_KEY by the client
+brew-cli mcp install --client vscode --print     # print the snippet, write nothing
+```
+
+It merges a `brew` entry into each client's config and keeps every other
+server. `--auth oauth` (default) writes the URL only; `--auth env` adds an
+`Authorization` header the client expands from `BREW_API_KEY` in its own
+environment (`${env:…}` in Cursor, VS Code, Devin Desktop), never a
+literal key. An existing `brew` entry with other settings, a config with
+comments, or a symbolic link leaving the project comes back `manual` with
+the snippet to paste. Devin Desktop (`--client windsurf`,
+`~/.config/devin/mcp_config.json`) and Codex live in your home directory:
+only written when named with `--client`. After a Codex OAuth entry, run
+the result's `nextStep` (`codex mcp login brew`). Results: `created |
+updated | unchanged | manual | printed`, plus one-click `deeplink`s for
+Cursor and VS Code.
+
 ## The contract you can rely on
 
 - Exit codes: 0 ok · 1 API error · 2 usage · 3 auth · 4 confirmation
@@ -45,7 +68,9 @@ this build lacks (update the CLI); auth/reachability failures name the fix.
   use it to fit a tool-call budget. `--max-retries 0` for one attempt.
 - Destructive commands (sends, deletes, fires, cancels) never hang: they
   exit 4 with a `confirmCommand` to re-run once a human approves, or take
-  `--yes`. Do not pass `--yes` for real campaign sends without an explicit
+  `--yes`. `confirmCommand` and `retryCommand` start the way you invoked
+  the CLI (`brew-cli …`, or a package-runner prefix such as
+  `npx -y @brew.new/cli@<version> …`), so run them as printed. Do not pass `--yes` for real campaign sends without an explicit
   human instruction; `emails send --test --to you@x.com` is the safe lane.
 - `--input '<json>'` (or `-` for stdin) carries full request bodies;
   positional ids always win over `--input`. `--all` drains pagination.

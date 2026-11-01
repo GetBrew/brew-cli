@@ -1,6 +1,7 @@
 import { Option } from 'commander'
 import type { CommandInvocation, CommandSpec } from './define-command'
 import { GLOBAL_FLAGS } from './define-command'
+import { DEFAULT_INVOCATION_PREFIX } from './invocation'
 
 export type RerunInvocation = Pick<CommandInvocation, 'args' | 'flags'>
 type RerunCommand = Pick<CommandSpec, 'path' | 'flags' | 'args'>
@@ -13,6 +14,8 @@ export function buildRerunCommand(
     readonly yes?: boolean
     readonly idempotencyKey?: string
     readonly inlineInput?: string
+    /** How the CLI was invoked (`getInvocationPrefix`); plain shell words. */
+    readonly prefix?: string
   }
 ): string {
   const flags: Readonly<Record<string, unknown>> = {
@@ -25,7 +28,7 @@ export function buildRerunCommand(
       ? {}
       : { input: overrides.inlineInput }),
   }
-  const tokens = ['brew-cli', ...command.path]
+  const tokens = [...command.path]
   const emitted = new Set<string>()
   for (const flag of [...(command.flags ?? []), ...GLOBAL_FLAGS]) {
     const option = new Option(flag.flag)
@@ -68,7 +71,10 @@ export function buildRerunCommand(
   if (operands.length > 0) {
     tokens.push('--', ...operands)
   }
-  return tokens.map(shellQuote).join(' ')
+  return [
+    overrides.prefix ?? DEFAULT_INVOCATION_PREFIX,
+    ...tokens.map(shellQuote),
+  ].join(' ')
 }
 
 /** Only effective parsed input flags can require stdin on a retry. */
