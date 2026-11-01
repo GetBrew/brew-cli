@@ -462,7 +462,7 @@ export class ProjectWriter {
         note: `unbalanced ${markers.start} / ${markers.end} markers`,
       })
     }
-    if (next === normalizeEol(existing)) {
+    if (normalizeEol(next) === normalizeEol(existing)) {
       return this.#record({
         path,
         action: 'unchanged',
@@ -470,12 +470,11 @@ export class ProjectWriter {
         ...this.#tighten(absolute, options.mode),
       })
     }
-    const crlf = usesCrlf(existing)
     return this.#commit(absolute, {
       path,
       action: 'updated',
       sha256: sha256Hex(next),
-      content: withEol(next, crlf),
+      content: next,
       before: existing,
       mode: options.mode,
       sensitive,
@@ -604,8 +603,9 @@ function octalMode(mode: number): string {
 }
 
 /**
- * `text` (LF-normalized) with its marked block set to `content`: replaced
- * in place, or appended after a blank line when the text has none.
+ * `text` with its marked block set to `content`: replaced in place, or
+ * appended after a blank line when the text has none. Every byte outside
+ * the block is kept; the block uses CRLF when the text has any.
  * `'unbalanced'` when the markers do not pair up exactly once.
  */
 export function applyBlock(
@@ -613,28 +613,29 @@ export function applyBlock(
   content: string,
   markers: BlockMarkers = HTML_BLOCK_MARKERS
 ): string | 'unbalanced' {
-  const normalized = normalizeEol(text)
+  const crlf = usesCrlf(text)
+  const eol = crlf ? '\r\n' : '\n'
   const body = normalizeEol(content).replace(/\n+$/, '')
-  const block = `${markers.start}\n${body}\n${markers.end}`
-  const located = locateBlock(normalized, markers)
+  const block = withEol(`${markers.start}\n${body}\n${markers.end}`, crlf)
+  const located = locateBlock(text, markers)
   if (located === 'unbalanced') {
     return located
   }
   if (located !== null) {
-    return `${normalized.slice(0, located.start)}${block}${normalized.slice(located.end)}`
+    return `${text.slice(0, located.start)}${block}${text.slice(located.end)}`
   }
   const separator =
-    normalized === '' || normalized.endsWith('\n\n')
+    text === '' || /\n\r?\n$/.test(text)
       ? ''
-      : normalized.endsWith('\n')
-        ? '\n'
-        : '\n\n'
-  return `${normalized}${separator}${block}\n`
+      : text.endsWith('\n')
+        ? eol
+        : `${eol}${eol}`
+  return `${text}${separator}${block}${eol}`
 }
 
 /**
- * The block's span (from its start marker through its end marker) in
- * LF-normalized text: `null` when there is none, `'unbalanced'` when the
+ * The block's span (from its start marker through its end marker, before
+ * that line's ending): `null` when there is none, `'unbalanced'` when the
  * markers do not pair up exactly once. Markers match whole lines only.
  */
 function locateBlock(
@@ -649,7 +650,7 @@ function locateBlock(
     if (trimmed === markers.start) {
       starts.push(offset)
     } else if (trimmed === markers.end) {
-      ends.push(offset + line.length)
+      ends.push(offset + line.replace(/\r$/, '').length)
     }
     offset += line.length + 1
   }

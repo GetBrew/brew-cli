@@ -316,6 +316,24 @@ describe('ProjectWriter.upsertBlock', () => {
     )
   })
 
+  it('keeps the line endings outside the block in a mixed file', () => {
+    const root = tempProject()
+    writeFileSync(
+      join(root, '.gitignore'),
+      'a\r\nb\n# brew:start\r\nold\r\n# brew:end\r\nc\n'
+    )
+    writeFileSync(join(root, 'AGENTS.md'), 'a\r\nb\n')
+    const writer = new ProjectWriter({ root })
+    writer.upsertBlock('.gitignore', 'new', { markers: HASH_BLOCK_MARKERS })
+    writer.upsertBlock('AGENTS.md', 'x')
+    expect(readFileSync(join(root, '.gitignore'), 'utf8')).toBe(
+      'a\r\nb\n# brew:start\r\nnew\r\n# brew:end\r\nc\n'
+    )
+    expect(readFileSync(join(root, 'AGENTS.md'), 'utf8')).toBe(
+      'a\r\nb\n\r\n<!-- brew:start -->\r\nx\r\n<!-- brew:end -->\r\n'
+    )
+  })
+
   it('creates the file, or reports it missing when told not to', () => {
     const root = tempProject()
     const writer = new ProjectWriter({ root })
