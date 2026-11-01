@@ -192,6 +192,30 @@ describe('command builders', () => {
     ).toBe('yarn add --dev msw')
   })
 
+  it('adds to a workspace root on purpose where the manager asks', () => {
+    const root = { workspaceRoot: true }
+    expect(
+      formatCommandLine(addCommand(pm('pnpm'), ['@brew.new/sdk'], root))
+    ).toBe('pnpm add --workspace-root @brew.new/sdk')
+    expect(
+      formatCommandLine(
+        addCommand(
+          pm('yarn', { yarnFlavor: 'classic' }),
+          ['@brew.new/sdk'],
+          root
+        )
+      )
+    ).toBe('yarn add --ignore-workspace-root-check @brew.new/sdk')
+    expect(
+      formatCommandLine(
+        addCommand(pm('yarn', { yarnFlavor: 'berry' }), ['@brew.new/sdk'], root)
+      )
+    ).toBe('yarn add @brew.new/sdk')
+    expect(
+      formatCommandLine(addCommand(pm('npm'), ['@brew.new/sdk'], root))
+    ).toBe('npm install @brew.new/sdk')
+  })
+
   it('installs, frozen or not', () => {
     expect(formatCommandLine(installCommand(pm('npm'), { frozen: true }))).toBe(
       'npm ci'

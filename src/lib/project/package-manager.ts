@@ -228,6 +228,11 @@ export type AddOptions = {
   readonly dev?: boolean
   /** Add to this workspace package (monorepo), not the root. */
   readonly workspace?: WorkspaceTarget
+  /**
+   * Add to a workspace root on purpose: pnpm and Yarn 1 refuse a root add
+   * inside a workspace without saying so.
+   */
+  readonly workspaceRoot?: boolean
   /** Pin the exact version instead of a range. */
   readonly exact?: boolean
 }
@@ -241,6 +246,7 @@ export function addCommand(
   const dev = options.dev === true
   const exact = options.exact === true
   const ws = options.workspace
+  const root = options.workspaceRoot === true
   switch (pm.name) {
     case 'npm':
       return {
@@ -260,6 +266,7 @@ export function addCommand(
           'add',
           ...(dev ? ['--save-dev'] : []),
           ...(exact ? ['--save-exact'] : []),
+          ...(root ? ['--workspace-root'] : []),
           ...(ws === undefined ? [] : ['--filter', ws.name]),
           ...packages,
         ],
@@ -272,6 +279,9 @@ export function addCommand(
           'add',
           ...(dev ? ['--dev'] : []),
           ...(exact ? ['--exact'] : []),
+          ...(root && pm.yarnFlavor !== 'berry'
+            ? ['--ignore-workspace-root-check']
+            : []),
           ...packages,
         ],
       }
