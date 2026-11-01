@@ -58,7 +58,12 @@ export const configSetCommand = defineCommand({
     if (value === '') {
       throw new CliUsageError('A non-empty value is required.')
     }
-    const path = updateConfig(ctx.io.env, { [key]: value })
+    const path = updateConfig(ctx.io.env, {
+      [key]: value,
+      // A brand id set by hand is not the one a browser sign-in bound its
+      // key to: without `brandName` it holds for any key and past logout.
+      ...(key === 'brandId' ? { brandName: undefined } : {}),
+    })
     return { data: { [key]: value, configPath: path } }
   },
 })
@@ -72,7 +77,10 @@ export const configUnsetCommand = defineCommand({
   examples: ['brew-cli config unset brandId'],
   run: async ({ ctx, args }) => {
     const key = requireSettableKey(args.key, ctx)
-    const path = updateConfig(ctx.io.env, { [key]: undefined })
+    const path = updateConfig(ctx.io.env, {
+      [key]: undefined,
+      ...(key === 'brandId' ? { brandName: undefined } : {}),
+    })
     return { data: { [key]: null, configPath: path } }
   },
 })

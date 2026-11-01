@@ -29,8 +29,10 @@
   clears them and any pending sign-in.
 - The brand id a browser sign-in stores belongs to that key: a key from
   `--api-key` or `BREW_API_KEY` never sends it, and `logout` or a pasted
-  key drops it. A sign-in against a non-default `--api-url` stores that
-  URL with the key. The `Signed in as …` line shows even under `--quiet`.
+  key drops it; one set with `config set brandId` holds for any key. A
+  login that stores a key drops an older pending sign-in. A sign-in
+  against a non-default `--api-url` stores that URL with the key. The
+  `Signed in as …` line shows even under `--quiet`.
 
 - **`brew-cli mcp install`** adds the Brew MCP server to Cursor
   (`.cursor/mcp.json`), VS Code (`.vscode/mcp.json`), Claude Code

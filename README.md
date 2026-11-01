@@ -120,7 +120,7 @@ brew-cli login --resume --wait 2m # wait at most two minutes, else exit 3 pendin
 
 `--no-wait` keeps the pending sign-in (its poll secret and private key) in
 `~/.config/brew-cli/pending-auth.json` (mode 0600) until it is approved,
-denied or expired. A denied or expired sign-in exits 3 with
+denied or expired, or another `login` stores a key. A denied or expired sign-in exits 3 with
 `CLI_LOGIN_DENIED` or `CLI_LOGIN_EXPIRED`; run `login` again. A sign-in
 lasts ten minutes.
 

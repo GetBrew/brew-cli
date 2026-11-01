@@ -51,12 +51,20 @@ export type ApprovedLogin = {
 export type WaitOutcome =
   | { readonly status: 'approved'; readonly approved: ApprovedLogin }
   /** `waitMs` ran out first; the session can still be resumed. */
-  | { readonly status: 'pending' }
+  | {
+      readonly status: 'pending'
+      /** Seconds between polls, after any `slow_down`. */
+      readonly interval: number
+      /** Epoch ms before which the next poll must not go (interval, Retry-After). */
+      readonly nextPollAt: number
+    }
 
 /**
  * Polls until the person approves or denies, the session expires, or
- * `waitMs` runs out. `pollFirst` polls before the first wait (a resumed
- * sign-in may already be approved); a fresh one waits an interval first.
+ * `waitMs` runs out. A fresh sign-in waits an interval before its first
+ * poll; a resumed one polls at `firstPollAt` (it may already be approved).
+ * A delay is never cut short: a poll that cannot go before `waitMs` ends
+ * is left to `--resume`.
  */
 export async function waitForApproval(
   ctx: CliContext,
@@ -64,7 +72,8 @@ export async function waitForApproval(
   options: {
     /** Undefined: until the session expires. `0`: one poll at most. */
     readonly waitMs: number | undefined
-    readonly pollFirst: boolean
+    /** Epoch ms; absent: one interval from now. */
+    readonly firstPollAt?: number
     /** The command that starts over, for error suggestions. */
     readonly restartCommand: string
   }
@@ -76,7 +85,10 @@ export async function waitForApproval(
       ? Number.POSITIVE_INFINITY
       : clock.now() + options.waitMs
   let intervalMs = clamp(login.interval * 1000)
-  let delayMs = options.pollFirst ? 0 : intervalMs
+  let delayMs =
+    options.firstPollAt === undefined
+      ? intervalMs
+      : Math.max(0, options.firstPollAt - clock.now())
   let retries = 0
   for (;;) {
     const now = clock.now()
@@ -84,15 +96,14 @@ export async function waitForApproval(
       throw expiredError(options.restartCommand, false)
     }
     if (delayMs > 0) {
-      const remainingWait = waitDeadline - now
-      // Too little left for another poll the server would accept.
-      if (remainingWait < MIN_INTERVAL_MS) {
-        return { status: 'pending' }
+      if (now + delayMs > waitDeadline) {
+        return {
+          status: 'pending',
+          interval: intervalMs / 1000,
+          nextPollAt: now + delayMs,
+        }
       }
-      await clock.sleep(
-        Math.min(delayMs, remainingWait, sessionDeadline - now),
-        ctx.signal
-      )
+      await clock.sleep(Math.min(delayMs, sessionDeadline - now), ctx.signal)
     }
     const result = await pollToken(
       ctx,

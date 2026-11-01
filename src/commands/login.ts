@@ -4,6 +4,7 @@ import {
   resumeBrowserLogin,
   startBrowserLogin,
 } from '../lib/auth-flow/login'
+import { deletePendingLogin } from '../lib/auth-flow/pending'
 import { printable } from '../lib/auth-flow/session'
 import {
   buildSdkClient,
@@ -176,17 +177,31 @@ async function browserLogin(
       suggestion: `Run \`${commands.restartCommand}\` again.`,
     })
   }
-  const path = updateConfig(ctx.io.env, {
-    apiKey: cliKey.key,
-    // The key is bound to this brand; a stale brand id would make every
-    // request a 403 BRAND_SCOPE_MISMATCH.
-    brandId: approved.brand.brandId,
-    userEmail: approved.approver.email,
-    brandName: approved.brand.name,
-    // The key lives on the server that minted it: a sign-in against
-    // staging or a local dev server keeps sending there.
-    apiUrl: apiUrl === DEFAULT_API_URL ? undefined : apiUrl,
-  })
+  let path: string
+  try {
+    path = updateConfig(ctx.io.env, {
+      apiKey: cliKey.key,
+      // The key is bound to this brand; a stale brand id would make every
+      // request a 403 BRAND_SCOPE_MISMATCH.
+      brandId: approved.brand.brandId,
+      userEmail: approved.approver.email,
+      brandName: approved.brand.name,
+      // The key lives on the server that minted it: a sign-in against
+      // staging or a local dev server keeps sending there.
+      apiUrl: apiUrl === DEFAULT_API_URL ? undefined : apiUrl,
+    })
+  } catch (error) {
+    // The approval was collected once: the key exists in Brew, nowhere here.
+    throw new CliApiError({
+      status: 200,
+      code: 'CLI_LOGIN_SAVE_FAILED',
+      type: 'internal_error',
+      message: `The approved key could not be saved: ${error instanceof Error ? error.message : String(error)}`,
+      suggestion: `Revoke the "CLI · …" key created just now under Settings, API keys, then run \`${commands.restartCommand}\` again.`,
+    })
+  }
+  // An older sign-in still waiting would replace this key when resumed.
+  deletePendingLogin(ctx.io.env)
   // Who approved is the check against a phished approval: shown even
   // under --quiet (JSON output carries it as `userEmail`).
   const signedIn = `Signed in as ${printable(approved.approver.email)} to ${printable(approved.brand.name)}. Key stored in ${path} (0600).`
@@ -248,6 +263,8 @@ async function keyLogin(
     brandName: undefined,
     ...(browserBrand ? { brandId: undefined } : {}),
   })
+  // A browser sign-in still waiting would replace this key when resumed.
+  deletePendingLogin(ctx.io.env)
   progress(ctx, `Logged in. Key stored in ${path} (0600).`)
   return {
     data: {

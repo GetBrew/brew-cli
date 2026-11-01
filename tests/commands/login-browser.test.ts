@@ -1,4 +1,10 @@
-import { existsSync, mkdtempSync, readFileSync, statSync } from 'node:fs'
+import {
+  existsSync,
+  mkdtempSync,
+  readFileSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { HttpResponse, http } from 'msw'
@@ -355,6 +361,66 @@ describe('login through the browser', () => {
     })
   })
 
+  it('a brand id set by hand after a browser sign-in holds for other keys and past logout', async () => {
+    useLoginServer({ steps: ['approved'] })
+    server.use(
+      http.get('https://brew.new/api/v1/usage', () => HttpResponse.json(USAGE))
+    )
+    const env = tempEnv()
+    await runCli(['login', '--browser'], { env, clock: fakeClock() })
+    const set = await runCli(['config', 'set', 'brandId', 'bd_other'], { env })
+    expect(set.code).toBe(0)
+    const fromEnv = await runCli(['whoami'], {
+      env: { ...env, BREW_API_KEY: 'brew_otherkey0123456789abcdefghijkl' },
+    })
+    expect(fromEnv.json).toMatchObject({ brandId: 'bd_other' })
+    await runCli(['logout'], { env })
+    expect(readConfig(env)).toEqual({ brandId: 'bd_other' })
+  })
+
+  it('a key it cannot save says to revoke it and start again', async () => {
+    useLoginServer({ steps: ['approved'] })
+    const notADirectory = join(
+      mkdtempSync(join(tmpdir(), 'brew-cli-login-')),
+      'file'
+    )
+    writeFileSync(notADirectory, '')
+    const result = await runCli(['login', '--browser'], {
+      env: { BREW_CLI_CONFIG_DIR: join(notADirectory, 'brew-cli') },
+      clock: fakeClock(),
+    })
+    expect(result.code).toBe(1)
+    const error = lastError(result.stderr)
+    expect(error.code).toBe('CLI_LOGIN_SAVE_FAILED')
+    expect(error.suggestion).toContain(
+      'Revoke the "CLI · …" key created just now'
+    )
+  })
+
+  it('a sign-in that stores a key drops an older one still pending', async () => {
+    useLoginServer({ steps: ['approved'] })
+    server.use(
+      http.get('https://brew.new/api/v1/usage', () => HttpResponse.json(USAGE))
+    )
+    const env = tempEnv()
+    await runCli(['login', '--no-wait'], { env, clock: fakeClock() })
+    expect(existsSync(pendingLoginPath(env))).toBe(true)
+    const browser = await runCli(['login', '--browser'], {
+      env,
+      clock: fakeClock(),
+    })
+    expect(browser.code).toBe(0)
+    expect(existsSync(pendingLoginPath(env))).toBe(false)
+
+    await runCli(['login', '--no-wait'], { env, clock: fakeClock() })
+    const pasted = await runCli(
+      ['login', '--api-key', 'brew_otherkey0123456789abcdefghijkl'],
+      { env }
+    )
+    expect(pasted.code).toBe(0)
+    expect(existsSync(pendingLoginPath(env))).toBe(false)
+  })
+
   it('shows who approved even under --quiet, and remembers a non-default API URL', async () => {
     useLoginServer({ steps: ['approved'], origin: 'http://localhost:3000' })
     const env = tempEnv()
@@ -434,7 +500,7 @@ describe('login --no-wait / --resume (agents)', () => {
     await runCli(['login', '--no-wait'], { env, clock: fakeClock() })
     const check = await runCli(['login', '--resume', '--no-wait'], {
       env,
-      clock: fakeClock(),
+      clock: fakeClock(T0 + 2000),
     })
     expect(check.code).toBe(3)
     expect(check.json).toMatchObject({ status: 'pending' })
@@ -452,9 +518,46 @@ describe('login --no-wait / --resume (agents)', () => {
     })
     expect(result.code).toBe(3)
     expect(result.json).toMatchObject({ status: 'pending' })
-    expect(clock.sleeps).toEqual([2000, 2000, 1000])
-    expect(login.polls()).toBe(3)
+    // A third poll would go at 6 s: it is left to --resume, not sent early.
+    expect(clock.sleeps).toEqual([2000, 2000])
+    expect(login.polls()).toBe(2)
     expect(existsSync(pendingLoginPath(env))).toBe(true)
+  })
+
+  it('--wait never cuts a Retry-After short', async () => {
+    const login = useLoginServer({ steps: ['rate_limited'] })
+    const clock = fakeClock()
+    const result = await runCli(['login', '--browser', '--wait', '5s'], {
+      env: tempEnv(),
+      clock,
+    })
+    expect(result.code).toBe(3)
+    expect(clock.sleeps).toEqual([2000])
+    expect(login.polls()).toBe(1)
+  })
+
+  it('--resume keeps the slower interval an earlier poll was told', async () => {
+    const login = useLoginServer({ steps: ['slow_down', 'pending'] })
+    const env = tempEnv()
+    await runCli(['login', '--browser', '--wait', '5s'], {
+      env,
+      clock: fakeClock(),
+    })
+    expect(login.polls()).toBe(1)
+    expect(
+      JSON.parse(readFileSync(pendingLoginPath(env), 'utf8'))
+    ).toMatchObject({ interval: 7, nextPollAt: T0 + 9000 })
+    const early = await runCli(['login', '--resume', '--no-wait'], {
+      env,
+      clock: fakeClock(T0 + 8000),
+    })
+    expect(early.code).toBe(3)
+    expect(login.polls()).toBe(1)
+    await runCli(['login', '--resume', '--no-wait'], {
+      env,
+      clock: fakeClock(T0 + 9000),
+    })
+    expect(login.polls()).toBe(2)
   })
 
   it('a denied resume deletes the pending sign-in', async () => {

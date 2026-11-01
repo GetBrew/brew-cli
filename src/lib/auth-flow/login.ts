@@ -120,7 +120,6 @@ export async function startBrowserLogin(
   }
   const outcome = await waitOrForget(ctx, active, {
     waitMs: options.waitMs,
-    pollFirst: false,
     restartCommand: options.restartCommand,
   })
   if (outcome.status === 'approved') {
@@ -134,7 +133,8 @@ export async function startBrowserLogin(
     userCode: session.userCode,
     verificationUrl: session.verificationUrl,
     expiresAt: session.expiresAt,
-    interval: session.interval,
+    interval: outcome.interval,
+    nextPollAt: outcome.nextPollAt,
     siteUrl,
     apiUrl,
     keys: options.keys,
@@ -180,11 +180,20 @@ export async function resumeBrowserLogin(
     },
     {
       waitMs: options.waitMs,
-      pollFirst: true,
+      firstPollAt: pending.nextPollAt,
       restartCommand: options.restartCommand,
     }
   )
   if (outcome.status === 'pending') {
+    // The next --resume keeps any slow_down or Retry-After this one got,
+    // unless a newer sign-in has replaced this one meanwhile.
+    if (readPendingLogin(ctx.io.env)?.sessionId === pending.sessionId) {
+      writePendingLogin(ctx.io.env, {
+        ...pending,
+        interval: outcome.interval,
+        nextPollAt: outcome.nextPollAt,
+      })
+    }
     return {
       status: 'pending',
       pending: pendingView(pending, options.resumeCommand),

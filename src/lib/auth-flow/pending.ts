@@ -26,8 +26,10 @@ export type PendingLogin = {
   readonly verificationUrl: string
   /** ISO 8601, from the server. */
   readonly expiresAt: string
-  /** Seconds between polls, from the server. */
+  /** Seconds between polls, from the server (after any `slow_down`). */
   readonly interval: number
+  /** Epoch ms before which `--resume` must not poll. */
+  readonly nextPollAt: number
   /** Where the sign-in routes live (`https://brew.new`). */
   readonly siteUrl: string
   /** The API URL the key is for. */
@@ -103,6 +105,7 @@ function isPendingLogin(value: unknown): value is PendingLogin {
     typeof record.verificationUrl === 'string' &&
     typeof record.expiresAt === 'string' &&
     typeof record.interval === 'number' &&
+    typeof record.nextPollAt === 'number' &&
     typeof record.siteUrl === 'string' &&
     typeof record.apiUrl === 'string' &&
     Array.isArray(record.keys) &&
