@@ -91,7 +91,11 @@ export const RESEND_ACCOUNT: ResendAccount = {
   ],
   segments: [{ id: 'seg_1', name: 'Beta users' }],
   segmentContacts: {
-    seg_1: [{ id: 'ct_1', email: 'ada@example.com', unsubscribed: false }],
+    seg_1: [
+      { id: 'ct_1', email: 'ada@example.com', unsubscribed: false },
+      { id: 'ct_2', email: 'bob@example.com', unsubscribed: true },
+      { id: 'ct_3', email: 'carol@example.com' },
+    ],
   },
   topics: [
     { id: 'top_1', name: 'Product updates', default_subscription: 'opt_in' },

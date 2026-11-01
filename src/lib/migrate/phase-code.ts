@@ -18,12 +18,14 @@ import {
   resolveProjectModule,
   type ScannedCallSite,
 } from './code/scan'
+import { type Token, tokenize } from './code/tokenize'
 import { importAndSetUp } from './import-setup'
 import { deriveKey, isCanonicalKitKey, slugifyFileName } from './keys'
 import type { CallSiteRecord, MigrationItem } from './manifest'
 import {
   addNextStep,
   clean,
+  keepsKey,
   phaseState,
   pruneItems,
   type RunContext,
@@ -75,6 +77,26 @@ function oneLine(text: string): string {
   return text.replace(/\s*\n\s*/g, ' ')
 }
 
+/**
+ * Source text with every string and template literal replaced by `'…'`:
+ * a literal address or name in the code never reaches the manifest.
+ */
+function maskLiterals(source: string): string {
+  let tokens: readonly Token[]
+  try {
+    tokens = tokenize(source, { jsx: false })
+  } catch {
+    return "'…'"
+  }
+  let out = source
+  for (const token of [...tokens].reverse()) {
+    if (token.type === 'string' || token.type === 'template') {
+      out = `${out.slice(0, token.start)}'…'${out.slice(token.end)}`
+    }
+  }
+  return out
+}
+
 function sendLine(
   client: string,
   key: string,
@@ -82,7 +104,7 @@ function sendLine(
   extra: readonly string[]
 ): string {
   const fields = [`email: ${recipient(message.to)}`, ...extra.map(oneLine)]
-  return `await ${client}.send('${key}', { ${fields.join(', ')} })`
+  return `await ${client}.send('${key}', { ${fields.map(maskLiterals).join(', ')} })`
 }
 
 type KeyIndex = {
@@ -246,19 +268,18 @@ export async function codePhase(run: RunContext): Promise<CodePhaseResult> {
       code: 'CODE_SCAN_TRUNCATED',
       severity: 'warning',
       message:
-        'The project has more source files than the scan reads; run it from the app directory (--cwd).',
+        'The scan skipped source files (more than it reads, or one too big to parse that mentions Resend), so no import is rewritten; run it from the app directory (--cwd).',
     })
   }
 
   // ---- React Email templates → app emails (`props: 'merge_tags'`).
-  const reuseKeys = run.manifest.options.keyPrefix === run.options.keyPrefix
   const taken = new Set<string>()
   const ours = new Set<string>()
   for (const item of [
     ...(run.manifest.phases.templates?.items ?? []),
     ...phase.items,
   ]) {
-    if (item.key !== undefined && (item.status === 'done' || reuseKeys)) {
+    if (keepsKey(run, item)) {
       taken.add(item.key)
       ours.add(item.key)
     }
@@ -273,15 +294,14 @@ export async function codePhase(run: RunContext): Promise<CodePhaseResult> {
     const id = `react-email:${file.file}`
     keep.add(id)
     const previous = phase.items.find((item) => item.id === id)
-    const key =
-      previous?.key !== undefined && (previous.status === 'done' || reuseKeys)
-        ? previous.key
-        : deriveKey({
-            base: slugifyFileName(reactEmailBaseName(file.file)),
-            prefix: run.options.keyPrefix,
-            taken,
-            fallback: 'email',
-          })
+    const key = keepsKey(run, previous)
+      ? previous.key
+      : deriveKey({
+          base: slugifyFileName(reactEmailBaseName(file.file)),
+          prefix: run.options.keyPrefix,
+          taken,
+          fallback: 'email',
+        })
     const item = reconcileItem(phase, {
       id,
       kind: 'react-email',
@@ -403,7 +423,12 @@ export async function codePhase(run: RunContext): Promise<CodePhaseResult> {
       .filter((item) => item.kind === 'rewrite' && item.status === 'done')
       .map((item) => item.file)
   )
-  if (run.apply && run.options.rewriteImports && rewritable.length > 0) {
+  // The map follows the migrated templates even when no new file moves.
+  if (
+    run.apply &&
+    run.options.rewriteImports &&
+    (rewritable.length > 0 || rewritten.size > 0)
+  ) {
     rewriteImports(run, scan, rewritable, templateItems, rewritten)
   }
 
@@ -447,7 +472,14 @@ function rewriteImports(
   rewritten: Set<string | undefined>
 ): void {
   const writer = new ProjectWriter({ root: run.project.root })
-  const mapPath = mapFilePath(run.project.libDir, run.project.typescript)
+  const { libDir, typescript } = run.project
+  // A refresh with no new file keeps the map the earlier rewrite wrote.
+  const moduleSyntax =
+    scan.files.get(items[0]?.file ?? '')?.locations.moduleSyntax ??
+    (run.manifest.files[mapFilePath(libDir, typescript, 'cjs')] === undefined
+      ? 'esm'
+      : 'cjs')
+  const mapPath = mapFilePath(libDir, typescript, moduleSyntax)
   const entries = new Map<string, string>()
   for (const item of templateItems) {
     if (item.status !== 'done' || item.key === undefined) {
@@ -460,11 +492,10 @@ function rewriteImports(
       entries.set(item.alias, item.key)
     }
   }
-  const firstFile = scan.files.get(items[0]?.file ?? '')
   const content = mapFileContent({
     entries: [...entries.entries()],
-    typescript: run.project.typescript,
-    moduleSyntax: firstFile?.locations.moduleSyntax ?? 'esm',
+    typescript,
+    moduleSyntax,
     rerunCommand: `${run.prefix} migrate resend --apply --rewrite-imports`,
   })
   const recorded = run.manifest.files[mapPath]?.sha256
@@ -482,12 +513,15 @@ function rewriteImports(
     return
   }
   if (mapChange.action === 'kept-user-version') {
+    // A map the migration did not write may miss templates: no client moves to it.
     run.findings.push({
       code: 'MAP_FILE_KEPT',
-      severity: 'warning',
-      message: `${mapPath} was edited since the migration wrote it, so it was kept; check it maps every template id.`,
+      severity: 'error',
+      message: `${mapPath} was edited since the migration wrote it, so it was kept and no imports were rewritten; undo the edit or delete the file, then run again.`,
     })
-  } else if (mapChange.sha256 !== undefined) {
+    return
+  }
+  if (mapChange.sha256 !== undefined) {
     run.manifest.files[mapPath] = { sha256: mapChange.sha256 }
   }
   for (const item of items) {

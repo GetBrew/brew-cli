@@ -25,14 +25,16 @@ import { codePhase } from './phase-code'
 import {
   automationsPhase,
   broadcastsPhase,
-  contactsPhase,
   domainsPhase,
-  segmentsPhase,
-  suppressionsPhase,
   templatesPhase,
-  topicsPhase,
   webhooksPhase,
 } from './phases'
+import {
+  contactsPhase,
+  segmentsPhase,
+  suppressionsPhase,
+  topicsPhase,
+} from './phases-contacts'
 import {
   exitCodeForMigration,
   type Finding,
@@ -140,7 +142,6 @@ async function readBrew(run: RunContext): Promise<{
       brandId: row.brandId,
       name: row.identity?.brandName ?? row.domain ?? null,
     }
-    run.manifest.brandId = row.brandId
   } catch (error) {
     rethrowIfFatal(run.ctx, error)
     run.findings.push({
@@ -148,6 +149,16 @@ async function readBrew(run: RunContext): Promise<{
       severity: 'warning',
       message: `Could not read the Brew brand: ${errorOf(run, error).message}`,
     })
+  }
+  if (brand !== null) {
+    // Done items and cursors belong to the brand the manifest records.
+    const recorded = run.manifest.brandId
+    if (recorded !== null && recorded !== brand.brandId) {
+      throw new CliUsageError(
+        `${run.options.manifestPath} records a migration into Brew brand ${recorded}, not ${brand.brandId}. Use that brand's API key, or start a separate migration with --manifest <path>.`
+      )
+    }
+    run.manifest.brandId = brand.brandId
   }
   try {
     const list = await brew.domains.list({ limit: 100 })
@@ -199,6 +210,13 @@ function resolveTargetDomain(
 ): void {
   if (domain === undefined) {
     return
+  }
+  // Unsubscribe imports resume from cursors read for the recorded domain.
+  const recorded = run.manifest.options.domain
+  if (recorded !== null && recorded.toLowerCase() !== domain.toLowerCase()) {
+    throw new CliUsageError(
+      `${run.options.manifestPath} records --domain ${recorded}. Pass --domain ${recorded}, or start a separate migration with --manifest <path>.`
+    )
   }
   run.manifest.options.domain = domain
   if (run.brewDomains === null) {
@@ -447,6 +465,20 @@ export async function runMigration(
   }
 
   if (apply) {
+    // An email left to a person is not migrated until they finish it.
+    const unfinished = (['templates', 'code'] as const)
+      .filter((id) => input.phases.includes(id))
+      .flatMap((id) => manifest.phases[id]?.items ?? [])
+      .filter((item) => item.status === 'manual' && item.kind !== 'rewrite')
+    for (const item of unfinished) {
+      run.nextSteps.push({
+        id: `finish-${item.id}`,
+        actor: item.kind === 'react-email' ? 'agent' : 'human',
+        kind: 'review',
+        title: `${item.name} (${item.key}) is not migrated: ${item.detail ?? 'see the manifest'}`,
+        blocking: true,
+      })
+    }
     const keys = (manifest.phases.templates?.items ?? [])
       .concat(manifest.phases.code?.items ?? [])
       .filter((item) => item.status === 'done' && item.key !== undefined)

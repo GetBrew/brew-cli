@@ -169,8 +169,7 @@ function listSourceFiles(root: string): {
       if (
         stats.isFile() &&
         SOURCE_EXTENSIONS.includes(extname(entry)) &&
-        !entry.endsWith('.d.ts') &&
-        stats.size <= MAX_FILE_BYTES
+        !entry.endsWith('.d.ts')
       ) {
         files.push(path)
       }
@@ -241,6 +240,7 @@ export function scanProject(
   const files = new Map<string, ScannedFile>()
   const reactEmail: ReactEmailFile[] = []
   let usedTypeScript = false
+  let truncated = listed.truncated
   for (const absolute of listed.files) {
     let text: string
     try {
@@ -255,6 +255,11 @@ export function scanProject(
       /\bexport\s+default\b/.test(text) &&
       /<Html[\s>]/.test(text)
     if (!SEND_HINT.test(text) && !isReactEmail) {
+      continue
+    }
+    if (text.length > MAX_FILE_BYTES) {
+      // Too big to parse, and it may send: the scan is incomplete.
+      truncated = true
       continue
     }
     const located = locate(ts, text, file)
@@ -374,7 +379,7 @@ export function scanProject(
   return {
     engine: usedTypeScript ? 'typescript' : 'tokenizer',
     filesScanned: listed.files.length,
-    truncated: listed.truncated,
+    truncated,
     files,
     clients,
     callSites,

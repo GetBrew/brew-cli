@@ -259,8 +259,6 @@ function analyzeMessage(
     kind = 'html'
   } else if (byName.has('text')) {
     kind = 'text'
-  } else if (spread) {
-    kind = 'unknown'
   }
   if (byName.has('html')) {
     unsupported.push('html')
@@ -268,7 +266,8 @@ function analyzeMessage(
   if (byName.has('text') && kind !== 'template') {
     unsupported.push('text')
   }
-  if (spread && kind === 'unknown') {
+  // A spread can carry any field (`cc`, `attachments`, another body).
+  if (spread) {
     unsupported.push('...spread')
   }
   return {
@@ -309,19 +308,19 @@ export function analyzeArgument(
     return { kind: message.kind, shape: 'object', messages: [message] }
   }
   if (first?.type === 'punct' && first.value === '[') {
-    const messages = arrayElements(tokens, 0).map((element) => {
-      const head = tokens[element.from]
-      return head?.type === 'punct' && head.value === '{'
-        ? analyzeMessage(text, tokens, element.from)
-        : UNKNOWN_MESSAGE
-    })
+    const elements = arrayElements(tokens, 0)
+    // An empty batch reads as one unknown message, like any other.
+    const messages =
+      elements.length === 0
+        ? [UNKNOWN_MESSAGE]
+        : elements.map((element) => {
+            const head = tokens[element.from]
+            return head?.type === 'punct' && head.value === '{'
+              ? analyzeMessage(text, tokens, element.from)
+              : UNKNOWN_MESSAGE
+          })
     const kinds = new Set(messages.map((message) => message.kind))
-    const kind =
-      kinds.size === 1
-        ? ([...kinds][0] as SendKind)
-        : kinds.size === 0
-          ? 'unknown'
-          : 'mixed'
+    const kind = kinds.size === 1 ? ([...kinds][0] as SendKind) : 'mixed'
     return { kind, shape: 'array', messages }
   }
   return { kind: 'unknown', shape: 'other', messages: [UNKNOWN_MESSAGE] }

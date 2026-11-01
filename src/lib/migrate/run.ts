@@ -16,6 +16,7 @@ import type {
   PhaseStatus,
 } from './manifest'
 import type { Finding, MigrationMode } from './report'
+import { ResendAccessError } from './resend/client'
 import type { MigrationSource, SourceInventory, SourceTemplate } from './source'
 
 /** State shared by the phases of one `migrate` run. */
@@ -135,6 +136,23 @@ export function reconcileItem(
   return merged
 }
 
+/**
+ * Whether an item keeps the key an earlier run gave it: a done item always;
+ * a planned one while the key prefix is the same and Brew has no email by
+ * that key (a key planned before Brew's keys were read may be another's).
+ */
+export function keepsKey(
+  run: RunContext,
+  item: MigrationItem | undefined
+): item is MigrationItem & { key: string } {
+  return (
+    item?.key !== undefined &&
+    (item.status === 'done' ||
+      (run.manifest.options.keyPrefix === run.options.keyPrefix &&
+        run.existingKeys?.has(item.key) !== true))
+  )
+}
+
 /** Drops items an earlier run planned that no longer exist (done ones stay). */
 export function pruneItems(phase: PhaseState, keep: ReadonlySet<string>): void {
   phase.items = phase.items.filter(
@@ -184,12 +202,13 @@ export function settlePhase(
   phase.status = status
 }
 
-/** Never swallow a stop, or a Brew credential problem. */
+/** Never swallow a stop, or a Brew or Resend credential problem. */
 export function rethrowIfFatal(ctx: CliContext, error: unknown): void {
   ctx.signal.throwIfAborted()
   if (
-    (error instanceof BrewApiError || error instanceof CliApiError) &&
-    (error.status === 401 || error.status === 403)
+    error instanceof ResendAccessError ||
+    ((error instanceof BrewApiError || error instanceof CliApiError) &&
+      (error.status === 401 || error.status === 403))
   ) {
     throw error
   }

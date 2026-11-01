@@ -123,6 +123,16 @@ export async function importAndSetUp(
     return
   }
   const key = item.key
+  if (run.existingKeys === null) {
+    // The key was never checked: it could be another Brew email's.
+    item.status = 'failed'
+    item.error = {
+      code: 'BREW_APP_EMAILS_UNREADABLE',
+      message: `Brew app emails could not be listed, so ${key} was not checked against them; run again once they can be.`,
+    }
+    run.persist()
+    return
+  }
   let importedId: string | undefined
   try {
     say(run, `Importing ${item.name} as app email ${key}…`)

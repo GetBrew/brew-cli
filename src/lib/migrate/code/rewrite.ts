@@ -21,12 +21,18 @@ export type RewriteDecision =
       readonly reason: string
     }
 
-/** Where the template map goes, by the project's helper directory and language. */
+/**
+ * Where the template map goes, by the project's helper directory and
+ * language. A CommonJS map is `.cjs`, so a `"type": "module"` package still
+ * loads it as CommonJS.
+ */
 export function mapFilePath(
   libDir: string | null,
-  typescript: boolean
+  typescript: boolean,
+  moduleSyntax: 'esm' | 'cjs'
 ): string {
-  return `${libDir ?? 'lib'}/brew-resend-map.${typescript ? 'ts' : 'js'}`
+  const extension = typescript ? 'ts' : moduleSyntax === 'cjs' ? 'cjs' : 'js'
+  return `${libDir ?? 'lib'}/brew-resend-map.${extension}`
 }
 
 /**
@@ -81,6 +87,9 @@ function blockingReason(
   knownTemplates: ReadonlySet<string>,
   allTemplatesMigrated: boolean
 ): string | null {
+  if (scan.truncated) {
+    return 'the scan did not read every source file, so a send through it could be missed'
+  }
   const { locations } = scanned
   for (const entry of locations.imports) {
     if (entry.typeOnly) {
@@ -95,6 +104,10 @@ function blockingReason(
   const sites = [
     ...scan.callSites.filter((site) => site.file === file),
     ...clients.flatMap((client) => sitesByClient.get(client.id) ?? []),
+    // A send whose client could not be followed may go through any of them.
+    ...(clients.length === 0
+      ? []
+      : scan.callSites.filter((site) => site.clientId === null)),
   ]
   if (sites.length === 0 && clients.length === 0) {
     return 'it sends nothing through Resend here'
@@ -149,17 +162,27 @@ export function keyArgument(args: string): string | null {
     : null
 }
 
+/**
+ * The map's specifier from `fromFile`. A JavaScript map is named with its
+ * extension (Node ESM resolves no other); a TypeScript map as the file's
+ * other relative imports name theirs.
+ */
 function relativeSpecifier(
   fromFile: string,
   target: string,
   useJs: boolean
 ): string {
-  const withoutExtension = target.replace(/\.(?:ts|js)$/, '')
-  let path = relative(dirname(fromFile), withoutExtension).split(sep).join('/')
+  const typescript = target.endsWith('.ts')
+  let path = relative(
+    dirname(fromFile),
+    typescript ? target.slice(0, -3) : target
+  )
+    .split(sep)
+    .join('/')
   if (!path.startsWith('.')) {
     path = `./${path}`
   }
-  return useJs ? `${path}.js` : path
+  return typescript && useJs ? `${path}.js` : path
 }
 
 /** The rewritten text of a file `decideRewrites` cleared. */
@@ -181,10 +204,22 @@ export function rewriteFile(input: {
       replacement: `${quote}${ADAPTER_MODULE}${quote}`,
     })
   }
+  const specifier = relativeSpecifier(
+    input.file,
+    input.mapFile,
+    locations.relativeImportsUseJs
+  )
+  const quote = text[locations.imports[0]?.specifier.start ?? -1] ?? "'"
+  const esm = locations.moduleSyntax === 'esm'
+  // CommonJS reads the map where the client is built, so no statement
+  // order (`require` and `new` on one line) can reach it undeclared.
+  const templates = esm
+    ? MAP_EXPORT
+    : `require(${quote}${specifier}${quote}).${MAP_EXPORT}`
   for (const client of locations.clients) {
     const args = text.slice(client.args.start, client.args.end)
     const key = keyArgument(args) ?? 'process.env.BREW_API_KEY'
-    const replacement = `${key}, { templates: ${MAP_EXPORT} }`
+    const replacement = `${key}, { templates: ${templates} }`
     if (
       client.args.start === client.args.end &&
       text[client.args.start] !== ')'
@@ -203,34 +238,15 @@ export function rewriteFile(input: {
       })
     }
   }
-  if (locations.clients.length > 0) {
-    const specifier = relativeSpecifier(
-      input.file,
-      input.mapFile,
-      locations.relativeImportsUseJs
-    )
-    const quote = text[locations.imports[0]?.specifier.start ?? -1] ?? "'"
-    if (locations.moduleSyntax === 'esm') {
-      edits.push({
-        start: locations.importInsertAt,
-        end: locations.importInsertAt,
-        replacement: `${locations.importInsertAt === 0 ? '' : '\n'}import { ${MAP_EXPORT} } from ${quote}${specifier}${quote}${locations.importInsertAt === 0 ? '\n' : ''}`,
-      })
-    } else {
-      const requireAt = locations.imports.find(
-        (entry) => entry.kind === 'require'
-      )
-      const lineEnd =
-        requireAt === undefined
-          ? 0
-          : text.indexOf('\n', requireAt.specifier.end)
-      const at = lineEnd === -1 ? text.length : lineEnd
-      edits.push({
-        start: at,
-        end: at,
-        replacement: `${at === 0 ? '' : '\n'}const { ${MAP_EXPORT} } = require(${quote}${specifier}${quote})${at === 0 ? '\n' : ''}`,
-      })
-    }
+  if (esm && locations.clients.length > 0) {
+    const at = locations.importInsertAt
+    // Its own line: code after the last import on that line stays apart.
+    const lineBreak = /[\r\n]/.test(text[at] ?? '\n') ? '' : '\n'
+    edits.push({
+      start: at,
+      end: at,
+      replacement: `${at === 0 ? '' : '\n'}import { ${MAP_EXPORT} } from ${quote}${specifier}${quote}${lineBreak}`,
+    })
   }
   edits.sort((a, b) => b.start - a.start)
   let out = text
