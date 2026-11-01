@@ -93,6 +93,60 @@ describe('agent-goals commands', () => {
     expect(result.code).toBe(0)
   })
 
+  it('creates a published document with revision zero', async () => {
+    server.use(
+      http.post(`${base}/:goalId/documents`, async ({ request }) => {
+        expect(await request.json()).toEqual({
+          path: 'plan.md',
+          expectedRevision: 0,
+          content: 'First campaign plan',
+        })
+        return HttpResponse.json({
+          goalId: 'goal_1',
+          path: 'plan.md',
+          revision: 1,
+        })
+      })
+    )
+    const result = await runCli(
+      [
+        'agent-goals',
+        'publish-document',
+        'goal_1',
+        '--path',
+        'plan.md',
+        '--expected-revision',
+        '0',
+        '--file',
+        '-',
+      ],
+      { env, stdin: 'First campaign plan' }
+    )
+    expect(result.code).toBe(0)
+    expect(result.json).toMatchObject({ revision: 1 })
+  })
+
+  it.each(['-1', '0.5', '', '9007199254740992'])(
+    'rejects invalid document revision %j before publishing',
+    async (revision) => {
+      const result = await runCli(
+        [
+          'agent-goals',
+          'publish-document',
+          'goal_1',
+          '--path',
+          'plan.md',
+          '--expected-revision',
+          revision,
+          '--file',
+          '-',
+        ],
+        { env, stdin: 'Campaign plan' }
+      )
+      expect(result.code).toBe(2)
+    }
+  )
+
   it('schedules a follow-up without granting additional authority', async () => {
     server.use(
       http.post(`${base}/:goalId/follow-ups`, async ({ request }) => {

@@ -1,8 +1,8 @@
 import type { operations } from '../../generated/openapi-types'
 import { defineCommand } from '../../lib/define-command'
+import { CliUsageError } from '../../lib/errors'
 import {
   asSdkInput,
-  flagInt,
   flagString,
   IDEMPOTENCY_FLAG,
   INPUT_FLAG,
@@ -17,6 +17,18 @@ type Input =
   operations['publishAgentGoalDocument']['requestBody']['content']['application/json']
 type Result =
   operations['publishAgentGoalDocument']['responses'][200]['content']['application/json']
+
+function expectedRevisionFlag(value: unknown): number | undefined {
+  if (value === undefined) return undefined
+  const raw = flagString(value)
+  const revision = Number(raw)
+  if (!raw?.trim() || !Number.isSafeInteger(revision) || revision < 0) {
+    throw new CliUsageError(
+      '--expected-revision must be a nonnegative safe integer.'
+    )
+  }
+  return revision
+}
 
 export const agentGoalsPublishDocumentCommand = defineCommand({
   path: ['agent-goals', 'publish-document'],
@@ -52,10 +64,7 @@ export const agentGoalsPublishDocumentCommand = defineCommand({
     const input = asSdkInput<Input>(
       mergeInput(base, {
         path: flagString(flags.path),
-        expectedRevision: flagInt(
-          flags.expectedRevision,
-          '--expected-revision'
-        ),
+        expectedRevision: expectedRevisionFlag(flags.expectedRevision),
         content,
         source: flagString(flags.source),
       })
