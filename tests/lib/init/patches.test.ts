@@ -142,6 +142,21 @@ describe('authjsPatch: the providers line', () => {
     expect(patch.status).toBe('pending')
     expect(next).toContain('providers: [brewEmailProvider, GitHub')
   })
+
+  it('never edits a providers list in a comment', () => {
+    const root = edited(
+      'next-app-authjs-v5',
+      'src/auth.ts',
+      ADAPTER_CONFIG('providers').replace(
+        'export const',
+        '// Example: providers: [GitHub],\nexport const'
+      )
+    )
+    const { patch, next } = authjsPatch(detect(root), 'src/lib/brew-auth.ts')
+    expect(patch.status).toBe('manual')
+    expect(patch.description).toContain('could not be located safely')
+    expect(next).toBeUndefined()
+  })
 })
 
 describe('betterAuthPatch', () => {
@@ -232,6 +247,68 @@ describe('betterAuthPatch', () => {
     )
     expect(patch.status).toBe('manual')
     expect(patch.description).toContain('sendVerificationEmail')
+  })
+
+  it('never edits a betterAuth({ example in a comment', () => {
+    const block = edited(
+      'next-better-auth',
+      'lib/auth.ts',
+      [
+        "import { betterAuth } from 'better-auth'",
+        '',
+        '/* Example:',
+        'export const auth = betterAuth({',
+        '  emailAndPassword: {',
+        '    enabled: true,',
+        '  },',
+        '})',
+        '*/',
+        'export const auth = betterAuth({ database: db, emailAndPassword: { enabled: true } })',
+        '',
+      ].join('\n')
+    )
+    const inBlock = betterAuthPatch(detect(block), 'lib/brew-auth.ts', BOTH)
+    expect(inBlock.patch.status).toBe('manual')
+    expect(inBlock.next).toBeUndefined()
+    const line = edited(
+      'next-better-auth',
+      'lib/auth.ts',
+      config(['  database: db,']).replace(
+        'export const',
+        '// const example = betterAuth({\nexport const'
+      )
+    )
+    const { patch, next } = betterAuthPatch(detect(line), 'lib/brew-auth.ts', {
+      auth: false,
+      lifecycle: true,
+    })
+    expect(patch.status).toBe('pending')
+    expect(next).toContain(
+      [
+        'export const auth = betterAuth({',
+        '  databaseHooks: { user: { create: { after: brewEmails.onUserCreated } } },',
+      ].join('\n')
+    )
+    expect(next).toContain('// const example = betterAuth({\nexport const')
+  })
+
+  it('adds the import after the last import in code, not one in a comment', () => {
+    const root = edited(
+      'next-better-auth',
+      'lib/auth.ts',
+      config(['  database: db,']).replace(
+        "from 'better-auth'\n",
+        "from 'better-auth'\n/* Usage:\nimport { auth } from './auth'\n*/\n"
+      )
+    )
+    const { next } = betterAuthPatch(detect(root), 'lib/brew-auth.ts', BOTH)
+    expect(next).toContain(
+      [
+        "import { betterAuth } from 'better-auth'",
+        "import { brewEmails } from './brew-auth'",
+        '/* Usage:',
+      ].join('\n')
+    )
   })
 
   it('on Workers, leaves the per-request callbacks to the user', () => {

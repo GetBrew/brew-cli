@@ -56,13 +56,15 @@ export type ComputedPatch = {
 
 function insertImport(text: string, statement: string): string {
   const lines = text.split('\n')
-  const semicolon = lines.some((line) => /^import\s.*;\s*$/.test(line))
+  // Imports are read from code: one in a comment is not the last import.
+  const code = withoutComments(text, true).split('\n')
+  const semicolon = code.some((line) => /^import\s.*;\s*$/.test(line))
   const line = semicolon ? `${statement};` : statement
   let lastImportEnd = -1
   let isOpen = false
   const closes =
     /\bfrom\s+['"][^'"]+['"]\s*;?\s*$|^import\s+['"][^'"]+['"]\s*;?\s*$/
-  lines.forEach((current, index) => {
+  code.forEach((current, index) => {
     if (/^import\s/.test(current)) {
       if (closes.test(current)) {
         lastImportEnd = index
@@ -89,8 +91,14 @@ function indentOf(line: string): string {
   return /^\s*/.exec(line)?.[0] ?? ''
 }
 
-/** Source text with its `//` and `/* *\/` comments left out (strings kept). */
-function withoutComments(text: string): string {
+/**
+ * Source text with its `//` and `/* *\/` comments left out (strings kept).
+ * `keepLines` blanks each comment to spaces instead, newlines kept, so a
+ * line found in the result is the same line of `text`, at the same columns.
+ */
+function withoutComments(text: string, keepLines = false): string {
+  const blank = (from: number, to: number) =>
+    text.slice(from, to).replace(/[^\n]/g, ' ')
   let out = ''
   let index = 0
   while (index < text.length) {
@@ -98,11 +106,14 @@ function withoutComments(text: string): string {
     const next = text[index + 1]
     if (char === '/' && next === '/') {
       const end = text.indexOf('\n', index)
-      index = end === -1 ? text.length : end
+      const stop = end === -1 ? text.length : end
+      out += keepLines ? blank(index, stop) : ''
+      index = stop
     } else if (char === '/' && next === '*') {
       const end = text.indexOf('*/', index + 2)
-      index = end === -1 ? text.length : end + 2
-      out += ' '
+      const stop = end === -1 ? text.length : end + 2
+      out += keepLines ? blank(index, stop) : ' '
+      index = stop
     } else if (char === '"' || char === "'" || char === '`') {
       let end = index + 1
       while (end < text.length && text[end] !== char) {
@@ -259,10 +270,10 @@ export function betterAuthPatch(
   }
   const text = normalizeEol(config.text)
   const importLine = `import { ${workers ? 'createBrewEmails' : 'brewEmails'} } from '${helperImport(project, config.path, authHelper)}'`
-  const password = /\bemailAndPassword\b/.test(text)
   // What the sets need: a re-run with another set finds what is missing
   // (a commented-out callback is missing).
   const uncommented = withoutComments(text)
+  const password = /\bemailAndPassword\b/.test(uncommented)
   const missing = [
     ...(options.auth ? ['sendVerificationEmail'] : []),
     ...(options.auth && password ? ['sendResetPassword'] : []),
@@ -274,11 +285,14 @@ export function betterAuthPatch(
     }
   }
   const lines = text.split('\n')
-  const openers = lines.flatMap((line, index) =>
+  // Insertion points come from code only: a commented-out example is never
+  // the config.
+  const code = withoutComments(text, true).split('\n')
+  const openers = code.flatMap((line, index) =>
     /\bbetterAuth\(\s*\{\s*$/.test(line) ? [index] : []
   )
   const opener = openers.length === 1 ? openers[0] : undefined
-  const passwordLines = lines.flatMap((line, index) =>
+  const passwordLines = code.flatMap((line, index) =>
     /^\s*emailAndPassword\s*:\s*\{\s*$/.test(line) ? [index] : []
   )
   const owned = [
@@ -406,7 +420,10 @@ export function authjsPatch(
       text
     )
   const lines = text.split('\n')
-  const providerLines = lines.flatMap((line, index) =>
+  // Insertion points come from code only: a providers list in a comment is
+  // never the config's.
+  const code = withoutComments(text, true).split('\n')
+  const providerLines = code.flatMap((line, index) =>
     /\bproviders\s*:\s*\[/.test(line) ? [index] : []
   )
   const at = providerLines[0]
@@ -432,15 +449,19 @@ export function authjsPatch(
     )
   }
   const line = lines[at] ?? ''
+  const codeLine = code[at] ?? ''
   const next = [...lines]
-  if (/\bproviders\s*:\s*\[\s*$/.test(line)) {
+  if (/\bproviders\s*:\s*\[\s*$/.test(codeLine)) {
     next.splice(at + 1, 0, `${innerIndent(lines, at)}brewEmailProvider,`)
   } else {
-    next[at] = line.replace(/\bproviders\s*:\s*\[\s*/, (match) =>
-      /\bproviders\s*:\s*\[\s*\]/.test(line)
-        ? `${match}brewEmailProvider`
-        : `${match}brewEmailProvider, `
-    )
+    // At the list's column in code (columns match `line`'s).
+    const open = /\bproviders\s*:\s*\[\s*/.exec(codeLine)
+    const end = (open?.index ?? 0) + (open?.[0].length ?? 0)
+    next[at] = `${line.slice(0, end)}${
+      /\bproviders\s*:\s*\[\s*\]/.test(codeLine)
+        ? 'brewEmailProvider'
+        : 'brewEmailProvider, '
+    }${line.slice(end)}`
   }
   return computed(
     config.path,
