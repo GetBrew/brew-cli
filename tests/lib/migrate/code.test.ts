@@ -189,12 +189,12 @@ export const go = () => {
 })
 
 describe('rewriteFile', () => {
-  it('names a JavaScript map with its extension, so Node ESM resolves it', () => {
-    const scan = project({ 'src/send.js': CLIENT })
+  it('a JavaScript ESM map is .mjs, so Node loads it as ESM without "type": "module"', () => {
+    const scan = project({ 'src/send.mjs': CLIENT })
     const map = mapFilePath('lib', false, 'esm')
-    expect(map).toBe('lib/brew-resend-map.js')
-    expect(rewritten(scan, 'src/send.js', map)).toContain(
-      "import { brewResendTemplates } from '../lib/brew-resend-map.js'"
+    expect(map).toBe('lib/brew-resend-map.mjs')
+    expect(rewritten(scan, 'src/send.mjs', map)).toContain(
+      "import { brewResendTemplates } from '../lib/brew-resend-map.mjs'"
     )
   })
 

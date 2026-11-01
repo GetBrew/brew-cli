@@ -491,7 +491,7 @@ function rewriteImports(
   const { libDir, typescript } = run.project
   type MapKind = { typescript: boolean; moduleSyntax: 'esm' | 'cjs' }
   // A TypeScript sender reads the .ts map; a JavaScript one, which Node may
-  // run as it is, the .js or .cjs map of its own module syntax.
+  // run as it is, the .mjs or .cjs map of its own module syntax.
   const kindOf = (item: MigrationItem): MapKind => ({
     typescript: typescript && /\.[cm]?tsx?$/.test(item.file ?? ''),
     moduleSyntax:

@@ -324,7 +324,7 @@ describe('migrate resend --rewrite-imports: the template map', () => {
     useBrewApi({ appEmailKeys: ['reset-password', 'receipt'] })
     await migrate(REWRITE, run)
     for (const map of [
-      'src/lib/brew-resend-map.js',
+      'src/lib/brew-resend-map.mjs',
       'src/lib/brew-resend-map.cjs',
     ]) {
       expect(readFileSync(join(root, map), 'utf8')).toContain(

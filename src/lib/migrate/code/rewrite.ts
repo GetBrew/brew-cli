@@ -23,15 +23,15 @@ export type RewriteDecision =
 
 /**
  * Where the template map goes, by the project's helper directory and
- * language. A CommonJS map is `.cjs`, so a `"type": "module"` package still
- * loads it as CommonJS.
+ * language. A JavaScript map is `.mjs` or `.cjs`, so Node loads it with its
+ * own module syntax whatever the package's `"type"`.
  */
 export function mapFilePath(
   libDir: string | null,
   typescript: boolean,
   moduleSyntax: 'esm' | 'cjs'
 ): string {
-  const extension = typescript ? 'ts' : moduleSyntax === 'cjs' ? 'cjs' : 'js'
+  const extension = typescript ? 'ts' : moduleSyntax === 'cjs' ? 'cjs' : 'mjs'
   return `${libDir ?? 'lib'}/brew-resend-map.${extension}`
 }
 
