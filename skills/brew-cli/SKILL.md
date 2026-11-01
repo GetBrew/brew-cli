@@ -89,9 +89,10 @@ Refusals worth knowing (exit 1, the envelope on stderr):
 keep it, or pass `--overwrite`. `409 APP_EMAIL_TRIGGER_IN_USE`: the key's
 trigger already starts a published automation no setup made, so every send
 would go out twice; unpublish or delete `details.automationIds` first.
-`422 APP_EMAIL_DOMAIN_PURPOSE_MISMATCH`: a transactional key (auth, trial
-ending, payment failed) never sends from a marketing `--domain`; pass a
-transactional one or leave `--domain` out. `409 APP_EMAIL_SETUP_IN_PROGRESS`:
+`422 APP_EMAIL_DOMAIN_PURPOSE_MISMATCH`: a kit key never sends from a
+`--domain` of the other purpose (transactional: auth, trial ending, payment
+failed; marketing: welcome, win-back); pass one of its purpose or leave
+`--domain` out. `409 APP_EMAIL_SETUP_IN_PROGRESS`:
 another setup of the key was writing; run it again later.
 `409 CONTRACT_LOCKED_BY_PUBLISHED_AUTOMATIONS`: a `payloadSchema` that drops
 or retypes a field the live automation reads. A `DRAFT_SAVED_NOT_LIVE`

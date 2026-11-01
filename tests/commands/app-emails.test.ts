@@ -765,7 +765,7 @@ describe('app-emails kit', () => {
     expect(result.stdout).toContain('failed: APP_EMAIL_DOMAIN_PURPOSE_MISMATCH')
     const lines = result.stdout.trimEnd().split('\n')
     expect(lines.slice(-3)).toEqual([
-      'auth.password-reset, auth.verify-email: transactional, so they never send from a marketing domain. Run `brew-cli app-emails kit` again with a transactional --domain, or without --domain.',
+      'auth.password-reset, auth.verify-email: a kit key never sends from a domain of the other purpose (auth, trial ending and payment failed are transactional; welcome and win-back are marketing). Run `brew-cli app-emails kit` again without --domain, or with a --domain of their purpose.',
       'lifecycle.win-back: the trigger already starts a published automation no setup made, so every send would go out twice. Unpublish or delete the automations in error.details.automationIds, then run the kit again.',
       '1 key failed. Run `brew-cli app-emails kit` again with the same flags to finish them.',
     ])

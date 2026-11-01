@@ -36,8 +36,9 @@ the team sandbox, app emails and browser sign-in.
   `--domain`, `--overwrite`, `--idempotency-key`), confirms, prints
   per-key results and exits 1 when a key failed. Its human output says
   what each failed key needs: run it again to finish a key that failed
-  part way, a transactional `--domain` (or none) for
-  `APP_EMAIL_DOMAIN_PURPOSE_MISMATCH`, unpublishing the automations in
+  part way, a `--domain` of the key's purpose (or none) for
+  `APP_EMAIL_DOMAIN_PURPOSE_MISMATCH` (a transactional domain on welcome
+  or win-back is refused too), unpublishing the automations in
   `error.details.automationIds` for `APP_EMAIL_TRIGGER_IN_USE`, and
   `--overwrite` for `APP_EMAIL_EDITED_IN_BREW`. `upsert` exits 1 on the
   same refusals, `APP_EMAIL_SETUP_IN_PROGRESS` and

@@ -51,7 +51,7 @@ export const appEmailsKitCommand = defineCommand({
     {
       flag: '--domain <domainId>',
       summary:
-        'Sending domain id for every key (default: a verified domain per purpose, else the team-only sandbox). A marketing domain fails the transactional keys with APP_EMAIL_DOMAIN_PURPOSE_MISMATCH',
+        'Sending domain id for every key (default: a verified domain per purpose, else the team-only sandbox). Keys of the other purpose fail with APP_EMAIL_DOMAIN_PURPOSE_MISMATCH',
     },
     {
       flag: '--overwrite',
@@ -185,7 +185,7 @@ function kitFailureHints(
   const mismatched = keysWith('APP_EMAIL_DOMAIN_PURPOSE_MISMATCH')
   if (mismatched.length > 0) {
     hints.push(
-      `${mismatched.join(', ')}: transactional, so they never send from a marketing domain. Run \`${prefix} app-emails kit\` again with a transactional --domain, or without --domain.`
+      `${mismatched.join(', ')}: a kit key never sends from a domain of the other purpose (auth, trial ending and payment failed are transactional; welcome and win-back are marketing). Run \`${prefix} app-emails kit\` again without --domain, or with a --domain of their purpose.`
     )
   }
   const inUse = keysWith('APP_EMAIL_TRIGGER_IN_USE')

@@ -65,7 +65,7 @@ export const appEmailsUpsertCommand = defineCommand({
     {
       flag: '--domain <domainId>',
       summary:
-        'Sending domain id (default: a verified domain for the purpose, else the team-only sandbox). A transactional key (auth, trial ending, payment failed) refuses a marketing domain',
+        'Sending domain id (default: a verified domain for the purpose, else the team-only sandbox). A kit key refuses a domain of the other purpose (transactional: auth, trial ending, payment failed; marketing: welcome, win-back)',
     },
     {
       flag: '--no-publish',
