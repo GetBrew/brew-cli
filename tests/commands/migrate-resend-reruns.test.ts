@@ -74,6 +74,17 @@ describe('migrate resend: a re-run keeps its destination', () => {
       '/v1/domains/dom_news/unsubscribes/import'
     )
   })
+
+  it('an apply without --domain resumes on the domain the plan recorded', async () => {
+    const { run } = setUp()
+    const brew = useBrewApi()
+    const only = ['--only', 'contacts']
+    await migrate(['--json', ...only, '--domain', 'news.acme.dev'], run)
+    expect((await migrate([...APPLY, ...only], run)).code).toBe(0)
+    expect(brew.calls.map((call) => call.path)).toContain(
+      '/v1/domains/dom_news/unsubscribes/import'
+    )
+  })
 })
 
 describe('migrate resend: unfinished work is retried', () => {

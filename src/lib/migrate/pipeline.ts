@@ -204,10 +204,9 @@ async function readBrew(run: RunContext): Promise<{
   return { brand }
 }
 
-function resolveTargetDomain(
-  run: RunContext,
-  domain: string | undefined
-): void {
+function resolveTargetDomain(run: RunContext, flag: string | undefined): void {
+  // A run without --domain resumes on the domain the manifest records.
+  const domain = flag ?? run.manifest.options.domain ?? undefined
   if (domain === undefined) {
     return
   }
