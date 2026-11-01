@@ -132,6 +132,28 @@ function blockingReason(
       }
     }
   }
+  // The Brew client has emails.send and batch.send only: a client also
+  // used for anything else (contacts, emails.get) stays on Resend.
+  for (const client of clients) {
+    const uses = [
+      ...(client.binding === null ? [] : [{ file, name: client.binding }]),
+      ...[...scan.files].flatMap(([other, { locations }]) =>
+        locations.localImports
+          .filter((entry) => entry.imported === client.exportName)
+          .map((entry) => ({ file: other, name: entry.local }))
+      ),
+    ]
+    const literal = (text: string) =>
+      text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const other = uses.find(({ file: user, name: local }) =>
+      new RegExp(
+        `(?<![\\w$.])${literal(local)}\\s*\\??\\.\\s*(?!(?:emails|batch)\\s*\\??\\.\\s*send\\b)[A-Za-z_$]`
+      ).test(scan.files.get(user)?.text ?? '')
+    )
+    if (other !== undefined) {
+      return `${other.file} uses the client for more than emails.send and batch.send, which the Brew client does not provide`
+    }
+  }
   for (const client of clients) {
     const args = scanned.text.slice(
       client.site.args.start,

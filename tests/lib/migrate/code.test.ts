@@ -82,6 +82,32 @@ export const go = () => resend.emails.send({ to: 'x', template: { id: 'welcome' 
       expect.objectContaining({ file: 'src/resend.ts', rewritable: false }),
     ])
   })
+
+  it.each([
+    [
+      'in its own file',
+      `${CLIENT}export const add = () => resend.contacts.create({ email: 'x' })\n`,
+      '',
+    ],
+    [
+      'through an import',
+      CLIENT,
+      "import { resend } from './resend'\nexport const add = () => resend.contacts.create({ email: 'x' })\n",
+    ],
+  ])(
+    'a client used for more than sends stays on Resend (%s)',
+    (_case, client, other) => {
+      const scan = project({
+        'src/resend.ts': client,
+        'src/notify.ts': `import { resend } from './resend'
+export const go = () => resend.emails.send({ to: 'x', template: { id: 'welcome' } })
+${other}`,
+      })
+      expect(decideRewrites(scan, new Set(['welcome']), true)).toEqual([
+        expect.objectContaining({ file: 'src/resend.ts', rewritable: false }),
+      ])
+    }
+  )
 })
 
 describe('rewriteFile', () => {
