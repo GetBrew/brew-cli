@@ -778,6 +778,18 @@ describe('init: a provider changes only when nothing breaks', () => {
     }
   )
 
+  it('a printed re-run keeps the project --supabase-project picked', async () => {
+    const root = supabaseProject()
+    useBrewApi({ connectFailKeys: ['auth.magic-link'] })
+    useSupabaseApi(OFF)
+    const picked = ['--supabase-project', 'zyxwvutsrqponmlkjihg']
+    const result = await run(root, [...CONFIGURE, ...picked])
+    const rerun = result.report.nextSteps.find(
+      (step) => step.id === 'rerun-supabase-connect'
+    )
+    expect(rerun?.command).toContain(picked.join(' '))
+  })
+
   it("--configure-supabase never replaces the secret of a connection active for another project's hook", async () => {
     const root = supabaseProject()
     const requests = useBrewApi({

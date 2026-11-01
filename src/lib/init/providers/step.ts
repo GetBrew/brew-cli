@@ -231,6 +231,12 @@ async function supabaseStep(
     flag: input.supabaseProject,
   })
   const ref = detected?.ref ?? null
+  // A printed re-run keeps the project --supabase-project picked: without
+  // it, the re-run detects the project again, maybe another one.
+  const picked =
+    input.supabaseProject === undefined
+      ? ''
+      : ` --supabase-project ${input.supabaseProject}`
   const read = await readConnection(input, 'supabase_auth')
   if (!read.ok) {
     return failed(input, 'supabase_auth', read.error, ref)
@@ -250,7 +256,7 @@ async function supabaseStep(
         id: 'configure-supabase-hook',
         actor: 'agent',
         kind: 'run-command',
-        command: `${input.init} --configure-supabase${ref === null ? ' --supabase-project <ref>' : ''} --yes`,
+        command: `${input.init} --configure-supabase${ref === null ? ' --supabase-project <ref>' : picked} --yes`,
         title: `Or let init do it: with ${SUPABASE_TOKEN_VARIABLE} (a Supabase personal access token, supabase.com/dashboard/account/tokens) in the environment, init connects Brew and points the Send Email hook at it through the Management API, saving the old hook settings for --rollback-provider`,
         blocking: false,
       }
@@ -529,7 +535,7 @@ async function supabaseStep(
       id: 'rerun-supabase-connect',
       actor: 'agent',
       kind: 'run-command',
-      command: `${input.init} --configure-supabase --yes`,
+      command: `${input.init} --configure-supabase${picked} --yes`,
       title: `Run again once these auth emails reach every user (set up, and a verified transactional domain, not the sandbox): ${notReady.join(', ')}. Supabase keeps sending its own until then`,
       blocking: true,
     })
