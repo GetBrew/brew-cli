@@ -226,7 +226,9 @@ export async function ensureIgnored(
   const conflicts: string[] = []
   for (const path of missing) {
     const isNowIgnored =
-      change.action === 'kept-user-version' || planned === 'unbalanced'
+      change.action === 'kept-user-version' ||
+      change.action === 'refused' ||
+      planned === 'unbalanced'
         ? false
         : writer.dryRun
           ? matchesGitignore(planned, path)

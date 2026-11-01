@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process'
-import { readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { ProjectWriter } from '../../../src/lib/project/fs-writer'
@@ -136,6 +136,23 @@ describe('ensureIgnored', () => {
         ['.env.local'],
         { spawn: enoent }
       )
+      expect(result.added).toEqual([])
+      expect(result.conflicts).toEqual(['.env.local'])
+    }
+  })
+
+  it('reports paths as conflicts when the .gitignore write is refused', async () => {
+    const root = tempProject()
+    const outside = tempProject('brew-cli-outside-')
+    writeFileSync(join(outside, '.gitignore'), 'node_modules\n')
+    symlinkSync(join(outside, '.gitignore'), join(root, '.gitignore'))
+    for (const dryRun of [true, false]) {
+      const result = await ensureIgnored(
+        new ProjectWriter({ root, dryRun }),
+        ['.env.local'],
+        { spawn: enoent }
+      )
+      expect(result.change?.action).toBe('refused')
       expect(result.added).toEqual([])
       expect(result.conflicts).toEqual(['.env.local'])
     }
