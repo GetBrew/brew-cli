@@ -2478,6 +2478,118 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/agent-goals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List marketing goals
+         * @description List marketing goals. Goal state and permissions are enforced by Brew on every operation.
+         */
+        get: operations["listAgentGoals"];
+        put?: never;
+        /**
+         * Create a marketing goal
+         * @description Create a marketing goal. API keys create a paused goal. Activate it and set standing permissions as a verified member in Brew.
+         */
+        post: operations["createAgentGoal"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/agent-goals/{goalId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get a marketing goal
+         * @description Get a marketing goal. Goal state and permissions are enforced by Brew on every operation.
+         */
+        get: operations["getAgentGoal"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update a marketing goal status
+         * @description Update a marketing goal status. Goal state and permissions are enforced by Brew on every operation.
+         */
+        patch: operations["updateAgentGoal"];
+        trace?: never;
+    };
+    "/v1/agent-goals/{goalId}/tasks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List goal tasks
+         * @description List goal tasks. Goal state and permissions are enforced by Brew on every operation.
+         */
+        get: operations["listAgentGoalTasks"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/agent-goals/{goalId}/follow-ups": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Schedule a goal follow-up
+         * @description Schedule a goal follow-up. Goal state and permissions are enforced by Brew on every operation.
+         */
+        post: operations["scheduleAgentGoalFollowUp"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/agent-goals/{goalId}/documents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List goal documents
+         * @description List goal documents. Goal state and permissions are enforced by Brew on every operation.
+         */
+        get: operations["listAgentGoalDocuments"];
+        put?: never;
+        /**
+         * Publish a goal document revision
+         * @description Publish a goal document revision. Goal state and permissions are enforced by Brew on every operation.
+         */
+        post: operations["publishAgentGoalDocument"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/chats": {
         parameters: {
             query?: never;
@@ -4468,7 +4580,7 @@ export interface components {
             };
         };
         /** @enum {string} */
-        ApiErrorCode: "ACCOUNT_SUSPENDED" | "API_KEY_REVOKED" | "AUDIENCE_BUILD_ACTIVE" | "AUDIENCE_BUILD_ALREADY_ACTIVE" | "AUDIENCE_EDIT_CONFLICT" | "AUDIENCE_MEMBERSHIP_NOT_EXPRESSIBLE" | "AUDIENCE_NOT_FOUND" | "AUDIENCE_RUN_NOT_FOUND" | "AUDIT_NOT_FOUND" | "AUTHENTICATION_REQUIRED" | "AUTOMATION_GRAPH_INVALID" | "AUTOMATION_NOT_FOUND" | "AUTOMATION_NOT_PAUSABLE" | "AUTOMATION_NOT_PUBLISHED" | "AUTOMATION_RUN_NOT_FOUND" | "AUTOMATION_VERSION_CONFLICT" | "AUTOMATION_VERSION_NOT_FOUND" | "BATCH_TOO_LARGE" | "BRAND_DOMAIN_CONFLICT" | "BRAND_ID_REQUIRED" | "BRAND_LIMIT_REACHED" | "BRAND_NOT_FOUND" | "BRAND_NOT_READY" | "BRAND_SCOPE_MISMATCH" | "CHAT_NOT_FOUND" | "COMMENT_NOT_FOUND" | "CONSENT_REQUIRED" | "CONTACT_NOT_FOUND" | "CONTENT_OPERATION_FAILED" | "CONTRACT_LOCKED_BY_PUBLISHED_AUTOMATIONS" | "CORE_FIELD_IMMUTABLE" | "DOMAIN_ALREADY_EXISTS" | "DOMAIN_CLAIMED_ELSEWHERE" | "DOMAIN_NOT_FOUND" | "DOMAIN_NOT_READY" | "DOMAIN_OTHER_BRAND" | "DOMAIN_PROVIDER_ERROR" | "DOMAIN_PURPOSE_NOT_ALLOWED" | "DOMAIN_VERIFICATION_FAILED" | "DOMAIN_VERIFIED_ELSEWHERE" | "EMAIL_GENERATION_FAILED" | "EMAIL_GROUP_NAME_CONFLICT" | "EMAIL_GROUP_NOT_FOUND" | "EMAIL_IMAGES_MISSING" | "EMAIL_IMPORT_FAILED" | "EMAIL_IN_PROGRESS" | "EMAIL_IN_USE_BY_AUTOMATION" | "EMAIL_NOT_FOUND" | "EMAIL_NOT_READY" | "EMAIL_RESULT_UNAVAILABLE" | "EMAIL_RUN_AMBIGUOUS" | "EMAIL_TEMPLATE_INVALID" | "EMAIL_VERSION_NOT_FOUND" | "EXPORT_PROVIDER_ERROR" | "EXPORT_UNSUPPORTED" | "FIELD_NAME_COLLISION" | "FIELD_NOT_FOUND" | "FIELD_TYPE_MISMATCH" | "FIGMA_ACCESS_DENIED" | "FIGMA_CONVERSION_FAILED" | "FIGMA_FRAME_NOT_FOUND" | "FIGMA_NOT_CONNECTED" | "FIGMA_UNAVAILABLE" | "FIGMA_URL_INVALID" | "FLOW_NOT_FOUND" | "IDEMPOTENCY_CONFLICT" | "IDEMPOTENCY_IN_PROGRESS" | "INSIGHT_NOT_FOUND" | "INSUFFICIENT_CREDITS" | "INSUFFICIENT_PERMISSIONS" | "INSUFFICIENT_ROLE" | "INTEGRATION_NOT_CONNECTED" | "INTERNAL_ERROR" | "INVALID_API_KEY" | "INVALID_EMAIL" | "INVALID_PAYLOAD" | "INVALID_REQUEST" | "LIQUID_RENDER_ERROR" | "METHOD_NOT_ALLOWED" | "MISSING_EMAIL" | "NO_ELIGIBLE_RECIPIENTS" | "NO_PUBLISHED_AUTOMATION" | "NOT_FOUND" | "NOT_IMPLEMENTED" | "ORG_SCOPE_REQUIRED" | "PAYLOAD_SCHEMA_EMAIL_REQUIRED" | "PAYLOAD_TOO_LARGE" | "PREVIEW_NOT_FOUND" | "PUBLISH_VALIDATION_FAILED" | "RATE_LIMITED" | "RECIPIENT_UNSUBSCRIBED" | "REFERENCE_EMAIL_NOT_FOUND" | "RESUBSCRIBE_NOT_ALLOWED" | "RUN_IN_PROGRESS" | "RUN_NOT_CANCELLABLE" | "RUN_NOT_PAUSABLE" | "RUN_NOT_PAUSED" | "RUN_NOT_RESUMABLE" | "RUN_START_FAILED" | "RUN_STOP_FAILED" | "SEND_NOT_CANCELLABLE" | "SEND_NOT_FOUND" | "SEND_NOT_PAUSABLE" | "SEND_NOT_RESUMABLE" | "SEND_QUOTA_EXCEEDED" | "SERVICE_UNAVAILABLE" | "TEMPLATE_NOT_FOUND" | "TRIGGER_ALREADY_EXISTS" | "TRIGGER_EVENT_NOT_FOUND" | "TRIGGER_HAS_DEPENDENT_AUTOMATIONS" | "TRIGGER_IMMUTABLE" | "TRIGGER_INSTANCE_NOT_FOUND" | "TRIGGER_LIMIT_REACHED" | "TRIGGER_NOT_FIREABLE" | "UPLOAD_IN_PROGRESS" | "UPLOAD_NOT_FOUND" | "UPLOAD_NOT_RECEIVED";
+        ApiErrorCode: "ACCOUNT_SUSPENDED" | "AGENT_GOAL_CONFLICT" | "AGENT_GOAL_NOT_FOUND" | "API_KEY_REVOKED" | "AUDIENCE_BUILD_ACTIVE" | "AUDIENCE_BUILD_ALREADY_ACTIVE" | "AUDIENCE_EDIT_CONFLICT" | "AUDIENCE_MEMBERSHIP_NOT_EXPRESSIBLE" | "AUDIENCE_NOT_FOUND" | "AUDIENCE_RUN_NOT_FOUND" | "AUDIT_NOT_FOUND" | "AUTHENTICATION_REQUIRED" | "AUTOMATION_GRAPH_INVALID" | "AUTOMATION_NOT_FOUND" | "AUTOMATION_NOT_PAUSABLE" | "AUTOMATION_NOT_PUBLISHED" | "AUTOMATION_RUN_NOT_FOUND" | "AUTOMATION_VERSION_CONFLICT" | "AUTOMATION_VERSION_NOT_FOUND" | "BATCH_TOO_LARGE" | "BRAND_DOMAIN_CONFLICT" | "BRAND_ID_REQUIRED" | "BRAND_LIMIT_REACHED" | "BRAND_NOT_FOUND" | "BRAND_NOT_READY" | "BRAND_SCOPE_MISMATCH" | "CHAT_NOT_FOUND" | "COMMENT_NOT_FOUND" | "CONSENT_REQUIRED" | "CONTACT_NOT_FOUND" | "CONTENT_OPERATION_FAILED" | "CONTRACT_LOCKED_BY_PUBLISHED_AUTOMATIONS" | "CORE_FIELD_IMMUTABLE" | "DOMAIN_ALREADY_EXISTS" | "DOMAIN_CLAIMED_ELSEWHERE" | "DOMAIN_NOT_FOUND" | "DOMAIN_NOT_READY" | "DOMAIN_OTHER_BRAND" | "DOMAIN_PROVIDER_ERROR" | "DOMAIN_PURPOSE_NOT_ALLOWED" | "DOMAIN_VERIFICATION_FAILED" | "DOMAIN_VERIFIED_ELSEWHERE" | "EMAIL_GENERATION_FAILED" | "EMAIL_GROUP_NAME_CONFLICT" | "EMAIL_GROUP_NOT_FOUND" | "EMAIL_IMAGES_MISSING" | "EMAIL_IMPORT_FAILED" | "EMAIL_IN_PROGRESS" | "EMAIL_IN_USE_BY_AUTOMATION" | "EMAIL_NOT_FOUND" | "EMAIL_NOT_READY" | "EMAIL_RESULT_UNAVAILABLE" | "EMAIL_RUN_AMBIGUOUS" | "EMAIL_TEMPLATE_INVALID" | "EMAIL_VERSION_NOT_FOUND" | "EXPORT_PROVIDER_ERROR" | "EXPORT_UNSUPPORTED" | "FIELD_NAME_COLLISION" | "FIELD_NOT_FOUND" | "FIELD_TYPE_MISMATCH" | "FIGMA_ACCESS_DENIED" | "FIGMA_CONVERSION_FAILED" | "FIGMA_FRAME_NOT_FOUND" | "FIGMA_NOT_CONNECTED" | "FIGMA_UNAVAILABLE" | "FIGMA_URL_INVALID" | "FLOW_NOT_FOUND" | "IDEMPOTENCY_CONFLICT" | "IDEMPOTENCY_IN_PROGRESS" | "INSIGHT_NOT_FOUND" | "INSUFFICIENT_CREDITS" | "INSUFFICIENT_PERMISSIONS" | "INSUFFICIENT_ROLE" | "INTEGRATION_NOT_CONNECTED" | "INTERNAL_ERROR" | "INVALID_API_KEY" | "INVALID_EMAIL" | "INVALID_PAYLOAD" | "INVALID_REQUEST" | "LIQUID_RENDER_ERROR" | "METHOD_NOT_ALLOWED" | "MISSING_EMAIL" | "NO_ELIGIBLE_RECIPIENTS" | "NO_PUBLISHED_AUTOMATION" | "NOT_FOUND" | "NOT_IMPLEMENTED" | "ORG_SCOPE_REQUIRED" | "PAYLOAD_SCHEMA_EMAIL_REQUIRED" | "PAYLOAD_TOO_LARGE" | "PREVIEW_NOT_FOUND" | "PUBLISH_VALIDATION_FAILED" | "RATE_LIMITED" | "RECIPIENT_UNSUBSCRIBED" | "REFERENCE_EMAIL_NOT_FOUND" | "RESUBSCRIBE_NOT_ALLOWED" | "RUN_IN_PROGRESS" | "RUN_NOT_CANCELLABLE" | "RUN_NOT_PAUSABLE" | "RUN_NOT_PAUSED" | "RUN_NOT_RESUMABLE" | "RUN_START_FAILED" | "RUN_STOP_FAILED" | "SEND_NOT_CANCELLABLE" | "SEND_NOT_FOUND" | "SEND_NOT_PAUSABLE" | "SEND_NOT_RESUMABLE" | "SEND_QUOTA_EXCEEDED" | "SERVICE_UNAVAILABLE" | "TEMPLATE_NOT_FOUND" | "TRIGGER_ALREADY_EXISTS" | "TRIGGER_EVENT_NOT_FOUND" | "TRIGGER_HAS_DEPENDENT_AUTOMATIONS" | "TRIGGER_IMMUTABLE" | "TRIGGER_INSTANCE_NOT_FOUND" | "TRIGGER_LIMIT_REACHED" | "TRIGGER_NOT_FIREABLE" | "UPLOAD_IN_PROGRESS" | "UPLOAD_NOT_FOUND" | "UPLOAD_NOT_RECEIVED";
         EmailGenerateTextResponse: {
             response: string;
         };
@@ -30471,6 +30583,1708 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HelpResponse"];
+                };
+            };
+        };
+    };
+    listAgentGoals: {
+        parameters: {
+            query?: {
+                /**
+                 * @description Page size (1-100). Defaults to 100.
+                 * @example 50
+                 */
+                limit?: number;
+                cursor?: string;
+            };
+            header?: {
+                /**
+                 * @description The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+                 * @example kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+                 */
+                "X-Brand-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List marketing goals. */
+            200: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": [],
+                     *       "pagination": {
+                     *         "limit": 100,
+                     *         "cursor": null,
+                     *         "hasMore": false
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        data: {
+                            name: string;
+                            objective: string;
+                            audienceId: string;
+                            cadence: {
+                                intervalDays: number;
+                                timeZone: string;
+                            };
+                            planningHorizonDays: number;
+                            successMetric: string;
+                            budget: {
+                                maxRecipients: number;
+                                maxSpendCredits: number;
+                                maxCampaigns: number;
+                                periodDays: number;
+                            };
+                            chatId?: string;
+                            goalId: string;
+                            /** @enum {string} */
+                            status: "active" | "paused" | "cancelled";
+                            /** Format: date-time */
+                            nextWakeAt?: string;
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** Format: date-time */
+                            updatedAt: string;
+                        }[];
+                        pagination: {
+                            limit: number;
+                            cursor: string | null;
+                            hasMore: boolean;
+                        };
+                    };
+                };
+            };
+            /**
+             * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+             *
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             */
+            400: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `API_KEY_REVOKED`: The API key was revoked.
+             *
+             *     `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+             *
+             *     `INVALID_API_KEY`: The API key is malformed or unknown.
+             */
+            401: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+             *
+             *     `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+             *
+             *     `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+             *
+             *     `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+             */
+            403: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `AGENT_GOAL_NOT_FOUND`: No marketing goal with that identifier exists in this brand.
+             *
+             *     `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+             */
+            404: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `AGENT_GOAL_CONFLICT`: The goal state or document revision has changed. */
+            409: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
+            429: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it. */
+            500: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `SERVICE_UNAVAILABLE`: A dependency the operation must consult (billing, the idempotency store) is temporarily unavailable, so the request was refused rather than run unmetered. */
+            503: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+        };
+    };
+    createAgentGoal: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+                 * @example kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+                 */
+                "X-Brand-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name: string;
+                    objective: string;
+                    audienceId: string;
+                    cadence: {
+                        intervalDays: number;
+                        timeZone: string;
+                    };
+                    planningHorizonDays: number;
+                    successMetric: string;
+                    budget: {
+                        maxRecipients: number;
+                        maxSpendCredits: number;
+                        maxCampaigns: number;
+                        periodDays: number;
+                    };
+                    chatId?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Create a marketing goal. */
+            201: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "goalId": "goal_123",
+                     *       "name": "Weekly newsletter",
+                     *       "objective": "Grow engaged readership",
+                     *       "audienceId": "aud_123",
+                     *       "cadence": {
+                     *         "intervalDays": 7,
+                     *         "timeZone": "Asia/Seoul"
+                     *       },
+                     *       "planningHorizonDays": 28,
+                     *       "successMetric": "Unique clicks",
+                     *       "budget": {
+                     *         "maxRecipients": 1000,
+                     *         "maxSpendCredits": 100,
+                     *         "maxCampaigns": 4,
+                     *         "periodDays": 28
+                     *       },
+                     *       "status": "paused",
+                     *       "createdAt": "2026-10-28T00:00:00.000Z",
+                     *       "updatedAt": "2026-10-28T00:00:00.000Z"
+                     *     }
+                     */
+                    "application/json": {
+                        name: string;
+                        objective: string;
+                        audienceId: string;
+                        cadence: {
+                            intervalDays: number;
+                            timeZone: string;
+                        };
+                        planningHorizonDays: number;
+                        successMetric: string;
+                        budget: {
+                            maxRecipients: number;
+                            maxSpendCredits: number;
+                            maxCampaigns: number;
+                            periodDays: number;
+                        };
+                        chatId?: string;
+                        goalId: string;
+                        /** @enum {string} */
+                        status: "active" | "paused" | "cancelled";
+                        /** Format: date-time */
+                        nextWakeAt?: string;
+                        /** Format: date-time */
+                        createdAt: string;
+                        /** Format: date-time */
+                        updatedAt: string;
+                    };
+                };
+            };
+            /**
+             * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+             *
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             */
+            400: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `API_KEY_REVOKED`: The API key was revoked.
+             *
+             *     `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+             *
+             *     `INVALID_API_KEY`: The API key is malformed or unknown.
+             */
+            401: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+             *
+             *     `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+             *
+             *     `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+             *
+             *     `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+             */
+            403: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `AGENT_GOAL_NOT_FOUND`: No marketing goal with that identifier exists in this brand.
+             *
+             *     `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+             */
+            404: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `AGENT_GOAL_CONFLICT`: The goal state or document revision has changed.
+             *
+             *     `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+             *
+             *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
+             */
+            409: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `PAYLOAD_TOO_LARGE`: The request body exceeds the route cap. */
+            413: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
+            429: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it. */
+            500: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `SERVICE_UNAVAILABLE`: A dependency the operation must consult (billing, the idempotency store) is temporarily unavailable, so the request was refused rather than run unmetered. */
+            503: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getAgentGoal: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+                 * @example kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+                 */
+                "X-Brand-Id"?: string;
+            };
+            path: {
+                goalId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Get a marketing goal. */
+            200: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "goal": {
+                     *         "goalId": "goal_123",
+                     *         "name": "Weekly newsletter",
+                     *         "objective": "Grow engaged readership",
+                     *         "audienceId": "aud_123",
+                     *         "cadence": {
+                     *           "intervalDays": 7,
+                     *           "timeZone": "Asia/Seoul"
+                     *         },
+                     *         "planningHorizonDays": 28,
+                     *         "successMetric": "Unique clicks",
+                     *         "budget": {
+                     *           "maxRecipients": 1000,
+                     *           "maxSpendCredits": 100,
+                     *           "maxCampaigns": 4,
+                     *           "periodDays": 28
+                     *         },
+                     *         "status": "paused",
+                     *         "createdAt": "2026-10-28T00:00:00.000Z",
+                     *         "updatedAt": "2026-10-28T00:00:00.000Z"
+                     *       },
+                     *       "grant": null,
+                     *       "executions": [],
+                     *       "files": [],
+                     *       "updates": [],
+                     *       "approvals": []
+                     *     }
+                     */
+                    "application/json": {
+                        goal: {
+                            name: string;
+                            objective: string;
+                            audienceId: string;
+                            cadence: {
+                                intervalDays: number;
+                                timeZone: string;
+                            };
+                            planningHorizonDays: number;
+                            successMetric: string;
+                            budget: {
+                                maxRecipients: number;
+                                maxSpendCredits: number;
+                                maxCampaigns: number;
+                                periodDays: number;
+                            };
+                            chatId?: string;
+                            goalId: string;
+                            /** @enum {string} */
+                            status: "active" | "paused" | "cancelled";
+                            /** Format: date-time */
+                            nextWakeAt?: string;
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** Format: date-time */
+                            updatedAt: string;
+                        };
+                        grant: {
+                            grantId: string;
+                            revision: number;
+                            /** @enum {string} */
+                            status: "active" | "revoked";
+                            allowedCapabilities: string[];
+                            allowedActions: string[];
+                            audienceIds: string[];
+                            senderDomainIds: string[];
+                            maxRecipients: number;
+                            maxSpendCredits: number;
+                            maxCampaigns: number;
+                            periodDays: number;
+                            /** Format: date-time */
+                            expiresAt?: string;
+                        } | null;
+                        executions: {
+                            executionId: string;
+                            /** @enum {string} */
+                            status: "queued" | "running" | "waiting_for_approval" | "waiting_for_event" | "sleeping" | "completed" | "failed" | "cancelled";
+                            summary?: string;
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** Format: date-time */
+                            updatedAt: string;
+                        }[];
+                        files: {
+                            path: string;
+                            revision: number;
+                            sizeBytes: number;
+                            source?: string;
+                            /** Format: date-time */
+                            updatedAt: string;
+                        }[];
+                        updates: {
+                            eventId: string;
+                            body: string;
+                            /** @enum {string} */
+                            kind: "status" | "result" | "attention";
+                            artifactIds?: string[];
+                            /** Format: date-time */
+                            createdAt: string;
+                        }[];
+                        approvals: {
+                            approvalId: string;
+                            action: string;
+                            capability: string;
+                            recipientCount: number;
+                            spendCredits: number;
+                            audienceId?: string;
+                            senderDomainId?: string;
+                            /** @enum {string} */
+                            status: "pending" | "approved" | "rejected" | "consumed";
+                            /** Format: date-time */
+                            expiresAt: string;
+                            /** Format: date-time */
+                            createdAt: string;
+                        }[];
+                    };
+                };
+            };
+            /**
+             * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+             *
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             */
+            400: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `API_KEY_REVOKED`: The API key was revoked.
+             *
+             *     `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+             *
+             *     `INVALID_API_KEY`: The API key is malformed or unknown.
+             */
+            401: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+             *
+             *     `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+             *
+             *     `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+             *
+             *     `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+             */
+            403: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `AGENT_GOAL_NOT_FOUND`: No marketing goal with that identifier exists in this brand.
+             *
+             *     `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+             */
+            404: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `AGENT_GOAL_CONFLICT`: The goal state or document revision has changed. */
+            409: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
+            429: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it. */
+            500: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `SERVICE_UNAVAILABLE`: A dependency the operation must consult (billing, the idempotency store) is temporarily unavailable, so the request was refused rather than run unmetered. */
+            503: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+        };
+    };
+    updateAgentGoal: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+                 * @example kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+                 */
+                "X-Brand-Id"?: string;
+            };
+            path: {
+                goalId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    status: "active" | "paused" | "cancelled";
+                };
+            };
+        };
+        responses: {
+            /** @description Update a marketing goal status. */
+            200: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "goalId": "goal_123",
+                     *       "name": "Weekly newsletter",
+                     *       "objective": "Grow engaged readership",
+                     *       "audienceId": "aud_123",
+                     *       "cadence": {
+                     *         "intervalDays": 7,
+                     *         "timeZone": "Asia/Seoul"
+                     *       },
+                     *       "planningHorizonDays": 28,
+                     *       "successMetric": "Unique clicks",
+                     *       "budget": {
+                     *         "maxRecipients": 1000,
+                     *         "maxSpendCredits": 100,
+                     *         "maxCampaigns": 4,
+                     *         "periodDays": 28
+                     *       },
+                     *       "status": "paused",
+                     *       "createdAt": "2026-10-28T00:00:00.000Z",
+                     *       "updatedAt": "2026-10-28T00:00:00.000Z"
+                     *     }
+                     */
+                    "application/json": {
+                        name: string;
+                        objective: string;
+                        audienceId: string;
+                        cadence: {
+                            intervalDays: number;
+                            timeZone: string;
+                        };
+                        planningHorizonDays: number;
+                        successMetric: string;
+                        budget: {
+                            maxRecipients: number;
+                            maxSpendCredits: number;
+                            maxCampaigns: number;
+                            periodDays: number;
+                        };
+                        chatId?: string;
+                        goalId: string;
+                        /** @enum {string} */
+                        status: "active" | "paused" | "cancelled";
+                        /** Format: date-time */
+                        nextWakeAt?: string;
+                        /** Format: date-time */
+                        createdAt: string;
+                        /** Format: date-time */
+                        updatedAt: string;
+                    };
+                };
+            };
+            /**
+             * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+             *
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             */
+            400: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `API_KEY_REVOKED`: The API key was revoked.
+             *
+             *     `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+             *
+             *     `INVALID_API_KEY`: The API key is malformed or unknown.
+             */
+            401: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+             *
+             *     `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+             *
+             *     `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+             *
+             *     `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+             */
+            403: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `AGENT_GOAL_NOT_FOUND`: No marketing goal with that identifier exists in this brand.
+             *
+             *     `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+             */
+            404: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `AGENT_GOAL_CONFLICT`: The goal state or document revision has changed. */
+            409: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `PAYLOAD_TOO_LARGE`: The request body exceeds the route cap. */
+            413: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
+            429: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it. */
+            500: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `SERVICE_UNAVAILABLE`: A dependency the operation must consult (billing, the idempotency store) is temporarily unavailable, so the request was refused rather than run unmetered. */
+            503: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listAgentGoalTasks: {
+        parameters: {
+            query?: {
+                /**
+                 * @description Page size (1-100). Defaults to 100.
+                 * @example 50
+                 */
+                limit?: number;
+                cursor?: string;
+            };
+            header?: {
+                /**
+                 * @description The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+                 * @example kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+                 */
+                "X-Brand-Id"?: string;
+            };
+            path: {
+                goalId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List goal tasks. */
+            200: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": [],
+                     *       "pagination": {
+                     *         "limit": 100,
+                     *         "cursor": null,
+                     *         "hasMore": false
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        data: {
+                            executionId: string;
+                            /** @enum {string} */
+                            status: "queued" | "running" | "waiting_for_approval" | "waiting_for_event" | "sleeping" | "completed" | "failed" | "cancelled";
+                            summary?: string;
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** Format: date-time */
+                            updatedAt: string;
+                        }[];
+                        pagination: {
+                            limit: number;
+                            cursor: string | null;
+                            hasMore: boolean;
+                        };
+                    };
+                };
+            };
+            /**
+             * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+             *
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             */
+            400: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `API_KEY_REVOKED`: The API key was revoked.
+             *
+             *     `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+             *
+             *     `INVALID_API_KEY`: The API key is malformed or unknown.
+             */
+            401: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+             *
+             *     `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+             *
+             *     `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+             *
+             *     `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+             */
+            403: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `AGENT_GOAL_NOT_FOUND`: No marketing goal with that identifier exists in this brand.
+             *
+             *     `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+             */
+            404: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `AGENT_GOAL_CONFLICT`: The goal state or document revision has changed. */
+            409: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
+            429: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it. */
+            500: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `SERVICE_UNAVAILABLE`: A dependency the operation must consult (billing, the idempotency store) is temporarily unavailable, so the request was refused rather than run unmetered. */
+            503: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+        };
+    };
+    scheduleAgentGoalFollowUp: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+                 * @example kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+                 */
+                "X-Brand-Id"?: string;
+            };
+            path: {
+                goalId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    message: string;
+                    sourceId: string;
+                    /** @description Due time in Unix milliseconds. */
+                    dueAt: number;
+                };
+            };
+        };
+        responses: {
+            /** @description Schedule a goal follow-up. */
+            201: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "goalId": "goal_123",
+                     *       "wakeId": "wake_123"
+                     *     }
+                     */
+                    "application/json": {
+                        goalId: string;
+                        wakeId: string;
+                    };
+                };
+            };
+            /**
+             * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+             *
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             */
+            400: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `API_KEY_REVOKED`: The API key was revoked.
+             *
+             *     `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+             *
+             *     `INVALID_API_KEY`: The API key is malformed or unknown.
+             */
+            401: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+             *
+             *     `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+             *
+             *     `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+             *
+             *     `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+             */
+            403: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `AGENT_GOAL_NOT_FOUND`: No marketing goal with that identifier exists in this brand.
+             *
+             *     `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+             */
+            404: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `AGENT_GOAL_CONFLICT`: The goal state or document revision has changed.
+             *
+             *     `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+             *
+             *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
+             */
+            409: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `PAYLOAD_TOO_LARGE`: The request body exceeds the route cap. */
+            413: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
+            429: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it. */
+            500: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `SERVICE_UNAVAILABLE`: A dependency the operation must consult (billing, the idempotency store) is temporarily unavailable, so the request was refused rather than run unmetered. */
+            503: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listAgentGoalDocuments: {
+        parameters: {
+            query?: {
+                /**
+                 * @description Documents per page (1–25); defaults to 25 because documents include content.
+                 * @example 10
+                 */
+                limit?: number;
+                cursor?: string;
+            };
+            header?: {
+                /**
+                 * @description The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+                 * @example kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+                 */
+                "X-Brand-Id"?: string;
+            };
+            path: {
+                goalId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List goal documents. */
+            200: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": [],
+                     *       "pagination": {
+                     *         "limit": 25,
+                     *         "cursor": null,
+                     *         "hasMore": false
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        data: {
+                            path: string;
+                            revision: number;
+                            sizeBytes: number;
+                            source?: string;
+                            /** Format: date-time */
+                            updatedAt: string;
+                            content: string;
+                        }[];
+                        pagination: {
+                            limit: number;
+                            cursor: string | null;
+                            hasMore: boolean;
+                        };
+                    };
+                };
+            };
+            /**
+             * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+             *
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             */
+            400: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `API_KEY_REVOKED`: The API key was revoked.
+             *
+             *     `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+             *
+             *     `INVALID_API_KEY`: The API key is malformed or unknown.
+             */
+            401: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+             *
+             *     `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+             *
+             *     `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+             *
+             *     `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+             */
+            403: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `AGENT_GOAL_NOT_FOUND`: No marketing goal with that identifier exists in this brand.
+             *
+             *     `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+             */
+            404: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `AGENT_GOAL_CONFLICT`: The goal state or document revision has changed. */
+            409: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
+            429: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it. */
+            500: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `SERVICE_UNAVAILABLE`: A dependency the operation must consult (billing, the idempotency store) is temporarily unavailable, so the request was refused rather than run unmetered. */
+            503: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+        };
+    };
+    publishAgentGoalDocument: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+                 * @example kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+                 */
+                "X-Brand-Id"?: string;
+            };
+            path: {
+                goalId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    path: string;
+                    expectedRevision: number;
+                    /** @description Document content, at most 131072 bytes (128 KiB) when encoded as UTF-8; the character limit is only an upper bound. */
+                    content: string;
+                    source?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Publish a goal document revision. */
+            200: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "goalId": "goal_123",
+                     *       "path": "plan.md",
+                     *       "revision": 1
+                     *     }
+                     */
+                    "application/json": {
+                        goalId: string;
+                        path: string;
+                        revision: number;
+                    };
+                };
+            };
+            /**
+             * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+             *
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             */
+            400: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `API_KEY_REVOKED`: The API key was revoked.
+             *
+             *     `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+             *
+             *     `INVALID_API_KEY`: The API key is malformed or unknown.
+             */
+            401: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+             *
+             *     `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+             *
+             *     `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+             *
+             *     `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+             */
+            403: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `AGENT_GOAL_NOT_FOUND`: No marketing goal with that identifier exists in this brand.
+             *
+             *     `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+             */
+            404: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `AGENT_GOAL_CONFLICT`: The goal state or document revision has changed.
+             *
+             *     `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+             *
+             *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
+             */
+            409: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `PAYLOAD_TOO_LARGE`: The request body exceeds the route cap. */
+            413: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
+            429: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it. */
+            500: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `SERVICE_UNAVAILABLE`: A dependency the operation must consult (billing, the idempotency store) is temporarily unavailable, so the request was refused rather than run unmetered. */
+            503: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
         };

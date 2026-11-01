@@ -124,7 +124,7 @@ message slices. Empty pages with an advancing cursor continue normally.
 
 The full generated reference lives in
 [`docs/commands/README.md`](./docs/commands/README.md). Resource groups:
-`contacts`, `fields`, `emails` (+ `groups`, `comments`), `sends`,
+`agent-goals`, `contacts`, `fields`, `emails` (+ `groups`, `comments`), `sends`,
 `audiences`, `automations` (+ `triggers`, `runs`, `audience-runs`,
 `trigger-instances`), `analytics`, `insights`, `brand`, `brands`, `content`,
 `templates`, `flows`, `chats`, `notifications`, plus
@@ -181,3 +181,24 @@ handlers do not import the live registry.
 ## License
 
 MIT
+
+## Ongoing marketing goals
+
+Use `agent-goals list` and `agent-goals get <goalId>` to inspect ongoing work,
+`agent-goals tasks <goalId>` for execution progress, and
+`agent-goals documents <goalId>` for published workspace files.
+
+`agent-goals follow-up <goalId>` records a future wake using a stable source
+identity. `agent-goals publish-document <goalId> --path plan.md
+--expected-revision 2 --file ./plan.md` publishes with a revision check; a conflict
+requires reading and reconciling the current document.
+
+Goals created by API keys start paused. Lifecycle changes require verified human
+authorization; organization API keys cannot activate goals.
+`agent-goals update <goalId> --status paused` needs no CLI confirmation; activating
+or cancelling a goal uses the normal confirmation protocol. Confirmation never
+creates standing permission: Brew enforces the goal's grant and budgets on every
+action, and grants are managed by an authorized person in Brew.
+
+These commands use the API's typed raw transport until a published SDK includes
+the marketing-goal resource.

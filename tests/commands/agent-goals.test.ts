@@ -1,0 +1,124 @@
+import { HttpResponse, http } from 'msw'
+import { describe, expect, it } from 'vitest'
+import { server } from '../helpers/msw-server'
+import { runCli } from '../helpers/run-cli'
+
+const env = { BREW_API_KEY: 'brew_cli_test', BREW_BRAND_ID: 'brand_1' }
+const base = 'https://brew.new/api/v1/agent-goals'
+
+describe('agent-goals commands', () => {
+  it('lists all pages with brand scope and preserves JSON output', async () => {
+    let requests = 0
+    server.use(
+      http.get(base, ({ request }) => {
+        requests += 1
+        expect(request.headers.get('x-brand-id')).toBe('brand_1')
+        const cursor = new URL(request.url).searchParams.get('cursor')
+        return HttpResponse.json({
+          data: [{ goalId: cursor === null ? 'goal_1' : 'goal_2' }],
+          pagination: {
+            cursor: cursor === null ? 'next' : null,
+            hasMore: cursor === null,
+            limit: 1,
+          },
+        })
+      })
+    )
+    const result = await runCli(
+      ['agent-goals', 'list', '--all', '--limit', '1'],
+      { env }
+    )
+    expect(result.code).toBe(0)
+    expect(result.json).toMatchObject({
+      data: [{ goalId: 'goal_1' }, { goalId: 'goal_2' }],
+    })
+    expect(requests).toBe(2)
+  })
+
+  it('publishes a document using an expected revision and stable replay key', async () => {
+    let body: unknown
+    let idempotencyKey: string | null = null
+    server.use(
+      http.post(`${base}/:goalId/documents`, async ({ request }) => {
+        body = await request.json()
+        idempotencyKey = request.headers.get('idempotency-key')
+        return HttpResponse.json({
+          goalId: 'goal_1',
+          path: 'plan.md',
+          revision: 3,
+        })
+      })
+    )
+    const result = await runCli(
+      [
+        'agent-goals',
+        'publish-document',
+        'goal_1',
+        '--path',
+        'plan.md',
+        '--expected-revision',
+        '2',
+        '--file',
+        '-',
+        '--idempotency-key',
+        'publish_1',
+      ],
+      { env, stdin: 'Next campaign plan' }
+    )
+    expect(result.code).toBe(0)
+    expect(body).toEqual({
+      path: 'plan.md',
+      expectedRevision: 2,
+      content: 'Next campaign plan',
+    })
+    expect(idempotencyKey).toBe('publish_1')
+  })
+
+  it('requires confirmation before changing a goal lifecycle', async () => {
+    const refused = await runCli(
+      ['agent-goals', 'update', 'goal_1', '--status', 'cancelled'],
+      { env }
+    )
+    expect(refused.code).toBe(4)
+    server.use(
+      http.patch(`${base}/:goalId`, async ({ request }) => {
+        expect(await request.json()).toEqual({ status: 'cancelled' })
+        return HttpResponse.json({ goalId: 'goal_1', status: 'cancelled' })
+      })
+    )
+    const result = await runCli(
+      ['agent-goals', 'update', 'goal_1', '--status', 'cancelled', '--yes'],
+      { env }
+    )
+    expect(result.code).toBe(0)
+  })
+
+  it('schedules a follow-up without granting additional authority', async () => {
+    server.use(
+      http.post(`${base}/:goalId/follow-ups`, async ({ request }) => {
+        expect(await request.json()).toEqual({
+          message: 'Review results',
+          sourceId: 'send_1:review',
+          dueAt: 1793404800000,
+        })
+        return HttpResponse.json({ goalId: 'goal_1', wakeId: 'wake_1' })
+      })
+    )
+    const result = await runCli(
+      [
+        'agent-goals',
+        'follow-up',
+        'goal_1',
+        '--message',
+        'Review results',
+        '--source-id',
+        'send_1:review',
+        '--due-at',
+        '1793404800000',
+      ],
+      { env }
+    )
+    expect(result.code).toBe(0)
+    expect(result.json).toEqual({ goalId: 'goal_1', wakeId: 'wake_1' })
+  })
+})
