@@ -2,7 +2,7 @@
 
 <!-- GENERATED FILE — do not edit. Regenerate with `bun run docs:commands`. -->
 
-149 commands. Classes: read (always safe), write
+151 commands. Classes: read (always safe), write
 (mutating, retry-safe), destructive (irreversible — the confirmation
 protocol applies: interactive y/N on a TTY, exit 4 + JSON envelope with
 a `confirmCommand` otherwise, `--yes` to proceed).
@@ -116,6 +116,8 @@ a `confirmCommand` otherwise, `--yes` to proceed).
 | `brew-cli automations trigger-instances list` | read | `GET /v1/automations/trigger-instances` | List fired-trigger instances (the inbound-fire audit log); each row carries a lifecycle `state` |
 | `brew-cli automations trigger-instances get` | read | `GET /v1/automations/trigger-instances/{triggerInstanceId}` | Fetch one fired-trigger instance by id — the bare row, with its lifecycle `state` and the runs it started |
 | `brew-cli analytics overview` | read | `GET /v1/analytics/overview` | Brand overview: totals, rates, timeseries (default last 7 days) |
+| `brew-cli analytics track` | destructive | `POST /v1/analytics/track` | Submit trusted product events; matching rules can start LIVE flows (automations scope) |
+| `brew-cli analytics identity-token` | write | `POST /v1/analytics/identity-token` | Issue a five-minute browser identity token for a verified application user and existing brand contact (contacts scope) |
 | `brew-cli analytics campaigns` | read | `GET /v1/sends` | Lifetime per-campaign KPIs (`sends list --kind campaign`; stats ride each row) |
 | `brew-cli analytics automations` | read | `GET /v1/analytics/automations` | Windowed per-automation performance + totals |
 | `brew-cli analytics events` | read | `GET /v1/analytics/events` | Unified event explorer (email, automation, trigger, inbound) |
@@ -1784,6 +1786,36 @@ Brand overview: totals, rates, timeseries (default last 7 days)
 ```bash
 brew-cli analytics overview
 brew-cli analytics overview --since 2026-08-01T00:00:00Z --source audience --json
+```
+
+### brew-cli analytics track
+
+Submit trusted product events; matching rules can start LIVE flows (automations scope)
+
+- Route: `POST /v1/analytics/track`
+- Class: destructive
+- `--project-id <id>` — Analytics project in the selected brand
+- `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
+- `--idempotency-key <key>` — Idempotency-Key for safe retries (auto-generated otherwise)
+
+```bash
+brew-cli analytics track --project-id pap_project --input - --idempotency-key order-123 --yes < events.json
+```
+
+### brew-cli analytics identity-token
+
+Issue a five-minute browser identity token for a verified application user and existing brand contact (contacts scope)
+
+- Route: `POST /v1/analytics/identity-token`
+- Class: write
+- `--project-id <id>` — Analytics project in the selected brand
+- `--user-id <id>` — Application user ID; verify its ownership before issuing this token
+- `--anonymous-id <id>` — Browser anonymous ID to bind to that user
+- `--contact-id <id>` — Existing contact in the selected brand; never creates or subscribes a contact
+- `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
+
+```bash
+brew-cli analytics identity-token --project-id pap_project --user-id user-123 --anonymous-id anon-123 --contact-id 507f1f77bcf86cd799439011
 ```
 
 ### brew-cli analytics campaigns
