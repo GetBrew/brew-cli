@@ -227,7 +227,7 @@ it.each(['delete', 'rotate-secret', 'test'])(
       confirmationRequired: true,
       command: `brew-cli webhooks ${command}`,
       summary: expect.any(String),
-      confirmCommand: `brew-cli webhooks ${command} ep_1 --json --yes`,
+      confirmCommand: `brew-cli webhooks ${command} --json --yes -- ep_1`,
     })
     expect(requests).toEqual([])
     if (command === 'delete') {
