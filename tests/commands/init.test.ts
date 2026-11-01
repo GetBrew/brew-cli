@@ -13,7 +13,7 @@ import { join } from 'node:path'
 import { HttpResponse, http } from 'msw'
 import { describe, expect, it } from 'vitest'
 import { pendingLoginPath } from '../../src/lib/auth-flow/pending'
-import { readConfig } from '../../src/lib/config-store'
+import { readConfig, writeConfig } from '../../src/lib/config-store'
 import type { InitReport } from '../../src/lib/init/report'
 import { validateBrewState } from '../../src/lib/project/state'
 import type { SpawnFn } from '../../src/lib/types'
@@ -1267,6 +1267,43 @@ describe('init: what a run must not get wrong', () => {
     writeFileSync(join(root, '.env.local'), `BREW_API_KEY=${APP_KEY}\n`)
     return root
   }
+
+  it('acts as the .env.local key on the server saved beside it, not the CLI config', async () => {
+    const root = keyed('express-resend')
+    writeFileSync(
+      join(root, '.env.local'),
+      `BREW_API_KEY=${APP_KEY}\nBREW_API_URL=${API}\n`
+    )
+    const env = configEnv()
+    // The CLI itself is pointed at a local server.
+    writeConfig(env, { apiUrl: 'http://localhost:3000/api' })
+    const requests = useBrewApi()
+    const result = await init(['--yes', '--json', '--no-test-email'], {
+      cwd: root,
+      env,
+      spawn: recordingSpawn().spawn,
+    })
+    expect(result.code).toBe(0)
+    expect(requests.length).toBeGreaterThan(0)
+  })
+
+  it('refuses another --api-url than the .env.local key is for (exit 2), before any request', async () => {
+    const root = keyed('express-resend')
+    const requests = useBrewApi()
+    const result = await init(
+      [
+        '--yes',
+        '--json',
+        '--no-test-email',
+        '--api-url',
+        'http://localhost:3000/api',
+      ],
+      { cwd: root, env: configEnv(), spawn: recordingSpawn().spawn }
+    )
+    expect(result.code).toBe(2)
+    expect(requests).toEqual([])
+    expect(result.stderr).toContain('https://brew.new/api')
+  })
 
   it('--stack wires the auth library it names, over detection', async () => {
     const root = keyed('express-resend')

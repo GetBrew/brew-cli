@@ -46,6 +46,8 @@ export function reachesSdkRange(declared: string | null | undefined): boolean {
 export const PROJECT_COMMAND = 'npx @brew.new/cli'
 
 export const APP_KEY_VARIABLE = 'BREW_API_KEY'
+/** The Brew server the app key is for, when not the default. */
+export const API_URL_VARIABLE = 'BREW_API_URL'
 export const SUPABASE_HOOK_SECRET_VARIABLE = 'SEND_EMAIL_HOOK_SECRET'
 export const SUPABASE_FUNCTION_PATH = 'supabase/functions/send-email/index.ts'
 

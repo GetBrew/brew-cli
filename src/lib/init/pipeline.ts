@@ -79,6 +79,7 @@ import {
   renderReport,
 } from './report'
 import {
+  API_URL_VARIABLE,
   APP_KEY_VARIABLE,
   agentsBlock,
   authHelperFile,
@@ -232,7 +233,7 @@ export function envLocalVars(input: {
       : [{ name: APP_KEY_VARIABLE, value: input.appKey }]),
     ...(input.apiUrl === DEFAULT_API_URL
       ? []
-      : [{ name: 'BREW_API_URL', value: input.apiUrl, secret: false }]),
+      : [{ name: API_URL_VARIABLE, value: input.apiUrl, secret: false }]),
   ]
 }
 
@@ -357,14 +358,32 @@ export async function runInit(
 
   // ---- Credential: who this run acts as.
   const stored = readConfig(env)
-  const apiUrl = resolveAuth({
+  const explicitKey =
+    ctx.globals.apiKey ?? nonEmpty(env.BREW_API_KEY ?? undefined)
+  // The app key in .env.local is for the server saved beside it
+  // (BREW_API_URL; none = the default). A run acting as that key uses that
+  // server, and another server named explicitly is refused before any
+  // request carries the key there.
+  let apiUrl = resolveAuth({
     globals: ctx.globals,
     env,
     allowAnonymous: true,
   }).apiUrl
+  if (explicitKey === undefined && existingAppKey !== undefined) {
+    const saved =
+      nonEmpty(getEnvValue(parseEnv(envLocalText ?? ''), API_URL_VARIABLE)) ??
+      DEFAULT_API_URL
+    const named = ctx.globals.apiUrl ?? nonEmpty(env.BREW_API_URL)
+    const same = (a: string, b: string) =>
+      a.replace(/\/+$/, '') === b.replace(/\/+$/, '')
+    if (named !== undefined && !same(named, saved)) {
+      throw new CliUsageError(
+        `${APP_KEY_VARIABLE} in .env.local is for ${printable(saved)}, not ${printable(named)}. Run init without --api-url and BREW_API_URL (or with ${printable(saved)}), or remove the key from .env.local to set up the other server.`
+      )
+    }
+    apiUrl = saved
+  }
   const siteUrl = siteUrlFromApiUrl(apiUrl)
-  const explicitKey =
-    ctx.globals.apiKey ?? nonEmpty(env.BREW_API_KEY ?? undefined)
   const explicitBrand =
     ctx.globals.brand ?? nonEmpty(env.BREW_BRAND_ID) ?? state?.brandId
   let credential: Credential = { auth: undefined, source: 'none' }
