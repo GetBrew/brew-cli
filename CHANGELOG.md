@@ -58,7 +58,8 @@ head `b884e78157` (main's spec, brew-v2 `373e900a9a`, plus the DX delta).
 - **`init --rollback-provider`** puts back the Supabase hook settings or
   Clerk delivery saved in `brew.json`, and nothing else. It refuses, and
   keeps the saved settings, while an enabled hook's old secret is missing
-  or `CLERK_SECRET_KEY` is another instance's.
+  or `CLERK_SECRET_KEY` is another instance's. A `brew.json` it cannot
+  write (a symbolic link) fails the `state` step, exit 1.
 - Without those flags, init prints the manual steps for Supabase (the
   hosted hook first; the self-hosted Edge Function it writes is now the
   non-blocking alternative) and Clerk. A bare `--yes` never changes a

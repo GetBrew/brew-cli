@@ -2237,11 +2237,19 @@ async function rollbackOnly(input: {
       { overwrite: true }
     )
     files.push({ path: BREW_STATE_FILE, action: change.action, role: 'state' })
-    steps.push({
-      id: 'state',
-      status: 'done',
-      detail: 'restored providers removed from providerConfig',
-    })
+    steps.push(
+      change.action === 'refused'
+        ? {
+            id: 'state',
+            status: 'failed',
+            detail: `${BREW_STATE_FILE} not written: ${change.note ?? 'unsafe path'}`,
+          }
+        : {
+            id: 'state',
+            status: 'done',
+            detail: 'restored providers removed from providerConfig',
+          }
+    )
   } else {
     steps.push({ id: 'state', status: dryRun ? 'planned' : 'skipped' })
   }

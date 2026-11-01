@@ -2,6 +2,7 @@ import {
   existsSync,
   mkdtempSync,
   readFileSync,
+  rmSync,
   symlinkSync,
   writeFileSync,
 } from 'node:fs'
@@ -810,6 +811,22 @@ describe('init: a provider changes only when nothing breaks', () => {
     expect(supabase.calls.map((call) => call.method)).toEqual(['GET'])
     expect(result.report.providers?.[0]).toMatchObject({ action: 'failed' })
     expect(existsSync(join(outside, 'brew.json'))).toBe(false)
+  })
+
+  it('--rollback-provider fails its state step when brew.json cannot be written', async () => {
+    const root = supabaseProject()
+    useBrewApi()
+    useSupabaseApi(OFF)
+    expect((await run(root, CONFIGURE)).code).toBe(0)
+    const outside = join(mkdtempSync(join(tmpdir(), 'brew-outside-')), 'b.json')
+    writeFileSync(outside, read(root, 'brew.json'))
+    rmSync(join(root, 'brew.json'))
+    symlinkSync(outside, join(root, 'brew.json'))
+    const rollback = await run(root, ['--rollback-provider', '--yes', '--json'])
+    expect(rollback.code).toBe(1)
+    expect(
+      rollback.report.steps.find((step) => step.id === 'state')
+    ).toMatchObject({ status: 'failed' })
   })
 
   it("replaces a hook secret backup an earlier run left, so a rollback gets this hook's", async () => {
