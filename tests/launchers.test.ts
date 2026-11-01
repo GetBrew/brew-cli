@@ -70,10 +70,10 @@ describe('launcher argv', () => {
   })
 
   it.each(
-    initCommand.flags
-      .map((spec) => spec.flag.split(' '))
-      .filter(([, value]) => value !== undefined)
-      .map(([name]) => name)
+    (initCommand.flags ?? []).flatMap(({ flag }) => {
+      const [name = '', value] = flag.split(' ')
+      return value === undefined ? [] : [name]
+    })
   )('treats the value of init %s as a value', (name) => {
     expect(hasSubcommand([name, 'https://acme.com'])).toBe(false)
   })
