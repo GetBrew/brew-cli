@@ -1,9 +1,11 @@
+import { writeFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import {
   detectProject,
   type ProjectDetection,
 } from '../../../src/lib/init/detect'
-import { copyFixture } from '../../helpers/fixtures'
+import { copyFixture, tempProject } from '../../helpers/fixtures'
 
 function project(name: string): ProjectDetection {
   const result = detectProject(copyFixture(name), { env: {} })
@@ -192,6 +194,35 @@ describe('init project detection', () => {
       })
       expect(result.project.packageManager.name).toBe('pnpm')
     }
+  })
+
+  it('refuses an --app that is not an app instead of setting up a parent', () => {
+    const root = copyFixture('pnpm-turbo')
+    expect(detectProject(root, { app: 'apps/wbe', env: {} })).toEqual({
+      kind: 'none',
+      root: join(root, 'apps/wbe'),
+    })
+  })
+
+  it('gives a TanStack Start app (Vite and React) a server', () => {
+    const root = tempProject()
+    writeFileSync(
+      join(root, 'package.json'),
+      JSON.stringify({
+        dependencies: {
+          '@tanstack/react-start': '1.120.0',
+          react: '19.0.0',
+          vite: '6.0.0',
+        },
+      })
+    )
+    const result = detectProject(root, { env: {} })
+    expect(result.kind === 'project' && result.project).toMatchObject({
+      framework: 'node',
+      frameworkDependency: '@tanstack/react-start',
+      runtime: 'node',
+      libDir: 'lib',
+    })
   })
 
   it('finds nothing to set up without a package.json or Supabase functions', () => {

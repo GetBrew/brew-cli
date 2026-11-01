@@ -184,6 +184,8 @@ function detectFrameworkId(
     ['astro', 'astro'],
     ['hono', 'hono'],
     ['express', 'express'],
+    // Builds with Vite and React, but has a server: before the Vite branch.
+    ['@tanstack/react-start', 'node'],
   ] as const) {
     if (has(dependency)) {
       return { framework, dependency }
@@ -206,7 +208,6 @@ function detectFrameworkId(
       'koa',
       '@nestjs/core',
       'nuxt',
-      '@tanstack/react-start',
       '@solidjs/start',
     ].find(has)
     return { framework: 'node', dependency: other ?? null }
@@ -379,6 +380,10 @@ export function detectProject(
 ): DetectResult {
   const start = options.app === undefined ? cwd : resolve(cwd, options.app)
   const resolved = resolveProjectRoot(start)
+  // `--app` names the app itself: a typo must not set up a parent instead.
+  if (options.app !== undefined && resolved.root !== start) {
+    return { kind: 'none', root: start }
+  }
   let root = resolved.root
   let workspace = resolved.monorepo?.workspace ?? null
   if (
