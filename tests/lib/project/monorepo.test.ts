@@ -202,6 +202,19 @@ describe('workspace helpers', () => {
     ])
   })
 
+  it('finds a workspace named by an exact path of any depth', () => {
+    const root = copyFixture('pnpm-turbo')
+    const dir = 'packages/team/product/services/backend/apps/api'
+    mkdirSync(join(root, dir), { recursive: true })
+    writeFileSync(join(root, dir, 'package.json'), '{"name":"deep-api"}')
+    expect(listWorkspacePackages(root, [dir])).toEqual([
+      { name: 'deep-api', dir },
+    ])
+    expect(
+      listWorkspacePackages(root, ['packages/*/product/services/*/apps/*'])
+    ).toEqual([{ name: 'deep-api', dir }])
+  })
+
   it('expands brace patterns', () => {
     expect(expandBraces('{apps,packages}/*')).toEqual(['apps/*', 'packages/*'])
     expect(expandBraces('a/{b,{c,d}}/e')).toEqual(['a/b/e', 'a/c/e', 'a/d/e'])

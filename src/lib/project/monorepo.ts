@@ -238,6 +238,8 @@ function expandGlob(root: string, pattern: string): string[] {
     .split('/')
     .filter((segment) => segment !== '')
   const results: string[] = []
+  // `depth` counts only folders a `**` descends into: the pattern's other
+  // segments bound themselves, so a workspace named exactly is never lost.
   const walk = (dir: string, index: number, depth: number): void => {
     if (depth > MAX_GLOB_DEPTH) {
       return
@@ -258,14 +260,14 @@ function expandGlob(root: string, pattern: string): string[] {
     if (!/[*?[]/.test(segment)) {
       const next = dir === '' ? segment : `${dir}/${segment}`
       if (isDirectory(join(root, next))) {
-        walk(next, index + 1, depth + 1)
+        walk(next, index + 1, depth)
       }
       return
     }
     const regex = segmentRegex(segment)
     for (const child of listDirs(absolute)) {
       if (regex.test(child)) {
-        walk(dir === '' ? child : `${dir}/${child}`, index + 1, depth + 1)
+        walk(dir === '' ? child : `${dir}/${child}`, index + 1, depth)
       }
     }
   }
