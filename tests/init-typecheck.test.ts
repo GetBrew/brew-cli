@@ -1,5 +1,6 @@
 import { execFileSync } from 'node:child_process'
 import {
+  appendFileSync,
   cpSync,
   mkdirSync,
   mkdtempSync,
@@ -106,6 +107,7 @@ function scratchProject(input: {
   readonly nodeNext: boolean
 }): string {
   const dir = realpathSync(mkdtempSync(join(tmpdir(), 'brew-init-tsc-')))
+  const js = input.files.some((file) => /\.[cm]?js$/.test(file))
   for (const file of input.files) {
     mkdirSync(dirname(join(dir, file)), { recursive: true })
     cpSync(join(input.root, file), join(dir, file))
@@ -167,6 +169,10 @@ function scratchProject(input: {
           types: ['node'],
           noEmit: true,
           skipLibCheck: true,
+          // Generated JavaScript (Astro's helpers) is skipped without
+          // allowJs and checkJs. It carries no annotations, as plain JS
+          // does not: everything else is still checked.
+          ...(js ? { allowJs: true, checkJs: true, noImplicitAny: false } : {}),
         },
         include: [...input.files, 'framework-env.d.ts'],
       },
@@ -202,44 +208,65 @@ const CASES: ReadonlyArray<readonly [fixture: string, nodeNext: boolean]> = [
   ['astro', false],
 ]
 
+/** Runs init on a copy of `fixture`; the client, auth and contracts files. */
+async function generate(fixture: string): Promise<{
+  readonly root: string
+  readonly generated: readonly string[]
+}> {
+  useApi()
+  const root = copyFixture(fixture)
+  writeFileSync(join(root, '.env.local'), `BREW_API_KEY=${APP_KEY}\n`)
+  const result = await runCli(
+    [
+      'init',
+      '--yes',
+      '--json',
+      '--no-install',
+      '--no-test-email',
+      '--no-mcp',
+      '--no-agent-files',
+    ],
+    {
+      cwd: root,
+      env: {
+        BREW_CLI_CONFIG_DIR: mkdtempSync(join(tmpdir(), 'brew-cli-tsc-')),
+      },
+    }
+  )
+  const report = result.json as InitReport
+  const generated = report.files
+    .filter(
+      (file) =>
+        ['client', 'auth', 'contracts'].includes(file.role) &&
+        file.action === 'created'
+    )
+    .map((file) => file.path)
+  return { root, generated }
+}
+
 describe('generated files type-check against @brew.new/sdk', () => {
   it.each(CASES)(
     '%s',
     async (fixture, nodeNext) => {
-      useApi()
-      const root = copyFixture(fixture)
-      writeFileSync(join(root, '.env.local'), `BREW_API_KEY=${APP_KEY}\n`)
-      const result = await runCli(
-        [
-          'init',
-          '--yes',
-          '--json',
-          '--no-install',
-          '--no-test-email',
-          '--no-mcp',
-          '--no-agent-files',
-        ],
-        {
-          cwd: root,
-          env: {
-            BREW_CLI_CONFIG_DIR: mkdtempSync(join(tmpdir(), 'brew-cli-tsc-')),
-          },
-        }
-      )
-      const report = result.json as InitReport
-      const generated = report.files
-        .filter(
-          (file) =>
-            ['client', 'auth', 'contracts'].includes(file.role) &&
-            file.action === 'created'
-        )
-        .map((file) => file.path)
+      const { root, generated } = await generate(fixture)
       expect(generated.length).toBeGreaterThanOrEqual(2)
       const dir = scratchProject({ root, files: generated, nodeNext })
       expect(typecheck(dir)).toBe('')
     },
     60_000
   )
+
+  it('checks generated JavaScript too (negative control)', async () => {
+    const { root, generated } = await generate('astro')
+    const helper = generated.find((path) => path.endsWith('.js'))
+    expect(helper).toBeDefined()
+    appendFileSync(
+      join(root, helper ?? ''),
+      "\nexport const typo = 'text'.notAMethod()\n"
+    )
+    const dir = scratchProject({ root, files: generated, nodeNext: false })
+    expect(typecheck(dir)).toContain('notAMethod')
+  }, 60_000)
 
   it('fails on an unknown key once the registry is generated (negative control)', async () => {
     useApi()
