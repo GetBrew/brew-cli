@@ -187,7 +187,14 @@ describe('integrations connect', () => {
     expect(result.stdout).toContain(
       'Webhook URL:   https://brew.new/api/integrations/clerk/webhook/conn_clerk'
     )
-    expect(result.stdout).toContain('1 failed: auth.otp (INTERNAL_ERROR)')
+    // Set up is not sending: a key unpublished in Brew stays off, and the
+    // connect response says nothing about it.
+    expect(result.stdout).toContain(
+      'Auth emails:   1 set up, 1 failed: auth.otp (INTERNAL_ERROR) (connect again to finish them)'
+    )
+    expect(result.stdout).toContain(
+      '`brew-cli app-emails list` shows which auth emails send: one unpublished in Brew stays off, and the sandbox reaches your team only.'
+    )
     expect(result.stdout).toContain('Clerk Dashboard')
   })
 

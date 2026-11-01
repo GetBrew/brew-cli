@@ -23,9 +23,11 @@ head `b884e78157` (main's spec, brew-v2 `373e900a9a`, plus the DX delta).
   `{ connectionId, webhookUrl, status, authEmails }`. 5-minute default
   deadline, as the SDK's. Re-running it is safe: `connectionId` and
   `webhookUrl` stay the same for the brand and provider, the new secret
-  replaces the old one in place, auth emails already set up are kept, and
-  keys that failed are finished; while one has failed it exits 1, with
-  the full response. A Clerk connected on its integration page
+  replaces the old one in place, auth emails already set up are kept (one
+  unpublished in Brew stays off), and keys that failed are finished; while
+  one has failed it exits 1, with the full response. The human output
+  counts auth emails set up and points at `app-emails list` for which
+  send. A Clerk connected on its integration page
   in Brew keeps its secret there: another secret exits 1 with `409
   INTEGRATION_CONNECTED_IN_APP` (rotate it on that page).
 - **`brew-cli integrations connection <provider>`** reads it:

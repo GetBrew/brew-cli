@@ -120,9 +120,11 @@ function renderConnected(
     `Connected ${result.provider} (${result.status})`,
     `Webhook URL:   ${result.webhookUrl}`,
     `Connection id: ${result.connectionId}`,
-    `Auth emails:   ${result.authEmails.length - failed.length} ready${failed.length === 0 ? '' : `, ${failed.length} failed: ${failed.map((email) => `${email.triggerKey} (${email.error?.code ?? 'error'})`).join(', ')} (connect again to finish them)`}`,
+    `Auth emails:   ${result.authEmails.length - failed.length} set up${failed.length === 0 ? '' : `, ${failed.length} failed: ${failed.map((email) => `${email.triggerKey} (${email.error?.code ?? 'error'})`).join(', ')} (connect again to finish them)`}`,
     '',
     PASTE_URL[result.provider],
+    // Set up is not sending, and the response does not say which send.
+    `\`${prefix} app-emails list\` shows which auth emails send: one unpublished in Brew stays off, and the sandbox reaches your team only.`,
   ]
   if (result.status !== 'active') {
     lines.push(
