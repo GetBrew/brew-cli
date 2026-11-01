@@ -281,6 +281,32 @@ export const other = () => ${use}
         ])
       })
 
+      it.each([
+        "mailer['emails'].send",
+        'mailer["batch"]["send"]',
+        'mailer[`emails`] . send',
+      ])('%s in a file that never names Resend is scanned too', (callee) => {
+        const scan = project(
+          {
+            'src/mail.ts': DEFAULT_CLIENT,
+            'src/notify.ts': `import mailer from './mail'
+export const go = () => ${callee}({ to: 'x', html: '<p>Hi</p>' })
+`,
+          },
+          engine
+        )
+        expect(scan.callSites).toEqual([
+          expect.objectContaining({ file: 'src/notify.ts' }),
+        ])
+        expect(decideRewrites(scan, new Set(['welcome']), true)).toEqual([
+          expect.objectContaining({
+            file: 'src/mail.ts',
+            rewritable: false,
+            reason: expect.stringContaining('not a template'),
+          }),
+        ])
+      })
+
       it("a template send through resend['emails'] still moves the client", () => {
         const scan = project(
           {

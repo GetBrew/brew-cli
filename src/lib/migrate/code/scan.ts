@@ -56,7 +56,14 @@ const SKIP_DIRECTORIES = new Set([
 ])
 const MAX_FILES = 20_000
 const MAX_FILE_BYTES = 1_000_000
-const SEND_HINT = /resend|\.emails\s*\??\.\s*send|\.batch\s*\??\.\s*send/i
+/**
+ * A file the send scan reads: it names Resend, or has an `emails.send` /
+ * `batch.send` in any form the scan reads as one (`.emails.send`,
+ * `?.emails?.send`, `['emails'].send`, `["batch"]["send"]`), so a caller
+ * that sends through a shared client under another name is never skipped.
+ */
+const SEND_HINT =
+  /resend|(?:\.\s*|\[\s*['"`])(?:emails|batch)\b['"`]?\s*\]?\s*(?:\?\.|\.)?\s*(?:\[\s*['"`])?send\b/i
 const REACT_EMAIL_IMPORT = /from\s*['"](?:@react-email\/[^'"]+|react-email)['"]/
 
 export type ScannedClient = {
