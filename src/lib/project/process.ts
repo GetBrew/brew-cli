@@ -30,16 +30,44 @@ export function resolveHomeDir(
 
 const MAX_CAPTURE_BYTES = 1_000_000
 
-/** `child_process.spawn` without a shell, stdout/stderr captured (bounded). */
+/**
+ * The line cmd.exe runs for `command args`, every argument quoted so cmd
+ * passes `^`, `&` and spaces through. cmd still expands `%` and cannot nest
+ * `"` inside quotes, so such arguments are refused instead of changed.
+ */
+export function windowsCommandLine(
+  command: string,
+  args: readonly string[]
+): string {
+  return [command, ...args]
+    .map((arg) => {
+      if (/["%\r\n]/.test(arg)) {
+        throw new Error(`cmd.exe cannot pass ${JSON.stringify(arg)} as is.`)
+      }
+      // A trailing backslash would escape the closing quote.
+      return `"${arg.replace(/\\+$/, '$&$&')}"`
+    })
+    .join(' ')
+}
+
+/**
+ * `child_process.spawn`, stdout/stderr captured (bounded). No shell, except
+ * on Windows, where npm, pnpm and yarn are `.cmd` files only cmd.exe starts.
+ */
 export const defaultSpawn: SpawnFn = (command, args, options = {}) =>
   new Promise<SpawnResult>((resolve, reject) => {
-    const child = nodeSpawn(command, [...args], {
-      cwd: options.cwd,
-      shell: false,
-      stdio: ['pipe', 'pipe', 'pipe'],
-      windowsHide: true,
-      ...(options.signal === undefined ? {} : { signal: options.signal }),
-    })
+    const windows = process.platform === 'win32'
+    const child = nodeSpawn(
+      windows ? windowsCommandLine(command, args) : command,
+      windows ? [] : [...args],
+      {
+        cwd: options.cwd,
+        shell: windows,
+        stdio: ['pipe', 'pipe', 'pipe'],
+        windowsHide: true,
+        ...(options.signal === undefined ? {} : { signal: options.signal }),
+      }
+    )
     let stdout = ''
     let stderr = ''
     child.stdout?.setEncoding('utf8')
