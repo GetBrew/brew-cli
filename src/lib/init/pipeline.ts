@@ -977,15 +977,19 @@ export async function runInit(
   if (supabaseHook && project.hasSupabaseDir) {
     computedPatches.push(supabaseConfigPatch(project))
   }
-  // No patch applies while a generated file, a kit key or the app key in
-  // .env.local failed, or a kit key is unpublished (the patch would hand
-  // that email to a key that does not exist or sends nothing, or to a
-  // client with no API key).
+  // No patch applies while a generated file, a kit key, the app key in
+  // .env.local or the SDK install failed, or a kit key is unpublished (the
+  // patch would hand that email to a key that does not exist or sends
+  // nothing, to a client with no API key, or to a helper whose SDK import
+  // breaks the build).
   const patchesHeld =
     off.length > 0 ||
     steps.some(
       (step) =>
-        (step.id === 'files' || step.id === 'kit' || step.id === 'env') &&
+        (step.id === 'files' ||
+          step.id === 'kit' ||
+          step.id === 'env' ||
+          step.id === 'install') &&
         step.status === 'failed'
     )
   const helperKept = files.some(

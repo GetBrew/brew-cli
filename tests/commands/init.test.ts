@@ -1419,6 +1419,27 @@ describe('init: what a run must not get wrong', () => {
     expect(human.stdout).toContain(result.report.patches[0]?.diff?.trimEnd())
   })
 
+  it('no patch applies when the SDK install failed (the helper imports it)', async () => {
+    const root = keyed('next-better-auth')
+    const argv = ['--yes', '--json', '--no-test-email', '--no-mcp']
+    const failing: SpawnFn = async (command) =>
+      command === 'git'
+        ? { code: 128, stdout: '', stderr: 'fatal: not a git repository' }
+        : { code: 1, stdout: '', stderr: 'ERR! network' }
+    const options = { cwd: root, env: configEnv(), spawn: failing }
+    useBrewApi()
+    const first = await init(argv, options)
+    expect(
+      first.report.steps.find((step) => step.id === 'install')
+    ).toMatchObject({ status: 'failed' })
+    const pin = `better-auth-config@${first.report.patches[0]?.baseSha256?.slice(0, 12)}`
+    const before = read(root, 'lib/auth.ts')
+    useBrewApi()
+    const result = await init([...argv, '--apply-patches', pin], options)
+    expect(result.report.patches[0]?.status).toBe('pending')
+    expect(read(root, 'lib/auth.ts')).toBe(before)
+  })
+
   it('makes publishing a key left off blocking while a patch waits for it', async () => {
     const root = keyed('next-better-auth')
     useBrewApi({ unpublished: ['auth.password-reset'] })
