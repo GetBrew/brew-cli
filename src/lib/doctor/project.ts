@@ -238,23 +238,32 @@ export async function runProjectDoctor(
           }
   )
   const exposed: string[] = []
+  const looksLikeKey = (name: string, value: string): boolean =>
+    isClientExposedName(name) &&
+    (/BREW/i.test(name) ||
+      value.startsWith('brew_') ||
+      (envLocalKey !== undefined && value === envLocalKey))
   for (const file of files) {
     const text = readTextFile(join(root, file))
     if (text === null) {
       continue
     }
     for (const line of parseEnv(text).lines) {
-      if (line.kind !== 'var' || !isClientExposedName(line.key)) {
-        continue
-      }
-      const value = getEnvValue(parseEnv(text), line.key)?.trim() ?? ''
-      const looksLikeKey =
-        /BREW/i.test(line.key) ||
-        value.startsWith('brew_') ||
-        (envLocalKey !== undefined && value === envLocalKey)
-      if (looksLikeKey) {
+      if (
+        line.kind === 'var' &&
+        looksLikeKey(
+          line.key,
+          getEnvValue(parseEnv(text), line.key)?.trim() ?? ''
+        )
+      ) {
         exposed.push(`${file}: ${line.key}`)
       }
+    }
+  }
+  // The shell or CI can hand the build a public name too.
+  for (const [name, value] of Object.entries(ctx.io.env)) {
+    if (looksLikeKey(name, value?.trim() ?? '')) {
+      exposed.push(`environment: ${name}`)
     }
   }
   checks.push(

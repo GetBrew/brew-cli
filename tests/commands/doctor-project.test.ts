@@ -252,6 +252,19 @@ describe('doctor --project', () => {
     })
   })
 
+  it('fails when the shell hands the build a key under a public name', async () => {
+    useProjectApi({ verifiedDomain: true })
+    const result = await doctor(healthyProject(), {
+      env: { VITE_BREW_API_KEY: APP_KEY },
+    })
+    expect(
+      result.report.checks.find((check) => check.id === 'env-exposure')
+    ).toMatchObject({
+      status: 'fail',
+      items: ['environment: VITE_BREW_API_KEY'],
+    })
+  })
+
   it('fails when .env.local is not git-ignored, or the key is missing', async () => {
     const root = healthyProject()
     useProjectApi({ verifiedDomain: true })
