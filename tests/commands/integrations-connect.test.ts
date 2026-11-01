@@ -212,6 +212,52 @@ describe('integrations connect', () => {
     })
   })
 
+  it('without --yes, a secret pasted as the variable name is exit 2, never a confirmCommand that prints it', async () => {
+    const seen = useConnectionApi()
+    const result = await cli([
+      'integrations',
+      'connect',
+      'clerk',
+      '--signing-secret-env',
+      CLERK_SECRET.replace('+', ''),
+      '--json',
+    ])
+    expect(result.code).toBe(2)
+    expect(seen).toEqual([])
+    expect(result.stdout + result.stderr).toContain(
+      'takes an environment variable NAME'
+    )
+  })
+
+  it('--signing-secret-stdin stops at --timeout when the pipe never closes', async () => {
+    const seen = useConnectionApi()
+    const result = await cli(
+      [
+        'integrations',
+        'connect',
+        'clerk',
+        '--signing-secret-stdin',
+        '--timeout',
+        '20ms',
+        '--yes',
+        '--json',
+      ],
+      {
+        readStdin: (signal) =>
+          new Promise((_resolve, reject) => {
+            signal?.addEventListener('abort', () => reject(signal.reason), {
+              once: true,
+            })
+          }),
+      }
+    )
+    expect(result.code).toBe(1)
+    expect(JSON.parse(result.stderr)).toMatchObject({
+      error: { code: 'CLI_TIMEOUT' },
+    })
+    expect(seen).toEqual([])
+  })
+
   it.each([
     [
       'no secret source',

@@ -71,6 +71,23 @@ export function checkSigningSecret(
   return trimmed
 }
 
+/**
+ * A secret pasted where the variable NAME goes must not be echoed back, so
+ * `integrations connect` checks it before its confirmation prints a re-run.
+ */
+export function checkSecretEnvName(name: string | undefined): void {
+  if (
+    name !== undefined &&
+    (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(name) ||
+      /^whsec_|^sk_|^sbp_/i.test(name) ||
+      name.length > 64)
+  ) {
+    throw new CliUsageError(
+      `--signing-secret-env takes an environment variable NAME (e.g. SEND_EMAIL_HOOK_SECRET), not the secret.`
+    )
+  }
+}
+
 /** `--signing-secret-env <VAR>` or `--signing-secret-stdin`, exactly one. */
 export async function readSigningSecret(
   ctx: CliContext,
@@ -83,16 +100,7 @@ export async function readSigningSecret(
     )
   }
   if (input.envName !== undefined) {
-    // A secret pasted where the NAME goes must not be echoed back.
-    if (
-      !/^[A-Za-z_][A-Za-z0-9_]*$/.test(input.envName) ||
-      /^whsec_|^sk_|^sbp_/i.test(input.envName) ||
-      input.envName.length > 64
-    ) {
-      throw new CliUsageError(
-        `--signing-secret-env takes an environment variable NAME (e.g. SEND_EMAIL_HOOK_SECRET), not the secret.`
-      )
-    }
+    checkSecretEnvName(input.envName)
     const value = ctx.io.env[input.envName]
     if (value === undefined || value.trim() === '') {
       throw new CliUsageError(
@@ -107,7 +115,11 @@ export async function readSigningSecret(
         '--signing-secret-stdin reads a pipe (e.g. `printenv SECRET | …`), not the terminal.'
       )
     }
-    return checkSigningSecret(provider, await ctx.io.readStdin(), 'stdin')
+    return checkSigningSecret(
+      provider,
+      await ctx.io.readStdin(ctx.signal),
+      'stdin'
+    )
   }
   throw new CliUsageError(
     `The signing secret comes from --signing-secret-env <VAR> or --signing-secret-stdin (never a flag value): ${SECRET_HINTS[provider]}.`

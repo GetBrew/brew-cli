@@ -6,6 +6,7 @@ import { defineCommand } from '../../lib/define-command'
 import { CliUsageError } from '../../lib/errors'
 import { flagString } from '../../lib/input'
 import {
+  checkSecretEnvName,
   type HostedAuthProvider,
   parseHostedAuthProvider,
   readSigningSecret,
@@ -80,8 +81,10 @@ export const integrationsConnectCommand = defineCommand({
     'brew-cli integrations connect supabase_auth --signing-secret-env SEND_EMAIL_HOOK_SECRET --project-url https://abcdefghijklmnopqrst.supabase.co --yes',
     'printenv CLERK_WEBHOOK_SIGNING_SECRET | brew-cli integrations connect clerk --signing-secret-stdin --yes --json',
   ],
-  confirmSummary: ({ args }) =>
-    `Connect ${args.provider ?? 'the provider'} for this brand: Brew verifies its deliveries with this signing secret (replacing any saved before, so deliveries signed with the old one stop working) and sets up its auth app emails.`,
+  confirmSummary: ({ args, flags }) => {
+    checkSecretEnvName(flagString(flags.signingSecretEnv))
+    return `Connect ${args.provider ?? 'the provider'} for this brand: Brew verifies its deliveries with this signing secret (replacing any saved before, so deliveries signed with the old one stop working) and sets up its auth app emails.`
+  },
   run: async ({ ctx, args, flags }) => {
     const provider = parseHostedAuthProvider(args.provider ?? '')
     const projectUrl = parseProjectUrl(flags.projectUrl)
