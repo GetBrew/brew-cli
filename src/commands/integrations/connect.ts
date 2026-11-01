@@ -102,9 +102,11 @@ export const integrationsConnectCommand = defineCommand({
     }
     progress(ctx, `Connecting ${provider} and setting up its auth emails…`)
     const result = await ctx.client().integrations.connect(input)
+    // A key that failed to set up exits 1, as `app-emails kit` does.
     return {
       data: result,
       human: renderConnected(result, getInvocationPrefix(ctx.io.env)),
+      ...(result.authEmails.some((email) => !email.ok) ? { exitCode: 1 } : {}),
     }
   },
 })

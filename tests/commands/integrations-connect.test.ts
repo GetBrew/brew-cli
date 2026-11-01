@@ -154,7 +154,8 @@ describe('integrations connect', () => {
       ],
       { env: { HOOK_SECRET: SUPABASE_SECRET } }
     )
-    expect(result.code).toBe(0)
+    // auth.otp failed to set up: the connection stands, the exit says so.
+    expect(result.code).toBe(1)
     expect(seen).toEqual([
       {
         method: 'PUT',
@@ -181,7 +182,7 @@ describe('integrations connect', () => {
       ['integrations', 'connect', 'clerk', '--signing-secret-stdin', '--yes'],
       { stdin: `${CLERK_SECRET}\n`, ttyOut: true }
     )
-    expect(result.code).toBe(0)
+    expect(result.code).toBe(1)
     expect(seen[0]?.body).toEqual({ signingSecret: CLERK_SECRET })
     expect(result.stdout).toContain(
       'Webhook URL:   https://brew.new/api/integrations/clerk/webhook/conn_clerk'

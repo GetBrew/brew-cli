@@ -24,7 +24,8 @@ head `5084a5202f` (main's spec, brew-v2 `373e900a9a`, plus the DX delta).
   deadline, as the SDK's. Re-running it is safe: `connectionId` and
   `webhookUrl` stay the same for the brand and provider, the new secret
   replaces the old one in place, auth emails already set up are kept, and
-  keys that failed are finished. A Clerk connected on its integration page
+  keys that failed are finished; while one has failed it exits 1, with
+  the full response. A Clerk connected on its integration page
   in Brew keeps its secret there: another secret exits 1 with `409
   INTEGRATION_CONNECTED_IN_APP` (rotate it on that page).
 - **`brew-cli integrations connection <provider>`** reads it:
