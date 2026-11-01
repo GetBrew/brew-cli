@@ -7,8 +7,8 @@ Not released yet. Needs `@brew.new/sdk` 13.7.0: `integrations.connect` and
 13.6.0 that 0.20.0 needs; see the SDK gates in `RELEASING.md`), and the API
 from GetBrew/brew-v2#2169 (`GET|PUT /v1/integrations/{provider}/connection`,
 the `supabase_auth` hosted Send Email Hook, and Clerk `email.created`
-sending the app's auth emails). The bundled spec is 0.20.0's, the #2169 @
-`6f8ef50544` DX delta on main's spec (brew-v2 `373e900a9a`).
+sending the app's auth emails). The bundled spec is 0.20.0's, the #2169
+head `5084a5202f` (main's spec, brew-v2 `373e900a9a`, plus the DX delta).
 
 ### Added
 
@@ -24,7 +24,9 @@ sending the app's auth emails). The bundled spec is 0.20.0's, the #2169 @
   deadline, as the SDK's. Re-running it is safe: `connectionId` and
   `webhookUrl` stay the same for the brand and provider, the new secret
   replaces the old one in place, auth emails already set up are kept, and
-  keys that failed are finished.
+  keys that failed are finished. A Clerk connected on its integration page
+  in Brew keeps its secret there: another secret exits 1 with `409
+  INTEGRATION_CONNECTED_IN_APP` (rotate it on that page).
 - **`brew-cli integrations connection <provider>`** reads it:
   `pending_verification` until the first signed delivery, then `active`
   (404 `NOT_FOUND` when not connected).

@@ -104,6 +104,22 @@ function useConnectionApi(
             { status: 400 }
           )
         }
+        if (options.putStatus === 409) {
+          return HttpResponse.json(
+            {
+              error: {
+                code: 'INTEGRATION_CONNECTED_IN_APP',
+                type: 'conflict',
+                message:
+                  'The provider is connected on its integration page in Brew with another signing secret; the API connect never replaces that connection.',
+                suggestion:
+                  'Rotate the signing secret on the integration page, or send the secret the connection already has.',
+                details: { provider: String(params.provider) },
+              },
+            },
+            { status: 409 }
+          )
+        }
         return HttpResponse.json({
           ...connection(String(params.provider)),
           authEmails: [
@@ -308,6 +324,32 @@ describe('integrations connect', () => {
     )
     expect(result.code).toBe(1)
     expect(result.stdout + result.stderr).toContain('INVALID_REQUEST')
+  })
+
+  it('a Clerk connected on its Brew integration page with another secret exits 1 with 409 INTEGRATION_CONNECTED_IN_APP, sent once', async () => {
+    const seen = useConnectionApi({ putStatus: 409 })
+    const result = await cli(
+      [
+        'integrations',
+        'connect',
+        'clerk',
+        '--signing-secret-env',
+        'X',
+        '--yes',
+        '--json',
+      ],
+      { env: { X: CLERK_SECRET } }
+    )
+    expect(result.code).toBe(1)
+    expect(seen.filter((entry) => entry.method === 'PUT')).toHaveLength(1)
+    // stderr: the progress line, then the API envelope.
+    const envelope = JSON.parse(
+      result.stderr.slice(result.stderr.indexOf('{'))
+    ) as {
+      error: { code: string; suggestion?: string }
+    }
+    expect(envelope.error.code).toBe('INTEGRATION_CONNECTED_IN_APP')
+    expect(envelope.error.suggestion).toContain('integration page')
   })
 })
 
