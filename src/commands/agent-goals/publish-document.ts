@@ -59,6 +59,9 @@ export const agentGoalsPublishDocumentCommand = defineCommand({
     'brew-cli agent-goals publish-document goal_123 --path plan.md --expected-revision 2 --file ./plan.md',
   ],
   run: async ({ ctx, args, flags }) => {
+    if (flags.input === '-' && flags.file === '-') {
+      throw new CliUsageError('Only one of --input and --file can read stdin.')
+    }
     const base = await readJsonFlag(ctx, flags.input, '--input')
     const content = await readTextFlag(ctx, flags.file, '--file')
     const input = asSdkInput<Input>(

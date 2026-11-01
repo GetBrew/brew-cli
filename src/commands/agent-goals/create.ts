@@ -2,6 +2,7 @@ import type { operations } from '../../generated/openapi-types'
 import { defineCommand } from '../../lib/define-command'
 import {
   asSdkInput,
+  flagInt,
   flagString,
   IDEMPOTENCY_FLAG,
   INPUT_FLAG,
@@ -28,6 +29,14 @@ export const agentGoalsCreateCommand = defineCommand({
     { flag: '--objective <objective>', summary: 'Marketing objective' },
     { flag: '--audience-id <audienceId>', summary: 'Saved audience id' },
     { flag: '--success-metric <metric>', summary: 'Outcome to measure' },
+    {
+      flag: '--planning-horizon-days <days>',
+      summary: 'Planning horizon in days',
+    },
+    {
+      flag: '--chat-id <chatId>',
+      summary: 'Existing chat to link to the goal',
+    },
     INPUT_FLAG,
     IDEMPOTENCY_FLAG,
   ],
@@ -40,6 +49,11 @@ export const agentGoalsCreateCommand = defineCommand({
         objective: flagString(flags.objective),
         audienceId: flagString(flags.audienceId),
         successMetric: flagString(flags.successMetric),
+        planningHorizonDays: flagInt(
+          flags.planningHorizonDays,
+          '--planning-horizon-days'
+        ),
+        chatId: flagString(flags.chatId),
       })
     )
     return {

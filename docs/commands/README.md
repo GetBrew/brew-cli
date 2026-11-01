@@ -218,6 +218,8 @@ Create a marketing goal; live execution requires a standing permission
 - `--objective <objective>` — Marketing objective
 - `--audience-id <audienceId>` — Saved audience id
 - `--success-metric <metric>` — Outcome to measure
+- `--planning-horizon-days <days>` — Planning horizon in days
+- `--chat-id <chatId>` — Existing chat to link to the goal
 - `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
 - `--idempotency-key <key>` — Idempotency-Key for safe retries (auto-generated otherwise)
 

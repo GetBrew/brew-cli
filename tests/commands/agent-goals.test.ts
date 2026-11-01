@@ -1,3 +1,6 @@
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { HttpResponse, http } from 'msw'
 import { describe, expect, it } from 'vitest'
 import { server } from '../helpers/msw-server'
@@ -91,6 +94,180 @@ describe('agent-goals commands', () => {
       { env }
     )
     expect(result.code).toBe(0)
+  })
+
+  it('rejects two stdin consumers before reading or publishing a blank document', async () => {
+    let reads = 0
+    let requests = 0
+    server.use(
+      http.post(`${base}/:goalId/documents`, () => {
+        requests++
+        return HttpResponse.json({ revision: 3 })
+      })
+    )
+    const result = await runCli(
+      [
+        'agent-goals',
+        'publish-document',
+        'goal_1',
+        '--input',
+        '-',
+        '--file',
+        '-',
+      ],
+      {
+        env,
+        readStdin: async () => {
+          reads++
+          return reads === 1
+            ? JSON.stringify({
+                path: 'plan.md',
+                expectedRevision: 2,
+                content: 'Keep this plan',
+              })
+            : ''
+        },
+      }
+    )
+    expect({ code: result.code, reads, requests }).toEqual({
+      code: 2,
+      reads: 0,
+      requests: 0,
+    })
+    expect(result.stderr).toContain(
+      'Only one of --input and --file can read stdin.'
+    )
+  })
+
+  it('preserves inline JSON metadata when only document content uses stdin', async () => {
+    let reads = 0
+    server.use(
+      http.post(`${base}/:goalId/documents`, async ({ request }) => {
+        expect(await request.json()).toEqual({
+          path: 'plan.md',
+          expectedRevision: 2,
+          content: 'File contents',
+          source: 'brief:one',
+        })
+        return HttpResponse.json({ revision: 3 })
+      })
+    )
+    const result = await runCli(
+      [
+        'agent-goals',
+        'publish-document',
+        'goal_1',
+        '--input',
+        JSON.stringify({
+          path: 'plan.md',
+          expectedRevision: 2,
+          content: 'Old JSON contents',
+          source: 'brief:one',
+        }),
+        '--file',
+        '-',
+      ],
+      {
+        env,
+        readStdin: async () => {
+          reads++
+          return 'File contents'
+        },
+      }
+    )
+    expect(result.code).toBe(0)
+    expect(reads).toBe(1)
+  })
+
+  it('preserves JSON stdin when document content comes from a file', async () => {
+    const directory = mkdtempSync(join(tmpdir(), 'brew-goal-document-'))
+    const path = join(directory, 'plan.md')
+    writeFileSync(path, 'File contents')
+    let reads = 0
+    server.use(
+      http.post(`${base}/:goalId/documents`, async ({ request }) => {
+        expect(await request.json()).toEqual({
+          path: 'plan.md',
+          expectedRevision: 2,
+          content: 'File contents',
+        })
+        return HttpResponse.json({ revision: 3 })
+      })
+    )
+    try {
+      const result = await runCli(
+        [
+          'agent-goals',
+          'publish-document',
+          'goal_1',
+          '--input',
+          '-',
+          '--file',
+          path,
+        ],
+        {
+          env,
+          readStdin: async () => {
+            reads++
+            return JSON.stringify({ path: 'plan.md', expectedRevision: 2 })
+          },
+        }
+      )
+      expect(result.code).toBe(0)
+      expect(reads).toBe(1)
+    } finally {
+      rmSync(directory, { recursive: true, force: true })
+    }
+  })
+
+  it('merges planning horizon and chat flags over a complete create body', async () => {
+    const input = {
+      name: 'Activation',
+      objective: 'Grow qualified activation',
+      audienceId: 'audience_1',
+      successMetric: 'Activated accounts',
+      planningHorizonDays: 14,
+      chatId: 'chat_original',
+      cadence: { intervalDays: 7, timeZone: 'UTC' },
+      budget: {
+        maxRecipients: 1000,
+        maxSpendCredits: 100,
+        maxCampaigns: 4,
+        periodDays: 28,
+      },
+    }
+    server.use(
+      http.post(base, async ({ request }) => {
+        expect(request.headers.get('x-brand-id')).toBe('brand_1')
+        expect(request.headers.get('idempotency-key')).toBe('create_1')
+        expect(await request.json()).toEqual({
+          ...input,
+          planningHorizonDays: 28,
+          chatId: 'chat_updated',
+        })
+        return HttpResponse.json(
+          { goalId: 'goal_1', status: 'paused' },
+          { status: 201 }
+        )
+      })
+    )
+    const result = await runCli(
+      [
+        'agent-goals',
+        'create',
+        '--input',
+        JSON.stringify(input),
+        '--planning-horizon-days',
+        '28',
+        '--chat-id',
+        'chat_updated',
+        '--idempotency-key',
+        'create_1',
+      ],
+      { env }
+    )
+    expect(result.code).toBe(0)
+    expect(result.json).toEqual({ goalId: 'goal_1', status: 'paused' })
   })
 
   it('creates a published document with revision zero', async () => {
