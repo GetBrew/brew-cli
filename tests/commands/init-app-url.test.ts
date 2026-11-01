@@ -1,8 +1,10 @@
 import { writeFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { HttpResponse, http } from 'msw'
 import { describe, expect, it } from 'vitest'
 import { copyFixture } from '../helpers/fixtures'
 import {
+  API,
   configEnv,
   EXPLICIT_KEY,
   expectValidReport,
@@ -11,6 +13,7 @@ import {
   useBrewApi,
 } from '../helpers/init-api'
 import { APP_KEY, BRAND, fakeClock } from '../helpers/login-server'
+import { server } from '../helpers/msw-server'
 
 const APP_URL = 'https://my-app.lovable.app'
 
@@ -297,6 +300,41 @@ describe('init --app-url: the brand', () => {
     expect(
       result.report.nextSteps.find((step) => step.id === 'brand-extracting')
     ).toMatchObject({ blocking: true })
+  })
+
+  it('a brand lookup that fails sets nothing up in whatever brand the key acts as', async () => {
+    const root = project()
+    const requests = useBrewApi()
+    server.use(
+      http.get(`${API}/v1/brand`, () =>
+        HttpResponse.json(
+          {
+            error: {
+              code: 'SERVICE_UNAVAILABLE',
+              type: 'api_error',
+              message: 'Try again.',
+            },
+          },
+          { status: 503 }
+        )
+      )
+    )
+    const result = await init(
+      [
+        ...['--yes', '--json', '--no-test-email', '--app-url', APP_URL],
+        ...['--domain', 'mail.my-app.dev'],
+      ],
+      { cwd: root, env: configEnv(), spawn: recordingSpawn().spawn }
+    )
+    expect(result.code).toBe(1)
+    expect(
+      result.report.steps.find((step) => step.id === 'brand')
+    ).toMatchObject({ status: 'failed' })
+    expect(
+      requests.some((request) =>
+        ['/v1/app-emails/kit', '/v1/domains'].includes(request.path)
+      )
+    ).toBe(false)
   })
 
   it('--dry-run plans the brand without creating it', async () => {

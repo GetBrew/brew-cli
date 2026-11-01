@@ -710,6 +710,9 @@ export async function runInit(
       }
     }
     if (lookupError !== undefined) {
+      // Unknown brand: nothing brand-specific runs on a key that may act
+      // as another brand than the app's.
+      brandReady = false
       steps.push({ id: 'brand', status: 'failed', detail: lookupError })
     } else {
       const resolution = await resolveAppBrand({

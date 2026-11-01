@@ -69,7 +69,8 @@ head `5084a5202f` (main's spec, brew-v2 `373e900a9a`, plus the DX delta).
   a re-run). A 403 (`ORG_SCOPE_REQUIRED`, no `brands` scope) becomes a next
   step; a key bound to one brand is never moved, a mismatch is reported.
   The app's own key in `.env.local` is one: when it is another brand's,
-  the kit waits for a `replace-app-key` next step.
+  the kit waits for a `replace-app-key` next step. When the brand lookup
+  fails, the domain, kit and provider steps wait for a re-run (exit 1).
 - **`init --domain`** also returns the domain's page in Brew
   (`domain.connectUrl`, a `connect-dns-automatically` next step), where
   Connect automatically (Entri) adds the records: it runs in the app, not
