@@ -30,8 +30,9 @@ plus the DX delta).
   holds an address, a name or a key. A template whose key's trigger
   already starts a published automation no setup made
   (`APP_EMAIL_TRIGGER_IN_USE`) is left `manual` with the API's message;
-  the next run sets it up once that automation is unpublished. A Resend
-  domain that is also in
+  the next run sets it up once that automation is unpublished. A setup
+  whose answer was lost is finished on the same key by the next run, not
+  set up again under another. A Resend domain that is also in
   Brew gets the `DKIM_SELECTOR_IN_USE` advice and a subdomain to verify
   instead. Each `resend.emails.send` / `resend.batch.send` call site is
   reported with what carries over and a suggested

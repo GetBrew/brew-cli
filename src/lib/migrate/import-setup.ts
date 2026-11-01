@@ -145,6 +145,10 @@ export async function importAndSetUp(
     recordImportWarnings(item, imported)
     const paths = (imported.variables ?? []).map((variable) => variable.path)
     const subject = imported.subjectLine ?? input.subject
+    // Recorded first: if the answer is lost, Brew may have the email by
+    // now, and a re-run must finish it on this key, not take another.
+    item.brew = { ...item.brew, setUpKey: key }
+    run.persist()
     const setup = await brew.appEmails.upsert(
       asSdkInput<UpsertAppEmailInput>({
         triggerKey: key,

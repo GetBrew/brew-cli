@@ -137,9 +137,11 @@ export function reconcileItem(
 }
 
 /**
- * Whether an item keeps the key an earlier run gave it: a done item always;
- * a planned one while the key prefix is the same and Brew has no email by
- * that key (a key planned before Brew's keys were read may be another's).
+ * Whether an item keeps the key an earlier run gave it: a done item, or one
+ * whose setup was sent for that key (its answer may have been lost),
+ * always; a planned one while the key prefix is the same and Brew has no
+ * email by that key (a key planned before Brew's keys were read may be
+ * another's).
  */
 export function keepsKey(
   run: RunContext,
@@ -148,6 +150,7 @@ export function keepsKey(
   return (
     item?.key !== undefined &&
     (item.status === 'done' ||
+      item.brew?.setUpKey === item.key ||
       (run.manifest.options.keyPrefix === run.options.keyPrefix &&
         run.existingKeys?.has(item.key) !== true))
   )

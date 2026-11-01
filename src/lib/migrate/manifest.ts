@@ -67,6 +67,8 @@ export type MigrationItem = {
     audienceId?: string
     fieldName?: string
     audienceName?: string
+    /** The key a setup was sent for: Brew may have it even with no answer. */
+    setUpKey?: string
   }
   warnings?: MigrationWarning[]
   error?: { code: string; message: string }

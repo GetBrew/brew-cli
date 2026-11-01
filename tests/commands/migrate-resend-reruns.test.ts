@@ -210,6 +210,36 @@ describe('migrate resend: app email keys', () => {
     expect(setUps).toHaveLength(2)
     expect(setUps).not.toContain('/v1/app-emails/reset-password')
   })
+
+  it('finishes a setup whose answer was lost on its own key, not a second email', async () => {
+    const { root, run } = setUp()
+    // Brew set up reset-password, but the answer never came back.
+    useBrewApi({
+      refuseKeys: {
+        'reset-password': {
+          status: 504,
+          error: {
+            code: 'GATEWAY_TIMEOUT',
+            type: 'internal',
+            message: 'Lost.',
+          },
+        },
+      },
+    })
+    const once = ['--max-retries', '0', ...APPLY, '--only', 'templates']
+    expect((await migrate(once, run)).code).toBe(1)
+
+    const brew = useBrewApi({ appEmailKeys: ['reset-password', 'receipt'] })
+    expect((await migrate([...APPLY, '--only', 'templates'], run)).code).toBe(0)
+    expect(
+      brew.calls
+        .filter((call) => call.method === 'PUT')
+        .map((call) => call.path)
+    ).toEqual(['/v1/app-emails/reset-password'])
+    expect(
+      readManifest(root).phases.templates?.items.map((item) => item.key)
+    ).toContain('reset-password')
+  })
 })
 
 describe('migrate resend --rewrite-imports: the template map', () => {
