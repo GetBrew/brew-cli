@@ -84,6 +84,7 @@ function renderTriggers(rows: ReadonlyArray<unknown>): string {
   }
   return renderTable(rows as ReadonlyArray<Record<string, unknown>>, [
     { key: 'triggerEventId', header: 'TRIGGER' },
+    { key: 'key', header: 'KEY' },
     { key: 'title', header: 'TITLE' },
     { key: 'provider', header: 'PROVIDER' },
   ])

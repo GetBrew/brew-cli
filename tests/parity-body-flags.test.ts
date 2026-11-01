@@ -142,6 +142,14 @@ const MAPPED: Readonly<
     '--user-name': 'user.name',
     '--read-only': 'permissions',
   },
+  send: { '--to': 'payload', '--data': 'payload' },
+  'app-emails upsert': {
+    '--source-file': 'source.content',
+    '--format': 'source.format',
+    '--domain': 'domainId',
+    '--no-publish': 'publish',
+  },
+  'app-emails kit': { '--domain': 'domainId' },
 }
 
 type Command = (typeof ALL_COMMANDS)[number]

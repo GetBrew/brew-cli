@@ -36,16 +36,18 @@ export function buildRerunCommand(
     if (name === 'apiKey' || emitted.has(name)) {
       continue
     }
-    emitted.add(name)
     const value = flags[name]
     const spelling = option.long ?? option.short
-    if (spelling === undefined || value === undefined) {
-      continue
-    }
     if (!(option.required || option.optional)) {
-      if (value === !option.negate) {
+      // A `--x` / `--no-x` pair shares one name: the matching spelling wins.
+      if (spelling !== undefined && value === !option.negate) {
+        emitted.add(name)
         tokens.push(spelling)
       }
+      continue
+    }
+    emitted.add(name)
+    if (spelling === undefined || value === undefined) {
       continue
     }
     if (option.optional && value === true) {
