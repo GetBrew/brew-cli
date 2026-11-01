@@ -489,6 +489,8 @@ async function supabaseStep(
       return failed(input, 'supabase_auth', NOT_SAVED, ref, connection)
     }
   }
+  // From here every result keeps the saved settings with their secret.
+  const withSaved = { ...input, providerConfig }
 
   const signingSecret = generateHookSecret()
   let connected: Awaited<ReturnType<BrewClient['integrations']['connect']>>
@@ -517,7 +519,7 @@ async function supabaseStep(
     reachable = await publicKeys(client)
   } catch (error) {
     rethrowIfFatal(ctx, error)
-    return failed(input, 'supabase_auth', describe(error), ref, connection)
+    return failed(withSaved, 'supabase_auth', describe(error), ref, connection)
   }
   const notReady = connected.authEmails
     .filter((email) => !email.ok || !reachable.has(email.triggerKey))
@@ -532,7 +534,7 @@ async function supabaseStep(
       blocking: true,
     })
     return refused(
-      input,
+      withSaved,
       'supabase_auth',
       connectionOf(connected),
       ref,
