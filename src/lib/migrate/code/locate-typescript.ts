@@ -19,6 +19,23 @@ export type TypeScriptModule = typeof TS
 
 const RESEND_MODULE = 'resend'
 
+/** `a.name`, or `a['name']` with a literal name: `a` and the name. */
+function memberOf(
+  ts: TypeScriptModule,
+  node: TS.Node
+): { readonly object: TS.Expression; readonly name: string } | null {
+  if (ts.isPropertyAccessExpression(node)) {
+    return { object: node.expression, name: node.name.text }
+  }
+  if (
+    ts.isElementAccessExpression(node) &&
+    ts.isStringLiteralLike(node.argumentExpression)
+  ) {
+    return { object: node.expression, name: node.argumentExpression.text }
+  }
+  return null
+}
+
 function scriptKind(ts: TypeScriptModule, path: string): TS.ScriptKind {
   if (/\.tsx$/.test(path)) {
     return ts.ScriptKind.TSX
@@ -372,11 +389,11 @@ export function locateWithTypeScript(
         args === undefined
           ? { start: node.expression.getEnd(), end: node.expression.getEnd() }
           : { start: args.pos, end: args.end }
-      const outer = node.parent
+      const outer = memberOf(ts, node.parent)
       const inline =
-        ts.isPropertyAccessExpression(outer) &&
-        outer.expression === node &&
-        (outer.name.text === 'emails' || outer.name.text === 'batch')
+        outer !== null &&
+        outer.object === node &&
+        (outer.name === 'emails' || outer.name === 'batch')
       clients.push({
         binding,
         exportName,
@@ -385,23 +402,21 @@ export function locateWithTypeScript(
         inline,
       })
     }
+    const send = ts.isCallExpression(node)
+      ? memberOf(ts, node.expression)
+      : null
+    const group = send?.name === 'send' ? memberOf(ts, send.object) : null
     if (
       ts.isCallExpression(node) &&
-      ts.isPropertyAccessExpression(node.expression) &&
-      node.expression.name.text === 'send' &&
-      ts.isPropertyAccessExpression(node.expression.expression) &&
-      (node.expression.expression.name.text === 'emails' ||
-        node.expression.expression.name.text === 'batch')
+      group !== null &&
+      (group.name === 'emails' || group.name === 'batch')
     ) {
-      const receiver = node.expression.expression.expression
+      const receiver = group.object
       const first = node.arguments[0]
       const open = node.expression.getEnd()
       calls.push({
         receiver: receiver.getText(source),
-        method:
-          node.expression.expression.name.text === 'emails'
-            ? 'emails.send'
-            : 'batch.send',
+        method: group.name === 'emails' ? 'emails.send' : 'batch.send',
         ...position(receiver),
         args:
           first === undefined

@@ -17,7 +17,7 @@ import {
   locateWithTypeScript,
   type TypeScriptModule,
 } from './locate-typescript'
-import { allowsJsx, type Token, tokenize } from './tokenize'
+import { allowsJsx, memberAt, type Token, tokenize } from './tokenize'
 import type { ClientSite, FileLocations, ScanEngine } from './types'
 
 /**
@@ -427,7 +427,9 @@ function pathEnd(
 
 /**
  * Whether code (never a comment or a string) reaches `path`, a client's
- * binding or import, for more than `emails.send` and `batch.send`.
+ * binding or import, for more than `emails.send` and `batch.send`. A
+ * literal computed member (`['emails']`) reads as its dot form; any other
+ * computed member (`[key]`) may be anything, so it is more.
  */
 function reachesBeyondSend(
   tokens: readonly Token[],
@@ -441,11 +443,13 @@ function reachesBeyondSend(
       return true
     }
     const end = isDot(tokens[index - 1]) ? -1 : pathEnd(tokens, index, path)
+    const group = end === -1 ? null : memberAt(tokens, end)
+    if (group === null) {
+      return false
+    }
     return (
-      end !== -1 &&
-      isDot(tokens[end]) &&
-      pathEnd(tokens, end + 1, ['emails', 'send']) === -1 &&
-      pathEnd(tokens, end + 1, ['batch', 'send']) === -1
+      (group.name !== 'emails' && group.name !== 'batch') ||
+      memberAt(tokens, group.next)?.name !== 'send'
     )
   })
 }

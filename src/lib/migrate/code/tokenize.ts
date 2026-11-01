@@ -558,6 +558,43 @@ export function matchingBracket(
   return -1
 }
 
+/**
+ * The member access starting at `at`: `.name`, `?.name`, `['name']` or
+ * `?.['name']`, and the index after it. A computed access whose name is not
+ * a string literal (`[key]`) has a null name (and `next` -1); null when no
+ * member access starts at `at`.
+ */
+export function memberAt(
+  tokens: readonly Token[],
+  at: number
+): { readonly name: string | null; readonly next: number } | null {
+  const token = tokens[at]
+  if (token?.type !== 'punct') {
+    return null
+  }
+  let open = at
+  if (token.value === '.' || token.value === '?.') {
+    const name = tokens[at + 1]
+    if (name?.type === 'ident') {
+      return { name: name.value, next: at + 2 }
+    }
+    if (token.value === '.') {
+      return null
+    }
+    open = at + 1
+  }
+  const bracket = tokens[open]
+  if (bracket?.type !== 'punct' || bracket.value !== '[') {
+    return null
+  }
+  const key = tokens[open + 1]
+  const close = tokens[open + 2]
+  const name = key === undefined ? null : stringValue(key)
+  return name !== null && close?.type === 'punct' && close.value === ']'
+    ? { name, next: open + 3 }
+    : { name: null, next: -1 }
+}
+
 /** A string literal token's value (simple escapes resolved). */
 export function stringValue(token: Token): string | null {
   if (token.type === 'string') {

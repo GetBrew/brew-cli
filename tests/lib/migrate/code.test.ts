@@ -1,5 +1,6 @@
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
+import ts from 'typescript'
 import { describe, expect, it } from 'vitest'
 import { analyzeArgument } from '../../../src/lib/migrate/code/analyze'
 import {
@@ -10,13 +11,18 @@ import {
 import { type CodeScan, scanProject } from '../../../src/lib/migrate/code/scan'
 import { tempProject } from '../../helpers/fixtures'
 
-function project(files: Readonly<Record<string, string>>): CodeScan {
+function project(
+  files: Readonly<Record<string, string>>,
+  engine: 'tokenizer' | 'typescript' = 'tokenizer'
+): CodeScan {
   const root = tempProject('brew-cli-migrate-code-')
   for (const [file, text] of Object.entries(files)) {
     mkdirSync(dirname(join(root, file)), { recursive: true })
     writeFileSync(join(root, file), text)
   }
-  return scanProject(root, { typescript: null })
+  return scanProject(root, {
+    typescript: engine === 'typescript' ? ts : null,
+  })
 }
 
 function analyze(argument: string) {
@@ -217,6 +223,80 @@ export const add = () => mailer.contacts.create({ email: 'x' })
       },
     ])
   })
+
+  describe.each(['tokenizer', 'typescript'] as const)(
+    'computed member access (%s)',
+    (engine) => {
+      it.each([
+        "resend['emails'].send",
+        'resend["emails"]["send"]',
+        "resend.batch['send']",
+      ])('%s is a send the scan reads', (callee) => {
+        const scan = project(
+          {
+            'src/resend.ts': CLIENT,
+            'src/notify.ts': `import { resend } from './resend'
+export const go = () => ${callee}({ to: 'x', html: '<p>Hi</p>' })
+`,
+          },
+          engine
+        )
+        expect(scan.callSites).toEqual([
+          expect.objectContaining({
+            file: 'src/notify.ts',
+            method: callee.includes('batch') ? 'batch.send' : 'emails.send',
+          }),
+        ])
+        expect(decideRewrites(scan, new Set(['welcome']), true)).toEqual([
+          expect.objectContaining({
+            file: 'src/resend.ts',
+            rewritable: false,
+            reason: expect.stringContaining('not a template'),
+          }),
+        ])
+      })
+
+      it.each([
+        "resend['contacts'].create({ email: 'x' })",
+        'resend[kind].send({ to: "x" })',
+        "resend?.['emails'].get('id')",
+      ])('%s is more than a send: the client stays on Resend', (use) => {
+        const scan = project(
+          {
+            'src/resend.ts': CLIENT,
+            'src/notify.ts': `import { resend } from './resend'
+const kind = 'emails'
+export const go = () => resend.emails.send({ to: 'x', template: { id: 'welcome' } })
+export const other = () => ${use}
+`,
+          },
+          engine
+        )
+        expect(decideRewrites(scan, new Set(['welcome']), true)).toEqual([
+          expect.objectContaining({
+            file: 'src/resend.ts',
+            rewritable: false,
+            reason: expect.stringContaining('uses the client for more than'),
+          }),
+        ])
+      })
+
+      it("a template send through resend['emails'] still moves the client", () => {
+        const scan = project(
+          {
+            'src/resend.ts': CLIENT,
+            'src/notify.ts': `import { resend } from './resend'
+export const go = () => resend['emails'].send({ to: 'x', template: { id: 'welcome' } })
+`,
+          },
+          engine
+        )
+        expect(decideRewrites(scan, new Set(['welcome']), true)).toEqual([
+          { file: 'src/resend.ts', rewritable: true },
+        ])
+      })
+    }
+  )
 
   it('an import of another module is not the client', () => {
     const scan = project({

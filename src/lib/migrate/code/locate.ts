@@ -2,6 +2,7 @@ import {
   allowsJsx,
   lineColumn,
   matchingBracket,
+  memberAt,
   stringValue,
   type Token,
   tokenize,
@@ -515,10 +516,8 @@ function walkCode(
           exprEnd = close
         }
       }
-      const inline =
-        isDot(tokens[exprEnd + 1]) &&
-        (isIdent(tokens[exprEnd + 2], 'emails') ||
-          isIdent(tokens[exprEnd + 2], 'batch'))
+      const member = memberAt(tokens, exprEnd + 1)
+      const inline = member?.name === 'emails' || member?.name === 'batch'
       const binding = bindingBefore(tokens, index, braceStack.at(-1) === true)
       const exportName = binding.exportDefault
         ? 'default'
@@ -538,21 +537,25 @@ function walkCode(
       })
       continue
     }
-    // <receiver>.emails.send( / <receiver>.batch.send(
+    // <receiver>.emails.send( / <receiver>.batch.send(, either member
+    // also as a literal computed one (`['emails']`).
+    const group = memberAt(tokens, index)
+    const send =
+      group?.name === 'emails' || group?.name === 'batch'
+        ? memberAt(tokens, group.next)
+        : null
     if (
-      isDot(token) &&
-      (isIdent(tokens[index + 1], 'emails') ||
-        isIdent(tokens[index + 1], 'batch')) &&
-      isDot(tokens[index + 2]) &&
-      isIdent(tokens[index + 3], 'send') &&
-      isPunct(tokens[index + 4], '(')
+      group !== null &&
+      send !== null &&
+      send.name === 'send' &&
+      isPunct(tokens[send.next], '(')
     ) {
       const receiver = receiverBefore(tokens, index, ctorNames, namespaces)
       if (receiver === null) {
         continue
       }
-      const argument = firstArgument(tokens, index + 4)
-      const open = tokens[index + 4] as Token
+      const argument = firstArgument(tokens, send.next)
+      const open = tokens[send.next] as Token
       const args =
         argument === null
           ? { start: open.end, end: open.end }
@@ -567,9 +570,7 @@ function walkCode(
           startToken.start,
           (tokens[index - 1] as Token).end
         ),
-        method: isIdent(tokens[index + 1], 'emails')
-          ? 'emails.send'
-          : 'batch.send',
+        method: group.name === 'emails' ? 'emails.send' : 'batch.send',
         line: position.line,
         column: position.column,
         args,
