@@ -955,18 +955,29 @@ export async function runInit(
   if (supabaseHook && project.hasSupabaseDir) {
     computedPatches.push(supabaseConfigPatch(project))
   }
-  // No patch applies while a generated file failed or kept the user's
-  // edits (the helper may lack what the patch imports), or a kit key failed
-  // (the patch would hand that email to a key that does not exist).
-  const patchesHeld =
-    steps.some(
-      (step) =>
-        (step.id === 'files' || step.id === 'kit') && step.status === 'failed'
-    ) ||
-    files.some(
-      (file) => file.role === 'auth' && file.action === 'kept-user-version'
-    )
+  // No patch applies while a generated file failed or a kit key failed (the
+  // patch would hand that email to a key that does not exist).
+  const patchesHeld = steps.some(
+    (step) =>
+      (step.id === 'files' || step.id === 'kit') && step.status === 'failed'
+  )
+  const helperKept = files.some(
+    (file) => file.role === 'auth' && file.action === 'kept-user-version'
+  )
   const patches: InitPatch[] = computedPatches.map((computed) => {
+    // An edited helper may lack what the patch imports: a person checks it
+    // and makes the change.
+    if (
+      helperKept &&
+      computed.patch.status === 'pending' &&
+      computed.patch.id !== 'supabase-config-hook'
+    ) {
+      return {
+        ...computed.patch,
+        status: 'manual',
+        description: `${computed.patch.description} ${paths.auth} keeps your edits: check it still exports what the diff imports, then make the change by hand.`,
+      }
+    }
     const pin = options.applyPatches.get(computed.patch.id)
     if (
       pin === undefined ||
@@ -1006,7 +1017,7 @@ export async function runInit(
         kind: 'edit-file',
         patchId: patch.id,
         path: patch.path,
-        title: `${patch.title}: add the snippet by hand`,
+        title: `${patch.title}: make the change by hand`,
         blocking: true,
       })
     }
@@ -1279,6 +1290,18 @@ function planInstall(input: {
           : `Edge Functions import npm:${SDK_PACKAGE}@${SDK_RANGE}`,
     })
     return
+  }
+  // A deployment that leaves out dev dependencies cannot load the SDK the
+  // generated server code imports, and an install keeps it where it is.
+  if (project.sdkDevOnly) {
+    nextSteps.push({
+      id: 'sdk-in-dependencies',
+      actor: 'agent',
+      kind: 'edit-file',
+      path: 'package.json',
+      title: `Move ${SDK_PACKAGE} from devDependencies to dependencies: the generated server code imports it at runtime`,
+      blocking: false,
+    })
   }
   if (reachesSdkRange(project.sdkRange)) {
     steps.push({

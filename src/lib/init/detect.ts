@@ -92,6 +92,8 @@ export type ProjectDetection = {
   readonly hasSupabaseDir: boolean
   /** The `@brew.new/sdk` range already declared, if any. */
   readonly sdkRange: string | null
+  /** The SDK is declared, but not in `dependencies`. */
+  readonly sdkDevOnly: boolean
   readonly editors: readonly McpClientId[]
   /** A cloud shell or CI (`Replit`, `GitHub Codespaces`, …). */
   readonly remote: string | null
@@ -486,6 +488,9 @@ export function detectProject(
       libDir: libDirFor(root, framework, hasSupabaseDir),
       hasSupabaseDir,
       sdkRange: deps.get('@brew.new/sdk') ?? null,
+      sdkDevOnly:
+        deps.has('@brew.new/sdk') &&
+        !dependencies({ dependencies: pkg?.dependencies }).has('@brew.new/sdk'),
       editors: detectMcpClients(monorepoRoot ?? root, options.env),
       remote: detectRemoteEnv(options.env)?.name ?? null,
     },

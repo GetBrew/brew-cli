@@ -1328,7 +1328,7 @@ describe('init: what a run must not get wrong', () => {
   })
 
   it.each([
-    ['a kit key failed', () => {}, ['auth.verify-email']],
+    ['a kit key failed', () => {}, ['auth.verify-email'], 'pending'],
     [
       'the helper keeps your edits',
       (root: string) =>
@@ -1337,8 +1337,9 @@ describe('init: what a run must not get wrong', () => {
           `${read(root, 'lib/brew-auth.ts')}// mine\n`
         ),
       [],
+      'manual',
     ],
-  ])('no patch applies when %s', async (_case, edit, failKeys) => {
+  ])('no patch applies when %s', async (_case, edit, failKeys, status) => {
     const root = keyed('next-better-auth')
     const argv = ['--yes', '--json', '--no-test-email', '--no-install']
     const options = {
@@ -1353,8 +1354,24 @@ describe('init: what a run must not get wrong', () => {
     edit(root)
     useBrewApi({ failKeys })
     const result = await init([...argv, '--apply-patches', pin], options)
-    expect(result.report.patches[0]?.status).toBe('pending')
+    expect(result.report.patches[0]?.status).toBe(status)
     expect(read(root, 'lib/auth.ts')).toBe(before)
+  })
+
+  it('asks to move an SDK declared only in devDependencies', async () => {
+    const root = keyed('express-resend')
+    const pkg = JSON.parse(read(root, 'package.json'))
+    pkg.devDependencies = { '@brew.new/sdk': '^13.6.0' }
+    writeFileSync(join(root, 'package.json'), JSON.stringify(pkg))
+    useBrewApi()
+    const result = await init(['--yes', '--json', '--no-test-email'], {
+      cwd: root,
+      env: configEnv(),
+      spawn: recordingSpawn().spawn,
+    })
+    expect(
+      result.report.nextSteps.find((step) => step.id === 'sdk-in-dependencies')
+    ).toMatchObject({ path: 'package.json', blocking: false })
   })
 
   it('on Windows, hands the SDK install to the agent instead of failing', async () => {
