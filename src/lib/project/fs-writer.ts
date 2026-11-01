@@ -406,7 +406,11 @@ export class ProjectWriter {
       path,
       action: 'updated',
       sha256,
-      content: withEol(content, usesCrlf(existing)),
+      // Content that already has CRLF was merged from the file's own text
+      // (an .env key added keeps each line's ending): it is written as is.
+      content: usesCrlf(content)
+        ? content
+        : withEol(content, usesCrlf(existing)),
       before: existing,
       mode: options.mode,
       sensitive: options.sensitive === true,

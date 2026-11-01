@@ -63,6 +63,20 @@ describe('ProjectWriter.writeFile (create-only)', () => {
     expect(readFileSync(join(root, 'a.ts'), 'utf8')).toBe('v2\r\n')
   })
 
+  it('writes content merged from a mixed-ending file as is (an .env key added)', () => {
+    const root = tempProject()
+    writeFileSync(join(root, '.env.local'), 'A=1\r\nB=2\n')
+    const change = new ProjectWriter({ root }).writeFile(
+      '.env.local',
+      'A=1\r\nB=2\nC=3\n',
+      { overwrite: true }
+    )
+    expect(change.action).toBe('updated')
+    expect(readFileSync(join(root, '.env.local'), 'utf8')).toBe(
+      'A=1\r\nB=2\nC=3\n'
+    )
+  })
+
   it('keeps a managed file the user edited since', () => {
     const root = tempProject()
     writeFileSync(join(root, 'a.ts'), 'v1 edited\n')
