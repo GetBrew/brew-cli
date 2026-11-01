@@ -5,7 +5,7 @@
 Needs the same SDK release as 0.20.0, and the API from GetBrew/brew-v2#2169
 (the import modes `props: "merge_tags"`, `placeholders: "resend"` and
 `variables`, and the same modes on an app email's `source`); the bundled
-spec is the #2169 head `02a3946b18` (main's spec, brew-v2 `373e900a9a`,
+spec is the #2169 head `6e4accea4c` (main's spec, brew-v2 `373e900a9a`,
 plus the DX delta).
 
 ### Added
