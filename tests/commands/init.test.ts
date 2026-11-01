@@ -1258,6 +1258,34 @@ describe('init per stack', () => {
       },
     ])
   })
+
+  it('--no-install prints the Bun workspace install from the directory init ran in', async () => {
+    const root = copyFixture('npm-workspaces')
+    rmSync(join(root, 'package-lock.json'))
+    writeFileSync(join(root, 'bun.lock'), '{\n  "lockfileVersion": 1\n}\n')
+    writeFileSync(
+      join(root, 'apps/site/.env.local'),
+      `BREW_API_KEY=${APP_KEY}\n`
+    )
+    useBrewApi()
+    const install = async (argv: readonly string[], cwd: string) => {
+      const spawn = recordingSpawn()
+      const result = await init(
+        ['--yes', '--json', '--no-test-email', '--no-install', ...argv],
+        { cwd, env: configEnv(), spawn: spawn.spawn }
+      )
+      expect(result.code).toBe(0)
+      expect(spawn.calls).toEqual([])
+      return result.report.nextSteps.find((step) => step.id === 'install-sdk')
+        ?.command
+    }
+    expect(await install([], join(root, 'apps/site'))).toBe(
+      "bun add '@brew.new/sdk@^13.6.0'"
+    )
+    expect(await install(['--app', 'apps/site'], root)).toBe(
+      "cd apps/site && bun add '@brew.new/sdk@^13.6.0'"
+    )
+  })
 })
 
 describe('init: what a run must not get wrong', () => {

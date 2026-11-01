@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto'
 import { existsSync } from 'node:fs'
-import { join } from 'node:path'
+import { join, relative, sep } from 'node:path'
 import type {
   AppEmailKitSet,
   AppEmailKitStackProvider,
@@ -882,7 +882,7 @@ export async function runInit(
   }
 
   // ---- Install the SDK with the project's package manager.
-  const install = planInstall({ project, options, steps, nextSteps })
+  const install = planInstall({ project, options, steps, nextSteps, cwd })
   if (install !== undefined) {
     await runInstall(ctx, install, { steps, nextSteps, spawn })
   }
@@ -1366,6 +1366,8 @@ function planInstall(input: {
   readonly options: InitOptions
   readonly steps: InitStep[]
   readonly nextSteps: NextStep[]
+  /** The directory init ran in, which a printed command starts from. */
+  readonly cwd: string
 }): InstallPlan | undefined {
   const { project, options, steps, nextSteps } = input
   if (
@@ -1424,7 +1426,11 @@ function planInstall(input: {
     workspace === undefined ? { workspaceRoot } : { workspace }
   )
   const base = project.monorepo?.root ?? project.root
-  const command = formatCommandLine(line)
+  const installDir = join(base, line.cwd ?? '')
+  const command = formatCommandLine({
+    ...line,
+    cwd: relative(input.cwd, installDir).split(sep).join('/'),
+  })
   // On Windows npm, pnpm and yarn are `.cmd` shims, which start only
   // through a shell, and init starts none: the command is the agent's.
   if (!options.install || process.platform === 'win32') {
@@ -1447,7 +1453,7 @@ function planInstall(input: {
     steps.push({ id: 'install', status: 'planned', detail: command })
     return
   }
-  return { line, cwd: join(base, line.cwd ?? ''), command }
+  return { line, cwd: installDir, command }
 }
 
 async function runInstall(
