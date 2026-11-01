@@ -1,4 +1,4 @@
-import { mkdtempSync } from 'node:fs'
+import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { HttpResponse, http } from 'msw'
@@ -8,7 +8,9 @@ import { type RunCliOptions, runCli } from '../helpers/run-cli'
 
 /**
  * `app-emails upsert` and an email unpublished in Brew: a re-run leaves it
- * off (`APP_EMAIL_NOT_PUBLISHED`), and only `publish: true` turns it back on.
+ * off (`APP_EMAIL_NOT_PUBLISHED`), and only the same setup with
+ * `publish: true` turns it back on. A bare `publish: true` is no remedy: the
+ * API puts a kit key back on its starter design and refuses any other key.
  */
 
 function cli(argv: readonly string[], options: RunCliOptions = {}) {
@@ -40,7 +42,12 @@ function setup(published: boolean, warnings: Array<typeof NOT_PUBLISHED>) {
 }
 
 describe('app-emails upsert --publish', () => {
-  it('sends publish: true, which turns an email unpublished in Brew back on', async () => {
+  it('sends the same setup with publish: true, which turns an email unpublished in Brew back on', async () => {
+    const file = join(
+      mkdtempSync(join(tmpdir(), 'brew-cli-source-')),
+      'order-paid.html'
+    )
+    writeFileSync(file, '<p>Order {{ trigger.orderId }} is paid.</p>')
     let body: unknown
     server.use(
       http.put(URL, async ({ request }) => {
@@ -49,11 +56,25 @@ describe('app-emails upsert --publish', () => {
       })
     )
     const result = await cli(
-      ['app-emails', 'upsert', 'order.paid', '--publish', '--yes'],
+      [
+        'app-emails',
+        'upsert',
+        'order.paid',
+        '--source-file',
+        file,
+        '--publish',
+        '--yes',
+      ],
       { ttyOut: true }
     )
     expect(result.code).toBe(0)
-    expect(body).toEqual({ publish: true })
+    expect(body).toEqual({
+      source: {
+        format: 'html',
+        content: '<p>Order {{ trigger.orderId }} is paid.</p>',
+      },
+      publish: true,
+    })
     expect(result.stdout).toContain('order.paid: published; sender')
   })
 

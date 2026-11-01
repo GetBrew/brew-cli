@@ -32,8 +32,10 @@ the team sandbox, app emails and browser sign-in.
   carries the rest, such as `payloadSchema` fields marked `secret: true`
   for a one-time code or sign-in link) and publishes it, so it confirms;
   `--no-publish` saves without the gate. A re-run leaves an email
-  unpublished in Brew off (warning `APP_EMAIL_NOT_PUBLISHED`); `--publish`
-  turns it back on. `kit` sets up
+  unpublished in Brew off (warning `APP_EMAIL_NOT_PUBLISHED`); the same
+  `upsert` command plus `--publish` turns it back on (a bare `--publish`
+  puts a kit key back on its starter design, and any other key is
+  refused). `kit` sets up
   the auth and lifecycle starter kit (`--sets`, `--stack`, `--keys`,
   `--domain`, `--overwrite`, `--idempotency-key`), confirms, prints
   per-key results and the stack's code snippets, and exits 1 when a key

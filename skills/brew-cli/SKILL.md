@@ -98,8 +98,10 @@ another setup of the key was writing; run it again later.
 or retypes a field the live automation reads. A `DRAFT_SAVED_NOT_LIVE`
 warning means the published version keeps sending until the draft is
 published. An `APP_EMAIL_NOT_PUBLISHED` warning names why the email is off;
-one unpublished in Brew stays off on a re-run (and `kit`) until
-`upsert <key> --publish`.
+one unpublished in Brew stays off on a re-run (and `kit`) until you publish
+it in Brew or run the same `upsert` command that set it up, plus `--publish`.
+A bare `upsert <key> --publish` is no remedy: it puts a kit key back on its
+starter design and is refused (400) for any other key.
 `automations triggers create --key <key>` gives any trigger a key.
 
 ## The contract you can rely on

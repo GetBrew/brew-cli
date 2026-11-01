@@ -72,7 +72,7 @@ export const appEmailsUpsertCommand = defineCommand({
     {
       flag: '--publish',
       summary:
-        'Publish it even if it was unpublished in Brew since setup, which a re-run otherwise leaves off',
+        'Publish it even if it was unpublished in Brew since setup, which a re-run otherwise leaves off. Pass the same --starter or --source-file the setup used',
     },
     {
       flag: '--no-publish',
