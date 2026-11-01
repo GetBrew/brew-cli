@@ -477,6 +477,9 @@ export async function runInit(
     const result: BrowserLoginResult = options.resume
       ? await resumeBrowserLogin(ctx, { waitMs, ...loginCommands })
       : await startBrowserLogin(ctx, {
+          // This run's server (the one .env.local names, when it names one),
+          // so the minted app key and the BREW_API_URL beside it agree.
+          apiUrl,
           keys,
           client: {
             project: project.name.slice(0, 100),

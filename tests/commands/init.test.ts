@@ -12,7 +12,10 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { HttpResponse, http } from 'msw'
 import { describe, expect, it } from 'vitest'
-import { pendingLoginPath } from '../../src/lib/auth-flow/pending'
+import {
+  pendingLoginPath,
+  readPendingLogin,
+} from '../../src/lib/auth-flow/pending'
 import { readConfig, writeConfig } from '../../src/lib/config-store'
 import type { InitReport } from '../../src/lib/init/report'
 import { validateBrewState } from '../../src/lib/project/state'
@@ -1348,6 +1351,31 @@ describe('init: what a run must not get wrong', () => {
     expect(read(root, '.env.local')).toBe(
       'BREW_API_URL=http://localhost:3000/api\n'
     )
+  })
+
+  it('signs in on the server the BREW_API_URL in .env.local names, so --resume keeps to it', async () => {
+    const root = copyFixture('express-resend')
+    const other = 'https://other.example/api'
+    writeFileSync(join(root, '.env.local'), `BREW_API_URL=${other}\n`)
+    const env = configEnv()
+    const login = useLoginServer({
+      origin: 'https://other.example',
+      steps: ['pending'],
+    })
+    const result = await init(['--yes', '--json', '--no-test-email'], {
+      cwd: root,
+      env,
+      clock: fakeClock(),
+      spawn: recordingSpawn().spawn,
+    })
+    expect(result.code).toBe(3)
+    expect(login.createBodies).toHaveLength(1)
+    expect(result.report.nextSteps[0]).toMatchObject({
+      id: 'approve-sign-in',
+      url: `https://other.example/cli/authorize?session=${SESSION_ID}`,
+    })
+    // The resume check compares the waiting sign-in's server with this one.
+    expect(readPendingLogin(env)?.apiUrl).toBe(other)
   })
 
   it("a dry run never sends the CLI's saved key to the server .env.local names", async () => {
