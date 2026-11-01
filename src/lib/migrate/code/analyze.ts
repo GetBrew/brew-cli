@@ -90,6 +90,7 @@ function objectProperties(tokens: readonly Token[], open: number): Property[] {
       end += 1
     }
     const first = tokens[index] as Token
+    const count = properties.length
     if (first.type === 'punct' && first.value === '...') {
       properties.push({
         name: null,
@@ -106,6 +107,25 @@ function objectProperties(tokens: readonly Token[], open: number): Property[] {
       } else if (index + 1 === end) {
         properties.push({ name, from: index, to: index, spread: false })
       }
+    } else if (first.type === 'punct' && first.value === '[') {
+      // `['cc']: manager` names its field like `cc: manager`.
+      const literal = tokens[index + 1]
+      const name = literal === undefined ? null : stringValue(literal)
+      const close = tokens[index + 2]
+      const colon = tokens[index + 3]
+      if (
+        name !== null &&
+        close?.type === 'punct' &&
+        close.value === ']' &&
+        colon?.type === 'punct' &&
+        colon.value === ':'
+      ) {
+        properties.push({ name, from: index + 4, to: end - 1, spread: false })
+      }
+    }
+    if (properties.length === count && index < end) {
+      // A name it cannot read (`[field]: x`, a method) may be any field.
+      properties.push({ name: null, from: index, to: end - 1, spread: true })
     }
     index = end + 1
   }

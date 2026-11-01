@@ -52,6 +52,17 @@ describe('analyzeArgument', () => {
     expect(message?.unsupported).toContain('...spread')
   })
 
+  it('reads a literal computed name, and a name it cannot read may be any field', () => {
+    const [literal] = analyze(
+      "{ to, template: { id: 'receipt' }, ['cc']: manager }"
+    ).messages
+    expect(literal?.unsupported).toContain('cc')
+    const [computed] = analyze(
+      "{ to, template: { id: 'receipt' }, [field]: manager }"
+    ).messages
+    expect(computed?.unsupported).not.toEqual([])
+  })
+
   it('an empty batch is one unknown message', () => {
     const analysis = analyze('[]')
     expect(analysis.kind).toBe('unknown')
@@ -60,6 +71,19 @@ describe('analyzeArgument', () => {
 })
 
 describe('decideRewrites', () => {
+  it('a client whose key is a local RESEND_API_KEY binding stays on Resend', () => {
+    const scan = project({
+      'src/mail.ts': `import { Resend } from 'resend'
+const { RESEND_API_KEY } = process.env
+const resend = new Resend(RESEND_API_KEY)
+export const go = (to: string) => resend.emails.send({ to, template: { id: 'welcome' } })
+`,
+    })
+    expect(decideRewrites(scan, new Set(['welcome']), true)).toEqual([
+      expect.objectContaining({ file: 'src/mail.ts', rewritable: false }),
+    ])
+  })
+
   it('a send whose client the scan cannot follow keeps every client on Resend', () => {
     const scan = project({
       'src/resend.ts': CLIENT,

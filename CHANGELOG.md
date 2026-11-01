@@ -38,9 +38,11 @@ plus the DX delta).
   reported with what carries over and a suggested
   `getBrew().send(key, payload)`; `--rewrite-imports` moves a file to
   `@brew.new/sdk/resend` (with `lib/brew-resend-map.ts`) only when every
-  send through it is a migrated template. `--only <phases>`,
-  `--key-prefix`, `--manifest`, `--cwd`. A sending-only Resend key exits
-  3 (`RESEND_KEY_SENDING_ONLY`); a failure exits 1 with the cursor saved.
+  send through it is a migrated template whose every field it can name,
+  and its client reads `RESEND_API_KEY` from the environment.
+  `--only <phases>`, `--key-prefix`, `--manifest`, `--cwd`. A sending-only
+  Resend key exits 3 (`RESEND_KEY_SENDING_ONLY`); a failure exits 1 with
+  the cursor saved.
   Sources sit behind a `MigrationSource` interface; Resend is the only one.
 - The `brew-migrate-from-resend` agent skill (embedded; `init` installs it
   in Claude Code projects that use Resend).

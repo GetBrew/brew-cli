@@ -130,7 +130,7 @@ function blockingReason(
       client.site.args.end
     )
     if (keyArgument(args) === null) {
-      return `the client at ${file}:${client.line} reads its key from somewhere other than RESEND_API_KEY; point it at your Brew key by hand`
+      return `the client at ${file}:${client.line} reads its key from somewhere other than an environment lookup of RESEND_API_KEY; point it at your Brew key by hand`
     }
   }
   return null
@@ -164,9 +164,12 @@ export function sendBlocker(
 }
 
 /**
- * The Brew key expression for a client's arguments: `RESEND_API_KEY`
- * renamed to `BREW_API_KEY`, or `process.env.BREW_API_KEY` when the client
- * took none; null when the key comes from somewhere else.
+ * The Brew key expression for a client's arguments: an environment lookup
+ * of `RESEND_API_KEY` (`process.env.RESEND_API_KEY`, `env['RESEND_API_KEY']`,
+ * `Deno.env.get('RESEND_API_KEY')`) renamed to `BREW_API_KEY`, or
+ * `process.env.BREW_API_KEY` when the client took none; null when the key
+ * comes from anywhere else, such as a local `RESEND_API_KEY` binding that
+ * a rename would leave undeclared.
  */
 export function keyArgument(args: string): string | null {
   const trimmed = args.trim()
@@ -176,7 +179,11 @@ export function keyArgument(args: string): string | null {
   if (/,/.test(trimmed.replace(/\([^()]*\)/g, ''))) {
     return null
   }
-  return /\bRESEND_API_KEY\b/.test(trimmed)
+  const names = trimmed.match(/\bRESEND_API_KEY\b/g)?.length ?? 0
+  const lookups =
+    trimmed.match(/\benv(?:\.|\[\s*['"`]|\.get\(\s*['"`])RESEND_API_KEY\b/g)
+      ?.length ?? 0
+  return names > 0 && lookups === names
     ? trimmed.replace(/\bRESEND_API_KEY\b/g, 'BREW_API_KEY')
     : null
 }
