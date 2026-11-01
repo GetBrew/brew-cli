@@ -90,7 +90,10 @@ describe('init --app-url: the brand', () => {
       ],
     })
     const result = await init(
-      ['--yes', '--json', '--no-test-email', '--app-url', APP_URL],
+      [
+        ...['--yes', '--json', '--no-test-email', '--app-url', APP_URL],
+        ...['--domain', 'mail.my-app.dev'],
+      ],
       {
         cwd: root,
         env: configEnv({ BREW_API_KEY: EXPLICIT_KEY }),
@@ -108,10 +111,12 @@ describe('init --app-url: the brand', () => {
         (request) => request.method === 'POST' && request.path === '/v1/brands'
       )
     ).toBe(false)
-    // .env.local's key still sends from its own brand: no kit lands in
-    // brand_lovable while the app could not send from it.
+    // .env.local's key still sends from its own brand: no kit or domain
+    // lands in either brand while the app could not send from brand_lovable.
     expect(
-      requests.some((request) => request.path === '/v1/app-emails/kit')
+      requests.some((request) =>
+        ['/v1/app-emails/kit', '/v1/domains'].includes(request.path)
+      )
     ).toBe(false)
     expect(result.report.status).toBe('action_required')
     expect(

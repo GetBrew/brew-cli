@@ -798,6 +798,13 @@ export async function runInit(
   }
   if (client === undefined) {
     steps.push({ id: 'domain', status: 'planned', detail: afterSignIn })
+  } else if (!brandReady) {
+    // The client may still act as another brand than the one picked.
+    steps.push({
+      id: 'domain',
+      status: 'skipped',
+      detail: 'after the brand is ready',
+    })
   } else {
     try {
       const rows = await collectAll(ctx, (cursor) =>
