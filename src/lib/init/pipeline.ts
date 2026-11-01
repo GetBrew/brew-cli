@@ -668,10 +668,16 @@ export async function runInit(
   // False while a brand this run created is still being extracted: the
   // kit and everything after it wait for a re-run.
   let brandReady = true
-  /** The brand a key is bound to, or undefined when it cannot tell. */
+  /**
+   * The brand the .env.local key is bound to, or undefined when it cannot
+   * tell. Asked only on the server saved beside that key.
+   */
   const brandOfKey = async (apiKey: string): Promise<string | undefined> => {
     try {
-      const auth = authFor(apiKey, 'env-file', undefined).auth as ResolvedAuth
+      const auth = {
+        ...(authFor(apiKey, 'env-file', undefined).auth as ResolvedAuth),
+        apiUrl: savedApiUrl ?? DEFAULT_API_URL,
+      }
       return (await buildSdkClient(auth, sdkTransportFor(ctx)).brand.get())
         .brandId
     } catch (error) {

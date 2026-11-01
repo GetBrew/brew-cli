@@ -172,6 +172,42 @@ describe('init --app-url: the brand', () => {
     ).toBe(true)
   })
 
+  it('asks about the app key only on the server saved beside it', async () => {
+    const staging = 'https://staging.example/api'
+    const root = copyFixture('express-resend')
+    writeFileSync(
+      join(root, '.env.local'),
+      `BREW_API_KEY=${APP_KEY}\nBREW_API_URL=${staging}\n`
+    )
+    const requests = useBrewApi({
+      orgKeyWithoutBrand: true,
+      brands: TWO_BRANDS,
+    })
+    const asked: Array<string | null> = []
+    server.use(
+      http.get(`${staging}/v1/brand`, ({ request }) => {
+        asked.push(request.headers.get('authorization'))
+        return HttpResponse.json({
+          brandId: 'brand_lovable',
+          domain: 'my-app.lovable.app',
+          status: 'completed',
+          ready: true,
+        })
+      })
+    )
+    await init(['--yes', '--json', '--no-test-email', '--app-url', APP_URL], {
+      cwd: root,
+      env: configEnv({ BREW_API_KEY: EXPLICIT_KEY }),
+      spawn: recordingSpawn().spawn,
+    })
+    expect(
+      requests.filter(
+        (request) => request.authorization === `Bearer ${APP_KEY}`
+      )
+    ).toEqual([])
+    expect(asked).toEqual([`Bearer ${APP_KEY}`])
+  })
+
   it('an organization key with no matching brand creates one, waits for it, and a re-run finds it instead of creating another', async () => {
     const root = project()
     const requests = useBrewApi({ orgKeyWithoutBrand: true })
