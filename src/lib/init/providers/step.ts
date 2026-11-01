@@ -31,6 +31,7 @@ import {
   type SendEmailHookConfig,
   SUPABASE_PREVIOUS_SECRETS_VARIABLE,
   SUPABASE_TOKEN_VARIABLE,
+  savedHookSecret,
   supabaseAuthConfigUrl,
   supabaseHooksUrl,
   supabaseProjectUrl,
@@ -472,6 +473,8 @@ async function supabaseStep(
   const saved = providerConfig.supabase_auth
   if (saved === undefined || saved.projectRef !== ref) {
     let previousSecretsVariable: string | undefined
+    // The backup an earlier save left, which goes back if this save fails.
+    const secretBefore = savedHookSecret(input.writer)
     if (hook.config.hook_send_email_enabled && hook.secrets !== null) {
       // A rollback puts the old hook back whole, secret included.
       if (!backupHookSecret(input.writer, hook.secrets)) {
@@ -497,6 +500,10 @@ async function supabaseStep(
       },
     }
     if (!input.persist(providerConfig)) {
+      // brew.json keeps the earlier settings: they keep their secret too.
+      if (previousSecretsVariable !== undefined) {
+        backupHookSecret(input.writer, secretBefore)
+      }
       return failed(input, 'supabase_auth', NOT_SAVED, ref, connection)
     }
   }
@@ -527,7 +534,10 @@ async function supabaseStep(
   // every user (not the team-only sandbox) before Supabase stops sending.
   let reachable: Set<string>
   try {
-    reachable = await publicKeys(client)
+    reachable = await publicKeys(
+      client,
+      connected.authEmails.map((email) => email.triggerKey)
+    )
   } catch (error) {
     rethrowIfFatal(ctx, error)
     return failed(withSaved, 'supabase_auth', describe(error), ref, connection)
@@ -752,7 +762,10 @@ async function clerkStep(
   // email is published and not in the team-only sandbox.
   let reachable: Set<string>
   try {
-    reachable = await publicKeys(input.client)
+    reachable = await publicKeys(
+      input.client,
+      Object.values(CLERK_EMAIL_SLUG_KEYS)
+    )
   } catch (error) {
     rethrowIfFatal(ctx, error)
     return failed(input, 'clerk', describe(error), undefined, connection)
@@ -922,24 +935,38 @@ async function clerkStep(
   }
 }
 
-/** Keys whose app email a fire sends now to anyone, not the sandbox only. */
-async function publicKeys(client: BrewClient): Promise<Set<string>> {
+/**
+ * Which of `wanted` have an app email a fire sends now to anyone, not the
+ * sandbox only. Reads pages until every wanted key has its row or the list
+ * ends (a cursor seen before ends it too).
+ */
+async function publicKeys(
+  client: BrewClient,
+  wanted: readonly string[]
+): Promise<Set<string>> {
+  const pending = new Set(wanted)
   const keys = new Set<string>()
+  const seen = new Set<string>()
   let cursor: string | undefined
-  for (let page = 0; page < 20; page += 1) {
+  while (pending.size > 0) {
     const result = await client.appEmails.list({
       limit: 100,
       ...(cursor === undefined ? {} : { cursor }),
     })
     for (const row of result.data) {
+      if (!pending.delete(row.triggerKey)) {
+        continue
+      }
       if (row.readiness.ready && !row.readiness.teamOnly) {
         keys.add(row.triggerKey)
       }
     }
-    if (!result.pagination.hasMore || result.pagination.cursor === null) {
+    const next = result.pagination.cursor
+    if (!result.pagination.hasMore || next === null || seen.has(next)) {
       break
     }
-    cursor = result.pagination.cursor
+    seen.add(next)
+    cursor = next
   }
   return keys
 }

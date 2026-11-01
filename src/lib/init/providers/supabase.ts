@@ -83,23 +83,36 @@ export function localValue(
   return value === undefined || value === '' ? undefined : value
 }
 
+/** The hook secret a rollback would put back, as `.env.local` holds it. */
+export function savedHookSecret(writer: ProjectWriter): string | undefined {
+  const text = writer.read('.env.local')
+  return text === null
+    ? undefined
+    : getEnvValue(parseEnv(text), SUPABASE_PREVIOUS_SECRETS_VARIABLE)
+}
+
 /**
  * Keeps a replaced hook's secret in `.env.local` (git-ignored, never
  * brew.json) for `--rollback-provider`, replacing a backup an earlier run
- * left (another hook's). False when it could not be saved as it is.
+ * left (another hook's). `undefined` removes the backup. False when it
+ * could not be saved as it is.
  */
 export function backupHookSecret(
   writer: ProjectWriter,
-  secrets: string
+  secrets: string | undefined
 ): boolean {
   const env = parseEnv(writer.read('.env.local') ?? '')
   const lines = env.lines.filter(
     (line) =>
       line.kind !== 'var' || line.key !== SUPABASE_PREVIOUS_SECRETS_VARIABLE
   )
-  const { text } = ensureEnvVars(serializeEnv({ ...env, lines }), [
-    { name: SUPABASE_PREVIOUS_SECRETS_VARIABLE, value: secrets },
-  ])
+  const rest = serializeEnv({ ...env, lines })
+  const { text } =
+    secrets === undefined
+      ? { text: rest }
+      : ensureEnvVars(rest, [
+          { name: SUPABASE_PREVIOUS_SECRETS_VARIABLE, value: secrets },
+        ])
   if (
     getEnvValue(parseEnv(text), SUPABASE_PREVIOUS_SECRETS_VARIABLE) !== secrets
   ) {

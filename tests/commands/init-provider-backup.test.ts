@@ -1,3 +1,6 @@
+import { mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import {
   configEnv,
@@ -59,5 +62,46 @@ describe('init: the Supabase hook backup', () => {
     expect(read(root, '.env.local')).toContain(
       `BREW_SUPABASE_PREVIOUS_HOOK_SECRETS=${OTHER_SECRET}`
     )
+  })
+
+  it('a project change brew.json cannot save keeps the saved secret beside the saved settings', async () => {
+    const root = supabaseProject()
+    const options = {
+      cwd: root,
+      env: configEnv({ SUPABASE_ACCESS_TOKEN: SB_TOKEN }),
+      spawn: recordingSpawn().spawn,
+    }
+    useBrewApi()
+    useSupabaseApi({
+      enabled: true,
+      uri: OLD_HOOK_URI,
+      secrets: OLD_HOOK_SECRET,
+    })
+    expect((await init(CONFIGURE, options)).code).toBe(0)
+    // brew.json still reads, but a write is refused: a link outside the
+    // project.
+    const outside = join(mkdtempSync(join(tmpdir(), 'brew-outside-')), 'b.json')
+    writeFileSync(outside, read(root, 'brew.json'))
+    rmSync(join(root, 'brew.json'))
+    symlinkSync(outside, join(root, 'brew.json'))
+    useBrewApi()
+    useSupabaseApi({
+      enabled: true,
+      uri: `https://${OTHER_REF}.supabase.co/functions/v1/send-email`,
+      secrets: OTHER_SECRET,
+    })
+    const other = await init(
+      [...CONFIGURE, '--supabase-project', OTHER_REF],
+      options
+    )
+    expect(other.report.providers?.[0]).toMatchObject({ action: 'failed' })
+    // The saved settings are still the first project's, and so is the
+    // secret a rollback puts back with them.
+    expect(read(root, 'brew.json')).not.toContain(OTHER_REF)
+    const env = read(root, '.env.local')
+    expect(env).toContain(
+      `BREW_SUPABASE_PREVIOUS_HOOK_SECRETS=${OLD_HOOK_SECRET}`
+    )
+    expect(env).not.toContain(OTHER_SECRET)
   })
 })
