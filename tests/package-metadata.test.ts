@@ -48,3 +48,52 @@ describe('npm package metadata', () => {
     ])
   })
 })
+
+type LauncherManifest = PackageManifest & {
+  readonly name?: string
+  readonly version?: string
+  readonly type?: string
+  readonly engines?: Readonly<Record<string, string>>
+  readonly publishConfig?: Readonly<Record<string, string>>
+}
+
+const cliVersion = (
+  JSON.parse(
+    readFileSync(new URL('../package.json', import.meta.url), 'utf8')
+  ) as { version: string }
+).version
+
+describe.each(['brew.new', 'create-brew'])('launcher %s', (name) => {
+  const dir = new URL(`../packages/launchers/${name}/`, import.meta.url)
+  const launcher = JSON.parse(
+    readFileSync(new URL('package.json', dir), 'utf8')
+  ) as LauncherManifest
+
+  it('is the CLI version, pinned exactly to the CLI', () => {
+    expect(launcher.name).toBe(name)
+    expect(launcher.version).toBe(cliVersion)
+    expect(launcher.dependencies).toEqual({ '@brew.new/cli': cliVersion })
+  })
+
+  it('ships one ESM bin with a node shebang and nothing else', () => {
+    expect(launcher.bin).toEqual({ [name]: 'bin.mjs' })
+    expect(launcher.type).toBe('module')
+    expect(launcher.files).toEqual([
+      'bin.mjs',
+      'launcher.mjs',
+      'README.md',
+      'LICENSE',
+    ])
+    expect(launcher.engines).toEqual({ node: '>=20' })
+    expect(launcher.publishConfig).toEqual({ access: 'public' })
+    expect(
+      readFileSync(new URL('bin.mjs', dir), 'utf8').startsWith(
+        '#!/usr/bin/env node\n'
+      )
+    ).toBe(true)
+  })
+
+  it('keeps the CLI package itself free of launcher files', () => {
+    expect(manifest.files).not.toContain('packages')
+  })
+})
