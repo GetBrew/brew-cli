@@ -152,6 +152,17 @@ describe('workspace helpers', () => {
     ])
   })
 
+  it('reads inline lists across lines, keeping commas inside quotes', () => {
+    expect(
+      parsePnpmWorkspaceYaml(
+        'packages: ["services/*",\n  "modules/*"]\ncatalog:\n  react: 19\n'
+      )
+    ).toEqual(['services/*', 'modules/*'])
+    expect(
+      parsePnpmWorkspaceYaml("packages: ['{apps,packages}/*', libs/*]\n")
+    ).toEqual(['{apps,packages}/*', 'libs/*'])
+  })
+
   it('keeps reading the package list past comments at column 0', () => {
     expect(
       parsePnpmWorkspaceYaml(
@@ -202,6 +213,20 @@ describe('workspace helpers', () => {
     expect(
       listWorkspacePackages(root, ['{apps,packages}/*']).map((pkg) => pkg.dir)
     ).toEqual(['apps/api', 'apps/web', 'packages/ui'])
+  })
+
+  it('matches character classes in workspace globs', () => {
+    const root = tempProject()
+    for (const dir of ['apps/a1', 'apps/b1', 'apps/c1']) {
+      mkdirSync(join(root, dir), { recursive: true })
+      writeFileSync(join(root, dir, 'package.json'), '{}')
+    }
+    const dirs = (pattern: string): string[] =>
+      listWorkspacePackages(root, [pattern]).map((pkg) => pkg.dir)
+    expect(dirs('apps/[ab]*')).toEqual(['apps/a1', 'apps/b1'])
+    expect(dirs('apps/[!ab]1')).toEqual(['apps/c1'])
+    expect(dirs('[a]pps/c1')).toEqual(['apps/c1'])
+    expect(dirs('apps/[z-a]*')).toEqual([])
   })
 
   it('names a framework by its most specific dependency', () => {

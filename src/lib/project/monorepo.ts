@@ -119,39 +119,44 @@ export function detectFramework(
 /** The `packages:` list of a pnpm-workspace.yaml (the only key we need). */
 export function parsePnpmWorkspaceYaml(text: string): string[] {
   const patterns: string[] = []
-  let inPackages = false
+  let list: 'block' | 'inline' | null = null
   for (const raw of stripBom(text).replaceAll('\r\n', '\n').split('\n')) {
     if (/^\s*#/.test(raw)) {
       // A whole-line comment, at any column, never ends the list.
       continue
     }
-    const line = raw.replace(/\s+#.*$/, '')
-    if (/^packages\s*:/.test(line)) {
-      inPackages = true
-      const inline = /^packages\s*:\s*\[(.*)\]\s*$/.exec(line)
-      if (inline !== null) {
-        for (const item of (inline[1] ?? '').split(',')) {
-          const value = unquote(item.trim())
-          if (value !== '') {
-            patterns.push(value)
-          }
+    let line = raw.replace(/\s+#.*$/, '')
+    const key = /^packages\s*:\s*(\[?)/.exec(line)
+    if (key !== null) {
+      list = key[1] === '[' ? 'inline' : 'block'
+      line = line.slice(key[0].length)
+    }
+    if (list === 'inline') {
+      // `[a, 'b,c', "d"]`, over one line or several: a quoted item keeps
+      // its commas.
+      for (const [item, single, double] of line.matchAll(INLINE_ITEM)) {
+        if (item === ']') {
+          list = null
+          break
         }
-        inPackages = false
+        patterns.push(single ?? double ?? item)
       }
       continue
     }
-    if (!inPackages) {
+    if (list === null || key !== null) {
       continue
     }
     const item = /^\s*-\s*(.+?)\s*$/.exec(line)
     if (item !== null) {
       patterns.push(unquote(item[1] ?? ''))
     } else if (/^\S/.test(line)) {
-      inPackages = false
+      list = null
     }
   }
   return patterns.filter((pattern) => pattern !== '')
 }
+
+const INLINE_ITEM = /'([^']*)'|"([^"]*)"|[^\s,'"\]]+|\]/g
 
 function unquote(value: string): string {
   return value.replace(/^(['"])(.*)\1$/, '$2')
@@ -204,12 +209,25 @@ function isDirectory(path: string): boolean {
   }
 }
 
+/** One path segment of a glob: `*`, `?` and `[ab]` / `[!a-c]` classes. */
 function segmentRegex(segment: string): RegExp {
-  const body = segment
-    .replace(/[.+^${}()|[\]\\]/g, '\\$&')
-    .replaceAll('*', '[^/]*')
-    .replaceAll('?', '[^/]')
-  return new RegExp(`^${body}$`)
+  const body = segment.replace(
+    /\[([!^]?)([^\]]+)\]|[*?]|[.+^${}()|[\]\\]/g,
+    (match, negate: string | undefined, set: string | undefined) =>
+      set !== undefined
+        ? `[${negate === '' ? '' : '^'}${set.replaceAll('\\', '\\\\')}]`
+        : match === '*'
+          ? '[^/]*'
+          : match === '?'
+            ? '[^/]'
+            : `\\${match}`
+  )
+  try {
+    return new RegExp(`^${body}$`)
+  } catch {
+    // An invalid class (`[z-a]`) matches nothing, as in the glob libraries.
+    return /$^/
+  }
 }
 
 /** Directories (root-relative, POSIX) matched by one workspace glob. */
@@ -237,7 +255,7 @@ function expandGlob(root: string, pattern: string): string[] {
       }
       return
     }
-    if (!/[*?]/.test(segment)) {
+    if (!/[*?[]/.test(segment)) {
       const next = dir === '' ? segment : `${dir}/${segment}`
       if (isDirectory(join(root, next))) {
         walk(next, index + 1, depth + 1)
