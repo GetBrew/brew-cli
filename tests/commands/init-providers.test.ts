@@ -566,6 +566,21 @@ describe('init: Clerk delivery', () => {
     }
   )
 
+  it('the init follow-ups keep a --stack override', async () => {
+    const root = clerkProject()
+    useBrewApi({ connections: { clerk: ACTIVE_CLERK } })
+    const result = await init(
+      ['--yes', '--json', '--no-test-email', '--stack', 'clerk'],
+      { cwd: root, env: configEnv(), spawn: recordingSpawn().spawn }
+    )
+    expect(result.code).toBe(0)
+    expect(
+      result.report.nextSteps.find(
+        (step) => step.id === 'configure-clerk-delivery'
+      )?.command
+    ).toBe('brew-cli init --stack clerk --configure-clerk --yes')
+  })
+
   it('without a Clerk connection, prints how to connect it; Clerk keeps its emails', async () => {
     const root = clerkProject()
     useBrewApi()

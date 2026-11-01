@@ -1350,7 +1350,8 @@ export async function runInit(
         writer,
         prefix,
         scope,
-        init: `${prefix} init${options.app === undefined ? '' : ` --app ${shellQuote(options.app)}`}${scope}`,
+        // A --stack override is kept: detection may say another stack.
+        init: `${prefix} init${options.app === undefined ? '' : ` --app ${shellQuote(options.app)}`}${options.stack === undefined ? '' : ` --stack ${options.stack}`}${scope}`,
         providerConfig,
         // brew.json holds the provider's old settings BEFORE they change.
         persist: (config) => {
