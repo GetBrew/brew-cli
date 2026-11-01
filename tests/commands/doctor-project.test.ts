@@ -333,6 +333,42 @@ describe('doctor --project', () => {
     expect(statusOf(result.report, 'app-emails')).toEqual(['skipped'])
   })
 
+  it('a brand check whose read fails is a failure, not skipped (exit 1)', async () => {
+    const root = healthyProject({ auth: 'supabase' })
+    useProjectApi({ verifiedDomain: true })
+    const unavailable = () =>
+      HttpResponse.json(
+        {
+          error: {
+            code: 'SERVICE_UNAVAILABLE',
+            type: 'api_error',
+            message: 'Try again.',
+          },
+        },
+        { status: 503 }
+      )
+    server.use(
+      http.get(`${API}/v1/app-emails`, unavailable),
+      http.get(`${API}/v1/domains`, unavailable),
+      http.get(`${API}/v1/integrations/:provider/connection`, unavailable)
+    )
+    const result = await runCli(
+      ['doctor', '--project', '--json', '--max-retries', '0'],
+      {
+        cwd: root,
+        env: {
+          BREW_CLI_CONFIG_DIR: mkdtempSync(join(tmpdir(), 'brew-doctor-')),
+        },
+      }
+    )
+    const report = result.json as ProjectDoctorReport
+    expect(result.code).toBe(1)
+    expect(statusOf(report, 'auth')).toEqual(['ok'])
+    for (const id of ['app-emails', 'domain', 'provider']) {
+      expect(statusOf(report, id), id).toEqual(['fail'])
+    }
+  })
+
   it('warns in the sandbox and on a hook that is not active yet; ok once active', async () => {
     const root = healthyProject({
       auth: 'supabase',

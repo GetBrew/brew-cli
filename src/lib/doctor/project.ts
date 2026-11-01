@@ -31,7 +31,8 @@ import type { CliContext } from '../types'
  * checks (managed files, the app key and where it lives, the SDK) and,
  * with a key, the brand's side (the keys exist and publish, the sending
  * domain, the hosted auth hook). Every check is `ok`, `warn` or `fail`
- * (`skipped` when it cannot run); any `fail` exits 1. Secrets never appear:
+ * (`skipped` when it does not apply; a read that fails is `fail`); any
+ * `fail` exits 1. Secrets never appear:
  * the key is masked, env values are never echoed.
  */
 
@@ -136,13 +137,6 @@ function describe(error: unknown): string {
     return `${error.status} ${error.code}: ${error.message}`
   }
   return error instanceof Error ? error.message : String(error)
-}
-
-function isAuthError(error: unknown): boolean {
-  return (
-    (error instanceof BrewApiError || error instanceof CliApiError) &&
-    (error.status === 401 || error.status === 403)
-  )
 }
 
 export async function runProjectDoctor(
@@ -496,7 +490,7 @@ async function checkAppEmails(
     ctx.signal.throwIfAborted()
     return {
       id: 'app-emails',
-      status: isAuthError(error) ? 'fail' : 'skipped',
+      status: 'fail',
       detail: `could not list app emails: ${describe(error)}`,
     }
   }
@@ -581,7 +575,7 @@ async function checkDomain(
     ctx.signal.throwIfAborted()
     return {
       id: 'domain',
-      status: 'skipped',
+      status: 'fail',
       detail: `could not list domains: ${describe(error)}`,
     }
   }
@@ -641,7 +635,7 @@ async function checkProviders(
       ctx.signal.throwIfAborted()
       checks.push({
         id: 'provider',
-        status: isAuthError(error) ? 'fail' : 'skipped',
+        status: 'fail',
         detail: `${provider}: could not read the connection: ${describe(error)}`,
       })
     }

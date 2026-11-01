@@ -86,7 +86,8 @@ head `b884e78157` (main's spec, brew-v2 `373e900a9a`, plus the DX delta).
   with the app key, the brand (the key's brand is `brew.json`'s), every key
   set up, published and past the sandbox (a warning names a key whose
   purpose has no verified domain), a verified sending domain, and the
-  hosted hook's status. `--json`; any failed check exits 1, no `brew.json` exits 2.
+  hosted hook's status. `--json`; any failed check (a brand read that
+  fails included) exits 1, no `brew.json` exits 2.
 - The init report (schema version 1, additive) gains `providers[]`, the
   `provider` step, `brand.domain` / `matchesAppUrl` / `created` and
   `domain.connectUrl`.
