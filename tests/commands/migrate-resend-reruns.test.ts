@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync } from 'node:fs'
+import { readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { HttpResponse, http } from 'msw'
 import { describe, expect, it } from 'vitest'
@@ -45,7 +45,7 @@ describe('migrate resend: a re-run keeps its destination', () => {
     expect(readFileSync(join(root, 'brew.migration.json'), 'utf8')).toBe(before)
   })
 
-  it('refuses another --domain than the one its unsubscribe imports resume on (exit 2)', async () => {
+  it('refuses another --domain than the one its unsubscribe imports resume on (exit 2), not the same one by id', async () => {
     const { run } = setUp()
     const domains = ['news', 'promo'].map((label) => ({
       domainId: `dom_${label}`,
@@ -61,6 +61,7 @@ describe('migrate resend: a re-run keeps its destination', () => {
     const second = await migrate([...APPLY, ...only, 'promo.acme.dev'], run)
     expect(second.code).toBe(2)
     expect(second.stderr).toContain('--domain news.acme.dev')
+    expect((await migrate([...APPLY, ...only, 'dom_news'], run)).code).toBe(0)
   })
 })
 
@@ -192,6 +193,27 @@ describe('migrate resend: app email keys', () => {
 describe('migrate resend --rewrite-imports: the template map', () => {
   const REWRITE = [...APPLY, '--rewrite-imports', '--only', 'templates', 'code']
   const MAP = 'src/lib/brew-resend-map.ts'
+  /** The account after a template was added since the clients moved. */
+  const WITH_INVITE: ResendAccount = {
+    ...RESEND_ACCOUNT,
+    templates: [
+      ...RESEND_ACCOUNT.templates,
+      { id: 'tmpl_new', name: 'Invite', alias: null, status: 'published' },
+    ],
+    templateDetails: {
+      ...RESEND_ACCOUNT.templateDetails,
+      tmpl_new: {
+        id: 'tmpl_new',
+        name: 'Invite',
+        alias: null,
+        status: 'published',
+        subject: 'Join us',
+        from: null,
+        html: '<p>Join</p>',
+        variables: [],
+      },
+    },
+  }
 
   it('follows templates added after the clients moved', async () => {
     const { root, clock } = setUp()
@@ -199,32 +221,43 @@ describe('migrate resend --rewrite-imports: the template map', () => {
     const run = { cwd: root, env: env(), clock }
     expect((await migrate(REWRITE, run)).code).toBe(0)
 
-    const account: ResendAccount = {
-      ...RESEND_ACCOUNT,
-      templates: [
-        ...RESEND_ACCOUNT.templates,
-        { id: 'tmpl_new', name: 'Invite', alias: null, status: 'published' },
-      ],
-      templateDetails: {
-        ...RESEND_ACCOUNT.templateDetails,
-        tmpl_new: {
-          id: 'tmpl_new',
-          name: 'Invite',
-          alias: null,
-          status: 'published',
-          subject: 'Join us',
-          from: null,
-          html: '<p>Join</p>',
-          variables: [],
-        },
-      },
-    }
-    server.use(useResendApi({ key: RESEND_KEY, clock, account }).handler)
+    server.use(
+      useResendApi({ key: RESEND_KEY, clock, account: WITH_INVITE }).handler
+    )
     useBrewApi({ appEmailKeys: ['reset-password', 'receipt'] })
     await migrate(REWRITE, run)
     expect(readFileSync(join(root, MAP), 'utf8')).toContain(
       '"tmpl_new": "invite"'
     )
+  })
+
+  it('in JavaScript, keeps the ESM map current after a CommonJS client moves', async () => {
+    const { root, clock } = setUp()
+    rmSync(join(root, 'tsconfig.json'))
+    writeFileSync(
+      join(root, 'package.json'),
+      JSON.stringify({ type: 'module', dependencies: { next: '^16.0.0' } })
+    )
+    useBrewApi()
+    const run = { cwd: root, env: env(), clock }
+    expect((await migrate(REWRITE, run)).code).toBe(0)
+    writeFileSync(
+      join(root, 'src/jobs/receipt.cjs'),
+      "const { Resend } = require('resend')\nconst resend = new Resend(process.env.RESEND_API_KEY)\nmodule.exports = (to) => resend.emails.send({ to, template: { id: 'tmpl_receipt_1' } })\n"
+    )
+    server.use(
+      useResendApi({ key: RESEND_KEY, clock, account: WITH_INVITE }).handler
+    )
+    useBrewApi({ appEmailKeys: ['reset-password', 'receipt'] })
+    await migrate(REWRITE, run)
+    for (const map of [
+      'src/lib/brew-resend-map.js',
+      'src/lib/brew-resend-map.cjs',
+    ]) {
+      expect(readFileSync(join(root, map), 'utf8')).toContain(
+        '"tmpl_new": "invite"'
+      )
+    }
   })
 
   it('moves no client to a map the migration did not write', async () => {

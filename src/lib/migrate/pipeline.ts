@@ -211,9 +211,17 @@ function resolveTargetDomain(
   if (domain === undefined) {
     return
   }
-  // Unsubscribe imports resume from cursors read for the recorded domain.
+  const names = (row: BrewDomainRow, text: string) =>
+    row.domainId === text || row.name.toLowerCase() === text.toLowerCase()
+  const match = run.brewDomains?.find((row) => names(row, domain))
+  // Unsubscribe imports resume from cursors read for the recorded domain,
+  // which --domain may name by its id or its name.
   const recorded = run.manifest.options.domain
-  if (recorded !== null && recorded.toLowerCase() !== domain.toLowerCase()) {
+  if (
+    recorded !== null &&
+    recorded.toLowerCase() !== domain.toLowerCase() &&
+    (match === undefined || !names(match, recorded))
+  ) {
     throw new CliUsageError(
       `${run.options.manifestPath} records --domain ${recorded}. Pass --domain ${recorded}, or start a separate migration with --manifest <path>.`
     )
@@ -222,11 +230,6 @@ function resolveTargetDomain(
   if (run.brewDomains === null) {
     return
   }
-  const wanted = domain.toLowerCase()
-  const match = run.brewDomains.find(
-    (row: BrewDomainRow) =>
-      row.domainId === domain || row.name.toLowerCase() === wanted
-  )
   if (match === undefined) {
     throw new CliUsageError(
       `--domain ${domain} is not a domain of this Brew brand. List them with \`${run.prefix} domains list\`.`

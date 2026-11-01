@@ -473,13 +473,21 @@ function rewriteImports(
 ): void {
   const writer = new ProjectWriter({ root: run.project.root })
   const { libDir, typescript } = run.project
-  // A refresh with no new file keeps the map the earlier rewrite wrote.
-  const moduleSyntax =
-    scan.files.get(items[0]?.file ?? '')?.locations.moduleSyntax ??
-    (run.manifest.files[mapFilePath(libDir, typescript, 'cjs')] === undefined
-      ? 'esm'
-      : 'cjs')
-  const mapPath = mapFilePath(libDir, typescript, moduleSyntax)
+  const syntaxOf = (item: MigrationItem) =>
+    scan.files.get(item.file ?? '')?.locations.moduleSyntax ?? 'esm'
+  // One map per module syntax a moved client uses (a .ts map serves both):
+  // a map an earlier rewrite wrote keeps following the templates.
+  const maps = new Map<string, 'esm' | 'cjs'>()
+  for (const syntax of ['esm', 'cjs'] as const) {
+    const path = mapFilePath(libDir, typescript, syntax)
+    if (
+      !maps.has(path) &&
+      (items.some((item) => syntaxOf(item) === syntax) ||
+        run.manifest.files[path] !== undefined)
+    ) {
+      maps.set(path, syntax)
+    }
+  }
   const entries = new Map<string, string>()
   for (const item of templateItems) {
     if (item.status !== 'done' || item.key === undefined) {
@@ -492,37 +500,39 @@ function rewriteImports(
       entries.set(item.alias, item.key)
     }
   }
-  const content = mapFileContent({
-    entries: [...entries.entries()],
-    typescript,
-    moduleSyntax,
-    rerunCommand: `${run.prefix} migrate resend --apply --rewrite-imports`,
-  })
-  const recorded = run.manifest.files[mapPath]?.sha256
-  const mapChange = writer.writeFile(
-    mapPath,
-    content,
-    recorded === undefined ? {} : { managedSha256: recorded }
-  )
-  if (mapChange.action === 'refused') {
-    run.findings.push({
-      code: 'MAP_FILE_REFUSED',
-      severity: 'error',
-      message: `${mapPath} was not written (${mapChange.note ?? 'unsafe path'}); no imports were rewritten.`,
+  for (const [mapPath, moduleSyntax] of maps) {
+    const content = mapFileContent({
+      entries: [...entries.entries()],
+      typescript,
+      moduleSyntax,
+      rerunCommand: `${run.prefix} migrate resend --apply --rewrite-imports`,
     })
-    return
-  }
-  if (mapChange.action === 'kept-user-version') {
-    // A map the migration did not write may miss templates: no client moves to it.
-    run.findings.push({
-      code: 'MAP_FILE_KEPT',
-      severity: 'error',
-      message: `${mapPath} was edited since the migration wrote it, so it was kept and no imports were rewritten; undo the edit or delete the file, then run again.`,
-    })
-    return
-  }
-  if (mapChange.sha256 !== undefined) {
-    run.manifest.files[mapPath] = { sha256: mapChange.sha256 }
+    const recorded = run.manifest.files[mapPath]?.sha256
+    const mapChange = writer.writeFile(
+      mapPath,
+      content,
+      recorded === undefined ? {} : { managedSha256: recorded }
+    )
+    if (mapChange.action === 'refused') {
+      run.findings.push({
+        code: 'MAP_FILE_REFUSED',
+        severity: 'error',
+        message: `${mapPath} was not written (${mapChange.note ?? 'unsafe path'}); no imports were rewritten.`,
+      })
+      return
+    }
+    if (mapChange.action === 'kept-user-version') {
+      // A map the migration did not write may miss templates: no client moves to it.
+      run.findings.push({
+        code: 'MAP_FILE_KEPT',
+        severity: 'error',
+        message: `${mapPath} was edited since the migration wrote it, so it was kept and no imports were rewritten; undo the edit or delete the file, then run again.`,
+      })
+      return
+    }
+    if (mapChange.sha256 !== undefined) {
+      run.manifest.files[mapPath] = { sha256: mapChange.sha256 }
+    }
   }
   for (const item of items) {
     const file = item.file ?? ''
@@ -530,6 +540,7 @@ function rewriteImports(
     if (scanned === undefined) {
       continue
     }
+    const mapPath = mapFilePath(libDir, typescript, syntaxOf(item))
     const next = rewriteFile({ file, scanned, mapFile: mapPath })
     const change = writer.writeFile(file, next, { overwrite: true })
     if (change.action === 'refused') {
