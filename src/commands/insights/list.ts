@@ -317,9 +317,8 @@ function renderPulse(pulse: Pulse | null): string {
     now === null
       ? undefined
       : `${label} ${now}% (prior ${prior === null ? '-' : `${prior}%`}, ${direction})`
-  // `measured: false` means engagement tracking is off: the open counts are
-  // not zero, they are unknown, so neither they nor anything derived from
-  // them (the open rate, its direction) is printed as a number.
+  // The public response has one conservative flag for both signals.
+  // Unknown measurements must not be shown as numeric activity.
   const opens = pulse.measured
     ? [
         pair('unique opens', pulse.uniqueOpens, pulse.priorUniqueOpens),
@@ -330,17 +329,22 @@ function renderPulse(pulse: Pulse | null): string {
           pulse.openDirection
         ),
       ]
-    : ['opens not measured (engagement tracking is off)']
+    : ['opens not measured']
+  const clicks = pulse.measured
+    ? [
+        pair('unique clicks', pulse.uniqueClicks, pulse.priorUniqueClicks),
+        rate(
+          'click rate',
+          pulse.clickRatePct,
+          pulse.priorClickRatePct,
+          pulse.clickDirection
+        ),
+      ]
+    : ['clicks not measured']
   const parts = [
     pair('delivered', pulse.delivered, pulse.priorDelivered),
     ...opens,
-    pair('unique clicks', pulse.uniqueClicks, pulse.priorUniqueClicks),
-    rate(
-      'click rate',
-      pulse.clickRatePct,
-      pulse.priorClickRatePct,
-      pulse.clickDirection
-    ),
+    ...clicks,
     pair('unsubscribed', pulse.unsubscribed, pulse.priorUnsubscribed),
     // `countsOnly`: too few deliveries for rates (the API sends them null).
     pulse.countsOnly ? 'too few deliveries for rates; read the counts' : '',
