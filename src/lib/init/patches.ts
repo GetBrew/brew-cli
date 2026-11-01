@@ -101,6 +101,25 @@ function innerIndent(lines: readonly string[], index: number): string {
     : `${opener}  `
 }
 
+/** A quoted string or template literal. */
+const LITERAL = /(['"`])(?:\\.|(?!\1)[^\\])*\1/g
+
+/**
+ * The diff a report prints. The file is the user's (an auth config, where
+ * a secret may sit on any line), so it carries no context lines, and a
+ * hunk that changes the user's lines shows their shape, never their values.
+ */
+function reportedDiff(path: string, before: string, after: string): string {
+  return unifiedDiff(before, after, { fromPath: path, context: 0 })
+    .split(/(?=^@@ )/m)
+    .map((hunk) =>
+      hunk.startsWith('@@') && /^-/m.test(hunk)
+        ? hunk.replace(/^[-+].*$/gm, (line) => line.replace(LITERAL, '$1…$1'))
+        : hunk
+    )
+    .join('')
+}
+
 function computed(
   path: string,
   before: string,
@@ -113,7 +132,7 @@ function computed(
       path,
       status: 'pending',
       baseSha256: sha256Hex(before),
-      diff: unifiedDiff(normalizeEol(before), after, { fromPath: path }),
+      diff: reportedDiff(path, normalizeEol(before), after),
     },
     next: after,
   }
