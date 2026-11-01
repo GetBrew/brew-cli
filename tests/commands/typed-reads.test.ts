@@ -388,6 +388,24 @@ describe('insights list', () => {
     ['legacy measured', { measured: true }, true, true],
     ['legacy unmeasured', { measured: false }, false, false],
     [
+      'legacy unavailable numeric zeros',
+      {
+        measured: false,
+        uniqueOpens: 0,
+        uniqueClicks: 0,
+        openRatePct: 0,
+        clickRatePct: 0,
+      },
+      false,
+      false,
+    ],
+    [
+      'omitted click flag falls back independently',
+      { measured: false, opensMeasured: true },
+      true,
+      false,
+    ],
+    [
       'opens available',
       { measured: false, opensMeasured: true, clicksMeasured: false },
       true,
