@@ -25,6 +25,7 @@ import {
 } from '../../lib/input'
 import { getInvocationPrefix } from '../../lib/invocation'
 import { renderTable } from '../../lib/output'
+import { keepsSending } from './upsert'
 
 export const appEmailsKitCommand = defineCommand({
   path: ['app-emails', 'kit'],
@@ -146,7 +147,11 @@ function renderKit(
     entry.ok
       ? {
           key: entry.triggerKey,
-          status: entry.published ? 'published' : 'saved',
+          status: entry.published
+            ? 'published'
+            : keepsSending(entry)
+              ? 'draft saved, published version sends'
+              : 'saved',
           sender: entry.sender.mode,
         }
       : {
@@ -164,6 +169,16 @@ function renderKit(
     '',
     `Stack ${result.stack.provider} (${result.stack.authDelivery}): ${result.stack.note}`,
   ]
+  const warnings = result.results.flatMap((entry) =>
+    entry.ok
+      ? entry.warnings.map(
+          (warning) => `${entry.triggerKey}: warning: ${warning.message}`
+        )
+      : []
+  )
+  if (warnings.length > 0) {
+    lines.push('', ...warnings)
+  }
   for (const snippet of result.stack.snippets) {
     lines.push('', `Snippet: ${snippet.title} (${snippet.file})`, snippet.code)
   }

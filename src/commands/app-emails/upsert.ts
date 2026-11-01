@@ -163,6 +163,19 @@ export const appEmailsUpsertCommand = defineCommand({
   },
 })
 
+/**
+ * A live automation with a newer draft keeps sending its published
+ * version: `published` is false, yet a send still goes out.
+ */
+export function keepsSending(
+  result: Pick<UpsertAppEmailResponse, 'published' | 'warnings'>
+): boolean {
+  return (
+    !result.published &&
+    result.warnings.some((warning) => warning.code === 'DRAFT_SAVED_NOT_LIVE')
+  )
+}
+
 export function renderSetup(
   result: Pick<
     UpsertAppEmailResponse,
@@ -177,14 +190,10 @@ export function renderSetup(
     result.sender.mode === 'sandbox'
       ? `sandbox ${result.sender.from} (team only until a domain verifies)`
       : `${result.sender.from}`
-  // A live automation with a newer draft keeps sending its published
-  // version: `published` is false, yet a send still goes out.
-  const keepsSending =
-    !result.published &&
-    result.warnings.some((warning) => warning.code === 'DRAFT_SAVED_NOT_LIVE')
+  const sends = keepsSending(result)
   const state = result.published
     ? 'published'
-    : keepsSending
+    : sends
       ? 'draft saved, the published version keeps sending'
       : 'saved, not published'
   const lines = [
@@ -196,7 +205,7 @@ export function renderSetup(
   for (const warning of result.warnings) {
     lines.push(`warning: ${warning.message}`)
   }
-  if (result.published || keepsSending) {
+  if (result.published || sends) {
     lines.push(`Send it: ${prefix} send ${result.triggerKey} --to <email>`)
   }
   return lines.join('\n')
