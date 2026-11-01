@@ -18,7 +18,7 @@ export const analyticsTrackCommand = defineCommand({
   path: ['analytics', 'track'],
   summary:
     'Submit trusted product events; matching rules can start LIVE flows (automations scope)',
-  // The published SDK 13.3 does not yet contain analytics.track.
+  // Switch to analytics.track when that SDK method is released.
   sdkMethod: null,
   isRawTransport: true,
   route: { method: 'POST', path: '/v1/analytics/track' },
