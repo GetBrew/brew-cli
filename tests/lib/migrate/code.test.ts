@@ -52,6 +52,17 @@ describe('analyzeArgument', () => {
     expect(message?.unsupported).toContain('...spread')
   })
 
+  it('a spread inside template after its id may replace it: the id is computed', () => {
+    const [after] = analyze(
+      "{ to, template: { id: 'welcome', ...options } }"
+    ).messages
+    expect(after?.templateId).toBeNull()
+    const [before] = analyze(
+      "{ to, template: { ...options, id: 'welcome' } }"
+    ).messages
+    expect(before?.templateId).toBe('welcome')
+  })
+
   it('reads a literal computed name, and a name it cannot read may be any field', () => {
     const [literal] = analyze(
       "{ to, template: { id: 'receipt' }, ['cc']: manager }"

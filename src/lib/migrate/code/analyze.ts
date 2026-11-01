@@ -266,6 +266,9 @@ function analyzeMessage(
       for (const property of objectProperties(tokens, template.from)) {
         if (property.name === 'id' && property.from === property.to) {
           templateId = stringValue(tokens[property.from] as Token)
+        } else if (property.spread) {
+          // It may carry an `id` that replaces the one before it.
+          templateId = null
         } else if (property.name === 'variables') {
           variables = sourceOf(text, tokens, property.from, property.to)
         }
