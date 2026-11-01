@@ -37,7 +37,9 @@ GetBrew/brew-v2#2169 (its head `02a3946b18`, the spec 0.20.0 vendors).
   API URL than the sign-in started on exits 2 before polling.
   `lib/brew.ts` reads the key through `$env/dynamic/private` in SvelteKit
   and `import.meta.env` in Astro; Express, Hono and plain Node get a
-  blocking step to load `.env.local`.
+  blocking step to load `.env.local`. Every generated client sends to
+  `BREW_API_URL` when it is set, and an init against another Brew server
+  (`--api-url`) writes it to `.env.local` beside the key.
   A test email that does not go out (say `SANDBOX_DAILY_LIMIT`) is a
   non-blocking retry step, not a failed run. A domain `--domain` adds that
   already publishes another DKIM key (`DKIM_SELECTOR_IN_USE`) gets a

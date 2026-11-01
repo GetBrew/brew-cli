@@ -2,11 +2,14 @@ import { writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { detectProject } from '../../../src/lib/init/detect'
+import { envLocalVars } from '../../../src/lib/init/pipeline'
 import {
   authHelperFile,
   authHelperPath,
+  clientFile,
   clientPath,
   reachesSdkRange,
+  supabaseHookFile,
 } from '../../../src/lib/init/templates'
 import { copyFixture, tempProject } from '../../helpers/fixtures'
 
@@ -92,5 +95,39 @@ describe('the Better Auth helper on Next.js', () => {
         "import { after } from 'next/server'"
       )
     ).toBe(imports)
+  })
+})
+
+describe('another Brew server (--api-url, BREW_API_URL)', () => {
+  it.each([
+    ['next-app', 'process.env.BREW_API_URL'],
+    ['sveltekit', 'env.BREW_API_URL'],
+    ['hono-workers', 'env.BREW_API_URL'],
+    ['supabase-functions', "Deno.env.get('BREW_API_URL')"],
+  ])('the %s client sends to BREW_API_URL when it is set', (fixture, read) => {
+    const file = clientFile(detect(copyFixture(fixture)))
+    expect(file).toContain(read)
+    expect(file).toContain('...(baseUrl ? { baseUrl } : {})')
+  })
+
+  it('the Supabase Send Email hook does too', () => {
+    expect(supabaseHookFile()).toContain(
+      "const baseUrl = Deno.env.get('BREW_API_URL')"
+    )
+  })
+
+  it('.env.local records a server other than the default, never as a secret', () => {
+    expect(
+      envLocalVars({ appKey: 'brew_k', apiUrl: 'https://brew.new/api' })
+    ).toEqual([{ name: 'BREW_API_KEY', value: 'brew_k' }])
+    expect(
+      envLocalVars({ appKey: undefined, apiUrl: 'http://localhost:3000/api' })
+    ).toEqual([
+      {
+        name: 'BREW_API_URL',
+        value: 'http://localhost:3000/api',
+        secret: false,
+      },
+    ])
   })
 })

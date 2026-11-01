@@ -1195,7 +1195,7 @@ describe('init per stack', () => {
     })
     expect(result.code).toBe(0)
     expect(read(root, 'src/lib/brew.ts')).toContain(
-      'export function getBrew(env: { BREW_API_KEY?: string }): BrewClient'
+      'export function getBrew(env: { BREW_API_KEY?: string; BREW_API_URL?: string }): BrewClient'
     )
     expect(
       result.report.nextSteps.find((step) => step.id === 'worker-secret')

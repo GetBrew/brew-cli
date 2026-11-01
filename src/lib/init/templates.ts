@@ -139,7 +139,7 @@ export function clientFile(project: ProjectDetection): string {
       ' * Worker secret (`wrangler secret put BREW_API_KEY`; `.dev.vars` locally).',
       ' */',
       ts
-        ? 'export function getBrew(env: { BREW_API_KEY?: string }): BrewClient {'
+        ? 'export function getBrew(env: { BREW_API_KEY?: string; BREW_API_URL?: string }): BrewClient {'
         : 'export function getBrew(env) {',
       '  const apiKey = env.BREW_API_KEY',
       "  if (apiKey === undefined || apiKey === '') {",
@@ -147,7 +147,9 @@ export function clientFile(project: ProjectDetection): string {
       '  }',
       '  let client = clients.get(apiKey)',
       '  if (client === undefined) {',
-      '    client = createBrewClient({ apiKey })',
+      '    // BREW_API_URL: another Brew server than https://brew.new/api.',
+      '    const baseUrl = env.BREW_API_URL',
+      '    client = createBrewClient({ apiKey, ...(baseUrl ? { baseUrl } : {}) })',
       '    clients.set(apiKey, client)',
       '  }',
       '  return client',
@@ -166,7 +168,9 @@ export function clientFile(project: ProjectDetection): string {
       '  if (!apiKey) {',
       "    throw new Error('BREW_API_KEY is not set: add it to the Edge Function secrets.')",
       '  }',
-      '  return createBrewClient({ apiKey })',
+      '  // BREW_API_URL: another Brew server than https://brew.new/api.',
+      "  const baseUrl = Deno.env.get('BREW_API_URL')",
+      '  return createBrewClient({ apiKey, ...(baseUrl ? { baseUrl } : {}) })',
       '}',
       '',
     ].join('\n')
@@ -174,12 +178,13 @@ export function clientFile(project: ProjectDetection): string {
   // Where server code finds BREW_API_KEY: SvelteKit and Astro read .env
   // files through Vite, not into process.env.
   const sveltekit = project.framework === 'sveltekit'
-  const keyRead =
+  const read = (name: string): string =>
     project.framework === 'astro'
-      ? 'import.meta.env.BREW_API_KEY ?? process.env.BREW_API_KEY'
+      ? `import.meta.env.${name} ?? process.env.${name}`
       : sveltekit
-        ? 'env.BREW_API_KEY'
-        : 'process.env.BREW_API_KEY'
+        ? `env.${name}`
+        : `process.env.${name}`
+  const keyRead = read('BREW_API_KEY')
   return [
     HEADER,
     ts
@@ -202,7 +207,9 @@ export function clientFile(project: ProjectDetection): string {
     "    if (apiKey === undefined || apiKey === '') {",
     "      throw new Error('BREW_API_KEY is not set: add it to .env.local (npx @brew.new/cli init writes it).')",
     '    }',
-    '    client = createBrewClient({ apiKey })',
+    '    // BREW_API_URL: another Brew server than https://brew.new/api.',
+    `    const baseUrl = ${read('BREW_API_URL')}`,
+    '    client = createBrewClient({ apiKey, ...(baseUrl ? { baseUrl } : {}) })',
     '  }',
     '  return client',
     '}',
@@ -450,9 +457,12 @@ export function supabaseHookFile(): string {
     `import { createBrewClient } from 'npm:${SDK_PACKAGE}@${SDK_RANGE}'`,
     `import { createSupabaseSendEmailHook } from 'npm:${SDK_PACKAGE}@${SDK_RANGE}/supabase'`,
     '',
+    '// BREW_API_URL: another Brew server than https://brew.new/api.',
+    "const baseUrl = Deno.env.get('BREW_API_URL')",
+    '',
     'Deno.serve(',
     '  createSupabaseSendEmailHook({',
-    "    client: () => createBrewClient({ apiKey: Deno.env.get('BREW_API_KEY') ?? '' }),",
+    "    client: () => createBrewClient({ apiKey: Deno.env.get('BREW_API_KEY') ?? '', ...(baseUrl ? { baseUrl } : {}) }),",
     "    secret: Deno.env.get('SEND_EMAIL_HOOK_SECRET') ?? '',",
     '  })',
     ')',

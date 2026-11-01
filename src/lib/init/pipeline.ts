@@ -218,6 +218,24 @@ type Credential = {
   readonly source: InitReport['credential']['source']
 }
 
+/**
+ * What init keeps in .env.local: the app key, and the API URL when it is
+ * not the default, which the generated client reads as BREW_API_URL.
+ */
+export function envLocalVars(input: {
+  readonly appKey: string | undefined
+  readonly apiUrl: string
+}): Array<{ name: string; value: string; secret?: boolean }> {
+  return [
+    ...(input.appKey === undefined
+      ? []
+      : [{ name: APP_KEY_VARIABLE, value: input.appKey }]),
+    ...(input.apiUrl === DEFAULT_API_URL
+      ? []
+      : [{ name: 'BREW_API_URL', value: input.apiUrl, secret: false }]),
+  ]
+}
+
 export async function runInit(
   ctx: CliContext,
   options: InitOptions
@@ -529,14 +547,14 @@ export async function runInit(
   if (appKey !== undefined || envLocalText !== null) {
     const { text, results } = ensureEnvVars(
       envLocalText,
-      appKey === undefined ? [] : [{ name: APP_KEY_VARIABLE, value: appKey }]
+      envLocalVars({ appKey, apiUrl })
     )
     const change = writer.writeFile('.env.local', text, {
       overwrite: true,
       mode: 0o600,
       sensitive: true,
     })
-    const result = results[0]
+    const result = results.find((entry) => entry.name === APP_KEY_VARIABLE)
     if (change.action === 'refused') {
       steps.push({
         id: 'env',
