@@ -29,7 +29,7 @@ const URL = 'https://brew.new/api/v1/app-emails/order.paid'
 const NOT_PUBLISHED = {
   code: 'APP_EMAIL_NOT_PUBLISHED',
   message:
-    '"order.paid" was unpublished in Brew after setup, so the setup left it unpublished. Publish it in Brew, or run PUT /v1/app-emails/order.paid with `publish: true`.',
+    '"order.paid" was unpublished in Brew after setup, so the setup left it unpublished. Publish it in Brew, or send PUT /v1/app-emails/order.paid again with the same `starter` or `source` and `publish: true`: `publish: true` alone rebuilds a starter-kit key from its starter (replacing a design built from `source`) and is refused for any other key.',
 }
 
 function setup(published: boolean, warnings: Array<typeof NOT_PUBLISHED>) {
