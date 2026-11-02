@@ -127,7 +127,7 @@ The full generated reference lives in
 `contacts`, `fields`, `emails` (+ `groups`, `comments`), `sends`,
 `audiences`, `automations` (+ `triggers`, `runs`, `audience-runs`,
 `trigger-instances`), `analytics`, `insights`, `brand`, `brands`, `content`,
-`templates`, `flows`, `chats`, `notifications`, plus
+`templates`, `flows`, `chats`, `notifications`, `integrations` (+ `events`), plus
 `canvas sessions` and `login`/`logout`/`whoami`/`config`/`usage`/`health`/`docs`/`api`.
 
 For an embedded editor, create brands with an organization-scoped key,

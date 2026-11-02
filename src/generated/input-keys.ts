@@ -296,6 +296,16 @@ export const INPUT_KEYS: Readonly<Record<string, readonly string[]>> = {
     "cursor",
     "limit"
   ],
+  "GET /v1/integrations/events": [
+    "cursor",
+    "kind",
+    "limit",
+    "provider",
+    "query"
+  ],
+  "GET /v1/integrations/events/{eventId}": [
+    "eventId"
+  ],
   "GET /v1/notifications": [
     "cursor",
     "limit",
@@ -465,6 +475,9 @@ export const INPUT_KEYS: Readonly<Record<string, readonly string[]>> = {
     "domainId",
     "event",
     "scope"
+  ],
+  "POST /v1/automations/triggers/integration-events": [
+    "eventId"
   ],
   "POST /v1/brands": [
     "excludePaths",

@@ -43,6 +43,7 @@ import {
 import { automationsTriggersCreateCommand } from './commands/automations/triggers/create'
 import { automationsTriggersDeleteCommand } from './commands/automations/triggers/delete'
 import { automationsTriggersEnsureBrewEventCommand } from './commands/automations/triggers/ensure-brew-event'
+import { automationsTriggersEnsureIntegrationEventCommand } from './commands/automations/triggers/ensure-integration-event'
 import { automationsTriggersFireCommand } from './commands/automations/triggers/fire'
 import { automationsTriggersGetCommand } from './commands/automations/triggers/get'
 import { automationsTriggersListCommand } from './commands/automations/triggers/list'
@@ -136,6 +137,8 @@ import { flowsListCommand } from './commands/flows/list'
 import { healthCommand } from './commands/health'
 import { insightsGetCommand } from './commands/insights/get'
 import { insightsListCommand } from './commands/insights/list'
+import { integrationsEventsGetCommand } from './commands/integrations/events/get'
+import { integrationsEventsListCommand } from './commands/integrations/events/list'
 import { integrationsListCommand } from './commands/integrations/list'
 import { loginCommand } from './commands/login'
 import { logoutCommand } from './commands/logout'
@@ -237,6 +240,7 @@ export const ALL_COMMANDS: readonly CommandSpec[] = [
   contractsInferCommand,
   automationsTriggersCreateCommand,
   automationsTriggersEnsureBrewEventCommand,
+  automationsTriggersEnsureIntegrationEventCommand,
   automationsTriggersUpdateCommand,
   automationsTriggersDeleteCommand,
   automationsTriggersFireCommand,
@@ -295,6 +299,8 @@ export const ALL_COMMANDS: readonly CommandSpec[] = [
   flowsListCommand,
   flowsGetCommand,
   integrationsListCommand,
+  integrationsEventsListCommand,
+  integrationsEventsGetCommand,
   chatsListCommand,
   chatsGetCommand,
   canvasSessionsCreateCommand,
