@@ -418,6 +418,10 @@ components:
                       type: string
                     message:
                       type: string
+                    diagnosticCode:
+                      type: array
+                      items:
+                        type: string
                   required:
                     - type
               required:
@@ -22258,6 +22262,10 @@ paths:
                                           type: string
                                         message:
                                           type: string
+                                        diagnosticCode:
+                                          type: array
+                                          items:
+                                            type: string
                                       required:
                                         - type
                                   required:

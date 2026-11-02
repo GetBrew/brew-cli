@@ -3019,6 +3019,7 @@ export interface components {
                     type: string;
                     subType?: string;
                     message?: string;
+                    diagnosticCode?: string[];
                 };
             };
         } | {
@@ -10791,6 +10792,7 @@ export interface operations {
                                         type: string;
                                         subType?: string;
                                         message?: string;
+                                        diagnosticCode?: string[];
                                     };
                                 };
                             } | {
