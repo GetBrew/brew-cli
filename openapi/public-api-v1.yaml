@@ -2889,7 +2889,7 @@ components:
           description: PII classification for redaction. "high" auto-redacts the value in execution logs and the inbound log. "low" (default when omitted) preserves the value. "none" is an explicit marker that the field is non-personal. On a container, "high" redacts the whole subtree.
         secret:
           type: boolean
-          description: "True for a value such as a one-time code or sign-in link: used only to render the email; never stored on contacts, in logs or analytics; cannot be used in filters, splits or recipient fields. Scalars only, never `email`. False explicitly permits ordinary PII outside rendering; pii still controls log masking. When omitted, legacy high-PII scalar protection applies except for email and top-level firstName/lastName."
+          description: "True for a value used only to render this email: never stored on contacts, in logs or analytics; cannot be used in filters, splits or recipient fields. Scalars only, never `email`. False explicitly permits ordinary PII outside rendering; pii still controls log masking. When omitted, legacy high-PII scalar protection applies except for email and top-level firstName/lastName."
         children:
           type: array
           items:
@@ -3255,7 +3255,7 @@ components:
                   type: string
                   minLength: 1
                   maxLength: 64
-                  description: Scope to one send (the id in /analytics/sends/{sendId}). With `sendId` the window may be omitted.
+                  description: Scope to one send (a `sendId` from a send or send-analytics row). With `sendId` the window may be omitted.
                 emailId:
                   type: string
                   minLength: 1
@@ -3399,7 +3399,7 @@ components:
               type: string
               minLength: 1
               maxLength: 64
-              description: Scope to one send (the id in /analytics/sends/{sendId}). With `sendId` the window may be omitted.
+              description: Scope to one send (a `sendId` from a send or send-analytics row). With `sendId` the window may be omitted.
             emailId:
               type: string
               minLength: 1
@@ -4104,7 +4104,7 @@ components:
               description: Too few deliveries for rates; read the counts.
             measured:
               type: boolean
-              description: "False when engagement tracking is off: opens are unknown."
+              description: False when opens or clicks are not measured; an unmeasured rate is null, not zero.
           required:
             - windowEnd
             - delivered
@@ -12642,7 +12642,7 @@ components:
             - high
         secret:
           type: boolean
-          description: "True for a value such as a one-time code or sign-in link: used only to render the email; never stored on contacts, in logs or analytics; cannot be used in filters, splits or recipient fields. Scalars only, never `email`. False explicitly permits ordinary PII outside rendering; pii still controls log masking. When omitted, legacy high-PII scalar protection applies except for email and top-level firstName/lastName."
+          description: "True for a value used only to render this email: never stored on contacts, in logs or analytics; cannot be used in filters, splits or recipient fields. Scalars only, never `email`. False explicitly permits ordinary PII outside rendering; pii still controls log masking. When omitted, legacy high-PII scalar protection applies except for email and top-level firstName/lastName."
         syncToContact:
           type: boolean
           description: "false keeps this value off the contact record: it reaches the email and nothing else. Omitted means true. The top-level email always identifies the contact."
@@ -12761,6 +12761,7 @@ components:
             - 'off'
             - prune
             - strict
+          description: "How live fires use the contract. `off`: advisory only. `prune`: a fire that breaks a declared field is refused and undeclared keys are dropped. `strict`: undeclared keys are refused too. Omit to keep the current setting."
       additionalProperties: false
     PayloadContractValidateResponse:
       type: object
@@ -12857,6 +12858,7 @@ components:
           enum:
             - prune
             - strict
+          description: "Check as this mode instead of the stored one: `prune` drops undeclared keys, `strict` reports them as errors. Omit for the stored mode (`prune` when enforcement is off)."
       required:
         - payload
       additionalProperties: false
@@ -14873,7 +14875,7 @@ components:
                         type: string
                         minLength: 1
                         maxLength: 64
-                        description: Scope to one send (the id in /analytics/sends/{sendId}). With `sendId` the window may be omitted.
+                        description: Scope to one send (a `sendId` from a send or send-analytics row). With `sendId` the window may be omitted.
                       emailId:
                         type: string
                         minLength: 1
@@ -15122,7 +15124,7 @@ components:
                   type: string
                   minLength: 1
                   maxLength: 64
-                  description: Scope to one send (the id in /analytics/sends/{sendId}). With `sendId` the window may be omitted.
+                  description: Scope to one send (a `sendId` from a send or send-analytics row). With `sendId` the window may be omitted.
                 emailId:
                   type: string
                   minLength: 1
@@ -15332,7 +15334,7 @@ components:
                       - after
                       - on_date
                   value:
-                    description: "Operator-dependent: `between` takes `[min, max]` or `{min, max}`; `in`/`not_in`/`contains_any`/`not_contains_any` take a list; unary operators (`is_empty`, `is_not_empty`, `exists`, `is_true`, …) omit it."
+                    description: "Operator-dependent: `between` takes `[min, max]` or `{min, max}`; `in`/`not_in`/`contains_any`/`not_contains_any` take an array, not a comma-separated string; unary operators (`is_empty`, `is_not_empty`, `exists`, `is_true`, …) omit it."
                   type:
                     type: string
                     description: 'Saved audiences infer omitted types from the field registry. Unknown fields compare as strings. Date ranges require type: "date".'
@@ -15483,7 +15485,7 @@ components:
                   type: string
                   minLength: 1
                   maxLength: 64
-                  description: Scope to one send (the id in /analytics/sends/{sendId}). With `sendId` the window may be omitted.
+                  description: Scope to one send (a `sendId` from a send or send-analytics row). With `sendId` the window may be omitted.
                 emailId:
                   type: string
                   minLength: 1
@@ -15619,7 +15621,7 @@ components:
               type: string
               minLength: 1
               maxLength: 64
-              description: Scope to one send (the id in /analytics/sends/{sendId}). With `sendId` the window may be omitted.
+              description: Scope to one send (a `sendId` from a send or send-analytics row). With `sendId` the window may be omitted.
             emailId:
               type: string
               minLength: 1
@@ -15715,7 +15717,7 @@ components:
                       - after
                       - on_date
                   value:
-                    description: "Operator-dependent: `between` takes `[min, max]` or `{min, max}`; `in`/`not_in`/`contains_any`/`not_contains_any` take a list; unary operators (`is_empty`, `is_not_empty`, `exists`, `is_true`, …) omit it."
+                    description: "Operator-dependent: `between` takes `[min, max]` or `{min, max}`; `in`/`not_in`/`contains_any`/`not_contains_any` take an array, not a comma-separated string; unary operators (`is_empty`, `is_not_empty`, `exists`, `is_true`, …) omit it."
                   type:
                     type: string
                     description: 'Saved audiences infer omitted types from the field registry. Unknown fields compare as strings. Date ranges require type: "date".'
@@ -17235,17 +17237,24 @@ components:
             brandName:
               type: string
               minLength: 1
+              description: The brand name as emails write it.
             description:
               type: string
+              description: A short summary of what the brand does and for whom.
             tagline:
               type: string
+              description: The brand’s slogan.
             contactEmail:
               type: string
+              description: The brand’s public contact email address.
             contactPhone:
               type: string
+              description: The brand’s public contact phone number.
             address:
               type: string
+              description: The brand’s postal address, for email footers.
           additionalProperties: false
+          description: Saved identity fields to change; fields left out keep their value.
         emailDesign:
           type: string
           maxLength: 200000
@@ -17455,27 +17464,32 @@ components:
           type: string
           minLength: 1
           maxLength: 2048
+          description: Website URL or bare domain to extract the brand from.
         instructions:
           type: string
           maxLength: 4000
+          description: "Brand guidance the extraction treats as authoritative: brand name, colors, fonts, voice, which pages matter most."
         includePaths:
           type: array
           items:
             type: string
             maxLength: 2048
           maxItems: 50
+          description: Extra page URLs to read beyond the automatic crawl.
         excludePaths:
           type: array
           items:
             type: string
             maxLength: 2048
           maxItems: 50
+          description: Path prefixes the crawl skips, e.g. `/blog` or `/careers` (case-insensitive).
         excludeSubdomains:
           type: array
           items:
             type: string
             maxLength: 253
           maxItems: 50
+          description: "Subdomains the crawl skips: a full host such as `shop.example.com`, or a leftmost label such as `blog`."
       required:
         - url
       additionalProperties: false
@@ -39239,9 +39253,9 @@ paths:
             type: string
             maxLength: 254
             pattern: ^[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+)*@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$
-            description: "Only runs for this recipient, matched case-insensitively against each run's stored `recipientEmail` column. A run written before that column existed carries the address only inside its trigger payload: the row still REPORTS `recipientEmail` (the projection reads the payload as a fallback), but the filter cannot reach it until `migration_mutations:backfillRecipientEmail` has run on the deployment."
+            description: Only runs for this recipient, matched case-insensitively. Some older runs show a `recipientEmail` this filter does not match.
           required: false
-          description: "Only runs for this recipient, matched case-insensitively against each run's stored `recipientEmail` column. A run written before that column existed carries the address only inside its trigger payload: the row still REPORTS `recipientEmail` (the projection reads the payload as a fallback), but the filter cannot reach it until `migration_mutations:backfillRecipientEmail` has run on the deployment."
+          description: Only runs for this recipient, matched case-insensitively. Some older runs show a `recipientEmail` this filter does not match.
           name: recipientEmail
           in: query
         - schema:
@@ -60483,9 +60497,9 @@ paths:
               - events
               - product_updates
               - promotions
-            description: Filter LIST by send-stream kind.
+            description: "Filter LIST by the flow’s kind: what the sequence is for."
           required: false
-          description: Filter LIST by send-stream kind.
+          description: "Filter LIST by the flow’s kind: what the sequence is for."
           name: kind
           in: query
         - schema:
@@ -60834,9 +60848,9 @@ paths:
         - schema:
             type: string
             pattern: ^[a-z][a-z-]*[a-z](?:-[0-9]{1,3})?$
-            description: Stream segment for a bare-domain `slug`.
+            description: "The flow's kind for a bare-domain `slug`, hyphenated: `onboarding`, `trial`, `events`, `product-updates`, `promotions`, optionally followed by `-2`, `-3`… for a brand's later flow of that kind."
           required: false
-          description: Stream segment for a bare-domain `slug`.
+          description: "The flow's kind for a bare-domain `slug`, hyphenated: `onboarding`, `trial`, `events`, `product-updates`, `promotions`, optionally followed by `-2`, `-3`… for a brand's later flow of that kind."
           name: kind
           in: query
         - schema:
