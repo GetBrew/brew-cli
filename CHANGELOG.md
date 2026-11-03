@@ -4,7 +4,7 @@
 
 ### Changed
 
-- Vendored spec and generated API types follow app revision `0c78bf6a27`
+- Vendored spec and generated API types follow app revision `8faea94168`
   (GetBrew/brew-v2#2579, one template language for email variables; not
   merged yet). `emails send --test --input` accepts `"strict": true`, which
   answers `422 LIQUID_RENDER_ERROR` instead of sending when the template
