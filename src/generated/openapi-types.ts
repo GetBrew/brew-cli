@@ -3842,7 +3842,7 @@ export interface components {
              * @enum {string}
              */
             pii?: "none" | "low" | "high";
-            /** @description True for a value such as a one-time code or sign-in link: used only to render the email; never stored on contacts, in logs or analytics; cannot be used in filters, splits or recipient fields. Scalars only, never `email`. False explicitly permits ordinary PII outside rendering; pii still controls log masking. When omitted, legacy high-PII scalar protection applies except for email and top-level firstName/lastName. */
+            /** @description True for a value used only to render this email: never stored on contacts, in logs or analytics; cannot be used in filters, splits or recipient fields. Scalars only, never `email`. False explicitly permits ordinary PII outside rendering; pii still controls log masking. When omitted, legacy high-PII scalar protection applies except for email and top-level firstName/lastName. */
             secret?: boolean;
             /** @description Nested field nodes for type "object", or the element shape for an array of objects. Emails reference nested leaves as dotted paths ({{ order.total }}) and arrays via {% for %}. */
             children?: components["schemas"]["TriggerPayloadField"][];
@@ -3975,7 +3975,7 @@ export interface components {
                     from: string;
                     /** Format: date-time */
                     to: string;
-                    /** @description Scope to one send (the id in /analytics/sends/{sendId}). With `sendId` the window may be omitted. */
+                    /** @description Scope to one send (a `sendId` from a send or send-analytics row). With `sendId` the window may be omitted. */
                     sendId?: string;
                     emailId?: string;
                     automationIds?: string[];
@@ -4015,7 +4015,7 @@ export interface components {
                 from: string;
                 /** Format: date-time */
                 to: string;
-                /** @description Scope to one send (the id in /analytics/sends/{sendId}). With `sendId` the window may be omitted. */
+                /** @description Scope to one send (a `sendId` from a send or send-analytics row). With `sendId` the window may be omitted. */
                 sendId?: string;
                 emailId?: string;
                 automationIds?: string[];
@@ -4269,7 +4269,7 @@ export interface components {
                 clickDirection: "up" | "down" | "steady";
                 /** @description Too few deliveries for rates; read the counts. */
                 countsOnly: boolean;
-                /** @description False when engagement tracking is off: opens are unknown. */
+                /** @description False when opens or clicks are not measured; an unmeasured rate is null, not zero. */
                 measured: boolean;
             } | null;
             /** @description With `include` report: the latest intelligence report, or null when none was published. */
@@ -7204,7 +7204,7 @@ export interface components {
             fallbackValue?: string | number | boolean;
             /** @enum {string} */
             pii?: "none" | "low" | "high";
-            /** @description True for a value such as a one-time code or sign-in link: used only to render the email; never stored on contacts, in logs or analytics; cannot be used in filters, splits or recipient fields. Scalars only, never `email`. False explicitly permits ordinary PII outside rendering; pii still controls log masking. When omitted, legacy high-PII scalar protection applies except for email and top-level firstName/lastName. */
+            /** @description True for a value used only to render this email: never stored on contacts, in logs or analytics; cannot be used in filters, splits or recipient fields. Scalars only, never `email`. False explicitly permits ordinary PII outside rendering; pii still controls log masking. When omitted, legacy high-PII scalar protection applies except for email and top-level firstName/lastName. */
             secret?: boolean;
             /** @description false keeps this value off the contact record: it reaches the email and nothing else. Omitted means true. The top-level email always identifies the contact. */
             syncToContact?: boolean;
@@ -7234,7 +7234,10 @@ export interface components {
         PayloadContractPutRequest: {
             fields?: components["schemas"]["PayloadContractFieldNode"][];
             name?: string;
-            /** @enum {string} */
+            /**
+             * @description How live fires use the contract. `off`: advisory only. `prune`: a fire that breaks a declared field is refused and undeclared keys are dropped. `strict`: undeclared keys are refused too. Omit to keep the current setting.
+             * @enum {string}
+             */
             enforcement?: "off" | "prune" | "strict";
         };
         PayloadContractValidateResponse: {
@@ -7267,7 +7270,10 @@ export interface components {
             payload: {
                 [key: string]: unknown;
             };
-            /** @enum {string} */
+            /**
+             * @description Check as this mode instead of the stored one: `prune` drops undeclared keys, `strict` reports them as errors. Omit for the stored mode (`prune` when enforcement is off).
+             * @enum {string}
+             */
             enforcement?: "prune" | "strict";
         };
         PayloadContractInferResponse: {
@@ -8092,7 +8098,7 @@ export interface components {
                         from: string;
                         /** Format: date-time */
                         to: string;
-                        /** @description Scope to one send (the id in /analytics/sends/{sendId}). With `sendId` the window may be omitted. */
+                        /** @description Scope to one send (a `sendId` from a send or send-analytics row). With `sendId` the window may be omitted. */
                         sendId?: string;
                         emailId?: string;
                         automationIds?: string[];
@@ -8160,7 +8166,7 @@ export interface components {
                     from: string;
                     /** Format: date-time */
                     to: string;
-                    /** @description Scope to one send (the id in /analytics/sends/{sendId}). With `sendId` the window may be omitted. */
+                    /** @description Scope to one send (a `sendId` from a send or send-analytics row). With `sendId` the window may be omitted. */
                     sendId?: string;
                     emailId?: string;
                     automationIds?: string[];
@@ -8220,7 +8226,7 @@ export interface components {
                     field: string;
                     /** @enum {string} */
                     operator: "equals" | "not_equals" | "contains" | "not_contains" | "contains_any" | "not_contains_any" | "starts_with" | "ends_with" | "gt" | "gte" | "lt" | "lte" | "between" | "is_true" | "is_false" | "in" | "not_in" | "is_empty" | "not_exists" | "is_not_empty" | "exists" | "is_set" | "before" | "after" | "on_date";
-                    /** @description Operator-dependent: `between` takes `[min, max]` or `{min, max}`; `in`/`not_in`/`contains_any`/`not_contains_any` take a list; unary operators (`is_empty`, `is_not_empty`, `exists`, `is_true`, …) omit it. */
+                    /** @description Operator-dependent: `between` takes `[min, max]` or `{min, max}`; `in`/`not_in`/`contains_any`/`not_contains_any` take an array, not a comma-separated string; unary operators (`is_empty`, `is_not_empty`, `exists`, `is_true`, …) omit it. */
                     value?: unknown;
                     /** @description Saved audiences infer omitted types from the field registry. Unknown fields compare as strings. Date ranges require type: "date". */
                     type?: string;
@@ -8261,7 +8267,7 @@ export interface components {
                     from: string;
                     /** Format: date-time */
                     to: string;
-                    /** @description Scope to one send (the id in /analytics/sends/{sendId}). With `sendId` the window may be omitted. */
+                    /** @description Scope to one send (a `sendId` from a send or send-analytics row). With `sendId` the window may be omitted. */
                     sendId?: string;
                     emailId?: string;
                     automationIds?: string[];
@@ -8304,7 +8310,7 @@ export interface components {
                  * @description Defaults to now.
                  */
                 to?: string;
-                /** @description Scope to one send (the id in /analytics/sends/{sendId}). With `sendId` the window may be omitted. */
+                /** @description Scope to one send (a `sendId` from a send or send-analytics row). With `sendId` the window may be omitted. */
                 sendId?: string;
                 emailId?: string;
                 automationIds?: string[];
@@ -8328,7 +8334,7 @@ export interface components {
                     field: string;
                     /** @enum {string} */
                     operator: "equals" | "not_equals" | "contains" | "not_contains" | "contains_any" | "not_contains_any" | "starts_with" | "ends_with" | "gt" | "gte" | "lt" | "lte" | "between" | "is_true" | "is_false" | "in" | "not_in" | "is_empty" | "not_exists" | "is_not_empty" | "exists" | "is_set" | "before" | "after" | "on_date";
-                    /** @description Operator-dependent: `between` takes `[min, max]` or `{min, max}`; `in`/`not_in`/`contains_any`/`not_contains_any` take a list; unary operators (`is_empty`, `is_not_empty`, `exists`, `is_true`, …) omit it. */
+                    /** @description Operator-dependent: `between` takes `[min, max]` or `{min, max}`; `in`/`not_in`/`contains_any`/`not_contains_any` take an array, not a comma-separated string; unary operators (`is_empty`, `is_not_empty`, `exists`, `is_true`, …) omit it. */
                     value?: unknown;
                     /** @description Saved audiences infer omitted types from the field registry. Unknown fields compare as strings. Date ranges require type: "date". */
                     type?: string;
@@ -8805,12 +8811,19 @@ export interface components {
             }[];
         };
         BrandPatchRequest: {
+            /** @description Saved identity fields to change; fields left out keep their value. */
             identity?: {
+                /** @description The brand name as emails write it. */
                 brandName?: string;
+                /** @description A short summary of what the brand does and for whom. */
                 description?: string;
+                /** @description The brand’s slogan. */
                 tagline?: string;
+                /** @description The brand’s public contact email address. */
                 contactEmail?: string;
+                /** @description The brand’s public contact phone number. */
                 contactPhone?: string;
+                /** @description The brand’s postal address, for email footers. */
                 address?: string;
             };
             emailDesign?: string;
@@ -8886,10 +8899,15 @@ export interface components {
             };
         };
         BrandsCreateRequest: {
+            /** @description Website URL or bare domain to extract the brand from. */
             url: string;
+            /** @description Brand guidance the extraction treats as authoritative: brand name, colors, fonts, voice, which pages matter most. */
             instructions?: string;
+            /** @description Extra page URLs to read beyond the automatic crawl. */
             includePaths?: string[];
+            /** @description Path prefixes the crawl skips, e.g. `/blog` or `/careers` (case-insensitive). */
             excludePaths?: string[];
+            /** @description Subdomains the crawl skips: a full host such as `shop.example.com`, or a leftmost label such as `blog`. */
             excludeSubdomains?: string[];
         };
         BrandGetByIdResponse: {
@@ -17740,7 +17758,7 @@ export interface operations {
                 automationId?: string;
                 triggerEventId?: string;
                 triggerInstanceId?: string;
-                /** @description Only runs for this recipient, matched case-insensitively against each run's stored `recipientEmail` column. A run written before that column existed carries the address only inside its trigger payload: the row still REPORTS `recipientEmail` (the projection reads the payload as a fallback), but the filter cannot reach it until `migration_mutations:backfillRecipientEmail` has run on the deployment. */
+                /** @description Only runs for this recipient, matched case-insensitively. Some older runs show a `recipientEmail` this filter does not match. */
                 recipientEmail?: string;
                 status?: "queued" | "running" | "completed" | "failed" | "canceled";
                 mode?: "live" | "test";
@@ -27440,7 +27458,7 @@ export interface operations {
                 category?: "verification" | "transactional" | "direct_sales" | "welcome" | "promotion" | "newsletter" | "education" | "abandoned_cart" | "winback" | "other";
                 /** @description Filter LIST by how the sequence starts: `signup` (after creating an account) or `newsletter` (after subscribing). */
                 type?: "newsletter" | "signup";
-                /** @description Filter LIST by send-stream kind. */
+                /** @description Filter LIST by the flow’s kind: what the sequence is for. */
                 kind?: "onboarding" | "trial" | "events" | "product_updates" | "promotions";
                 /** @description Semantic search over what the sequences are about — “developer onboarding drip”, “trial expiry win-back”. Results come back in relevance order and `sort` is ignored. */
                 semantic?: string;
@@ -27597,7 +27615,7 @@ export interface operations {
     getFlow: {
         parameters: {
             query?: {
-                /** @description Stream segment for a bare-domain `slug`. */
+                /** @description The flow's kind for a bare-domain `slug`, hyphenated: `onboarding`, `trial`, `events`, `product-updates`, `promotions`, optionally followed by `-2`, `-3`… for a brand's later flow of that kind. */
                 kind?: string;
                 /** @description Detail-only expansions, comma-separated. `html` adds each step’s rendered HTML. Rendered email is bulky — over MCP only the first step or two fit one response; the rest arrive without `html` and the summary says how many were kept. A step’s `emailId` is already a valid `referenceEmailId`, so reuse needs no body; for the bodies themselves call `GET /v1/flows/{slug}?include=html` over REST, which has no cap. Best-effort per step: a step whose body is no longer servable comes back without `html` rather than failing the flow. */
                 include?: string;
