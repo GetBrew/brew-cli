@@ -1,3 +1,11 @@
+import { agentGoalsCreateCommand } from './commands/agent-goals/create'
+import { agentGoalsDocumentsCommand } from './commands/agent-goals/documents'
+import { agentGoalsFollowUpCommand } from './commands/agent-goals/follow-up'
+import { agentGoalsGetCommand } from './commands/agent-goals/get'
+import { agentGoalsListCommand } from './commands/agent-goals/list'
+import { agentGoalsPublishDocumentCommand } from './commands/agent-goals/publish-document'
+import { agentGoalsTasksCommand } from './commands/agent-goals/tasks'
+import { agentGoalsUpdateCommand } from './commands/agent-goals/update'
 import { analyticsAutomationsCommand } from './commands/analytics/automations'
 import { analyticsCampaignsCommand } from './commands/analytics/campaigns'
 import { analyticsEventCountsCommand } from './commands/analytics/event-counts'
@@ -158,6 +166,15 @@ import type { CommandSpec } from './lib/define-command'
  * the vendored OpenAPI spec.
  */
 export const ALL_COMMANDS: readonly CommandSpec[] = [
+  agentGoalsListCommand,
+  agentGoalsGetCommand,
+  agentGoalsCreateCommand,
+  agentGoalsUpdateCommand,
+  agentGoalsTasksCommand,
+  agentGoalsDocumentsCommand,
+  agentGoalsFollowUpCommand,
+  agentGoalsPublishDocumentCommand,
+
   loginCommand,
   logoutCommand,
   whoamiCommand,
