@@ -23,6 +23,17 @@
   refused with `409 FIELD_TYPE_MISMATCH` instead of being stored rounded; send
   large ids as strings to a `string` field (#2488). This applies to
   `contacts upsert`, `upsert-many`, `update` and `import`.
+- An audience filter with `in`, `not_in`, `contains_any` or
+  `not_contains_any` now needs its `value` as a JSON array; the API refuses a
+  comma-separated string such as `"pro,team"` (GetBrew/brew-v2#2571). This
+  applies to `audiences create` and `audiences update`, which pass `--input`
+  filters through unchanged. `audiences create` gains an example with an
+  array value.
+- Vendored spec and generated API types follow app revision `507dbacf45`.
+  Only descriptions changed: brand identity and extraction fields, payload
+  contract enforcement modes, `measured` on send analytics, flow `kind`,
+  `sendId` scoping and the automation runs `recipientEmail` filter. No
+  command's flags changed.
 
 ## 0.19.0
 
