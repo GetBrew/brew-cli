@@ -1019,7 +1019,7 @@ Send an email: a real campaign, or a safe test with --test
 - Class: destructive
 - SDK: `brew.emails.send(...)`
 - Argument `emailId` — Design id to send
-- `--test` — Test delivery to --to only (a brand teammate, an address on a verified sending domain of the brand, or, when logged in rather than using an API key, your own address or one on your company domain); skips the confirmation gate
+- `--test` — Test delivery to --to only (a teammate with access to the brand, or an address on a verified sending domain of the brand; your own address counts as a teammate address); skips the confirmation gate
 - `--to <emails...>` — Recipient(s): one address, required for --test; an ad-hoc list for campaigns
 - `--subject <text>` — Subject line
 - `--audience <audienceId>` — Campaign audience segment
