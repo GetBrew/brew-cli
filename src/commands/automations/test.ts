@@ -31,7 +31,7 @@ export const automationsTestCommand = defineCommand({
   examples: [
     'brew-cli automations test am_123',
     `brew-cli automations test am_123 --input '{"userId":"u_1"}'`,
-    `brew-cli automations test am_123 --input '{"testRecipient":"qa@example.com"}' --yes`,
+    `brew-cli automations test am_123 --input '{"testRecipient":"you@company.com"}' --yes`,
   ],
   confirmSummary: ({ args, flags }) => {
     if (typeof flags.input !== 'string' || flags.input === '-') {

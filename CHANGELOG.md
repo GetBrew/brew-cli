@@ -35,6 +35,29 @@
   `sendId` scoping and the automation runs `recipientEmail` filter. No
   command's flags changed.
 
+### Changed
+
+- Vendored spec and generated API types follow app revision `19c7b0d9da`
+  (GetBrew/brew-v2#2592, #2604). `emails import` can report a `text_dropped`
+  warning naming source words the editable design does not carry (version 1
+  keeps the exact source). `emails generate` gains `--title <text>`, the design's
+  canvas name (the body's new optional `title`; omit and Brew names it).
+  `analytics events --send` and `analytics event-counts --send-id` without
+  `--since` cover the whole send instead of the last 7 days. `--event-type` must
+  be one of the spec's event types, spelled exactly (`opened`, not `open`);
+  anything else is a `400 INVALID_REQUEST`, and a request with several problems
+  lists each under `details.issues[]` (at most 20). `automations update` keeps
+  the stored edges when `--input` omits `connections`; `expectedBaseVersionId`
+  (the `automationVersionId` you read) now guards a save on its own, with `409`
+  when the automation changed since, and `expectedBaseDefinitionSha256` is an
+  optional stricter guard that needs it. `analytics event-counts` groups of
+  opened, clicked or delivered events carry `recipients`, each recipient counted
+  once per message, and the human table shows it as RECIPIENTS (#2582). Because
+  the CLI authenticates with an API key, `emails send --test` and `automations
+  test` with `testRecipient` reach only a teammate with access to the brand or
+  an address on a verified sending domain of the brand; anyone else is `422
+  TEST_RECIPIENT_NOT_ALLOWED` with `details.recipients` (#2578).
+
 ## 0.19.0
 
 Minor release, still `@brew.new/sdk` `^13.3.0`. `--input` now refuses a
