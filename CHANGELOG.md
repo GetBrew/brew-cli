@@ -34,6 +34,27 @@
   contract enforcement modes, `measured` on send analytics, flow `kind`,
   `sendId` scoping and the automation runs `recipientEmail` filter. No
   command's flags changed.
+- Vendored spec and generated API types follow app revision
+  `984911b6e5` (GetBrew/brew-v2#2592). `emails generate` gains `--title <text>`, the
+  design's canvas name (the body's new optional `title`; omit and Brew names
+  it). `analytics events --send` and `analytics event-counts --send-id`
+  without `--since` cover the whole send instead of the last 7 days.
+  `--event-type` must be one of the spec's event types, spelled exactly
+  (`opened`, not `open`); anything else is a `400 INVALID_REQUEST`, and a
+  request with several problems lists each under `details.issues[]` (at most
+  20). `automations update` keeps the stored edges when `--input` omits
+  `connections`; `expectedBaseVersionId` (the `automationVersionId` you read)
+  now guards a save on its own, with `409` when the automation changed since,
+  and `expectedBaseDefinitionSha256` is an optional stricter guard that needs
+  it. `analytics event-counts` groups of opened, clicked or delivered events
+  carry `recipients`, each recipient counted once per message, and the human
+  table shows it as RECIPIENTS (#2582). `emails send
+  --test` and `automations test` with `testRecipient` reach only a teammate
+  with access to the brand, an address on a verified sending domain of the
+  brand, or, when you are logged in (not using an API key), your own address
+  or one on your company domain; anyone else is
+  `422 TEST_RECIPIENT_NOT_ALLOWED` with `details.recipients` (#2578). No other
+  command's flags changed.
 
 ## 0.19.0
 

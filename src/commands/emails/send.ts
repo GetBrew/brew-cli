@@ -23,11 +23,13 @@ export const emailsSendCommand = defineCommand({
   flags: [
     {
       flag: '--test',
-      summary: 'Test delivery to --to only; skips the confirmation gate',
+      summary:
+        'Test delivery to --to only (a brand teammate, an address on a verified sending domain of the brand, or, when logged in rather than using an API key, your own address or one on your company domain); skips the confirmation gate',
     },
     {
       flag: '--to <emails...>',
-      summary: 'Recipient(s): required for --test, ad-hoc list for campaigns',
+      summary:
+        'Recipient(s): one address, required for --test; an ad-hoc list for campaigns',
     },
     { flag: '--subject <text>', summary: 'Subject line' },
     { flag: '--audience <audienceId>', summary: 'Campaign audience segment' },
@@ -40,7 +42,7 @@ export const emailsSendCommand = defineCommand({
     IDEMPOTENCY_FLAG,
   ],
   examples: [
-    'brew-cli emails send eml_1 --test --to qa@example.com --subject "Preview"',
+    'brew-cli emails send eml_1 --test --to you@company.com --subject "Preview"',
     'brew-cli emails send eml_1 --subject "Fall sale" --domain dom_1 --audience aud_1 --yes',
     'brew-cli emails send eml_1 --subject "Fall sale" --domain dom_1 --audience aud_1 --schedule-at 2026-09-01T09:00:00Z --yes',
   ],
