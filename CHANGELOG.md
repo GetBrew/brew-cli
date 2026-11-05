@@ -37,8 +37,10 @@
 
 ### Changed
 
-- Vendored spec and generated API types follow app revision `984911b6e5`
-  (GetBrew/brew-v2#2592). `emails generate` gains `--title <text>`, the design's
+- Vendored spec and generated API types follow app revision `19c7b0d9da`
+  (GetBrew/brew-v2#2592, #2604). `emails import` can report a `text_dropped`
+  warning naming source words the editable design does not carry (version 1
+  keeps the exact source). `emails generate` gains `--title <text>`, the design's
   canvas name (the body's new optional `title`; omit and Brew names it).
   `analytics events --send` and `analytics event-counts --send-id` without
   `--since` cover the whole send instead of the last 7 days. `--event-type` must
