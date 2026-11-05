@@ -97,7 +97,7 @@ export const flowsListCommand = defineCommand({
       }
     }
     if (include !== undefined) {
-      throw includeRidesDetailRead('flows get', '--slug')
+      throw includeRidesDetailRead(ctx.io.env, 'flows get', '--slug')
     }
     const input = mergeInput(base, {
       brand: flagString(flags.brandDomain),

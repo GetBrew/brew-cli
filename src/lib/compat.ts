@@ -1,4 +1,5 @@
 import { CliUsageError } from './errors'
+import { getInvocationPrefix } from './invocation'
 
 /**
  * 0.6 shims. Flags and command names are additive-only after release
@@ -32,11 +33,12 @@ export function inputField(base: unknown, key: string): string | undefined {
 
 /** `--include` used to ride list reads; detail reads carry it now. */
 export function includeRidesDetailRead(
+  env: Readonly<Record<string, string | undefined>>,
   getCommand: string,
   idFlag?: string
 ): CliUsageError {
   const pairing = idFlag === undefined ? '' : `, or pair it with ${idFlag}`
   return new CliUsageError(
-    `--include rides the detail read: use \`brew-cli ${getCommand} <id> --include …\`${pairing}.`
+    `--include rides the detail read: use \`${getInvocationPrefix(env)} ${getCommand} <id> --include …\`${pairing}.`
   )
 }

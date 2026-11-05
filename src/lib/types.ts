@@ -2,6 +2,29 @@ import type { BrewClient } from './client'
 import type { CommandMetadata } from './define-command'
 import type { Budget, TransportState } from './transport'
 
+/** What a spawned child process left behind. */
+export type SpawnResult = {
+  /** Exit code; `null` when a signal killed the child. */
+  readonly code: number | null
+  readonly stdout: string
+  readonly stderr: string
+}
+
+/**
+ * Runs one program WITHOUT a shell (argv is passed through verbatim, so no
+ * quoting or injection concerns). Rejects only when the program could not
+ * be started (ENOENT); a non-zero exit resolves with its `code`.
+ */
+export type SpawnFn = (
+  command: string,
+  args: readonly string[],
+  options?: {
+    readonly cwd?: string
+    readonly signal?: AbortSignal
+    readonly input?: string
+  }
+) => Promise<SpawnResult>
+
 /**
  * The process boundary, injected so tests can run the whole CLI in-process
  * with captured streams and a synthetic environment.
@@ -20,6 +43,18 @@ export type CliIo = {
    * `src/lib/interrupt.ts`). Absent in tests that do not exercise cancellation.
    */
   readonly signal?: AbortSignal
+  /**
+   * Runs a child process (git, a package manager). Absent: the real
+   * `child_process.spawn` (see `lib/project/process.ts`).
+   */
+  readonly spawn?: SpawnFn
+  /**
+   * Opens a URL in the user's browser or editor. Absent: the platform
+   * opener (`open`, `xdg-open`, `start`).
+   */
+  readonly openUrl?: (url: string) => Promise<void>
+  /** The working directory project commands act on. Absent: `process.cwd()`. */
+  readonly cwd?: string
 }
 
 export type OutputMode = 'human' | 'json'

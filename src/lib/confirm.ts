@@ -1,5 +1,6 @@
 import type { CommandInvocation, CommandSpec } from './define-command'
 import { CommandAbortedError, ConfirmationRequiredError } from './errors'
+import { getInvocationPrefix } from './invocation'
 import { buildRerunCommand, type RerunInvocation } from './rerun'
 
 export { shellQuote } from './rerun'
@@ -50,9 +51,10 @@ export async function enforceConfirmation(
       resumeDeadline()
     }
   }
+  const prefix = getInvocationPrefix(ctx.io.env)
   throw new ConfirmationRequiredError({
     confirmationRequired: true,
-    command: ['brew-cli', ...spec.path].join(' '),
+    command: [prefix, ...spec.path].join(' '),
     summary,
     confirmCommand: buildConfirmCommand(
       invocation,
@@ -60,19 +62,26 @@ export async function enforceConfirmation(
       options.confirmationInput ??
         (invocation.flags.input === '-' && invocation.input !== undefined
           ? JSON.stringify(invocation.input)
-          : undefined)
+          : undefined),
+      prefix
     ),
   })
 }
 
+/**
+ * `prefix` is how the CLI was invoked (`getInvocationPrefix`): `brew-cli`,
+ * or a package runner such as `npx -y @brew.new/cli@<version>`.
+ */
 export function buildConfirmCommand(
   invocation: RerunInvocation,
   command: Pick<CommandSpec, 'path' | 'flags' | 'args'>,
-  inlineInput?: string
+  inlineInput?: string,
+  prefix?: string
 ): string {
   return buildRerunCommand(command, invocation, {
     yes: true,
     ...(inlineInput === undefined ? {} : { inlineInput }),
+    ...(prefix === undefined ? {} : { prefix }),
   })
 }
 
@@ -99,10 +108,12 @@ export async function enforceStdinConfirmation(
 export function buildRetryCommand(
   invocation: RerunInvocation,
   idempotencyKey: string,
-  command: Pick<CommandSpec, 'path' | 'flags' | 'args'>
+  command: Pick<CommandSpec, 'path' | 'flags' | 'args'>,
+  prefix?: string
 ): string {
   return buildRerunCommand(command, invocation, {
     idempotencyKey,
+    ...(prefix === undefined ? {} : { prefix }),
   })
 }
 
@@ -114,7 +125,8 @@ export function buildUploadRetryCommand(
     readonly brand: string | undefined
     readonly apiUrl: string | undefined
   },
-  command: Pick<CommandSpec, 'path' | 'flags' | 'args'>
+  command: Pick<CommandSpec, 'path' | 'flags' | 'args'>,
+  prefix?: string
 ): string {
   return buildRerunCommand(
     command,
@@ -126,6 +138,9 @@ export function buildUploadRetryCommand(
         apiUrl: input.apiUrl,
       },
     },
-    { idempotencyKey: input.idempotencyKey }
+    {
+      idempotencyKey: input.idempotencyKey,
+      ...(prefix === undefined ? {} : { prefix }),
+    }
   )
 }
