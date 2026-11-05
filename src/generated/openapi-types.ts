@@ -2989,15 +2989,14 @@ export interface components {
                 previewText?: string;
                 /** @description Sender display name; resolved from the domain default when unset. */
                 fromName?: string;
-                /**
-                 * Format: email
-                 * @description Reply-to address; resolved from the domain default when unset.
-                 */
+                /** @description Reply-to address, or a Liquid template that renders one; resolved from the domain default when unset. */
                 replyTo?: string;
                 /** @description Informational email title mirror; tolerated for round-trips. */
                 emailTitle?: string;
                 /** @description Sender address on domainId's own domain; resolved from the domain default when unset. */
                 fromAddress?: string;
+                /** @description Skip a recipient whose template reads a missing value instead of sending blanks. */
+                strict?: boolean;
             };
         } | {
             id: string;
@@ -3347,6 +3346,7 @@ export interface components {
                     fromAddress?: string;
                     domainId?: string;
                     replyTo?: string;
+                    strict?: boolean;
                     to?: unknown;
                     html?: string;
                     variables?: {
@@ -3503,7 +3503,7 @@ export interface components {
                  * @description Where on the node the orphaned reference lives.
                  * @enum {string}
                  */
-                surface: "triggerBinding" | "subject" | "previewText" | "fromName" | "replyTo" | "emailBody" | "filterCondition" | "splitCondition";
+                surface: "triggerBinding" | "subject" | "previewText" | "fromName" | "replyTo" | "fromAddress" | "recipients" | "variables" | "emailBody" | "filterCondition" | "splitCondition";
                 /** @description The bare variable / field name that cannot be resolved. */
                 variable: string;
                 /** @description Short user-facing reason. */
@@ -5283,7 +5283,9 @@ export interface components {
                 /** @description Sender display name. */
                 name?: string;
             };
-            /** @description Example values for {{ var | fallback }} merge tags in the subject, previewText, and body. A supplied value wins over contact fields and the declared fallback; undefined variables render their fallback (or empty). Max 25 entries; keys must match the merge-tag grammar (letter/_/$ start, then word chars/dots/$, max 64 chars); values max 256 chars. */
+            /** @description Fail the test (422 LIQUID_RENDER_ERROR) when the template reads a value that is missing, instead of rendering it blank. */
+            strict?: boolean;
+            /** @description Example values for {{ var | fallback }} merge tags in the subject, previewText, and body. A supplied value wins over contact fields and the declared fallback; undefined variables render their fallback (or empty). Max 25 entries; keys are tag paths (firstName, first-name, trigger.items[0].sku; max 64 chars); values max 256 chars. */
             variables?: {
                 [key: string]: string;
             };
@@ -5594,15 +5596,14 @@ export interface components {
                     previewText?: string;
                     /** @description Sender display name; resolved from the domain default when unset. */
                     fromName?: string;
-                    /**
-                     * Format: email
-                     * @description Reply-to address; resolved from the domain default when unset.
-                     */
+                    /** @description Reply-to address, or a Liquid template that renders one; resolved from the domain default when unset. */
                     replyTo?: string;
                     /** @description Informational email title mirror; tolerated for round-trips. */
                     emailTitle?: string;
                     /** @description Sender address on domainId's own domain; resolved from the domain default when unset. */
                     fromAddress?: string;
+                    /** @description Skip a recipient whose template reads a missing value instead of sending blanks. */
+                    strict?: boolean;
                 };
             } | {
                 id: string;
@@ -5957,6 +5958,7 @@ export interface components {
                         fromAddress?: string;
                         domainId?: string;
                         replyTo?: string;
+                        strict?: boolean;
                         to?: unknown;
                         html?: string;
                         variables?: {
@@ -6123,15 +6125,14 @@ export interface components {
                     previewText?: string;
                     /** @description Sender display name; resolved from the domain default when unset. */
                     fromName?: string;
-                    /**
-                     * Format: email
-                     * @description Reply-to address; resolved from the domain default when unset.
-                     */
+                    /** @description Reply-to address, or a Liquid template that renders one; resolved from the domain default when unset. */
                     replyTo?: string;
                     /** @description Informational email title mirror; tolerated for round-trips. */
                     emailTitle?: string;
                     /** @description Sender address on domainId's own domain; resolved from the domain default when unset. */
                     fromAddress?: string;
+                    /** @description Skip a recipient whose template reads a missing value instead of sending blanks. */
+                    strict?: boolean;
                 };
             } | {
                 id: string;

@@ -684,6 +684,7 @@ export const INPUT_KEYS: Readonly<Record<string, readonly string[]>> = {
     "replyTo",
     "scheduledAt",
     "smartSend",
+    "strict",
     "subject",
     "test",
     "to",

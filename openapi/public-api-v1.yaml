@@ -1000,14 +1000,16 @@ components:
                   description: Sender display name; resolved from the domain default when unset.
                 replyTo:
                   type: string
-                  format: email
-                  description: Reply-to address; resolved from the domain default when unset.
+                  description: Reply-to address, or a Liquid template that renders one; resolved from the domain default when unset.
                 emailTitle:
                   type: string
                   description: Informational email title mirror; tolerated for round-trips.
                 fromAddress:
                   type: string
                   description: Sender address on domainId's own domain; resolved from the domain default when unset.
+                strict:
+                  type: boolean
+                  description: Skip a recipient whose template reads a missing value instead of sending blanks.
               required:
                 - emailId
                 - emailVersionId
@@ -1983,6 +1985,8 @@ components:
                         type: string
                       replyTo:
                         type: string
+                      strict:
+                        type: boolean
                       to: {}
                       html:
                         type: string
@@ -2432,6 +2436,9 @@ components:
                   - previewText
                   - fromName
                   - replyTo
+                  - fromAddress
+                  - recipients
+                  - variables
                   - emailBody
                   - filterCondition
                   - splitCondition
@@ -7775,12 +7782,15 @@ components:
                 - email
               additionalProperties: false
               description: Sender override `{ email, name? }`; the address must be on the send domain. Omit to use the domain defaults.
+            strict:
+              type: boolean
+              description: Fail the test (422 LIQUID_RENDER_ERROR) when the template reads a value that is missing, instead of rendering it blank.
             variables:
               type: object
               additionalProperties:
                 type: string
                 maxLength: 256
-              description: Example values for {{ var | fallback }} merge tags in the subject, previewText, and body. A supplied value wins over contact fields and the declared fallback; undefined variables render their fallback (or empty). Max 25 entries; keys must match the merge-tag grammar (letter/_/$ start, then word chars/dots/$, max 64 chars); values max 256 chars.
+              description: Example values for {{ var | fallback }} merge tags in the subject, previewText, and body. A supplied value wins over contact fields and the declared fallback; undefined variables render their fallback (or empty). Max 25 entries; keys are tag paths (firstName, first-name, trigger.items[0].sku; max 64 chars); values max 256 chars.
             payload:
               type: object
               additionalProperties:
@@ -8655,14 +8665,16 @@ components:
                         description: Sender display name; resolved from the domain default when unset.
                       replyTo:
                         type: string
-                        format: email
-                        description: Reply-to address; resolved from the domain default when unset.
+                        description: Reply-to address, or a Liquid template that renders one; resolved from the domain default when unset.
                       emailTitle:
                         type: string
                         description: Informational email title mirror; tolerated for round-trips.
                       fromAddress:
                         type: string
                         description: Sender address on domainId's own domain; resolved from the domain default when unset.
+                      strict:
+                        type: boolean
+                        description: Skip a recipient whose template reads a missing value instead of sending blanks.
                     required:
                       - emailId
                       - emailVersionId
@@ -9655,6 +9667,8 @@ components:
                               type: string
                             replyTo:
                               type: string
+                            strict:
+                              type: boolean
                             to: {}
                             html:
                               type: string
@@ -10136,14 +10150,16 @@ components:
                         description: Sender display name; resolved from the domain default when unset.
                       replyTo:
                         type: string
-                        format: email
-                        description: Reply-to address; resolved from the domain default when unset.
+                        description: Reply-to address, or a Liquid template that renders one; resolved from the domain default when unset.
                       emailTitle:
                         type: string
                         description: Informational email title mirror; tolerated for round-trips.
                       fromAddress:
                         type: string
                         description: Sender address on domainId's own domain; resolved from the domain default when unset.
+                      strict:
+                        type: boolean
+                        description: Skip a recipient whose template reads a missing value instead of sending blanks.
                     required:
                       - emailId
                       - emailVersionId
@@ -31098,7 +31114,7 @@ paths:
                       code: LIQUID_RENDER_ERROR
                       type: invalid_request
                       message: A Liquid template failed to parse or render.
-                      suggestion: "Fix the template syntax, or supply the payload data the template references. Strict-mode fires fail on any unresolved variable; | default: is the sanctioned fallback."
+                      suggestion: 'Fix the template syntax, or supply the payload data the template references. With strict values on (the send step’s `strict`, or `strict: true` on a test send) a missing value fails the recipient; add | default: "…" right after the value where a blank is fine.'
                       docs: https://docs.brew.new/api-reference/api/errors
                 noEligibleRecipients:
                   summary: NO_ELIGIBLE_RECIPIENTS
