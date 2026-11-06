@@ -2,9 +2,11 @@ import { analyticsAutomationsCommand } from './commands/analytics/automations'
 import { analyticsCampaignsCommand } from './commands/analytics/campaigns'
 import { analyticsEventCountsCommand } from './commands/analytics/event-counts'
 import { analyticsEventsCommand } from './commands/analytics/events'
+import { analyticsIdentityTokenCommand } from './commands/analytics/identity-token'
 import { analyticsOverviewCommand } from './commands/analytics/overview'
 import { analyticsSendsGetCommand } from './commands/analytics/sends/get'
 import { analyticsSendsListCommand } from './commands/analytics/sends/list'
+import { analyticsTrackCommand } from './commands/analytics/track'
 import { analyticsTriggerInstancesListCommand } from './commands/analytics/trigger-instances/list'
 import { apiCommand } from './commands/api'
 import { apiKeysCreateCommand } from './commands/api-keys/create'
@@ -252,6 +254,8 @@ export const ALL_COMMANDS: readonly CommandSpec[] = [
   automationsTriggerInstancesListCommand,
   automationsTriggerInstancesGetCommand,
   analyticsOverviewCommand,
+  analyticsTrackCommand,
+  analyticsIdentityTokenCommand,
   analyticsCampaignsCommand,
   analyticsAutomationsCommand,
   analyticsEventsCommand,

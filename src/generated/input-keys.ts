@@ -397,6 +397,16 @@ export const INPUT_KEYS: Readonly<Record<string, readonly string[]>> = {
     "subjectLine",
     "title"
   ],
+  "POST /v1/analytics/identity-token": [
+    "anonymousId",
+    "contactId",
+    "projectId",
+    "userId"
+  ],
+  "POST /v1/analytics/track": [
+    "events",
+    "projectId"
+  ],
   "POST /v1/api-keys": [
     "brandId",
     "name",
