@@ -8,7 +8,10 @@
   image GIF; `--fps` (default 5) sets playback speed. GIFs from a prompt or
   an image are now one GPT Image 2.6 generation (GetBrew/brew-v2#2668):
   the response no longer carries `videoUrl` or `generatedImageUrl` and adds
-  `frameCount`. Vendored spec and generated API types follow that revision.
+  `frameCount`. `--fps` now sets playback speed over the frames, so a loop
+  lasts `frameCount / fps` seconds (`--fps 15` alone loops in 0.6 s); raise
+  `--frame-count` for smoother motion. Vendored spec and generated API types
+  follow that revision.
 
 ### Fixed
 
