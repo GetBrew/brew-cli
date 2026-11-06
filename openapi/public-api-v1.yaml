@@ -5227,6 +5227,7 @@ components:
         - EMAIL_GROUP_NOT_FOUND
         - EMAIL_IMAGES_MISSING
         - EMAIL_IMPORT_FAILED
+        - EMAIL_IMPORT_PERSISTENCE_FAILED
         - EMAIL_IN_PROGRESS
         - EMAIL_IN_USE_BY_AUTOMATION
         - EMAIL_NOT_FOUND
@@ -17704,18 +17705,15 @@ components:
         gifUrl:
           type: string
           format: uri
-        videoUrl:
-          type: string
-          format: uri
-        generatedImageUrl:
-          type: string
-          format: uri
         altText:
           type: string
         duration:
           type: number
         fps:
           type: number
+        frameCount:
+          type: integer
+          exclusiveMinimum: 0
         aspectRatio:
           type: string
         width:
@@ -17741,18 +17739,27 @@ components:
               type: string
               minLength: 1
               maxLength: 2000
+              description: What the GIF shows and how it moves.
+            frameCount:
+              type: integer
+              minimum: 2
+              maximum: 16
+              description: Frames in the loop, 2–16 (default 9).
             fps:
               type: integer
               minimum: 1
               maximum: 24
+              description: Frames per second, 1–24 (default 5 for generated GIFs).
             aspectRatio:
               type: string
               enum:
                 - '16:9'
                 - '9:16'
                 - '1:1'
+              description: "The GIF's shape (default 16:9): 768×432, 432×768 or 640×640."
             loop:
               type: boolean
+              description: Repeat forever (default true); false plays once.
           required:
             - from
             - prompt
@@ -17766,22 +17773,32 @@ components:
             imageUrl:
               type: string
               format: uri
+              description: Public image to animate.
             prompt:
               type: string
               minLength: 1
               maxLength: 2000
+              description: The motion to add; omitted, a subtle motion that suits the image.
+            frameCount:
+              type: integer
+              minimum: 2
+              maximum: 16
+              description: Frames in the loop, 2–16 (default 9).
             fps:
               type: integer
               minimum: 1
               maximum: 24
+              description: Frames per second, 1–24 (default 5 for generated GIFs).
             aspectRatio:
               type: string
               enum:
                 - '16:9'
                 - '9:16'
                 - '1:1'
+              description: "The GIF's shape (default 16:9): 768×432, 432×768 or 640×640."
             loop:
               type: boolean
+              description: Repeat forever (default true); false plays once.
           required:
             - from
             - imageUrl
@@ -17795,14 +17812,17 @@ components:
             videoUrl:
               type: string
               format: uri
+              description: Public MP4 to convert.
             fps:
               type: integer
               minimum: 1
               maximum: 24
+              description: Frames per second, 1–24 (default 5 for generated GIFs).
             width:
               type: integer
               minimum: 16
               maximum: 2000
+              description: Output width in pixels; height keeps the video ratio.
           required:
             - from
             - videoUrl
@@ -21083,7 +21103,7 @@ paths:
 
         **Returns** `201 { emailId, emailVersionId, html, previewImage?, assetReport, group, subjectLine? }`. Each source element with content that a design could not keep is listed once in `assetReport.warnings` as `{ code: "element_dropped", location: "markup", host: "<tag>" }`: inline `svg`, `math` and `canvas`, and `button`, `select`, `textarea` or table `caption` holding text are left out of the editable projection (the original source keeps them); `audio`, `video`, `iframe`, `object` and `embed` are removed from both, with `audio`/`video` fallback content kept. Source words the editable design does not carry are named once as `{ code: "text_dropped", location: "markup", host: "<words>" }`; version 1 keeps the exact source.
 
-        **Errors** `422 EMAIL_IMPORT_FAILED` when the markup cannot be compiled into a design or its editable model is over the size budget (nothing is persisted); `404 EMAIL_GROUP_NOT_FOUND` for an unknown `groupId`; `413 PAYLOAD_TOO_LARGE` over the byte cap; `422 BRAND_NOT_READY` while the brand is still extracting.
+        **Errors** `400 INVALID_REQUEST` (naming the field in `param`) when `title`, `subjectLine` or `content` holds an unpaired surrogate (half of an emoji); `422 EMAIL_IMPORT_FAILED` when the markup cannot be compiled into a design or its editable model is over the size budget, with nothing persisted; `502 EMAIL_IMPORT_PERSISTENCE_FAILED` when the markup converted but the design could not be stored (nothing was created; the message carries the request id to give support); `404 EMAIL_GROUP_NOT_FOUND` for an unknown `groupId`; `413 PAYLOAD_TOO_LARGE` over the byte cap; `422 BRAND_NOT_READY` while the brand is still extracting.
 
         **See also** `generateEmail`, `importFigmaDesign`, `auditEmail`.
       parameters:
@@ -21548,6 +21568,30 @@ paths:
                       type: internal_error
                       message: An unexpected failure; the x-request-id header identifies it.
                       suggestion: Retry the request. If it keeps failing, contact support with the x-request-id header.
+                      docs: https://docs.brew.new/api-reference/api/errors
+        "502":
+          description: "`EMAIL_IMPORT_PERSISTENCE_FAILED`: The markup converted, but the design could not be stored; nothing was created."
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                emailImportPersistenceFailed:
+                  summary: EMAIL_IMPORT_PERSISTENCE_FAILED
+                  value:
+                    error:
+                      code: EMAIL_IMPORT_PERSISTENCE_FAILED
+                      type: internal_error
+                      message: The markup converted, but the design could not be stored; nothing was created.
+                      suggestion: Retry the import. If it keeps failing, contact support with the request id in the message.
                       docs: https://docs.brew.new/api-reference/api/errors
       x-brew-scope: emails
       x-brew-brand-scope: brand
@@ -38025,9 +38069,9 @@ paths:
 
         **Input** `audienceRunId` in the path; no body.
 
-        **Returns** `200` with the run’s new `status` (`paused`).
+        **Returns** `200` with the run’s new `status` (`paused`). A run that is already paused, by an operator or at the plan limit, returns the same `200` and changes nothing.
 
-        **Errors** `409 RUN_NOT_PAUSABLE` unless the run is running; `404 AUDIENCE_RUN_NOT_FOUND` for an unknown or cross-brand id.
+        **Errors** `409 RUN_NOT_PAUSABLE` when the run is scheduled, completed, failed or canceled; `404 AUDIENCE_RUN_NOT_FOUND` for an unknown or cross-brand id.
 
         **See also** `resumeAudienceRun`, `cancelAudienceRun`, `getAudienceRun`.
       parameters:
@@ -38272,7 +38316,7 @@ paths:
 
             `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
 
-            `RUN_NOT_PAUSABLE`: Only a running manual-audience run can be paused.
+            `RUN_NOT_PAUSABLE`: A manual-audience run that is scheduled, completed, failed or canceled cannot be paused. Pausing a run that is already paused returns 200.
           headers:
             x-request-id:
               schema:
@@ -38310,8 +38354,8 @@ paths:
                     error:
                       code: RUN_NOT_PAUSABLE
                       type: conflict
-                      message: Only a running manual-audience run can be paused.
-                      suggestion: Only a running run can be paused.
+                      message: A manual-audience run that is scheduled, completed, failed or canceled cannot be paused. Pausing a run that is already paused returns 200.
+                      suggestion: Only a running run can be paused. Check its status with GET /v1/automations/audience-runs/{audienceRunId}.
                       docs: https://docs.brew.new/api-reference/api/errors
         "429":
           description: "`RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot."
@@ -63988,7 +64032,7 @@ paths:
       tags:
         - Content
       summary: Generate a GIF
-      description: "Produces a looping animated GIF (5-second source clip), routed by the `from` discriminator: `prompt` generates an on-brand still then animates it, `image` animates a source image (both via the AI gif workflow), and `video` converts a source MP4. For `prompt` and `image` sources, aspect ratio is one of `16:9`, `9:16`, `1:1` (default `16:9`), and the GIF has that shape: a source image of another shape is centre-cropped when that keeps at least 75% of it, otherwise padded in its own edge colour, never stretched. `imageUrl` takes any public PNG, JPEG, WebP, GIF (first frame), AVIF or TIFF up to 50 MB and 268 megapixels, of any size or shape; SVG, HEIC and BMP return `422 CONTENT_OPERATION_FAILED`. For `video`, aspectRatio is not accepted; use width and fps for conversion. Returns CDN-hosted `gifUrl` (plus `videoUrl`, `width`/`height` and motion metadata for the AI sources). Credit-metered (fixed cost: prompt 20, image 10, video 10)."
+      description: "Produces an animated GIF, routed by the `from` discriminator: `prompt` generates one from text, `image` animates a public source image (both with GPT Image 2.6), and `video` converts a source MP4. For `prompt` and `image` sources, aspect ratio is one of `16:9`, `9:16`, `1:1` (default `16:9`, 768×432 / 432×768 / 640×640), `frameCount` is 2–16 (default 9) and `fps` sets playback speed (default 5, so 9 frames loop in 1.8s). An `image` source the model cannot read, or a request it refuses, returns `422 CONTENT_OPERATION_FAILED`. For `video`, use width and fps for conversion. Returns CDN-hosted `gifUrl` (plus `altText`, `width`/`height` and timing metadata for the AI sources). Credit-metered (fixed cost: prompt 20, image 10, video 10)."
       parameters:
         - name: Idempotency-Key
           in: header

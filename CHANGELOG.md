@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### Changed
+
+- `content gif` takes `--frame-count <n>` (2-16, default 9) for a prompt or
+  image GIF; `--fps` (default 5) sets playback speed. GIFs from a prompt or
+  an image are now one GPT Image 2.6 generation (GetBrew/brew-v2#2668):
+  the response no longer carries `videoUrl` or `generatedImageUrl` and adds
+  `frameCount`. Vendored spec and generated API types follow that revision.
+
 ### Fixed
 
 - `brand get-images --query` is free: semantic image search no longer costs
