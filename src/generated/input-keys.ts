@@ -546,6 +546,7 @@ export const INPUT_KEYS: Readonly<Record<string, readonly string[]>> = {
   "POST /v1/content/gif": [
     "aspectRatio",
     "fps",
+    "frameCount",
     "from",
     "imageUrl",
     "loop",

@@ -115,7 +115,7 @@ export interface paths {
          *
          *     **Returns** `201 { emailId, emailVersionId, html, previewImage?, assetReport, group, subjectLine? }`. Each source element with content that a design could not keep is listed once in `assetReport.warnings` as `{ code: "element_dropped", location: "markup", host: "<tag>" }`: inline `svg`, `math` and `canvas`, and `button`, `select`, `textarea` or table `caption` holding text are left out of the editable projection (the original source keeps them); `audio`, `video`, `iframe`, `object` and `embed` are removed from both, with `audio`/`video` fallback content kept. Source words the editable design does not carry are named once as `{ code: "text_dropped", location: "markup", host: "<words>" }`; version 1 keeps the exact source.
          *
-         *     **Errors** `422 EMAIL_IMPORT_FAILED` when the markup cannot be compiled into a design or its editable model is over the size budget (nothing is persisted); `404 EMAIL_GROUP_NOT_FOUND` for an unknown `groupId`; `413 PAYLOAD_TOO_LARGE` over the byte cap; `422 BRAND_NOT_READY` while the brand is still extracting.
+         *     **Errors** `400 INVALID_REQUEST` (naming the field in `param`) when `title`, `subjectLine` or `content` holds an unpaired surrogate (half of an emoji); `422 EMAIL_IMPORT_FAILED` when the markup cannot be compiled into a design or its editable model is over the size budget, with nothing persisted; `502 EMAIL_IMPORT_PERSISTENCE_FAILED` when the markup converted but the design could not be stored (nothing was created; the message carries the request id to give support); `404 EMAIL_GROUP_NOT_FOUND` for an unknown `groupId`; `413 PAYLOAD_TOO_LARGE` over the byte cap; `422 BRAND_NOT_READY` while the brand is still extracting.
          *
          *     **See also** `generateEmail`, `importFigmaDesign`, `auditEmail`.
          */
@@ -933,9 +933,9 @@ export interface paths {
          *
          *     **Input** `audienceRunId` in the path; no body.
          *
-         *     **Returns** `200` with the run’s new `status` (`paused`).
+         *     **Returns** `200` with the run’s new `status` (`paused`). A run that is already paused, by an operator or at the plan limit, returns the same `200` and changes nothing.
          *
-         *     **Errors** `409 RUN_NOT_PAUSABLE` unless the run is running; `404 AUDIENCE_RUN_NOT_FOUND` for an unknown or cross-brand id.
+         *     **Errors** `409 RUN_NOT_PAUSABLE` when the run is scheduled, completed, failed or canceled; `404 AUDIENCE_RUN_NOT_FOUND` for an unknown or cross-brand id.
          *
          *     **See also** `resumeAudienceRun`, `cancelAudienceRun`, `getAudienceRun`.
          */
@@ -2245,7 +2245,7 @@ export interface paths {
         put?: never;
         /**
          * Generate a GIF
-         * @description Produces a looping animated GIF (5-second source clip), routed by the `from` discriminator: `prompt` generates an on-brand still then animates it, `image` animates a source image (both via the AI gif workflow), and `video` converts a source MP4. For `prompt` and `image` sources, aspect ratio is one of `16:9`, `9:16`, `1:1` (default `16:9`), and the GIF has that shape: a source image of another shape is centre-cropped when that keeps at least 75% of it, otherwise padded in its own edge colour, never stretched. `imageUrl` takes any public PNG, JPEG, WebP, GIF (first frame), AVIF or TIFF up to 50 MB and 268 megapixels, of any size or shape; SVG, HEIC and BMP return `422 CONTENT_OPERATION_FAILED`. For `video`, aspectRatio is not accepted; use width and fps for conversion. Returns CDN-hosted `gifUrl` (plus `videoUrl`, `width`/`height` and motion metadata for the AI sources). Credit-metered (fixed cost: prompt 20, image 10, video 10).
+         * @description Produces an animated GIF, routed by the `from` discriminator: `prompt` generates one from text, `image` animates a public source image (both with GPT Image 2.6), and `video` converts a source MP4. For `prompt` and `image` sources, aspect ratio is one of `16:9`, `9:16`, `1:1` (default `16:9`, 768×432 / 432×768 / 640×640), `frameCount` is 2–16 (default 9) and `fps` sets playback speed (default 5, so 9 frames loop in 1.8s). An `image` source the model cannot read, or a request it refuses, returns `422 CONTENT_OPERATION_FAILED`. For `video`, use width and fps for conversion. Returns CDN-hosted `gifUrl` (plus `altText`, `width`/`height` and timing metadata for the AI sources). Credit-metered (fixed cost: prompt 20, image 10, video 10).
          */
         post: operations["createGif"];
         delete?: never;
@@ -4468,7 +4468,7 @@ export interface components {
             };
         };
         /** @enum {string} */
-        ApiErrorCode: "ACCOUNT_SUSPENDED" | "API_KEY_REVOKED" | "AUDIENCE_BUILD_ACTIVE" | "AUDIENCE_BUILD_ALREADY_ACTIVE" | "AUDIENCE_EDIT_CONFLICT" | "AUDIENCE_MEMBERSHIP_NOT_EXPRESSIBLE" | "AUDIENCE_NOT_FOUND" | "AUDIENCE_RUN_NOT_FOUND" | "AUDIT_NOT_FOUND" | "AUTHENTICATION_REQUIRED" | "AUTOMATION_GRAPH_INVALID" | "AUTOMATION_NOT_FOUND" | "AUTOMATION_NOT_PAUSABLE" | "AUTOMATION_NOT_PUBLISHED" | "AUTOMATION_RUN_NOT_FOUND" | "AUTOMATION_VERSION_CONFLICT" | "AUTOMATION_VERSION_NOT_FOUND" | "BATCH_TOO_LARGE" | "BRAND_DOMAIN_CONFLICT" | "BRAND_ID_REQUIRED" | "BRAND_LIMIT_REACHED" | "BRAND_NOT_FOUND" | "BRAND_NOT_READY" | "BRAND_SCOPE_MISMATCH" | "CHAT_NOT_FOUND" | "COMMENT_NOT_FOUND" | "CONSENT_REQUIRED" | "CONTACT_NOT_FOUND" | "CONTENT_OPERATION_FAILED" | "CONTRACT_LOCKED_BY_PUBLISHED_AUTOMATIONS" | "CORE_FIELD_IMMUTABLE" | "DOMAIN_ALREADY_EXISTS" | "DOMAIN_CLAIMED_ELSEWHERE" | "DOMAIN_NOT_FOUND" | "DOMAIN_NOT_READY" | "DOMAIN_OTHER_BRAND" | "DOMAIN_PROVIDER_ERROR" | "DOMAIN_PURPOSE_NOT_ALLOWED" | "DOMAIN_VERIFICATION_FAILED" | "DOMAIN_VERIFIED_ELSEWHERE" | "EMAIL_GENERATION_FAILED" | "EMAIL_GROUP_NAME_CONFLICT" | "EMAIL_GROUP_NOT_FOUND" | "EMAIL_IMAGES_MISSING" | "EMAIL_IMPORT_FAILED" | "EMAIL_IN_PROGRESS" | "EMAIL_IN_USE_BY_AUTOMATION" | "EMAIL_NOT_FOUND" | "EMAIL_NOT_READY" | "EMAIL_RESULT_UNAVAILABLE" | "EMAIL_RUN_AMBIGUOUS" | "EMAIL_TEMPLATE_INVALID" | "EMAIL_VERSION_NOT_FOUND" | "EXPORT_PROVIDER_ERROR" | "EXPORT_UNSUPPORTED" | "FIELD_NAME_COLLISION" | "FIELD_NOT_FOUND" | "FIELD_TYPE_MISMATCH" | "FIGMA_ACCESS_DENIED" | "FIGMA_CONVERSION_FAILED" | "FIGMA_FRAME_NOT_FOUND" | "FIGMA_NOT_CONNECTED" | "FIGMA_UNAVAILABLE" | "FIGMA_URL_INVALID" | "FLOW_NOT_FOUND" | "IDEMPOTENCY_CONFLICT" | "IDEMPOTENCY_IN_PROGRESS" | "INSIGHT_NOT_FOUND" | "INSUFFICIENT_CREDITS" | "INSUFFICIENT_PERMISSIONS" | "INSUFFICIENT_ROLE" | "INTEGRATION_NOT_CONNECTED" | "INTERNAL_ERROR" | "INVALID_API_KEY" | "INVALID_EMAIL" | "INVALID_PAYLOAD" | "INVALID_REQUEST" | "LIQUID_RENDER_ERROR" | "METHOD_NOT_ALLOWED" | "MISSING_EMAIL" | "NO_ELIGIBLE_RECIPIENTS" | "NO_PUBLISHED_AUTOMATION" | "NOT_FOUND" | "NOT_IMPLEMENTED" | "ORG_SCOPE_REQUIRED" | "PAYLOAD_SCHEMA_EMAIL_REQUIRED" | "PAYLOAD_TOO_LARGE" | "PREVIEW_NOT_FOUND" | "PUBLISH_VALIDATION_FAILED" | "RATE_LIMITED" | "RECIPIENT_UNSUBSCRIBED" | "REFERENCE_EMAIL_NOT_FOUND" | "RESUBSCRIBE_NOT_ALLOWED" | "RUN_IN_PROGRESS" | "RUN_NOT_CANCELLABLE" | "RUN_NOT_PAUSABLE" | "RUN_NOT_PAUSED" | "RUN_NOT_RESUMABLE" | "RUN_START_FAILED" | "RUN_STOP_FAILED" | "SEND_NOT_CANCELLABLE" | "SEND_NOT_FOUND" | "SEND_NOT_PAUSABLE" | "SEND_NOT_RESUMABLE" | "SEND_QUOTA_EXCEEDED" | "SERVICE_UNAVAILABLE" | "TEMPLATE_NOT_FOUND" | "TEST_RECIPIENT_NOT_ALLOWED" | "TRIGGER_ALREADY_EXISTS" | "TRIGGER_EVENT_NOT_FOUND" | "TRIGGER_HAS_DEPENDENT_AUTOMATIONS" | "TRIGGER_IMMUTABLE" | "TRIGGER_INSTANCE_NOT_FOUND" | "TRIGGER_LIMIT_REACHED" | "TRIGGER_NOT_FIREABLE" | "UPLOAD_IN_PROGRESS" | "UPLOAD_NOT_FOUND" | "UPLOAD_NOT_RECEIVED";
+        ApiErrorCode: "ACCOUNT_SUSPENDED" | "API_KEY_REVOKED" | "AUDIENCE_BUILD_ACTIVE" | "AUDIENCE_BUILD_ALREADY_ACTIVE" | "AUDIENCE_EDIT_CONFLICT" | "AUDIENCE_MEMBERSHIP_NOT_EXPRESSIBLE" | "AUDIENCE_NOT_FOUND" | "AUDIENCE_RUN_NOT_FOUND" | "AUDIT_NOT_FOUND" | "AUTHENTICATION_REQUIRED" | "AUTOMATION_GRAPH_INVALID" | "AUTOMATION_NOT_FOUND" | "AUTOMATION_NOT_PAUSABLE" | "AUTOMATION_NOT_PUBLISHED" | "AUTOMATION_RUN_NOT_FOUND" | "AUTOMATION_VERSION_CONFLICT" | "AUTOMATION_VERSION_NOT_FOUND" | "BATCH_TOO_LARGE" | "BRAND_DOMAIN_CONFLICT" | "BRAND_ID_REQUIRED" | "BRAND_LIMIT_REACHED" | "BRAND_NOT_FOUND" | "BRAND_NOT_READY" | "BRAND_SCOPE_MISMATCH" | "CHAT_NOT_FOUND" | "COMMENT_NOT_FOUND" | "CONSENT_REQUIRED" | "CONTACT_NOT_FOUND" | "CONTENT_OPERATION_FAILED" | "CONTRACT_LOCKED_BY_PUBLISHED_AUTOMATIONS" | "CORE_FIELD_IMMUTABLE" | "DOMAIN_ALREADY_EXISTS" | "DOMAIN_CLAIMED_ELSEWHERE" | "DOMAIN_NOT_FOUND" | "DOMAIN_NOT_READY" | "DOMAIN_OTHER_BRAND" | "DOMAIN_PROVIDER_ERROR" | "DOMAIN_PURPOSE_NOT_ALLOWED" | "DOMAIN_VERIFICATION_FAILED" | "DOMAIN_VERIFIED_ELSEWHERE" | "EMAIL_GENERATION_FAILED" | "EMAIL_GROUP_NAME_CONFLICT" | "EMAIL_GROUP_NOT_FOUND" | "EMAIL_IMAGES_MISSING" | "EMAIL_IMPORT_FAILED" | "EMAIL_IMPORT_PERSISTENCE_FAILED" | "EMAIL_IN_PROGRESS" | "EMAIL_IN_USE_BY_AUTOMATION" | "EMAIL_NOT_FOUND" | "EMAIL_NOT_READY" | "EMAIL_RESULT_UNAVAILABLE" | "EMAIL_RUN_AMBIGUOUS" | "EMAIL_TEMPLATE_INVALID" | "EMAIL_VERSION_NOT_FOUND" | "EXPORT_PROVIDER_ERROR" | "EXPORT_UNSUPPORTED" | "FIELD_NAME_COLLISION" | "FIELD_NOT_FOUND" | "FIELD_TYPE_MISMATCH" | "FIGMA_ACCESS_DENIED" | "FIGMA_CONVERSION_FAILED" | "FIGMA_FRAME_NOT_FOUND" | "FIGMA_NOT_CONNECTED" | "FIGMA_UNAVAILABLE" | "FIGMA_URL_INVALID" | "FLOW_NOT_FOUND" | "IDEMPOTENCY_CONFLICT" | "IDEMPOTENCY_IN_PROGRESS" | "INSIGHT_NOT_FOUND" | "INSUFFICIENT_CREDITS" | "INSUFFICIENT_PERMISSIONS" | "INSUFFICIENT_ROLE" | "INTEGRATION_NOT_CONNECTED" | "INTERNAL_ERROR" | "INVALID_API_KEY" | "INVALID_EMAIL" | "INVALID_PAYLOAD" | "INVALID_REQUEST" | "LIQUID_RENDER_ERROR" | "METHOD_NOT_ALLOWED" | "MISSING_EMAIL" | "NO_ELIGIBLE_RECIPIENTS" | "NO_PUBLISHED_AUTOMATION" | "NOT_FOUND" | "NOT_IMPLEMENTED" | "ORG_SCOPE_REQUIRED" | "PAYLOAD_SCHEMA_EMAIL_REQUIRED" | "PAYLOAD_TOO_LARGE" | "PREVIEW_NOT_FOUND" | "PUBLISH_VALIDATION_FAILED" | "RATE_LIMITED" | "RECIPIENT_UNSUBSCRIBED" | "REFERENCE_EMAIL_NOT_FOUND" | "RESUBSCRIBE_NOT_ALLOWED" | "RUN_IN_PROGRESS" | "RUN_NOT_CANCELLABLE" | "RUN_NOT_PAUSABLE" | "RUN_NOT_PAUSED" | "RUN_NOT_RESUMABLE" | "RUN_START_FAILED" | "RUN_STOP_FAILED" | "SEND_NOT_CANCELLABLE" | "SEND_NOT_FOUND" | "SEND_NOT_PAUSABLE" | "SEND_NOT_RESUMABLE" | "SEND_QUOTA_EXCEEDED" | "SERVICE_UNAVAILABLE" | "TEMPLATE_NOT_FOUND" | "TEST_RECIPIENT_NOT_ALLOWED" | "TRIGGER_ALREADY_EXISTS" | "TRIGGER_EVENT_NOT_FOUND" | "TRIGGER_HAS_DEPENDENT_AUTOMATIONS" | "TRIGGER_IMMUTABLE" | "TRIGGER_INSTANCE_NOT_FOUND" | "TRIGGER_LIMIT_REACHED" | "TRIGGER_NOT_FIREABLE" | "UPLOAD_IN_PROGRESS" | "UPLOAD_NOT_FOUND" | "UPLOAD_NOT_RECEIVED";
         EmailGenerateTextResponse: {
             response: string;
         };
@@ -8817,13 +8817,10 @@ export interface components {
         ContentGifResponse: {
             /** Format: uri */
             gifUrl: string;
-            /** Format: uri */
-            videoUrl?: string;
-            /** Format: uri */
-            generatedImageUrl?: string;
             altText?: string;
             duration?: number;
             fps?: number;
+            frameCount?: number;
             aspectRatio?: string;
             width?: number;
             height?: number;
@@ -8832,27 +8829,51 @@ export interface components {
         ContentGifRequest: {
             /** @enum {string} */
             from: "prompt";
+            /** @description What the GIF shows and how it moves. */
             prompt: string;
+            /** @description Frames in the loop, 2–16 (default 9). */
+            frameCount?: number;
+            /** @description Frames per second, 1–24 (default 5 for generated GIFs). */
             fps?: number;
-            /** @enum {string} */
+            /**
+             * @description The GIF's shape (default 16:9): 768×432, 432×768 or 640×640.
+             * @enum {string}
+             */
             aspectRatio?: "16:9" | "9:16" | "1:1";
+            /** @description Repeat forever (default true); false plays once. */
             loop?: boolean;
         } | {
             /** @enum {string} */
             from: "image";
-            /** Format: uri */
+            /**
+             * Format: uri
+             * @description Public image to animate.
+             */
             imageUrl: string;
+            /** @description The motion to add; omitted, a subtle motion that suits the image. */
             prompt?: string;
+            /** @description Frames in the loop, 2–16 (default 9). */
+            frameCount?: number;
+            /** @description Frames per second, 1–24 (default 5 for generated GIFs). */
             fps?: number;
-            /** @enum {string} */
+            /**
+             * @description The GIF's shape (default 16:9): 768×432, 432×768 or 640×640.
+             * @enum {string}
+             */
             aspectRatio?: "16:9" | "9:16" | "1:1";
+            /** @description Repeat forever (default true); false plays once. */
             loop?: boolean;
         } | {
             /** @enum {string} */
             from: "video";
-            /** Format: uri */
+            /**
+             * Format: uri
+             * @description Public MP4 to convert.
+             */
             videoUrl: string;
+            /** @description Frames per second, 1–24 (default 5 for generated GIFs). */
             fps?: number;
+            /** @description Output width in pixels; height keeps the video ratio. */
             width?: number;
         };
         ContentTransformResponse: {
@@ -10305,6 +10326,17 @@ export interface operations {
             };
             /** @description `INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it. */
             500: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `EMAIL_IMPORT_PERSISTENCE_FAILED`: The markup converted, but the design could not be stored; nothing was created. */
+            502: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
                     "x-request-id": string;
@@ -17215,7 +17247,7 @@ export interface operations {
              *
              *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
              *
-             *     `RUN_NOT_PAUSABLE`: Only a running manual-audience run can be paused.
+             *     `RUN_NOT_PAUSABLE`: A manual-audience run that is scheduled, completed, failed or canceled cannot be paused. Pausing a run that is already paused returns 200.
              */
             409: {
                 headers: {
