@@ -556,6 +556,7 @@ export const INPUT_KEYS: Readonly<Record<string, readonly string[]>> = {
   "POST /v1/content/gif": [
     "aspectRatio",
     "fps",
+    "frameCount",
     "from",
     "imageUrl",
     "loop",
@@ -612,7 +613,8 @@ export const INPUT_KEYS: Readonly<Record<string, readonly string[]>> = {
     "lang",
     "prompt",
     "referenceEmailId",
-    "subjectLine"
+    "subjectLine",
+    "title"
   ],
   "POST /v1/emails/{emailId}/client-previews": [
     "clients",

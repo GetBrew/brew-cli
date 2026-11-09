@@ -126,6 +126,31 @@ describe('analytics event-counts', () => {
     expect(url?.searchParams.get('groupBy')).toBe('eventType,link')
     expect(url?.searchParams.has('limit')).toBe(false)
   })
+
+  it('shows recipients beside count in the human table when groups carry them', async () => {
+    server.use(
+      http.get(`${API}/v1/analytics/events`, () =>
+        HttpResponse.json({
+          count: 12,
+          groups: [
+            { key: { eventType: 'opened' }, count: 9, recipients: 4 },
+            { key: { eventType: 'bounced' }, count: 3 },
+          ],
+          otherCount: 0,
+          range: { from: 'a', to: 'b' },
+          truncated: false,
+        })
+      )
+    )
+    const result = await runCli(
+      ['analytics', 'event-counts', '--group-by', 'eventType'],
+      { env: env(), extraCommands: EXTRA, ttyOut: true }
+    )
+    expect(result.code).toBe(0)
+    const [header, opened] = result.stdout.split('\n')
+    expect(header).toMatch(/GROUP\s+COUNT\s+RECIPIENTS/)
+    expect(opened).toMatch(/eventType=opened\s+9\s+4/)
+  })
 })
 
 describe('domains unsubscribes', () => {

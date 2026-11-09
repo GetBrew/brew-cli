@@ -150,7 +150,7 @@ a `confirmCommand` otherwise, `--yes` to proceed).
 | `brew-cli domains unsubscribes import` | write | `POST /v1/domains/{domainId}/unsubscribes/import` | Add every address in a CSV to a domain's unsubscribe list |
 | `brew-cli domains unsubscribes export` | read | `GET /v1/domains/{domainId}/unsubscribes/export` | A domain's unsubscribe list as CSV (truncated when capped) |
 | `brew-cli content generate-image` | write ($) | `POST /v1/content/generate-image` | Generate or edit an image from a prompt |
-| `brew-cli content gif` | write ($) | `POST /v1/content/gif` | Create a 5-second animated GIF from a prompt, image, or video |
+| `brew-cli content gif` | write ($) | `POST /v1/content/gif` | Create an animated GIF from a prompt, image, or video |
 | `brew-cli content transform` | write ($) | `POST /v1/content/transform` | Optimize or resize a hosted image |
 | `brew-cli content html-to-png` | write ($) | `POST /v1/content/html-to-png` | Render HTML to a hosted PNG |
 | `brew-cli content add-image` | write | `POST /v1/content/add-image` | Add an image to the brand library from a public URL, a batch of URLs, or an upload (free); returns its assetId |
@@ -730,6 +730,7 @@ Generate a new on-brand email design from a prompt
 - `--reference-email-id <emailId>` — Existing design or template to base the layout on
 - `--content-urls <urls...>` — Page URL(s) to pull copy and imagery from, repeatable
 - `--group-id <groupId>` — Destination group id; omit or use ungrouped for Ungrouped
+- `--title <text>` — The design's canvas name, 2-4 words (e.g. 'Newsletter Welcome'); omit and Brew names it
 - `--subject-line <text>` — The design's default inbox subject line
 - `--lang <code>` — Language of the copy (ISO 639-1, or zh-Hans / zh-Hant); omit and Brew detects it
 - `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
@@ -739,6 +740,7 @@ Generate a new on-brand email design from a prompt
 brew-cli emails generate --prompt "Product-launch email for the fall sale"
 brew-cli emails generate --prompt "Welcome email" --group-id grp_welcome
 brew-cli emails generate --prompt "Welcome email" --subject-line "Welcome to Brew"
+brew-cli emails generate --prompt "Welcome email" --title "Newsletter Welcome"
 brew-cli emails generate --prompt "Willkommens-E-Mail" --lang de
 brew-cli emails generate --prompt "Welcome email" --content-urls https://example.com/pricing
 ```
@@ -1019,8 +1021,8 @@ Send an email: a real campaign, or a safe test with --test
 - Class: destructive
 - SDK: `brew.emails.send(...)`
 - Argument `emailId` — Design id to send
-- `--test` — Test delivery to --to only; skips the confirmation gate
-- `--to <emails...>` — Recipient(s): required for --test, ad-hoc list for campaigns
+- `--test` — Test delivery to --to only (a teammate with access to the brand, or an address on a verified sending domain of the brand; your own address counts as a teammate address); skips the confirmation gate
+- `--to <emails...>` — Recipient(s): one address, required for --test; an ad-hoc list for campaigns
 - `--subject <text>` — Subject line
 - `--audience <audienceId>` — Campaign audience segment
 - `--domain <domainId>` — Verified sending domain id
@@ -1029,7 +1031,7 @@ Send an email: a real campaign, or a safe test with --test
 - `--idempotency-key <key>` — Idempotency-Key for safe retries (auto-generated otherwise)
 
 ```bash
-brew-cli emails send eml_1 --test --to qa@example.com --subject "Preview"
+brew-cli emails send eml_1 --test --to you@company.com --subject "Preview"
 brew-cli emails send eml_1 --subject "Fall sale" --domain dom_1 --audience aud_1 --yes
 brew-cli emails send eml_1 --subject "Fall sale" --domain dom_1 --audience aud_1 --schedule-at 2026-09-01T09:00:00Z --yes
 ```
@@ -1182,6 +1184,7 @@ Create an audience segment from a filter definition
 ```bash
 brew-cli audiences create --name VIP --input '{"filters":{"filters":[{"field":"plan","operator":"equals","value":"vip"}],"logicalOperator":"and"}}'
 brew-cli audiences create --name "Except tier 10" --input '{"filters":{"filters":[{"field":"tier","operator":"not_equals","value":10,"type":"number"}],"logicalOperator":"and"}}'
+brew-cli audiences create --name "Paid plans" --input '{"filters":{"filters":[{"field":"plan","operator":"in","value":["pro","team"]}],"logicalOperator":"and"}}'
 ```
 
 ### brew-cli audiences update
@@ -1376,7 +1379,7 @@ Test an automation; testRecipient delivers real mail, omit for a dry run
 ```bash
 brew-cli automations test am_123
 brew-cli automations test am_123 --input '{"userId":"u_1"}'
-brew-cli automations test am_123 --input '{"testRecipient":"qa@example.com"}' --yes
+brew-cli automations test am_123 --input '{"testRecipient":"you@company.com"}' --yes
 ```
 
 ### brew-cli automations run
@@ -1860,10 +1863,10 @@ Unified event explorer (email, automation, trigger, inbound)
 - Route: `GET /v1/analytics/events`
 - Class: read
 - SDK: `brew.analytics.events(...)`
-- `--since <datetime>` — Window start (ISO-8601)
+- `--since <datetime>` — Window start (ISO-8601); default 7 days ago, or the whole send with --send
 - `--until <datetime>` — Window end (ISO-8601)
 - `--recipient <rules>` — CSV of recipient rules (max 10): an address, @domain, or substring; prefix ! to exclude
-- `--event-type <type>` — Filter by event type (e.g. opened, clicked)
+- `--event-type <type>` — Filter by one event type, spelled exactly (e.g. opened, not open; clicked)
 - `--automation <automationId>` — Filter by automation
 - `--send <sendId>` — Filter by campaign send
 - `--limit <n>` — Page size, 1-100 (default 100)
@@ -1885,9 +1888,9 @@ Count email events per field and/or period (clicks per link, events per day, uns
 - SDK: `brew.analytics.eventCounts(...)`
 - `--group-by <fields>` — One or two comma-separated fields: eventType, emailId, automationId, sendId, source, link, recipientDomain, unsubscribeReason
 - `--bucket <period>` — Count per UTC day, week (Monday start) or month
-- `--since <datetime>` — Window start (ISO-8601)
+- `--since <datetime>` — Window start (ISO-8601); default 7 days ago, or the whole send with --send-id
 - `--until <datetime>` — Window end (ISO-8601)
-- `--event-type <type>` — Only one email event type (e.g. clicked)
+- `--event-type <type>` — Only one email event type, spelled exactly (e.g. clicked, not click)
 - `--send-id <sendId>` — Only one send
 - `--email-id <emailId>` — Only one design
 - `--recipient <rules>` — CSV of recipient rules (max 10): an address, @domain, or substring; prefix ! to exclude
@@ -2361,7 +2364,7 @@ brew-cli content generate-image --prompt "hero shot of a ceramic mug" --aspect-r
 
 ### brew-cli content gif
 
-Create a 5-second animated GIF from a prompt, image, or video
+Create an animated GIF from a prompt, image, or video
 
 - Route: `POST /v1/content/gif`
 - Class: write
@@ -2371,16 +2374,17 @@ Create a 5-second animated GIF from a prompt, image, or video
 - `--prompt <text>` — What to animate
 - `--image-url <url>` — Source image (from: image)
 - `--video-url <url>` — Source video (from: video)
-- `--fps <n>` — Frames per second
-- `--aspect-ratio <ratio>` — e.g. 16:9, 1:1, 9:16
-- `--loop <bool>` — Loop the GIF: true | false
+- `--frame-count <n>` — Frames in the loop, 2-16 (default 9; from: prompt | image)
+- `--fps <n>` — Frames per second, 1-24 (default 5 for prompt | image)
+- `--aspect-ratio <ratio>` — 16:9 (default), 9:16 or 1:1 (from: prompt | image)
+- `--loop <bool>` — Loop the GIF: true (default) | false
 - `--width <n>` — Output width (from: video)
 - `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
 - `--idempotency-key <key>` — Idempotency-Key for safe retries (auto-generated otherwise)
 
 ```bash
 brew-cli content gif --prompt "steam rising from a coffee cup"
-brew-cli content gif --image-url https://cdn.example.com/mug.png --prompt "gentle zoom"
+brew-cli content gif --image-url https://cdn.example.com/mug.png --prompt "steam rises" --frame-count 12 --fps 8
 ```
 
 ### brew-cli content transform

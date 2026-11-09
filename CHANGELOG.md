@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+### Changed
+
+- `content gif` takes `--frame-count <n>` (2-16, default 9) for a prompt or
+  image GIF; `--fps` (default 5) sets playback speed. GIFs from a prompt or
+  an image are now one GPT Image 2.6 generation (GetBrew/brew-v2#2668):
+  the response no longer carries `videoUrl` or `generatedImageUrl` and adds
+  `frameCount`. `--fps` now sets playback speed over the frames, so a loop
+  lasts `frameCount / fps` seconds (`--fps 15` alone loops in 0.6 s); raise
+  `--frame-count` for smoother motion. Vendored spec and generated API types
+  follow that revision.
+
 ### Fixed
 
 - `brand get-images --query` is free: semantic image search no longer costs
@@ -23,6 +34,40 @@
   refused with `409 FIELD_TYPE_MISMATCH` instead of being stored rounded; send
   large ids as strings to a `string` field (#2488). This applies to
   `contacts upsert`, `upsert-many`, `update` and `import`.
+- An audience filter with `in`, `not_in`, `contains_any` or
+  `not_contains_any` now needs its `value` as a JSON array; the API refuses a
+  comma-separated string such as `"pro,team"` (GetBrew/brew-v2#2571). This
+  applies to `audiences create` and `audiences update`, which pass `--input`
+  filters through unchanged. `audiences create` gains an example with an
+  array value.
+- Vendored spec and generated API types follow app revision `507dbacf45`.
+  Only descriptions changed: brand identity and extraction fields, payload
+  contract enforcement modes, `measured` on send analytics, flow `kind`,
+  `sendId` scoping and the automation runs `recipientEmail` filter. No
+  command's flags changed.
+
+### Changed
+
+- Vendored spec and generated API types follow app revision `19c7b0d9da`
+  (GetBrew/brew-v2#2592, #2604). `emails import` can report a `text_dropped`
+  warning naming source words the editable design does not carry (version 1
+  keeps the exact source). `emails generate` gains `--title <text>`, the design's
+  canvas name (the body's new optional `title`; omit and Brew names it).
+  `analytics events --send` and `analytics event-counts --send-id` without
+  `--since` cover the whole send instead of the last 7 days. `--event-type` must
+  be one of the spec's event types, spelled exactly (`opened`, not `open`);
+  anything else is a `400 INVALID_REQUEST`, and a request with several problems
+  lists each under `details.issues[]` (at most 20). `automations update` keeps
+  the stored edges when `--input` omits `connections`; `expectedBaseVersionId`
+  (the `automationVersionId` you read) now guards a save on its own, with `409`
+  when the automation changed since, and `expectedBaseDefinitionSha256` is an
+  optional stricter guard that needs it. `analytics event-counts` groups of
+  opened, clicked or delivered events carry `recipients`, each recipient counted
+  once per message, and the human table shows it as RECIPIENTS (#2582). Because
+  the CLI authenticates with an API key, `emails send --test` and `automations
+  test` with `testRecipient` reach only a teammate with access to the brand or
+  an address on a verified sending domain of the brand; anyone else is `422
+  TEST_RECIPIENT_NOT_ALLOWED` with `details.recipients` (#2578).
 
 ## 0.19.0
 
