@@ -138,6 +138,7 @@ import { fieldsListCommand } from './commands/fields/list'
 import { flowsGetCommand } from './commands/flows/get'
 import { flowsListCommand } from './commands/flows/list'
 import { healthCommand } from './commands/health'
+import { initCommand } from './commands/init'
 import { insightsGetCommand } from './commands/insights/get'
 import { insightsListCommand } from './commands/insights/list'
 import { integrationsListCommand } from './commands/integrations/list'
@@ -318,5 +319,6 @@ export const ALL_COMMANDS: readonly CommandSpec[] = [
   docsCommand,
   docsApiCommand,
   mcpInstallCommand,
+  initCommand,
   apiCommand,
 ]

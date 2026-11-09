@@ -1,6 +1,6 @@
 {
   "name": "@brew.new/cli",
-  "version": "0.20.0",
+  "version": "0.21.0",
   "description": "Official agent-first command-line interface for the Brew public API.",
   "license": "MIT",
   "author": "Brew",
@@ -55,7 +55,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "parity": "vitest run tests/parity-sdk.test.ts tests/parity-spec.test.ts",
-    "check": "bun run tsc && bun run lint && bun run test && bun run docs:commands:check && bun run generate:skills:check",
+    "check": "bun run tsc && bun run lint && bun run test && bun run docs:commands:check && bun run generate:skills:check && bun run sync:launchers:check",
     "docs:commands": "bun run scripts/generate-command-docs.ts",
     "docs:commands:check": "bun run scripts/generate-command-docs.ts --check",
     "generate:types": "node scripts/generate-types.mjs",
@@ -63,7 +63,10 @@
     "generate:skills:check": "bun run scripts/generate-skills.ts --check",
     "prepublishOnly": "bun run clean && bun run tsc && bun run lint && bun run test && bun run generate:skills:check && bun run build",
     "smoke:signals": "bun run scripts/signal-smoke.ts",
-    "smoke:regressions": "bun run scripts/regression-smoke.ts"
+    "smoke:regressions": "bun run scripts/regression-smoke.ts",
+    "sync:launchers": "bun run scripts/sync-launchers.ts",
+    "sync:launchers:check": "bun run scripts/sync-launchers.ts --check",
+    "smoke:launchers": "bun run scripts/smoke-launchers.ts"
   },
   "dependencies": {
     "@brew.new/sdk": "^13.3.0",

@@ -52,6 +52,11 @@ export type BrowserLoginOptions = {
   readonly resumeCommand: string
   /** Starts over (`brew-cli login`). */
   readonly restartCommand: string
+  /**
+   * The server to sign in on, when the caller already chose it (init keeps
+   * to the one .env.local is set up for). Default: flags, env, CLI config.
+   */
+  readonly apiUrl?: string
 }
 
 /** The machine-readable "approve it, then resume" result (exit 3). */
@@ -76,11 +81,13 @@ export async function startBrowserLogin(
   ctx: CliContext,
   options: BrowserLoginOptions
 ): Promise<BrowserLoginResult> {
-  const { apiUrl } = resolveAuth({
-    globals: ctx.globals,
-    env: ctx.io.env,
-    allowAnonymous: true,
-  })
+  const apiUrl =
+    options.apiUrl ??
+    resolveAuth({
+      globals: ctx.globals,
+      env: ctx.io.env,
+      allowAnonymous: true,
+    }).apiUrl
   const siteUrl = siteUrlFromApiUrl(apiUrl)
   const keyPair = await generateLoginKeyPair()
   const pollSecret = generatePollSecret()
