@@ -25317,10 +25317,7 @@ paths:
                       suggestion: Check the API key format and retry with a valid active key.
                       docs: https://docs.brew.new/api-reference/api/authentication
         "402":
-          description: |-
-            `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed.
-
-            `SEND_QUOTA_EXCEEDED`: The send or manual-audience run would exceed the plan’s monthly email volume. A send must fit at launch and draws from the allowance chunk by chunk as it delivers; `reserved` is only the batch going out right now (`details` carries `used`, `reserved`, `remaining`, `limit`, `planKey` and `requested`, and `periodEnd` when known). The window resets with the billing period.
+          description: "`INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed."
           headers:
             x-request-id:
               schema:
@@ -25347,15 +25344,6 @@ paths:
                         cost: 5
                         remaining: 0
                         planKey: free
-                sendQuotaExceeded:
-                  summary: SEND_QUOTA_EXCEEDED
-                  value:
-                    error:
-                      code: SEND_QUOTA_EXCEEDED
-                      type: payment_required
-                      message: The send or manual-audience run would exceed the plan’s monthly email volume. A send must fit at launch and draws from the allowance chunk by chunk as it delivers; `reserved` is only the batch going out right now (`details` carries `used`, `reserved`, `remaining`, `limit`, `planKey` and `requested`, and `periodEnd` when known). The window resets with the billing period.
-                      suggestion: Upgrade your plan for a higher monthly send volume, send to fewer recipients, or wait for the billing period to reset.
-                      docs: https://docs.brew.new/api-reference/api/credits
         "403":
           description: |-
             `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
@@ -37614,7 +37602,7 @@ paths:
       tags:
         - Automations
       summary: Test an automation
-      description: Runs the saved automation END-TO-END through the real workflow in TEST mode — works on drafts and for both event and manual-audience automations; every node executes (filters/splits evaluate against `payload`, and `contact.<name>` conditions read the test recipient’s contact unless `payload` supplies that field — a flat `contact.<name>` key or a `contact` object — and the trigger’s contract keeps extra keys; wait nodes fast-forward). Pass `testRecipient` to DELIVER each send-email node’s email for real to that address (real subject/preview/sender name; verified configured sender domains are preserved, otherwise delivery uses the Brew test domain; customer addresses are never hit; the address must be a teammate with access to the brand, an address on a verified sending domain of the brand, or, for a signed-in person (not an API key), their own address or one on their company domain, else `422 TEST_RECIPIENT_NOT_ALLOWED`) — omit it for a silent dry-run with no mail. Test runs are excluded from live analytics rollups. Real test deliveries consume send usage; dry runs do not. Test payloads never update real contact records. Returns `202` with the started run id; follow per-node status via `GET /v1/automations/runs/{automationRunId}?include=logs`. Optional `scenario` controls simulate timed opens/clicks at engagement-filter nodes and force left/right percentage-split choices (waits use a virtual clock; controls stay separate from `payload`, and simulated events never enter live analytics or send quotas); the run row’s `testCoverage` reports visited nodes, traversed connections, evaluated or forced decisions, uncovered paths and simulation limitations. On a Brew-event (unsubscribe) trigger, omit payload to use Brew’s sample event; supplied fields replace the sample’s. The run never creates or edits a contact.
+      description: Runs the saved automation END-TO-END through the real workflow in TEST mode — works on drafts and for both event and manual-audience automations; every node executes (filters/splits evaluate against `payload`, and `contact.<name>` conditions read the test recipient’s contact unless `payload` supplies that field — a flat `contact.<name>` key or a `contact` object — and the trigger’s contract keeps extra keys; wait nodes fast-forward). Pass `testRecipient` to DELIVER each send-email node’s email for real to that address (real subject/preview/sender name; verified configured sender domains are preserved, otherwise delivery uses the Brew test domain; customer addresses are never hit; the address must be a teammate with access to the brand, an address on a verified sending domain of the brand, or, for a signed-in person (not an API key), their own address or one on their company domain, else `422 TEST_RECIPIENT_NOT_ALLOWED`) — omit it for a silent dry-run with no mail. Test runs are excluded from live analytics rollups. Test deliveries never count toward the plan’s email sends. Test payloads never update real contact records. Returns `202` with the started run id; follow per-node status via `GET /v1/automations/runs/{automationRunId}?include=logs`. Optional `scenario` controls simulate timed opens/clicks at engagement-filter nodes and force left/right percentage-split choices (waits use a virtual clock; controls stay separate from `payload`, and simulated events never enter live analytics or send quotas); the run row’s `testCoverage` reports visited nodes, traversed connections, evaluated or forced decisions, uncovered paths and simulation limitations. On a Brew-event (unsubscribe) trigger, omit payload to use Brew’s sample event; supplied fields replace the sample’s. The run never creates or edits a contact.
       parameters:
         - name: Idempotency-Key
           in: header
