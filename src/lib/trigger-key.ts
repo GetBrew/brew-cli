@@ -1,4 +1,5 @@
 import { CliUsageError } from './errors'
+import { TRIGGER_KEY_PATTERN } from './project/state'
 
 /**
  * The trigger key grammar (brew-v2 `lib/triggers/trigger-key.ts`): 1–64
@@ -6,7 +7,7 @@ import { CliUsageError } from './errors'
  * ending with a letter or digit. Checked locally so a typo exits 2 before
  * any request instead of an API 400 (exit 1).
  */
-export const TRIGGER_KEY_PATTERN = /^[a-z0-9](?:[a-z0-9._-]{0,62}[a-z0-9])?$/
+export { TRIGGER_KEY_PATTERN }
 
 export function triggerKeyArg(value: unknown, label: string): string {
   const key = typeof value === 'string' ? value : ''
