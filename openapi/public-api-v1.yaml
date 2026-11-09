@@ -4785,6 +4785,9 @@ components:
             - gradual_send_paused
             - gradual_send_completed
             - send_limit_reached
+            - trial_ending
+            - trial_expired
+            - payment_failed
             - automation_pause_window_closed
             - send_review_rejected
             - comment_mention
@@ -5270,6 +5273,7 @@ components:
         - LIQUID_RENDER_ERROR
         - METHOD_NOT_ALLOWED
         - MISSING_EMAIL
+        - NO_ACTIVE_PLAN
         - NO_ELIGIBLE_RECIPIENTS
         - NO_PUBLISHED_AUTOMATION
         - NOT_FOUND
@@ -18933,6 +18937,9 @@ components:
                   - gradual_send_paused
                   - gradual_send_completed
                   - send_limit_reached
+                  - trial_ending
+                  - trial_expired
+                  - payment_failed
                   - automation_pause_window_closed
                   - send_review_rejected
                   - comment_mention
@@ -19809,7 +19816,10 @@ paths:
                       suggestion: Check the API key format and retry with a valid active key.
                       docs: https://docs.brew.new/api-reference/api/authentication
         "402":
-          description: "`INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed."
+          description: |-
+            `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed.
+
+            `NO_ACTIVE_PLAN`: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
           headers:
             x-request-id:
               schema:
@@ -19836,6 +19846,17 @@ paths:
                         cost: 5
                         remaining: 0
                         planKey: free
+                noActivePlan:
+                  summary: NO_ACTIVE_PLAN
+                  value:
+                    error:
+                      code: NO_ACTIVE_PLAN
+                      type: payment_required
+                      message: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
+                      suggestion: An organization admin must choose a plan, or update the payment method, at https://brew.new/plan. Check the current state up front with GET /v1/usage.
+                      docs: https://docs.brew.new/api-reference/api/credits
+                      details:
+                        reason: NO_PLAN
         "403":
           description: |-
             `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
@@ -20815,7 +20836,10 @@ paths:
                       suggestion: Check the API key format and retry with a valid active key.
                       docs: https://docs.brew.new/api-reference/api/authentication
         "402":
-          description: "`INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed."
+          description: |-
+            `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed.
+
+            `NO_ACTIVE_PLAN`: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
           headers:
             x-request-id:
               schema:
@@ -20842,6 +20866,17 @@ paths:
                         cost: 5
                         remaining: 0
                         planKey: free
+                noActivePlan:
+                  summary: NO_ACTIVE_PLAN
+                  value:
+                    error:
+                      code: NO_ACTIVE_PLAN
+                      type: payment_required
+                      message: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
+                      suggestion: An organization admin must choose a plan, or update the payment method, at https://brew.new/plan. Check the current state up front with GET /v1/usage.
+                      docs: https://docs.brew.new/api-reference/api/credits
+                      details:
+                        reason: NO_PLAN
         "403":
           description: |-
             `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
@@ -24166,7 +24201,10 @@ paths:
                       suggestion: Check the API key format and retry with a valid active key.
                       docs: https://docs.brew.new/api-reference/api/authentication
         "402":
-          description: "`INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed."
+          description: |-
+            `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed.
+
+            `NO_ACTIVE_PLAN`: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
           headers:
             x-request-id:
               schema:
@@ -24193,6 +24231,17 @@ paths:
                         cost: 5
                         remaining: 0
                         planKey: free
+                noActivePlan:
+                  summary: NO_ACTIVE_PLAN
+                  value:
+                    error:
+                      code: NO_ACTIVE_PLAN
+                      type: payment_required
+                      message: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
+                      suggestion: An organization admin must choose a plan, or update the payment method, at https://brew.new/plan. Check the current state up front with GET /v1/usage.
+                      docs: https://docs.brew.new/api-reference/api/credits
+                      details:
+                        reason: NO_PLAN
         "403":
           description: |-
             `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
@@ -24826,7 +24875,10 @@ paths:
                       suggestion: Check the API key format and retry with a valid active key.
                       docs: https://docs.brew.new/api-reference/api/authentication
         "402":
-          description: "`INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed."
+          description: |-
+            `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed.
+
+            `NO_ACTIVE_PLAN`: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
           headers:
             x-request-id:
               schema:
@@ -24853,6 +24905,17 @@ paths:
                         cost: 5
                         remaining: 0
                         planKey: free
+                noActivePlan:
+                  summary: NO_ACTIVE_PLAN
+                  value:
+                    error:
+                      code: NO_ACTIVE_PLAN
+                      type: payment_required
+                      message: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
+                      suggestion: An organization admin must choose a plan, or update the payment method, at https://brew.new/plan. Check the current state up front with GET /v1/usage.
+                      docs: https://docs.brew.new/api-reference/api/credits
+                      details:
+                        reason: NO_PLAN
         "403":
           description: |-
             `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
@@ -25317,7 +25380,10 @@ paths:
                       suggestion: Check the API key format and retry with a valid active key.
                       docs: https://docs.brew.new/api-reference/api/authentication
         "402":
-          description: "`INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed."
+          description: |-
+            `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed.
+
+            `NO_ACTIVE_PLAN`: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
           headers:
             x-request-id:
               schema:
@@ -25344,6 +25410,17 @@ paths:
                         cost: 5
                         remaining: 0
                         planKey: free
+                noActivePlan:
+                  summary: NO_ACTIVE_PLAN
+                  value:
+                    error:
+                      code: NO_ACTIVE_PLAN
+                      type: payment_required
+                      message: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
+                      suggestion: An organization admin must choose a plan, or update the payment method, at https://brew.new/plan. Check the current state up front with GET /v1/usage.
+                      docs: https://docs.brew.new/api-reference/api/credits
+                      details:
+                        reason: NO_PLAN
         "403":
           description: |-
             `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
@@ -47660,7 +47737,10 @@ paths:
                       suggestion: Check the API key format and retry with a valid active key.
                       docs: https://docs.brew.new/api-reference/api/authentication
         "402":
-          description: "`INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed."
+          description: |-
+            `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed.
+
+            `NO_ACTIVE_PLAN`: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
           headers:
             x-request-id:
               schema:
@@ -47687,6 +47767,17 @@ paths:
                         cost: 5
                         remaining: 0
                         planKey: free
+                noActivePlan:
+                  summary: NO_ACTIVE_PLAN
+                  value:
+                    error:
+                      code: NO_ACTIVE_PLAN
+                      type: payment_required
+                      message: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
+                      suggestion: An organization admin must choose a plan, or update the payment method, at https://brew.new/plan. Check the current state up front with GET /v1/usage.
+                      docs: https://docs.brew.new/api-reference/api/credits
+                      details:
+                        reason: NO_PLAN
         "403":
           description: |-
             `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
@@ -50184,7 +50275,10 @@ paths:
                       suggestion: Check the API key format and retry with a valid active key.
                       docs: https://docs.brew.new/api-reference/api/authentication
         "402":
-          description: "`INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed."
+          description: |-
+            `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed.
+
+            `NO_ACTIVE_PLAN`: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
           headers:
             x-request-id:
               schema:
@@ -50211,6 +50305,17 @@ paths:
                         cost: 5
                         remaining: 0
                         planKey: free
+                noActivePlan:
+                  summary: NO_ACTIVE_PLAN
+                  value:
+                    error:
+                      code: NO_ACTIVE_PLAN
+                      type: payment_required
+                      message: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
+                      suggestion: An organization admin must choose a plan, or update the payment method, at https://brew.new/plan. Check the current state up front with GET /v1/usage.
+                      docs: https://docs.brew.new/api-reference/api/credits
+                      details:
+                        reason: NO_PLAN
         "403":
           description: |-
             `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
@@ -50679,7 +50784,10 @@ paths:
                       suggestion: Check the API key format and retry with a valid active key.
                       docs: https://docs.brew.new/api-reference/api/authentication
         "402":
-          description: "`INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed."
+          description: |-
+            `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed.
+
+            `NO_ACTIVE_PLAN`: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
           headers:
             x-request-id:
               schema:
@@ -50706,6 +50814,17 @@ paths:
                         cost: 5
                         remaining: 0
                         planKey: free
+                noActivePlan:
+                  summary: NO_ACTIVE_PLAN
+                  value:
+                    error:
+                      code: NO_ACTIVE_PLAN
+                      type: payment_required
+                      message: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
+                      suggestion: An organization admin must choose a plan, or update the payment method, at https://brew.new/plan. Check the current state up front with GET /v1/usage.
+                      docs: https://docs.brew.new/api-reference/api/credits
+                      details:
+                        reason: NO_PLAN
         "403":
           description: |-
             `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
@@ -51188,7 +51307,10 @@ paths:
                       suggestion: Check the API key format and retry with a valid active key.
                       docs: https://docs.brew.new/api-reference/api/authentication
         "402":
-          description: "`INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed."
+          description: |-
+            `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed.
+
+            `NO_ACTIVE_PLAN`: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
           headers:
             x-request-id:
               schema:
@@ -51215,6 +51337,17 @@ paths:
                         cost: 5
                         remaining: 0
                         planKey: free
+                noActivePlan:
+                  summary: NO_ACTIVE_PLAN
+                  value:
+                    error:
+                      code: NO_ACTIVE_PLAN
+                      type: payment_required
+                      message: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
+                      suggestion: An organization admin must choose a plan, or update the payment method, at https://brew.new/plan. Check the current state up front with GET /v1/usage.
+                      docs: https://docs.brew.new/api-reference/api/credits
+                      details:
+                        reason: NO_PLAN
         "403":
           description: |-
             `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
@@ -64322,6 +64455,8 @@ paths:
             `BRAND_LIMIT_REACHED`: The plan allows no more brands.
 
             `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed.
+
+            `NO_ACTIVE_PLAN`: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
           headers:
             x-request-id:
               schema:
@@ -64357,6 +64492,17 @@ paths:
                         cost: 5
                         remaining: 0
                         planKey: free
+                noActivePlan:
+                  summary: NO_ACTIVE_PLAN
+                  value:
+                    error:
+                      code: NO_ACTIVE_PLAN
+                      type: payment_required
+                      message: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
+                      suggestion: An organization admin must choose a plan, or update the payment method, at https://brew.new/plan. Check the current state up front with GET /v1/usage.
+                      docs: https://docs.brew.new/api-reference/api/credits
+                      details:
+                        reason: NO_PLAN
         "403":
           description: |-
             `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
@@ -65007,7 +65153,10 @@ paths:
                       suggestion: Check the API key format and retry with a valid active key.
                       docs: https://docs.brew.new/api-reference/api/authentication
         "402":
-          description: "`INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed."
+          description: |-
+            `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed.
+
+            `NO_ACTIVE_PLAN`: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
           headers:
             x-request-id:
               schema:
@@ -65034,6 +65183,17 @@ paths:
                         cost: 5
                         remaining: 0
                         planKey: free
+                noActivePlan:
+                  summary: NO_ACTIVE_PLAN
+                  value:
+                    error:
+                      code: NO_ACTIVE_PLAN
+                      type: payment_required
+                      message: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
+                      suggestion: An organization admin must choose a plan, or update the payment method, at https://brew.new/plan. Check the current state up front with GET /v1/usage.
+                      docs: https://docs.brew.new/api-reference/api/credits
+                      details:
+                        reason: NO_PLAN
         "403":
           description: |-
             `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
@@ -65448,7 +65608,10 @@ paths:
                       suggestion: Check the API key format and retry with a valid active key.
                       docs: https://docs.brew.new/api-reference/api/authentication
         "402":
-          description: "`INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed."
+          description: |-
+            `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed.
+
+            `NO_ACTIVE_PLAN`: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
           headers:
             x-request-id:
               schema:
@@ -65475,6 +65638,17 @@ paths:
                         cost: 5
                         remaining: 0
                         planKey: free
+                noActivePlan:
+                  summary: NO_ACTIVE_PLAN
+                  value:
+                    error:
+                      code: NO_ACTIVE_PLAN
+                      type: payment_required
+                      message: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
+                      suggestion: An organization admin must choose a plan, or update the payment method, at https://brew.new/plan. Check the current state up front with GET /v1/usage.
+                      docs: https://docs.brew.new/api-reference/api/credits
+                      details:
+                        reason: NO_PLAN
         "403":
           description: |-
             `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
@@ -65889,7 +66063,10 @@ paths:
                       suggestion: Check the API key format and retry with a valid active key.
                       docs: https://docs.brew.new/api-reference/api/authentication
         "402":
-          description: "`INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed."
+          description: |-
+            `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed.
+
+            `NO_ACTIVE_PLAN`: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
           headers:
             x-request-id:
               schema:
@@ -65916,6 +66093,17 @@ paths:
                         cost: 5
                         remaining: 0
                         planKey: free
+                noActivePlan:
+                  summary: NO_ACTIVE_PLAN
+                  value:
+                    error:
+                      code: NO_ACTIVE_PLAN
+                      type: payment_required
+                      message: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
+                      suggestion: An organization admin must choose a plan, or update the payment method, at https://brew.new/plan. Check the current state up front with GET /v1/usage.
+                      docs: https://docs.brew.new/api-reference/api/credits
+                      details:
+                        reason: NO_PLAN
         "403":
           description: |-
             `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
@@ -66330,7 +66518,10 @@ paths:
                       suggestion: Check the API key format and retry with a valid active key.
                       docs: https://docs.brew.new/api-reference/api/authentication
         "402":
-          description: "`INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed."
+          description: |-
+            `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed.
+
+            `NO_ACTIVE_PLAN`: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
           headers:
             x-request-id:
               schema:
@@ -66357,6 +66548,17 @@ paths:
                         cost: 5
                         remaining: 0
                         planKey: free
+                noActivePlan:
+                  summary: NO_ACTIVE_PLAN
+                  value:
+                    error:
+                      code: NO_ACTIVE_PLAN
+                      type: payment_required
+                      message: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
+                      suggestion: An organization admin must choose a plan, or update the payment method, at https://brew.new/plan. Check the current state up front with GET /v1/usage.
+                      docs: https://docs.brew.new/api-reference/api/credits
+                      details:
+                        reason: NO_PLAN
         "403":
           description: |-
             `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
@@ -70646,6 +70848,9 @@ paths:
               - gradual_send_paused
               - gradual_send_completed
               - send_limit_reached
+              - trial_ending
+              - trial_expired
+              - payment_failed
               - automation_pause_window_closed
               - send_review_rejected
               - comment_mention
