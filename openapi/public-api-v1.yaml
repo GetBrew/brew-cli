@@ -9,7 +9,7 @@ info:
     - Identity is always in the path. `GET /v1/<collection>` lists (`{ data, pagination: { limit, cursor, hasMore } }`; page until `cursor` is `null`), and `GET /v1/<collection>/{id}` returns the bare resource, the same object a write returns. `?include=` expands relations on a detail read only, and is `400` on a list. There is no `?<idKey>=` read anywhere.
     - Writes carry identity in the path and return the bare resource: `POST /v1/<collection>` creates (`201`, or `202` when work continues asynchronously), `PATCH` and `DELETE /v1/<collection>/{id}` update or delete (`DELETE` answers `{ <idField>, deleted }` and is idempotent). Lifecycle state changes such as publishing ride `PATCH` as attributes. Two writes report more than the row and say so in their shape: `POST` and `PATCH /v1/contacts` are upserts that answer `{ contact, created | updated, … }` because whether a row was created, which fields changed, and which field definitions were minted are facts about the write, not about the contact.
     - Non-CRUD operations are explicit action sub-paths, for example `POST /v1/automations/{automationId}/test`, `POST /v1/domains/{domainId}/verify`, `POST /v1/sends/{sendId}/cancel` and `POST /v1/automations/triggers/{triggerEventId}/fire`.
-    - Every resource has one root. Sends read and write at `/v1/sends`, fired triggers at `/v1/automations/trigger-instances`, and `/v1/analytics/*` holds only reports (aggregates over a window). Every endpoint answers in the same envelopes, with no exceptions.
+    - Every resource has one root. Sends read and write at `/v1/sends`, fired triggers at `/v1/automations/trigger-instances`, and `/v1/analytics/*` holds reports plus product-event collection and identity-token issuance. Product-event batches return accepted IDs and per-event rejections after durable ingestion.
     - Field names are camelCase; enum values are lowercase snake_case; timestamps are ISO 8601 UTC strings. Identifiers are opaque strings of at most 64 characters (`triggerEventId` up to 256); never parse a prefix.
     - Everything that runs shares one status vocabulary: `queued`, `scheduled`, `running`, `paused`, `completed`, `partially_completed`, `failed`, `canceled`. It covers sends, automation runs, manual audience runs, audience builds and inbox placement tests, so one status switch reads them all. A step inside a run is `running`, `completed`, `failed` or `skipped`.
     - Every error on every endpoint is `{ error: { code, type, message, suggestion, docs, param?, retryAfter?, details? } }`. Branch on `code`: the closed list is the `ApiErrorCode` component and every operation documents exactly the codes it can return. Non-fatal caveats arrive as `warnings: [{ code, message, field? }]` on `2xx` bodies.
@@ -602,7 +602,8 @@ components:
             - manual
             - plan_limit
             - domain_unsendable
-          description: "Why a paused send is held. `plan_limit`: the plan has too few sends left this period. `domain_unsendable`: its sending domain stopped passing DNS; fails after 7 days. Both resume on their own and can be canceled. `manual`: its operator paused the gradual ramp; resume it to continue."
+            - bounce_rate
+          description: "Why a paused send is held. `plan_limit`: the plan has too few sends left this period. `domain_unsendable`: its sending domain stopped passing DNS; fails after 7 days. Both resume on their own and can be canceled. `manual`: its operator paused the gradual ramp; resume it to continue. `bounce_rate`: at least 4% of its recipients hard-bounced or 0.3% marked it as spam; check the list, then resume or cancel it."
         subject:
           type: string
         previewText:
@@ -667,6 +668,10 @@ components:
             bounced:
               type: integer
               minimum: 0
+            hardBounced:
+              type: integer
+              minimum: 0
+              description: Permanent (hard) bounces, a subset of `bounced`. Absent on older sends.
             complained:
               type: integer
               minimum: 0
@@ -2794,6 +2799,7 @@ components:
             - brew_api
             - custom
             - brew_event
+            - analytics_event
             - clerk
             - stytch
             - supabase
@@ -2918,6 +2924,7 @@ components:
             - api
             - integration
             - brew_event
+            - analytics_event
         provider:
           type: string
         triggerEventId:
@@ -4778,6 +4785,9 @@ components:
             - gradual_send_paused
             - gradual_send_completed
             - send_limit_reached
+            - trial_ending
+            - trial_expired
+            - payment_failed
             - automation_pause_window_closed
             - send_review_rejected
             - comment_mention
@@ -5263,6 +5273,7 @@ components:
         - LIQUID_RENDER_ERROR
         - METHOD_NOT_ALLOWED
         - MISSING_EMAIL
+        - NO_ACTIVE_PLAN
         - NO_ELIGIBLE_RECIPIENTS
         - NO_PUBLISHED_AUTOMATION
         - NOT_FOUND
@@ -5301,6 +5312,7 @@ components:
         - UPLOAD_IN_PROGRESS
         - UPLOAD_NOT_FOUND
         - UPLOAD_NOT_RECEIVED
+        - WRITE_CONFLICT
     EmailGenerateTextResponse:
       type: object
       properties:
@@ -7382,7 +7394,8 @@ components:
                   - manual
                   - plan_limit
                   - domain_unsendable
-                description: "Why a paused send is held. `plan_limit`: the plan has too few sends left this period. `domain_unsendable`: its sending domain stopped passing DNS; fails after 7 days. Both resume on their own and can be canceled. `manual`: its operator paused the gradual ramp; resume it to continue."
+                  - bounce_rate
+                description: "Why a paused send is held. `plan_limit`: the plan has too few sends left this period. `domain_unsendable`: its sending domain stopped passing DNS; fails after 7 days. Both resume on their own and can be canceled. `manual`: its operator paused the gradual ramp; resume it to continue. `bounce_rate`: at least 4% of its recipients hard-bounced or 0.3% marked it as spam; check the list, then resume or cancel it."
               subject:
                 type: string
               previewText:
@@ -7447,6 +7460,10 @@ components:
                   bounced:
                     type: integer
                     minimum: 0
+                  hardBounced:
+                    type: integer
+                    minimum: 0
+                    description: Permanent (hard) bounces, a subset of `bounced`. Absent on older sends.
                   complained:
                     type: integer
                     minimum: 0
@@ -7997,6 +8014,200 @@ components:
       required:
         - sendId
         - status
+      additionalProperties: false
+    ProductAnalyticsTrackResponse:
+      type: object
+      properties:
+        accepted:
+          type: array
+          items:
+            type: string
+            minLength: 1
+            maxLength: 128
+        rejected:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                minLength: 1
+                maxLength: 128
+              reason:
+                type: string
+                minLength: 1
+                maxLength: 256
+            required:
+              - id
+              - reason
+            additionalProperties: false
+      required:
+        - accepted
+        - rejected
+      additionalProperties: false
+    ProductAnalyticsTrackRequest:
+      type: object
+      properties:
+        projectId:
+          type: string
+          minLength: 1
+          maxLength: 128
+        events:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProductAnalyticsEvent"
+          minItems: 1
+          maxItems: 50
+      required:
+        - projectId
+        - events
+      additionalProperties: false
+    ProductAnalyticsEvent:
+      type: object
+      properties:
+        schemaVersion:
+          type: number
+          enum:
+            - 1
+        id:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: Stable event ID. Reuse it when retrying the same event.
+        type:
+          type: string
+          enum:
+            - track
+            - page
+            - identify
+            - group
+            - engagement
+            - error
+            - vital
+        name:
+          type: string
+          minLength: 1
+          maxLength: 128
+        occurredAt:
+          type: string
+          format: date-time
+        anonymousId:
+          type: string
+          minLength: 1
+          maxLength: 128
+        userId:
+          type: string
+          minLength: 1
+          maxLength: 256
+        sessionId:
+          type: string
+          minLength: 1
+          maxLength: 128
+        tabId:
+          type: string
+          minLength: 1
+          maxLength: 128
+        pageViewId:
+          type: string
+          minLength: 1
+          maxLength: 128
+        properties:
+          type: object
+          additionalProperties: {}
+          description: JSON event properties. At most 50 keys and 8 KiB for the entire event.
+        context:
+          type: object
+          properties:
+            url:
+              type: string
+              maxLength: 2048
+            path:
+              type: string
+              maxLength: 2048
+            referrer:
+              type: string
+              maxLength: 2048
+            title:
+              type: string
+              maxLength: 256
+          additionalProperties: false
+        sdk:
+          type: object
+          properties:
+            name:
+              type: string
+              minLength: 1
+              maxLength: 64
+            version:
+              type: string
+              minLength: 1
+              maxLength: 64
+          required:
+            - name
+            - version
+          additionalProperties: false
+        configVersion:
+          type: string
+          maxLength: 128
+        sampleRate:
+          type: number
+          exclusiveMinimum: 0
+          maximum: 1
+        identityToken:
+          type: string
+          maxLength: 4096
+      required:
+        - schemaVersion
+        - id
+        - type
+        - name
+        - occurredAt
+        - anonymousId
+        - sessionId
+        - tabId
+        - pageViewId
+        - properties
+        - context
+        - sdk
+      additionalProperties: false
+    ProductAnalyticsIdentityTokenResponse:
+      type: object
+      properties:
+        token:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+      required:
+        - token
+        - expiresAt
+      additionalProperties: false
+    ProductAnalyticsIdentityTokenRequest:
+      type: object
+      properties:
+        projectId:
+          type: string
+          minLength: 1
+          maxLength: 128
+        userId:
+          type: string
+          minLength: 1
+          maxLength: 256
+          description: Opaque application user ID, verified by the calling application.
+        anonymousId:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: The browser SDK anonymous ID to bind to this user.
+        contactId:
+          type: string
+          pattern: ^[a-fA-F0-9]{24}$
+          description: Existing contact ID in the API credential’s selected brand.
+      required:
+        - projectId
+        - userId
+        - anonymousId
+        - contactId
       additionalProperties: false
     AnalyticsOverviewResponse:
       type: object
@@ -11083,6 +11294,215 @@ components:
               - field
               - message
             additionalProperties: {}
+        runs:
+          type: array
+          items:
+            type: object
+            properties:
+              automationRunId:
+                type: string
+                minLength: 1
+                maxLength: 64
+              automationId:
+                type: string
+                minLength: 1
+                maxLength: 64
+              automationVersionId:
+                type: string
+                minLength: 1
+                maxLength: 64
+              definitionHash:
+                type: string
+                minLength: 64
+                maxLength: 64
+              triggerInstanceId:
+                type: string
+                minLength: 4
+                maxLength: 64
+              mode:
+                type: string
+                enum:
+                  - live
+                  - test
+              status:
+                type: string
+                enum:
+                  - queued
+                  - running
+                  - completed
+                  - failed
+                  - canceled
+              recipientEmail:
+                type: string
+              startedAt:
+                type: string
+                format: date-time
+              completedAt:
+                type: string
+                format: date-time
+              error:
+                type: string
+              testCoverage:
+                type: object
+                properties:
+                  mode:
+                    type: string
+                    enum:
+                      - smoke
+                      - scenario
+                  complete:
+                    type: boolean
+                  visitedNodes:
+                    type: array
+                    items:
+                      type: string
+                  unvisitedNodes:
+                    type: array
+                    items:
+                      type: string
+                  traversedConnections:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        from:
+                          type: string
+                          minLength: 1
+                          maxLength: 200
+                          description: The id of the automation node this control applies to.
+                        to:
+                          type: string
+                          minLength: 1
+                          maxLength: 200
+                          description: The id of the automation node this control applies to.
+                        branch:
+                          type: string
+                      required:
+                        - from
+                        - to
+                  untraversedConnections:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        from:
+                          type: string
+                          minLength: 1
+                          maxLength: 200
+                          description: The id of the automation node this control applies to.
+                        to:
+                          type: string
+                          minLength: 1
+                          maxLength: 200
+                          description: The id of the automation node this control applies to.
+                        branch:
+                          type: string
+                      required:
+                        - from
+                        - to
+                  decisions:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        nodeId:
+                          type: string
+                          minLength: 1
+                          maxLength: 200
+                          description: The id of the automation node this control applies to.
+                        branch:
+                          type: string
+                        source:
+                          type: string
+                          enum:
+                            - simulated
+                            - forced
+                            - deterministic
+                            - payload
+                            - smoke
+                            - upstream_not_delivered
+                      required:
+                        - nodeId
+                        - branch
+                        - source
+                  limitations:
+                    type: array
+                    items:
+                      type: string
+                required:
+                  - mode
+                  - complete
+                  - visitedNodes
+                  - unvisitedNodes
+                  - traversedConnections
+                  - untraversedConnections
+                  - decisions
+                  - limitations
+              logs:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    automationRunId:
+                      type: string
+                      minLength: 1
+                      maxLength: 64
+                    nodeId:
+                      type: string
+                      minLength: 1
+                    nodeName:
+                      type: string
+                      minLength: 1
+                    nodeType:
+                      type: string
+                      enum:
+                        - trigger
+                        - wait
+                        - filter
+                        - split
+                        - sendEmail
+                    status:
+                      type: string
+                      enum:
+                        - running
+                        - completed
+                        - failed
+                        - skipped
+                    orderIndex:
+                      type: integer
+                      minimum: 0
+                    branch:
+                      type: string
+                      minLength: 1
+                    durationMs:
+                      type: integer
+                      minimum: 0
+                    startedAt:
+                      type: string
+                      format: date-time
+                    completedAt:
+                      type: string
+                      format: date-time
+                    error:
+                      type: string
+                  required:
+                    - automationRunId
+                    - nodeId
+                    - nodeName
+                    - nodeType
+                    - status
+                    - orderIndex
+                    - startedAt
+                  additionalProperties: false
+              logsTruncated:
+                type: boolean
+            required:
+              - automationRunId
+              - automationId
+              - mode
+              - status
+            additionalProperties: false
+          description: "MCP only: the started runs as read after the call waited for them to finish. Never set on HTTP responses; read runs with GET /v1/automations/runs/{automationRunId}."
       required:
         - automationRunIds
         - status
@@ -12030,6 +12450,7 @@ components:
             - brew_api
             - custom
             - brew_event
+            - analytics_event
             - clerk
             - stytch
             - supabase
@@ -12171,6 +12592,7 @@ components:
                   - brew_api
                   - custom
                   - brew_event
+                  - analytics_event
                   - clerk
                   - stytch
                   - supabase
@@ -12927,6 +13349,7 @@ components:
                   - api
                   - integration
                   - brew_event
+                  - analytics_event
               provider:
                 type: string
               triggerEventId:
@@ -14150,7 +14573,7 @@ components:
         audienceId:
           type: string
           minLength: 1
-          description: Scope to a saved audience's members. The audience's stored filter set is evaluated as one unit with its own `logicalOperator` (an OR audience stays an OR), then ANDed with `filters`. Unknown / cross-brand id, or an audience a send would refuse (unusable filters, a cohort still building) → 400.
+          description: Scope to a saved audience's members. The audience's stored filter set is evaluated as one unit with its own `logicalOperator` (an OR audience stays an OR), then ANDed with `filters`. Unknown / cross-brand id, or an audience a send would refuse (unusable filters, a cohort still building) → 400. Omit it, or pass the reserved `all`, to search every contact.
         logic:
           type: string
           enum:
@@ -18514,6 +18937,9 @@ components:
                   - gradual_send_paused
                   - gradual_send_completed
                   - send_limit_reached
+                  - trial_ending
+                  - trial_expired
+                  - payment_failed
                   - automation_pause_window_closed
                   - send_review_rejected
                   - comment_mention
@@ -19390,7 +19816,10 @@ paths:
                       suggestion: Check the API key format and retry with a valid active key.
                       docs: https://docs.brew.new/api-reference/api/authentication
         "402":
-          description: "`INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed."
+          description: |-
+            `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed.
+
+            `NO_ACTIVE_PLAN`: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
           headers:
             x-request-id:
               schema:
@@ -19417,6 +19846,17 @@ paths:
                         cost: 5
                         remaining: 0
                         planKey: free
+                noActivePlan:
+                  summary: NO_ACTIVE_PLAN
+                  value:
+                    error:
+                      code: NO_ACTIVE_PLAN
+                      type: payment_required
+                      message: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
+                      suggestion: An organization admin must choose a plan, or update the payment method, at https://brew.new/plan. Check the current state up front with GET /v1/usage.
+                      docs: https://docs.brew.new/api-reference/api/credits
+                      details:
+                        reason: NO_PLAN
         "403":
           description: |-
             `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
@@ -19612,7 +20052,7 @@ paths:
               schema:
                 type: integer
                 description: Requests allowed in the current rolling rate limit window.
-                example: 10
+                example: 20
               required: true
               description: Requests allowed in the current rolling rate limit window.
             X-RateLimit-Remaining:
@@ -19653,7 +20093,7 @@ paths:
                       retryAfter: 42
                       details:
                         scope: credential
-                        limit: 10
+                        limit: 20
                         remaining: 0
                         reset: 1712592360
                         consumed: false
@@ -19740,6 +20180,7 @@ paths:
       x-brew-brand-scope: brand
       x-brew-idempotency: replay
       x-brew-credited: true
+      x-brew-rate-policy: emails.generate
   /v1/emails/{emailId}:
     get:
       operationId: getEmail
@@ -20395,7 +20836,10 @@ paths:
                       suggestion: Check the API key format and retry with a valid active key.
                       docs: https://docs.brew.new/api-reference/api/authentication
         "402":
-          description: "`INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed."
+          description: |-
+            `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed.
+
+            `NO_ACTIVE_PLAN`: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
           headers:
             x-request-id:
               schema:
@@ -20422,6 +20866,17 @@ paths:
                         cost: 5
                         remaining: 0
                         planKey: free
+                noActivePlan:
+                  summary: NO_ACTIVE_PLAN
+                  value:
+                    error:
+                      code: NO_ACTIVE_PLAN
+                      type: payment_required
+                      message: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
+                      suggestion: An organization admin must choose a plan, or update the payment method, at https://brew.new/plan. Check the current state up front with GET /v1/usage.
+                      docs: https://docs.brew.new/api-reference/api/credits
+                      details:
+                        reason: NO_PLAN
         "403":
           description: |-
             `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
@@ -22588,6 +23043,37 @@ paths:
                       message: An unexpected failure; the x-request-id header identifies it.
                       suggestion: Retry the request. If it keeps failing, contact support with the x-request-id header.
                       docs: https://docs.brew.new/api-reference/api/errors
+        "503":
+          description: "`WRITE_CONFLICT`: Other writes to the same records kept conflicting with this one, so nothing was saved."
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+            Retry-After:
+              schema:
+                type: integer
+                description: Seconds to wait before retrying the request.
+                example: 42
+              required: true
+              description: Seconds to wait before retrying the request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                writeConflict:
+                  summary: WRITE_CONFLICT
+                  value:
+                    error:
+                      code: WRITE_CONFLICT
+                      type: service_unavailable
+                      message: Other writes to the same records kept conflicting with this one, so nothing was saved.
+                      suggestion: Wait the Retry-After time (a few seconds), then retry the same request. Spread out bursts of parallel writes to one brand.
+                      docs: https://docs.brew.new/api-reference/api/errors
       x-brew-scope: emails
       x-brew-brand-scope: brand
       x-brew-idempotency: replay
@@ -23715,7 +24201,10 @@ paths:
                       suggestion: Check the API key format and retry with a valid active key.
                       docs: https://docs.brew.new/api-reference/api/authentication
         "402":
-          description: "`INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed."
+          description: |-
+            `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed.
+
+            `NO_ACTIVE_PLAN`: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
           headers:
             x-request-id:
               schema:
@@ -23742,6 +24231,17 @@ paths:
                         cost: 5
                         remaining: 0
                         planKey: free
+                noActivePlan:
+                  summary: NO_ACTIVE_PLAN
+                  value:
+                    error:
+                      code: NO_ACTIVE_PLAN
+                      type: payment_required
+                      message: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
+                      suggestion: An organization admin must choose a plan, or update the payment method, at https://brew.new/plan. Check the current state up front with GET /v1/usage.
+                      docs: https://docs.brew.new/api-reference/api/credits
+                      details:
+                        reason: NO_PLAN
         "403":
           description: |-
             `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
@@ -24375,7 +24875,10 @@ paths:
                       suggestion: Check the API key format and retry with a valid active key.
                       docs: https://docs.brew.new/api-reference/api/authentication
         "402":
-          description: "`INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed."
+          description: |-
+            `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed.
+
+            `NO_ACTIVE_PLAN`: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
           headers:
             x-request-id:
               schema:
@@ -24402,6 +24905,17 @@ paths:
                         cost: 5
                         remaining: 0
                         planKey: free
+                noActivePlan:
+                  summary: NO_ACTIVE_PLAN
+                  value:
+                    error:
+                      code: NO_ACTIVE_PLAN
+                      type: payment_required
+                      message: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
+                      suggestion: An organization admin must choose a plan, or update the payment method, at https://brew.new/plan. Check the current state up front with GET /v1/usage.
+                      docs: https://docs.brew.new/api-reference/api/credits
+                      details:
+                        reason: NO_PLAN
         "403":
           description: |-
             `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
@@ -24869,7 +25383,7 @@ paths:
           description: |-
             `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed.
 
-            `SEND_QUOTA_EXCEEDED`: The send or manual-audience run would exceed the plan’s monthly email volume. A send must fit at launch and draws from the allowance chunk by chunk as it delivers; `reserved` is only the batch going out right now (`details` carries `used`, `reserved`, `remaining`, `limit`, `planKey` and `requested`, and `periodEnd` when known). The window resets with the billing period.
+            `NO_ACTIVE_PLAN`: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
           headers:
             x-request-id:
               schema:
@@ -24896,15 +25410,17 @@ paths:
                         cost: 5
                         remaining: 0
                         planKey: free
-                sendQuotaExceeded:
-                  summary: SEND_QUOTA_EXCEEDED
+                noActivePlan:
+                  summary: NO_ACTIVE_PLAN
                   value:
                     error:
-                      code: SEND_QUOTA_EXCEEDED
+                      code: NO_ACTIVE_PLAN
                       type: payment_required
-                      message: The send or manual-audience run would exceed the plan’s monthly email volume. A send must fit at launch and draws from the allowance chunk by chunk as it delivers; `reserved` is only the batch going out right now (`details` carries `used`, `reserved`, `remaining`, `limit`, `planKey` and `requested`, and `periodEnd` when known). The window resets with the billing period.
-                      suggestion: Upgrade your plan for a higher monthly send volume, send to fewer recipients, or wait for the billing period to reset.
+                      message: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
+                      suggestion: An organization admin must choose a plan, or update the payment method, at https://brew.new/plan. Check the current state up front with GET /v1/usage.
                       docs: https://docs.brew.new/api-reference/api/credits
+                      details:
+                        reason: NO_PLAN
         "403":
           description: |-
             `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
@@ -32438,8 +32954,8 @@ paths:
       operationId: resumeSend
       tags:
         - Emails
-      summary: Resume a paused gradual send
-      description: "Resumes a manually paused GRADUAL send. The ramp picks the resume up at its next hold check (seconds after a short pause, up to an hour after a long one); the unsent tail is re-spread and later batches shift so missed intervals do not compress into a burst. A send held at the plan limit resumes on its own once the plan allowance is available; any other send returns `409 SEND_NOT_RESUMABLE`. Brand-scoped: an unknown / cross-brand `sendId` is `404`."
+      summary: Resume a paused send
+      description: "Resumes a manually paused GRADUAL send, or any campaign paused for its bounce or complaint rate (`pauseReason: bounce_rate`; such a send is never paused for it again). The send picks the resume up at its next hold check (seconds after a short pause, up to an hour after a long one); a ramp re-spreads its unsent tail and shifts later batches so missed intervals do not compress into a burst. A send held at the plan limit resumes on its own once the plan allowance is available; any other send returns `409 SEND_NOT_RESUMABLE`. Brand-scoped: an unknown / cross-brand `sendId` is `404`."
       parameters:
         - name: Idempotency-Key
           in: header
@@ -32820,6 +33336,834 @@ paths:
       x-brew-idempotency: replay
       x-brew-credited: false
       x-brew-rate-policy: sends.write
+  /v1/analytics/track:
+    post:
+      operationId: trackProductAnalytics
+      tags:
+        - Analytics
+      summary: Track product analytics events from a trusted server
+      description: |-
+        Submit up to 50 product events to the project’s configured regional collector. Requires the `automations` scope and a project owned by the selected brand.
+
+        **Input** Provide `projectId` and canonical events, each with a stable `id`. The batch including its server transport envelope is limited to 48 KiB and each event to 8 KiB. Tenant ownership and server trust are derived from the authenticated credential, never event properties.
+
+        **Returns** `202 { accepted, rejected }` after durable regional ingestion. Accepted event IDs are not a promise that a downstream flow has completed. Inspect every rejected event. Reuse the event ID and Idempotency-Key on retries.
+
+        **Errors** `400 INVALID_REQUEST` for invalid events or an inactive project; `404 NOT_FOUND` for projects outside the selected brand; `503 SERVICE_UNAVAILABLE` when the region cannot acknowledge ingestion.
+
+        **See also** `createProductAnalyticsIdentityToken` for binding browser activity to an existing contact. These events do not create contacts or grant marketing consent.
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: false
+          description: Optional idempotency key for safe retries. Reusing the same key with the same request body returns the original response for 24 hours.
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 100
+          example: api-request-2026-04-08-001
+        - name: X-Brand-Id
+          in: header
+          required: false
+          description: The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 64
+          example: kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductAnalyticsTrackRequest"
+      responses:
+        "202":
+          description: Durably accepted event IDs and per-event rejections.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+            X-RateLimit-Limit:
+              schema:
+                type: integer
+                description: Requests allowed in the current rolling rate limit window.
+                example: 100
+              required: true
+              description: Requests allowed in the current rolling rate limit window.
+            X-RateLimit-Remaining:
+              schema:
+                type: integer
+                description: Requests remaining in the current rolling rate limit window.
+                example: 99
+              required: true
+              description: Requests remaining in the current rolling rate limit window.
+            X-RateLimit-Reset:
+              schema:
+                type: integer
+                description: Unix timestamp in seconds when the oldest recorded request leaves the rolling window.
+                example: 1712592360
+              required: true
+              description: Unix timestamp in seconds when the oldest recorded request leaves the rolling window.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductAnalyticsTrackResponse"
+              example:
+                accepted:
+                  - event-order-123
+                rejected: []
+        "400":
+          description: |-
+            `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+
+            `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                brandIdRequired:
+                  summary: BRAND_ID_REQUIRED
+                  value:
+                    error:
+                      code: BRAND_ID_REQUIRED
+                      type: invalid_request
+                      message: An organization-scoped credential called a brand-scoped operation without naming the brand.
+                      suggestion: List brands with GET /v1/brands, then name one with the X-Brand-Id header. There is no default brand.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                invalidRequest:
+                  summary: INVALID_REQUEST
+                  value:
+                    error:
+                      code: INVALID_REQUEST
+                      type: invalid_request
+                      message: "The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20)."
+                      suggestion: Fix the field reported in `param`, and every entry in `details.issues[]` when present, then retry.
+                      docs: https://docs.brew.new/api-reference/api/errors
+        "401":
+          description: |-
+            `API_KEY_REVOKED`: The API key was revoked.
+
+            `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+
+            `INVALID_API_KEY`: The API key is malformed or unknown.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                apiKeyRevoked:
+                  summary: API_KEY_REVOKED
+                  value:
+                    error:
+                      code: API_KEY_REVOKED
+                      type: authentication_error
+                      message: The API key was revoked.
+                      suggestion: Create a new active API key and retry.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                authenticationRequired:
+                  summary: AUTHENTICATION_REQUIRED
+                  value:
+                    error:
+                      code: AUTHENTICATION_REQUIRED
+                      type: authentication_error
+                      message: No API key or session accompanied the request.
+                      suggestion: Provide a valid API key or sign in with an organization session.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                invalidApiKey:
+                  summary: INVALID_API_KEY
+                  value:
+                    error:
+                      code: INVALID_API_KEY
+                      type: authentication_error
+                      message: The API key is malformed or unknown.
+                      suggestion: Check the API key format and retry with a valid active key.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+        "403":
+          description: |-
+            `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+
+            `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+
+            `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+
+            `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                accountSuspended:
+                  summary: ACCOUNT_SUSPENDED
+                  value:
+                    error:
+                      code: ACCOUNT_SUSPENDED
+                      type: authorization_error
+                      message: The organization behind the credential is suspended.
+                      suggestion: The organization behind this credential is suspended. Contact support@brew.new; do not retry.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                brandScopeMismatch:
+                  summary: BRAND_SCOPE_MISMATCH
+                  value:
+                    error:
+                      code: BRAND_SCOPE_MISMATCH
+                      type: authorization_error
+                      message: A brand-scoped credential named a brand other than the one it is bound to.
+                      suggestion: Omit the brand to use the one this credential is bound to, or use an organization-scoped credential to reach other brands.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                insufficientPermissions:
+                  summary: INSUFFICIENT_PERMISSIONS
+                  value:
+                    error:
+                      code: INSUFFICIENT_PERMISSIONS
+                      type: authorization_error
+                      message: The credential lacks the permission scope the operation needs.
+                      suggestion: Use an API key or session with the required permission.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                insufficientRole:
+                  summary: INSUFFICIENT_ROLE
+                  value:
+                    error:
+                      code: INSUFFICIENT_ROLE
+                      type: authorization_error
+                      message: "The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role)."
+                      suggestion: Ask an organization admin to run this, to add you to the brand, or to make you an admin.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+        "404":
+          description: |-
+            `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+
+            `NOT_FOUND`: No v1 resource lives at this path.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                brandNotFound:
+                  summary: BRAND_NOT_FOUND
+                  value:
+                    error:
+                      code: BRAND_NOT_FOUND
+                      type: not_found
+                      message: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+                      suggestion: List the brands this credential can reach with GET /v1/brands.
+                      docs: https://docs.brew.new/api-reference/api/errors
+                notFound:
+                  summary: NOT_FOUND
+                  value:
+                    error:
+                      code: NOT_FOUND
+                      type: not_found
+                      message: No v1 resource lives at this path.
+                      suggestion: Check the request path and HTTP method against the API reference.
+                      docs: https://docs.brew.new/api-reference/api/api-introduction
+        "409":
+          description: |-
+            `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+
+            `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                idempotencyConflict:
+                  summary: IDEMPOTENCY_CONFLICT
+                  value:
+                    error:
+                      code: IDEMPOTENCY_CONFLICT
+                      type: conflict
+                      message: The same Idempotency-Key was reused with a different request body.
+                      suggestion: Reuse the original payload or send a new idempotency key.
+                      docs: https://docs.brew.new/api-reference/api/idempotency
+                idempotencyInProgress:
+                  summary: IDEMPOTENCY_IN_PROGRESS
+                  value:
+                    error:
+                      code: IDEMPOTENCY_IN_PROGRESS
+                      type: conflict
+                      message: A request with this Idempotency-Key is still executing.
+                      suggestion: Wait for the original request to finish, then retry the same key to replay its response.
+                      docs: https://docs.brew.new/api-reference/api/idempotency
+        "413":
+          description: "`PAYLOAD_TOO_LARGE`: The request body exceeds the route cap."
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                payloadTooLarge:
+                  summary: PAYLOAD_TOO_LARGE
+                  value:
+                    error:
+                      code: PAYLOAD_TOO_LARGE
+                      type: invalid_request
+                      message: The request body exceeds the route cap.
+                      suggestion: Reduce the payload size and retry.
+                      docs: https://docs.brew.new/api-reference/api/errors
+        "429":
+          description: "`RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot."
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+            X-RateLimit-Limit:
+              schema:
+                type: integer
+                description: Requests allowed in the current rolling rate limit window.
+                example: 100
+              required: true
+              description: Requests allowed in the current rolling rate limit window.
+            X-RateLimit-Remaining:
+              schema:
+                type: integer
+                description: Requests remaining in the current rolling rate limit window.
+                example: 0
+              required: true
+              description: Requests remaining in the current rolling rate limit window.
+            X-RateLimit-Reset:
+              schema:
+                type: integer
+                description: Unix timestamp in seconds when the oldest recorded request leaves the rolling window.
+                example: 1712592360
+              required: true
+              description: Unix timestamp in seconds when the oldest recorded request leaves the rolling window.
+            Retry-After:
+              schema:
+                type: integer
+                description: Seconds to wait before retrying the request.
+                example: 42
+              required: true
+              description: Seconds to wait before retrying the request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                rateLimited:
+                  summary: RATE_LIMITED
+                  value:
+                    error:
+                      code: RATE_LIMITED
+                      type: rate_limit
+                      message: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot.
+                      suggestion: Wait the Retry-After time, then retry the same request.
+                      docs: https://docs.brew.new/api-reference/api/rate-limits
+                      retryAfter: 42
+                      details:
+                        scope: credential
+                        limit: 100
+                        remaining: 0
+                        reset: 1712592360
+                        consumed: false
+        "500":
+          description: "`INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it."
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                internalError:
+                  summary: INTERNAL_ERROR
+                  value:
+                    error:
+                      code: INTERNAL_ERROR
+                      type: internal_error
+                      message: An unexpected failure; the x-request-id header identifies it.
+                      suggestion: Retry the request. If it keeps failing, contact support with the x-request-id header.
+                      docs: https://docs.brew.new/api-reference/api/errors
+        "503":
+          description: "`SERVICE_UNAVAILABLE`: A dependency the operation must consult (billing, the idempotency store) is temporarily unavailable, so the request was refused rather than run unmetered."
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+            Retry-After:
+              schema:
+                type: integer
+                description: Seconds to wait before retrying the request.
+                example: 42
+              required: true
+              description: Seconds to wait before retrying the request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                serviceUnavailable:
+                  summary: SERVICE_UNAVAILABLE
+                  value:
+                    error:
+                      code: SERVICE_UNAVAILABLE
+                      type: service_unavailable
+                      message: A dependency the operation must consult (billing, the idempotency store) is temporarily unavailable, so the request was refused rather than run unmetered.
+                      suggestion: Retry the request after a short delay.
+                      docs: https://docs.brew.new/api-reference/api/errors
+      x-brew-scope: automations
+      x-brew-brand-scope: brand
+      x-brew-idempotency: replay
+      x-brew-credited: false
+      x-brew-rate-policy: analytics.write
+  /v1/analytics/identity-token:
+    post:
+      operationId: createProductAnalyticsIdentityToken
+      tags:
+        - Analytics
+      summary: Issue a browser analytics identity token
+      description: |-
+        Issue a five-minute token binding one browser anonymous ID to an application user and an existing contact in the selected brand. Requires the `contacts` scope. Call only from a trusted application backend after authenticating the application user.
+
+        **Input** `projectId`, opaque `userId`, the browser SDK `anonymousId`, and an existing `contactId`. Brew verifies project and contact ownership. It does not infer identity from an email address or create/update contacts.
+
+        **Returns** `200 { token, expiresAt }`. Pass the token to the browser SDK and refresh it through your authenticated backend before expiry. This endpoint deliberately does not replay Idempotency-Key responses because cached tokens expire.
+
+        **Errors** `400 INVALID_REQUEST` for invalid IDs or an inactive project; `404 NOT_FOUND` for a missing or other-brand contact/project; `503 SERVICE_UNAVAILABLE` when regional signing configuration is unavailable.
+
+        **See also** `trackProductAnalytics`. Identity verification does not subscribe the contact or authorize a marketing send.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductAnalyticsIdentityTokenRequest"
+      responses:
+        "200":
+          description: Short-lived token and its absolute expiry time.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+            X-RateLimit-Limit:
+              schema:
+                type: integer
+                description: Requests allowed in the current rolling rate limit window.
+                example: 100
+              required: true
+              description: Requests allowed in the current rolling rate limit window.
+            X-RateLimit-Remaining:
+              schema:
+                type: integer
+                description: Requests remaining in the current rolling rate limit window.
+                example: 99
+              required: true
+              description: Requests remaining in the current rolling rate limit window.
+            X-RateLimit-Reset:
+              schema:
+                type: integer
+                description: Unix timestamp in seconds when the oldest recorded request leaves the rolling window.
+                example: 1712592360
+              required: true
+              description: Unix timestamp in seconds when the oldest recorded request leaves the rolling window.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductAnalyticsIdentityTokenResponse"
+              example:
+                token: eyJhbGciOiJIUzI1NiJ9.payload.signature
+                expiresAt: '2026-10-28T12:05:00.000Z'
+        "400":
+          description: |-
+            `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+
+            `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                brandIdRequired:
+                  summary: BRAND_ID_REQUIRED
+                  value:
+                    error:
+                      code: BRAND_ID_REQUIRED
+                      type: invalid_request
+                      message: An organization-scoped credential called a brand-scoped operation without naming the brand.
+                      suggestion: List brands with GET /v1/brands, then name one with the X-Brand-Id header. There is no default brand.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                invalidRequest:
+                  summary: INVALID_REQUEST
+                  value:
+                    error:
+                      code: INVALID_REQUEST
+                      type: invalid_request
+                      message: "The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20)."
+                      suggestion: Fix the field reported in `param`, and every entry in `details.issues[]` when present, then retry.
+                      docs: https://docs.brew.new/api-reference/api/errors
+        "401":
+          description: |-
+            `API_KEY_REVOKED`: The API key was revoked.
+
+            `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+
+            `INVALID_API_KEY`: The API key is malformed or unknown.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                apiKeyRevoked:
+                  summary: API_KEY_REVOKED
+                  value:
+                    error:
+                      code: API_KEY_REVOKED
+                      type: authentication_error
+                      message: The API key was revoked.
+                      suggestion: Create a new active API key and retry.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                authenticationRequired:
+                  summary: AUTHENTICATION_REQUIRED
+                  value:
+                    error:
+                      code: AUTHENTICATION_REQUIRED
+                      type: authentication_error
+                      message: No API key or session accompanied the request.
+                      suggestion: Provide a valid API key or sign in with an organization session.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                invalidApiKey:
+                  summary: INVALID_API_KEY
+                  value:
+                    error:
+                      code: INVALID_API_KEY
+                      type: authentication_error
+                      message: The API key is malformed or unknown.
+                      suggestion: Check the API key format and retry with a valid active key.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+        "403":
+          description: |-
+            `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+
+            `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+
+            `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+
+            `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                accountSuspended:
+                  summary: ACCOUNT_SUSPENDED
+                  value:
+                    error:
+                      code: ACCOUNT_SUSPENDED
+                      type: authorization_error
+                      message: The organization behind the credential is suspended.
+                      suggestion: The organization behind this credential is suspended. Contact support@brew.new; do not retry.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                brandScopeMismatch:
+                  summary: BRAND_SCOPE_MISMATCH
+                  value:
+                    error:
+                      code: BRAND_SCOPE_MISMATCH
+                      type: authorization_error
+                      message: A brand-scoped credential named a brand other than the one it is bound to.
+                      suggestion: Omit the brand to use the one this credential is bound to, or use an organization-scoped credential to reach other brands.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                insufficientPermissions:
+                  summary: INSUFFICIENT_PERMISSIONS
+                  value:
+                    error:
+                      code: INSUFFICIENT_PERMISSIONS
+                      type: authorization_error
+                      message: The credential lacks the permission scope the operation needs.
+                      suggestion: Use an API key or session with the required permission.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+                insufficientRole:
+                  summary: INSUFFICIENT_ROLE
+                  value:
+                    error:
+                      code: INSUFFICIENT_ROLE
+                      type: authorization_error
+                      message: "The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role)."
+                      suggestion: Ask an organization admin to run this, to add you to the brand, or to make you an admin.
+                      docs: https://docs.brew.new/api-reference/api/authentication
+        "404":
+          description: |-
+            `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+
+            `NOT_FOUND`: No v1 resource lives at this path.
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                brandNotFound:
+                  summary: BRAND_NOT_FOUND
+                  value:
+                    error:
+                      code: BRAND_NOT_FOUND
+                      type: not_found
+                      message: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+                      suggestion: List the brands this credential can reach with GET /v1/brands.
+                      docs: https://docs.brew.new/api-reference/api/errors
+                notFound:
+                  summary: NOT_FOUND
+                  value:
+                    error:
+                      code: NOT_FOUND
+                      type: not_found
+                      message: No v1 resource lives at this path.
+                      suggestion: Check the request path and HTTP method against the API reference.
+                      docs: https://docs.brew.new/api-reference/api/api-introduction
+        "413":
+          description: "`PAYLOAD_TOO_LARGE`: The request body exceeds the route cap."
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                payloadTooLarge:
+                  summary: PAYLOAD_TOO_LARGE
+                  value:
+                    error:
+                      code: PAYLOAD_TOO_LARGE
+                      type: invalid_request
+                      message: The request body exceeds the route cap.
+                      suggestion: Reduce the payload size and retry.
+                      docs: https://docs.brew.new/api-reference/api/errors
+        "429":
+          description: "`RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot."
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+            X-RateLimit-Limit:
+              schema:
+                type: integer
+                description: Requests allowed in the current rolling rate limit window.
+                example: 100
+              required: true
+              description: Requests allowed in the current rolling rate limit window.
+            X-RateLimit-Remaining:
+              schema:
+                type: integer
+                description: Requests remaining in the current rolling rate limit window.
+                example: 0
+              required: true
+              description: Requests remaining in the current rolling rate limit window.
+            X-RateLimit-Reset:
+              schema:
+                type: integer
+                description: Unix timestamp in seconds when the oldest recorded request leaves the rolling window.
+                example: 1712592360
+              required: true
+              description: Unix timestamp in seconds when the oldest recorded request leaves the rolling window.
+            Retry-After:
+              schema:
+                type: integer
+                description: Seconds to wait before retrying the request.
+                example: 42
+              required: true
+              description: Seconds to wait before retrying the request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                rateLimited:
+                  summary: RATE_LIMITED
+                  value:
+                    error:
+                      code: RATE_LIMITED
+                      type: rate_limit
+                      message: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot.
+                      suggestion: Wait the Retry-After time, then retry the same request.
+                      docs: https://docs.brew.new/api-reference/api/rate-limits
+                      retryAfter: 42
+                      details:
+                        scope: credential
+                        limit: 100
+                        remaining: 0
+                        reset: 1712592360
+                        consumed: false
+        "500":
+          description: "`INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it."
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                internalError:
+                  summary: INTERNAL_ERROR
+                  value:
+                    error:
+                      code: INTERNAL_ERROR
+                      type: internal_error
+                      message: An unexpected failure; the x-request-id header identifies it.
+                      suggestion: Retry the request. If it keeps failing, contact support with the x-request-id header.
+                      docs: https://docs.brew.new/api-reference/api/errors
+        "503":
+          description: "`SERVICE_UNAVAILABLE`: A dependency the operation must consult (billing, the idempotency store) is temporarily unavailable, so the request was refused rather than run unmetered."
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+            Retry-After:
+              schema:
+                type: integer
+                description: Seconds to wait before retrying the request.
+                example: 42
+              required: true
+              description: Seconds to wait before retrying the request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                serviceUnavailable:
+                  summary: SERVICE_UNAVAILABLE
+                  value:
+                    error:
+                      code: SERVICE_UNAVAILABLE
+                      type: service_unavailable
+                      message: A dependency the operation must consult (billing, the idempotency store) is temporarily unavailable, so the request was refused rather than run unmetered.
+                      suggestion: Retry the request after a short delay.
+                      docs: https://docs.brew.new/api-reference/api/errors
+      parameters:
+        - name: X-Brand-Id
+          in: header
+          required: false
+          description: The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 64
+          example: kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+      x-brew-scope: contacts
+      x-brew-brand-scope: brand
+      x-brew-idempotency: disabled
+      x-brew-credited: false
+      x-brew-rate-policy: analytics.identity
   /v1/analytics/overview:
     get:
       operationId: getAnalyticsOverview
@@ -34618,7 +35962,7 @@ paths:
               schema:
                 type: integer
                 description: Requests allowed in the current rolling rate limit window.
-                example: 10
+                example: 60
               required: true
               description: Requests allowed in the current rolling rate limit window.
             X-RateLimit-Remaining:
@@ -34659,7 +36003,7 @@ paths:
                       retryAfter: 42
                       details:
                         scope: credential
-                        limit: 10
+                        limit: 60
                         remaining: 0
                         reset: 1712592360
                         consumed: false
@@ -34691,6 +36035,7 @@ paths:
       x-brew-brand-scope: brand
       x-brew-idempotency: replay
       x-brew-credited: false
+      x-brew-rate-policy: automations.write
     get:
       operationId: listAutomations
       tags:
@@ -36334,7 +37679,7 @@ paths:
       tags:
         - Automations
       summary: Test an automation
-      description: Runs the saved automation END-TO-END through the real workflow in TEST mode — works on drafts and for both event and manual-audience automations; every node executes (filters/splits evaluate against `payload`, and `contact.<name>` conditions read the test recipient’s contact unless `payload` supplies that field — a flat `contact.<name>` key or a `contact` object — and the trigger’s contract keeps extra keys; wait nodes fast-forward). Pass `testRecipient` to DELIVER each send-email node’s email for real to that address (real subject/preview/sender name; verified configured sender domains are preserved, otherwise delivery uses the Brew test domain; customer addresses are never hit; the address must be a teammate with access to the brand, an address on a verified sending domain of the brand, or, for a signed-in person (not an API key), their own address or one on their company domain, else `422 TEST_RECIPIENT_NOT_ALLOWED`) — omit it for a silent dry-run with no mail. Test runs are excluded from live analytics rollups. Real test deliveries consume send usage; dry runs do not. Test payloads never update real contact records. Returns `202` with the started run id; follow per-node status via `GET /v1/automations/runs/{automationRunId}?include=logs`. Optional `scenario` controls simulate timed opens/clicks at engagement-filter nodes and force left/right percentage-split choices (waits use a virtual clock; controls stay separate from `payload`, and simulated events never enter live analytics or send quotas); the run row’s `testCoverage` reports visited nodes, traversed connections, evaluated or forced decisions, uncovered paths and simulation limitations. On a Brew-event (unsubscribe) trigger, omit payload to use Brew’s sample event; supplied fields replace the sample’s. The run never creates or edits a contact.
+      description: Runs the saved automation END-TO-END through the real workflow in TEST mode — works on drafts and for both event and manual-audience automations; every node executes (filters/splits evaluate against `payload`, and `contact.<name>` conditions read the test recipient’s contact unless `payload` supplies that field — a flat `contact.<name>` key or a `contact` object — and the trigger’s contract keeps extra keys; wait nodes fast-forward). Pass `testRecipient` to DELIVER each send-email node’s email for real to that address (real subject/preview/sender name; verified configured sender domains are preserved, otherwise delivery uses the Brew test domain; customer addresses are never hit; the address must be a teammate with access to the brand, an address on a verified sending domain of the brand, or, for a signed-in person (not an API key), their own address or one on their company domain, else `422 TEST_RECIPIENT_NOT_ALLOWED`) — omit it for a silent dry-run with no mail. Test runs are excluded from live analytics rollups. Test deliveries never count toward the plan’s email sends. Test payloads never update real contact records. Returns `202` with the started run id; follow per-node status via `GET /v1/automations/runs/{automationRunId}?include=logs`. Optional `scenario` controls simulate timed opens/clicks at engagement-filter nodes and force left/right percentage-split choices (waits use a virtual clock; controls stay separate from `payload`, and simulated events never enter live analytics or send quotas); the run row’s `testCoverage` reports visited nodes, traversed connections, evaluated or forced decisions, uncovered paths and simulation limitations. On a Brew-event (unsubscribe) trigger, omit payload to use Brew’s sample event; supplied fields replace the sample’s. The run never creates or edits a contact.
       parameters:
         - name: Idempotency-Key
           in: header
@@ -39374,9 +40719,9 @@ paths:
             type: string
             maxLength: 254
             pattern: ^[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+)*@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$
-            description: Only runs for this recipient, matched case-insensitively. Some older runs show a `recipientEmail` this filter does not match.
+            description: Only runs for this recipient, matched case-insensitively.
           required: false
-          description: Only runs for this recipient, matched case-insensitively. Some older runs show a `recipientEmail` this filter does not match.
+          description: Only runs for this recipient, matched case-insensitively.
           name: recipientEmail
           in: query
         - schema:
@@ -41431,7 +42776,7 @@ paths:
               schema:
                 type: integer
                 description: Requests allowed in the current rolling rate limit window.
-                example: 10
+                example: 60
               required: true
               description: Requests allowed in the current rolling rate limit window.
             X-RateLimit-Remaining:
@@ -41472,7 +42817,7 @@ paths:
                       retryAfter: 42
                       details:
                         scope: credential
-                        limit: 10
+                        limit: 60
                         remaining: 0
                         reset: 1712592360
                         consumed: false
@@ -41504,6 +42849,7 @@ paths:
       x-brew-brand-scope: brand
       x-brew-idempotency: replay
       x-brew-credited: false
+      x-brew-rate-policy: triggers.write
     get:
       operationId: listTriggers
       tags:
@@ -46391,7 +47737,10 @@ paths:
                       suggestion: Check the API key format and retry with a valid active key.
                       docs: https://docs.brew.new/api-reference/api/authentication
         "402":
-          description: "`INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed."
+          description: |-
+            `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed.
+
+            `NO_ACTIVE_PLAN`: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
           headers:
             x-request-id:
               schema:
@@ -46418,6 +47767,17 @@ paths:
                         cost: 5
                         remaining: 0
                         planKey: free
+                noActivePlan:
+                  summary: NO_ACTIVE_PLAN
+                  value:
+                    error:
+                      code: NO_ACTIVE_PLAN
+                      type: payment_required
+                      message: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
+                      suggestion: An organization admin must choose a plan, or update the payment method, at https://brew.new/plan. Check the current state up front with GET /v1/usage.
+                      docs: https://docs.brew.new/api-reference/api/credits
+                      details:
+                        reason: NO_PLAN
         "403":
           description: |-
             `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
@@ -48915,7 +50275,10 @@ paths:
                       suggestion: Check the API key format and retry with a valid active key.
                       docs: https://docs.brew.new/api-reference/api/authentication
         "402":
-          description: "`INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed."
+          description: |-
+            `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed.
+
+            `NO_ACTIVE_PLAN`: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
           headers:
             x-request-id:
               schema:
@@ -48942,6 +50305,17 @@ paths:
                         cost: 5
                         remaining: 0
                         planKey: free
+                noActivePlan:
+                  summary: NO_ACTIVE_PLAN
+                  value:
+                    error:
+                      code: NO_ACTIVE_PLAN
+                      type: payment_required
+                      message: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
+                      suggestion: An organization admin must choose a plan, or update the payment method, at https://brew.new/plan. Check the current state up front with GET /v1/usage.
+                      docs: https://docs.brew.new/api-reference/api/credits
+                      details:
+                        reason: NO_PLAN
         "403":
           description: |-
             `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
@@ -49410,7 +50784,10 @@ paths:
                       suggestion: Check the API key format and retry with a valid active key.
                       docs: https://docs.brew.new/api-reference/api/authentication
         "402":
-          description: "`INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed."
+          description: |-
+            `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed.
+
+            `NO_ACTIVE_PLAN`: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
           headers:
             x-request-id:
               schema:
@@ -49437,6 +50814,17 @@ paths:
                         cost: 5
                         remaining: 0
                         planKey: free
+                noActivePlan:
+                  summary: NO_ACTIVE_PLAN
+                  value:
+                    error:
+                      code: NO_ACTIVE_PLAN
+                      type: payment_required
+                      message: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
+                      suggestion: An organization admin must choose a plan, or update the payment method, at https://brew.new/plan. Check the current state up front with GET /v1/usage.
+                      docs: https://docs.brew.new/api-reference/api/credits
+                      details:
+                        reason: NO_PLAN
         "403":
           description: |-
             `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
@@ -49919,7 +51307,10 @@ paths:
                       suggestion: Check the API key format and retry with a valid active key.
                       docs: https://docs.brew.new/api-reference/api/authentication
         "402":
-          description: "`INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed."
+          description: |-
+            `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed.
+
+            `NO_ACTIVE_PLAN`: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
           headers:
             x-request-id:
               schema:
@@ -49946,6 +51337,17 @@ paths:
                         cost: 5
                         remaining: 0
                         planKey: free
+                noActivePlan:
+                  summary: NO_ACTIVE_PLAN
+                  value:
+                    error:
+                      code: NO_ACTIVE_PLAN
+                      type: payment_required
+                      message: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
+                      suggestion: An organization admin must choose a plan, or update the payment method, at https://brew.new/plan. Check the current state up front with GET /v1/usage.
+                      docs: https://docs.brew.new/api-reference/api/credits
+                      details:
+                        reason: NO_PLAN
         "403":
           description: |-
             `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
@@ -52081,13 +53483,13 @@ paths:
         - Audiences
       summary: List audiences
       description: |-
-        Lists the brand’s saved audiences under `{ data, pagination }`. Each row carries its contact `filters`, a member `count` and ISO timestamps; an audience is the recipient target for `createSend`. Stale counts are refreshed on a best-effort basis. If a recount fails or reaches its time budget, the saved count is returned. Use `GET /v1/audiences/{audienceId}?include=count` for an on-demand count.
+        Lists the brand’s saved audiences under `{ data, pagination }`. Each row carries its contact `filters`, a member `count` and ISO timestamps; an audience is the recipient target for `createSend`.
 
         **Use when** choosing the `audienceId` for a campaign or an automation launch.
 
         **Input** `limit` and `cursor`.
 
-        **Returns** `200` with a page of `Audience` rows.
+        **Returns** `200` with a page of `Audience` rows. A listed audience's `count` is its saved member total, recounted before the list answers when contacts changed since that count or it is a day old; an audience that cannot be recounted (still building, unusable filters, a failed or timed-out count) keeps its saved total. `GET /v1/audiences/{audienceId}?include=count` returns the exact total a send targets.
 
         **Errors** `400 INVALID_REQUEST` for an unknown query key.
 
@@ -63053,6 +64455,8 @@ paths:
             `BRAND_LIMIT_REACHED`: The plan allows no more brands.
 
             `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed.
+
+            `NO_ACTIVE_PLAN`: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
           headers:
             x-request-id:
               schema:
@@ -63088,6 +64492,17 @@ paths:
                         cost: 5
                         remaining: 0
                         planKey: free
+                noActivePlan:
+                  summary: NO_ACTIVE_PLAN
+                  value:
+                    error:
+                      code: NO_ACTIVE_PLAN
+                      type: payment_required
+                      message: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
+                      suggestion: An organization admin must choose a plan, or update the payment method, at https://brew.new/plan. Check the current state up front with GET /v1/usage.
+                      docs: https://docs.brew.new/api-reference/api/credits
+                      details:
+                        reason: NO_PLAN
         "403":
           description: |-
             `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
@@ -63738,7 +65153,10 @@ paths:
                       suggestion: Check the API key format and retry with a valid active key.
                       docs: https://docs.brew.new/api-reference/api/authentication
         "402":
-          description: "`INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed."
+          description: |-
+            `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed.
+
+            `NO_ACTIVE_PLAN`: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
           headers:
             x-request-id:
               schema:
@@ -63765,6 +65183,17 @@ paths:
                         cost: 5
                         remaining: 0
                         planKey: free
+                noActivePlan:
+                  summary: NO_ACTIVE_PLAN
+                  value:
+                    error:
+                      code: NO_ACTIVE_PLAN
+                      type: payment_required
+                      message: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
+                      suggestion: An organization admin must choose a plan, or update the payment method, at https://brew.new/plan. Check the current state up front with GET /v1/usage.
+                      docs: https://docs.brew.new/api-reference/api/credits
+                      details:
+                        reason: NO_PLAN
         "403":
           description: |-
             `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
@@ -64179,7 +65608,10 @@ paths:
                       suggestion: Check the API key format and retry with a valid active key.
                       docs: https://docs.brew.new/api-reference/api/authentication
         "402":
-          description: "`INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed."
+          description: |-
+            `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed.
+
+            `NO_ACTIVE_PLAN`: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
           headers:
             x-request-id:
               schema:
@@ -64206,6 +65638,17 @@ paths:
                         cost: 5
                         remaining: 0
                         planKey: free
+                noActivePlan:
+                  summary: NO_ACTIVE_PLAN
+                  value:
+                    error:
+                      code: NO_ACTIVE_PLAN
+                      type: payment_required
+                      message: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
+                      suggestion: An organization admin must choose a plan, or update the payment method, at https://brew.new/plan. Check the current state up front with GET /v1/usage.
+                      docs: https://docs.brew.new/api-reference/api/credits
+                      details:
+                        reason: NO_PLAN
         "403":
           description: |-
             `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
@@ -64620,7 +66063,10 @@ paths:
                       suggestion: Check the API key format and retry with a valid active key.
                       docs: https://docs.brew.new/api-reference/api/authentication
         "402":
-          description: "`INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed."
+          description: |-
+            `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed.
+
+            `NO_ACTIVE_PLAN`: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
           headers:
             x-request-id:
               schema:
@@ -64647,6 +66093,17 @@ paths:
                         cost: 5
                         remaining: 0
                         planKey: free
+                noActivePlan:
+                  summary: NO_ACTIVE_PLAN
+                  value:
+                    error:
+                      code: NO_ACTIVE_PLAN
+                      type: payment_required
+                      message: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
+                      suggestion: An organization admin must choose a plan, or update the payment method, at https://brew.new/plan. Check the current state up front with GET /v1/usage.
+                      docs: https://docs.brew.new/api-reference/api/credits
+                      details:
+                        reason: NO_PLAN
         "403":
           description: |-
             `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
@@ -65061,7 +66518,10 @@ paths:
                       suggestion: Check the API key format and retry with a valid active key.
                       docs: https://docs.brew.new/api-reference/api/authentication
         "402":
-          description: "`INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed."
+          description: |-
+            `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed.
+
+            `NO_ACTIVE_PLAN`: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
           headers:
             x-request-id:
               schema:
@@ -65088,6 +66548,17 @@ paths:
                         cost: 5
                         remaining: 0
                         planKey: free
+                noActivePlan:
+                  summary: NO_ACTIVE_PLAN
+                  value:
+                    error:
+                      code: NO_ACTIVE_PLAN
+                      type: payment_required
+                      message: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
+                      suggestion: An organization admin must choose a plan, or update the payment method, at https://brew.new/plan. Check the current state up front with GET /v1/usage.
+                      docs: https://docs.brew.new/api-reference/api/credits
+                      details:
+                        reason: NO_PLAN
         "403":
           description: |-
             `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
@@ -69377,6 +70848,9 @@ paths:
               - gradual_send_paused
               - gradual_send_completed
               - send_limit_reached
+              - trial_ending
+              - trial_expired
+              - payment_failed
               - automation_pause_window_closed
               - send_review_rejected
               - comment_mention
