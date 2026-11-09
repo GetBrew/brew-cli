@@ -1,5 +1,7 @@
 import { writeFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { runInNewContext } from 'node:vm'
+import { ModuleKind, transpileModule } from 'typescript'
 import { describe, expect, it } from 'vitest'
 import { detectProject } from '../../../src/lib/init/detect'
 import { envLocalVars } from '../../../src/lib/init/pipeline'
@@ -99,6 +101,38 @@ describe('the Better Auth helper on Next.js', () => {
 })
 
 describe('another Brew server (--api-url, BREW_API_URL)', () => {
+  it.each([true, false])(
+    'a Worker caches clients by key and server (TypeScript: %s)',
+    (typescript) => {
+      type Config = { apiKey: string; baseUrl?: string }
+      const generated = {} as {
+        getBrew: (env: {
+          BREW_API_KEY: string
+          BREW_API_URL?: string
+        }) => Config
+      }
+      const project = { ...detect(copyFixture('hono-workers')), typescript }
+      const { outputText } = transpileModule(clientFile(project), {
+        compilerOptions: { module: ModuleKind.CommonJS },
+      })
+      runInNewContext(outputText, {
+        exports: generated,
+        require: () => ({ createBrewClient: (config: Config) => config }),
+      })
+      const env = { BREW_API_KEY: 'brew_test_key' }
+      const first = generated.getBrew(env)
+      const previewEnv = { ...env, BREW_API_URL: 'https://preview.example/api' }
+      const preview = generated.getBrew(previewEnv)
+      expect(preview.baseUrl).toBe(previewEnv.BREW_API_URL)
+      expect(preview).not.toBe(first)
+      expect(generated.getBrew(previewEnv)).toBe(preview)
+      expect(generated.getBrew(env)).toBe(first)
+      expect(generated.getBrew({ BREW_API_KEY: 'brew_another_key' })).not.toBe(
+        first
+      )
+    }
+  )
+
   it.each([
     ['next-app', 'process.env.BREW_API_URL'],
     ['sveltekit', 'env.BREW_API_URL'],
