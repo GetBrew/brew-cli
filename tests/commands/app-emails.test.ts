@@ -431,7 +431,7 @@ describe('app-emails upsert', () => {
         }
       )
     )
-    // Typed against the vendored spec: brew-v2#2066 declares `secret`.
+    // Typed against the vendored spec: brew-v2#2169 declares `secret`.
     const fields: NonNullable<PutBody['payloadSchema']>['fields'] = [
       {
         key: 'code',
@@ -477,7 +477,7 @@ describe('app-emails upsert', () => {
         )
       })
     )
-    // Typed against the vendored spec: brew-v2#2145 declares the modes.
+    // Typed against the vendored spec: brew-v2#2169 declares the modes.
     const source: NonNullable<PutBody['source']> = {
       format: 'jsx',
       content: 'export default function E({ orderId }) { return orderId }',

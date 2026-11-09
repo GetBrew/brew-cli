@@ -38,6 +38,11 @@ export type VendorRequest = {
   readonly maxRetryAfterMs?: number
   /** Attempts in total, 429 retries included. Default 3. */
   readonly maxAttempts?: number
+  /**
+   * Secrets the body carries (a webhook signing secret), redacted from any
+   * error text the vendor echoes, like the credential headers are.
+   */
+  readonly secrets?: readonly string[]
 }
 
 export type VendorResponse = {
@@ -161,7 +166,7 @@ async function attemptOnce(
 
 /** Every credential the request carries, so error text can never echo one. */
 function collectSecrets(request: VendorRequest): string[] {
-  const secrets: string[] = []
+  const secrets: string[] = [...(request.secrets ?? [])]
   for (const [name, value] of Object.entries(request.headers ?? {})) {
     if (!CREDENTIAL_HEADER.test(name) || value === '') {
       continue
