@@ -16,6 +16,21 @@ describe('readStdinText', () => {
     expect(getEventListeners(controller.signal, 'abort')).toHaveLength(0)
   })
 
+  it('refuses bytes that are not UTF-8 instead of replacing them', async () => {
+    const stream = new PassThrough()
+    const controller = new AbortController()
+    const pending = readStdinText({ stream, signal: controller.signal })
+    const rejected = expect(pending).rejects.toThrow(
+      'stdin is not UTF-8 (line 2 has byte 0xE9), so nothing was sent.'
+    )
+    stream.end(
+      Buffer.from('email,firstName\na@example.com,Jos\xe9\n', 'latin1')
+    )
+
+    await rejected
+    expect(getEventListeners(controller.signal, 'abort')).toHaveLength(0)
+  })
+
   it('closes open input on command abort and preserves the reason', async () => {
     const stream = new PassThrough()
     const controller = new AbortController()
