@@ -1,6 +1,10 @@
 import type { Readable } from 'node:stream'
+import { decodeUtf8Text } from './utf8'
 
-/** Read through EOF; an interrupted or timed-out command closes its input. */
+/**
+ * Read through EOF as UTF-8, refusing bytes that are not; an interrupted or
+ * timed-out command closes its input.
+ */
 export async function readStdinText({
   stream,
   signal,
@@ -16,11 +20,10 @@ export async function readStdinText({
     stream.destroy()
   }
   signal.addEventListener('abort', stop, { once: true })
-  stream.setEncoding('utf8')
-  let text = ''
+  const chunks: Buffer[] = []
   try {
     for await (const chunk of stream) {
-      text += String(chunk)
+      chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(String(chunk)))
     }
   } catch (error) {
     if (!signal.aborted) {
@@ -30,5 +33,5 @@ export async function readStdinText({
     signal.removeEventListener('abort', stop)
   }
   signal.throwIfAborted()
-  return text
+  return decodeUtf8Text(Buffer.concat(chunks), 'stdin')
 }

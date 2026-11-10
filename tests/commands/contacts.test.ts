@@ -644,6 +644,74 @@ describe('contacts import-csv', () => {
       { csv: 'Email\njane@example.com\n' },
     ])
   })
+
+  const NAMES =
+    'email,firstName,lastName\n' +
+    'a@example.com,José,García\n' +
+    'b@example.com,Jürgen,Müller\n' +
+    'c@example.com,“Zoë”,Brontë\n'
+
+  it('refuses a Windows-1252 file before sending, instead of storing U+FFFD', async () => {
+    let requests = 0
+    server.use(
+      http.post('https://brew.new/api/v1/contacts/import-csv', () => {
+        requests += 1
+        return HttpResponse.json({ inserted: 3 })
+      })
+    )
+    const dir = mkdtempSync(join(tmpdir(), 'brew-cli-csv-'))
+    const csvPath = join(dir, 'names-1252.csv')
+    // Excel's default "CSV" on Western Windows: é = 0xE9, “ = 0x93.
+    writeFileSync(
+      csvPath,
+      Buffer.from(
+        NAMES.replaceAll('“', '\u0093').replaceAll('”', '\u0094'),
+        'latin1'
+      )
+    )
+    const result = await runCli(
+      ['contacts', 'import-csv', '--file', csvPath, '--json'],
+      { env: env() }
+    )
+    expect(result.code).toBe(2)
+    expect(requests).toBe(0)
+    expect(result.stdout).toBe('')
+    const { error } = JSON.parse(result.stderr) as {
+      error: { code: string; message: string }
+    }
+    expect(error.code).toBe('CLI_USAGE')
+    expect(error.message).toContain('is not UTF-8 (line 2 has byte 0xE9)')
+    expect(error.message).toContain('"CSV UTF-8"')
+  })
+
+  it('sends a UTF-8 file exactly, without its byte-order mark', async () => {
+    const bodies: unknown[] = []
+    server.use(
+      http.post(
+        'https://brew.new/api/v1/contacts/import-csv',
+        async ({ request }) => {
+          bodies.push(await request.json())
+          return HttpResponse.json({ inserted: 3 })
+        }
+      )
+    )
+    const dir = mkdtempSync(join(tmpdir(), 'brew-cli-csv-'))
+    const plain = join(dir, 'names.csv')
+    const withBom = join(dir, 'names-bom.csv')
+    writeFileSync(plain, NAMES)
+    writeFileSync(withBom, `﻿${NAMES}`)
+    for (const path of [plain, withBom]) {
+      const result = await runCli(
+        ['contacts', 'import-csv', '--file', path, '--file-name', 'names'],
+        { env: env() }
+      )
+      expect(result.code).toBe(0)
+    }
+    expect(bodies).toEqual([
+      { csv: NAMES, fileName: 'names' },
+      { csv: NAMES, fileName: 'names' },
+    ])
+  })
 })
 
 describe('contacts import', () => {

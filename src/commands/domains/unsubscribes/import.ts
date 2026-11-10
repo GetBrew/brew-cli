@@ -21,7 +21,7 @@ export const domainsUnsubscribesImportCommand = defineCommand({
     { name: 'domainId', summary: 'Marketing domain id', isRequired: true },
   ],
   flags: [
-    { flag: '--file <path>', summary: 'CSV file, or - for stdin' },
+    { flag: '--file <path>', summary: 'UTF-8 CSV file, or - for stdin' },
     {
       flag: '--column <header>',
       summary: 'The column holding the addresses (by header)',

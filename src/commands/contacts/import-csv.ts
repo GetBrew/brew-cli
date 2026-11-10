@@ -29,7 +29,8 @@ export const contactsImportCsvCommand = defineCommand({
   flags: [
     {
       flag: '--file <path>',
-      summary: 'CSV file to import, or - for stdin (or csv in --input)',
+      summary:
+        'UTF-8 CSV file to import, or - for stdin (or csv in --input); other encodings exit 2',
     },
     {
       flag: '--file-name <name>',

@@ -488,7 +488,7 @@ Bulk-import contacts from a CSV file or stdin as one Import History batch (free;
 - Class: write
 - Can consume Brew credits
 - SDK: `brew.contacts.importCsv(...)`
-- `--file <path>` — CSV file to import, or - for stdin (or csv in --input)
+- `--file <path>` — UTF-8 CSV file to import, or - for stdin (or csv in --input); other encodings exit 2
 - `--file-name <name>` — Name the batch in Brew's Import History (default: the --file name)
 - `--mapping <pairs...>` — Column mapping csvColumn=fieldName, repeatable
 - `--date-order <order>` — month_first or day_first: how to read dates like 03/04/2026 (a day over 12 in the column wins; default month-first, with a DATE_ORDER_ASSUMED warning)
@@ -2287,7 +2287,7 @@ Add every address in a CSV to a domain's unsubscribe list
 - Class: write
 - SDK: `brew.domains.unsubscribes.import(...)`
 - Argument `domainId` — Marketing domain id
-- `--file <path>` — CSV file, or - for stdin
+- `--file <path>` — UTF-8 CSV file, or - for stdin
 - `--column <header>` — The column holding the addresses (by header)
 - `--idempotency-key <key>` — Idempotency-Key for safe retries (auto-generated otherwise)
 
