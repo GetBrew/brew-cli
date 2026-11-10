@@ -289,6 +289,32 @@ it('creates an endpoint with brand scope and an idempotency key', async () => {
   })
   expect(key).toBeTruthy()
 })
+it('creates an endpoint from scalar flags alone, with --events as a list', async () => {
+  let body: unknown
+  server.use(
+    http.post('https://brew.new/api/v1/webhooks', async ({ request }) => {
+      body = await request.json()
+      return HttpResponse.json({ id: 'ep_1' }, { status: 201 })
+    })
+  )
+  const result = await runCli(
+    [
+      'webhooks',
+      'create',
+      '--endpoint',
+      'https://example.com/hook',
+      '--events',
+      'email.delivered, email.bounced',
+      '--json',
+    ],
+    { env: env() }
+  )
+  expect(result.code).toBe(0)
+  expect(body).toEqual({
+    endpoint: 'https://example.com/hook',
+    events: ['email.delivered', 'email.bounced'],
+  })
+})
 it('requires confirmation for replay and posts only a webhook request after confirmation', async () => {
   const options = { env: env() }
   const refused = await runCli(

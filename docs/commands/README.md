@@ -206,9 +206,11 @@ Create a webhook endpoint for the selected brand
 - `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
 - `--idempotency-key <key>` — Idempotency-Key for safe retries (auto-generated otherwise)
 - `--endpoint <url>` — Public HTTPS endpoint URL
+- `--events <types>` — Comma-separated event types, e.g. email.delivered,email.bounced
 - `--description <text>` — Endpoint description
 
 ```bash
+brew-cli webhooks create --endpoint https://example.com/hook --events email.delivered,email.bounced
 brew-cli webhooks create --input '{"endpoint":"https://example.com/hook","events":["email.delivered"]}'
 ```
 
@@ -233,6 +235,7 @@ Update a webhook endpoint or its event subscriptions
 - Argument `webhookId` — Webhook endpoint ID
 - `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
 - `--endpoint <url>` — Public HTTPS endpoint URL
+- `--events <types>` — Comma-separated event types, e.g. email.delivered,email.bounced
 - `--description <text>` — Endpoint description
 - `--status <status>` — enabled or disabled
 

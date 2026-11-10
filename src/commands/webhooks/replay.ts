@@ -9,8 +9,9 @@ const route = {
 } as const
 type Output =
   operations['replayWebhookEvent']['responses'][202]['content']['application/json']
-type Input =
-  operations['replayWebhookEvent']['requestBody']['content']['application/json']
+type Input = NonNullable<
+  operations['replayWebhookEvent']['requestBody']
+>['content']['application/json']
 
 export const webhooksReplayCommand = defineCommand({
   path: ['webhooks', 'replay'],

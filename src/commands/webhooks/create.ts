@@ -23,6 +23,7 @@ export const webhooksCreateCommand = defineCommand({
   args: [],
   flags: [INPUT_FLAG, IDEMPOTENCY_FLAG, ...WEBHOOK_ENDPOINT_FLAGS],
   examples: [
+    'brew-cli webhooks create --endpoint https://example.com/hook --events email.delivered,email.bounced',
     'brew-cli webhooks create --input \'{"endpoint":"https://example.com/hook","events":["email.delivered"]}\'',
   ],
   prepareInput: prepareWebhookInput,

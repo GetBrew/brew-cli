@@ -9,8 +9,9 @@ const route = {
 } as const
 type Output =
   operations['rotateWebhookSecret']['responses'][200]['content']['application/json']
-type Input =
-  operations['rotateWebhookSecret']['requestBody']['content']['application/json']
+type Input = NonNullable<
+  operations['rotateWebhookSecret']['requestBody']
+>['content']['application/json']
 
 export const webhooksRotateSecretCommand = defineCommand({
   path: ['webhooks', 'rotate-secret'],

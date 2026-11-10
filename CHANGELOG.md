@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+### Added
+
+- `webhooks list|create|get|update|delete|rotate-secret|test|events|attempts|replay`
+  manage brand-scoped email webhooks (GetBrew/brew-v2#2398). `create` and
+  `update` take `--endpoint`, `--events` (comma-separated) and
+  `--description`, or `--input` JSON. `delete`, `rotate-secret`, `test` and
+  `replay` ask for confirmation (`--yes` skips it). The commands use raw
+  transport until the SDK's `webhooks` resource is published.
+
 ### Changed
 
 - `content gif` takes `--frame-count <n>` (2-16, default 9) for a prompt or

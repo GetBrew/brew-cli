@@ -11,17 +11,27 @@ import { rawRequest } from '../../lib/raw-request'
 
 export const WEBHOOK_ENDPOINT_FLAGS = [
   { flag: '--endpoint <url>', summary: 'Public HTTPS endpoint URL' },
+  {
+    flag: '--events <types>',
+    summary: 'Comma-separated event types, e.g. email.delivered,email.bounced',
+  },
   { flag: '--description <text>', summary: 'Endpoint description' },
 ] as const
 
 /** Prepare once so piped input also survives the confirmation protocol. */
 export async function prepareWebhookInput({ ctx, flags }: CommandInvocation) {
   requestOptions(flags)
-  const overrides = Object.fromEntries(
+  const overrides: Record<string, unknown> = Object.fromEntries(
     ['endpoint', 'description', 'status', 'type'].flatMap((key) =>
       typeof flags[key] === 'string' ? [[key, flags[key]]] : []
     )
   )
+  if (typeof flags.events === 'string') {
+    overrides.events = flags.events
+      .split(',')
+      .map((type) => type.trim())
+      .filter(Boolean)
+  }
   const input = mergeInput(
     await readJsonFlag(ctx, flags.input, '--input'),
     overrides
