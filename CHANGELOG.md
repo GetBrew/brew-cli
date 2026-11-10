@@ -4,6 +4,22 @@
 
 ### Changed
 
+- Vendored spec and generated API types follow app revision `57a327ed7f`:
+  new error codes `WRITE_CONFLICT` (`503`, retry after `Retry-After`, now
+  possible on `emails clone`) and `NO_ACTIVE_PLAN` (`402`), the
+  `bounce_rate` send pause reason and `stats.hardBounced` on sends
+  (GetBrew/brew-v2#2624, GetBrew/brew-v2#2756). `automations delete`, `test`
+  and `run` refuse with `AUTOMATION_IN_PROGRESS` (`409`),
+  `AUTOMATION_NOT_READY` (`422`) or, for `run` on an event automation,
+  `AUTOMATION_NOT_RUNNABLE` (`422`) instead of `INTERNAL_ERROR`,
+  `INVALID_PAYLOAD` or `INVALID_REQUEST` (GetBrew/brew-v2#2839).
+  `automations audience-runs resume` returns `AUTOMATION_NOT_READY` when a
+  send step still to go can no longer send (GetBrew/brew-v2#2841), and
+  `pause` on a run held at the plan limit is `409 RUN_NOT_PAUSABLE`
+  (GetBrew/brew-v2#2838). No operations were added or removed. The `automations test` confirmation no longer says test
+  deliveries count toward send usage: they never count toward the plan's
+  email sends (GetBrew/brew-v2#2770).
+
 - `content gif` takes `--frame-count <n>` (2-16, default 9) for a prompt or
   image GIF; `--fps` (default 5) sets playback speed. GIFs from a prompt or
   an image are now one GPT Image 2.6 generation (GetBrew/brew-v2#2668):

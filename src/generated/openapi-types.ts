@@ -111,9 +111,9 @@ export interface paths {
          *
          *     **Use when** you already have HTML, MJML, React Email JSX or a saved `.eml` message. To author from a brief use `generateEmail`; for a Figma frame use `importFigmaDesign`.
          *
-         *     **Input** `content` (the raw source as a string) and `format`: `html` (a document or fragment), `mjml`, `jsx` (a module with a default-exported component or a bare `<Html>` element; static values, `PreviewProps` and local sub-components fold, anything executable is rejected with the offending line) or `eml` (the HTML body is imported, inline `cid:` images are rehosted, other attachments are dropped, and the Subject becomes the title). HTML, MJML and EML land as source-preserved designs with an editable projection; JSX lands as a native React Email design. Optional `baseUrl` resolves relative image paths; optional `title` and `subjectLine` (the design-default inbox subject; an EML Subject is the default); optional `groupId` (`grp_…` or `ungrouped`) or `groupName` (resolve or create), not both; omit to land Ungrouped. Limits: 5,000,000 UTF-8 bytes, 256 remote resources, 8 concurrent fetches, 10 MB per resource and 50 MB aggregate downloads.
+         *     **Input** `content` (the raw source as a string) and `format`: `html` (a document or fragment), `mjml`, `jsx` (a module with a default-exported component or a bare `<Html>` element; static values, `PreviewProps` and local sub-components fold, anything executable is rejected with the offending line) or `eml` (the HTML body is imported, inline `cid:` images are rehosted, other attachments are dropped, and the Subject becomes the title). HTML, MJML and EML land as source-preserved designs with an editable projection; JSX lands as a native React Email design. Optional `baseUrl` resolves relative image paths; optional `title` and `subjectLine` (the design-default inbox subject; an EML Subject is the default); optional `groupId` (`grp_…` or `ungrouped`) or `groupName` (resolve or create), not both; omit to land Ungrouped. Limits: 5,000,000 UTF-8 bytes, 256 remote resources, 8 concurrent fetches, 10 MB per resource, 50 MB aggregate downloads, 128 distinct inline SVG images and 8 seconds of inline SVG rendering (past either, the rest are dropped with a warning).
          *
-         *     **Returns** `201 { emailId, emailVersionId, html, previewImage?, assetReport, group, subjectLine? }`. Each source element with content that a design could not keep is listed once in `assetReport.warnings` as `{ code: "element_dropped", location: "markup", host: "<tag>" }`: inline `svg`, `math` and `canvas`, and `button`, `select`, `textarea` or table `caption` holding text are left out of the editable projection (the original source keeps them); `audio`, `video`, `iframe`, `object` and `embed` are removed from both, with `audio`/`video` fallback content kept. Source words the editable design does not carry are named once as `{ code: "text_dropped", location: "markup", host: "<words>" }`; version 1 keeps the exact source.
+         *     **Returns** `201 { emailId, emailVersionId, html, previewImage?, assetReport, group, subjectLine? }`. Each source element with content that a design could not keep is listed once in `assetReport.warnings` as `{ code: "element_dropped", location: "markup", host: "<tag>" }`: inline `svg`, `math` and `canvas`, and `button`, `select`, `textarea` or table `caption` holding text are left out of the editable projection (the original source keeps them); `audio`, `video`, `iframe`, `object` and `embed` are removed from both, with `audio`/`video` fallback content kept. Email clients block SVG images, so an SVG image, hosted or inline (`data:image/svg+xml` in a `src` or `background` attribute or a CSS `url()`), becomes a hosted PNG: twice the pixel box its `<img>` sets (the SVG fitted as its `preserveAspectRatio` says), otherwise its own size so the layout holds. An inline one that will not render is removed (in JSX, its `src`) and listed as `element_dropped` with host `svg`; a hosted one that will not render, or whose URL has a `#` fragment, stays an SVG. Source words the editable design does not carry are named once as `{ code: "text_dropped", location: "markup", host: "<words>" }`; version 1 keeps the exact source.
          *
          *     **Errors** `400 INVALID_REQUEST` (naming the field in `param`) when `title`, `subjectLine` or `content` holds an unpaired surrogate (half of an emoji); `422 EMAIL_IMPORT_FAILED` when the markup cannot be compiled into a design or its editable model is over the size budget, with nothing persisted; `502 EMAIL_IMPORT_PERSISTENCE_FAILED` when the markup converted but the design could not be stored (nothing was created; the message carries the request id to give support); `404 EMAIL_GROUP_NOT_FOUND` for an unknown `groupId`; `413 PAYLOAD_TOO_LARGE` over the byte cap; `422 BRAND_NOT_READY` while the brand is still extracting.
          *
@@ -632,8 +632,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Resume a paused gradual send
-         * @description Resumes a manually paused GRADUAL send. The ramp picks the resume up at its next hold check (seconds after a short pause, up to an hour after a long one); the unsent tail is re-spread and later batches shift so missed intervals do not compress into a burst. A send held at the plan limit resumes on its own once the plan allowance is available; any other send returns `409 SEND_NOT_RESUMABLE`. Brand-scoped: an unknown / cross-brand `sendId` is `404`.
+         * Resume a paused send
+         * @description Resumes a manually paused GRADUAL send, or any campaign paused for its bounce or complaint rate (`pauseReason: bounce_rate`; such a send is never paused for it again). The send picks the resume up at its next hold check (seconds after a short pause, up to an hour after a long one); a ramp re-spreads its unsent tail and shifts later batches so missed intervals do not compress into a burst. A send held at the plan limit resumes on its own once the plan allowance is available; any other send returns `409 SEND_NOT_RESUMABLE`. Brand-scoped: an unknown / cross-brand `sendId` is `404`.
          */
         post: operations["resumeSend"];
         delete?: never;
@@ -794,7 +794,7 @@ export interface paths {
         post?: never;
         /**
          * Delete an automation
-         * @description Cascade-deletes the automation: every version row, runs, and logs. Referenced email DESIGNS are shared resources and always survive. Idempotent — an unknown id resolves with `deleted: false`.
+         * @description Cascade-deletes the automation: every version row, its event and test runs, and their logs. Contacts mid-flow stop. Manual-audience runs that have not finished (scheduled, queued, running or paused) are canceled and kept as history, so `listAudienceRuns` still returns them. Referenced email DESIGNS are shared resources and always survive. Idempotent — an unknown or cross-brand id resolves with `deleted: false`, never `404 AUTOMATION_NOT_FOUND`. `409 AUTOMATION_IN_PROGRESS` while the agent is still generating the automation; retry once it finishes.
          */
         delete: operations["deleteAutomation"];
         options?: never;
@@ -827,7 +827,7 @@ export interface paths {
         put?: never;
         /**
          * Test an automation
-         * @description Runs the saved automation END-TO-END through the real workflow in TEST mode — works on drafts and for both event and manual-audience automations; every node executes (filters/splits evaluate against `payload`, and `contact.<name>` conditions read the test recipient’s contact unless `payload` supplies that field — a flat `contact.<name>` key or a `contact` object — and the trigger’s contract keeps extra keys; wait nodes fast-forward). Pass `testRecipient` to DELIVER each send-email node’s email for real to that address (real subject/preview/sender name; verified configured sender domains are preserved, otherwise delivery uses the Brew test domain; customer addresses are never hit; the address must be a teammate with access to the brand, an address on a verified sending domain of the brand, or, for a signed-in person (not an API key), their own address or one on their company domain, else `422 TEST_RECIPIENT_NOT_ALLOWED`) — omit it for a silent dry-run with no mail. Test runs are excluded from live analytics rollups. Real test deliveries consume send usage; dry runs do not. Test payloads never update real contact records. Returns `202` with the started run id; follow per-node status via `GET /v1/automations/runs/{automationRunId}?include=logs`. Optional `scenario` controls simulate timed opens/clicks at engagement-filter nodes and force left/right percentage-split choices (waits use a virtual clock; controls stay separate from `payload`, and simulated events never enter live analytics or send quotas); the run row’s `testCoverage` reports visited nodes, traversed connections, evaluated or forced decisions, uncovered paths and simulation limitations. On a Brew-event (unsubscribe) trigger, omit payload to use Brew’s sample event; supplied fields replace the sample’s. The run never creates or edits a contact.
+         * @description Runs the saved automation END-TO-END through the real workflow in TEST mode — works on drafts and for both event and manual-audience automations; every node executes (filters/splits evaluate against `payload`, and `contact.<name>` conditions read the test recipient’s contact unless `payload` supplies that field — a flat `contact.<name>` key or a `contact` object — and the trigger’s contract keeps extra keys; wait nodes fast-forward). Pass `testRecipient` to DELIVER each send-email node’s email for real to that address (real subject/preview/sender name; verified configured sender domains are preserved, otherwise delivery uses the Brew test domain; customer addresses are never hit; the address must be a teammate with access to the brand, an address on a verified sending domain of the brand, or, for a signed-in person (not an API key), their own address or one on their company domain, else `422 TEST_RECIPIENT_NOT_ALLOWED`) — omit it for a silent dry-run with no mail. Test runs are excluded from live analytics rollups. Test deliveries never count toward the plan’s email sends. Test payloads never update real contact records. Returns `202` with the started run id; follow per-node status via `GET /v1/automations/runs/{automationRunId}?include=logs`. Optional `scenario` controls simulate timed opens/clicks at engagement-filter nodes and force left/right percentage-split choices (waits use a virtual clock; controls stay separate from `payload`, and simulated events never enter live analytics or send quotas); the run row’s `testCoverage` reports visited nodes, traversed connections, evaluated or forced decisions, uncovered paths and simulation limitations. On a Brew-event (unsubscribe) trigger, omit payload to use Brew’s sample event; supplied fields replace the sample’s. The run never creates or edits a contact. `400 INVALID_PAYLOAD` when `payload` does not match the trigger’s payload schema; `422 AUTOMATION_NOT_READY` when generation failed or a step is incomplete or invalid (the message names it); `409 AUTOMATION_IN_PROGRESS` while the agent is still generating the automation.
          */
         post: operations["testAutomation"];
         delete?: never;
@@ -847,7 +847,7 @@ export interface paths {
         put?: never;
         /**
          * Run a manual-audience automation
-         * @description Launches a MANUAL-AUDIENCE automation against the audience bound to its trigger node. `dryRun: true` previews without sending; `scheduledAt` launches later, at most 1 year ahead. Percentage-based `gradualSend` delivers each send step in custom hour or calendar-day batches and supports manual pause/resume/cancel. `400` when `scheduledAt` is more than 1 year ahead, or a `gradualSend` plan exceeds 50,000 recipients, 30 batches, or 30 elapsed days. `422 EMAIL_IMAGES_MISSING` when a step would send a cdn.brew.new image that does not exist (`details.missingImages[]`). Returns `202` with the `audienceRunId`.
+         * @description Launches a MANUAL-AUDIENCE automation against the audience bound to its trigger node. `dryRun: true` previews without sending; `scheduledAt` launches later, at most 1 year ahead. Percentage-based `gradualSend` delivers each send step in custom hour or calendar-day batches and supports manual pause/resume/cancel. `400` when `scheduledAt` is more than 1 year ahead, or a `gradualSend` plan exceeds 50,000 recipients, 30 batches, or 30 elapsed days. `422 AUTOMATION_NOT_RUNNABLE` for an event automation, which runs when its trigger fires. `422 AUTOMATION_NOT_READY` when the saved flow cannot launch: a step is incomplete or invalid, a send step’s sender domain is not verified, generation failed, or no usable audience is bound (the message names which). `422 EMAIL_IMAGES_MISSING` when a step would send a cdn.brew.new image that does not exist (`details.missingImages[]`). `409 AUTOMATION_IN_PROGRESS` while the agent is still generating the automation. Returns `202` with the `audienceRunId`.
          */
         post: operations["runAutomation"];
         delete?: never;
@@ -933,9 +933,9 @@ export interface paths {
          *
          *     **Input** `audienceRunId` in the path; no body.
          *
-         *     **Returns** `200` with the run’s new `status` (`paused`). A run that is already paused, by an operator or at the plan limit, returns the same `200` and changes nothing.
+         *     **Returns** `200` with the run’s new `status` (`paused`). A run its operator already paused returns the same `200` and changes nothing.
          *
-         *     **Errors** `409 RUN_NOT_PAUSABLE` when the run is scheduled, completed, failed or canceled; `404 AUDIENCE_RUN_NOT_FOUND` for an unknown or cross-brand id.
+         *     **Errors** `409 RUN_NOT_PAUSABLE` when the run is scheduled, completed, failed or canceled, or held at the plan limit (`pauseReason: plan_limit`: it resumes on its own once the monthly send allowance has room, so cancel it to stop it); `404 AUDIENCE_RUN_NOT_FOUND` for an unknown or cross-brand id.
          *
          *     **See also** `resumeAudienceRun`, `cancelAudienceRun`, `getAudienceRun`.
          */
@@ -965,7 +965,7 @@ export interface paths {
          *
          *     **Returns** `200` with the run’s new `status` and `resumedFrom` (`paused` or `failed`).
          *
-         *     **Errors** `409 RUN_NOT_PAUSED` when a running run is resumed; `409 RUN_NOT_RESUMABLE` when the run is held at the plan limit, or a failed run has no undelivered send step or a send step delivered to only part of its segment; `409 RUN_IN_PROGRESS` when another run of the automation is active; `402 SEND_QUOTA_EXCEEDED` when resuming would exceed the monthly send limit; `422 INVALID_REQUEST` when a send step is no longer valid; `503 RUN_STOP_FAILED` / `RUN_START_FAILED` when the workflow engine could not stop the previous run or start the new one (retry); `404 AUDIENCE_RUN_NOT_FOUND` for an unknown or cross-brand id.
+         *     **Errors** `409 RUN_NOT_PAUSED` when the run is neither paused nor failed (scheduled, queued, running, completed or canceled); `409 RUN_NOT_RESUMABLE` when the run is held at the plan limit, or a failed run has no undelivered send step or a send step delivered to only part of its segment; `409 RUN_IN_PROGRESS` when another run of the automation is active; `402 SEND_QUOTA_EXCEEDED` when resuming would exceed the monthly send limit; `422 AUTOMATION_NOT_READY` when a send step still to go can no longer send, such as a sender domain that is no longer verified (the message names the step); `503 RUN_STOP_FAILED` / `RUN_START_FAILED` when the workflow engine could not stop the previous run or start the new one (retry); `404 AUDIENCE_RUN_NOT_FOUND` for an unknown or cross-brand id.
          *
          *     **See also** `pauseAudienceRun`, `cancelAudienceRun`, `getAudienceRun`.
          */
@@ -995,7 +995,7 @@ export interface paths {
          *
          *     **Returns** `200` with the run’s new `status` (`canceled`).
          *
-         *     **Errors** `409 RUN_NOT_CANCELLABLE` when the run already finished; `503 RUN_STOP_FAILED` when the workflow could not be stopped (retry); `404 AUDIENCE_RUN_NOT_FOUND` for an unknown or cross-brand id.
+         *     **Errors** `409 RUN_NOT_CANCELLABLE` when the run already completed, failed or was canceled, including a repeat cancel with a new `Idempotency-Key` (a retry with the same key replays the first answer); `404 AUDIENCE_RUN_NOT_FOUND` for an unknown or cross-brand id.
          *
          *     **See also** `pauseAudienceRun`, `resumeAudienceRun`, `cancelAutomationRun` (one event or test run).
          */
@@ -1049,7 +1049,7 @@ export interface paths {
          *
          *     **Use when** debugging one contact’s journey or confirming a test run finished.
          *
-         *     **Input** `automationRunId` in the path; `include=logs` inlines the newest 100 execution log rows in `orderIndex` order and sets `logsTruncated` when older rows exist. Each node status change is its own row: a node that runs has a `running` row (no `completedAt`), then its terminal `completed` or `failed` row, or `skipped` when the run is canceled while it runs; a node a branch rules out has only a `skipped` row. A node’s outcome is its last row.
+         *     **Input** `automationRunId` in the path; `include=logs` inlines the newest 100 execution log rows in `orderIndex` order and sets `logsTruncated` when older rows exist. Each node status change is its own row: a node that runs has a `running` row (no `completedAt`), then its terminal `completed` or `failed` row, or `skipped` when the run is canceled while it runs; a node a branch rules out has only a `skipped` row. A node’s outcome is its last row. A run canceled between two nodes adds no row, so the node that finished keeps its outcome; the run’s `status` and `error` record the cancel.
          *
          *     **Returns** `200` with the row; `logs` is present only when requested.
          *
@@ -1547,7 +1547,7 @@ export interface paths {
         put?: never;
         /**
          * Bulk-import contacts from CSV
-         * @description Parse a raw CSV string and upsert the rows as contacts (≤ 1000). By default each column header maps to the custom field its name folds to, the same camelCase name `POST /v1/contacts` stores (`Plan` → `plan`, `Team Size` → `teamSize`); `email` is required. A header that spells a core field, ignoring case, spaces, `_` and `-`, or whose field key equals it (`First.Name`), maps to it: `Email`, `First Name`, `Last Name` and `Subscribed` fill `email`, `firstName`, `lastName` and `subscribed`. Pass `mapping` to remap single columns; the columns it leaves out keep their default mapping, `""` leaves a column out, and a key that names no column is a `400`. Two columns that land on one custom field (`plan,Plan`: names fold as on `POST /v1/contacts`) are a `422 FIELD_NAME_COLLISION` before any row is read: map one to another name or leave it out with `""`. A core field that `mapping` fills is filled from that column alone: another column whose default would fill it is left out with a `CSV_COLUMN_IGNORED` warning. Rows with a missing/invalid email are SKIPPED (counted in `summary.skipped`), not errored; disposable-domain rows are imported with `validationStatus: "risky"` (deliverable but flagged). Returns the same `{ summary, fieldsCreated, errors, warnings }` as batch-create plus `importId` — `207` when some rows fail. The batch is listed in Import History under `fileName` (optional), and each contact it writes carries `importId` until a later import touches it (filter on it to list them; deleting the import in the app removes the contacts it created). For rows you already hold as JSON, use `POST /v1/contacts/import`.
+         * @description Parse a raw CSV string and upsert the rows as contacts (≤ 1000). By default each column header maps to the custom field its name folds to, the same camelCase name `POST /v1/contacts` stores (`Plan` → `plan`, `Team Size` → `teamSize`); `email` is required. A header that spells a core field, ignoring case, spaces, `_` and `-`, or whose field key equals it (`First.Name`), maps to it: `Email`, `First Name`, `Last Name` and `Subscribed` fill `email`, `firstName`, `lastName` and `subscribed`. Pass `mapping` to remap single columns; the columns it leaves out keep their default mapping, `""` leaves a column out, and a key that names no column is a `400`. Two columns that land on one field (`plan,Plan`: names fold as on `POST /v1/contacts`; `First Name,firstName`; `email,Email`) are a `422 FIELD_NAME_COLLISION` before any row is read: map one to another name or leave it out with `""`. Columns that fill `subscribed` are all read, and an opt-out in any of them wins. A core field that `mapping` fills is filled from that column alone: another column whose default would fill it is left out with a `CSV_COLUMN_IGNORED` warning. Rows with a missing/invalid email are SKIPPED (counted in `summary.skipped`), not errored; disposable-domain rows are imported with `validationStatus: "risky"` (deliverable but flagged). Returns the same `{ summary, fieldsCreated, errors, warnings }` as batch-create plus `importId` — `207` when some rows fail. The batch is listed in Import History under `fileName` (optional), and each contact it writes carries `importId` until a later import touches it (filter on it to list them; deleting the import in the app removes the contacts it created). For rows you already hold as JSON, use `POST /v1/contacts/import`.
          *
          *     CSV cells are text: a column mapped onto an EXISTING field is coerced to that field's type (dates → epoch ms, `1,234` → 1234, `yes`/`no` → booleans), and a cell that cannot be coerced (`$49` in a number column) fails ITS row with a per-row `errors[]` entry (`code: FIELD_TYPE_MISMATCH`, `field`) while the other rows still land. A converted cell adds a `warnings[]` entry (`code: FIELD_TYPE_COERCED`, `field`, `from`, `to`); a date written to a `date` field is not reported. An undeclared column is created as a `string` field unless every value is an ISO date (→ `date`); predeclare `number` / `bool` columns with `POST /v1/fields`. A column whose field Brew manages (`Created At`, `Validation Status`) is not imported and adds a `warnings[]` entry (`code: CSV_COLUMN_IGNORED`, `field` names the column).
          *
@@ -1685,13 +1685,13 @@ export interface paths {
         };
         /**
          * List audiences
-         * @description Lists the brand’s saved audiences under `{ data, pagination }`. Each row carries its contact `filters`, a member `count` and ISO timestamps; an audience is the recipient target for `createSend`. Stale counts are refreshed on a best-effort basis. If a recount fails or reaches its time budget, the saved count is returned. Use `GET /v1/audiences/{audienceId}?include=count` for an on-demand count.
+         * @description Lists the brand’s saved audiences under `{ data, pagination }`. Each row carries its contact `filters`, a member `count` and ISO timestamps; an audience is the recipient target for `createSend`.
          *
          *     **Use when** choosing the `audienceId` for a campaign or an automation launch.
          *
          *     **Input** `limit` and `cursor`.
          *
-         *     **Returns** `200` with a page of `Audience` rows.
+         *     **Returns** `200` with a page of `Audience` rows. A listed audience's `count` is its saved member total, recounted before the list answers when contacts changed since that count or it is a day old; an audience that cannot be recounted (still building, unusable filters, a failed or timed-out count) keeps its saved total. `GET /v1/audiences/{audienceId}?include=count` returns the exact total a send targets.
          *
          *     **Errors** `400 INVALID_REQUEST` for an unknown query key.
          *
@@ -2608,7 +2608,7 @@ export interface paths {
          *     - `automation_pause_window_closed`: `automations`.
          *     - `brand_extracted`, `brand_image_import`, `integration_attention` (a connected integration such as Stripe needs a reconnect, moved to another brand, or lost a permission): every credential on the brand.
          *     - `api_key_created`: the `all` scope (a signed-in member, or a key or connection holding `all`).
-         *     - `send_limit_reached`: organization admins only (a signed-in admin, an admin’s organization-wide connection, or an organization-wide key holding `all`); never a brand key.
+         *     - `send_limit_reached`, `trial_ending`, `trial_expired`, `payment_failed`: organization admins only (a signed-in admin, an admin’s organization-wide connection, or an organization-wide key holding `all`); never a brand key.
          *     - `comment_mention`, `comment_reply` (`isPersonal: true`): only the person addressed, signed in or on a personal connection; never an API key.
          *
          *     **Use when** checking what finished or failed since you last looked.
@@ -2832,10 +2832,10 @@ export interface components {
             /** @enum {string} */
             approvalState?: "pending" | "approved" | "rejected";
             /**
-             * @description Why a paused send is held. `plan_limit`: the plan has too few sends left this period. `domain_unsendable`: its sending domain stopped passing DNS; fails after 7 days. Both resume on their own and can be canceled. `manual`: its operator paused the gradual ramp; resume it to continue.
+             * @description Why a paused send is held. `plan_limit`: the plan has too few sends left this period. `domain_unsendable`: its sending domain stopped passing DNS; fails after 7 days. Both resume on their own and can be canceled. `manual`: its operator paused the gradual ramp; resume it to continue. `bounce_rate`: at least 4% of its recipients hard-bounced or 0.3% marked it as spam; check the list, then resume or cancel it.
              * @enum {string}
              */
-            pauseReason?: "manual" | "plan_limit" | "domain_unsendable";
+            pauseReason?: "manual" | "plan_limit" | "domain_unsendable" | "bounce_rate";
             subject?: string;
             previewText?: string;
             from?: {
@@ -2867,6 +2867,8 @@ export interface components {
                 opened: number;
                 clicked: number;
                 bounced: number;
+                /** @description Permanent (hard) bounces, a subset of `bounced`. Absent on older sends. */
+                hardBounced?: number;
                 complained: number;
                 unsubscribed: number;
             };
@@ -4332,7 +4334,7 @@ export interface components {
             /** @description `ntf_` + 20 hex characters: a one-way hash, stable for the row’s life. */
             notificationId: string;
             /** @enum {string} */
-            type: "chat_stream" | "import_job" | "brand_image_import" | "validation_job" | "email_sent" | "email_scheduled" | "preview_email" | "brand_extracted" | "domain_status" | "domain_score_run" | "api_key_created" | "email_send_failed" | "gradual_send_paused" | "gradual_send_completed" | "send_limit_reached" | "automation_pause_window_closed" | "send_review_rejected" | "comment_mention" | "comment_reply" | "integration_attention";
+            type: "chat_stream" | "import_job" | "brand_image_import" | "validation_job" | "email_sent" | "email_scheduled" | "preview_email" | "brand_extracted" | "domain_status" | "domain_score_run" | "api_key_created" | "email_send_failed" | "gradual_send_paused" | "gradual_send_completed" | "send_limit_reached" | "trial_ending" | "trial_expired" | "payment_failed" | "automation_pause_window_closed" | "send_review_rejected" | "comment_mention" | "comment_reply" | "integration_attention";
             /** @enum {string} */
             status: "uploading" | "preparing" | "processing" | "finalizing" | "streaming" | "background_finalizing" | "completed" | "partial" | "failed" | "interrupted" | "stopped" | "persistence_failed";
             title: string;
@@ -4468,7 +4470,7 @@ export interface components {
             };
         };
         /** @enum {string} */
-        ApiErrorCode: "ACCOUNT_SUSPENDED" | "API_KEY_REVOKED" | "AUDIENCE_BUILD_ACTIVE" | "AUDIENCE_BUILD_ALREADY_ACTIVE" | "AUDIENCE_EDIT_CONFLICT" | "AUDIENCE_MEMBERSHIP_NOT_EXPRESSIBLE" | "AUDIENCE_NOT_FOUND" | "AUDIENCE_RUN_NOT_FOUND" | "AUDIT_NOT_FOUND" | "AUTHENTICATION_REQUIRED" | "AUTOMATION_GRAPH_INVALID" | "AUTOMATION_NOT_FOUND" | "AUTOMATION_NOT_PAUSABLE" | "AUTOMATION_NOT_PUBLISHED" | "AUTOMATION_RUN_NOT_FOUND" | "AUTOMATION_VERSION_CONFLICT" | "AUTOMATION_VERSION_NOT_FOUND" | "BATCH_TOO_LARGE" | "BRAND_DOMAIN_CONFLICT" | "BRAND_ID_REQUIRED" | "BRAND_LIMIT_REACHED" | "BRAND_NOT_FOUND" | "BRAND_NOT_READY" | "BRAND_SCOPE_MISMATCH" | "CHAT_NOT_FOUND" | "COMMENT_NOT_FOUND" | "CONSENT_REQUIRED" | "CONTACT_NOT_FOUND" | "CONTENT_OPERATION_FAILED" | "CONTRACT_LOCKED_BY_PUBLISHED_AUTOMATIONS" | "CORE_FIELD_IMMUTABLE" | "DOMAIN_ALREADY_EXISTS" | "DOMAIN_CLAIMED_ELSEWHERE" | "DOMAIN_NOT_FOUND" | "DOMAIN_NOT_READY" | "DOMAIN_OTHER_BRAND" | "DOMAIN_PROVIDER_ERROR" | "DOMAIN_PURPOSE_NOT_ALLOWED" | "DOMAIN_VERIFICATION_FAILED" | "DOMAIN_VERIFIED_ELSEWHERE" | "EMAIL_GENERATION_FAILED" | "EMAIL_GROUP_NAME_CONFLICT" | "EMAIL_GROUP_NOT_FOUND" | "EMAIL_IMAGES_MISSING" | "EMAIL_IMPORT_FAILED" | "EMAIL_IMPORT_PERSISTENCE_FAILED" | "EMAIL_IN_PROGRESS" | "EMAIL_IN_USE_BY_AUTOMATION" | "EMAIL_NOT_FOUND" | "EMAIL_NOT_READY" | "EMAIL_RESULT_UNAVAILABLE" | "EMAIL_RUN_AMBIGUOUS" | "EMAIL_TEMPLATE_INVALID" | "EMAIL_VERSION_NOT_FOUND" | "EXPORT_PROVIDER_ERROR" | "EXPORT_UNSUPPORTED" | "FIELD_NAME_COLLISION" | "FIELD_NOT_FOUND" | "FIELD_TYPE_MISMATCH" | "FIGMA_ACCESS_DENIED" | "FIGMA_CONVERSION_FAILED" | "FIGMA_FRAME_NOT_FOUND" | "FIGMA_NOT_CONNECTED" | "FIGMA_UNAVAILABLE" | "FIGMA_URL_INVALID" | "FLOW_NOT_FOUND" | "IDEMPOTENCY_CONFLICT" | "IDEMPOTENCY_IN_PROGRESS" | "INSIGHT_NOT_FOUND" | "INSUFFICIENT_CREDITS" | "INSUFFICIENT_PERMISSIONS" | "INSUFFICIENT_ROLE" | "INTEGRATION_NOT_CONNECTED" | "INTERNAL_ERROR" | "INVALID_API_KEY" | "INVALID_EMAIL" | "INVALID_PAYLOAD" | "INVALID_REQUEST" | "LIQUID_RENDER_ERROR" | "METHOD_NOT_ALLOWED" | "MISSING_EMAIL" | "NO_ELIGIBLE_RECIPIENTS" | "NO_PUBLISHED_AUTOMATION" | "NOT_FOUND" | "NOT_IMPLEMENTED" | "ORG_SCOPE_REQUIRED" | "PAYLOAD_SCHEMA_EMAIL_REQUIRED" | "PAYLOAD_TOO_LARGE" | "PREVIEW_NOT_FOUND" | "PUBLISH_VALIDATION_FAILED" | "RATE_LIMITED" | "RECIPIENT_UNSUBSCRIBED" | "REFERENCE_EMAIL_NOT_FOUND" | "RESUBSCRIBE_NOT_ALLOWED" | "RUN_IN_PROGRESS" | "RUN_NOT_CANCELLABLE" | "RUN_NOT_PAUSABLE" | "RUN_NOT_PAUSED" | "RUN_NOT_RESUMABLE" | "RUN_START_FAILED" | "RUN_STOP_FAILED" | "SEND_NOT_CANCELLABLE" | "SEND_NOT_FOUND" | "SEND_NOT_PAUSABLE" | "SEND_NOT_RESUMABLE" | "SEND_QUOTA_EXCEEDED" | "SERVICE_UNAVAILABLE" | "TEMPLATE_NOT_FOUND" | "TEST_RECIPIENT_NOT_ALLOWED" | "TRIGGER_ALREADY_EXISTS" | "TRIGGER_EVENT_NOT_FOUND" | "TRIGGER_HAS_DEPENDENT_AUTOMATIONS" | "TRIGGER_IMMUTABLE" | "TRIGGER_INSTANCE_NOT_FOUND" | "TRIGGER_LIMIT_REACHED" | "TRIGGER_NOT_FIREABLE" | "UPLOAD_IN_PROGRESS" | "UPLOAD_NOT_FOUND" | "UPLOAD_NOT_RECEIVED";
+        ApiErrorCode: "ACCOUNT_SUSPENDED" | "API_KEY_REVOKED" | "AUDIENCE_BUILD_ACTIVE" | "AUDIENCE_BUILD_ALREADY_ACTIVE" | "AUDIENCE_EDIT_CONFLICT" | "AUDIENCE_MEMBERSHIP_NOT_EXPRESSIBLE" | "AUDIENCE_NOT_FOUND" | "AUDIENCE_RUN_NOT_FOUND" | "AUDIT_NOT_FOUND" | "AUTHENTICATION_REQUIRED" | "AUTOMATION_GRAPH_INVALID" | "AUTOMATION_IN_PROGRESS" | "AUTOMATION_NOT_FOUND" | "AUTOMATION_NOT_PAUSABLE" | "AUTOMATION_NOT_PUBLISHED" | "AUTOMATION_NOT_READY" | "AUTOMATION_NOT_RUNNABLE" | "AUTOMATION_RUN_NOT_FOUND" | "AUTOMATION_VERSION_CONFLICT" | "AUTOMATION_VERSION_NOT_FOUND" | "BATCH_TOO_LARGE" | "BRAND_DOMAIN_CONFLICT" | "BRAND_ID_REQUIRED" | "BRAND_LIMIT_REACHED" | "BRAND_NOT_FOUND" | "BRAND_NOT_READY" | "BRAND_SCOPE_MISMATCH" | "CHAT_NOT_FOUND" | "COMMENT_NOT_FOUND" | "CONSENT_REQUIRED" | "CONTACT_NOT_FOUND" | "CONTENT_OPERATION_FAILED" | "CONTRACT_LOCKED_BY_PUBLISHED_AUTOMATIONS" | "CORE_FIELD_IMMUTABLE" | "DOMAIN_ALREADY_EXISTS" | "DOMAIN_CLAIMED_ELSEWHERE" | "DOMAIN_NOT_FOUND" | "DOMAIN_NOT_READY" | "DOMAIN_OTHER_BRAND" | "DOMAIN_PROVIDER_ERROR" | "DOMAIN_PURPOSE_NOT_ALLOWED" | "DOMAIN_VERIFICATION_FAILED" | "DOMAIN_VERIFIED_ELSEWHERE" | "EMAIL_GENERATION_FAILED" | "EMAIL_GROUP_NAME_CONFLICT" | "EMAIL_GROUP_NOT_FOUND" | "EMAIL_IMAGES_MISSING" | "EMAIL_IMPORT_FAILED" | "EMAIL_IMPORT_PERSISTENCE_FAILED" | "EMAIL_IN_PROGRESS" | "EMAIL_IN_USE_BY_AUTOMATION" | "EMAIL_NOT_FOUND" | "EMAIL_NOT_READY" | "EMAIL_RESULT_UNAVAILABLE" | "EMAIL_RUN_AMBIGUOUS" | "EMAIL_TEMPLATE_INVALID" | "EMAIL_VERSION_NOT_FOUND" | "EXPORT_PROVIDER_ERROR" | "EXPORT_UNSUPPORTED" | "FIELD_NAME_COLLISION" | "FIELD_NOT_FOUND" | "FIELD_TYPE_MISMATCH" | "FIGMA_ACCESS_DENIED" | "FIGMA_CONVERSION_FAILED" | "FIGMA_FRAME_NOT_FOUND" | "FIGMA_NOT_CONNECTED" | "FIGMA_UNAVAILABLE" | "FIGMA_URL_INVALID" | "FLOW_NOT_FOUND" | "IDEMPOTENCY_CONFLICT" | "IDEMPOTENCY_IN_PROGRESS" | "INSIGHT_NOT_FOUND" | "INSUFFICIENT_CREDITS" | "INSUFFICIENT_PERMISSIONS" | "INSUFFICIENT_ROLE" | "INTEGRATION_NOT_CONNECTED" | "INTERNAL_ERROR" | "INVALID_API_KEY" | "INVALID_EMAIL" | "INVALID_PAYLOAD" | "INVALID_REQUEST" | "LIQUID_RENDER_ERROR" | "METHOD_NOT_ALLOWED" | "MISSING_EMAIL" | "NO_ACTIVE_PLAN" | "NO_ELIGIBLE_RECIPIENTS" | "NO_PUBLISHED_AUTOMATION" | "NOT_FOUND" | "NOT_IMPLEMENTED" | "ORG_SCOPE_REQUIRED" | "PAYLOAD_SCHEMA_EMAIL_REQUIRED" | "PAYLOAD_TOO_LARGE" | "PREVIEW_NOT_FOUND" | "PUBLISH_VALIDATION_FAILED" | "RATE_LIMITED" | "RECIPIENT_UNSUBSCRIBED" | "REFERENCE_EMAIL_NOT_FOUND" | "RESUBSCRIBE_NOT_ALLOWED" | "RUN_IN_PROGRESS" | "RUN_NOT_CANCELLABLE" | "RUN_NOT_PAUSABLE" | "RUN_NOT_PAUSED" | "RUN_NOT_RESUMABLE" | "RUN_START_FAILED" | "RUN_STOP_FAILED" | "SEND_NOT_CANCELLABLE" | "SEND_NOT_FOUND" | "SEND_NOT_PAUSABLE" | "SEND_NOT_RESUMABLE" | "SEND_QUOTA_EXCEEDED" | "SERVICE_UNAVAILABLE" | "TEMPLATE_NOT_FOUND" | "TEST_RECIPIENT_NOT_ALLOWED" | "TRIGGER_ALREADY_EXISTS" | "TRIGGER_EVENT_NOT_FOUND" | "TRIGGER_HAS_DEPENDENT_AUTOMATIONS" | "TRIGGER_IMMUTABLE" | "TRIGGER_INSTANCE_NOT_FOUND" | "TRIGGER_LIMIT_REACHED" | "TRIGGER_NOT_FIREABLE" | "UPLOAD_IN_PROGRESS" | "UPLOAD_NOT_FOUND" | "UPLOAD_NOT_RECEIVED" | "WRITE_CONFLICT";
         EmailGenerateTextResponse: {
             response: string;
         };
@@ -5127,10 +5129,10 @@ export interface components {
                 /** @enum {string} */
                 approvalState?: "pending" | "approved" | "rejected";
                 /**
-                 * @description Why a paused send is held. `plan_limit`: the plan has too few sends left this period. `domain_unsendable`: its sending domain stopped passing DNS; fails after 7 days. Both resume on their own and can be canceled. `manual`: its operator paused the gradual ramp; resume it to continue.
+                 * @description Why a paused send is held. `plan_limit`: the plan has too few sends left this period. `domain_unsendable`: its sending domain stopped passing DNS; fails after 7 days. Both resume on their own and can be canceled. `manual`: its operator paused the gradual ramp; resume it to continue. `bounce_rate`: at least 4% of its recipients hard-bounced or 0.3% marked it as spam; check the list, then resume or cancel it.
                  * @enum {string}
                  */
-                pauseReason?: "manual" | "plan_limit" | "domain_unsendable";
+                pauseReason?: "manual" | "plan_limit" | "domain_unsendable" | "bounce_rate";
                 subject?: string;
                 previewText?: string;
                 from?: {
@@ -5162,6 +5164,8 @@ export interface components {
                     opened: number;
                     clicked: number;
                     bounced: number;
+                    /** @description Permanent (hard) bounces, a subset of `bounced`. Absent on older sends. */
+                    hardBounced?: number;
                     complained: number;
                     unsubscribed: number;
                 };
@@ -6473,6 +6477,71 @@ export interface components {
             } & {
                 [key: string]: unknown;
             })[];
+            /** @description MCP only: the started runs as read after the call waited for them to finish. Never set on HTTP responses; read runs with GET /v1/automations/runs/{automationRunId}. */
+            runs?: {
+                automationRunId: string;
+                automationId: string;
+                automationVersionId?: string;
+                definitionHash?: string;
+                triggerInstanceId?: string;
+                /** @enum {string} */
+                mode: "live" | "test";
+                /** @enum {string} */
+                status: "queued" | "running" | "completed" | "failed" | "canceled";
+                recipientEmail?: string;
+                /** Format: date-time */
+                startedAt?: string;
+                /** Format: date-time */
+                completedAt?: string;
+                error?: string;
+                testCoverage?: {
+                    /** @enum {string} */
+                    mode: "smoke" | "scenario";
+                    complete: boolean;
+                    visitedNodes: string[];
+                    unvisitedNodes: string[];
+                    traversedConnections: {
+                        /** @description The id of the automation node this control applies to. */
+                        from: string;
+                        /** @description The id of the automation node this control applies to. */
+                        to: string;
+                        branch?: string;
+                    }[];
+                    untraversedConnections: {
+                        /** @description The id of the automation node this control applies to. */
+                        from: string;
+                        /** @description The id of the automation node this control applies to. */
+                        to: string;
+                        branch?: string;
+                    }[];
+                    decisions: {
+                        /** @description The id of the automation node this control applies to. */
+                        nodeId: string;
+                        branch: string;
+                        /** @enum {string} */
+                        source: "simulated" | "forced" | "deterministic" | "payload" | "smoke" | "upstream_not_delivered";
+                    }[];
+                    limitations: string[];
+                };
+                logs?: {
+                    automationRunId: string;
+                    nodeId: string;
+                    nodeName: string;
+                    /** @enum {string} */
+                    nodeType: "trigger" | "wait" | "filter" | "split" | "sendEmail";
+                    /** @enum {string} */
+                    status: "running" | "completed" | "failed" | "skipped";
+                    orderIndex: number;
+                    branch?: string;
+                    durationMs?: number;
+                    /** Format: date-time */
+                    startedAt: string;
+                    /** Format: date-time */
+                    completedAt?: string;
+                    error?: string;
+                }[];
+                logsTruncated?: boolean;
+            }[];
         };
         AutomationTestRequest: {
             payload?: {
@@ -7666,7 +7735,7 @@ export interface components {
                 /** @description The comparison value, as a string. `in`, `not_in`, `contains_any` and `not_contains_any` take a comma-separated list; `between` takes exactly two comma-separated bounds (e.g. "10,30"). Unary operators (`is_empty`, `is_not_empty`, `exists`, `not_exists`, `is_true`, `is_false`) ignore it — pass "". */
                 value: string;
             }[];
-            /** @description Scope to a saved audience's members. The audience's stored filter set is evaluated as one unit with its own `logicalOperator` (an OR audience stays an OR), then ANDed with `filters`. Unknown / cross-brand id, or an audience a send would refuse (unusable filters, a cohort still building) → 400. */
+            /** @description Scope to a saved audience's members. The audience's stored filter set is evaluated as one unit with its own `logicalOperator` (an OR audience stays an OR), then ANDed with `filters`. Unknown / cross-brand id, or an audience a send would refuse (unusable filters, a cohort still building) → 400. Omit it, or pass the reserved `all`, to search every contact. */
             audienceId?: string;
             /**
              * @default and
@@ -9088,7 +9157,7 @@ export interface components {
                 /** @description `ntf_` + 20 hex characters: a one-way hash, stable for the row’s life. */
                 notificationId: string;
                 /** @enum {string} */
-                type: "chat_stream" | "import_job" | "brand_image_import" | "validation_job" | "email_sent" | "email_scheduled" | "preview_email" | "brand_extracted" | "domain_status" | "domain_score_run" | "api_key_created" | "email_send_failed" | "gradual_send_paused" | "gradual_send_completed" | "send_limit_reached" | "automation_pause_window_closed" | "send_review_rejected" | "comment_mention" | "comment_reply" | "integration_attention";
+                type: "chat_stream" | "import_job" | "brand_image_import" | "validation_job" | "email_sent" | "email_scheduled" | "preview_email" | "brand_extracted" | "domain_status" | "domain_score_run" | "api_key_created" | "email_send_failed" | "gradual_send_paused" | "gradual_send_completed" | "send_limit_reached" | "trial_ending" | "trial_expired" | "payment_failed" | "automation_pause_window_closed" | "send_review_rejected" | "comment_mention" | "comment_reply" | "integration_attention";
                 /** @enum {string} */
                 status: "uploading" | "preparing" | "processing" | "finalizing" | "streaming" | "background_finalizing" | "completed" | "partial" | "failed" | "interrupted" | "stopped" | "persistence_failed";
                 title: string;
@@ -9467,7 +9536,11 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed. */
+            /**
+             * @description `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed.
+             *
+             *     `NO_ACTIVE_PLAN`: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
+             */
             402: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -10010,7 +10083,11 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed. */
+            /**
+             * @description `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed.
+             *
+             *     `NO_ACTIVE_PLAN`: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
+             */
             402: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -10744,6 +10821,19 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
+            /** @description `WRITE_CONFLICT`: Other writes to the same records kept conflicting with this one, so nothing was saved. */
+            503: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
         };
     };
     restoreEmailVersion: {
@@ -11294,7 +11384,11 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed. */
+            /**
+             * @description `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed.
+             *
+             *     `NO_ACTIVE_PLAN`: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
+             */
             402: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -11552,7 +11646,11 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed. */
+            /**
+             * @description `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed.
+             *
+             *     `NO_ACTIVE_PLAN`: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
+             */
             402: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -11929,7 +12027,7 @@ export interface operations {
             /**
              * @description `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed.
              *
-             *     `SEND_QUOTA_EXCEEDED`: The send or manual-audience run would exceed the plan’s monthly email volume. A send must fit at launch and draws from the allowance chunk by chunk as it delivers; `reserved` is only the batch going out right now (`details` carries `used`, `reserved`, `remaining`, `limit`, `planKey` and `requested`, and `periodEnd` when known). The window resets with the billing period.
+             *     `NO_ACTIVE_PLAN`: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
              */
             402: {
                 headers: {
@@ -16166,12 +16264,19 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /**
-             * @description `AUTOMATION_NOT_FOUND`: No automation with that id exists in the brand.
-             *
-             *     `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
-             */
+            /** @description `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization). */
             404: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `AUTOMATION_IN_PROGRESS`: The automation is still being generated, so it cannot be deleted, tested or run yet. */
+            409: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
                     "x-request-id": string;
@@ -16515,7 +16620,9 @@ export interface operations {
                 };
             };
             /**
-             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+             * @description `AUTOMATION_IN_PROGRESS`: The automation is still being generated, so it cannot be deleted, tested or run yet.
+             *
+             *     `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
              *
              *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
              */
@@ -16529,7 +16636,11 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `TEST_RECIPIENT_NOT_ALLOWED`: A test email can reach only a teammate with access to the brand, an address on a verified sending domain of the brand, or, for a signed-in person (not an API key), their own address or one on their company domain; details.recipients lists the refused addresses. */
+            /**
+             * @description `AUTOMATION_NOT_READY`: The saved automation cannot run as it is: generation failed, a step is incomplete or invalid, or a send step’s sender or the bound audience cannot be used; the message names the problem.
+             *
+             *     `TEST_RECIPIENT_NOT_ALLOWED`: A test email can reach only a teammate with access to the brand, an address on a verified sending domain of the brand, or, for a signed-in person (not an API key), their own address or one on their company domain; details.recipients lists the refused addresses.
+             */
             422: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -16750,7 +16861,9 @@ export interface operations {
                 };
             };
             /**
-             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+             * @description `AUTOMATION_IN_PROGRESS`: The automation is still being generated, so it cannot be deleted, tested or run yet.
+             *
+             *     `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
              *
              *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
              *
@@ -16766,7 +16879,13 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `EMAIL_IMAGES_MISSING`: The email shows an image on cdn.brew.new that does not exist, so it was not sent; `details.missingImages[]` lists each URL and the email it is in. */
+            /**
+             * @description `AUTOMATION_NOT_READY`: The saved automation cannot run as it is: generation failed, a step is incomplete or invalid, or a send step’s sender or the bound audience cannot be used; the message names the problem.
+             *
+             *     `AUTOMATION_NOT_RUNNABLE`: The automation is triggered by an event, so it runs when its trigger fires and cannot be run against an audience.
+             *
+             *     `EMAIL_IMAGES_MISSING`: The email shows an image on cdn.brew.new that does not exist, so it was not sent; `details.missingImages[]` lists each URL and the email it is in.
+             */
             422: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -17247,7 +17366,7 @@ export interface operations {
              *
              *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
              *
-             *     `RUN_NOT_PAUSABLE`: A manual-audience run that is scheduled, completed, failed or canceled cannot be paused. Pausing a run that is already paused returns 200.
+             *     `RUN_NOT_PAUSABLE`: A manual-audience run that is scheduled, completed, failed, canceled or held at the plan limit cannot be paused. Pausing a run its operator already paused returns 200.
              */
             409: {
                 headers: {
@@ -17417,11 +17536,22 @@ export interface operations {
              *
              *     `RUN_IN_PROGRESS`: A manual-audience run is already in progress for this automation.
              *
-             *     `RUN_NOT_PAUSED`: Only a paused manual-audience run can be resumed.
+             *     `RUN_NOT_PAUSED`: Only a paused or failed manual-audience run can be resumed; this one is scheduled, queued, running, completed or canceled.
              *
              *     `RUN_NOT_RESUMABLE`: The run cannot be resumed: a failed run needs an undelivered send step, and a run held at the plan limit resumes on its own.
              */
             409: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `AUTOMATION_NOT_READY`: The saved automation cannot run as it is: generation failed, a step is incomplete or invalid, or a send step’s sender or the bound audience cannot be used; the message names the problem. */
+            422: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
                     "x-request-id": string;
@@ -17632,17 +17762,6 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RUN_STOP_FAILED`: The previous run of this cohort could not be stopped. */
-            503: {
-                headers: {
-                    /** @description Unique request identifier. Share this with support when debugging a request. */
-                    "x-request-id": string;
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiErrorEnvelope"];
-                };
-            };
         };
     };
     listAutomationRuns: {
@@ -17651,7 +17770,7 @@ export interface operations {
                 automationId?: string;
                 triggerEventId?: string;
                 triggerInstanceId?: string;
-                /** @description Only runs for this recipient, matched case-insensitively. Some older runs show a `recipientEmail` this filter does not match. */
+                /** @description Only runs for this recipient, matched case-insensitively. */
                 recipientEmail?: string;
                 status?: "queued" | "running" | "completed" | "failed" | "canceled";
                 mode?: "live" | "test";
@@ -21225,7 +21344,11 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed. */
+            /**
+             * @description `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed.
+             *
+             *     `NO_ACTIVE_PLAN`: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
+             */
             402: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -22119,7 +22242,11 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed. */
+            /**
+             * @description `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed.
+             *
+             *     `NO_ACTIVE_PLAN`: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
+             */
             402: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -22366,7 +22493,11 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed. */
+            /**
+             * @description `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed.
+             *
+             *     `NO_ACTIVE_PLAN`: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
+             */
             402: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -22623,7 +22754,11 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed. */
+            /**
+             * @description `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed.
+             *
+             *     `NO_ACTIVE_PLAN`: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
+             */
             402: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -28480,6 +28615,8 @@ export interface operations {
              * @description `BRAND_LIMIT_REACHED`: The plan allows no more brands.
              *
              *     `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed.
+             *
+             *     `NO_ACTIVE_PLAN`: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
              */
             402: {
                 headers: {
@@ -28769,7 +28906,11 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed. */
+            /**
+             * @description `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed.
+             *
+             *     `NO_ACTIVE_PLAN`: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
+             */
             402: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -28955,7 +29096,11 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed. */
+            /**
+             * @description `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed.
+             *
+             *     `NO_ACTIVE_PLAN`: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
+             */
             402: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -29141,7 +29286,11 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed. */
+            /**
+             * @description `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed.
+             *
+             *     `NO_ACTIVE_PLAN`: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
+             */
             402: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -29327,7 +29476,11 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed. */
+            /**
+             * @description `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed.
+             *
+             *     `NO_ACTIVE_PLAN`: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
+             */
             402: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -31306,7 +31459,7 @@ export interface operations {
         parameters: {
             query?: {
                 /** @description Only notifications of this type. A type this credential cannot see (its scopes, or a person-only or admin-only type) is an empty page. */
-                type?: "chat_stream" | "import_job" | "brand_image_import" | "validation_job" | "email_sent" | "email_scheduled" | "preview_email" | "brand_extracted" | "domain_status" | "domain_score_run" | "api_key_created" | "email_send_failed" | "gradual_send_paused" | "gradual_send_completed" | "send_limit_reached" | "automation_pause_window_closed" | "send_review_rejected" | "comment_mention" | "comment_reply" | "integration_attention";
+                type?: "chat_stream" | "import_job" | "brand_image_import" | "validation_job" | "email_sent" | "email_scheduled" | "preview_email" | "brand_extracted" | "domain_status" | "domain_score_run" | "api_key_created" | "email_send_failed" | "gradual_send_paused" | "gradual_send_completed" | "send_limit_reached" | "trial_ending" | "trial_expired" | "payment_failed" | "automation_pause_window_closed" | "send_review_rejected" | "comment_mention" | "comment_reply" | "integration_attention";
                 /**
                  * @description Page size (1-100). Defaults to 100.
                  * @example 50
