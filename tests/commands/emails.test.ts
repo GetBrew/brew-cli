@@ -423,6 +423,19 @@ describe('emails import', () => {
     expect(error.message).not.toContain('iconv')
   })
 
+  it('takes the eml format from --input when the flag is absent', async () => {
+    const result = await runCli(
+      ['emails', 'import', '--input', '{"format":"eml"}', '--file', '-'],
+      {
+        env: env(),
+        stdin: Buffer.from([0x4a, 0x6f, 0x73, 0xe9]),
+        extraCommands: EXTRA,
+      }
+    )
+    expect(result.code).toBe(2)
+    expect(result.stderr).toContain('An .eml must be UTF-8')
+  })
+
   it('reads --file and posts the typed body', async () => {
     let body: unknown
     server.use(

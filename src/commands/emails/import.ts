@@ -51,7 +51,9 @@ export const emailsImportCommand = defineCommand({
     const base = await readJsonFlag(ctx, flags.input, '--input')
     const format =
       flagString(flags.format) ??
-      flagString((base as { format?: unknown } | undefined)?.format)
+      (typeof base === 'object' && base !== null && 'format' in base
+        ? flagString(base.format)
+        : undefined)
     const content = await readTextFlag(
       ctx,
       flags.file,
