@@ -602,7 +602,8 @@ components:
             - manual
             - plan_limit
             - domain_unsendable
-          description: "Why a paused send is held. `plan_limit`: the plan has too few sends left this period. `domain_unsendable`: its sending domain stopped passing DNS; fails after 7 days. Both resume on their own and can be canceled. `manual`: its operator paused the gradual ramp; resume it to continue."
+            - bounce_rate
+          description: "Why a paused send is held. `plan_limit`: the plan has too few sends left this period. `domain_unsendable`: its sending domain stopped passing DNS; fails after 7 days. Both resume on their own and can be canceled. `manual`: its operator paused the gradual ramp; resume it to continue. `bounce_rate`: at least 4% of its recipients hard-bounced or 0.3% marked it as spam; check the list, then resume or cancel it."
         subject:
           type: string
         previewText:
@@ -667,6 +668,10 @@ components:
             bounced:
               type: integer
               minimum: 0
+            hardBounced:
+              type: integer
+              minimum: 0
+              description: Permanent (hard) bounces, a subset of `bounced`. Absent on older sends.
             complained:
               type: integer
               minimum: 0
@@ -4778,6 +4783,9 @@ components:
             - gradual_send_paused
             - gradual_send_completed
             - send_limit_reached
+            - trial_ending
+            - trial_expired
+            - payment_failed
             - automation_pause_window_closed
             - send_review_rejected
             - comment_mention
@@ -5263,6 +5271,7 @@ components:
         - LIQUID_RENDER_ERROR
         - METHOD_NOT_ALLOWED
         - MISSING_EMAIL
+        - NO_ACTIVE_PLAN
         - NO_ELIGIBLE_RECIPIENTS
         - NO_PUBLISHED_AUTOMATION
         - NOT_FOUND
@@ -5301,6 +5310,7 @@ components:
         - UPLOAD_IN_PROGRESS
         - UPLOAD_NOT_FOUND
         - UPLOAD_NOT_RECEIVED
+        - WRITE_CONFLICT
     EmailGenerateTextResponse:
       type: object
       properties:
@@ -7382,7 +7392,8 @@ components:
                   - manual
                   - plan_limit
                   - domain_unsendable
-                description: "Why a paused send is held. `plan_limit`: the plan has too few sends left this period. `domain_unsendable`: its sending domain stopped passing DNS; fails after 7 days. Both resume on their own and can be canceled. `manual`: its operator paused the gradual ramp; resume it to continue."
+                  - bounce_rate
+                description: "Why a paused send is held. `plan_limit`: the plan has too few sends left this period. `domain_unsendable`: its sending domain stopped passing DNS; fails after 7 days. Both resume on their own and can be canceled. `manual`: its operator paused the gradual ramp; resume it to continue. `bounce_rate`: at least 4% of its recipients hard-bounced or 0.3% marked it as spam; check the list, then resume or cancel it."
               subject:
                 type: string
               previewText:
@@ -7447,6 +7458,10 @@ components:
                   bounced:
                     type: integer
                     minimum: 0
+                  hardBounced:
+                    type: integer
+                    minimum: 0
+                    description: Permanent (hard) bounces, a subset of `bounced`. Absent on older sends.
                   complained:
                     type: integer
                     minimum: 0
@@ -11083,6 +11098,215 @@ components:
               - field
               - message
             additionalProperties: {}
+        runs:
+          type: array
+          items:
+            type: object
+            properties:
+              automationRunId:
+                type: string
+                minLength: 1
+                maxLength: 64
+              automationId:
+                type: string
+                minLength: 1
+                maxLength: 64
+              automationVersionId:
+                type: string
+                minLength: 1
+                maxLength: 64
+              definitionHash:
+                type: string
+                minLength: 64
+                maxLength: 64
+              triggerInstanceId:
+                type: string
+                minLength: 4
+                maxLength: 64
+              mode:
+                type: string
+                enum:
+                  - live
+                  - test
+              status:
+                type: string
+                enum:
+                  - queued
+                  - running
+                  - completed
+                  - failed
+                  - canceled
+              recipientEmail:
+                type: string
+              startedAt:
+                type: string
+                format: date-time
+              completedAt:
+                type: string
+                format: date-time
+              error:
+                type: string
+              testCoverage:
+                type: object
+                properties:
+                  mode:
+                    type: string
+                    enum:
+                      - smoke
+                      - scenario
+                  complete:
+                    type: boolean
+                  visitedNodes:
+                    type: array
+                    items:
+                      type: string
+                  unvisitedNodes:
+                    type: array
+                    items:
+                      type: string
+                  traversedConnections:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        from:
+                          type: string
+                          minLength: 1
+                          maxLength: 200
+                          description: The id of the automation node this control applies to.
+                        to:
+                          type: string
+                          minLength: 1
+                          maxLength: 200
+                          description: The id of the automation node this control applies to.
+                        branch:
+                          type: string
+                      required:
+                        - from
+                        - to
+                  untraversedConnections:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        from:
+                          type: string
+                          minLength: 1
+                          maxLength: 200
+                          description: The id of the automation node this control applies to.
+                        to:
+                          type: string
+                          minLength: 1
+                          maxLength: 200
+                          description: The id of the automation node this control applies to.
+                        branch:
+                          type: string
+                      required:
+                        - from
+                        - to
+                  decisions:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        nodeId:
+                          type: string
+                          minLength: 1
+                          maxLength: 200
+                          description: The id of the automation node this control applies to.
+                        branch:
+                          type: string
+                        source:
+                          type: string
+                          enum:
+                            - simulated
+                            - forced
+                            - deterministic
+                            - payload
+                            - smoke
+                            - upstream_not_delivered
+                      required:
+                        - nodeId
+                        - branch
+                        - source
+                  limitations:
+                    type: array
+                    items:
+                      type: string
+                required:
+                  - mode
+                  - complete
+                  - visitedNodes
+                  - unvisitedNodes
+                  - traversedConnections
+                  - untraversedConnections
+                  - decisions
+                  - limitations
+              logs:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    automationRunId:
+                      type: string
+                      minLength: 1
+                      maxLength: 64
+                    nodeId:
+                      type: string
+                      minLength: 1
+                    nodeName:
+                      type: string
+                      minLength: 1
+                    nodeType:
+                      type: string
+                      enum:
+                        - trigger
+                        - wait
+                        - filter
+                        - split
+                        - sendEmail
+                    status:
+                      type: string
+                      enum:
+                        - running
+                        - completed
+                        - failed
+                        - skipped
+                    orderIndex:
+                      type: integer
+                      minimum: 0
+                    branch:
+                      type: string
+                      minLength: 1
+                    durationMs:
+                      type: integer
+                      minimum: 0
+                    startedAt:
+                      type: string
+                      format: date-time
+                    completedAt:
+                      type: string
+                      format: date-time
+                    error:
+                      type: string
+                  required:
+                    - automationRunId
+                    - nodeId
+                    - nodeName
+                    - nodeType
+                    - status
+                    - orderIndex
+                    - startedAt
+                  additionalProperties: false
+              logsTruncated:
+                type: boolean
+            required:
+              - automationRunId
+              - automationId
+              - mode
+              - status
+            additionalProperties: false
+          description: "MCP only: the started runs as read after the call waited for them to finish. Never set on HTTP responses; read runs with GET /v1/automations/runs/{automationRunId}."
       required:
         - automationRunIds
         - status
@@ -14150,7 +14374,7 @@ components:
         audienceId:
           type: string
           minLength: 1
-          description: Scope to a saved audience's members. The audience's stored filter set is evaluated as one unit with its own `logicalOperator` (an OR audience stays an OR), then ANDed with `filters`. Unknown / cross-brand id, or an audience a send would refuse (unusable filters, a cohort still building) → 400.
+          description: Scope to a saved audience's members. The audience's stored filter set is evaluated as one unit with its own `logicalOperator` (an OR audience stays an OR), then ANDed with `filters`. Unknown / cross-brand id, or an audience a send would refuse (unusable filters, a cohort still building) → 400. Omit it, or pass the reserved `all`, to search every contact.
         logic:
           type: string
           enum:
@@ -18514,6 +18738,9 @@ components:
                   - gradual_send_paused
                   - gradual_send_completed
                   - send_limit_reached
+                  - trial_ending
+                  - trial_expired
+                  - payment_failed
                   - automation_pause_window_closed
                   - send_review_rejected
                   - comment_mention
@@ -19390,7 +19617,10 @@ paths:
                       suggestion: Check the API key format and retry with a valid active key.
                       docs: https://docs.brew.new/api-reference/api/authentication
         "402":
-          description: "`INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed."
+          description: |-
+            `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed.
+
+            `NO_ACTIVE_PLAN`: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
           headers:
             x-request-id:
               schema:
@@ -19417,6 +19647,17 @@ paths:
                         cost: 5
                         remaining: 0
                         planKey: free
+                noActivePlan:
+                  summary: NO_ACTIVE_PLAN
+                  value:
+                    error:
+                      code: NO_ACTIVE_PLAN
+                      type: payment_required
+                      message: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
+                      suggestion: An organization admin must choose a plan, or update the payment method, at https://brew.new/plan. Check the current state up front with GET /v1/usage.
+                      docs: https://docs.brew.new/api-reference/api/credits
+                      details:
+                        reason: NO_PLAN
         "403":
           description: |-
             `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
@@ -19612,7 +19853,7 @@ paths:
               schema:
                 type: integer
                 description: Requests allowed in the current rolling rate limit window.
-                example: 10
+                example: 20
               required: true
               description: Requests allowed in the current rolling rate limit window.
             X-RateLimit-Remaining:
@@ -19653,7 +19894,7 @@ paths:
                       retryAfter: 42
                       details:
                         scope: credential
-                        limit: 10
+                        limit: 20
                         remaining: 0
                         reset: 1712592360
                         consumed: false
@@ -19740,6 +19981,7 @@ paths:
       x-brew-brand-scope: brand
       x-brew-idempotency: replay
       x-brew-credited: true
+      x-brew-rate-policy: emails.generate
   /v1/emails/{emailId}:
     get:
       operationId: getEmail
@@ -20395,7 +20637,10 @@ paths:
                       suggestion: Check the API key format and retry with a valid active key.
                       docs: https://docs.brew.new/api-reference/api/authentication
         "402":
-          description: "`INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed."
+          description: |-
+            `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed.
+
+            `NO_ACTIVE_PLAN`: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
           headers:
             x-request-id:
               schema:
@@ -20422,6 +20667,17 @@ paths:
                         cost: 5
                         remaining: 0
                         planKey: free
+                noActivePlan:
+                  summary: NO_ACTIVE_PLAN
+                  value:
+                    error:
+                      code: NO_ACTIVE_PLAN
+                      type: payment_required
+                      message: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
+                      suggestion: An organization admin must choose a plan, or update the payment method, at https://brew.new/plan. Check the current state up front with GET /v1/usage.
+                      docs: https://docs.brew.new/api-reference/api/credits
+                      details:
+                        reason: NO_PLAN
         "403":
           description: |-
             `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
@@ -22588,6 +22844,37 @@ paths:
                       message: An unexpected failure; the x-request-id header identifies it.
                       suggestion: Retry the request. If it keeps failing, contact support with the x-request-id header.
                       docs: https://docs.brew.new/api-reference/api/errors
+        "503":
+          description: "`WRITE_CONFLICT`: Other writes to the same records kept conflicting with this one, so nothing was saved."
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+            Retry-After:
+              schema:
+                type: integer
+                description: Seconds to wait before retrying the request.
+                example: 42
+              required: true
+              description: Seconds to wait before retrying the request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                writeConflict:
+                  summary: WRITE_CONFLICT
+                  value:
+                    error:
+                      code: WRITE_CONFLICT
+                      type: service_unavailable
+                      message: Other writes to the same records kept conflicting with this one, so nothing was saved.
+                      suggestion: Wait the Retry-After time (a few seconds), then retry the same request. Spread out bursts of parallel writes to one brand.
+                      docs: https://docs.brew.new/api-reference/api/errors
       x-brew-scope: emails
       x-brew-brand-scope: brand
       x-brew-idempotency: replay
@@ -23715,7 +24002,10 @@ paths:
                       suggestion: Check the API key format and retry with a valid active key.
                       docs: https://docs.brew.new/api-reference/api/authentication
         "402":
-          description: "`INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed."
+          description: |-
+            `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed.
+
+            `NO_ACTIVE_PLAN`: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
           headers:
             x-request-id:
               schema:
@@ -23742,6 +24032,17 @@ paths:
                         cost: 5
                         remaining: 0
                         planKey: free
+                noActivePlan:
+                  summary: NO_ACTIVE_PLAN
+                  value:
+                    error:
+                      code: NO_ACTIVE_PLAN
+                      type: payment_required
+                      message: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
+                      suggestion: An organization admin must choose a plan, or update the payment method, at https://brew.new/plan. Check the current state up front with GET /v1/usage.
+                      docs: https://docs.brew.new/api-reference/api/credits
+                      details:
+                        reason: NO_PLAN
         "403":
           description: |-
             `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
@@ -24375,7 +24676,10 @@ paths:
                       suggestion: Check the API key format and retry with a valid active key.
                       docs: https://docs.brew.new/api-reference/api/authentication
         "402":
-          description: "`INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed."
+          description: |-
+            `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed.
+
+            `NO_ACTIVE_PLAN`: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
           headers:
             x-request-id:
               schema:
@@ -24402,6 +24706,17 @@ paths:
                         cost: 5
                         remaining: 0
                         planKey: free
+                noActivePlan:
+                  summary: NO_ACTIVE_PLAN
+                  value:
+                    error:
+                      code: NO_ACTIVE_PLAN
+                      type: payment_required
+                      message: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
+                      suggestion: An organization admin must choose a plan, or update the payment method, at https://brew.new/plan. Check the current state up front with GET /v1/usage.
+                      docs: https://docs.brew.new/api-reference/api/credits
+                      details:
+                        reason: NO_PLAN
         "403":
           description: |-
             `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
@@ -24869,7 +25184,7 @@ paths:
           description: |-
             `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed.
 
-            `SEND_QUOTA_EXCEEDED`: The send or manual-audience run would exceed the plan’s monthly email volume. A send must fit at launch and draws from the allowance chunk by chunk as it delivers; `reserved` is only the batch going out right now (`details` carries `used`, `reserved`, `remaining`, `limit`, `planKey` and `requested`, and `periodEnd` when known). The window resets with the billing period.
+            `NO_ACTIVE_PLAN`: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
           headers:
             x-request-id:
               schema:
@@ -24896,15 +25211,17 @@ paths:
                         cost: 5
                         remaining: 0
                         planKey: free
-                sendQuotaExceeded:
-                  summary: SEND_QUOTA_EXCEEDED
+                noActivePlan:
+                  summary: NO_ACTIVE_PLAN
                   value:
                     error:
-                      code: SEND_QUOTA_EXCEEDED
+                      code: NO_ACTIVE_PLAN
                       type: payment_required
-                      message: The send or manual-audience run would exceed the plan’s monthly email volume. A send must fit at launch and draws from the allowance chunk by chunk as it delivers; `reserved` is only the batch going out right now (`details` carries `used`, `reserved`, `remaining`, `limit`, `planKey` and `requested`, and `periodEnd` when known). The window resets with the billing period.
-                      suggestion: Upgrade your plan for a higher monthly send volume, send to fewer recipients, or wait for the billing period to reset.
+                      message: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
+                      suggestion: An organization admin must choose a plan, or update the payment method, at https://brew.new/plan. Check the current state up front with GET /v1/usage.
                       docs: https://docs.brew.new/api-reference/api/credits
+                      details:
+                        reason: NO_PLAN
         "403":
           description: |-
             `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
@@ -32438,8 +32755,8 @@ paths:
       operationId: resumeSend
       tags:
         - Emails
-      summary: Resume a paused gradual send
-      description: "Resumes a manually paused GRADUAL send. The ramp picks the resume up at its next hold check (seconds after a short pause, up to an hour after a long one); the unsent tail is re-spread and later batches shift so missed intervals do not compress into a burst. A send held at the plan limit resumes on its own once the plan allowance is available; any other send returns `409 SEND_NOT_RESUMABLE`. Brand-scoped: an unknown / cross-brand `sendId` is `404`."
+      summary: Resume a paused send
+      description: "Resumes a manually paused GRADUAL send, or any campaign paused for its bounce or complaint rate (`pauseReason: bounce_rate`; such a send is never paused for it again). The send picks the resume up at its next hold check (seconds after a short pause, up to an hour after a long one); a ramp re-spreads its unsent tail and shifts later batches so missed intervals do not compress into a burst. A send held at the plan limit resumes on its own once the plan allowance is available; any other send returns `409 SEND_NOT_RESUMABLE`. Brand-scoped: an unknown / cross-brand `sendId` is `404`."
       parameters:
         - name: Idempotency-Key
           in: header
@@ -34618,7 +34935,7 @@ paths:
               schema:
                 type: integer
                 description: Requests allowed in the current rolling rate limit window.
-                example: 10
+                example: 60
               required: true
               description: Requests allowed in the current rolling rate limit window.
             X-RateLimit-Remaining:
@@ -34659,7 +34976,7 @@ paths:
                       retryAfter: 42
                       details:
                         scope: credential
-                        limit: 10
+                        limit: 60
                         remaining: 0
                         reset: 1712592360
                         consumed: false
@@ -34691,6 +35008,7 @@ paths:
       x-brew-brand-scope: brand
       x-brew-idempotency: replay
       x-brew-credited: false
+      x-brew-rate-policy: automations.write
     get:
       operationId: listAutomations
       tags:
@@ -36334,7 +36652,7 @@ paths:
       tags:
         - Automations
       summary: Test an automation
-      description: Runs the saved automation END-TO-END through the real workflow in TEST mode — works on drafts and for both event and manual-audience automations; every node executes (filters/splits evaluate against `payload`, and `contact.<name>` conditions read the test recipient’s contact unless `payload` supplies that field — a flat `contact.<name>` key or a `contact` object — and the trigger’s contract keeps extra keys; wait nodes fast-forward). Pass `testRecipient` to DELIVER each send-email node’s email for real to that address (real subject/preview/sender name; verified configured sender domains are preserved, otherwise delivery uses the Brew test domain; customer addresses are never hit; the address must be a teammate with access to the brand, an address on a verified sending domain of the brand, or, for a signed-in person (not an API key), their own address or one on their company domain, else `422 TEST_RECIPIENT_NOT_ALLOWED`) — omit it for a silent dry-run with no mail. Test runs are excluded from live analytics rollups. Real test deliveries consume send usage; dry runs do not. Test payloads never update real contact records. Returns `202` with the started run id; follow per-node status via `GET /v1/automations/runs/{automationRunId}?include=logs`. Optional `scenario` controls simulate timed opens/clicks at engagement-filter nodes and force left/right percentage-split choices (waits use a virtual clock; controls stay separate from `payload`, and simulated events never enter live analytics or send quotas); the run row’s `testCoverage` reports visited nodes, traversed connections, evaluated or forced decisions, uncovered paths and simulation limitations. On a Brew-event (unsubscribe) trigger, omit payload to use Brew’s sample event; supplied fields replace the sample’s. The run never creates or edits a contact.
+      description: Runs the saved automation END-TO-END through the real workflow in TEST mode — works on drafts and for both event and manual-audience automations; every node executes (filters/splits evaluate against `payload`, and `contact.<name>` conditions read the test recipient’s contact unless `payload` supplies that field — a flat `contact.<name>` key or a `contact` object — and the trigger’s contract keeps extra keys; wait nodes fast-forward). Pass `testRecipient` to DELIVER each send-email node’s email for real to that address (real subject/preview/sender name; verified configured sender domains are preserved, otherwise delivery uses the Brew test domain; customer addresses are never hit; the address must be a teammate with access to the brand, an address on a verified sending domain of the brand, or, for a signed-in person (not an API key), their own address or one on their company domain, else `422 TEST_RECIPIENT_NOT_ALLOWED`) — omit it for a silent dry-run with no mail. Test runs are excluded from live analytics rollups. Test deliveries never count toward the plan’s email sends. Test payloads never update real contact records. Returns `202` with the started run id; follow per-node status via `GET /v1/automations/runs/{automationRunId}?include=logs`. Optional `scenario` controls simulate timed opens/clicks at engagement-filter nodes and force left/right percentage-split choices (waits use a virtual clock; controls stay separate from `payload`, and simulated events never enter live analytics or send quotas); the run row’s `testCoverage` reports visited nodes, traversed connections, evaluated or forced decisions, uncovered paths and simulation limitations. On a Brew-event (unsubscribe) trigger, omit payload to use Brew’s sample event; supplied fields replace the sample’s. The run never creates or edits a contact.
       parameters:
         - name: Idempotency-Key
           in: header
@@ -39374,9 +39692,9 @@ paths:
             type: string
             maxLength: 254
             pattern: ^[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+)*@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$
-            description: Only runs for this recipient, matched case-insensitively. Some older runs show a `recipientEmail` this filter does not match.
+            description: Only runs for this recipient, matched case-insensitively.
           required: false
-          description: Only runs for this recipient, matched case-insensitively. Some older runs show a `recipientEmail` this filter does not match.
+          description: Only runs for this recipient, matched case-insensitively.
           name: recipientEmail
           in: query
         - schema:
@@ -41431,7 +41749,7 @@ paths:
               schema:
                 type: integer
                 description: Requests allowed in the current rolling rate limit window.
-                example: 10
+                example: 60
               required: true
               description: Requests allowed in the current rolling rate limit window.
             X-RateLimit-Remaining:
@@ -41472,7 +41790,7 @@ paths:
                       retryAfter: 42
                       details:
                         scope: credential
-                        limit: 10
+                        limit: 60
                         remaining: 0
                         reset: 1712592360
                         consumed: false
@@ -41504,6 +41822,7 @@ paths:
       x-brew-brand-scope: brand
       x-brew-idempotency: replay
       x-brew-credited: false
+      x-brew-rate-policy: triggers.write
     get:
       operationId: listTriggers
       tags:
@@ -46391,7 +46710,10 @@ paths:
                       suggestion: Check the API key format and retry with a valid active key.
                       docs: https://docs.brew.new/api-reference/api/authentication
         "402":
-          description: "`INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed."
+          description: |-
+            `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed.
+
+            `NO_ACTIVE_PLAN`: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
           headers:
             x-request-id:
               schema:
@@ -46418,6 +46740,17 @@ paths:
                         cost: 5
                         remaining: 0
                         planKey: free
+                noActivePlan:
+                  summary: NO_ACTIVE_PLAN
+                  value:
+                    error:
+                      code: NO_ACTIVE_PLAN
+                      type: payment_required
+                      message: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
+                      suggestion: An organization admin must choose a plan, or update the payment method, at https://brew.new/plan. Check the current state up front with GET /v1/usage.
+                      docs: https://docs.brew.new/api-reference/api/credits
+                      details:
+                        reason: NO_PLAN
         "403":
           description: |-
             `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
@@ -48915,7 +49248,10 @@ paths:
                       suggestion: Check the API key format and retry with a valid active key.
                       docs: https://docs.brew.new/api-reference/api/authentication
         "402":
-          description: "`INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed."
+          description: |-
+            `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed.
+
+            `NO_ACTIVE_PLAN`: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
           headers:
             x-request-id:
               schema:
@@ -48942,6 +49278,17 @@ paths:
                         cost: 5
                         remaining: 0
                         planKey: free
+                noActivePlan:
+                  summary: NO_ACTIVE_PLAN
+                  value:
+                    error:
+                      code: NO_ACTIVE_PLAN
+                      type: payment_required
+                      message: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
+                      suggestion: An organization admin must choose a plan, or update the payment method, at https://brew.new/plan. Check the current state up front with GET /v1/usage.
+                      docs: https://docs.brew.new/api-reference/api/credits
+                      details:
+                        reason: NO_PLAN
         "403":
           description: |-
             `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
@@ -49410,7 +49757,10 @@ paths:
                       suggestion: Check the API key format and retry with a valid active key.
                       docs: https://docs.brew.new/api-reference/api/authentication
         "402":
-          description: "`INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed."
+          description: |-
+            `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed.
+
+            `NO_ACTIVE_PLAN`: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
           headers:
             x-request-id:
               schema:
@@ -49437,6 +49787,17 @@ paths:
                         cost: 5
                         remaining: 0
                         planKey: free
+                noActivePlan:
+                  summary: NO_ACTIVE_PLAN
+                  value:
+                    error:
+                      code: NO_ACTIVE_PLAN
+                      type: payment_required
+                      message: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
+                      suggestion: An organization admin must choose a plan, or update the payment method, at https://brew.new/plan. Check the current state up front with GET /v1/usage.
+                      docs: https://docs.brew.new/api-reference/api/credits
+                      details:
+                        reason: NO_PLAN
         "403":
           description: |-
             `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
@@ -49919,7 +50280,10 @@ paths:
                       suggestion: Check the API key format and retry with a valid active key.
                       docs: https://docs.brew.new/api-reference/api/authentication
         "402":
-          description: "`INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed."
+          description: |-
+            `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed.
+
+            `NO_ACTIVE_PLAN`: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
           headers:
             x-request-id:
               schema:
@@ -49946,6 +50310,17 @@ paths:
                         cost: 5
                         remaining: 0
                         planKey: free
+                noActivePlan:
+                  summary: NO_ACTIVE_PLAN
+                  value:
+                    error:
+                      code: NO_ACTIVE_PLAN
+                      type: payment_required
+                      message: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
+                      suggestion: An organization admin must choose a plan, or update the payment method, at https://brew.new/plan. Check the current state up front with GET /v1/usage.
+                      docs: https://docs.brew.new/api-reference/api/credits
+                      details:
+                        reason: NO_PLAN
         "403":
           description: |-
             `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
@@ -52081,13 +52456,13 @@ paths:
         - Audiences
       summary: List audiences
       description: |-
-        Lists the brand’s saved audiences under `{ data, pagination }`. Each row carries its contact `filters`, a member `count` and ISO timestamps; an audience is the recipient target for `createSend`. Stale counts are refreshed on a best-effort basis. If a recount fails or reaches its time budget, the saved count is returned. Use `GET /v1/audiences/{audienceId}?include=count` for an on-demand count.
+        Lists the brand’s saved audiences under `{ data, pagination }`. Each row carries its contact `filters`, a member `count` and ISO timestamps; an audience is the recipient target for `createSend`.
 
         **Use when** choosing the `audienceId` for a campaign or an automation launch.
 
         **Input** `limit` and `cursor`.
 
-        **Returns** `200` with a page of `Audience` rows.
+        **Returns** `200` with a page of `Audience` rows. A listed audience's `count` is its saved member total, recounted before the list answers when contacts changed since that count or it is a day old; an audience that cannot be recounted (still building, unusable filters, a failed or timed-out count) keeps its saved total. `GET /v1/audiences/{audienceId}?include=count` returns the exact total a send targets.
 
         **Errors** `400 INVALID_REQUEST` for an unknown query key.
 
@@ -63053,6 +63428,8 @@ paths:
             `BRAND_LIMIT_REACHED`: The plan allows no more brands.
 
             `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed.
+
+            `NO_ACTIVE_PLAN`: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
           headers:
             x-request-id:
               schema:
@@ -63088,6 +63465,17 @@ paths:
                         cost: 5
                         remaining: 0
                         planKey: free
+                noActivePlan:
+                  summary: NO_ACTIVE_PLAN
+                  value:
+                    error:
+                      code: NO_ACTIVE_PLAN
+                      type: payment_required
+                      message: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
+                      suggestion: An organization admin must choose a plan, or update the payment method, at https://brew.new/plan. Check the current state up front with GET /v1/usage.
+                      docs: https://docs.brew.new/api-reference/api/credits
+                      details:
+                        reason: NO_PLAN
         "403":
           description: |-
             `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
@@ -63738,7 +64126,10 @@ paths:
                       suggestion: Check the API key format and retry with a valid active key.
                       docs: https://docs.brew.new/api-reference/api/authentication
         "402":
-          description: "`INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed."
+          description: |-
+            `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed.
+
+            `NO_ACTIVE_PLAN`: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
           headers:
             x-request-id:
               schema:
@@ -63765,6 +64156,17 @@ paths:
                         cost: 5
                         remaining: 0
                         planKey: free
+                noActivePlan:
+                  summary: NO_ACTIVE_PLAN
+                  value:
+                    error:
+                      code: NO_ACTIVE_PLAN
+                      type: payment_required
+                      message: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
+                      suggestion: An organization admin must choose a plan, or update the payment method, at https://brew.new/plan. Check the current state up front with GET /v1/usage.
+                      docs: https://docs.brew.new/api-reference/api/credits
+                      details:
+                        reason: NO_PLAN
         "403":
           description: |-
             `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
@@ -64179,7 +64581,10 @@ paths:
                       suggestion: Check the API key format and retry with a valid active key.
                       docs: https://docs.brew.new/api-reference/api/authentication
         "402":
-          description: "`INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed."
+          description: |-
+            `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed.
+
+            `NO_ACTIVE_PLAN`: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
           headers:
             x-request-id:
               schema:
@@ -64206,6 +64611,17 @@ paths:
                         cost: 5
                         remaining: 0
                         planKey: free
+                noActivePlan:
+                  summary: NO_ACTIVE_PLAN
+                  value:
+                    error:
+                      code: NO_ACTIVE_PLAN
+                      type: payment_required
+                      message: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
+                      suggestion: An organization admin must choose a plan, or update the payment method, at https://brew.new/plan. Check the current state up front with GET /v1/usage.
+                      docs: https://docs.brew.new/api-reference/api/credits
+                      details:
+                        reason: NO_PLAN
         "403":
           description: |-
             `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
@@ -64620,7 +65036,10 @@ paths:
                       suggestion: Check the API key format and retry with a valid active key.
                       docs: https://docs.brew.new/api-reference/api/authentication
         "402":
-          description: "`INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed."
+          description: |-
+            `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed.
+
+            `NO_ACTIVE_PLAN`: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
           headers:
             x-request-id:
               schema:
@@ -64647,6 +65066,17 @@ paths:
                         cost: 5
                         remaining: 0
                         planKey: free
+                noActivePlan:
+                  summary: NO_ACTIVE_PLAN
+                  value:
+                    error:
+                      code: NO_ACTIVE_PLAN
+                      type: payment_required
+                      message: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
+                      suggestion: An organization admin must choose a plan, or update the payment method, at https://brew.new/plan. Check the current state up front with GET /v1/usage.
+                      docs: https://docs.brew.new/api-reference/api/credits
+                      details:
+                        reason: NO_PLAN
         "403":
           description: |-
             `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
@@ -65061,7 +65491,10 @@ paths:
                       suggestion: Check the API key format and retry with a valid active key.
                       docs: https://docs.brew.new/api-reference/api/authentication
         "402":
-          description: "`INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed."
+          description: |-
+            `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed.
+
+            `NO_ACTIVE_PLAN`: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
           headers:
             x-request-id:
               schema:
@@ -65088,6 +65521,17 @@ paths:
                         cost: 5
                         remaining: 0
                         planKey: free
+                noActivePlan:
+                  summary: NO_ACTIVE_PLAN
+                  value:
+                    error:
+                      code: NO_ACTIVE_PLAN
+                      type: payment_required
+                      message: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
+                      suggestion: An organization admin must choose a plan, or update the payment method, at https://brew.new/plan. Check the current state up front with GET /v1/usage.
+                      docs: https://docs.brew.new/api-reference/api/credits
+                      details:
+                        reason: NO_PLAN
         "403":
           description: |-
             `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
@@ -69377,6 +69821,9 @@ paths:
               - gradual_send_paused
               - gradual_send_completed
               - send_limit_reached
+              - trial_ending
+              - trial_expired
+              - payment_failed
               - automation_pause_window_closed
               - send_review_rejected
               - comment_mention
