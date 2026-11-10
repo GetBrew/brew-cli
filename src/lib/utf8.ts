@@ -48,7 +48,8 @@ function notUtf8Message(bytes: Uint8Array, source: TextSource): string {
     : isCsv
       ? ". Excel's default CSV on Western Windows is Windows-1252:"
       : '. If it is Windows-1252:'
-  const command = `iconv -f ${from} -t UTF-8 ${shellQuote(source.path)} > ${shellQuote(utf8Copy(source.path))}`
+  // Redirection, not an operand: iconv would parse a path like `-x.csv` as an option.
+  const command = `iconv -f ${from} -t UTF-8 < ${shellQuote(source.path)} > ${shellQuote(utf8Copy(source.path))}`
   return `${what} ${save}${guess} ${command}`
 }
 

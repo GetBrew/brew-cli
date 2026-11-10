@@ -43,7 +43,7 @@ describe('decodeUtf8Text', () => {
       '--file names.csv is not UTF-8 (line 2 has byte 0xE9), so nothing was sent. ' +
         'Save it as UTF-8 (in Excel: Save As > "CSV UTF-8"), or convert it. ' +
         "Excel's default CSV on Western Windows is Windows-1252: " +
-        'iconv -f WINDOWS-1252 -t UTF-8 names.csv > names-utf8.csv'
+        'iconv -f WINDOWS-1252 -t UTF-8 < names.csv > names-utf8.csv'
     )
   })
 
@@ -69,7 +69,7 @@ describe('decodeUtf8Text', () => {
     expect(error.message).toBe(
       "--file 'my list.csv' is UTF-16, not UTF-8, so nothing was sent. " +
         'Save it as UTF-8 (in Excel: Save As > "CSV UTF-8"), or convert it: ' +
-        "iconv -f UTF-16 -t UTF-8 'my list.csv' > 'my list-utf8.csv'"
+        "iconv -f UTF-16 -t UTF-8 < 'my list.csv' > 'my list-utf8.csv'"
     )
   })
 
@@ -82,7 +82,19 @@ describe('decodeUtf8Text', () => {
     )
     expect(error.message).not.toContain('Excel')
     expect(error.message).toContain(
-      'Save it as UTF-8, or convert it. If it is Windows-1252: iconv -f WINDOWS-1252 -t UTF-8 email.html > email-utf8.html'
+      'Save it as UTF-8, or convert it. If it is Windows-1252: iconv -f WINDOWS-1252 -t UTF-8 < email.html > email-utf8.html'
+    )
+  })
+
+  it('redirects input so iconv cannot read a leading-dash path as an option', () => {
+    const error = failure(() =>
+      decodeUtf8Text(bytes('Jos', [0xe9]), {
+        flag: '--file',
+        path: '-names.csv',
+      })
+    )
+    expect(error.message).toContain(
+      'iconv -f WINDOWS-1252 -t UTF-8 < -names.csv > -names-utf8.csv'
     )
   })
 
