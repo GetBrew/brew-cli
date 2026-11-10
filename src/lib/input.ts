@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { CliUsageError } from './errors'
 import { assertKnownInputKeys } from './input-keys'
 import type { CliContext } from './types'
+import { decodeUtf8Text, type TextKind } from './utf8'
 
 /**
  * The single deliberate boundary cast from user-supplied JSON to an SDK
@@ -37,23 +38,29 @@ export async function readJsonFlag(
   return parsed
 }
 
-/** Reads `--file <path|->`; `-` consumes stdin. */
+/**
+ * Reads `--file <path|->` as UTF-8 text; `-` consumes stdin. `kind` tailors
+ * the advice when the bytes are not UTF-8.
+ */
 export async function readTextFlag(
   ctx: CliContext,
   value: unknown,
-  flagName: string
+  flagName: string,
+  kind?: TextKind
 ): Promise<string | undefined> {
   if (typeof value !== 'string') {
     return
   }
   if (value === '-') {
-    return await ctx.io.readStdin(ctx.signal)
+    return await ctx.io.readStdin(ctx.signal, kind)
   }
+  let bytes: Buffer
   try {
-    return readFileSync(value, 'utf8')
+    bytes = readFileSync(value)
   } catch {
     throw new CliUsageError(`${flagName}: cannot read file "${value}"`)
   }
+  return decodeUtf8Text(bytes, { flag: flagName, path: value }, { kind })
 }
 
 /** Parses repeatable `key=value` flag values into a record. */
