@@ -31,7 +31,11 @@ export const analyticsEventsCommand = defineCommand({
   route: { method: 'GET', path: '/v1/analytics/events' },
   commandClass: 'read',
   flags: [
-    { flag: '--since <datetime>', summary: 'Window start (ISO-8601)' },
+    {
+      flag: '--since <datetime>',
+      summary:
+        'Window start (ISO-8601); default 7 days ago, or the whole send with --send',
+    },
     { flag: '--until <datetime>', summary: 'Window end (ISO-8601)' },
     {
       flag: '--recipient <rules>',
@@ -40,7 +44,8 @@ export const analyticsEventsCommand = defineCommand({
     },
     {
       flag: '--event-type <type>',
-      summary: 'Filter by event type (e.g. opened, clicked)',
+      summary:
+        'Filter by one event type, spelled exactly (e.g. opened, not open; clicked)',
     },
     { flag: '--automation <automationId>', summary: 'Filter by automation' },
     { flag: '--send <sendId>', summary: 'Filter by campaign send' },

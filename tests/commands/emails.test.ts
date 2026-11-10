@@ -330,6 +330,38 @@ describe('emails generate', () => {
     })
   })
 
+  it('sends --title as title, the canvas name', async () => {
+    let body: unknown
+    server.use(
+      http.post(EMAILS_URL, async ({ request }) => {
+        body = await request.json()
+        return HttpResponse.json(
+          { emailId: 'eml_new', status: 'ready', title: 'Newsletter Welcome' },
+          { status: 201 }
+        )
+      })
+    )
+    const result = await runCli(
+      [
+        'emails',
+        'generate',
+        '--prompt',
+        'Welcome email',
+        '--title',
+        'Newsletter Welcome',
+        '--subject-line',
+        'Welcome to Brew',
+      ],
+      { env: env(), extraCommands: EXTRA }
+    )
+    expect(result.code).toBe(0)
+    expect(body).toEqual({
+      prompt: 'Welcome email',
+      title: 'Newsletter Welcome',
+      subjectLine: 'Welcome to Brew',
+    })
+  })
+
   it('sends --lang as lang', async () => {
     let body: unknown
     server.use(
