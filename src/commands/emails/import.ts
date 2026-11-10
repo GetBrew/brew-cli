@@ -49,10 +49,18 @@ export const emailsImportCommand = defineCommand({
   ],
   run: async ({ ctx, flags }) => {
     const base = await readJsonFlag(ctx, flags.input, '--input')
-    const content = await readTextFlag(ctx, flags.file, '--file')
+    const format =
+      flagString(flags.format) ??
+      flagString((base as { format?: unknown } | undefined)?.format)
+    const content = await readTextFlag(
+      ctx,
+      flags.file,
+      '--file',
+      format === 'eml' ? 'eml' : undefined
+    )
     const input = mergeInput(base, {
       content,
-      format: flagString(flags.format),
+      format,
       title: flagString(flags.title),
       baseUrl: flagString(flags.baseUrl),
       subjectLine: flagString(flags.subjectLine),

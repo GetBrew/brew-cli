@@ -1,5 +1,5 @@
 import type { Readable } from 'node:stream'
-import { decodeUtf8Text } from './utf8'
+import { decodeUtf8Text, type TextKind } from './utf8'
 
 /**
  * Read through EOF as UTF-8, refusing bytes that are not; an interrupted or
@@ -8,9 +8,11 @@ import { decodeUtf8Text } from './utf8'
 export async function readStdinText({
   stream,
   signal,
+  kind,
 }: {
   readonly stream: Readable
   readonly signal: AbortSignal
+  readonly kind?: TextKind | undefined
 }): Promise<string> {
   if (signal.aborted) {
     stream.destroy()
@@ -33,5 +35,5 @@ export async function readStdinText({
     signal.removeEventListener('abort', stop)
   }
   signal.throwIfAborted()
-  return decodeUtf8Text(Buffer.concat(chunks), 'stdin')
+  return decodeUtf8Text(Buffer.concat(chunks), 'stdin', { kind })
 }

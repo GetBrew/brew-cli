@@ -19,8 +19,12 @@
   such as Excel's default "CSV" on Western Windows (Windows-1252), used to
   reach Brew with every accented letter replaced by `�` (`José` stored as
   `Jos�`), answering `200` with no warning. It now exits 2 (`CLI_USAGE`)
-  before any request, naming the line and byte, with how to re-save or
-  convert the file. A leading UTF-8 byte-order mark is dropped, so a JSON
+  before any request, naming the first bad byte and its line (or that the
+  file is UTF-16), with how to re-save it as UTF-8. On macOS and Linux it
+  also prints an `iconv` command when the bytes can be Windows-1252 or
+  UTF-16. An `.eml` (by extension or `--format eml`) is told to import its
+  HTML instead, because re-encoding it would leave the charset its parts
+  declare wrong. A leading UTF-8 byte-order mark is dropped, so a JSON
   `--file` or `--input -` saved with one now parses. This applies to every
   command that reads `--file`, `--jsx-file`, `--input -` or `--data -`, and to
   a piped `login` key.

@@ -32,7 +32,7 @@ export const domainsUnsubscribesImportCommand = defineCommand({
     'brew-cli domains unsubscribes import dom_123 --file optouts.csv --column Email',
   ],
   run: async ({ ctx, args, flags }) => {
-    const csv = await readTextFlag(ctx, flags.file, '--file')
+    const csv = await readTextFlag(ctx, flags.file, '--file', 'csv')
     if (csv === undefined || csv.trim() === '') {
       throw new CliUsageError(
         '--file is required (a CSV path, or - for stdin).'

@@ -75,7 +75,7 @@ export const contactsImportCsvCommand = defineCommand({
     const base = await readJsonFlag(ctx, flags.input, '--input')
     const consentSource = flagString(flags.consentSource)
     const input = mergeInput(base, {
-      csv: await readTextFlag(ctx, flags.file, '--file'),
+      csv: await readTextFlag(ctx, flags.file, '--file', 'csv'),
       mapping: parseKeyValues(flags.mapping, '--mapping'),
       dateOrder: flagString(flags.dateOrder),
       validate: flags.validate === true ? true : undefined,

@@ -391,6 +391,38 @@ describe('emails generate', () => {
 })
 
 describe('emails import', () => {
+  it('refuses an 8-bit Windows-1252 .eml on stdin without suggesting iconv', async () => {
+    let requests = 0
+    server.use(
+      http.post(`${EMAILS_URL}/import`, () => {
+        requests += 1
+        return HttpResponse.json({ emailId: 'eml_imp' }, { status: 201 })
+      })
+    )
+    const eml = Buffer.concat([
+      Buffer.from(
+        'Subject: Hi\r\nContent-Type: text/html; charset=windows-1252\r\n' +
+          'Content-Transfer-Encoding: 8bit\r\n\r\n<p>Jos'
+      ),
+      Buffer.from([0xe9]),
+      Buffer.from('</p>\r\n'),
+    ])
+    const result = await runCli(
+      ['emails', 'import', '--file', '-', '--format', 'eml', '--json'],
+      { env: env(), stdin: eml, extraCommands: EXTRA }
+    )
+    expect(result.code).toBe(2)
+    expect(requests).toBe(0)
+    const { error } = JSON.parse(result.stderr) as {
+      error: { code: string; message: string }
+    }
+    expect(error.code).toBe('CLI_USAGE')
+    expect(error.message).toContain(
+      'stdin is not UTF-8 (line 5 has byte 0xE9), so nothing was sent. An .eml must be UTF-8'
+    )
+    expect(error.message).not.toContain('iconv')
+  })
+
   it('reads --file and posts the typed body', async () => {
     let body: unknown
     server.use(

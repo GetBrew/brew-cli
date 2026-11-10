@@ -684,6 +684,35 @@ describe('contacts import-csv', () => {
     expect(error.message).toContain('"CSV UTF-8"')
   })
 
+  it('refuses the same bytes on stdin before sending anything', async () => {
+    let requests = 0
+    server.use(
+      http.post('https://brew.new/api/v1/contacts/import-csv', () => {
+        requests += 1
+        return HttpResponse.json({ inserted: 3 })
+      })
+    )
+    const result = await runCli(
+      ['contacts', 'import-csv', '--file', '-', '--json'],
+      {
+        env: env(),
+        stdin: Buffer.from(
+          NAMES.replaceAll('“', '\u0093').replaceAll('”', '\u0094'),
+          'latin1'
+        ),
+      }
+    )
+    expect(result.code).toBe(2)
+    expect(requests).toBe(0)
+    const { error } = JSON.parse(result.stderr) as {
+      error: { code: string; message: string }
+    }
+    expect(error.code).toBe('CLI_USAGE')
+    expect(error.message).toContain(
+      'stdin is not UTF-8 (line 2 has byte 0xE9), so nothing was sent.'
+    )
+  })
+
   it('sends a UTF-8 file exactly, without its byte-order mark', async () => {
     const bodies: unknown[] = []
     server.use(
