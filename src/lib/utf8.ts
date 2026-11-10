@@ -39,7 +39,13 @@ function notUtf8Message(bytes: Uint8Array, source: TextSource): string {
   if (source === 'stdin') {
     return `${what} Pipe UTF-8 text, e.g. through iconv -f ${from} -t UTF-8.`
   }
-  const isCsv = extname(source.path).toLowerCase() === '.csv'
+  const ext = extname(source.path).toLowerCase()
+  if (ext === '.eml') {
+    // Brew decodes each MIME part by the charset its headers declare, so a
+    // re-encoded file would still import garbled, with no error.
+    return `${what} An .eml must be UTF-8 or 7-bit (quoted-printable or base64); converting it would leave its declared charset wrong. Save the message's HTML as UTF-8 and import that instead.`
+  }
+  const isCsv = ext === '.csv'
   const save = isCsv
     ? 'Save it as UTF-8 (in Excel: Save As > "CSV UTF-8"), or convert it'
     : 'Save it as UTF-8, or convert it'

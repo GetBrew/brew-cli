@@ -86,6 +86,24 @@ describe('decodeUtf8Text', () => {
     )
   })
 
+  it('does not suggest iconv for an .eml, whose parts declare their charset', () => {
+    const eml = bytes(
+      'Content-Type: text/html; charset=windows-1252\r\n',
+      'Content-Transfer-Encoding: 8bit\r\n\r\n<p>Jos',
+      [0xe9],
+      '</p>'
+    )
+    const error = failure(() =>
+      decodeUtf8Text(eml, { flag: '--file', path: 'Saved.EML' })
+    )
+    expect(error.message).toBe(
+      '--file Saved.EML is not UTF-8 (line 4 has byte 0xE9), so nothing was sent. ' +
+        'An .eml must be UTF-8 or 7-bit (quoted-printable or base64); ' +
+        'converting it would leave its declared charset wrong. ' +
+        "Save the message's HTML as UTF-8 and import that instead."
+    )
+  })
+
   it('redirects input so iconv cannot read a leading-dash path as an option', () => {
     const error = failure(() =>
       decodeUtf8Text(bytes('Jos', [0xe9]), {
