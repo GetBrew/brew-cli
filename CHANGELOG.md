@@ -13,6 +13,22 @@
 
 ### Changed
 
+- Vendored spec and generated API types follow app revision `57a327ed7f`:
+  new error codes `WRITE_CONFLICT` (`503`, retry after `Retry-After`, now
+  possible on `emails clone`) and `NO_ACTIVE_PLAN` (`402`), the
+  `bounce_rate` send pause reason and `stats.hardBounced` on sends
+  (GetBrew/brew-v2#2624, GetBrew/brew-v2#2756). `automations delete`, `test`
+  and `run` refuse with `AUTOMATION_IN_PROGRESS` (`409`),
+  `AUTOMATION_NOT_READY` (`422`) or, for `run` on an event automation,
+  `AUTOMATION_NOT_RUNNABLE` (`422`) instead of `INTERNAL_ERROR`,
+  `INVALID_PAYLOAD` or `INVALID_REQUEST` (GetBrew/brew-v2#2839).
+  `automations audience-runs resume` returns `AUTOMATION_NOT_READY` when a
+  send step still to go can no longer send (GetBrew/brew-v2#2841), and
+  `pause` on a run held at the plan limit is `409 RUN_NOT_PAUSABLE`
+  (GetBrew/brew-v2#2838). No operations were added or removed. The `automations test` confirmation no longer says test
+  deliveries count toward send usage: they never count toward the plan's
+  email sends (GetBrew/brew-v2#2770).
+
 - `content gif` takes `--frame-count <n>` (2-16, default 9) for a prompt or
   image GIF; `--fps` (default 5) sets playback speed. GIFs from a prompt or
   an image are now one GPT Image 2.6 generation (GetBrew/brew-v2#2668):
@@ -24,6 +40,19 @@
 
 ### Fixed
 
+- `--file` and stdin are decoded as strict UTF-8. A file in another encoding,
+  such as Excel's default "CSV" on Western Windows (Windows-1252), used to
+  reach Brew with every accented letter replaced by `�` (`José` stored as
+  `Jos�`), answering `200` with no warning. It now exits 2 (`CLI_USAGE`)
+  before any request, naming the first bad byte and its line (or that the
+  file is UTF-16), with how to re-save it as UTF-8. On macOS and Linux it
+  also prints an `iconv` command when the bytes can be Windows-1252 or
+  UTF-16. An `.eml` (by extension or `--format eml`) is told to import its
+  HTML instead, because re-encoding it would leave the charset its parts
+  declare wrong. A leading UTF-8 byte-order mark is dropped, so a JSON
+  `--file` or `--input -` saved with one now parses. This applies to every
+  command that reads `--file`, `--jsx-file`, `--input -` or `--data -`, and to
+  a piped `login` key.
 - `brand get-images --query` is free: semantic image search no longer costs
   a credit on its first page or answers `402 INSUFFICIENT_CREDITS`
   (GetBrew/brew-v2#2492). The command is no longer marked credited in help,

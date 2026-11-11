@@ -323,9 +323,9 @@ export interface paths {
          *
          *     **Use when** you already have HTML, MJML, React Email JSX or a saved `.eml` message. To author from a brief use `generateEmail`; for a Figma frame use `importFigmaDesign`.
          *
-         *     **Input** `content` (the raw source as a string) and `format`: `html` (a document or fragment), `mjml`, `jsx` (a module with a default-exported component or a bare `<Html>` element; static values, `PreviewProps` and local sub-components fold, anything executable is rejected with the offending line) or `eml` (the HTML body is imported, inline `cid:` images are rehosted, other attachments are dropped, and the Subject becomes the title). HTML, MJML and EML land as source-preserved designs with an editable projection; JSX lands as a native React Email design. Optional `baseUrl` resolves relative image paths; optional `title` and `subjectLine` (the design-default inbox subject; an EML Subject is the default); optional `groupId` (`grp_…` or `ungrouped`) or `groupName` (resolve or create), not both; omit to land Ungrouped. Limits: 5,000,000 UTF-8 bytes, 256 remote resources, 8 concurrent fetches, 10 MB per resource and 50 MB aggregate downloads.
+         *     **Input** `content` (the raw source as a string) and `format`: `html` (a document or fragment), `mjml`, `jsx` (a module with a default-exported component or a bare `<Html>` element; static values, `PreviewProps` and local sub-components fold; `new Date()` and `Date.now()` with no arguments read the clock once at import and are saved as fixed text with a `current_time_frozen` warning, and `process.env.X` reads as `undefined`; anything else executable is rejected with the offending line) or `eml` (the HTML body is imported, inline `cid:` images are rehosted, other attachments are dropped, and the Subject becomes the title). HTML, MJML and EML land as source-preserved designs with an editable projection; JSX lands as a native React Email design. Optional `baseUrl` resolves relative image paths; optional `title` and `subjectLine` (the design-default inbox subject; an EML Subject is the default); optional `groupId` (`grp_…` or `ungrouped`) or `groupName` (resolve or create), not both; omit to land Ungrouped. Limits: 5,000,000 UTF-8 bytes, 256 remote resources, 8 concurrent fetches, 10 MB per resource, 50 MB aggregate downloads, 128 distinct inline SVG images and 8 seconds of inline SVG rendering (past either, the rest are dropped with a warning).
          *
-         *     **Returns** `201 { emailId, emailVersionId, html, previewImage?, assetReport, group, subjectLine? }`. Each source element with content that a design could not keep is listed once in `assetReport.warnings` as `{ code: "element_dropped", location: "markup", host: "<tag>" }`: inline `svg`, `math` and `canvas`, and `button`, `select`, `textarea` or table `caption` holding text are left out of the editable projection (the original source keeps them); `audio`, `video`, `iframe`, `object` and `embed` are removed from both, with `audio`/`video` fallback content kept. Source words the editable design does not carry are named once as `{ code: "text_dropped", location: "markup", host: "<words>" }`; version 1 keeps the exact source.
+         *     **Returns** `201 { emailId, emailVersionId, html, previewImage?, assetReport, group, subjectLine? }`. Each source element with content that a design could not keep is listed once in `assetReport.warnings` as `{ code: "element_dropped", location: "markup", host: "<tag>" }`: inline `svg`, `math` and `canvas`, and `button`, `select`, `textarea` or table `caption` holding text are left out of the editable projection (the original source keeps them); `audio`, `video`, `iframe`, `object` and `embed` are removed from both, with `audio`/`video` fallback content kept. Email clients block SVG images, so an SVG image, hosted or inline (`data:image/svg+xml` in a `src` or `background` attribute or a CSS `url()`), becomes a hosted PNG: twice the pixel box its `<img>` sets (the SVG fitted as its `preserveAspectRatio` says), otherwise its own size so the layout holds. An inline one that will not render is removed (in JSX, its `src`) and listed as `element_dropped` with host `svg`; a hosted one that will not render, or whose URL has a `#` fragment, stays an SVG. Source words the editable design does not carry are named once as `{ code: "text_dropped", location: "markup", host: "<words>" }`; version 1 keeps the exact source. JSX clock reads are named as `{ code: "current_time_frozen", location: "module", host: "Date.now() (line 10)" }` (the first 20).
          *
          *     **Errors** `400 INVALID_REQUEST` (naming the field in `param`) when `title`, `subjectLine` or `content` holds an unpaired surrogate (half of an emoji); `422 EMAIL_IMPORT_FAILED` when the markup cannot be compiled into a design or its editable model is over the size budget, with nothing persisted; `502 EMAIL_IMPORT_PERSISTENCE_FAILED` when the markup converted but the design could not be stored (nothing was created; the message carries the request id to give support); `404 EMAIL_GROUP_NOT_FOUND` for an unknown `groupId`; `413 PAYLOAD_TOO_LARGE` over the byte cap; `422 BRAND_NOT_READY` while the brand is still extracting.
          *
@@ -1006,7 +1006,7 @@ export interface paths {
         post?: never;
         /**
          * Delete an automation
-         * @description Cascade-deletes the automation: every version row, runs, and logs. Referenced email DESIGNS are shared resources and always survive. Idempotent — an unknown id resolves with `deleted: false`.
+         * @description Cascade-deletes the automation: every version row, its event and test runs, and their logs. Contacts mid-flow stop. Manual-audience runs that have not finished (scheduled, queued, running or paused) are canceled and kept as history, so `listAudienceRuns` still returns them. Referenced email DESIGNS are shared resources and always survive. Idempotent — an unknown or cross-brand id resolves with `deleted: false`, never `404 AUTOMATION_NOT_FOUND`. `409 AUTOMATION_IN_PROGRESS` while the agent is still generating the automation; retry once it finishes.
          */
         delete: operations["deleteAutomation"];
         options?: never;
@@ -1039,7 +1039,7 @@ export interface paths {
         put?: never;
         /**
          * Test an automation
-         * @description Runs the saved automation END-TO-END through the real workflow in TEST mode — works on drafts and for both event and manual-audience automations; every node executes (filters/splits evaluate against `payload`, and `contact.<name>` conditions read the test recipient’s contact unless `payload` supplies that field — a flat `contact.<name>` key or a `contact` object — and the trigger’s contract keeps extra keys; wait nodes fast-forward). Pass `testRecipient` to DELIVER each send-email node’s email for real to that address (real subject/preview/sender name; verified configured sender domains are preserved, otherwise delivery uses the Brew test domain; customer addresses are never hit; the address must be a teammate with access to the brand, an address on a verified sending domain of the brand, or, for a signed-in person (not an API key), their own address or one on their company domain, else `422 TEST_RECIPIENT_NOT_ALLOWED`) — omit it for a silent dry-run with no mail. Test runs are excluded from live analytics rollups. Test deliveries never count toward the plan’s email sends. Test payloads never update real contact records. Returns `202` with the started run id; follow per-node status via `GET /v1/automations/runs/{automationRunId}?include=logs`. Optional `scenario` controls simulate timed opens/clicks at engagement-filter nodes and force left/right percentage-split choices (waits use a virtual clock; controls stay separate from `payload`, and simulated events never enter live analytics or send quotas); the run row’s `testCoverage` reports visited nodes, traversed connections, evaluated or forced decisions, uncovered paths and simulation limitations. On a Brew-event (unsubscribe) trigger, omit payload to use Brew’s sample event; supplied fields replace the sample’s. The run never creates or edits a contact.
+         * @description Runs the saved automation END-TO-END through the real workflow in TEST mode — works on drafts and for both event and manual-audience automations; every node executes (filters/splits evaluate against `payload`, and `contact.<name>` conditions read the test recipient’s contact unless `payload` supplies that field — a flat `contact.<name>` key or a `contact` object — and the trigger’s contract keeps extra keys; wait nodes fast-forward). Pass `testRecipient` to DELIVER each send-email node’s email for real to that address (real subject/preview/sender name; verified configured sender domains are preserved, otherwise delivery uses the Brew test domain; customer addresses are never hit; the address must be a teammate with access to the brand, an address on a verified sending domain of the brand, or, for a signed-in person (not an API key), their own address or one on their company domain, else `422 TEST_RECIPIENT_NOT_ALLOWED`) — omit it for a silent dry-run with no mail. Test runs are excluded from live analytics rollups. Test deliveries never count toward the plan’s email sends. Test payloads never update real contact records. Returns `202` with the started run id; follow per-node status via `GET /v1/automations/runs/{automationRunId}?include=logs`. Optional `scenario` controls simulate timed opens/clicks at engagement-filter nodes and force left/right percentage-split choices (waits use a virtual clock; controls stay separate from `payload`, and simulated events never enter live analytics or send quotas); the run row’s `testCoverage` reports visited nodes, traversed connections, evaluated or forced decisions, uncovered paths and simulation limitations. On a Brew-event (unsubscribe) trigger, omit payload to use Brew’s sample event; supplied fields replace the sample’s. The run never creates or edits a contact. `400 INVALID_PAYLOAD` when `payload` does not match the trigger’s payload schema; `422 AUTOMATION_NOT_READY` when generation failed or a step is incomplete or invalid (the message names it); `409 AUTOMATION_IN_PROGRESS` while the agent is still generating the automation.
          */
         post: operations["testAutomation"];
         delete?: never;
@@ -1059,7 +1059,7 @@ export interface paths {
         put?: never;
         /**
          * Run a manual-audience automation
-         * @description Launches a MANUAL-AUDIENCE automation against the audience bound to its trigger node. `dryRun: true` previews without sending; `scheduledAt` launches later, at most 1 year ahead. Percentage-based `gradualSend` delivers each send step in custom hour or calendar-day batches and supports manual pause/resume/cancel. `400` when `scheduledAt` is more than 1 year ahead, or a `gradualSend` plan exceeds 50,000 recipients, 30 batches, or 30 elapsed days. `422 EMAIL_IMAGES_MISSING` when a step would send a cdn.brew.new image that does not exist (`details.missingImages[]`). Returns `202` with the `audienceRunId`.
+         * @description Launches a MANUAL-AUDIENCE automation against the audience bound to its trigger node. `dryRun: true` previews without sending; `scheduledAt` launches later, at most 1 year ahead. Percentage-based `gradualSend` delivers each send step in custom hour or calendar-day batches and supports manual pause/resume/cancel. `400` when `scheduledAt` is more than 1 year ahead, or a `gradualSend` plan exceeds 50,000 recipients, 30 batches, or 30 elapsed days. `422 AUTOMATION_NOT_RUNNABLE` for an event automation, which runs when its trigger fires. `422 AUTOMATION_NOT_READY` when the saved flow cannot launch: a step is incomplete or invalid, a send step’s sender domain is not verified, generation failed, or no usable audience is bound (the message names which). `422 EMAIL_IMAGES_MISSING` when a step would send a cdn.brew.new image that does not exist (`details.missingImages[]`). `409 AUTOMATION_IN_PROGRESS` while the agent is still generating the automation. Returns `202` with the `audienceRunId`.
          */
         post: operations["runAutomation"];
         delete?: never;
@@ -1145,9 +1145,9 @@ export interface paths {
          *
          *     **Input** `audienceRunId` in the path; no body.
          *
-         *     **Returns** `200` with the run’s new `status` (`paused`). A run that is already paused, by an operator or at the plan limit, returns the same `200` and changes nothing.
+         *     **Returns** `200` with the run’s new `status` (`paused`). A run its operator already paused returns the same `200` and changes nothing.
          *
-         *     **Errors** `409 RUN_NOT_PAUSABLE` when the run is scheduled, completed, failed or canceled; `404 AUDIENCE_RUN_NOT_FOUND` for an unknown or cross-brand id.
+         *     **Errors** `409 RUN_NOT_PAUSABLE` when the run is scheduled, completed, failed or canceled, or held at the plan limit (`pauseReason: plan_limit`: it resumes on its own once the monthly send allowance has room, so cancel it to stop it); `404 AUDIENCE_RUN_NOT_FOUND` for an unknown or cross-brand id.
          *
          *     **See also** `resumeAudienceRun`, `cancelAudienceRun`, `getAudienceRun`.
          */
@@ -1177,7 +1177,7 @@ export interface paths {
          *
          *     **Returns** `200` with the run’s new `status` and `resumedFrom` (`paused` or `failed`).
          *
-         *     **Errors** `409 RUN_NOT_PAUSED` when a running run is resumed; `409 RUN_NOT_RESUMABLE` when the run is held at the plan limit, or a failed run has no undelivered send step or a send step delivered to only part of its segment; `409 RUN_IN_PROGRESS` when another run of the automation is active; `402 SEND_QUOTA_EXCEEDED` when resuming would exceed the monthly send limit; `422 INVALID_REQUEST` when a send step is no longer valid; `503 RUN_STOP_FAILED` / `RUN_START_FAILED` when the workflow engine could not stop the previous run or start the new one (retry); `404 AUDIENCE_RUN_NOT_FOUND` for an unknown or cross-brand id.
+         *     **Errors** `409 RUN_NOT_PAUSED` when the run is neither paused nor failed (scheduled, queued, running, completed or canceled); `409 RUN_NOT_RESUMABLE` when the run is held at the plan limit, or a failed run has no undelivered send step or a send step delivered to only part of its segment; `409 RUN_IN_PROGRESS` when another run of the automation is active; `402 SEND_QUOTA_EXCEEDED` when resuming would exceed the monthly send limit; `422 AUTOMATION_NOT_READY` when a send step still to go can no longer send, such as a sender domain that is no longer verified (the message names the step); `503 RUN_STOP_FAILED` / `RUN_START_FAILED` when the workflow engine could not stop the previous run or start the new one (retry); `404 AUDIENCE_RUN_NOT_FOUND` for an unknown or cross-brand id.
          *
          *     **See also** `pauseAudienceRun`, `cancelAudienceRun`, `getAudienceRun`.
          */
@@ -1207,7 +1207,7 @@ export interface paths {
          *
          *     **Returns** `200` with the run’s new `status` (`canceled`).
          *
-         *     **Errors** `409 RUN_NOT_CANCELLABLE` when the run already finished; `503 RUN_STOP_FAILED` when the workflow could not be stopped (retry); `404 AUDIENCE_RUN_NOT_FOUND` for an unknown or cross-brand id.
+         *     **Errors** `409 RUN_NOT_CANCELLABLE` when the run already completed, failed or was canceled, including a repeat cancel with a new `Idempotency-Key` (a retry with the same key replays the first answer); `404 AUDIENCE_RUN_NOT_FOUND` for an unknown or cross-brand id.
          *
          *     **See also** `pauseAudienceRun`, `resumeAudienceRun`, `cancelAutomationRun` (one event or test run).
          */
@@ -1261,7 +1261,7 @@ export interface paths {
          *
          *     **Use when** debugging one contact’s journey or confirming a test run finished.
          *
-         *     **Input** `automationRunId` in the path; `include=logs` inlines the newest 100 execution log rows in `orderIndex` order and sets `logsTruncated` when older rows exist. Each node status change is its own row: a node that runs has a `running` row (no `completedAt`), then its terminal `completed` or `failed` row, or `skipped` when the run is canceled while it runs; a node a branch rules out has only a `skipped` row. A node’s outcome is its last row.
+         *     **Input** `automationRunId` in the path; `include=logs` inlines the newest 100 execution log rows in `orderIndex` order and sets `logsTruncated` when older rows exist. Each node status change is its own row: a node that runs has a `running` row (no `completedAt`), then its terminal `completed` or `failed` row, or `skipped` when the run is canceled while it runs; a node a branch rules out has only a `skipped` row. A node’s outcome is its last row. A run canceled between two nodes adds no row, so the node that finished keeps its outcome; the run’s `status` and `error` record the cancel.
          *
          *     **Returns** `200` with the row; `logs` is present only when requested.
          *
@@ -1759,7 +1759,7 @@ export interface paths {
         put?: never;
         /**
          * Bulk-import contacts from CSV
-         * @description Parse a raw CSV string and upsert the rows as contacts (≤ 1000). By default each column header maps to the custom field its name folds to, the same camelCase name `POST /v1/contacts` stores (`Plan` → `plan`, `Team Size` → `teamSize`); `email` is required. A header that spells a core field, ignoring case, spaces, `_` and `-`, or whose field key equals it (`First.Name`), maps to it: `Email`, `First Name`, `Last Name` and `Subscribed` fill `email`, `firstName`, `lastName` and `subscribed`. Pass `mapping` to remap single columns; the columns it leaves out keep their default mapping, `""` leaves a column out, and a key that names no column is a `400`. Two columns that land on one custom field (`plan,Plan`: names fold as on `POST /v1/contacts`) are a `422 FIELD_NAME_COLLISION` before any row is read: map one to another name or leave it out with `""`. A core field that `mapping` fills is filled from that column alone: another column whose default would fill it is left out with a `CSV_COLUMN_IGNORED` warning. Rows with a missing/invalid email are SKIPPED (counted in `summary.skipped`), not errored; disposable-domain rows are imported with `validationStatus: "risky"` (deliverable but flagged). Returns the same `{ summary, fieldsCreated, errors, warnings }` as batch-create plus `importId` — `207` when some rows fail. The batch is listed in Import History under `fileName` (optional), and each contact it writes carries `importId` until a later import touches it (filter on it to list them; deleting the import in the app removes the contacts it created). For rows you already hold as JSON, use `POST /v1/contacts/import`.
+         * @description Parse a raw CSV string and upsert the rows as contacts (≤ 1000). By default each column header maps to the custom field its name folds to, the same camelCase name `POST /v1/contacts` stores (`Plan` → `plan`, `Team Size` → `teamSize`); `email` is required. A header that spells a core field, ignoring case, spaces, `_` and `-`, or whose field key equals it (`First.Name`), maps to it: `Email`, `First Name`, `Last Name` and `Subscribed` fill `email`, `firstName`, `lastName` and `subscribed`. Pass `mapping` to remap single columns; the columns it leaves out keep their default mapping, `""` leaves a column out, and a key that names no column is a `400`. Two columns that land on one field (`plan,Plan`: names fold as on `POST /v1/contacts`; `First Name,firstName`; `email,Email`) are a `422 FIELD_NAME_COLLISION` before any row is read: map one to another name or leave it out with `""`. Columns that fill `subscribed` are all read, and an opt-out in any of them wins. A core field that `mapping` fills is filled from that column alone: another column whose default would fill it is left out with a `CSV_COLUMN_IGNORED` warning. Rows with a missing/invalid email are SKIPPED (counted in `summary.skipped`), not errored; disposable-domain rows are imported with `validationStatus: "risky"` (deliverable but flagged). Returns the same `{ summary, fieldsCreated, errors, warnings }` as batch-create plus `importId` — `207` when some rows fail. The batch is listed in Import History under `fileName` (optional), and each contact it writes carries `importId` until a later import touches it (filter on it to list them; deleting the import in the app removes the contacts it created). For rows you already hold as JSON, use `POST /v1/contacts/import`.
          *
          *     CSV cells are text: a column mapped onto an EXISTING field is coerced to that field's type (dates → epoch ms, `1,234` → 1234, `yes`/`no` → booleans), and a cell that cannot be coerced (`$49` in a number column) fails ITS row with a per-row `errors[]` entry (`code: FIELD_TYPE_MISMATCH`, `field`) while the other rows still land. A converted cell adds a `warnings[]` entry (`code: FIELD_TYPE_COERCED`, `field`, `from`, `to`); a date written to a `date` field is not reported. An undeclared column is created as a `string` field unless every value is an ISO date (→ `date`); predeclare `number` / `bool` columns with `POST /v1/fields`. A column whose field Brew manages (`Created At`, `Validation Status`) is not imported and adds a `warnings[]` entry (`code: CSV_COLUMN_IGNORED`, `field` names the column).
          *
@@ -2820,7 +2820,7 @@ export interface paths {
          *     - `automation_pause_window_closed`: `automations`.
          *     - `brand_extracted`, `brand_image_import`, `integration_attention` (a connected integration such as Stripe needs a reconnect, moved to another brand, or lost a permission): every credential on the brand.
          *     - `api_key_created`: the `all` scope (a signed-in member, or a key or connection holding `all`).
-         *     - `send_limit_reached`: organization admins only (a signed-in admin, an admin’s organization-wide connection, or an organization-wide key holding `all`); never a brand key.
+         *     - `send_limit_reached`, `trial_ending`, `trial_expired`, `payment_failed`: organization admins only (a signed-in admin, an admin’s organization-wide connection, or an organization-wide key holding `all`); never a brand key.
          *     - `comment_mention`, `comment_reply` (`isPersonal: true`): only the person addressed, signed in or on a personal connection; never an API key.
          *
          *     **Use when** checking what finished or failed since you last looked.
@@ -4894,7 +4894,7 @@ export interface components {
             };
         };
         /** @enum {string} */
-        ApiErrorCode: "ACCOUNT_SUSPENDED" | "API_KEY_REVOKED" | "AUDIENCE_BUILD_ACTIVE" | "AUDIENCE_BUILD_ALREADY_ACTIVE" | "AUDIENCE_EDIT_CONFLICT" | "AUDIENCE_MEMBERSHIP_NOT_EXPRESSIBLE" | "AUDIENCE_NOT_FOUND" | "AUDIENCE_RUN_NOT_FOUND" | "AUDIT_NOT_FOUND" | "AUTHENTICATION_REQUIRED" | "AUTOMATION_GRAPH_INVALID" | "AUTOMATION_NOT_FOUND" | "AUTOMATION_NOT_PAUSABLE" | "AUTOMATION_NOT_PUBLISHED" | "AUTOMATION_RUN_NOT_FOUND" | "AUTOMATION_VERSION_CONFLICT" | "AUTOMATION_VERSION_NOT_FOUND" | "BATCH_TOO_LARGE" | "BRAND_DOMAIN_CONFLICT" | "BRAND_ID_REQUIRED" | "BRAND_LIMIT_REACHED" | "BRAND_NOT_FOUND" | "BRAND_NOT_READY" | "BRAND_SCOPE_MISMATCH" | "CHAT_NOT_FOUND" | "COMMENT_NOT_FOUND" | "CONSENT_REQUIRED" | "CONTACT_NOT_FOUND" | "CONTENT_OPERATION_FAILED" | "CONTRACT_LOCKED_BY_PUBLISHED_AUTOMATIONS" | "CORE_FIELD_IMMUTABLE" | "DOMAIN_ALREADY_EXISTS" | "DOMAIN_CLAIMED_ELSEWHERE" | "DOMAIN_NOT_FOUND" | "DOMAIN_NOT_READY" | "DOMAIN_OTHER_BRAND" | "DOMAIN_PROVIDER_ERROR" | "DOMAIN_PURPOSE_NOT_ALLOWED" | "DOMAIN_VERIFICATION_FAILED" | "DOMAIN_VERIFIED_ELSEWHERE" | "EMAIL_GENERATION_FAILED" | "EMAIL_GROUP_NAME_CONFLICT" | "EMAIL_GROUP_NOT_FOUND" | "EMAIL_IMAGES_MISSING" | "EMAIL_IMPORT_FAILED" | "EMAIL_IMPORT_PERSISTENCE_FAILED" | "EMAIL_IN_PROGRESS" | "EMAIL_IN_USE_BY_AUTOMATION" | "EMAIL_NOT_FOUND" | "EMAIL_NOT_READY" | "EMAIL_RESULT_UNAVAILABLE" | "EMAIL_RUN_AMBIGUOUS" | "EMAIL_TEMPLATE_INVALID" | "EMAIL_VERSION_NOT_FOUND" | "EXPORT_PROVIDER_ERROR" | "EXPORT_UNSUPPORTED" | "FIELD_NAME_COLLISION" | "FIELD_NOT_FOUND" | "FIELD_TYPE_MISMATCH" | "FIGMA_ACCESS_DENIED" | "FIGMA_CONVERSION_FAILED" | "FIGMA_FRAME_NOT_FOUND" | "FIGMA_NOT_CONNECTED" | "FIGMA_UNAVAILABLE" | "FIGMA_URL_INVALID" | "FLOW_NOT_FOUND" | "IDEMPOTENCY_CONFLICT" | "IDEMPOTENCY_IN_PROGRESS" | "INSIGHT_NOT_FOUND" | "INSUFFICIENT_CREDITS" | "INSUFFICIENT_PERMISSIONS" | "INSUFFICIENT_ROLE" | "INTEGRATION_NOT_CONNECTED" | "INTERNAL_ERROR" | "INVALID_API_KEY" | "INVALID_EMAIL" | "INVALID_PAYLOAD" | "INVALID_REQUEST" | "LIQUID_RENDER_ERROR" | "METHOD_NOT_ALLOWED" | "MISSING_EMAIL" | "NO_ACTIVE_PLAN" | "NO_ELIGIBLE_RECIPIENTS" | "NO_PUBLISHED_AUTOMATION" | "NOT_FOUND" | "NOT_IMPLEMENTED" | "ORG_SCOPE_REQUIRED" | "PAYLOAD_SCHEMA_EMAIL_REQUIRED" | "PAYLOAD_TOO_LARGE" | "PREVIEW_NOT_FOUND" | "PUBLISH_VALIDATION_FAILED" | "RATE_LIMITED" | "RECIPIENT_UNSUBSCRIBED" | "REFERENCE_EMAIL_NOT_FOUND" | "RESUBSCRIBE_NOT_ALLOWED" | "RUN_IN_PROGRESS" | "RUN_NOT_CANCELLABLE" | "RUN_NOT_PAUSABLE" | "RUN_NOT_PAUSED" | "RUN_NOT_RESUMABLE" | "RUN_START_FAILED" | "RUN_STOP_FAILED" | "SEND_NOT_CANCELLABLE" | "SEND_NOT_FOUND" | "SEND_NOT_PAUSABLE" | "SEND_NOT_RESUMABLE" | "SEND_QUOTA_EXCEEDED" | "SERVICE_UNAVAILABLE" | "TEMPLATE_NOT_FOUND" | "TEST_RECIPIENT_NOT_ALLOWED" | "TRIGGER_ALREADY_EXISTS" | "TRIGGER_EVENT_NOT_FOUND" | "TRIGGER_HAS_DEPENDENT_AUTOMATIONS" | "TRIGGER_IMMUTABLE" | "TRIGGER_INSTANCE_NOT_FOUND" | "TRIGGER_LIMIT_REACHED" | "TRIGGER_NOT_FIREABLE" | "UPLOAD_IN_PROGRESS" | "UPLOAD_NOT_FOUND" | "UPLOAD_NOT_RECEIVED" | "WRITE_CONFLICT";
+        ApiErrorCode: "ACCOUNT_SUSPENDED" | "API_KEY_REVOKED" | "AUDIENCE_BUILD_ACTIVE" | "AUDIENCE_BUILD_ALREADY_ACTIVE" | "AUDIENCE_EDIT_CONFLICT" | "AUDIENCE_MEMBERSHIP_NOT_EXPRESSIBLE" | "AUDIENCE_NOT_FOUND" | "AUDIENCE_RUN_NOT_FOUND" | "AUDIT_NOT_FOUND" | "AUTHENTICATION_REQUIRED" | "AUTOMATION_GRAPH_INVALID" | "AUTOMATION_IN_PROGRESS" | "AUTOMATION_NOT_FOUND" | "AUTOMATION_NOT_PAUSABLE" | "AUTOMATION_NOT_PUBLISHED" | "AUTOMATION_NOT_READY" | "AUTOMATION_NOT_RUNNABLE" | "AUTOMATION_RUN_NOT_FOUND" | "AUTOMATION_VERSION_CONFLICT" | "AUTOMATION_VERSION_NOT_FOUND" | "BATCH_TOO_LARGE" | "BRAND_DOMAIN_CONFLICT" | "BRAND_ID_REQUIRED" | "BRAND_LIMIT_REACHED" | "BRAND_NOT_FOUND" | "BRAND_NOT_READY" | "BRAND_SCOPE_MISMATCH" | "CHAT_NOT_FOUND" | "COMMENT_NOT_FOUND" | "CONSENT_REQUIRED" | "CONTACT_NOT_FOUND" | "CONTENT_OPERATION_FAILED" | "CONTRACT_LOCKED_BY_PUBLISHED_AUTOMATIONS" | "CORE_FIELD_IMMUTABLE" | "DOMAIN_ALREADY_EXISTS" | "DOMAIN_CLAIMED_ELSEWHERE" | "DOMAIN_NOT_FOUND" | "DOMAIN_NOT_READY" | "DOMAIN_OTHER_BRAND" | "DOMAIN_PROVIDER_ERROR" | "DOMAIN_PURPOSE_NOT_ALLOWED" | "DOMAIN_VERIFICATION_FAILED" | "DOMAIN_VERIFIED_ELSEWHERE" | "EMAIL_GENERATION_FAILED" | "EMAIL_GROUP_NAME_CONFLICT" | "EMAIL_GROUP_NOT_FOUND" | "EMAIL_IMAGES_MISSING" | "EMAIL_IMPORT_FAILED" | "EMAIL_IMPORT_PERSISTENCE_FAILED" | "EMAIL_IN_PROGRESS" | "EMAIL_IN_USE_BY_AUTOMATION" | "EMAIL_NOT_FOUND" | "EMAIL_NOT_READY" | "EMAIL_RESULT_UNAVAILABLE" | "EMAIL_RUN_AMBIGUOUS" | "EMAIL_TEMPLATE_INVALID" | "EMAIL_VERSION_NOT_FOUND" | "EXPORT_PROVIDER_ERROR" | "EXPORT_UNSUPPORTED" | "FIELD_NAME_COLLISION" | "FIELD_NOT_FOUND" | "FIELD_TYPE_MISMATCH" | "FIGMA_ACCESS_DENIED" | "FIGMA_CONVERSION_FAILED" | "FIGMA_FRAME_NOT_FOUND" | "FIGMA_NOT_CONNECTED" | "FIGMA_UNAVAILABLE" | "FIGMA_URL_INVALID" | "FLOW_NOT_FOUND" | "IDEMPOTENCY_CONFLICT" | "IDEMPOTENCY_IN_PROGRESS" | "INSIGHT_NOT_FOUND" | "INSUFFICIENT_CREDITS" | "INSUFFICIENT_PERMISSIONS" | "INSUFFICIENT_ROLE" | "INTEGRATION_NOT_CONNECTED" | "INTERNAL_ERROR" | "INVALID_API_KEY" | "INVALID_EMAIL" | "INVALID_PAYLOAD" | "INVALID_REQUEST" | "LIQUID_RENDER_ERROR" | "METHOD_NOT_ALLOWED" | "MISSING_EMAIL" | "NO_ACTIVE_PLAN" | "NO_ELIGIBLE_RECIPIENTS" | "NO_PUBLISHED_AUTOMATION" | "NOT_FOUND" | "NOT_IMPLEMENTED" | "ORG_SCOPE_REQUIRED" | "PAYLOAD_SCHEMA_EMAIL_REQUIRED" | "PAYLOAD_TOO_LARGE" | "PREVIEW_NOT_FOUND" | "PUBLISH_VALIDATION_FAILED" | "RATE_LIMITED" | "RECIPIENT_UNSUBSCRIBED" | "REFERENCE_EMAIL_NOT_FOUND" | "RESUBSCRIBE_NOT_ALLOWED" | "RUN_IN_PROGRESS" | "RUN_NOT_CANCELLABLE" | "RUN_NOT_PAUSABLE" | "RUN_NOT_PAUSED" | "RUN_NOT_RESUMABLE" | "RUN_START_FAILED" | "RUN_STOP_FAILED" | "SEND_NOT_CANCELLABLE" | "SEND_NOT_FOUND" | "SEND_NOT_PAUSABLE" | "SEND_NOT_RESUMABLE" | "SEND_QUOTA_EXCEEDED" | "SERVICE_UNAVAILABLE" | "TEMPLATE_NOT_FOUND" | "TEST_RECIPIENT_NOT_ALLOWED" | "TRIGGER_ALREADY_EXISTS" | "TRIGGER_EVENT_NOT_FOUND" | "TRIGGER_HAS_DEPENDENT_AUTOMATIONS" | "TRIGGER_IMMUTABLE" | "TRIGGER_INSTANCE_NOT_FOUND" | "TRIGGER_LIMIT_REACHED" | "TRIGGER_NOT_FIREABLE" | "UPLOAD_IN_PROGRESS" | "UPLOAD_NOT_FOUND" | "UPLOAD_NOT_RECEIVED" | "WRITE_CONFLICT";
         EmailsListResponse: {
             data: {
                 emailId: string;
@@ -5001,7 +5001,7 @@ export interface components {
                 dropped?: number;
                 warnings: {
                     /** @enum {string} */
-                    code: "fetch_failed_retained" | "non_image_resource_retained" | "social_icon_substituted" | "tracking_pixel_dropped" | "unsafe_url_stripped" | "unsupported_resource_retained" | "upload_failed_retained" | "inline_asset_retained" | "attachment_dropped" | "embedded_reference_unresolved" | "tailwind_config_unresolved" | "tailwind_class_dropped" | "foreign_component_dropped" | "element_dropped" | "text_dropped";
+                    code: "fetch_failed_retained" | "non_image_resource_retained" | "social_icon_substituted" | "tracking_pixel_dropped" | "unsafe_url_stripped" | "unsupported_resource_retained" | "upload_failed_retained" | "inline_asset_retained" | "attachment_dropped" | "embedded_reference_unresolved" | "tailwind_config_unresolved" | "tailwind_class_dropped" | "foreign_component_dropped" | "current_time_frozen" | "element_dropped" | "text_dropped";
                     /** @enum {string} */
                     location: "background" | "css-url" | "data-src" | "data-srcset" | "markup" | "module" | "preload" | "src" | "srcset" | "stylesheet" | "vml-src";
                     host?: string;
@@ -5118,7 +5118,7 @@ export interface components {
         EmailCloneRequest: {
             /** @description Exact source version to clone (from GET /v1/emails/{emailId}?include=versions). Omit to clone the current latest version. */
             emailVersionId?: string;
-            /** @description Name for the clone. Omit for `Copy of <source title>`; rename later with `PATCH /v1/emails/{emailId} { title }` over HTTP, update_email_metadata over MCP. */
+            /** @description Name for the clone. Omit for `Copy of <source title>`, cut to 200 characters; rename later with `PATCH /v1/emails/{emailId} { title }` over HTTP, update_email_metadata over MCP. */
             title?: string;
             /** @description File the design under an existing group (`grp_…`), or `ungrouped`. Mutually exclusive with `groupName`. */
             groupId?: string;
@@ -18657,12 +18657,19 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /**
-             * @description `AUTOMATION_NOT_FOUND`: No automation with that id exists in the brand.
-             *
-             *     `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
-             */
+            /** @description `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization). */
             404: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `AUTOMATION_IN_PROGRESS`: The automation is still being generated, so it cannot be deleted, tested or run yet. */
+            409: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
                     "x-request-id": string;
@@ -19006,7 +19013,9 @@ export interface operations {
                 };
             };
             /**
-             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+             * @description `AUTOMATION_IN_PROGRESS`: The automation is still being generated, so it cannot be deleted, tested or run yet.
+             *
+             *     `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
              *
              *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
              */
@@ -19020,7 +19029,11 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `TEST_RECIPIENT_NOT_ALLOWED`: A test email can reach only a teammate with access to the brand, an address on a verified sending domain of the brand, or, for a signed-in person (not an API key), their own address or one on their company domain; details.recipients lists the refused addresses. */
+            /**
+             * @description `AUTOMATION_NOT_READY`: The saved automation cannot run as it is: generation failed, a step is incomplete or invalid, or a send step’s sender or the bound audience cannot be used; the message names the problem.
+             *
+             *     `TEST_RECIPIENT_NOT_ALLOWED`: A test email can reach only a teammate with access to the brand, an address on a verified sending domain of the brand, or, for a signed-in person (not an API key), their own address or one on their company domain; details.recipients lists the refused addresses.
+             */
             422: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -19241,7 +19254,9 @@ export interface operations {
                 };
             };
             /**
-             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+             * @description `AUTOMATION_IN_PROGRESS`: The automation is still being generated, so it cannot be deleted, tested or run yet.
+             *
+             *     `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
              *
              *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
              *
@@ -19257,7 +19272,13 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `EMAIL_IMAGES_MISSING`: The email shows an image on cdn.brew.new that does not exist, so it was not sent; `details.missingImages[]` lists each URL and the email it is in. */
+            /**
+             * @description `AUTOMATION_NOT_READY`: The saved automation cannot run as it is: generation failed, a step is incomplete or invalid, or a send step’s sender or the bound audience cannot be used; the message names the problem.
+             *
+             *     `AUTOMATION_NOT_RUNNABLE`: The automation is triggered by an event, so it runs when its trigger fires and cannot be run against an audience.
+             *
+             *     `EMAIL_IMAGES_MISSING`: The email shows an image on cdn.brew.new that does not exist, so it was not sent; `details.missingImages[]` lists each URL and the email it is in.
+             */
             422: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -19738,7 +19759,7 @@ export interface operations {
              *
              *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
              *
-             *     `RUN_NOT_PAUSABLE`: A manual-audience run that is scheduled, completed, failed or canceled cannot be paused. Pausing a run that is already paused returns 200.
+             *     `RUN_NOT_PAUSABLE`: A manual-audience run that is scheduled, completed, failed, canceled or held at the plan limit cannot be paused. Pausing a run its operator already paused returns 200.
              */
             409: {
                 headers: {
@@ -19908,11 +19929,22 @@ export interface operations {
              *
              *     `RUN_IN_PROGRESS`: A manual-audience run is already in progress for this automation.
              *
-             *     `RUN_NOT_PAUSED`: Only a paused manual-audience run can be resumed.
+             *     `RUN_NOT_PAUSED`: Only a paused or failed manual-audience run can be resumed; this one is scheduled, queued, running, completed or canceled.
              *
              *     `RUN_NOT_RESUMABLE`: The run cannot be resumed: a failed run needs an undelivered send step, and a run held at the plan limit resumes on its own.
              */
             409: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `AUTOMATION_NOT_READY`: The saved automation cannot run as it is: generation failed, a step is incomplete or invalid, or a send step’s sender or the bound audience cannot be used; the message names the problem. */
+            422: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
                     "x-request-id": string;
@@ -20114,17 +20146,6 @@ export interface operations {
             };
             /** @description `INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it. */
             500: {
-                headers: {
-                    /** @description Unique request identifier. Share this with support when debugging a request. */
-                    "x-request-id": string;
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiErrorEnvelope"];
-                };
-            };
-            /** @description `RUN_STOP_FAILED`: The previous run of this cohort could not be stopped. */
-            503: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
                     "x-request-id": string;

@@ -14,8 +14,8 @@ function realIo(interrupter: Interrupter): CliIo {
     isTtyIn: process.stdin.isTTY === true,
     env: process.env,
     signal,
-    readStdin: (readSignal = signal) =>
-      readStdinText({ stream: process.stdin, signal: readSignal }),
+    readStdin: (readSignal = signal, kind) =>
+      readStdinText({ stream: process.stdin, signal: readSignal, kind }),
     readLine: async (prompt: string) => {
       const rl = createInterface({
         input: process.stdin,
