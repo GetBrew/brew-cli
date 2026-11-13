@@ -731,11 +731,11 @@ export interface paths {
          *
          *     **Use when** auditing what a design was sent to, reading campaign performance, or joining an automation run to its deliveries (`listAutomationRuns`, then `?automationRunId=` here, then `getEventsAnalytics` with the same id).
          *
-         *     **Input** the default list is campaign sends: `emailId` narrows to one design; `status`, `messageClass` (`marketing` or `transactional`) and an inclusive `from`/`to` window on `updatedAt` filter it. A join filter (`automationId`, `automationRunId`, `audienceRunId` or `triggerInstanceId`) switches to the automation grain, one row per recipient; `kind=automation` is implied and per-recipient rows are never listed brand-wide. `limit` and `cursor` page (an opaque native cursor; a `triggerInstanceId` read merges the runs of one fire into a single bounded page).
+         *     **Input** the default list is campaign sends: `emailId` narrows to one design; `status`, `messageClass` (`marketing` or `transactional`) and an inclusive `from`/`to` window on `updatedAt` filter it. A join filter (`automationId`, `automationRunId`, `audienceRunId` or `triggerInstanceId`) switches to the automation grain, one row per recipient; `kind=automation` is implied and per-recipient rows are never listed brand-wide. `limit` and `cursor` page (an opaque native cursor; a `triggerInstanceId` read merges the runs of one fire into a single bounded page). `status`, `messageClass` and `from`/`to` are applied while the sends are read, so a filtered page fills to `limit`. Each page scans a bounded number of sends, so when matches are rare a page can still hold fewer rows than `limit`, even none, while `hasMore` is true: keep paging until `hasMore` is false. A cursor works only with the filters it was issued under.
          *
          *     **Returns** `200` with a page of `Send` rows.
          *
-         *     **Errors** `404 AUTOMATION_RUN_NOT_FOUND` or `AUDIENCE_RUN_NOT_FOUND` when a join filter names a run outside the brand; `400 INVALID_REQUEST` for `kind=campaign` with a join filter, `emailId` with a join filter, `kind=automation` without one, or a malformed cursor.
+         *     **Errors** `404 AUTOMATION_RUN_NOT_FOUND` or `AUDIENCE_RUN_NOT_FOUND` when a join filter names a run outside the brand; `400 INVALID_REQUEST` for `kind=campaign` with a join filter, `emailId` with a join filter, `kind=automation` without one, or a malformed cursor or one issued under other filters.
          *
          *     **See also** `getSend` (`?include=events`), `createSend`, `getEventsAnalytics`, `getAnalyticsOverview`.
          */
@@ -1233,7 +1233,7 @@ export interface paths {
          *
          *     **Input** `automationId`, `triggerEventId`, `triggerInstanceId`, `recipientEmail` (one contact's run history, matched case-insensitively), `status`, `mode` (`live` | `test`), an inclusive `from`/`to` window on `startedAt`, `limit` and `cursor` (an opaque native cursor).
          *
-         *     **Returns** `200` with a page of run rows.
+         *     **Returns** `200` with a page of run rows. Each page reads a bounded slice of history, so it can hold fewer rows than `limit`, even none, while `hasMore` is true; follow `cursor` until it is `null`.
          *
          *     **Errors** `400 INVALID_REQUEST` for an unknown query key, a reversed window or a malformed cursor.
          *
@@ -4100,7 +4100,7 @@ export interface components {
             title: string;
             description?: string;
             /** @enum {string} */
-            provider: "brew_api" | "custom" | "brew_event" | "clerk" | "stytch" | "supabase" | "workos" | "stripe" | "shopify" | "revenuecat" | "framer";
+            provider: "brew_api" | "custom" | "brew_event" | "clerk" | "stytch" | "supabase" | "workos" | "stripe" | "shopify" | "revenuecat" | "framer" | "typeform" | "webflow";
             providerEventKey?: string;
             brewEvent?: {
                 /**
@@ -7348,7 +7348,7 @@ export interface components {
             title: string;
             description?: string;
             /** @enum {string} */
-            provider: "brew_api" | "custom" | "brew_event" | "clerk" | "stytch" | "supabase" | "workos" | "stripe" | "shopify" | "revenuecat" | "framer";
+            provider: "brew_api" | "custom" | "brew_event" | "clerk" | "stytch" | "supabase" | "workos" | "stripe" | "shopify" | "revenuecat" | "framer" | "typeform" | "webflow";
             providerEventKey?: string;
             brewEvent?: {
                 /**
@@ -7406,7 +7406,7 @@ export interface components {
                 title: string;
                 description?: string;
                 /** @enum {string} */
-                provider: "brew_api" | "custom" | "brew_event" | "clerk" | "stytch" | "supabase" | "workos" | "stripe" | "shopify" | "revenuecat" | "framer";
+                provider: "brew_api" | "custom" | "brew_event" | "clerk" | "stytch" | "supabase" | "workos" | "stripe" | "shopify" | "revenuecat" | "framer" | "typeform" | "webflow";
                 providerEventKey?: string;
                 brewEvent?: {
                     /**
@@ -9521,7 +9521,7 @@ export interface components {
         IntegrationsListResponse: {
             data: {
                 /** @enum {string} */
-                provider: "braze" | "brevo" | "clerk" | "customerio" | "figma" | "framer" | "slack" | "hubspot" | "typeform" | "klaviyo" | "iterable" | "postmark" | "onesignal" | "mailgun" | "sendgrid" | "mailjet" | "mailchimp" | "loops" | "stripe" | "stytch" | "supabase" | "workos" | "shopify" | "revenuecat" | "notion";
+                provider: "braze" | "brevo" | "clerk" | "customerio" | "figma" | "framer" | "slack" | "hubspot" | "typeform" | "klaviyo" | "iterable" | "postmark" | "onesignal" | "mailgun" | "sendgrid" | "mailjet" | "mailchimp" | "loops" | "stripe" | "stytch" | "supabase" | "workos" | "shopify" | "revenuecat" | "notion" | "webflow";
                 name: string;
                 /** @enum {string} */
                 category: "data_in" | "data_out";
@@ -32525,9 +32525,9 @@ export interface operations {
                      *           "connected": true
                      *         },
                      *         {
-                     *           "provider": "typeform",
-                     *           "name": "Typeform",
-                     *           "category": "data_in",
+                     *           "provider": "customerio",
+                     *           "name": "Customer.io",
+                     *           "category": "data_out",
                      *           "connected": false,
                      *           "comingSoon": true
                      *         }
