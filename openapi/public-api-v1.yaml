@@ -14,7 +14,7 @@ info:
     - Everything that runs shares one status vocabulary: `queued`, `scheduled`, `running`, `paused`, `completed`, `partially_completed`, `failed`, `canceled`. It covers sends, automation runs, manual audience runs, audience builds and inbox placement tests, so one status switch reads them all. A step inside a run is `running`, `completed`, `failed` or `skipped`.
     - Every error on every endpoint is `{ error: { code, type, message, suggestion, docs, param?, retryAfter?, details? } }`. Branch on `code`: the closed list is the `ApiErrorCode` component and every operation documents exactly the codes it can return. Non-fatal caveats arrive as `warnings: [{ code, message, field? }]` on `2xx` bodies.
     - A credential is brand-scoped (the brand is implicit; send nothing) or organization-scoped (name the brand with the `X-Brand-Id` header on brand-scoped operations, else `400 BRAND_ID_REQUIRED`; there is no default brand). Only `POST /v1/api-keys` carries a `brandId` field, and only a signed-in organization admin session may call `/v1/api-keys`. A brand outside your reach surfaces as `404`, never `403`.
-    - Send `Idempotency-Key` (up to 100 characters) on any POST you might repeat: the same key and body replays the original response for 24 hours; the same key with a different body is `409 IDEMPOTENCY_CONFLICT`. Rate limits are per credential and named policy (`X-RateLimit-*` headers; `429` carries `Retry-After`). Credit-metered operations advertise `402` and carry `x-brew-credited: true` in the spec.
+    - Send `Idempotency-Key` (up to 100 characters) on any POST you might repeat: the same key and body replays the original response for 24 hours; the same key with a different body is `409 IDEMPOTENCY_CONFLICT`. Once that stored response is gone, a fixed-price operation whose key was already charged answers `409 IDEMPOTENCY_CONFLICT` without running or charging again (one that keeps its own record of the request, such as an inbox placement test, returns that instead): send a new key to repeat it. Rate limits are per credential and named policy (`X-RateLimit-*` headers; `429` carries `Retry-After`). Credit-metered operations advertise `402` and carry `x-brew-credited: true` in the spec.
     - Discovery without a key: `GET /v1/help` (JSON catalog with scopes, credits and rate limits per operation), `GET /v1/llms.txt` (this guide) and `GET /v1/health`. The OpenAPI document is served at `/openapi.json`.
   contact:
     name: Brew Support
@@ -25620,7 +25620,7 @@ paths:
           description: |-
             `EMAIL_RESULT_UNAVAILABLE`: The email was saved, but its completed result could not be read for this response.
 
-            `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+            `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body, or, on a fixed-price operation, for a request it already paid for whose stored response is gone.
 
             `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
           headers:
@@ -25656,8 +25656,8 @@ paths:
                     error:
                       code: IDEMPOTENCY_CONFLICT
                       type: conflict
-                      message: The same Idempotency-Key was reused with a different request body.
-                      suggestion: Reuse the original payload or send a new idempotency key.
+                      message: The same Idempotency-Key was reused with a different request body, or, on a fixed-price operation, for a request it already paid for whose stored response is gone.
+                      suggestion: Reuse the original payload for a changed body; send a new idempotency key to run a charged request again.
                       docs: https://docs.brew.new/api-reference/api/idempotency
                 idempotencyInProgress:
                   summary: IDEMPOTENCY_IN_PROGRESS
@@ -30003,7 +30003,7 @@ paths:
                       docs: https://docs.brew.new/api-reference/api/errors
         "409":
           description: |-
-            `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+            `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body, or, on a fixed-price operation, for a request it already paid for whose stored response is gone.
 
             `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
           headers:
@@ -30025,8 +30025,8 @@ paths:
                     error:
                       code: IDEMPOTENCY_CONFLICT
                       type: conflict
-                      message: The same Idempotency-Key was reused with a different request body.
-                      suggestion: Reuse the original payload or send a new idempotency key.
+                      message: The same Idempotency-Key was reused with a different request body, or, on a fixed-price operation, for a request it already paid for whose stored response is gone.
+                      suggestion: Reuse the original payload for a changed body; send a new idempotency key to run a charged request again.
                       docs: https://docs.brew.new/api-reference/api/idempotency
                 idempotencyInProgress:
                   summary: IDEMPOTENCY_IN_PROGRESS
@@ -30666,7 +30666,7 @@ paths:
                       docs: https://docs.brew.new/api-reference/api/errors
         "409":
           description: |-
-            `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+            `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body, or, on a fixed-price operation, for a request it already paid for whose stored response is gone.
 
             `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
           headers:
@@ -30688,8 +30688,8 @@ paths:
                     error:
                       code: IDEMPOTENCY_CONFLICT
                       type: conflict
-                      message: The same Idempotency-Key was reused with a different request body.
-                      suggestion: Reuse the original payload or send a new idempotency key.
+                      message: The same Idempotency-Key was reused with a different request body, or, on a fixed-price operation, for a request it already paid for whose stored response is gone.
+                      suggestion: Reuse the original payload for a changed body; send a new idempotency key to run a charged request again.
                       docs: https://docs.brew.new/api-reference/api/idempotency
                 idempotencyInProgress:
                   summary: IDEMPOTENCY_IN_PROGRESS
@@ -31182,7 +31182,7 @@ paths:
                       docs: https://docs.brew.new/api-reference/api/errors
         "409":
           description: |-
-            `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+            `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body, or, on a fixed-price operation, for a request it already paid for whose stored response is gone.
 
             `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
           headers:
@@ -31204,8 +31204,8 @@ paths:
                     error:
                       code: IDEMPOTENCY_CONFLICT
                       type: conflict
-                      message: The same Idempotency-Key was reused with a different request body.
-                      suggestion: Reuse the original payload or send a new idempotency key.
+                      message: The same Idempotency-Key was reused with a different request body, or, on a fixed-price operation, for a request it already paid for whose stored response is gone.
+                      suggestion: Reuse the original payload for a changed body; send a new idempotency key to run a charged request again.
                       docs: https://docs.brew.new/api-reference/api/idempotency
                 idempotencyInProgress:
                   summary: IDEMPOTENCY_IN_PROGRESS
@@ -53239,7 +53239,7 @@ paths:
           description: |-
             `FIELD_TYPE_MISMATCH`: A value does not match the declared type of its custom field.
 
-            `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+            `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body, or, on a fixed-price operation, for a request it already paid for whose stored response is gone.
 
             `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
           headers:
@@ -53270,8 +53270,8 @@ paths:
                     error:
                       code: IDEMPOTENCY_CONFLICT
                       type: conflict
-                      message: The same Idempotency-Key was reused with a different request body.
-                      suggestion: Reuse the original payload or send a new idempotency key.
+                      message: The same Idempotency-Key was reused with a different request body, or, on a fixed-price operation, for a request it already paid for whose stored response is gone.
+                      suggestion: Reuse the original payload for a changed body; send a new idempotency key to run a charged request again.
                       docs: https://docs.brew.new/api-reference/api/idempotency
                 idempotencyInProgress:
                   summary: IDEMPOTENCY_IN_PROGRESS
@@ -55786,7 +55786,7 @@ paths:
                       docs: https://docs.brew.new/api-reference/api/errors
         "409":
           description: |-
-            `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+            `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body, or, on a fixed-price operation, for a request it already paid for whose stored response is gone.
 
             `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
           headers:
@@ -55808,8 +55808,8 @@ paths:
                     error:
                       code: IDEMPOTENCY_CONFLICT
                       type: conflict
-                      message: The same Idempotency-Key was reused with a different request body.
-                      suggestion: Reuse the original payload or send a new idempotency key.
+                      message: The same Idempotency-Key was reused with a different request body, or, on a fixed-price operation, for a request it already paid for whose stored response is gone.
+                      suggestion: Reuse the original payload for a changed body; send a new idempotency key to run a charged request again.
                       docs: https://docs.brew.new/api-reference/api/idempotency
                 idempotencyInProgress:
                   summary: IDEMPOTENCY_IN_PROGRESS
@@ -56295,7 +56295,7 @@ paths:
                       docs: https://docs.brew.new/api-reference/api/errors
         "409":
           description: |-
-            `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+            `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body, or, on a fixed-price operation, for a request it already paid for whose stored response is gone.
 
             `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
           headers:
@@ -56317,8 +56317,8 @@ paths:
                     error:
                       code: IDEMPOTENCY_CONFLICT
                       type: conflict
-                      message: The same Idempotency-Key was reused with a different request body.
-                      suggestion: Reuse the original payload or send a new idempotency key.
+                      message: The same Idempotency-Key was reused with a different request body, or, on a fixed-price operation, for a request it already paid for whose stored response is gone.
+                      suggestion: Reuse the original payload for a changed body; send a new idempotency key to run a charged request again.
                       docs: https://docs.brew.new/api-reference/api/idempotency
                 idempotencyInProgress:
                   summary: IDEMPOTENCY_IN_PROGRESS
@@ -56830,7 +56830,7 @@ paths:
                       docs: https://docs.brew.new/api-reference/api/errors
         "409":
           description: |-
-            `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+            `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body, or, on a fixed-price operation, for a request it already paid for whose stored response is gone.
 
             `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
           headers:
@@ -56852,8 +56852,8 @@ paths:
                     error:
                       code: IDEMPOTENCY_CONFLICT
                       type: conflict
-                      message: The same Idempotency-Key was reused with a different request body.
-                      suggestion: Reuse the original payload or send a new idempotency key.
+                      message: The same Idempotency-Key was reused with a different request body, or, on a fixed-price operation, for a request it already paid for whose stored response is gone.
+                      suggestion: Reuse the original payload for a changed body; send a new idempotency key to run a charged request again.
                       docs: https://docs.brew.new/api-reference/api/idempotency
                 idempotencyInProgress:
                   summary: IDEMPOTENCY_IN_PROGRESS
@@ -70676,7 +70676,7 @@ paths:
                       docs: https://docs.brew.new/api-reference/api/errors
         "409":
           description: |-
-            `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+            `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body, or, on a fixed-price operation, for a request it already paid for whose stored response is gone.
 
             `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
           headers:
@@ -70698,8 +70698,8 @@ paths:
                     error:
                       code: IDEMPOTENCY_CONFLICT
                       type: conflict
-                      message: The same Idempotency-Key was reused with a different request body.
-                      suggestion: Reuse the original payload or send a new idempotency key.
+                      message: The same Idempotency-Key was reused with a different request body, or, on a fixed-price operation, for a request it already paid for whose stored response is gone.
+                      suggestion: Reuse the original payload for a changed body; send a new idempotency key to run a charged request again.
                       docs: https://docs.brew.new/api-reference/api/idempotency
                 idempotencyInProgress:
                   summary: IDEMPOTENCY_IN_PROGRESS
@@ -71131,7 +71131,7 @@ paths:
                       docs: https://docs.brew.new/api-reference/api/errors
         "409":
           description: |-
-            `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+            `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body, or, on a fixed-price operation, for a request it already paid for whose stored response is gone.
 
             `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
           headers:
@@ -71153,8 +71153,8 @@ paths:
                     error:
                       code: IDEMPOTENCY_CONFLICT
                       type: conflict
-                      message: The same Idempotency-Key was reused with a different request body.
-                      suggestion: Reuse the original payload or send a new idempotency key.
+                      message: The same Idempotency-Key was reused with a different request body, or, on a fixed-price operation, for a request it already paid for whose stored response is gone.
+                      suggestion: Reuse the original payload for a changed body; send a new idempotency key to run a charged request again.
                       docs: https://docs.brew.new/api-reference/api/idempotency
                 idempotencyInProgress:
                   summary: IDEMPOTENCY_IN_PROGRESS
@@ -71586,7 +71586,7 @@ paths:
                       docs: https://docs.brew.new/api-reference/api/errors
         "409":
           description: |-
-            `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+            `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body, or, on a fixed-price operation, for a request it already paid for whose stored response is gone.
 
             `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
           headers:
@@ -71608,8 +71608,8 @@ paths:
                     error:
                       code: IDEMPOTENCY_CONFLICT
                       type: conflict
-                      message: The same Idempotency-Key was reused with a different request body.
-                      suggestion: Reuse the original payload or send a new idempotency key.
+                      message: The same Idempotency-Key was reused with a different request body, or, on a fixed-price operation, for a request it already paid for whose stored response is gone.
+                      suggestion: Reuse the original payload for a changed body; send a new idempotency key to run a charged request again.
                       docs: https://docs.brew.new/api-reference/api/idempotency
                 idempotencyInProgress:
                   summary: IDEMPOTENCY_IN_PROGRESS
@@ -72041,7 +72041,7 @@ paths:
                       docs: https://docs.brew.new/api-reference/api/errors
         "409":
           description: |-
-            `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+            `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body, or, on a fixed-price operation, for a request it already paid for whose stored response is gone.
 
             `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
           headers:
@@ -72063,8 +72063,8 @@ paths:
                     error:
                       code: IDEMPOTENCY_CONFLICT
                       type: conflict
-                      message: The same Idempotency-Key was reused with a different request body.
-                      suggestion: Reuse the original payload or send a new idempotency key.
+                      message: The same Idempotency-Key was reused with a different request body, or, on a fixed-price operation, for a request it already paid for whose stored response is gone.
+                      suggestion: Reuse the original payload for a changed body; send a new idempotency key to run a charged request again.
                       docs: https://docs.brew.new/api-reference/api/idempotency
                 idempotencyInProgress:
                   summary: IDEMPOTENCY_IN_PROGRESS

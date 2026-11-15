@@ -41,7 +41,7 @@ release.
 
 ### Changed
 
-- Vendored spec and generated API types follow app revision `dae739fab5`.
+- Vendored spec and generated API types follow app revision `fd75d6c1f5`.
   Beyond the integration event operations above, no operations were added
   or removed.
   - `contacts upsert`, `contacts upsert-many` and `contacts import` refuse a
@@ -59,6 +59,14 @@ release.
     beside `slack` (GetBrew/brew-v2#2846). Trigger `provider` adds `hubspot`
     (GetBrew/brew-v2#2910), and an inbox placement test's `diagnosis` ids
     add `seed_delivery_blocked` (GetBrew/brew-v2#2931).
+  - `409 IDEMPOTENCY_CONFLICT` has a second cause on fixed-price credited
+    commands (`contacts upsert`, `upsert-many`, `import`, `import-csv` and
+    `validate`; `content generate-image`, `gif`, `transform` and
+    `html-to-png`; `emails generate`, `audit`, `preview-clients` and
+    `create-inbox-placement-test`): an `--idempotency-key` that already
+    paid for a request whose stored response is gone. The request is not
+    run or charged again; send a new key to repeat it
+    (GetBrew/brew-v2#2876).
 
 - Vendored spec and generated API types follow app revision `57a327ed7f`:
   new error codes `WRITE_CONFLICT` (`503`, retry after `Retry-After`, now

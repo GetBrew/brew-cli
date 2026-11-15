@@ -12180,7 +12180,7 @@ export interface operations {
             /**
              * @description `EMAIL_RESULT_UNAVAILABLE`: The email was saved, but its completed result could not be read for this response.
              *
-             *     `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+             *     `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body, or, on a fixed-price operation, for a request it already paid for whose stored response is gone.
              *
              *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
              */
@@ -14026,7 +14026,7 @@ export interface operations {
                 };
             };
             /**
-             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body, or, on a fixed-price operation, for a request it already paid for whose stored response is gone.
              *
              *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
              */
@@ -14286,7 +14286,7 @@ export interface operations {
                 };
             };
             /**
-             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body, or, on a fixed-price operation, for a request it already paid for whose stored response is gone.
              *
              *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
              */
@@ -14666,7 +14666,7 @@ export interface operations {
                 };
             };
             /**
-             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body, or, on a fixed-price operation, for a request it already paid for whose stored response is gone.
              *
              *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
              */
@@ -24208,7 +24208,7 @@ export interface operations {
             /**
              * @description `FIELD_TYPE_MISMATCH`: A value does not match the declared type of its custom field.
              *
-             *     `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+             *     `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body, or, on a fixed-price operation, for a request it already paid for whose stored response is gone.
              *
              *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
              */
@@ -25106,7 +25106,7 @@ export interface operations {
                 };
             };
             /**
-             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body, or, on a fixed-price operation, for a request it already paid for whose stored response is gone.
              *
              *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
              */
@@ -25357,7 +25357,7 @@ export interface operations {
                 };
             };
             /**
-             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body, or, on a fixed-price operation, for a request it already paid for whose stored response is gone.
              *
              *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
              */
@@ -25622,7 +25622,7 @@ export interface operations {
                 };
             };
             /**
-             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body, or, on a fixed-price operation, for a request it already paid for whose stored response is gone.
              *
              *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
              */
@@ -31774,7 +31774,7 @@ export interface operations {
                 };
             };
             /**
-             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body, or, on a fixed-price operation, for a request it already paid for whose stored response is gone.
              *
              *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
              */
@@ -31964,7 +31964,7 @@ export interface operations {
                 };
             };
             /**
-             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body, or, on a fixed-price operation, for a request it already paid for whose stored response is gone.
              *
              *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
              */
@@ -32154,7 +32154,7 @@ export interface operations {
                 };
             };
             /**
-             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body, or, on a fixed-price operation, for a request it already paid for whose stored response is gone.
              *
              *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
              */
@@ -32344,7 +32344,7 @@ export interface operations {
                 };
             };
             /**
-             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body, or, on a fixed-price operation, for a request it already paid for whose stored response is gone.
              *
              *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
              */
