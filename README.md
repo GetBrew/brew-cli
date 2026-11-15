@@ -111,7 +111,9 @@ Designed for AI agents as first-class users:
 - **Pipes and stdin** — `--input <json|->` and `--file <path|->`
   everywhere bodies or files are needed; `--all` drains cursor
   pagination; `--idempotency-key` makes retries safe across process
-  restarts.
+  restarts. Files and stdin are read as UTF-8; bytes that are not UTF-8
+  (such as Excel's default Windows-1252 "CSV") exit 2 before anything is
+  sent, instead of reaching Brew as `�`.
 
 Filtered list pages can be empty while more pages remain. Follow their cursor
 or use `--all`. When `--all` receives a repeated or cyclic cursor, it exits with code 1 and
