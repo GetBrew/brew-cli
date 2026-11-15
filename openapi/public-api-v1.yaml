@@ -18741,7 +18741,7 @@ components:
               type: string
               minLength: 1
               maxLength: 2000
-              description: The motion to add; omitted, a subtle motion that suits the image.
+              description: The motion to add; omitted, one deliberate move of the image's main subject that suits it.
             frameCount:
               type: integer
               minimum: 2

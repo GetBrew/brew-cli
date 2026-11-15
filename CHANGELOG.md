@@ -41,7 +41,7 @@ release.
 
 ### Changed
 
-- Vendored spec and generated API types follow app revision `fd75d6c1f5`.
+- Vendored spec and generated API types follow app revision `b2df757e44`.
   Beyond the integration event operations above, no operations were added
   or removed.
   - `contacts upsert`, `contacts upsert-many` and `contacts import` refuse a
@@ -67,6 +67,9 @@ release.
     paid for a request whose stored response is gone. The request is not
     run or charged again; send a new key to repeat it
     (GetBrew/brew-v2#2876).
+  - `content gif --image-url` with no `--prompt` now adds one deliberate
+    move of the image's main subject; the default was a subtle motion
+    (GetBrew/brew-v2#2854).
 
 - Vendored spec and generated API types follow app revision `57a327ed7f`:
   new error codes `WRITE_CONFLICT` (`503`, retry after `Retry-After`, now

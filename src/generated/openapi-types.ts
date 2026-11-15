@@ -9486,7 +9486,7 @@ export interface components {
              * @description Public image to animate.
              */
             imageUrl: string;
-            /** @description The motion to add; omitted, a subtle motion that suits the image. */
+            /** @description The motion to add; omitted, one deliberate move of the image's main subject that suits it. */
             prompt?: string;
             /** @description Frames in the loop, 2–16 (default 9). */
             frameCount?: number;
