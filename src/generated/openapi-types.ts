@@ -1338,6 +1338,36 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/automations/triggers/integration-events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Get or create an integration event trigger
+         * @description Returns the trigger for one live integration event, creating it the first time: an event a connected live source sends, such as a PostHog project’s own events or the Stripe and Shopify app catalogs.
+         *
+         *     **Use when** an automation should start on such an event. Find it with `listIntegrationEvents`; read its variables with `describeIntegrationEvent`.
+         *
+         *     **Input** `{ eventId }` from `listIntegrationEvents`. Never compose an id from a provider and an event name.
+         *
+         *     **Returns** `201` with the new trigger row, or `200` with the existing one (`created: false`). The same event always returns the same trigger, across reconnects of the same account. Brew owns its title and payload contract. The provider starts sending the event once an automation using it is published; saving a draft changes nothing upstream. An event listed bare, or described more than a day ago, is first described at the provider on the account’s read budget, so `payloadSchema` carries its properties; `propertiesStatus` says when the provider could not be read (`rate_limited` with `retryAfterSeconds`, `stored` or `unavailable`).
+         *
+         *     **Errors** `404 INTEGRATION_EVENT_NOT_FOUND` for an unknown or cross-brand `eventId`; `404 NOT_FOUND` when the event left its source between the read and the write; `409 INTEGRATION_RECONNECT_REQUIRED` when a catalog event’s trigger was removed with its connection (reconnect the integration); `409 TRIGGER_LIMIT_REACHED` when the brand already holds the maximum number of triggers.
+         *
+         *     **See also** `listIntegrationEvents`, `describeIntegrationEvent`, `createAutomation`.
+         */
+        post: operations["ensureIntegrationEventTrigger"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/automations/triggers": {
         parameters: {
             query?: never;
@@ -1457,7 +1487,7 @@ export interface paths {
          *
          *     **Use when** an event in your product should start every published automation attached to this trigger.
          *
-         *     **Input** `{ payload }`, validated against the trigger’s `payloadSchema`. Unknown fields are accepted and reported in `warnings[]`. The contact derived from the payload is upserted before the fan-out with the declared top-level scalar fields the fire sent; object and array fields stay template data, and a contract `fallbackValue` is never written onto the contact. A value the contact field’s type refuses is left out and reported as a `FIELD_TYPE_MISMATCH` warning (`field`, `expectedType`, `actualType`); the rest of the contact is written and the runs still start.
+         *     **Input** `{ payload }`, validated against the trigger’s `payloadSchema`. Unknown fields are accepted and reported in `warnings[]`. The contact derived from the payload is upserted before the fan-out with the declared top-level scalar fields the fire sent; object and array fields stay template data, and a contract `fallbackValue` is never written onto the contact. A value the contact field’s type refuses is left out and reported as a `FIELD_TYPE_MISMATCH` warning (`field`, `expectedType`, `actualType`), and a declared key with no ASCII letter or digit (`お名前`, `#`), which no contact field can hold, as a `FIELD_NAME_INVALID` warning (`field`); the rest of the contact is written and the runs still start.
          *
          *     **Returns** `202 { triggerInstanceId, triggerEventId, status, automationRunIds[], notStarted[], publishedAutomations[], counts, warnings[], receivedAt }`. Follow a run with `getAutomationRun`, the fire itself with `getTriggerInstance`. `notStarted[]` names each automation whose run failed to start and why, so a `triggered` fire with no runs explains itself. `counts.skipped` is the recipients a suppression already covered, so `automations: 2, skipped: 2` means nothing was delivered.
          *
@@ -1643,7 +1673,7 @@ export interface paths {
          * Create or update contacts
          * @description Upserts a single contact OR a batch (`{ contacts: [...] }`, up to 1000 rows). Unknown custom fields auto-create field definitions on the brand, typed from the batch (native booleans/numbers, ISO-date strings → `date`, anything else `string`). `fieldsCreated` names only the definitions this request created: when two requests create the same new field at once, the first definition wins and the values in the other request are coerced or refused against it, exactly as if it had been sent second. Create the field first with `POST /v1/fields` to pin its type.
          *
-         *     Custom-field names are folded to one key: words split at spaces, `_`, `-` and a lower-to-upper letter change, then joined camelCase (`Plan`, `PLAN` and `plan` are the field `plan`; `team_size` and `Team Size` are `teamSize`). A key written under its folded name adds a `FIELD_NAME_NORMALIZED` warning (`original`, `normalized`). Two keys that fold to one field (`plan` and `Plan`) would lose one value, so they are a `422 FIELD_NAME_COLLISION` on a single upsert (nothing written) and a per-row `errors[]` entry (`code: FIELD_NAME_COLLISION`) in a batch.
+         *     Custom-field names are folded to one key: words split at spaces, `_`, `-` and a lower-to-upper letter change, then joined camelCase (`Plan`, `PLAN` and `plan` are the field `plan`; `team_size` and `Team Size` are `teamSize`). A key written under its folded name adds a `FIELD_NAME_NORMALIZED` warning (`original`, `normalized`). Two keys that fold to one field (`plan` and `Plan`) would lose one value, so they are a `422 FIELD_NAME_COLLISION` on a single upsert (nothing written) and a per-row `errors[]` entry (`code: FIELD_NAME_COLLISION`) in a batch. A key with no ASCII letter or digit (`名前`, `#`) folds to no field, so it is a `422 FIELD_NAME_INVALID` on a single upsert (nothing written, valid keys beside it included) and a per-row `errors[]` entry (`code: FIELD_NAME_INVALID`, `field`) in a batch; send such a value under an ASCII name. A blank key (`""` or only spaces) is not stored either, but the contact is still written and a `warnings[]` entry (`code: BLANK_FIELD_NAME_IGNORED`, `field`) names it. Values may be any text.
          *
          *     Custom-field values are coerced to the definition's type (dates → epoch ms, `"1,234"` → 1234, `yes`/`no` → booleans). A value that cannot be coerced (`"$49"` in a number field) is a `409 FIELD_TYPE_MISMATCH` on a single upsert and a per-row `errors[]` entry (`code: FIELD_TYPE_MISMATCH`, `field`) in a batch — the other rows still land. A value that was converted adds one `warnings[]` entry per field (`code: FIELD_TYPE_COERCED`, `field`, `from`, `to`); a date written to a `date` field is not reported. A `customFields` key is never stored under a core field name. One whose loss would change the contact (`subscribed`, `First Name`, `consent`, a suppression flag or domain opt-out, or an `email` naming another address) is a `422 CORE_FIELD_IMMUTABLE` on a single upsert (nothing written) and a per-row `errors[]` entry (`code: CORE_FIELD_IMMUTABLE`, `field`) in a batch; send `firstName`, `lastName`, `subscribed` and `consent` at the top level. A key naming a field Brew manages (`createdAt`, `validationStatus`) is dropped with a `warnings[]` entry (`code: CORE_FIELD_IGNORED`, `field`) and the contact is still written, and an `email` key repeating the contact address is ignored.
          *
@@ -1759,7 +1789,7 @@ export interface paths {
         put?: never;
         /**
          * Bulk-import contacts from CSV
-         * @description Parse a raw CSV string and upsert the rows as contacts (≤ 1000). By default each column header maps to the custom field its name folds to, the same camelCase name `POST /v1/contacts` stores (`Plan` → `plan`, `Team Size` → `teamSize`); `email` is required. A header that spells a core field, ignoring case, spaces, `_` and `-`, or whose field key equals it (`First.Name`), maps to it: `Email`, `First Name`, `Last Name` and `Subscribed` fill `email`, `firstName`, `lastName` and `subscribed`. Pass `mapping` to remap single columns; the columns it leaves out keep their default mapping, `""` leaves a column out, and a key that names no column is a `400`. Two columns that land on one field (`plan,Plan`: names fold as on `POST /v1/contacts`; `First Name,firstName`; `email,Email`) are a `422 FIELD_NAME_COLLISION` before any row is read: map one to another name or leave it out with `""`. `mapping` applies first: a core field it fills is read only from the columns it maps there, and an unlisted column whose default would fill the same field is left out with a `CSV_COLUMN_IGNORED` warning (with `mapping: { Consent: "subscribed" }`, a row whose `Subscribed` is `false` and `Consent` is `true` follows `Consent`). Then every column still filling `subscribed` is read, and an opt-out in any of them wins (`Subscribed,Subscribed?`). A column whose name (its header, or the name `mapping` gives it) has no ASCII letter or digit (`名前`, `#`) lands on the existing field labeled with that name, else on a new `column<N>` field labeled with it, N its 1-based column position (`column2v2` when another field or column already holds `column2`). Two columns given one such name are a `422 FIELD_NAME_COLLISION`, and a blank name leaves its column out, as `""` does. Rows with a missing/invalid email are SKIPPED (counted in `summary.skipped`), not errored; disposable-domain rows are imported with `validationStatus: "risky"` (deliverable but flagged). Returns the same `{ summary, fieldsCreated, errors, warnings }` as batch-create plus `importId` — `207` when some rows fail. The batch is listed in Import History under `fileName` (optional), and each contact it writes carries `importId` until a later import touches it (filter on it to list them; deleting the import in the app removes the contacts it created). For rows you already hold as JSON, use `POST /v1/contacts/import`.
+         * @description Parse a raw CSV string and upsert the rows as contacts (≤ 1000). By default each column header maps to the custom field its name folds to, the same camelCase name `POST /v1/contacts` stores (`Plan` → `plan`, `Team Size` → `teamSize`); `email` is required. A header that spells a core field, ignoring case, spaces, `_` and `-`, or whose field key equals it (`First.Name`), maps to it: `Email`, `First Name`, `Last Name` and `Subscribed` fill `email`, `firstName`, `lastName` and `subscribed`. Pass `mapping` to remap single columns; the columns it leaves out keep their default mapping, `""` leaves a column out, and a key that names no column is a `400`. Two columns that land on one field (`plan,Plan`: names fold as on `POST /v1/contacts`; `First Name,firstName`; `email,Email`) are a `422 FIELD_NAME_COLLISION` before any row is read: map one to another name or leave it out with `""`. `mapping` applies first: a core field it fills is read only from the columns it maps there, and an unlisted column whose default would fill the same field is left out with a `CSV_COLUMN_IGNORED` warning (with `mapping: { Consent: "subscribed" }`, a row whose `Subscribed` is `false` and `Consent` is `true` follows `Consent`). Then every column still filling `subscribed` is read, and an opt-out in any of them wins (`Subscribed,Subscribed?`). A column whose name (its header, or the name `mapping` gives it) has no ASCII letter or digit (`名前`, `#`) lands on the existing field labeled with that name, else on a new `column<N>` field labeled with it, N its 1-based column position (`column2v2` when another field or column already holds `column2`). Two columns given one such name are a `422 FIELD_NAME_COLLISION`, and a blank name leaves its column out, as `""` does. Landing on an existing field adds a `CSV_COLUMN_MATCHED_FIELD` warning naming the column and the field key. A name that labels several existing fields is a `422 FIELD_NAME_AMBIGUOUS` (`details.columns` lists the candidate keys) before anything is written, dry run included: map such a column in `mapping`. Rows with a missing/invalid email are SKIPPED (counted in `summary.skipped`), not errored; disposable-domain rows are imported with `validationStatus: "risky"` (deliverable but flagged). Returns the same `{ summary, fieldsCreated, errors, warnings }` as batch-create plus `importId` — `207` when some rows fail. The batch is listed in Import History under `fileName` (optional), and each contact it writes carries `importId` until a later import touches it (filter on it to list them; deleting the import in the app removes the contacts it created). For rows you already hold as JSON, use `POST /v1/contacts/import`.
          *
          *     CSV cells are text: a column mapped onto an EXISTING field is coerced to that field's type (dates → epoch ms, `1,234` → 1234, `yes`/`no` → booleans), and a cell that cannot be coerced (`$49` in a number column) fails ITS row with a per-row `errors[]` entry (`code: FIELD_TYPE_MISMATCH`, `field`) while the other rows still land. A converted cell adds a `warnings[]` entry (`code: FIELD_TYPE_COERCED`, `field`, `from`, `to`); a date written to a `date` field is not reported. An undeclared column is created as a `string` field unless every value is an ISO date (→ `date`); predeclare `number` / `bool` columns with `POST /v1/fields`. A column whose field Brew manages (`Created At`, `Validation Status`) is not imported and adds a `warnings[]` entry (`code: CSV_COLUMN_IGNORED`, `field` names the column).
          *
@@ -1787,7 +1817,7 @@ export interface paths {
         put?: never;
         /**
          * Bulk-import contacts from JSON
-         * @description Create or update up to 1000 contacts from JSON rows and record them as one Import History batch: the JSON twin of `POST /v1/contacts/import-csv`. Rows take the batch-create shape (`email`, `firstName`, `lastName`, `subscribed`, `customFields`, `consent`) and follow its rules: a missing or invalid email, or an address repeated in the batch, fails its row (`errors[]`, `207`) while the others land. New contacts are subscribed unless the row says `subscribed: false`; re-subscribing a contact who opted out keeps its other fields and adds a `RESUBSCRIBE_SKIPPED` warning.
+         * @description Create or update up to 1000 contacts from JSON rows and record them as one Import History batch: the JSON twin of `POST /v1/contacts/import-csv`. Rows take the batch-create shape (`email`, `firstName`, `lastName`, `subscribed`, `customFields`, `consent`) and follow its rules: a missing or invalid email, an address repeated in the batch, or a `customFields` key with no ASCII letter or digit (`名前`, `#`: `FIELD_NAME_INVALID`), fails its row (`errors[]`, `207`) while the others land. A blank `customFields` key is dropped from its row with a `BLANK_FIELD_NAME_IGNORED` warning. New contacts are subscribed unless the row says `subscribed: false`; re-subscribing a contact who opted out keeps its other fields and adds a `RESUBSCRIBE_SKIPPED` warning.
          *
          *     The batch is listed in Import History under `fileName` (optional), and each contact it writes carries the returned `importId` until a later import touches it (filter on it to list them; deleting the import in the app removes the contacts it created). `POST /v1/contacts` with `contacts[]` writes the same rows without an Import History entry, for recurring syncs.
          *
@@ -2598,6 +2628,46 @@ export interface paths {
          * @description Returns the product integration catalog for the brand in scope under `{ data, pagination }`, with a `connected` flag per provider. Canonical providers also expose active, ready installation counts and readiness per capability. Connecting is a human Settings hop at `/integrations/{provider}`; never paste a connect URL into model output. Brand-scoped (`X-Brand-Id` on an org credential). No permission scope.
          */
         get: operations["listIntegrations"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/integrations/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List integration events
+         * @description Returns the events the brand’s connected live sources offer as automation triggers (a PostHog project’s own events; the Stripe and Shopify app catalogs) under `{ data, sources, pagination }`. Each event carries its `eventId`, the provider’s `eventKey`, Brew’s `label` and lifecycle `stage`, its roles in the brand’s product model, 30-day volume, and its `triggerEventId` once it is a trigger. Events come source by source: `query` searches names, titles and categories, and without it each source’s busiest events come first. Events a brand member hid, and internal traffic Brew suppressed, are left out, so a page can hold fewer than `limit`; follow `pagination.cursor` until `hasMore` is false to read every event. Brand-scoped (`X-Brand-Id` on an org credential). Requires the `automations` scope, as `ensureIntegrationEventTrigger` does.
+         */
+        get: operations["listIntegrationEvents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/integrations/events/{eventId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Describe an integration event
+         * @description Returns one live integration event in full: each property with its template `variable` (`properties.<key>` or `person.<key>` for a tenant catalog’s event, the key itself for a static catalog’s), which hold personal data, which Brew suggests for personalization, its lifecycle stage and its roles in the product model. This GET may call the provider: an event listed bare, or described more than a day ago, is described there first on the account’s read budget, and `propertiesStatus` says how current `properties` are (`rate_limited` with `retryAfterSeconds` when the budget is spent). `404 INTEGRATION_EVENT_NOT_FOUND` for an unknown or cross-brand id. Brand-scoped. Requires the `automations` scope.
+         */
+        get: operations["describeIntegrationEvent"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3925,7 +3995,7 @@ export interface components {
         };
         ApiWarning: {
             /** @enum {string} */
-            code: "DRAFT_SAVED_NOT_LIVE" | "NODE_ID_REPLACED" | "TRIGGER_EVENT_NOT_RECEIVED" | "ENFORCEMENT_LOOSENED_WHILE_PUBLISHED" | "REQUIRED_FIELD_SATISFIED_BY_FALLBACK" | "RESUBSCRIBE_SKIPPED" | "CORE_FIELD_IGNORED" | "DATE_ORDER_ASSUMED" | "FIELD_TYPE_COERCED" | "CSV_ROW_SKIPPED" | "CONTACT_EXISTS_SKIPPED" | "CSV_COLUMN_IGNORED" | "VALIDATION_SKIPPED" | "RECIPIENTS_EXCLUDED" | "CONSENT_RECORD_MISSING";
+            code: "DRAFT_SAVED_NOT_LIVE" | "NODE_ID_REPLACED" | "TRIGGER_EVENT_NOT_RECEIVED" | "ENFORCEMENT_LOOSENED_WHILE_PUBLISHED" | "REQUIRED_FIELD_SATISFIED_BY_FALLBACK" | "RESUBSCRIBE_SKIPPED" | "CORE_FIELD_IGNORED" | "BLANK_FIELD_NAME_IGNORED" | "DATE_ORDER_ASSUMED" | "FIELD_TYPE_COERCED" | "CSV_ROW_SKIPPED" | "CONTACT_EXISTS_SKIPPED" | "CSV_COLUMN_IGNORED" | "CSV_COLUMN_MATCHED_FIELD" | "VALIDATION_SKIPPED" | "RECIPIENTS_EXCLUDED" | "CONSENT_RECORD_MISSING";
             message: string;
             field?: string;
         };
@@ -4100,7 +4170,7 @@ export interface components {
             title: string;
             description?: string;
             /** @enum {string} */
-            provider: "brew_api" | "custom" | "brew_event" | "clerk" | "stytch" | "supabase" | "workos" | "stripe" | "shopify" | "revenuecat" | "framer" | "typeform" | "webflow";
+            provider: "brew_api" | "custom" | "brew_event" | "clerk" | "stytch" | "supabase" | "workos" | "stripe" | "shopify" | "revenuecat" | "framer" | "posthog" | "typeform" | "webflow" | "hubspot";
             providerEventKey?: string;
             brewEvent?: {
                 /**
@@ -4465,7 +4535,7 @@ export interface components {
              * @description The chat app the conversation started in; null for the Brew web app.
              * @enum {string|null}
              */
-            origin: "slack" | null;
+            origin: "slack" | "teams" | "google-chat" | "telegram" | null;
             /** Format: date-time */
             updatedAt: string;
             /** @description Opens the chat in the Brew app. */
@@ -4509,7 +4579,7 @@ export interface components {
                 kind: "assistant";
                 label: string;
                 /** @enum {string} */
-                intent: "review_domain_health" | "validate_contacts" | "create_campaign" | "repeat_campaign" | "review_recommendation";
+                intent: "review_domain_health" | "validate_contacts" | "create_campaign" | "repeat_campaign" | "draft_automation" | "review_recommendation";
                 /** @description The request the Insights page sends to Brew’s assistant. */
                 prompt: string;
             };
@@ -4659,7 +4729,7 @@ export interface components {
                 kind: "assistant";
                 label: string;
                 /** @enum {string} */
-                intent: "review_domain_health" | "validate_contacts" | "create_campaign" | "repeat_campaign" | "review_recommendation";
+                intent: "review_domain_health" | "validate_contacts" | "create_campaign" | "repeat_campaign" | "draft_automation" | "review_recommendation";
                 /** @description The request the Insights page sends to Brew’s assistant. */
                 prompt: string;
             };
@@ -4894,7 +4964,7 @@ export interface components {
             };
         };
         /** @enum {string} */
-        ApiErrorCode: "ACCOUNT_SUSPENDED" | "API_KEY_REVOKED" | "AUDIENCE_BUILD_ACTIVE" | "AUDIENCE_BUILD_ALREADY_ACTIVE" | "AUDIENCE_EDIT_CONFLICT" | "AUDIENCE_MEMBERSHIP_NOT_EXPRESSIBLE" | "AUDIENCE_NOT_FOUND" | "AUDIENCE_RUN_NOT_FOUND" | "AUDIT_NOT_FOUND" | "AUTHENTICATION_REQUIRED" | "AUTOMATION_GRAPH_INVALID" | "AUTOMATION_IN_PROGRESS" | "AUTOMATION_NOT_FOUND" | "AUTOMATION_NOT_PAUSABLE" | "AUTOMATION_NOT_PUBLISHED" | "AUTOMATION_NOT_READY" | "AUTOMATION_NOT_RUNNABLE" | "AUTOMATION_RUN_NOT_FOUND" | "AUTOMATION_VERSION_CONFLICT" | "AUTOMATION_VERSION_NOT_FOUND" | "BATCH_TOO_LARGE" | "BRAND_DOMAIN_CONFLICT" | "BRAND_ID_REQUIRED" | "BRAND_LIMIT_REACHED" | "BRAND_NOT_FOUND" | "BRAND_NOT_READY" | "BRAND_SCOPE_MISMATCH" | "CHAT_NOT_FOUND" | "COMMENT_NOT_FOUND" | "CONSENT_REQUIRED" | "CONTACT_NOT_FOUND" | "CONTENT_OPERATION_FAILED" | "CONTRACT_LOCKED_BY_PUBLISHED_AUTOMATIONS" | "CORE_FIELD_IMMUTABLE" | "DOMAIN_ALREADY_EXISTS" | "DOMAIN_CLAIMED_ELSEWHERE" | "DOMAIN_NOT_FOUND" | "DOMAIN_NOT_READY" | "DOMAIN_OTHER_BRAND" | "DOMAIN_PROVIDER_ERROR" | "DOMAIN_PURPOSE_NOT_ALLOWED" | "DOMAIN_VERIFICATION_FAILED" | "DOMAIN_VERIFIED_ELSEWHERE" | "EMAIL_GENERATION_FAILED" | "EMAIL_GROUP_NAME_CONFLICT" | "EMAIL_GROUP_NOT_FOUND" | "EMAIL_IMAGES_MISSING" | "EMAIL_IMPORT_FAILED" | "EMAIL_IMPORT_PERSISTENCE_FAILED" | "EMAIL_IN_PROGRESS" | "EMAIL_IN_USE_BY_AUTOMATION" | "EMAIL_NOT_FOUND" | "EMAIL_NOT_READY" | "EMAIL_RESULT_UNAVAILABLE" | "EMAIL_RUN_AMBIGUOUS" | "EMAIL_TEMPLATE_INVALID" | "EMAIL_VERSION_NOT_FOUND" | "EXPORT_PROVIDER_ERROR" | "EXPORT_UNSUPPORTED" | "FIELD_NAME_COLLISION" | "FIELD_NOT_FOUND" | "FIELD_TYPE_MISMATCH" | "FIGMA_ACCESS_DENIED" | "FIGMA_CONVERSION_FAILED" | "FIGMA_FRAME_NOT_FOUND" | "FIGMA_NOT_CONNECTED" | "FIGMA_UNAVAILABLE" | "FIGMA_URL_INVALID" | "FLOW_NOT_FOUND" | "IDEMPOTENCY_CONFLICT" | "IDEMPOTENCY_IN_PROGRESS" | "INSIGHT_NOT_FOUND" | "INSUFFICIENT_CREDITS" | "INSUFFICIENT_PERMISSIONS" | "INSUFFICIENT_ROLE" | "INTEGRATION_NOT_CONNECTED" | "INTERNAL_ERROR" | "INVALID_API_KEY" | "INVALID_EMAIL" | "INVALID_PAYLOAD" | "INVALID_REQUEST" | "LIQUID_RENDER_ERROR" | "METHOD_NOT_ALLOWED" | "MISSING_EMAIL" | "NO_ACTIVE_PLAN" | "NO_ELIGIBLE_RECIPIENTS" | "NO_PUBLISHED_AUTOMATION" | "NOT_FOUND" | "NOT_IMPLEMENTED" | "ORG_SCOPE_REQUIRED" | "PAYLOAD_SCHEMA_EMAIL_REQUIRED" | "PAYLOAD_TOO_LARGE" | "PREVIEW_NOT_FOUND" | "PUBLISH_VALIDATION_FAILED" | "RATE_LIMITED" | "RECIPIENT_UNSUBSCRIBED" | "REFERENCE_EMAIL_NOT_FOUND" | "RESUBSCRIBE_NOT_ALLOWED" | "RUN_IN_PROGRESS" | "RUN_NOT_CANCELLABLE" | "RUN_NOT_PAUSABLE" | "RUN_NOT_PAUSED" | "RUN_NOT_RESUMABLE" | "RUN_START_FAILED" | "RUN_STOP_FAILED" | "SEND_NOT_CANCELLABLE" | "SEND_NOT_FOUND" | "SEND_NOT_PAUSABLE" | "SEND_NOT_RESUMABLE" | "SEND_QUOTA_EXCEEDED" | "SERVICE_UNAVAILABLE" | "TEMPLATE_NOT_FOUND" | "TEST_RECIPIENT_NOT_ALLOWED" | "TRIGGER_ALREADY_EXISTS" | "TRIGGER_EVENT_NOT_FOUND" | "TRIGGER_HAS_DEPENDENT_AUTOMATIONS" | "TRIGGER_IMMUTABLE" | "TRIGGER_INSTANCE_NOT_FOUND" | "TRIGGER_LIMIT_REACHED" | "TRIGGER_NOT_FIREABLE" | "UPLOAD_IN_PROGRESS" | "UPLOAD_NOT_FOUND" | "UPLOAD_NOT_RECEIVED" | "WRITE_CONFLICT";
+        ApiErrorCode: "ACCOUNT_SUSPENDED" | "API_KEY_REVOKED" | "AUDIENCE_BUILD_ACTIVE" | "AUDIENCE_BUILD_ALREADY_ACTIVE" | "AUDIENCE_EDIT_CONFLICT" | "AUDIENCE_MEMBERSHIP_NOT_EXPRESSIBLE" | "AUDIENCE_NOT_FOUND" | "AUDIENCE_RUN_NOT_FOUND" | "AUDIT_NOT_FOUND" | "AUTHENTICATION_REQUIRED" | "AUTOMATION_GRAPH_INVALID" | "AUTOMATION_IN_PROGRESS" | "AUTOMATION_NOT_FOUND" | "AUTOMATION_NOT_PAUSABLE" | "AUTOMATION_NOT_PUBLISHED" | "AUTOMATION_NOT_READY" | "AUTOMATION_NOT_RUNNABLE" | "AUTOMATION_RUN_NOT_FOUND" | "AUTOMATION_VERSION_CONFLICT" | "AUTOMATION_VERSION_NOT_FOUND" | "BATCH_TOO_LARGE" | "BRAND_DOMAIN_CONFLICT" | "BRAND_ID_REQUIRED" | "BRAND_LIMIT_REACHED" | "BRAND_NOT_FOUND" | "BRAND_NOT_READY" | "BRAND_SCOPE_MISMATCH" | "CHAT_NOT_FOUND" | "COMMENT_NOT_FOUND" | "CONSENT_REQUIRED" | "CONTACT_NOT_FOUND" | "CONTENT_OPERATION_FAILED" | "CONTRACT_LOCKED_BY_PUBLISHED_AUTOMATIONS" | "CORE_FIELD_IMMUTABLE" | "DOMAIN_ALREADY_EXISTS" | "DOMAIN_CLAIMED_ELSEWHERE" | "DOMAIN_NOT_FOUND" | "DOMAIN_NOT_READY" | "DOMAIN_OTHER_BRAND" | "DOMAIN_PROVIDER_ERROR" | "DOMAIN_PURPOSE_NOT_ALLOWED" | "DOMAIN_VERIFICATION_FAILED" | "DOMAIN_VERIFIED_ELSEWHERE" | "EMAIL_GENERATION_FAILED" | "EMAIL_GROUP_NAME_CONFLICT" | "EMAIL_GROUP_NOT_FOUND" | "EMAIL_IMAGES_MISSING" | "EMAIL_IMPORT_FAILED" | "EMAIL_IMPORT_PERSISTENCE_FAILED" | "EMAIL_IN_PROGRESS" | "EMAIL_IN_USE_BY_AUTOMATION" | "EMAIL_NOT_FOUND" | "EMAIL_NOT_READY" | "EMAIL_RESULT_UNAVAILABLE" | "EMAIL_RUN_AMBIGUOUS" | "EMAIL_TEMPLATE_INVALID" | "EMAIL_VERSION_NOT_FOUND" | "EXPORT_PROVIDER_ERROR" | "EXPORT_UNSUPPORTED" | "FIELD_NAME_AMBIGUOUS" | "FIELD_NAME_COLLISION" | "FIELD_NAME_INVALID" | "FIELD_NOT_FOUND" | "FIELD_TYPE_MISMATCH" | "FIGMA_ACCESS_DENIED" | "FIGMA_CONVERSION_FAILED" | "FIGMA_FRAME_NOT_FOUND" | "FIGMA_NOT_CONNECTED" | "FIGMA_UNAVAILABLE" | "FIGMA_URL_INVALID" | "FLOW_NOT_FOUND" | "IDEMPOTENCY_CONFLICT" | "IDEMPOTENCY_IN_PROGRESS" | "INSIGHT_NOT_FOUND" | "INSUFFICIENT_CREDITS" | "INSUFFICIENT_PERMISSIONS" | "INSUFFICIENT_ROLE" | "INTEGRATION_EVENT_NOT_FOUND" | "INTEGRATION_NOT_CONNECTED" | "INTEGRATION_RECONNECT_REQUIRED" | "INTERNAL_ERROR" | "INVALID_API_KEY" | "INVALID_EMAIL" | "INVALID_PAYLOAD" | "INVALID_REQUEST" | "LIQUID_RENDER_ERROR" | "METHOD_NOT_ALLOWED" | "MISSING_EMAIL" | "NO_ACTIVE_PLAN" | "NO_ELIGIBLE_RECIPIENTS" | "NO_PUBLISHED_AUTOMATION" | "NOT_FOUND" | "NOT_IMPLEMENTED" | "ORG_SCOPE_REQUIRED" | "PAYLOAD_SCHEMA_EMAIL_REQUIRED" | "PAYLOAD_TOO_LARGE" | "PREVIEW_NOT_FOUND" | "PUBLISH_VALIDATION_FAILED" | "RATE_LIMITED" | "RECIPIENT_UNSUBSCRIBED" | "REFERENCE_EMAIL_NOT_FOUND" | "RESUBSCRIBE_NOT_ALLOWED" | "RUN_IN_PROGRESS" | "RUN_NOT_CANCELLABLE" | "RUN_NOT_PAUSABLE" | "RUN_NOT_PAUSED" | "RUN_NOT_RESUMABLE" | "RUN_START_FAILED" | "RUN_STOP_FAILED" | "SEND_NOT_CANCELLABLE" | "SEND_NOT_FOUND" | "SEND_NOT_PAUSABLE" | "SEND_NOT_RESUMABLE" | "SEND_QUOTA_EXCEEDED" | "SERVICE_UNAVAILABLE" | "TEMPLATE_NOT_FOUND" | "TEST_RECIPIENT_NOT_ALLOWED" | "TRIGGER_ALREADY_EXISTS" | "TRIGGER_EVENT_NOT_FOUND" | "TRIGGER_HAS_DEPENDENT_AUTOMATIONS" | "TRIGGER_IMMUTABLE" | "TRIGGER_INSTANCE_NOT_FOUND" | "TRIGGER_LIMIT_REACHED" | "TRIGGER_NOT_FIREABLE" | "UPLOAD_IN_PROGRESS" | "UPLOAD_NOT_FOUND" | "UPLOAD_NOT_RECEIVED" | "WRITE_CONFLICT";
         EmailsListResponse: {
             data: {
                 emailId: string;
@@ -5475,7 +5545,7 @@ export interface components {
             } | null;
             diagnosis?: {
                 /** @enum {string} */
-                id: "spoofing_detected" | "aggregate_auth_failure" | "provider_auth_failure" | "microsoft_junk_filtering" | "provider_spam_placement" | "promotions_tab_placement" | "bulk_folder_placement" | "content_filter_flagged" | "content_rule" | "missing_list_unsubscribe" | "missing_plain_text_part";
+                id: "spoofing_detected" | "aggregate_auth_failure" | "provider_auth_failure" | "microsoft_junk_filtering" | "provider_spam_placement" | "promotions_tab_placement" | "bulk_folder_placement" | "content_filter_flagged" | "content_rule" | "missing_list_unsubscribe" | "missing_plain_text_part" | "seed_delivery_blocked";
                 /** @enum {string} */
                 severity: "critical" | "warning" | "info";
                 provider?: string;
@@ -7348,7 +7418,7 @@ export interface components {
             title: string;
             description?: string;
             /** @enum {string} */
-            provider: "brew_api" | "custom" | "brew_event" | "clerk" | "stytch" | "supabase" | "workos" | "stripe" | "shopify" | "revenuecat" | "framer" | "typeform" | "webflow";
+            provider: "brew_api" | "custom" | "brew_event" | "clerk" | "stytch" | "supabase" | "workos" | "stripe" | "shopify" | "revenuecat" | "framer" | "posthog" | "typeform" | "webflow" | "hubspot";
             providerEventKey?: string;
             brewEvent?: {
                 /**
@@ -7391,6 +7461,36 @@ export interface components {
             /** @description The marketing domain (from `GET /v1/domains`) whose unsubscribe list this trigger watches. Required when `scope` is `domain`; omit for `all`. */
             domainId?: string;
         };
+        IntegrationEventTriggerSaved: {
+            triggerEventId: string;
+            title: string;
+            description?: string;
+            /** @enum {string} */
+            provider: "brew_api" | "custom" | "brew_event" | "clerk" | "stytch" | "supabase" | "workos" | "stripe" | "shopify" | "revenuecat" | "framer" | "posthog" | "typeform" | "webflow" | "hubspot";
+            providerEventKey?: string;
+            payloadSchema: {
+                /** @enum {string} */
+                type: "object";
+                fields: components["schemas"]["TriggerPayloadField"][];
+            };
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            /** @description True when this call created the trigger; false when it already existed. */
+            created: boolean;
+            /**
+             * @description `current`: listed with the event or read in the last day. `stored`: the provider could not be read now; these are its last description. `rate_limited`: its read budget is spent; these are what Brew stored, possibly none (read again after `retryAfterSeconds`). `unavailable`: not read, and none stored.
+             * @enum {string}
+             */
+            propertiesStatus: "current" | "stored" | "rate_limited" | "unavailable";
+            /** @description With `rate_limited`: seconds until the provider can be read again, when it said. */
+            retryAfterSeconds?: number;
+        };
+        IntegrationEventTriggersPostRequest: {
+            /** @description The live event id from `GET /v1/integrations/events` (`eventId`). Never compose one from a provider and an event name. */
+            eventId: string;
+        };
         TriggersPostRequest: {
             title: string;
             description?: string;
@@ -7406,7 +7506,7 @@ export interface components {
                 title: string;
                 description?: string;
                 /** @enum {string} */
-                provider: "brew_api" | "custom" | "brew_event" | "clerk" | "stytch" | "supabase" | "workos" | "stripe" | "shopify" | "revenuecat" | "framer" | "typeform" | "webflow";
+                provider: "brew_api" | "custom" | "brew_event" | "clerk" | "stytch" | "supabase" | "workos" | "stripe" | "shopify" | "revenuecat" | "framer" | "posthog" | "typeform" | "webflow" | "hubspot";
                 providerEventKey?: string;
                 brewEvent?: {
                     /**
@@ -7483,7 +7583,7 @@ export interface components {
                 automations: number;
                 skipped: number;
             };
-            /** @description Integration triggers only: whether Brew has received this event from its source (`none_recent`: not in the 90-day receipt window). Never affects `ready`. */
+            /** @description Clerk, HubSpot, RevenueCat, Shopify, Stytch, Supabase, Typeform, Webflow, WorkOS triggers only, whose source sends each event to a webhook made for it: whether Brew has received this event from its source (`none_recent`: not in the 90-day receipt window). Never affects `ready`. */
             delivery?: {
                 /** @enum {string} */
                 status: "received" | "never_received" | "none_recent" | "waiting_for_test_event";
@@ -9386,7 +9486,7 @@ export interface components {
              * @description Public image to animate.
              */
             imageUrl: string;
-            /** @description The motion to add; omitted, a subtle motion that suits the image. */
+            /** @description The motion to add; omitted, one deliberate move of the image's main subject that suits it. */
             prompt?: string;
             /** @description Frames in the loop, 2–16 (default 9). */
             frameCount?: number;
@@ -9521,7 +9621,7 @@ export interface components {
         IntegrationsListResponse: {
             data: {
                 /** @enum {string} */
-                provider: "braze" | "brevo" | "clerk" | "customerio" | "figma" | "framer" | "slack" | "hubspot" | "typeform" | "klaviyo" | "iterable" | "postmark" | "onesignal" | "mailgun" | "sendgrid" | "mailjet" | "mailchimp" | "loops" | "stripe" | "stytch" | "supabase" | "workos" | "shopify" | "revenuecat" | "notion" | "webflow";
+                provider: "braze" | "brevo" | "clerk" | "customerio" | "figma" | "framer" | "slack" | "hubspot" | "typeform" | "klaviyo" | "iterable" | "postmark" | "onesignal" | "mailgun" | "sendgrid" | "mailjet" | "mailchimp" | "loops" | "stripe" | "stytch" | "supabase" | "workos" | "shopify" | "revenuecat" | "notion" | "posthog" | "webflow";
                 name: string;
                 /** @enum {string} */
                 category: "data_in" | "data_out";
@@ -9543,6 +9643,103 @@ export interface components {
                 cursor: string | null;
                 hasMore: boolean;
             };
+        };
+        IntegrationEventsListResponse: {
+            data: {
+                eventId: string;
+                provider: string;
+                /** @description The connected account this event comes from. */
+                sourceId: string;
+                /** @description The provider’s own event name, e.g. `created_project`. */
+                eventKey: string;
+                title: string;
+                /** @description Brew’s human name for the event, when it has one. */
+                label?: string;
+                /** @enum {string} */
+                kind: "standard" | "custom" | "action" | "derived" | "observed";
+                category?: string;
+                /**
+                 * @description The lifecycle stage Brew inferred (a brand member’s correction wins).
+                 * @enum {string}
+                 */
+                stage?: "signup" | "activation" | "engagement" | "conversion" | "retention" | "churn_risk" | "none";
+                /** @description This event’s roles in the brand’s product model: `signup`, `activation`, `conversion`, `key_event`. */
+                modelRoles: ("signup" | "activation" | "conversion" | "key_event")[];
+                /** @description Occurrences in the last 30 days, as the provider reported. */
+                volume30d?: number;
+                /** Format: date-time */
+                lastSeenAt?: string;
+                /** @description Present once the event is a trigger. Otherwise get one with `POST /v1/automations/triggers/integration-events`. */
+                triggerEventId?: string;
+            }[];
+            sources: {
+                sourceId: string;
+                provider: string;
+                /** @enum {string} */
+                mode: "static_catalog" | "tenant_catalog";
+                definitionCount: number;
+                isTruncated: boolean;
+                /** Format: date-time */
+                lastSyncedAt?: string;
+            }[];
+            pagination: {
+                limit: number;
+                cursor: string | null;
+                hasMore: boolean;
+            };
+        };
+        IntegrationEventDetailResponse: {
+            eventId: string;
+            provider: string;
+            /** @description The connected account this event comes from. */
+            sourceId: string;
+            /** @description The provider’s own event name, e.g. `created_project`. */
+            eventKey: string;
+            title: string;
+            /** @description Brew’s human name for the event, when it has one. */
+            label?: string;
+            /** @enum {string} */
+            kind: "standard" | "custom" | "action" | "derived" | "observed";
+            category?: string;
+            /**
+             * @description The lifecycle stage Brew inferred (a brand member’s correction wins).
+             * @enum {string}
+             */
+            stage?: "signup" | "activation" | "engagement" | "conversion" | "retention" | "churn_risk" | "none";
+            /** @description This event’s roles in the brand’s product model: `signup`, `activation`, `conversion`, `key_event`. */
+            modelRoles: ("signup" | "activation" | "conversion" | "key_event")[];
+            /** @description Occurrences in the last 30 days, as the provider reported. */
+            volume30d?: number;
+            /** Format: date-time */
+            lastSeenAt?: string;
+            /** @description Present once the event is a trigger. Otherwise get one with `POST /v1/automations/triggers/integration-events`. */
+            triggerEventId?: string;
+            description?: string;
+            /** @description For a derived event: the provider event it is computed from. */
+            derivedFromKey?: string;
+            properties: {
+                key: string;
+                /** @description Its template variable, `{{ <variable> | fallback }}`: `properties.<key>` or `person.<key>` for a tenant catalog’s event, the key itself for a static catalog’s. */
+                variable: string;
+                /**
+                 * @description `event`: a value the event carried. `person`: the person’s value when it fired.
+                 * @enum {string}
+                 */
+                scope: "event" | "person";
+                type: string;
+                description?: string;
+                /** @description Personal data: never put it in an email’s subject. */
+                isPersonal: boolean;
+                /** @description Brew suggests this value to personalize an email. */
+                isPersonalization: boolean;
+            }[];
+            /**
+             * @description `current`: listed with the event or read in the last day. `stored`: the provider could not be read now; these are its last description. `rate_limited`: its read budget is spent; these are what Brew stored, possibly none (read again after `retryAfterSeconds`). `unavailable`: not read, and none stored.
+             * @enum {string}
+             */
+            propertiesStatus: "current" | "stored" | "rate_limited" | "unavailable";
+            /** @description With `rate_limited`: seconds until the provider can be read again, when it said. */
+            retryAfterSeconds?: number;
         };
         ApiKeysListResponse: {
             data: {
@@ -9607,7 +9804,7 @@ export interface components {
                  * @description The chat app the conversation started in; null for the Brew web app.
                  * @enum {string|null}
                  */
-                origin: "slack" | null;
+                origin: "slack" | "teams" | "google-chat" | "telegram" | null;
                 /** Format: date-time */
                 updatedAt: string;
                 /** @description Opens the chat in the Brew app. */
@@ -11983,7 +12180,7 @@ export interface operations {
             /**
              * @description `EMAIL_RESULT_UNAVAILABLE`: The email was saved, but its completed result could not be read for this response.
              *
-             *     `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+             *     `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body, or, on a fixed-price operation, for a request it already paid for whose stored response is gone.
              *
              *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
              */
@@ -13829,7 +14026,7 @@ export interface operations {
                 };
             };
             /**
-             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body, or, on a fixed-price operation, for a request it already paid for whose stored response is gone.
              *
              *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
              */
@@ -14089,7 +14286,7 @@ export interface operations {
                 };
             };
             /**
-             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body, or, on a fixed-price operation, for a request it already paid for whose stored response is gone.
              *
              *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
              */
@@ -14469,7 +14666,7 @@ export interface operations {
                 };
             };
             /**
-             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body, or, on a fixed-price operation, for a request it already paid for whose stored response is gone.
              *
              *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
              */
@@ -21000,6 +21197,232 @@ export interface operations {
             };
         };
     };
+    ensureIntegrationEventTrigger: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Optional idempotency key for safe retries. Reusing the same key with the same request body returns the original response for 24 hours.
+                 * @example api-request-2026-04-08-001
+                 */
+                "Idempotency-Key"?: string;
+                /**
+                 * @description The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+                 * @example kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+                 */
+                "X-Brand-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "eventId": "k5714pq3vm8x2n6c9d0b7f1h4j6g2r8t"
+                 *     }
+                 */
+                "application/json": components["schemas"]["IntegrationEventTriggersPostRequest"];
+            };
+        };
+        responses: {
+            /** @description The trigger already existed for this event. */
+            200: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "triggerEventId": "posthog:org_2abc:brand_9xyz:ev_3f1c9b2e7a4d8c06b5e1f2a3",
+                     *       "title": "created_project",
+                     *       "provider": "posthog",
+                     *       "providerEventKey": "created_project",
+                     *       "payloadSchema": {
+                     *         "type": "object",
+                     *         "fields": [
+                     *           {
+                     *             "key": "email",
+                     *             "type": "string",
+                     *             "required": true
+                     *           }
+                     *         ]
+                     *       },
+                     *       "createdAt": "2026-10-26T12:00:00.000Z",
+                     *       "updatedAt": "2026-10-26T12:00:00.000Z",
+                     *       "propertiesStatus": "current",
+                     *       "created": false
+                     *     }
+                     */
+                    "application/json": components["schemas"]["IntegrationEventTriggerSaved"];
+                };
+            };
+            /** @description Created. */
+            201: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "triggerEventId": "posthog:org_2abc:brand_9xyz:ev_3f1c9b2e7a4d8c06b5e1f2a3",
+                     *       "title": "created_project",
+                     *       "provider": "posthog",
+                     *       "providerEventKey": "created_project",
+                     *       "payloadSchema": {
+                     *         "type": "object",
+                     *         "fields": [
+                     *           {
+                     *             "key": "email",
+                     *             "type": "string",
+                     *             "required": true
+                     *           }
+                     *         ]
+                     *       },
+                     *       "createdAt": "2026-10-26T12:00:00.000Z",
+                     *       "updatedAt": "2026-10-26T12:00:00.000Z",
+                     *       "propertiesStatus": "current",
+                     *       "created": true
+                     *     }
+                     */
+                    "application/json": components["schemas"]["IntegrationEventTriggerSaved"];
+                };
+            };
+            /**
+             * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+             *
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
+             */
+            400: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `API_KEY_REVOKED`: The API key was revoked.
+             *
+             *     `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+             *
+             *     `INVALID_API_KEY`: The API key is malformed or unknown.
+             */
+            401: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+             *
+             *     `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+             *
+             *     `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+             *
+             *     `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+             */
+            403: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+             *
+             *     `INTEGRATION_EVENT_NOT_FOUND`: No live integration event with that id exists in the brand.
+             *
+             *     `NOT_FOUND`: No v1 resource lives at this path.
+             */
+            404: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+             *
+             *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
+             *
+             *     `INTEGRATION_RECONNECT_REQUIRED`: This catalog event’s trigger comes from its integration’s connection, which no longer holds it.
+             *
+             *     `TRIGGER_LIMIT_REACHED`: The brand already holds the maximum number of trigger events.
+             */
+            409: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
+            429: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it. */
+            500: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+        };
+    };
     listTriggers: {
         parameters: {
             query?: {
@@ -23785,7 +24208,7 @@ export interface operations {
             /**
              * @description `FIELD_TYPE_MISMATCH`: A value does not match the declared type of its custom field.
              *
-             *     `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+             *     `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body, or, on a fixed-price operation, for a request it already paid for whose stored response is gone.
              *
              *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
              */
@@ -23805,6 +24228,8 @@ export interface operations {
              *     `CORE_FIELD_IMMUTABLE`: The field is a core contact column and cannot be created, changed, or deleted as a custom field.
              *
              *     `FIELD_NAME_COLLISION`: Two keys in one request name the same contact field (`plan` and `Plan`, `team_size` and `Team Size`), so one value would be lost.
+             *
+             *     `FIELD_NAME_INVALID`: A custom-field name has no ASCII letter or digit (`名前`, `#`), so it cannot become a field key and its value would be lost. A blank name is dropped with a `BLANK_FIELD_NAME_IGNORED` warning instead.
              *
              *     `INVALID_EMAIL`: A contact email is not a deliverable address shape.
              *
@@ -24681,7 +25106,7 @@ export interface operations {
                 };
             };
             /**
-             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body, or, on a fixed-price operation, for a request it already paid for whose stored response is gone.
              *
              *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
              */
@@ -24932,7 +25357,7 @@ export interface operations {
                 };
             };
             /**
-             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body, or, on a fixed-price operation, for a request it already paid for whose stored response is gone.
              *
              *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
              */
@@ -24946,7 +25371,11 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `FIELD_NAME_COLLISION`: Two keys in one request name the same contact field (`plan` and `Plan`, `team_size` and `Team Size`), so one value would be lost. */
+            /**
+             * @description `FIELD_NAME_AMBIGUOUS`: A CSV column named with no ASCII letter or digit (`名前`, `#`) matches several existing fields labeled with that name, so the import cannot tell which one holds it; `details.columns` lists the candidate keys.
+             *
+             *     `FIELD_NAME_COLLISION`: Two keys in one request name the same contact field (`plan` and `Plan`, `team_size` and `Team Size`), so one value would be lost.
+             */
             422: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -25193,7 +25622,7 @@ export interface operations {
                 };
             };
             /**
-             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body, or, on a fixed-price operation, for a request it already paid for whose stored response is gone.
              *
              *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
              */
@@ -31345,7 +31774,7 @@ export interface operations {
                 };
             };
             /**
-             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body, or, on a fixed-price operation, for a request it already paid for whose stored response is gone.
              *
              *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
              */
@@ -31535,7 +31964,7 @@ export interface operations {
                 };
             };
             /**
-             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body, or, on a fixed-price operation, for a request it already paid for whose stored response is gone.
              *
              *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
              */
@@ -31725,7 +32154,7 @@ export interface operations {
                 };
             };
             /**
-             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body, or, on a fixed-price operation, for a request it already paid for whose stored response is gone.
              *
              *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
              */
@@ -31915,7 +32344,7 @@ export interface operations {
                 };
             };
             /**
-             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body, or, on a fixed-price operation, for a request it already paid for whose stored response is gone.
              *
              *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
              */
@@ -32595,6 +33024,360 @@ export interface operations {
             };
             /**
              * @description `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+             *
+             *     `NOT_FOUND`: No v1 resource lives at this path.
+             */
+            404: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
+            429: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it. */
+            500: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listIntegrationEvents: {
+        parameters: {
+            query?: {
+                /**
+                 * @description Page size (1-100). Defaults to 100.
+                 * @example 50
+                 */
+                limit?: number;
+                cursor?: string;
+                /** @description Only this provider’s events, e.g. `posthog`. */
+                provider?: string;
+                /** @description Search event names, titles and categories. Without it, the busiest events come first. */
+                query?: string;
+                /** @description `custom`, `standard`, `action` (a saved provider action), `derived` (Brew computes it from another event) or `observed` (seen in deliveries only). */
+                kind?: "standard" | "custom" | "action" | "derived" | "observed";
+            };
+            header?: {
+                /**
+                 * @description The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+                 * @example kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+                 */
+                "X-Brand-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Live integration events, source by source. */
+            200: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": [
+                     *         {
+                     *           "eventId": "k5714pq3vm8x2n6c9d0b7f1h4j6g2r8t",
+                     *           "provider": "posthog",
+                     *           "sourceId": "cgr_4f2a9c",
+                     *           "eventKey": "created_project",
+                     *           "title": "created_project",
+                     *           "label": "Created a project",
+                     *           "kind": "custom",
+                     *           "stage": "activation",
+                     *           "modelRoles": [
+                     *             "activation",
+                     *             "key_event"
+                     *           ],
+                     *           "volume30d": 8100,
+                     *           "lastSeenAt": "2026-10-26T09:12:00.000Z"
+                     *         }
+                     *       ],
+                     *       "sources": [
+                     *         {
+                     *           "sourceId": "cgr_4f2a9c",
+                     *           "provider": "posthog",
+                     *           "mode": "tenant_catalog",
+                     *           "definitionCount": 214,
+                     *           "isTruncated": false,
+                     *           "lastSyncedAt": "2026-10-26T06:00:00.000Z"
+                     *         }
+                     *       ],
+                     *       "pagination": {
+                     *         "limit": 100,
+                     *         "cursor": null,
+                     *         "hasMore": false
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["IntegrationEventsListResponse"];
+                };
+            };
+            /**
+             * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+             *
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
+             */
+            400: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `API_KEY_REVOKED`: The API key was revoked.
+             *
+             *     `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+             *
+             *     `INVALID_API_KEY`: The API key is malformed or unknown.
+             */
+            401: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+             *
+             *     `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+             *
+             *     `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+             *
+             *     `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+             */
+            403: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+             *
+             *     `NOT_FOUND`: No v1 resource lives at this path.
+             */
+            404: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
+            429: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it. */
+            500: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+        };
+    };
+    describeIntegrationEvent: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+                 * @example kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+                 */
+                "X-Brand-Id"?: string;
+            };
+            path: {
+                /** @description The live event id from `GET /v1/integrations/events`. Never compose one. */
+                eventId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The live integration event. */
+            200: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "eventId": "k5714pq3vm8x2n6c9d0b7f1h4j6g2r8t",
+                     *       "provider": "posthog",
+                     *       "sourceId": "cgr_4f2a9c",
+                     *       "eventKey": "created_project",
+                     *       "title": "created_project",
+                     *       "label": "Created a project",
+                     *       "kind": "custom",
+                     *       "stage": "activation",
+                     *       "modelRoles": [
+                     *         "activation",
+                     *         "key_event"
+                     *       ],
+                     *       "volume30d": 8100,
+                     *       "lastSeenAt": "2026-10-26T09:12:00.000Z",
+                     *       "description": "A person created a project.",
+                     *       "propertiesStatus": "current",
+                     *       "properties": [
+                     *         {
+                     *           "key": "project_name",
+                     *           "variable": "properties.project_name",
+                     *           "scope": "event",
+                     *           "type": "string",
+                     *           "description": "The name of the new project",
+                     *           "isPersonal": false,
+                     *           "isPersonalization": true
+                     *         },
+                     *         {
+                     *           "key": "first_name",
+                     *           "variable": "person.first_name",
+                     *           "scope": "person",
+                     *           "type": "string",
+                     *           "isPersonal": true,
+                     *           "isPersonalization": false
+                     *         }
+                     *       ]
+                     *     }
+                     */
+                    "application/json": components["schemas"]["IntegrationEventDetailResponse"];
+                };
+            };
+            /**
+             * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+             *
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
+             */
+            400: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `API_KEY_REVOKED`: The API key was revoked.
+             *
+             *     `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+             *
+             *     `INVALID_API_KEY`: The API key is malformed or unknown.
+             */
+            401: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+             *
+             *     `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+             *
+             *     `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+             *
+             *     `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+             */
+            403: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+             *
+             *     `INTEGRATION_EVENT_NOT_FOUND`: No live integration event with that id exists in the brand.
              *
              *     `NOT_FOUND`: No v1 resource lives at this path.
              */

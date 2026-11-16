@@ -2,8 +2,35 @@
 
 ## Unreleased
 
+The live integration event commands require an SDK release exposing
+`integrations.events` and `automations.triggers.ensureIntegrationEvent`
+(GetBrew/typescript-sdk#88). The published SDK 13.4.0 does not provide them.
+Until that release, the CLI pins that PR's immutable source commit. Follow
+the integration events SDK gate in `RELEASING.md` before release.
+
 ### Added
 
+- Live integration events (GetBrew/brew-v2#2411): the events a brand's
+  connected live sources send, such as a PostHog project's own events or the
+  Stripe and Shopify app catalogs. All three commands need the
+  `automations` scope.
+  - `integrations events list` (`GET /v1/integrations/events`) lists them
+    source by source, busiest first, with `--provider`, `--query`, `--kind`,
+    `--limit`, `--cursor`, `--all` and `--input`. A page can be short, even
+    empty, before the last one: on a terminal it ends with the next
+    `--cursor`, and `--all` follows the cursor to the end and keeps the
+    page's `sources` beside the rows.
+  - `integrations events get <eventId>` (`GET /v1/integrations/events/{eventId}`)
+    reads one event with each property's template `variable`, and whether it
+    is personal data or suggested for personalization, plus
+    `propertiesStatus`: `current`, `stored`, `rate_limited` (with
+    `retryAfterSeconds`) or `unavailable`. Brew may read the provider first;
+    a spent read budget still answers, with what Brew stored.
+  - `automations triggers ensure-integration-event --event-id <eventId>`
+    (`POST /v1/automations/triggers/integration-events`) gets or creates the
+    event's trigger and prints the row with `created` and the same
+    `propertiesStatus`. A missing `--event-id` exits 2 before any request;
+    `--idempotency-key` replays a retry.
 - `webhooks list|create|get|update|delete|rotate-secret|test|events|attempts|replay`
   manage brand-scoped email webhooks (GetBrew/brew-v2#2398). `create` and
   `update` take `--endpoint`, `--events` (comma-separated) and
@@ -12,6 +39,36 @@
   transport until the SDK's `webhooks` resource is published.
 
 ### Changed
+
+- Vendored spec and generated API types follow app revision `b2df757e44`.
+  Beyond the integration event operations above, no operations were added
+  or removed.
+  - `contacts upsert`, `contacts upsert-many` and `contacts import` refuse a
+    custom-field name with no ASCII letter or digit (`名前`, `#`) with
+    `422 FIELD_NAME_INVALID`: it cannot become a field key, so its value
+    would be lost. A blank name (`""` or only spaces) is dropped with a
+    `BLANK_FIELD_NAME_IGNORED` warning while the rest of the contact is
+    stored (GetBrew/brew-v2#2884).
+  - `contacts import-csv` imports a column named with no ASCII letter or
+    digit into the existing field labeled with that name and adds a
+    `CSV_COLUMN_MATCHED_FIELD` warning. A name that labels several fields is
+    `422 FIELD_NAME_AMBIGUOUS` (`details.columns` lists the candidate keys):
+    map the column with `--mapping` (GetBrew/brew-v2#2884).
+  - `chats list` `origin` can be `teams`, `google-chat` or `telegram`
+    beside `slack` (GetBrew/brew-v2#2846). Trigger `provider` adds `hubspot`
+    (GetBrew/brew-v2#2910), and an inbox placement test's `diagnosis` ids
+    add `seed_delivery_blocked` (GetBrew/brew-v2#2931).
+  - `409 IDEMPOTENCY_CONFLICT` has a second cause on fixed-price credited
+    commands (`contacts upsert`, `upsert-many`, `import`, `import-csv` and
+    `validate`; `content generate-image`, `gif`, `transform` and
+    `html-to-png`; `emails generate`, `audit`, `preview-clients` and
+    `create-inbox-placement-test`): an `--idempotency-key` that already
+    paid for a request whose stored response is gone. The request is not
+    run or charged again; send a new key to repeat it
+    (GetBrew/brew-v2#2876).
+  - `content gif --image-url` with no `--prompt` now adds one deliberate
+    move of the image's main subject; the default was a subtle motion
+    (GetBrew/brew-v2#2854).
 
 - Vendored spec and generated API types follow app revision `57a327ed7f`:
   new error codes `WRITE_CONFLICT` (`503`, retry after `Retry-After`, now
