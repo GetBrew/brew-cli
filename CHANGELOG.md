@@ -5,9 +5,8 @@
 The live integration event commands require an SDK release exposing
 `integrations.events` and `automations.triggers.ensureIntegrationEvent`
 (GetBrew/typescript-sdk#88). The published SDK 13.4.0 does not provide them.
-This branch pins that PR's immutable source commit for coordinated
-validation. Follow the integration events SDK gate in `RELEASING.md` before
-release.
+Until that release, the CLI pins that PR's immutable source commit. Follow
+the integration events SDK gate in `RELEASING.md` before release.
 
 ### Added
 
