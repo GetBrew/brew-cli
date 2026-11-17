@@ -129,6 +129,18 @@ describe('emails audit', () => {
   })
 
   it.each([
+    [
+      ['--email-id', 'email_1', '--email-version-id', ''],
+      'emailVersionId must be a non-empty string',
+    ],
+    [
+      ['--email-id', 'email_1', '--email-version-id', '   '],
+      'emailVersionId must be a non-empty string',
+    ],
+    [
+      ['--input', '{"emailId":"email_1","emailVersionId":""}'],
+      'emailVersionId must be a non-empty string',
+    ],
     [['--input', '{"subject":"Hi"}'], 'Name the email to audit'],
     [
       ['--email-id', 'email_1', '--input', '{"emailHtml":"<p>Hi</p>"}'],

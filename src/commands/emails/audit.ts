@@ -45,6 +45,9 @@ function assertOneSource(input: Readonly<Record<string, unknown>>): void {
   if (input.emailVersionId !== undefined && named[0] !== 'emailId') {
     throw new CliUsageError('--email-version-id needs --email-id.')
   }
+  if (input.emailVersionId !== undefined && !hasContent(input.emailVersionId)) {
+    throw new CliUsageError('emailVersionId must be a non-empty string.')
+  }
 }
 
 export const emailsAuditCommand = defineCommand({
@@ -109,7 +112,7 @@ export const emailsAuditCommand = defineCommand({
       emailHtml,
       emailJsx,
       emailId: flagString(flags.emailId),
-      emailVersionId: flagString(flags.emailVersionId),
+      emailVersionId: optionalText(flags.emailVersionId),
       subject: optionalText(flags.subject),
       previewText: optionalText(flags.previewText),
       sendingPurpose,
