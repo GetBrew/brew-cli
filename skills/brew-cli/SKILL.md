@@ -5,7 +5,7 @@ description: Drive the Brew email platform from the terminal with brew-cli — e
 
 # brew-cli for agents
 
-One typed command per public-API operation (145 commands, generated docs in
+One typed command per public-API operation (162 commands, generated docs in
 `docs/commands/README.md`). JSON output is automatic when stdout is piped.
 
 ## Start every session with the trust check
@@ -47,6 +47,11 @@ this build lacks (update the CLI); auth/reachability failures name the fix.
   exit 4 with a `confirmCommand` to re-run once a human approves, or take
   `--yes`. Do not pass `--yes` for real campaign sends without an explicit
   human instruction; `emails send --test --to you@x.com` is the safe lane.
+  The CLI authenticates with an API key, so a test (and `automations test`
+  with `testRecipient`) reaches only a teammate with access to the brand
+  (your own member address counts) or an address on a verified sending
+  domain of the brand; anyone else is `422 TEST_RECIPIENT_NOT_ALLOWED` with
+  `details.recipients`.
 - `--input '<json>'` (or `-` for stdin) carries full request bodies;
   positional ids always win over `--input`. `--all` drains pagination.
   `--idempotency-key` makes POST retries safe (except `api-keys create`,

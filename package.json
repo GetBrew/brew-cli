@@ -54,7 +54,7 @@
     "smoke:regressions": "bun run scripts/regression-smoke.ts"
   },
   "dependencies": {
-    "@brew.new/sdk": "^13.3.0",
+    "@brew.new/sdk": "git+https://github.com/GetBrew/typescript-sdk.git#9fbe435d9b135791861739d322fa648c521bdb98",
     "commander": "^14.0.0"
   },
   "devDependencies": {

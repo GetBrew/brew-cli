@@ -38,6 +38,7 @@ export const emailsAuditCommand = defineCommand({
       flag: '--jsx-file <path>',
       summary: 'React Email JSX file to audit, or - for stdin',
     },
+    { flag: '--jsx <path>', summary: 'Alias for --jsx-file' },
     {
       flag: '--email-id <id>',
       summary: 'Saved email to audit (latest version by default)',
@@ -67,9 +68,13 @@ export const emailsAuditCommand = defineCommand({
     'brew-cli emails audit --email-id email_123 --email-version-id version_123',
   ],
   run: async ({ ctx, flags }) => {
+    if (flags.jsx !== undefined && flags.jsxFile !== undefined) {
+      throw new CliUsageError('Pass --jsx-file or --jsx, not both.')
+    }
+    const jsxFlag = flags.jsxFile ?? flags.jsx
     const sourceFlags = {
       emailHtml: flags.file,
-      emailJsx: flags.jsxFile,
+      emailJsx: jsxFlag,
       emailId: flags.emailId,
     }
     const flaggedSources = AUDIT_SOURCE_FIELDS.filter(
@@ -91,7 +96,7 @@ export const emailsAuditCommand = defineCommand({
       }
     }
     const emailHtml = await readTextFlag(ctx, flags.file, '--file')
-    const emailJsx = await readTextFlag(ctx, flags.jsxFile, '--jsx-file')
+    const emailJsx = await readTextFlag(ctx, jsxFlag, '--jsx-file')
     const sendingPurpose = flagString(flags.sendingPurpose)
     if (sendingPurpose !== undefined && !SENDING_PURPOSES.has(sendingPurpose)) {
       throw new CliUsageError(
@@ -102,7 +107,10 @@ export const emailsAuditCommand = defineCommand({
       emailHtml,
       emailJsx,
       emailId: flagString(flags.emailId),
-      emailVersionId: flagString(flags.emailVersionId),
+      emailVersionId:
+        typeof flags.emailVersionId === 'string'
+          ? flags.emailVersionId
+          : undefined,
       subject: flagString(flags.subject),
       previewText: flagString(flags.previewText),
       sendingPurpose,
@@ -123,6 +131,13 @@ export const emailsAuditCommand = defineCommand({
     }
     if (input.emailVersionId !== undefined && source !== 'emailId') {
       throw new CliUsageError('emailVersionId requires a saved emailId.')
+    }
+    if (
+      input.emailVersionId !== undefined &&
+      (typeof input.emailVersionId !== 'string' ||
+        input.emailVersionId.trim() === '')
+    ) {
+      throw new CliUsageError('emailVersionId must be a non-empty string.')
     }
     // The 65 s audit deadline is the command's `defaultTimeoutMs`: the
     // whole command, body read included, and `--timeout` overrides it.

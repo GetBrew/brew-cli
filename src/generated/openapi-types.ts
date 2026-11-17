@@ -2,6 +2,218 @@ export type SendPayloadValue = string | number | boolean | null | SendPayloadVal
     [key: string]: SendPayloadValue;
 };
 export interface paths {
+    "/v1/webhooks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List webhooks
+         * @description List notification endpoints for the authorized brand. Signing secrets are never included.
+         *
+         *     **Use when** you need to inspect endpoint configuration or paginate endpoints.
+         *
+         *     **Returns** A page of endpoints and an opaque continuation cursor.
+         *
+         *     **Errors** `ACCOUNT_SUSPENDED`, `API_KEY_REVOKED`, `AUTHENTICATION_REQUIRED`, `BRAND_ID_REQUIRED`, `BRAND_NOT_FOUND`, `BRAND_SCOPE_MISMATCH`, `INSUFFICIENT_PERMISSIONS`, `INSUFFICIENT_ROLE`, `INTERNAL_ERROR`, `INVALID_API_KEY`, `INVALID_REQUEST`, `NOT_FOUND`, `RATE_LIMITED`, `SERVICE_UNAVAILABLE`.
+         */
+        get: operations["listWebhooks"];
+        put?: never;
+        /**
+         * Create webhook
+         * @description Create a signed HTTPS notification endpoint for one authorized brand. The initial signing secret is returned once.
+         *
+         *     **Use when** you want to subscribe a receiver to supported email events. Supply an Idempotency-Key for this mutation.
+         *
+         *     **Returns** The created endpoint and its signing secret.
+         *
+         *     **Errors** `ACCOUNT_SUSPENDED`, `API_KEY_REVOKED`, `AUTHENTICATION_REQUIRED`, `BRAND_ID_REQUIRED`, `BRAND_NOT_FOUND`, `BRAND_SCOPE_MISMATCH`, `IDEMPOTENCY_CONFLICT`, `IDEMPOTENCY_IN_PROGRESS`, `INSUFFICIENT_PERMISSIONS`, `INSUFFICIENT_ROLE`, `INTERNAL_ERROR`, `INVALID_API_KEY`, `INVALID_REQUEST`, `NOT_FOUND`, `PAYLOAD_TOO_LARGE`, `RATE_LIMITED`, `SERVICE_UNAVAILABLE`.
+         */
+        post: operations["createWebhook"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/webhooks/{webhookId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get webhook
+         * @description Read one notification endpoint within the authorized brand. Signing secrets are excluded.
+         *
+         *     **Use when** you know an endpoint ID and need its current configuration.
+         *
+         *     **Returns** The endpoint URL, subscriptions, status and metadata.
+         *
+         *     **Errors** `ACCOUNT_SUSPENDED`, `API_KEY_REVOKED`, `AUTHENTICATION_REQUIRED`, `BRAND_ID_REQUIRED`, `BRAND_NOT_FOUND`, `BRAND_SCOPE_MISMATCH`, `INSUFFICIENT_PERMISSIONS`, `INSUFFICIENT_ROLE`, `INTERNAL_ERROR`, `INVALID_API_KEY`, `INVALID_REQUEST`, `NOT_FOUND`, `RATE_LIMITED`, `SERVICE_UNAVAILABLE`.
+         */
+        get: operations["getWebhook"];
+        put?: never;
+        post?: never;
+        /**
+         * Delete webhook
+         * @description Delete an endpoint within the authorized brand and stop its pending deliveries.
+         *
+         *     **Use when** you want to permanently remove a receiver.
+         *
+         *     **Returns** The deleted endpoint ID and deletion confirmation.
+         *
+         *     **Errors** `ACCOUNT_SUSPENDED`, `API_KEY_REVOKED`, `AUTHENTICATION_REQUIRED`, `BRAND_ID_REQUIRED`, `BRAND_NOT_FOUND`, `BRAND_SCOPE_MISMATCH`, `INSUFFICIENT_PERMISSIONS`, `INSUFFICIENT_ROLE`, `INTERNAL_ERROR`, `INVALID_API_KEY`, `INVALID_REQUEST`, `NOT_FOUND`, `RATE_LIMITED`, `SERVICE_UNAVAILABLE`.
+         */
+        delete: operations["deleteWebhook"];
+        options?: never;
+        head?: never;
+        /**
+         * Update webhook
+         * @description Update an endpoint URL, event subscriptions, description or enabled status within the authorized brand.
+         *
+         *     **Use when** you need to change receiver configuration or pause delivery.
+         *
+         *     **Returns** The updated endpoint without its signing secret.
+         *
+         *     **Errors** `ACCOUNT_SUSPENDED`, `API_KEY_REVOKED`, `AUTHENTICATION_REQUIRED`, `BRAND_ID_REQUIRED`, `BRAND_NOT_FOUND`, `BRAND_SCOPE_MISMATCH`, `INSUFFICIENT_PERMISSIONS`, `INSUFFICIENT_ROLE`, `INTERNAL_ERROR`, `INVALID_API_KEY`, `INVALID_REQUEST`, `NOT_FOUND`, `PAYLOAD_TOO_LARGE`, `RATE_LIMITED`, `SERVICE_UNAVAILABLE`.
+         */
+        patch: operations["updateWebhook"];
+        trace?: never;
+    };
+    "/v1/webhooks/{webhookId}/rotate-secret": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Rotate webhook secret
+         * @description Rotate an endpoint signing secret. The provider keeps the previous secret valid during its rotation grace period.
+         *
+         *     **Use when** you are replacing receiver credentials. Supply an Idempotency-Key and update your receiver with the returned secret.
+         *
+         *     **Returns** The new signing secret.
+         *
+         *     **Errors** `ACCOUNT_SUSPENDED`, `API_KEY_REVOKED`, `AUTHENTICATION_REQUIRED`, `BRAND_ID_REQUIRED`, `BRAND_NOT_FOUND`, `BRAND_SCOPE_MISMATCH`, `IDEMPOTENCY_CONFLICT`, `IDEMPOTENCY_IN_PROGRESS`, `INSUFFICIENT_PERMISSIONS`, `INSUFFICIENT_ROLE`, `INTERNAL_ERROR`, `INVALID_API_KEY`, `INVALID_REQUEST`, `NOT_FOUND`, `PAYLOAD_TOO_LARGE`, `RATE_LIMITED`, `SERVICE_UNAVAILABLE`.
+         */
+        post: operations["rotateWebhookSecret"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/webhooks/{webhookId}/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List webhook events
+         * @description List retained event deliveries to one endpoint within the authorized brand. Expired payloads may be absent.
+         *
+         *     **Use when** you need to inspect delivery status, payloads or the next retry time.
+         *
+         *     **Returns** A page of delivery records and an opaque continuation cursor.
+         *
+         *     **Errors** `ACCOUNT_SUSPENDED`, `API_KEY_REVOKED`, `AUTHENTICATION_REQUIRED`, `BRAND_ID_REQUIRED`, `BRAND_NOT_FOUND`, `BRAND_SCOPE_MISMATCH`, `INSUFFICIENT_PERMISSIONS`, `INSUFFICIENT_ROLE`, `INTERNAL_ERROR`, `INVALID_API_KEY`, `INVALID_REQUEST`, `NOT_FOUND`, `RATE_LIMITED`, `SERVICE_UNAVAILABLE`.
+         */
+        get: operations["listWebhookEvents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/webhooks/{webhookId}/events/{eventId}/attempts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List webhook attempts
+         * @description List delivery attempts for one endpoint event, including receiver responses.
+         *
+         *     **Use when** you need to diagnose receiver failures or inspect retry history.
+         *
+         *     **Returns** A page of attempts with status, response, duration and continuation cursor.
+         *
+         *     **Errors** `ACCOUNT_SUSPENDED`, `API_KEY_REVOKED`, `AUTHENTICATION_REQUIRED`, `BRAND_ID_REQUIRED`, `BRAND_NOT_FOUND`, `BRAND_SCOPE_MISMATCH`, `INSUFFICIENT_PERMISSIONS`, `INSUFFICIENT_ROLE`, `INTERNAL_ERROR`, `INVALID_API_KEY`, `INVALID_REQUEST`, `NOT_FOUND`, `RATE_LIMITED`, `SERVICE_UNAVAILABLE`.
+         */
+        get: operations["listWebhookAttempts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/webhooks/{webhookId}/events/{eventId}/replay": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Replay webhook event
+         * @description Request another delivery of a retained webhook notification with the same event identity. This never sends another email.
+         *
+         *     **Use when** you have repaired a receiver and need the notification delivered again. Supply an Idempotency-Key.
+         *
+         *     **Returns** An accepted delivery request; inspect delivery history for the result.
+         *
+         *     **Errors** `ACCOUNT_SUSPENDED`, `API_KEY_REVOKED`, `AUTHENTICATION_REQUIRED`, `BRAND_ID_REQUIRED`, `BRAND_NOT_FOUND`, `BRAND_SCOPE_MISMATCH`, `IDEMPOTENCY_CONFLICT`, `IDEMPOTENCY_IN_PROGRESS`, `INSUFFICIENT_PERMISSIONS`, `INSUFFICIENT_ROLE`, `INTERNAL_ERROR`, `INVALID_API_KEY`, `INVALID_REQUEST`, `NOT_FOUND`, `PAYLOAD_TOO_LARGE`, `RATE_LIMITED`, `SERVICE_UNAVAILABLE`.
+         */
+        post: operations["replayWebhookEvent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/webhooks/{webhookId}/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Test webhook
+         * @description Queue a signed synthetic email event to one endpoint. The payload is marked as a test and no email is sent.
+         *
+         *     **Use when** you need to verify your receiver and signature handling. Supply an Idempotency-Key.
+         *
+         *     **Returns** An accepted test request; inspect delivery history for the result.
+         *
+         *     **Errors** `ACCOUNT_SUSPENDED`, `API_KEY_REVOKED`, `AUTHENTICATION_REQUIRED`, `BRAND_ID_REQUIRED`, `BRAND_NOT_FOUND`, `BRAND_SCOPE_MISMATCH`, `IDEMPOTENCY_CONFLICT`, `IDEMPOTENCY_IN_PROGRESS`, `INSUFFICIENT_PERMISSIONS`, `INSUFFICIENT_ROLE`, `INTERNAL_ERROR`, `INVALID_API_KEY`, `INVALID_REQUEST`, `NOT_FOUND`, `PAYLOAD_TOO_LARGE`, `RATE_LIMITED`, `SERVICE_UNAVAILABLE`.
+         */
+        post: operations["testWebhook"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/emails": {
         parameters: {
             query?: never;
@@ -31,9 +243,9 @@ export interface paths {
          *
          *     **Use when** you have a brief and want Brew to author on brand. For existing markup use `importEmail`; for a Figma frame use `importFigmaDesign`.
          *
-         *     **Input** `prompt`; optional `category` (steers the design treatment only: transactional categories get receipt or reset conventions, while delivery for those flows is a triggered automation on a transactional-purpose domain), `contentUrls`, `referenceEmailId`, `subjectLine` (the design-default inbox subject; `createSend` still takes a per-send `subject`), `lang` (the language of the copy, ISO 639-1; omit and Brew detects it from the finished body), and `groupId` (`grp_…` or `ungrouped`) or `groupName` (resolve or create), not both; omit to land Ungrouped. Supports `Idempotency-Key`.
+         *     **Input** `prompt`; optional `category` (steers the design treatment only: transactional categories get receipt or reset conventions, while delivery for those flows is a triggered automation on a transactional-purpose domain), `contentUrls`, `referenceEmailId`, `title` (the canvas name, 1 to 200 characters; omit and Brew derives one from the subject line or the prompt), `subjectLine` (the design-default inbox subject; `createSend` still takes a per-send `subject`), `lang` (the language of the copy, ISO 639-1; omit and Brew detects it from the finished body), and `groupId` (`grp_…` or `ungrouped`) or `groupName` (resolve or create), not both; omit to land Ungrouped. Supports `Idempotency-Key`.
          *
-         *     **Returns** `201 { emailId, emailVersionId, html, previewImage?, group, subjectLine? }` when a design was persisted, or `200 { response }` when the agent answered in prose without writing a design.
+         *     **Returns** `201 { emailId, emailVersionId, html, previewImage?, group, subjectLine?, title? }` when a design was persisted, or `200 { response }` when the agent answered in prose without writing a design.
          *
          *     **Errors** `404 REFERENCE_EMAIL_NOT_FOUND` for an unknown `referenceEmailId`; `404 EMAIL_GROUP_NOT_FOUND` for an unknown `groupId`; `422 BRAND_NOT_READY` while the brand is still extracting; `502 EMAIL_GENERATION_FAILED` when the agent could not produce a design; `409 EMAIL_RESULT_UNAVAILABLE` when the design was saved but its completed result could not be returned (read the saved `emailVersionId` from `error.details`; do not repeat generation); `402 INSUFFICIENT_CREDITS` on an empty balance.
          *
@@ -111,11 +323,11 @@ export interface paths {
          *
          *     **Use when** you already have HTML, MJML, React Email JSX or a saved `.eml` message. To author from a brief use `generateEmail`; for a Figma frame use `importFigmaDesign`.
          *
-         *     **Input** `content` (the raw source as a string) and `format`: `html` (a document or fragment), `mjml`, `jsx` (a module with a default-exported component or a bare `<Html>` element; static values, `PreviewProps` and local sub-components fold, anything executable is rejected with the offending line) or `eml` (the HTML body is imported, inline `cid:` images are rehosted, other attachments are dropped, and the Subject becomes the title). HTML, MJML and EML land as source-preserved designs with an editable projection; JSX lands as a native React Email design. Optional `baseUrl` resolves relative image paths; optional `title` and `subjectLine` (the design-default inbox subject; an EML Subject is the default); optional `groupId` (`grp_…` or `ungrouped`) or `groupName` (resolve or create), not both; omit to land Ungrouped. Limits: 5,000,000 UTF-8 bytes, 256 remote resources, 8 concurrent fetches, 10 MB per resource and 50 MB aggregate downloads.
+         *     **Input** `content` (the raw source as a string) and `format`: `html` (a document or fragment), `mjml`, `jsx` (a module with a default-exported component or a bare `<Html>` element; static values, `PreviewProps` and local sub-components fold; `new Date()` and `Date.now()` with no arguments read the clock once at import and are saved as fixed text with a `current_time_frozen` warning, and `process.env.X` reads as `undefined`; anything else executable is rejected with the offending line) or `eml` (the HTML body is imported, inline `cid:` images are rehosted, other attachments are dropped, and the Subject becomes the title). HTML, MJML and EML land as source-preserved designs with an editable projection; JSX lands as a native React Email design. Optional `baseUrl` resolves relative image paths; optional `title` and `subjectLine` (the design-default inbox subject; an EML Subject is the default); optional `groupId` (`grp_…` or `ungrouped`) or `groupName` (resolve or create), not both; omit to land Ungrouped. Limits: 5,000,000 UTF-8 bytes, 256 remote resources, 8 concurrent fetches, 10 MB per resource, 50 MB aggregate downloads, 128 distinct inline SVG images and 8 seconds of inline SVG rendering (past either, the rest are dropped with a warning).
          *
-         *     **Returns** `201 { emailId, emailVersionId, html, previewImage?, assetReport, group, subjectLine? }`. Each source element with content that a design could not keep is listed once in `assetReport.warnings` as `{ code: "element_dropped", location: "markup", host: "<tag>" }`: inline `svg`, `math` and `canvas`, and `button`, `select`, `textarea` or table `caption` holding text are left out of the editable projection (the original source keeps them); `audio`, `video`, `iframe`, `object` and `embed` are removed from both, with `audio`/`video` fallback content kept.
+         *     **Returns** `201 { emailId, emailVersionId, html, previewImage?, assetReport, group, subjectLine? }`. Each source element with content that a design could not keep is listed once in `assetReport.warnings` as `{ code: "element_dropped", location: "markup", host: "<tag>" }`: inline `svg`, `math` and `canvas`, and `button`, `select`, `textarea` or table `caption` holding text are left out of the editable projection (the original source keeps them); `audio`, `video`, `iframe`, `object` and `embed` are removed from both, with `audio`/`video` fallback content kept. Email clients block SVG images, so an SVG image, hosted or inline (`data:image/svg+xml` in a `src` or `background` attribute or a CSS `url()`), becomes a hosted PNG: twice the pixel box its `<img>` sets (the SVG fitted as its `preserveAspectRatio` says), otherwise its own size so the layout holds. An inline one that will not render is removed (in JSX, its `src`) and listed as `element_dropped` with host `svg`; a hosted one that will not render, or whose URL has a `#` fragment, stays an SVG. Source words the editable design does not carry are named once as `{ code: "text_dropped", location: "markup", host: "<words>" }`; version 1 keeps the exact source. JSX clock reads are named as `{ code: "current_time_frozen", location: "module", host: "Date.now() (line 10)" }` (the first 20).
          *
-         *     **Errors** `422 EMAIL_IMPORT_FAILED` when the markup cannot be compiled into a design or its editable model is over the size budget (nothing is persisted); `404 EMAIL_GROUP_NOT_FOUND` for an unknown `groupId`; `413 PAYLOAD_TOO_LARGE` over the byte cap; `422 BRAND_NOT_READY` while the brand is still extracting.
+         *     **Errors** `400 INVALID_REQUEST` (naming the field in `param`) when `title`, `subjectLine` or `content` holds an unpaired surrogate (half of an emoji); `422 EMAIL_IMPORT_FAILED` when the markup cannot be compiled into a design or its editable model is over the size budget, with nothing persisted; `502 EMAIL_IMPORT_PERSISTENCE_FAILED` when the markup converted but the design could not be stored (nothing was created; the message carries the request id to give support); `404 EMAIL_GROUP_NOT_FOUND` for an unknown `groupId`; `413 PAYLOAD_TOO_LARGE` over the byte cap; `422 BRAND_NOT_READY` while the brand is still extracting.
          *
          *     **See also** `generateEmail`, `importFigmaDesign`, `auditEmail`.
          */
@@ -519,11 +731,11 @@ export interface paths {
          *
          *     **Use when** auditing what a design was sent to, reading campaign performance, or joining an automation run to its deliveries (`listAutomationRuns`, then `?automationRunId=` here, then `getEventsAnalytics` with the same id).
          *
-         *     **Input** the default list is campaign sends: `emailId` narrows to one design; `status`, `messageClass` (`marketing` or `transactional`) and an inclusive `from`/`to` window on `updatedAt` filter it. A join filter (`automationId`, `automationRunId`, `audienceRunId` or `triggerInstanceId`) switches to the automation grain, one row per recipient; `kind=automation` is implied and per-recipient rows are never listed brand-wide. `limit` and `cursor` page (an opaque native cursor; a `triggerInstanceId` read merges the runs of one fire into a single bounded page).
+         *     **Input** the default list is campaign sends: `emailId` narrows to one design; `status`, `messageClass` (`marketing` or `transactional`) and an inclusive `from`/`to` window on `updatedAt` filter it. A join filter (`automationId`, `automationRunId`, `audienceRunId` or `triggerInstanceId`) switches to the automation grain, one row per recipient; `kind=automation` is implied and per-recipient rows are never listed brand-wide. `limit` and `cursor` page (an opaque native cursor; a `triggerInstanceId` read merges the runs of one fire into a single bounded page). `status`, `messageClass` and `from`/`to` are applied while the sends are read, so a filtered page fills to `limit`. Each page scans a bounded number of sends, so when matches are rare a page can still hold fewer rows than `limit`, even none, while `hasMore` is true: keep paging until `hasMore` is false. A cursor works only with the filters it was issued under.
          *
          *     **Returns** `200` with a page of `Send` rows.
          *
-         *     **Errors** `404 AUTOMATION_RUN_NOT_FOUND` or `AUDIENCE_RUN_NOT_FOUND` when a join filter names a run outside the brand; `400 INVALID_REQUEST` for `kind=campaign` with a join filter, `emailId` with a join filter, `kind=automation` without one, or a malformed cursor.
+         *     **Errors** `404 AUTOMATION_RUN_NOT_FOUND` or `AUDIENCE_RUN_NOT_FOUND` when a join filter names a run outside the brand; `400 INVALID_REQUEST` for `kind=campaign` with a join filter, `emailId` with a join filter, `kind=automation` without one, or a malformed cursor or one issued under other filters.
          *
          *     **See also** `getSend` (`?include=events`), `createSend`, `getEventsAnalytics`, `getAnalyticsOverview`.
          */
@@ -537,11 +749,11 @@ export interface paths {
          *
          *     **Input** Campaign (`test` omitted or `false`): `emailId` (optionally pinned to `emailVersionId`), a verified `domainId`, `subject`, and exactly one of `audienceId` (a saved audience, or `"all"` for every contact in the brand) or `to` (one address or an array of up to 50). Optional `from` (`{ email, name? }`, an address on the send domain), `previewText`, `replyTo`, `scheduledAt`, one delivery mode (`gradualSend`, or `smartSend: true` for Intelligent Send: each recipient with past opens or clicks gets it at the upcoming hour, within 24 hours, their own history makes them most likely to open, and the rest right away; it composes with `scheduledAt`), and `consent` provenance (`source`, optional `capturedAt`, `policyVersion`, `evidence`) for inline recipients that are not yet contacts: each is created as a subscribed contact carrying that record. An existing opt-out is never re-subscribed. Inline recipients face the same unsubscribe and suppression gate and per-recipient quota as audience sends.
          *
-         *     Test (`test: true`): `emailId`, `subject`, one `to` address, optional `emailVersionId`, `previewText`, `replyTo`, `domainId` (a verified org-owned domain; otherwise the Brew default sender, and an unverified or foreign domain is rejected, never downgraded), `from` (`{ email, name? }`, an address on that domain), `variables` (example values for `{{ var | fallback }}` merge tags; a value wins over the fallback) and `payload` (template data; nested JSON renders via Liquid as `trigger.*`); the subject carries a `[TEST]` prefix. The same design can be sent unlimited times; every campaign call mints a new send.
+         *     Test (`test: true`): `emailId`, `subject`, one `to` address, optional `emailVersionId`, `previewText`, `replyTo`, `domainId` (a verified org-owned domain; otherwise the Brew default sender, and an unverified or foreign domain is rejected, never downgraded), `from` (`{ email, name? }`, an address on that domain), `variables` (example values for `{{ var | fallback }}` merge tags; a value wins over the fallback) and `payload` (template data; nested JSON renders via Liquid as `trigger.*`); the subject carries a `[TEST]` prefix. A test reaches only a teammate with access to the brand, an address on a verified sending domain of the brand, or, for a signed-in person (not an API key), their own address or one on their company domain; anyone else is `422 TEST_RECIPIENT_NOT_ALLOWED` (`details.recipients`). The same design can be sent unlimited times; every campaign call mints a new send.
          *
          *     **Returns** campaign `202 { status: 'queued' | 'scheduled', sendId, scheduledAt?, warnings? }` (poll `getSend`; `warnings[]` carries one `CONSENT_RECORD_MISSING` per inline recipient that is a subscribed contact with no consent record, and one `RECIPIENTS_EXCLUDED` with the counts when unsubscribed, suppressed, undeliverable or permission-less recipients will be skipped); test `200 { status: 'completed', recipient }`.
          *
-         *     **Errors** `400 INVALID_REQUEST` (`param: subject`) when `subject` has a line break or runs over 1000 characters (993 on a test send, for the `[TEST]` prefix), judged on the text every recipient receives; `404 EMAIL_NOT_FOUND`, `DOMAIN_NOT_FOUND`, `AUDIENCE_NOT_FOUND` (a resource in another brand also surfaces as `404`); `422 EMAIL_NOT_READY`, `DOMAIN_NOT_READY`, `DOMAIN_PURPOSE_NOT_ALLOWED`, `LIQUID_RENDER_ERROR`; `422 CONSENT_REQUIRED` when an inline marketing recipient has no contact record with marketing consent and no `consent` was supplied (`details.recipients`); `422 RECIPIENT_UNSUBSCRIBED` when an inline recipient is an existing contact who opted out (`details.recipients`, never re-subscribed); `422 NO_ELIGIBLE_RECIPIENTS` when an immediate send would reach nobody because every contact it targets is excluded (`details.eligibility` = `{ total, eligible, excluded: { unsubscribed, suppressed, invalidEmail, consentRequired? } }`, each address counted once; no send is created, while a scheduled send is accepted instead); `422 EMAIL_IMAGES_MISSING` when the email shows a cdn.brew.new image that does not exist (`details.missingImages[]`; a dead icon whose real file sits elsewhere in its pack is moved there instead when the key has `emails` access); `402 SEND_QUOTA_EXCEEDED` when the plan's monthly volume would be exceeded (no `Retry-After`).
+         *     **Errors** `400 INVALID_REQUEST` (`param: subject`) when `subject` has a line break or runs over 1000 characters (993 on a test send, for the `[TEST]` prefix), judged on the text every recipient receives; `404 EMAIL_NOT_FOUND`, `DOMAIN_NOT_FOUND`, `AUDIENCE_NOT_FOUND` (a resource in another brand also surfaces as `404`); `422 EMAIL_NOT_READY`, `DOMAIN_NOT_READY`, `DOMAIN_PURPOSE_NOT_ALLOWED`, `LIQUID_RENDER_ERROR`, `TEST_RECIPIENT_NOT_ALLOWED`; `422 CONSENT_REQUIRED` when an inline marketing recipient has no contact record with marketing consent and no `consent` was supplied (`details.recipients`); `422 RECIPIENT_UNSUBSCRIBED` when an inline recipient is an existing contact who opted out (`details.recipients`, never re-subscribed); `422 NO_ELIGIBLE_RECIPIENTS` when an immediate send would reach nobody because every contact it targets is excluded (`details.eligibility` = `{ total, eligible, excluded: { unsubscribed, suppressed, invalidEmail, consentRequired? } }`, each address counted once; no send is created, while a scheduled send is accepted instead); `422 EMAIL_IMAGES_MISSING` when the email shows a cdn.brew.new image that does not exist (`details.missingImages[]`; a dead icon whose real file sits elsewhere in its pack is moved there instead when the key has `emails` access); `402 SEND_QUOTA_EXCEEDED` when the plan's monthly volume would be exceeded (no `Retry-After`).
          *
          *     **See also** `listSends`, `cancelSend`, `fireTrigger`.
          */
@@ -632,8 +844,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Resume a paused gradual send
-         * @description Resumes a manually paused GRADUAL send. The ramp picks the resume up at its next hold check (seconds after a short pause, up to an hour after a long one); the unsent tail is re-spread and later batches shift so missed intervals do not compress into a burst. A send held at the plan limit resumes on its own once the plan allowance is available; any other send returns `409 SEND_NOT_RESUMABLE`. Brand-scoped: an unknown / cross-brand `sendId` is `404`.
+         * Resume a paused send
+         * @description Resumes a manually paused GRADUAL send, or any campaign paused for its bounce or complaint rate (`pauseReason: bounce_rate`; such a send is never paused for it again). The send picks the resume up at its next hold check (seconds after a short pause, up to an hour after a long one); a ramp re-spreads its unsent tail and shifts later batches so missed intervals do not compress into a burst. A send held at the plan limit resumes on its own once the plan allowance is available; any other send returns `409 SEND_NOT_RESUMABLE`. Brand-scoped: an unknown / cross-brand `sendId` is `404`.
          */
         post: operations["resumeSend"];
         delete?: never;
@@ -701,15 +913,15 @@ export interface paths {
         };
         /**
          * Unified events feed
-         * @description Read-only feed of the brand's analytics events (email, automation, trigger, inbound), newest first, over a `from`/`to` window that defaults to the last 7 days. Email rows carry the send behind them (`sendId`, `emailId`), so a page joins back to `GET /v1/sends/{sendId}`.
+         * @description Read-only feed of the brand's analytics events (email, automation, trigger, inbound), newest first, over a `from`/`to` window that defaults to the last 7 days, except for a `sendId` or `automationRunId` read, which is bounded by that send or run. Email rows carry the send behind them (`sendId`, `emailId`), so a page joins back to `GET /v1/sends/{sendId}`.
          *
          *     **Use when** you need per-event or per-recipient detail. For windowed totals and rates use `getAnalyticsOverview`; for one send's events in one bounded page use `GET /v1/sends/{sendId}?include=events` (`getSend`).
          *
-         *     **Input** Equality filters: `eventType`, `sendId`, `emailId`, `automationId`, `messageClass` (`marketing` or `transactional`; absent stamps count as marketing). Run scope: `automationRunId` returns one run’s events across every domain (its lifecycle rows and the deliveries it produced), newest first and not windowed unless `from`/`to` are given; only `eventType` combines with it. Recipient rules `recipient` (csv, max 10): a full address matches exactly, `@domain` matches everyone on the domain, other text matches as a substring, a `!` prefix excludes (`recipient=@clay.com,!ceo@clay.com`); includes OR together, excludes always apply. Send facets `source` (csv), `audienceId` (csv, max 20), `domain` (sending domain), `triggerEventId` (csv, max 10, resolved to the automations they wire). Any facet or recipient rule narrows the feed to email events and adds `sendSource`, `sendContext` and `messageClass` to each row (plus `triggerProvider` and `triggerTitle` on triggered rows). Machine-classified opens and clicks (scanner detonation, Apple proxy prefetch) are excluded unless `includeMachineOpens=true` or `includeMachineClicks=true` (audit only).
+         *     **Input** Equality filters: `eventType`, `sendId` (not windowed unless `from`/`to` are given), `emailId`, `automationId`, `messageClass` (`marketing` or `transactional`; absent stamps count as marketing). Run scope: `automationRunId` returns one run’s events across every domain (its lifecycle rows and the deliveries it produced), newest first and not windowed unless `from`/`to` are given; only `eventType` combines with it. Recipient rules `recipient` (csv, max 10): a full address matches exactly, `@domain` matches everyone on the domain, other text matches as a substring, a `!` prefix excludes (`recipient=@clay.com,!ceo@clay.com`); includes OR together, excludes always apply. Send facets `source` (csv), `audienceId` (csv, max 20), `domain` (sending domain), `triggerEventId` (csv, max 10, resolved to the automations they wire). Any facet or recipient rule narrows the feed to email events and adds `sendSource`, `sendContext` and `messageClass` to each row (plus `triggerProvider` and `triggerTitle` on triggered rows). Machine-classified opens and clicks (scanner detonation, Apple proxy prefetch) are excluded unless `includeMachineOpens=true` or `includeMachineClicks=true` (audit only).
          *
-         *     **Grouped counts** `groupBy` (one or two csv fields: `eventType`, `emailId`, `automationId`, `sendId`, `source`, `link`, `recipientDomain`, `unsubscribeReason`) and/or `bucket` (`day`, `week` or `month`, UTC, Monday weeks) count the email events the same filters list instead of returning them: `link` with `eventType=clicked` is clicks per link, `unsubscribeReason` counts an unsubscribe once per reason it gave. The count reads the newest 20,000 events; a busier window answers `truncated: true` with `coveredFrom` (narrow `from`/`to` or add `eventType`). Events, not unique recipients: `getAnalyticsOverview` `opened`/`clicked` count unique human recipients.
+         *     **Grouped counts** `groupBy` (one or two csv fields: `eventType`, `emailId`, `automationId`, `sendId`, `source`, `link`, `recipientDomain`, `unsubscribeReason`) and/or `bucket` (`day`, `week` or `month`, UTC, Monday weeks) count the email events the same filters list instead of returning them: `link` with `eventType=clicked` is clicks per link, `unsubscribeReason` counts an unsubscribe once per reason it gave. The count reads the newest 20,000 events; a busier window answers `truncated: true` with `coveredFrom` (narrow `from`/`to` or add `eventType`). `count` counts events, so repeat opens each count; a group of opened, clicked or delivered events (not grouped by `link`) also carries `recipients`, each recipient counted once per message within `range`.
          *
-         *     **Returns** `200 { data: Event[], pagination: { limit, cursor, hasMore }, range }`; page with `cursor` until it is `null`. Rows carry the run join keys when stamped: `automationRunId`, `triggerInstanceId`, `audienceRunId` (plus `sendId`, `nodeId`). With `groupBy`/`bucket`: `200 { count, groups: [{ key, bucket?, count }], otherCount, range, truncated, coveredFrom? }`, the largest 200 groups first. Requires the `emails` scope.
+         *     **Returns** `200 { data: Event[], pagination: { limit, cursor, hasMore }, range }`; page with `cursor` until it is `null`. Rows carry the run join keys when stamped: `automationRunId`, `triggerInstanceId`, `audienceRunId` (plus `sendId`, `nodeId`). With `groupBy`/`bucket`: `200 { count, groups: [{ key, bucket?, count, recipients? }], otherCount, range, truncated, coveredFrom? }`, the largest 200 groups first. Requires the `emails` scope.
          *
          *     **Errors** `400 INVALID_REQUEST` for an inverted window, an unknown `eventType`, or more than 10 recipient rules or 20 audience ids; with `groupBy`/`bucket`, for an unknown or repeated field, more than two fields, a non-email `eventType`, `cursor` or `automationRunId` (`limit` is ignored).
          *
@@ -757,7 +969,7 @@ export interface paths {
          *
          *     **Returns** `201` with the bare `AutomationRow`; with `dryRun: true`, `200` with an `AutomationDryRunReport` `{ valid, blockers[], warnings[], blockingIssues[], nodeCounts }` (`blockers[]` fail publish, `warnings[]` are advisory, `blockingIssues[]` lists per-node references the bound trigger or contact catalog cannot provide, each of which also fails publish; `valid` is false when any blocker or blocking issue is present).
          *
-         *     **Errors** `400 AUTOMATION_GRAPH_INVALID` with `details.issues[]` (`kind`, `nodeId`, `message` per problem); `404 TRIGGER_EVENT_NOT_FOUND` for an unknown `triggerEventId`.
+         *     **Errors** `400 AUTOMATION_GRAPH_INVALID` with `details.issues[]` (`kind`, `nodeId`, `message` per problem, plus `code` on a `structure` issue); `404 TRIGGER_EVENT_NOT_FOUND` for an unknown `triggerEventId`.
          *
          *     **See also** `updateAutomation`, `testAutomation`, `runAutomation`, `createTrigger`.
          */
@@ -794,7 +1006,7 @@ export interface paths {
         post?: never;
         /**
          * Delete an automation
-         * @description Cascade-deletes the automation: every version row, runs, and logs. Referenced email DESIGNS are shared resources and always survive. Idempotent — an unknown id resolves with `deleted: false`.
+         * @description Cascade-deletes the automation: every version row, its event and test runs, and their logs. Contacts mid-flow stop. Manual-audience runs that have not finished (scheduled, queued, running or paused) are canceled and kept as history, so `listAudienceRuns` still returns them. Referenced email DESIGNS are shared resources and always survive. Idempotent — an unknown or cross-brand id resolves with `deleted: false`, never `404 AUTOMATION_NOT_FOUND`. `409 AUTOMATION_IN_PROGRESS` while the agent is still generating the automation; retry once it finishes.
          */
         delete: operations["deleteAutomation"];
         options?: never;
@@ -827,7 +1039,7 @@ export interface paths {
         put?: never;
         /**
          * Test an automation
-         * @description Runs the saved automation END-TO-END through the real workflow in TEST mode — works on drafts and for both event and manual-audience automations; every node executes (filters/splits evaluate against `payload`, and `contact.<name>` conditions read the test recipient’s contact unless `payload` supplies that field — a flat `contact.<name>` key or a `contact` object — and the trigger’s contract keeps extra keys; wait nodes fast-forward). Pass `testRecipient` to DELIVER each send-email node’s email for real to that address (real subject/preview/sender name; verified configured sender domains are preserved, otherwise delivery uses the Brew test domain; customer addresses are never hit) — omit it for a silent dry-run with no mail. Test runs are excluded from live analytics rollups. Real test deliveries consume send usage; dry runs do not. Test payloads never update real contact records. Returns `202` with the started run id; follow per-node status via `GET /v1/automations/runs/{automationRunId}?include=logs`. Optional `scenario` controls simulate timed opens/clicks at engagement-filter nodes and force left/right percentage-split choices (waits use a virtual clock; controls stay separate from `payload`, and simulated events never enter live analytics or send quotas); the run row’s `testCoverage` reports visited nodes, traversed connections, evaluated or forced decisions, uncovered paths and simulation limitations. On a Brew-event (unsubscribe) trigger, omit payload to use Brew’s sample event; supplied fields replace the sample’s. The run never creates or edits a contact.
+         * @description Runs the saved automation END-TO-END through the real workflow in TEST mode — works on drafts and for both event and manual-audience automations; every node executes (filters/splits evaluate against `payload`, and `contact.<name>` conditions read the test recipient’s contact unless `payload` supplies that field — a flat `contact.<name>` key or a `contact` object — and the trigger’s contract keeps extra keys; wait nodes fast-forward). Pass `testRecipient` to DELIVER each send-email node’s email for real to that address (real subject/preview/sender name; verified configured sender domains are preserved, otherwise delivery uses the Brew test domain; customer addresses are never hit; the address must be a teammate with access to the brand, an address on a verified sending domain of the brand, or, for a signed-in person (not an API key), their own address or one on their company domain, else `422 TEST_RECIPIENT_NOT_ALLOWED`) — omit it for a silent dry-run with no mail. Test runs are excluded from live analytics rollups. Test deliveries never count toward the plan’s email sends. Test payloads never update real contact records. Returns `202` with the started run id; follow per-node status via `GET /v1/automations/runs/{automationRunId}?include=logs`. Optional `scenario` controls simulate timed opens/clicks at engagement-filter nodes and force left/right percentage-split choices (waits use a virtual clock; controls stay separate from `payload`, and simulated events never enter live analytics or send quotas); the run row’s `testCoverage` reports visited nodes, traversed connections, evaluated or forced decisions, uncovered paths and simulation limitations. On a Brew-event (unsubscribe) trigger, omit payload to use Brew’s sample event; supplied fields replace the sample’s. The run never creates or edits a contact. `400 INVALID_PAYLOAD` when `payload` does not match the trigger’s payload schema; `422 AUTOMATION_NOT_READY` when generation failed or a step is incomplete or invalid (the message names it); `409 AUTOMATION_IN_PROGRESS` while the agent is still generating the automation.
          */
         post: operations["testAutomation"];
         delete?: never;
@@ -847,7 +1059,7 @@ export interface paths {
         put?: never;
         /**
          * Run a manual-audience automation
-         * @description Launches a MANUAL-AUDIENCE automation against the audience bound to its trigger node. `dryRun: true` previews without sending; `scheduledAt` launches later, at most 1 year ahead. Percentage-based `gradualSend` delivers each send step in custom hour or calendar-day batches and supports manual pause/resume/cancel. `400` when `scheduledAt` is more than 1 year ahead, or a `gradualSend` plan exceeds 50,000 recipients, 30 batches, or 30 elapsed days. `422 EMAIL_IMAGES_MISSING` when a step would send a cdn.brew.new image that does not exist (`details.missingImages[]`). Returns `202` with the `audienceRunId`.
+         * @description Launches a MANUAL-AUDIENCE automation against the audience bound to its trigger node. `dryRun: true` previews without sending; `scheduledAt` launches later, at most 1 year ahead. Percentage-based `gradualSend` delivers each send step in custom hour or calendar-day batches and supports manual pause/resume/cancel. `400` when `scheduledAt` is more than 1 year ahead, or a `gradualSend` plan exceeds 50,000 recipients, 30 batches, or 30 elapsed days. `422 AUTOMATION_NOT_RUNNABLE` for an event automation, which runs when its trigger fires. `422 AUTOMATION_NOT_READY` when the saved flow cannot launch: a step is incomplete or invalid, a send step’s sender domain is not verified, generation failed, or no usable audience is bound (the message names which). `422 EMAIL_IMAGES_MISSING` when a step would send a cdn.brew.new image that does not exist (`details.missingImages[]`). `409 AUTOMATION_IN_PROGRESS` while the agent is still generating the automation. Returns `202` with the `audienceRunId`.
          */
         post: operations["runAutomation"];
         delete?: never;
@@ -933,9 +1145,9 @@ export interface paths {
          *
          *     **Input** `audienceRunId` in the path; no body.
          *
-         *     **Returns** `200` with the run’s new `status` (`paused`).
+         *     **Returns** `200` with the run’s new `status` (`paused`). A run its operator already paused returns the same `200` and changes nothing.
          *
-         *     **Errors** `409 RUN_NOT_PAUSABLE` unless the run is running; `404 AUDIENCE_RUN_NOT_FOUND` for an unknown or cross-brand id.
+         *     **Errors** `409 RUN_NOT_PAUSABLE` when the run is scheduled, completed, failed or canceled, or held at the plan limit (`pauseReason: plan_limit`: it resumes on its own once the monthly send allowance has room, so cancel it to stop it); `404 AUDIENCE_RUN_NOT_FOUND` for an unknown or cross-brand id.
          *
          *     **See also** `resumeAudienceRun`, `cancelAudienceRun`, `getAudienceRun`.
          */
@@ -965,7 +1177,7 @@ export interface paths {
          *
          *     **Returns** `200` with the run’s new `status` and `resumedFrom` (`paused` or `failed`).
          *
-         *     **Errors** `409 RUN_NOT_PAUSED` when a running run is resumed; `409 RUN_NOT_RESUMABLE` when the run is held at the plan limit, or a failed run has no undelivered send step or a send step delivered to only part of its segment; `409 RUN_IN_PROGRESS` when another run of the automation is active; `402 SEND_QUOTA_EXCEEDED` when resuming would exceed the monthly send limit; `422 INVALID_REQUEST` when a send step is no longer valid; `503 RUN_STOP_FAILED` / `RUN_START_FAILED` when the workflow engine could not stop the previous run or start the new one (retry); `404 AUDIENCE_RUN_NOT_FOUND` for an unknown or cross-brand id.
+         *     **Errors** `409 RUN_NOT_PAUSED` when the run is neither paused nor failed (scheduled, queued, running, completed or canceled); `409 RUN_NOT_RESUMABLE` when the run is held at the plan limit, or a failed run has no undelivered send step or a send step delivered to only part of its segment; `409 RUN_IN_PROGRESS` when another run of the automation is active; `402 SEND_QUOTA_EXCEEDED` when resuming would exceed the monthly send limit; `422 AUTOMATION_NOT_READY` when a send step still to go can no longer send, such as a sender domain that is no longer verified (the message names the step); `503 RUN_STOP_FAILED` / `RUN_START_FAILED` when the workflow engine could not stop the previous run or start the new one (retry); `404 AUDIENCE_RUN_NOT_FOUND` for an unknown or cross-brand id.
          *
          *     **See also** `pauseAudienceRun`, `cancelAudienceRun`, `getAudienceRun`.
          */
@@ -995,7 +1207,7 @@ export interface paths {
          *
          *     **Returns** `200` with the run’s new `status` (`canceled`).
          *
-         *     **Errors** `409 RUN_NOT_CANCELLABLE` when the run already finished; `503 RUN_STOP_FAILED` when the workflow could not be stopped (retry); `404 AUDIENCE_RUN_NOT_FOUND` for an unknown or cross-brand id.
+         *     **Errors** `409 RUN_NOT_CANCELLABLE` when the run already completed, failed or was canceled, including a repeat cancel with a new `Idempotency-Key` (a retry with the same key replays the first answer); `404 AUDIENCE_RUN_NOT_FOUND` for an unknown or cross-brand id.
          *
          *     **See also** `pauseAudienceRun`, `resumeAudienceRun`, `cancelAutomationRun` (one event or test run).
          */
@@ -1021,7 +1233,7 @@ export interface paths {
          *
          *     **Input** `automationId`, `triggerEventId`, `triggerInstanceId`, `recipientEmail` (one contact's run history, matched case-insensitively), `status`, `mode` (`live` | `test`), an inclusive `from`/`to` window on `startedAt`, `limit` and `cursor` (an opaque native cursor).
          *
-         *     **Returns** `200` with a page of run rows.
+         *     **Returns** `200` with a page of run rows. Each page reads a bounded slice of history, so it can hold fewer rows than `limit`, even none, while `hasMore` is true; follow `cursor` until it is `null`.
          *
          *     **Errors** `400 INVALID_REQUEST` for an unknown query key, a reversed window or a malformed cursor.
          *
@@ -1049,7 +1261,7 @@ export interface paths {
          *
          *     **Use when** debugging one contact’s journey or confirming a test run finished.
          *
-         *     **Input** `automationRunId` in the path; `include=logs` inlines the newest 100 execution log rows in `orderIndex` order and sets `logsTruncated` when older rows exist. Each node status change is its own row: a node that runs has a `running` row (no `completedAt`), then its terminal `completed` or `failed` row, or `skipped` when the run is canceled while it runs; a node a branch rules out has only a `skipped` row. A node’s outcome is its last row.
+         *     **Input** `automationRunId` in the path; `include=logs` inlines the newest 100 execution log rows in `orderIndex` order and sets `logsTruncated` when older rows exist. Each node status change is its own row: a node that runs has a `running` row (no `completedAt`), then its terminal `completed` or `failed` row, or `skipped` when the run is canceled while it runs; a node a branch rules out has only a `skipped` row. A node’s outcome is its last row. A run canceled between two nodes adds no row, so the node that finished keeps its outcome; the run’s `status` and `error` record the cancel.
          *
          *     **Returns** `200` with the row; `logs` is present only when requested.
          *
@@ -1120,6 +1332,36 @@ export interface paths {
          *     **See also** `createAutomation`, `fireTrigger`, `listDomains`.
          */
         post: operations["ensureBrewEventTrigger"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/automations/triggers/integration-events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Get or create an integration event trigger
+         * @description Returns the trigger for one live integration event, creating it the first time: an event a connected live source sends, such as a PostHog project’s own events or the Stripe and Shopify app catalogs.
+         *
+         *     **Use when** an automation should start on such an event. Find it with `listIntegrationEvents`; read its variables with `describeIntegrationEvent`.
+         *
+         *     **Input** `{ eventId }` from `listIntegrationEvents`. Never compose an id from a provider and an event name.
+         *
+         *     **Returns** `201` with the new trigger row, or `200` with the existing one (`created: false`). The same event always returns the same trigger, across reconnects of the same account. Brew owns its title and payload contract. The provider starts sending the event once an automation using it is published; saving a draft changes nothing upstream. An event listed bare, or described more than a day ago, is first described at the provider on the account’s read budget, so `payloadSchema` carries its properties; `propertiesStatus` says when the provider could not be read (`rate_limited` with `retryAfterSeconds`, `stored` or `unavailable`).
+         *
+         *     **Errors** `404 INTEGRATION_EVENT_NOT_FOUND` for an unknown or cross-brand `eventId`; `404 NOT_FOUND` when the event left its source between the read and the write; `409 INTEGRATION_RECONNECT_REQUIRED` when a catalog event’s trigger was removed with its connection (reconnect the integration); `409 TRIGGER_LIMIT_REACHED` when the brand already holds the maximum number of triggers.
+         *
+         *     **See also** `listIntegrationEvents`, `describeIntegrationEvent`, `createAutomation`.
+         */
+        post: operations["ensureIntegrationEventTrigger"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1245,7 +1487,7 @@ export interface paths {
          *
          *     **Use when** an event in your product should start every published automation attached to this trigger.
          *
-         *     **Input** `{ payload }`, validated against the trigger’s `payloadSchema`. Unknown fields are accepted and reported in `warnings[]`. The contact derived from the payload is upserted before the fan-out with the declared top-level scalar fields the fire sent; object and array fields stay template data, and a contract `fallbackValue` is never written onto the contact. A value the contact field’s type refuses is left out and reported as a `FIELD_TYPE_MISMATCH` warning (`field`, `expectedType`, `actualType`); the rest of the contact is written and the runs still start.
+         *     **Input** `{ payload }`, validated against the trigger’s `payloadSchema`. Unknown fields are accepted and reported in `warnings[]`. The contact derived from the payload is upserted before the fan-out with the declared top-level scalar fields the fire sent; object and array fields stay template data, and a contract `fallbackValue` is never written onto the contact. A value the contact field’s type refuses is left out and reported as a `FIELD_TYPE_MISMATCH` warning (`field`, `expectedType`, `actualType`), and a declared key with no ASCII letter or digit (`お名前`, `#`), which no contact field can hold, as a `FIELD_NAME_INVALID` warning (`field`); the rest of the contact is written and the runs still start.
          *
          *     **Returns** `202 { triggerInstanceId, triggerEventId, status, automationRunIds[], notStarted[], publishedAutomations[], counts, warnings[], receivedAt }`. Follow a run with `getAutomationRun`, the fire itself with `getTriggerInstance`. `notStarted[]` names each automation whose run failed to start and why, so a `triggered` fire with no runs explains itself. `counts.skipped` is the recipients a suppression already covered, so `automations: 2, skipped: 2` means nothing was delivered.
          *
@@ -1431,7 +1673,7 @@ export interface paths {
          * Create or update contacts
          * @description Upserts a single contact OR a batch (`{ contacts: [...] }`, up to 1000 rows). Unknown custom fields auto-create field definitions on the brand, typed from the batch (native booleans/numbers, ISO-date strings → `date`, anything else `string`). `fieldsCreated` names only the definitions this request created: when two requests create the same new field at once, the first definition wins and the values in the other request are coerced or refused against it, exactly as if it had been sent second. Create the field first with `POST /v1/fields` to pin its type.
          *
-         *     Custom-field names are folded to one key: words split at spaces, `_`, `-` and a lower-to-upper letter change, then joined camelCase (`Plan`, `PLAN` and `plan` are the field `plan`; `team_size` and `Team Size` are `teamSize`). A key written under its folded name adds a `FIELD_NAME_NORMALIZED` warning (`original`, `normalized`). Two keys that fold to one field (`plan` and `Plan`) would lose one value, so they are a `422 FIELD_NAME_COLLISION` on a single upsert (nothing written) and a per-row `errors[]` entry (`code: FIELD_NAME_COLLISION`) in a batch.
+         *     Custom-field names are folded to one key: words split at spaces, `_`, `-` and a lower-to-upper letter change, then joined camelCase (`Plan`, `PLAN` and `plan` are the field `plan`; `team_size` and `Team Size` are `teamSize`). A key written under its folded name adds a `FIELD_NAME_NORMALIZED` warning (`original`, `normalized`). Two keys that fold to one field (`plan` and `Plan`) would lose one value, so they are a `422 FIELD_NAME_COLLISION` on a single upsert (nothing written) and a per-row `errors[]` entry (`code: FIELD_NAME_COLLISION`) in a batch. A key with no ASCII letter or digit (`名前`, `#`) folds to no field, so it is a `422 FIELD_NAME_INVALID` on a single upsert (nothing written, valid keys beside it included) and a per-row `errors[]` entry (`code: FIELD_NAME_INVALID`, `field`) in a batch; send such a value under an ASCII name. A blank key (`""` or only spaces) is not stored either, but the contact is still written and a `warnings[]` entry (`code: BLANK_FIELD_NAME_IGNORED`, `field`) names it. Values may be any text.
          *
          *     Custom-field values are coerced to the definition's type (dates → epoch ms, `"1,234"` → 1234, `yes`/`no` → booleans). A value that cannot be coerced (`"$49"` in a number field) is a `409 FIELD_TYPE_MISMATCH` on a single upsert and a per-row `errors[]` entry (`code: FIELD_TYPE_MISMATCH`, `field`) in a batch — the other rows still land. A value that was converted adds one `warnings[]` entry per field (`code: FIELD_TYPE_COERCED`, `field`, `from`, `to`); a date written to a `date` field is not reported. A `customFields` key is never stored under a core field name. One whose loss would change the contact (`subscribed`, `First Name`, `consent`, a suppression flag or domain opt-out, or an `email` naming another address) is a `422 CORE_FIELD_IMMUTABLE` on a single upsert (nothing written) and a per-row `errors[]` entry (`code: CORE_FIELD_IMMUTABLE`, `field`) in a batch; send `firstName`, `lastName`, `subscribed` and `consent` at the top level. A key naming a field Brew manages (`createdAt`, `validationStatus`) is dropped with a `warnings[]` entry (`code: CORE_FIELD_IGNORED`, `field`) and the contact is still written, and an `email` key repeating the contact address is ignored.
          *
@@ -1547,7 +1789,7 @@ export interface paths {
         put?: never;
         /**
          * Bulk-import contacts from CSV
-         * @description Parse a raw CSV string and upsert the rows as contacts (≤ 1000). By default each column header maps to the custom field its name folds to, the same camelCase name `POST /v1/contacts` stores (`Plan` → `plan`, `Team Size` → `teamSize`); `email` is required. A header that spells a core field, ignoring case, spaces, `_` and `-`, or whose field key equals it (`First.Name`), maps to it: `Email`, `First Name`, `Last Name` and `Subscribed` fill `email`, `firstName`, `lastName` and `subscribed`. Pass `mapping` to remap single columns; the columns it leaves out keep their default mapping, `""` leaves a column out, and a key that names no column is a `400`. Two columns that land on one custom field (`plan,Plan`: names fold as on `POST /v1/contacts`) are a `422 FIELD_NAME_COLLISION` before any row is read: map one to another name or leave it out with `""`. A core field that `mapping` fills is filled from that column alone: another column whose default would fill it is left out with a `CSV_COLUMN_IGNORED` warning. Rows with a missing/invalid email are SKIPPED (counted in `summary.skipped`), not errored; disposable-domain rows are imported with `validationStatus: "risky"` (deliverable but flagged). Returns the same `{ summary, fieldsCreated, errors, warnings }` as batch-create plus `importId` — `207` when some rows fail. The batch is listed in Import History under `fileName` (optional), and each contact it writes carries `importId` until a later import touches it (filter on it to list them; deleting the import in the app removes the contacts it created). For rows you already hold as JSON, use `POST /v1/contacts/import`.
+         * @description Parse a raw CSV string and upsert the rows as contacts (≤ 1000). By default each column header maps to the custom field its name folds to, the same camelCase name `POST /v1/contacts` stores (`Plan` → `plan`, `Team Size` → `teamSize`); `email` is required. A header that spells a core field, ignoring case, spaces, `_` and `-`, or whose field key equals it (`First.Name`), maps to it: `Email`, `First Name`, `Last Name` and `Subscribed` fill `email`, `firstName`, `lastName` and `subscribed`. Pass `mapping` to remap single columns; the columns it leaves out keep their default mapping, `""` leaves a column out, and a key that names no column is a `400`. Two columns that land on one field (`plan,Plan`: names fold as on `POST /v1/contacts`; `First Name,firstName`; `email,Email`) are a `422 FIELD_NAME_COLLISION` before any row is read: map one to another name or leave it out with `""`. `mapping` applies first: a core field it fills is read only from the columns it maps there, and an unlisted column whose default would fill the same field is left out with a `CSV_COLUMN_IGNORED` warning (with `mapping: { Consent: "subscribed" }`, a row whose `Subscribed` is `false` and `Consent` is `true` follows `Consent`). Then every column still filling `subscribed` is read, and an opt-out in any of them wins (`Subscribed,Subscribed?`). A column whose name (its header, or the name `mapping` gives it) has no ASCII letter or digit (`名前`, `#`) lands on the existing field labeled with that name, else on a new `column<N>` field labeled with it, N its 1-based column position (`column2v2` when another field or column already holds `column2`). Two columns given one such name are a `422 FIELD_NAME_COLLISION`, and a blank name leaves its column out, as `""` does. Landing on an existing field adds a `CSV_COLUMN_MATCHED_FIELD` warning naming the column and the field key. A name that labels several existing fields is a `422 FIELD_NAME_AMBIGUOUS` (`details.columns` lists the candidate keys) before anything is written, dry run included: map such a column in `mapping`. Rows with a missing/invalid email are SKIPPED (counted in `summary.skipped`), not errored; disposable-domain rows are imported with `validationStatus: "risky"` (deliverable but flagged). Returns the same `{ summary, fieldsCreated, errors, warnings }` as batch-create plus `importId` — `207` when some rows fail. The batch is listed in Import History under `fileName` (optional), and each contact it writes carries `importId` until a later import touches it (filter on it to list them; deleting the import in the app removes the contacts it created). For rows you already hold as JSON, use `POST /v1/contacts/import`.
          *
          *     CSV cells are text: a column mapped onto an EXISTING field is coerced to that field's type (dates → epoch ms, `1,234` → 1234, `yes`/`no` → booleans), and a cell that cannot be coerced (`$49` in a number column) fails ITS row with a per-row `errors[]` entry (`code: FIELD_TYPE_MISMATCH`, `field`) while the other rows still land. A converted cell adds a `warnings[]` entry (`code: FIELD_TYPE_COERCED`, `field`, `from`, `to`); a date written to a `date` field is not reported. An undeclared column is created as a `string` field unless every value is an ISO date (→ `date`); predeclare `number` / `bool` columns with `POST /v1/fields`. A column whose field Brew manages (`Created At`, `Validation Status`) is not imported and adds a `warnings[]` entry (`code: CSV_COLUMN_IGNORED`, `field` names the column).
          *
@@ -1575,7 +1817,7 @@ export interface paths {
         put?: never;
         /**
          * Bulk-import contacts from JSON
-         * @description Create or update up to 1000 contacts from JSON rows and record them as one Import History batch: the JSON twin of `POST /v1/contacts/import-csv`. Rows take the batch-create shape (`email`, `firstName`, `lastName`, `subscribed`, `customFields`, `consent`) and follow its rules: a missing or invalid email, or an address repeated in the batch, fails its row (`errors[]`, `207`) while the others land. New contacts are subscribed unless the row says `subscribed: false`; re-subscribing a contact who opted out keeps its other fields and adds a `RESUBSCRIBE_SKIPPED` warning.
+         * @description Create or update up to 1000 contacts from JSON rows and record them as one Import History batch: the JSON twin of `POST /v1/contacts/import-csv`. Rows take the batch-create shape (`email`, `firstName`, `lastName`, `subscribed`, `customFields`, `consent`) and follow its rules: a missing or invalid email, an address repeated in the batch, or a `customFields` key with no ASCII letter or digit (`名前`, `#`: `FIELD_NAME_INVALID`), fails its row (`errors[]`, `207`) while the others land. A blank `customFields` key is dropped from its row with a `BLANK_FIELD_NAME_IGNORED` warning. New contacts are subscribed unless the row says `subscribed: false`; re-subscribing a contact who opted out keeps its other fields and adds a `RESUBSCRIBE_SKIPPED` warning.
          *
          *     The batch is listed in Import History under `fileName` (optional), and each contact it writes carries the returned `importId` until a later import touches it (filter on it to list them; deleting the import in the app removes the contacts it created). `POST /v1/contacts` with `contacts[]` writes the same rows without an Import History entry, for recurring syncs.
          *
@@ -1685,13 +1927,13 @@ export interface paths {
         };
         /**
          * List audiences
-         * @description Lists the brand’s saved audiences under `{ data, pagination }`. Each row carries its contact `filters`, a member `count` and ISO timestamps; an audience is the recipient target for `createSend`. Stale counts are refreshed on a best-effort basis. If a recount fails or reaches its time budget, the saved count is returned. Use `GET /v1/audiences/{audienceId}?include=count` for an on-demand count.
+         * @description Lists the brand’s saved audiences under `{ data, pagination }`. Each row carries its contact `filters`, a member `count` and ISO timestamps; an audience is the recipient target for `createSend`.
          *
          *     **Use when** choosing the `audienceId` for a campaign or an automation launch.
          *
          *     **Input** `limit` and `cursor`.
          *
-         *     **Returns** `200` with a page of `Audience` rows.
+         *     **Returns** `200` with a page of `Audience` rows. A listed audience's `count` is its saved member total, recounted before the list answers when contacts changed since that count or it is a day old; an audience that cannot be recounted (still building, unusable filters, a failed or timed-out count) keeps its saved total. `GET /v1/audiences/{audienceId}?include=count` returns the exact total a send targets.
          *
          *     **Errors** `400 INVALID_REQUEST` for an unknown query key.
          *
@@ -2245,7 +2487,7 @@ export interface paths {
         put?: never;
         /**
          * Generate a GIF
-         * @description Produces a looping animated GIF (5-second source clip), routed by the `from` discriminator: `prompt` generates an on-brand still then animates it, `image` animates a source image (both via the AI gif workflow), and `video` converts a source MP4. For `prompt` and `image` sources, aspect ratio is one of `16:9`, `9:16`, `1:1` (default `16:9`), and the GIF has that shape: a source image of another shape is centre-cropped when that keeps at least 75% of it, otherwise padded in its own edge colour, never stretched. `imageUrl` takes any public PNG, JPEG, WebP, GIF (first frame), AVIF or TIFF up to 50 MB and 268 megapixels, of any size or shape; SVG, HEIC and BMP return `422 CONTENT_OPERATION_FAILED`. For `video`, aspectRatio is not accepted; use width and fps for conversion. Returns CDN-hosted `gifUrl` (plus `videoUrl`, `width`/`height` and motion metadata for the AI sources). Credit-metered (fixed cost: prompt 20, image 10, video 10).
+         * @description Produces an animated GIF, routed by the `from` discriminator: `prompt` generates one from text, `image` animates a public source image (both with GPT Image 2.6), and `video` converts a source MP4. For `prompt` and `image` sources, aspect ratio is one of `16:9`, `9:16`, `1:1` (default `16:9`, 768×432 / 432×768 / 640×640), `frameCount` is 2–16 (default 9) and `fps` sets playback speed (default 5, so 9 frames loop in 1.8s). An `image` source the model cannot read, or a request it refuses, returns `422 CONTENT_OPERATION_FAILED`. For `video`, use width and fps for conversion. Returns CDN-hosted `gifUrl` (plus `altText`, `width`/`height` and timing metadata for the AI sources). Credit-metered (fixed cost: prompt 20, image 10, video 10).
          */
         post: operations["createGif"];
         delete?: never;
@@ -2363,7 +2605,7 @@ export interface paths {
         };
         /**
          * Get usage
-         * @description Returns the org usage snapshot: current plan, AI credit balance (limit/used/remaining — `null` = unlimited), monthly email-send quota (`remaining` = `limit` − `used` − `reserved`, where `reserved` is held by sends still delivering), and the billing-period window. Check it before a credit-metered call. Billing belongs to the ORGANIZATION, so this needs an organization-scoped credential: a key bound to one brand gets `403 ORG_SCOPE_REQUIRED` no matter which scopes it holds.
+         * @description Returns the org usage snapshot: current plan, AI credit balance (limit/used/remaining — `null` = unlimited), monthly email-send quota (`remaining` = `limit` − `used` − `reserved`, where `reserved` is held by sends still delivering; units already billed on demand count in both `limit` and `used`), on-demand spending (`onDemand`: when `active`, usage may continue past `remaining` by up to `creditsRemaining` credits or `emailSendsRemaining` sends, billed at the end of the billing month; the two share one budget, so spending either lowers both), and the billing-period window. Check it before a credit-metered call. Billing belongs to the ORGANIZATION, so this needs an organization-scoped credential: a key bound to one brand gets `403 ORG_SCOPE_REQUIRED` no matter which scopes it holds.
          */
         get: operations["getUsage"];
         put?: never;
@@ -2386,6 +2628,46 @@ export interface paths {
          * @description Returns the product integration catalog for the brand in scope under `{ data, pagination }`, with a `connected` flag per provider. Canonical providers also expose active, ready installation counts and readiness per capability. Connecting is a human Settings hop at `/integrations/{provider}`; never paste a connect URL into model output. Brand-scoped (`X-Brand-Id` on an org credential). No permission scope.
          */
         get: operations["listIntegrations"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/integrations/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List integration events
+         * @description Returns the events the brand’s connected live sources offer as automation triggers (a PostHog project’s own events; the Stripe and Shopify app catalogs) under `{ data, sources, pagination }`. Each event carries its `eventId`, the provider’s `eventKey`, Brew’s `label` and lifecycle `stage`, its roles in the brand’s product model, 30-day volume, and its `triggerEventId` once it is a trigger. Events come source by source: `query` searches names, titles and categories, and without it each source’s busiest events come first. Events a brand member hid, and internal traffic Brew suppressed, are left out, so a page can hold fewer than `limit`; follow `pagination.cursor` until `hasMore` is false to read every event. Brand-scoped (`X-Brand-Id` on an org credential). Requires the `automations` scope, as `ensureIntegrationEventTrigger` does.
+         */
+        get: operations["listIntegrationEvents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/integrations/events/{eventId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Describe an integration event
+         * @description Returns one live integration event in full: each property with its template `variable` (`properties.<key>` or `person.<key>` for a tenant catalog’s event, the key itself for a static catalog’s), which hold personal data, which Brew suggests for personalization, its lifecycle stage and its roles in the product model. This GET may call the provider: an event listed bare, or described more than a day ago, is described there first on the account’s read budget, and `propertiesStatus` says how current `properties` are (`rate_limited` with `retryAfterSeconds` when the budget is spent). `404 INTEGRATION_EVENT_NOT_FOUND` for an unknown or cross-brand id. Brand-scoped. Requires the `automations` scope.
+         */
+        get: operations["describeIntegrationEvent"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2608,7 +2890,7 @@ export interface paths {
          *     - `automation_pause_window_closed`: `automations`.
          *     - `brand_extracted`, `brand_image_import`, `integration_attention` (a connected integration such as Stripe needs a reconnect, moved to another brand, or lost a permission): every credential on the brand.
          *     - `api_key_created`: the `all` scope (a signed-in member, or a key or connection holding `all`).
-         *     - `send_limit_reached`: organization admins only (a signed-in admin, an admin’s organization-wide connection, or an organization-wide key holding `all`); never a brand key.
+         *     - `send_limit_reached`, `trial_ending`, `trial_expired`, `payment_failed`: organization admins only (a signed-in admin, an admin’s organization-wide connection, or an organization-wide key holding `all`); never a brand key.
          *     - `comment_mention`, `comment_reply` (`isPersonal: true`): only the person addressed, signed in or on a personal connection; never an API key.
          *
          *     **Use when** checking what finished or failed since you last looked.
@@ -2664,6 +2946,251 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        EmailWebhookEvent: {
+            /** @enum {string} */
+            type: "email.sent";
+            /** Format: date-time */
+            created_at: string;
+            data: {
+                email_id: string;
+                /** Format: date-time */
+                created_at: string;
+                from?: string;
+                to: string[];
+                subject?: string;
+                tags?: {
+                    [key: string]: string;
+                };
+                brew: {
+                    event_id: string;
+                    /** @enum {number} */
+                    schema_version: 1;
+                    recipient?: string;
+                    send_id?: string;
+                    design_id?: string;
+                    automation_id?: string;
+                    provider_message_id?: string;
+                    /** @enum {boolean} */
+                    test?: true;
+                };
+            };
+        } | {
+            /** @enum {string} */
+            type: "email.delivered";
+            /** Format: date-time */
+            created_at: string;
+            data: {
+                email_id: string;
+                /** Format: date-time */
+                created_at: string;
+                from?: string;
+                to: string[];
+                subject?: string;
+                tags?: {
+                    [key: string]: string;
+                };
+                brew: {
+                    event_id: string;
+                    /** @enum {number} */
+                    schema_version: 1;
+                    recipient?: string;
+                    send_id?: string;
+                    design_id?: string;
+                    automation_id?: string;
+                    provider_message_id?: string;
+                    /** @enum {boolean} */
+                    test?: true;
+                };
+            };
+        } | {
+            /** @enum {string} */
+            type: "email.delivery_delayed";
+            /** Format: date-time */
+            created_at: string;
+            data: {
+                email_id: string;
+                /** Format: date-time */
+                created_at: string;
+                from?: string;
+                to: string[];
+                subject?: string;
+                tags?: {
+                    [key: string]: string;
+                };
+                brew: {
+                    event_id: string;
+                    /** @enum {number} */
+                    schema_version: 1;
+                    recipient?: string;
+                    send_id?: string;
+                    design_id?: string;
+                    automation_id?: string;
+                    provider_message_id?: string;
+                    /** @enum {boolean} */
+                    test?: true;
+                };
+            };
+        } | {
+            /** @enum {string} */
+            type: "email.complained";
+            /** Format: date-time */
+            created_at: string;
+            data: {
+                email_id: string;
+                /** Format: date-time */
+                created_at: string;
+                from?: string;
+                to: string[];
+                subject?: string;
+                tags?: {
+                    [key: string]: string;
+                };
+                brew: {
+                    event_id: string;
+                    /** @enum {number} */
+                    schema_version: 1;
+                    recipient?: string;
+                    send_id?: string;
+                    design_id?: string;
+                    automation_id?: string;
+                    provider_message_id?: string;
+                    /** @enum {boolean} */
+                    test?: true;
+                };
+            };
+        } | {
+            /** @enum {string} */
+            type: "email.bounced";
+            /** Format: date-time */
+            created_at: string;
+            data: {
+                email_id: string;
+                /** Format: date-time */
+                created_at: string;
+                from?: string;
+                to: string[];
+                subject?: string;
+                tags?: {
+                    [key: string]: string;
+                };
+                brew: {
+                    event_id: string;
+                    /** @enum {number} */
+                    schema_version: 1;
+                    recipient?: string;
+                    send_id?: string;
+                    design_id?: string;
+                    automation_id?: string;
+                    provider_message_id?: string;
+                    /** @enum {boolean} */
+                    test?: true;
+                };
+                bounce?: {
+                    type: string;
+                    subType?: string;
+                    message?: string;
+                    diagnosticCode?: string[];
+                };
+            };
+        } | {
+            /** @enum {string} */
+            type: "email.failed";
+            /** Format: date-time */
+            created_at: string;
+            data: {
+                email_id: string;
+                /** Format: date-time */
+                created_at: string;
+                from?: string;
+                to: string[];
+                subject?: string;
+                tags?: {
+                    [key: string]: string;
+                };
+                brew: {
+                    event_id: string;
+                    /** @enum {number} */
+                    schema_version: 1;
+                    recipient?: string;
+                    send_id?: string;
+                    design_id?: string;
+                    automation_id?: string;
+                    provider_message_id?: string;
+                    /** @enum {boolean} */
+                    test?: true;
+                };
+                failed?: {
+                    reason: string;
+                };
+            };
+        } | {
+            /** @enum {string} */
+            type: "email.opened";
+            /** Format: date-time */
+            created_at: string;
+            data: {
+                email_id: string;
+                /** Format: date-time */
+                created_at: string;
+                from?: string;
+                to: string[];
+                subject?: string;
+                tags?: {
+                    [key: string]: string;
+                };
+                brew: {
+                    event_id: string;
+                    /** @enum {number} */
+                    schema_version: 1;
+                    recipient?: string;
+                    send_id?: string;
+                    design_id?: string;
+                    automation_id?: string;
+                    provider_message_id?: string;
+                    /** @enum {boolean} */
+                    test?: true;
+                };
+                open?: {
+                    timestamp?: string;
+                    ipAddress?: string;
+                    userAgent?: string;
+                };
+            };
+        } | {
+            /** @enum {string} */
+            type: "email.clicked";
+            /** Format: date-time */
+            created_at: string;
+            data: {
+                email_id: string;
+                /** Format: date-time */
+                created_at: string;
+                from?: string;
+                to: string[];
+                subject?: string;
+                tags?: {
+                    [key: string]: string;
+                };
+                brew: {
+                    event_id: string;
+                    /** @enum {number} */
+                    schema_version: 1;
+                    recipient?: string;
+                    send_id?: string;
+                    design_id?: string;
+                    automation_id?: string;
+                    provider_message_id?: string;
+                    /** @enum {boolean} */
+                    test?: true;
+                };
+                click?: {
+                    link: string;
+                    timestamp?: string;
+                    ipAddress?: string;
+                    userAgent?: string;
+                };
+            };
+        };
         EmailSummary: {
             emailId: string;
             emailVersionId?: string;
@@ -2832,10 +3359,10 @@ export interface components {
             /** @enum {string} */
             approvalState?: "pending" | "approved" | "rejected";
             /**
-             * @description Why a paused send is held. `plan_limit`: the plan has too few sends left this period. `domain_unsendable`: its sending domain stopped passing DNS; fails after 7 days. Both resume on their own and can be canceled. `manual`: its operator paused the gradual ramp; resume it to continue.
+             * @description Why a paused send is held. `plan_limit`: the plan has too few sends left this period. `domain_unsendable`: its sending domain stopped passing DNS; fails after 7 days. Both resume on their own and can be canceled. `manual`: its operator paused the gradual ramp; resume it to continue. `bounce_rate`: at least 4% of its recipients hard-bounced or 0.3% marked it as spam; check the list, then resume or cancel it.
              * @enum {string}
              */
-            pauseReason?: "manual" | "plan_limit" | "domain_unsendable";
+            pauseReason?: "manual" | "plan_limit" | "domain_unsendable" | "bounce_rate";
             subject?: string;
             previewText?: string;
             from?: {
@@ -2867,6 +3394,8 @@ export interface components {
                 opened: number;
                 clicked: number;
                 bounced: number;
+                /** @description Permanent (hard) bounces, a subset of `bounced`. Absent on older sends. */
+                hardBounced?: number;
                 complained: number;
                 unsubscribed: number;
             };
@@ -3466,7 +3995,7 @@ export interface components {
         };
         ApiWarning: {
             /** @enum {string} */
-            code: "DRAFT_SAVED_NOT_LIVE" | "NODE_ID_REPLACED" | "TRIGGER_EVENT_NOT_RECEIVED" | "ENFORCEMENT_LOOSENED_WHILE_PUBLISHED" | "REQUIRED_FIELD_SATISFIED_BY_FALLBACK" | "RESUBSCRIBE_SKIPPED" | "CORE_FIELD_IGNORED" | "DATE_ORDER_ASSUMED" | "FIELD_TYPE_COERCED" | "CSV_ROW_SKIPPED" | "CONTACT_EXISTS_SKIPPED" | "CSV_COLUMN_IGNORED" | "VALIDATION_SKIPPED" | "RECIPIENTS_EXCLUDED" | "CONSENT_RECORD_MISSING";
+            code: "DRAFT_SAVED_NOT_LIVE" | "NODE_ID_REPLACED" | "TRIGGER_EVENT_NOT_RECEIVED" | "ENFORCEMENT_LOOSENED_WHILE_PUBLISHED" | "REQUIRED_FIELD_SATISFIED_BY_FALLBACK" | "RESUBSCRIBE_SKIPPED" | "CORE_FIELD_IGNORED" | "BLANK_FIELD_NAME_IGNORED" | "DATE_ORDER_ASSUMED" | "FIELD_TYPE_COERCED" | "CSV_ROW_SKIPPED" | "CONTACT_EXISTS_SKIPPED" | "CSV_COLUMN_IGNORED" | "CSV_COLUMN_MATCHED_FIELD" | "VALIDATION_SKIPPED" | "RECIPIENTS_EXCLUDED" | "CONSENT_RECORD_MISSING";
             message: string;
             field?: string;
         };
@@ -3641,7 +4170,7 @@ export interface components {
             title: string;
             description?: string;
             /** @enum {string} */
-            provider: "brew_api" | "custom" | "brew_event" | "clerk" | "stytch" | "supabase" | "workos" | "stripe" | "shopify" | "revenuecat" | "framer";
+            provider: "brew_api" | "custom" | "brew_event" | "clerk" | "stytch" | "supabase" | "workos" | "stripe" | "shopify" | "revenuecat" | "framer" | "posthog" | "typeform" | "webflow" | "hubspot";
             providerEventKey?: string;
             brewEvent?: {
                 /**
@@ -4006,7 +4535,7 @@ export interface components {
              * @description The chat app the conversation started in; null for the Brew web app.
              * @enum {string|null}
              */
-            origin: "slack" | null;
+            origin: "slack" | "teams" | "google-chat" | "telegram" | null;
             /** Format: date-time */
             updatedAt: string;
             /** @description Opens the chat in the Brew app. */
@@ -4050,7 +4579,7 @@ export interface components {
                 kind: "assistant";
                 label: string;
                 /** @enum {string} */
-                intent: "review_domain_health" | "validate_contacts" | "create_campaign" | "repeat_campaign" | "review_recommendation";
+                intent: "review_domain_health" | "validate_contacts" | "create_campaign" | "repeat_campaign" | "draft_automation" | "review_recommendation";
                 /** @description The request the Insights page sends to Brew’s assistant. */
                 prompt: string;
             };
@@ -4200,7 +4729,7 @@ export interface components {
                 kind: "assistant";
                 label: string;
                 /** @enum {string} */
-                intent: "review_domain_health" | "validate_contacts" | "create_campaign" | "repeat_campaign" | "review_recommendation";
+                intent: "review_domain_health" | "validate_contacts" | "create_campaign" | "repeat_campaign" | "draft_automation" | "review_recommendation";
                 /** @description The request the Insights page sends to Brew’s assistant. */
                 prompt: string;
             };
@@ -4332,7 +4861,7 @@ export interface components {
             /** @description `ntf_` + 20 hex characters: a one-way hash, stable for the row’s life. */
             notificationId: string;
             /** @enum {string} */
-            type: "chat_stream" | "import_job" | "brand_image_import" | "validation_job" | "email_sent" | "email_scheduled" | "preview_email" | "brand_extracted" | "domain_status" | "domain_score_run" | "api_key_created" | "email_send_failed" | "gradual_send_paused" | "gradual_send_completed" | "send_limit_reached" | "automation_pause_window_closed" | "send_review_rejected" | "comment_mention" | "comment_reply" | "integration_attention";
+            type: "webhook_attention" | "chat_stream" | "import_job" | "brand_image_import" | "validation_job" | "email_sent" | "email_scheduled" | "preview_email" | "brand_extracted" | "domain_status" | "domain_score_run" | "api_key_created" | "email_send_failed" | "gradual_send_paused" | "gradual_send_completed" | "send_limit_reached" | "trial_ending" | "trial_expired" | "payment_failed" | "automation_pause_window_closed" | "send_review_rejected" | "comment_mention" | "comment_reply" | "integration_attention";
             /** @enum {string} */
             status: "uploading" | "preparing" | "processing" | "finalizing" | "streaming" | "background_finalizing" | "completed" | "partial" | "failed" | "interrupted" | "stopped" | "persistence_failed";
             title: string;
@@ -4408,6 +4937,34 @@ export interface components {
             /** @description Only with messages: pass it back with this thread's `commentId` to read its older messages; null when none remain. */
             messagesCursor?: string | null;
         };
+        Webhook: {
+            id: string;
+            endpoint: string;
+            events: ("email.sent" | "email.delivered" | "email.delivery_delayed" | "email.bounced" | "email.complained" | "email.failed" | "email.opened" | "email.clicked")[];
+            description: string;
+            /** @enum {string} */
+            status: "enabled" | "disabled";
+            /** Format: date-time */
+            created_at: string;
+        };
+        ApiErrorEnvelope: {
+            error: {
+                code: components["schemas"]["ApiErrorCode"];
+                /** @enum {string} */
+                type: "authentication_error" | "authorization_error" | "invalid_request" | "not_found" | "not_implemented" | "conflict" | "rate_limit" | "payment_required" | "service_unavailable" | "internal_error";
+                message: string;
+                param?: string;
+                suggestion: string;
+                /** Format: uri */
+                docs: string;
+                retryAfter?: number;
+                details?: {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        /** @enum {string} */
+        ApiErrorCode: "ACCOUNT_SUSPENDED" | "API_KEY_REVOKED" | "AUDIENCE_BUILD_ACTIVE" | "AUDIENCE_BUILD_ALREADY_ACTIVE" | "AUDIENCE_EDIT_CONFLICT" | "AUDIENCE_MEMBERSHIP_NOT_EXPRESSIBLE" | "AUDIENCE_NOT_FOUND" | "AUDIENCE_RUN_NOT_FOUND" | "AUDIT_NOT_FOUND" | "AUTHENTICATION_REQUIRED" | "AUTOMATION_GRAPH_INVALID" | "AUTOMATION_IN_PROGRESS" | "AUTOMATION_NOT_FOUND" | "AUTOMATION_NOT_PAUSABLE" | "AUTOMATION_NOT_PUBLISHED" | "AUTOMATION_NOT_READY" | "AUTOMATION_NOT_RUNNABLE" | "AUTOMATION_RUN_NOT_FOUND" | "AUTOMATION_VERSION_CONFLICT" | "AUTOMATION_VERSION_NOT_FOUND" | "BATCH_TOO_LARGE" | "BRAND_DOMAIN_CONFLICT" | "BRAND_ID_REQUIRED" | "BRAND_LIMIT_REACHED" | "BRAND_NOT_FOUND" | "BRAND_NOT_READY" | "BRAND_SCOPE_MISMATCH" | "CHAT_NOT_FOUND" | "COMMENT_NOT_FOUND" | "CONSENT_REQUIRED" | "CONTACT_NOT_FOUND" | "CONTENT_OPERATION_FAILED" | "CONTRACT_LOCKED_BY_PUBLISHED_AUTOMATIONS" | "CORE_FIELD_IMMUTABLE" | "DOMAIN_ALREADY_EXISTS" | "DOMAIN_CLAIMED_ELSEWHERE" | "DOMAIN_NOT_FOUND" | "DOMAIN_NOT_READY" | "DOMAIN_OTHER_BRAND" | "DOMAIN_PROVIDER_ERROR" | "DOMAIN_PURPOSE_NOT_ALLOWED" | "DOMAIN_VERIFICATION_FAILED" | "DOMAIN_VERIFIED_ELSEWHERE" | "EMAIL_GENERATION_FAILED" | "EMAIL_GROUP_NAME_CONFLICT" | "EMAIL_GROUP_NOT_FOUND" | "EMAIL_IMAGES_MISSING" | "EMAIL_IMPORT_FAILED" | "EMAIL_IMPORT_PERSISTENCE_FAILED" | "EMAIL_IN_PROGRESS" | "EMAIL_IN_USE_BY_AUTOMATION" | "EMAIL_NOT_FOUND" | "EMAIL_NOT_READY" | "EMAIL_RESULT_UNAVAILABLE" | "EMAIL_RUN_AMBIGUOUS" | "EMAIL_TEMPLATE_INVALID" | "EMAIL_VERSION_NOT_FOUND" | "EXPORT_PROVIDER_ERROR" | "EXPORT_UNSUPPORTED" | "FIELD_NAME_AMBIGUOUS" | "FIELD_NAME_COLLISION" | "FIELD_NAME_INVALID" | "FIELD_NOT_FOUND" | "FIELD_TYPE_MISMATCH" | "FIGMA_ACCESS_DENIED" | "FIGMA_CONVERSION_FAILED" | "FIGMA_FRAME_NOT_FOUND" | "FIGMA_NOT_CONNECTED" | "FIGMA_UNAVAILABLE" | "FIGMA_URL_INVALID" | "FLOW_NOT_FOUND" | "IDEMPOTENCY_CONFLICT" | "IDEMPOTENCY_IN_PROGRESS" | "INSIGHT_NOT_FOUND" | "INSUFFICIENT_CREDITS" | "INSUFFICIENT_PERMISSIONS" | "INSUFFICIENT_ROLE" | "INTEGRATION_EVENT_NOT_FOUND" | "INTEGRATION_NOT_CONNECTED" | "INTEGRATION_RECONNECT_REQUIRED" | "INTERNAL_ERROR" | "INVALID_API_KEY" | "INVALID_EMAIL" | "INVALID_PAYLOAD" | "INVALID_REQUEST" | "LIQUID_RENDER_ERROR" | "METHOD_NOT_ALLOWED" | "MISSING_EMAIL" | "NO_ACTIVE_PLAN" | "NO_ELIGIBLE_RECIPIENTS" | "NO_PUBLISHED_AUTOMATION" | "NOT_FOUND" | "NOT_IMPLEMENTED" | "ORG_SCOPE_REQUIRED" | "PAYLOAD_SCHEMA_EMAIL_REQUIRED" | "PAYLOAD_TOO_LARGE" | "PREVIEW_NOT_FOUND" | "PUBLISH_VALIDATION_FAILED" | "RATE_LIMITED" | "RECIPIENT_UNSUBSCRIBED" | "REFERENCE_EMAIL_NOT_FOUND" | "RESUBSCRIBE_NOT_ALLOWED" | "RUN_IN_PROGRESS" | "RUN_NOT_CANCELLABLE" | "RUN_NOT_PAUSABLE" | "RUN_NOT_PAUSED" | "RUN_NOT_RESUMABLE" | "RUN_START_FAILED" | "RUN_STOP_FAILED" | "SEND_NOT_CANCELLABLE" | "SEND_NOT_FOUND" | "SEND_NOT_PAUSABLE" | "SEND_NOT_RESUMABLE" | "SEND_QUOTA_EXCEEDED" | "SERVICE_UNAVAILABLE" | "TEMPLATE_NOT_FOUND" | "TEST_RECIPIENT_NOT_ALLOWED" | "TRIGGER_ALREADY_EXISTS" | "TRIGGER_EVENT_NOT_FOUND" | "TRIGGER_HAS_DEPENDENT_AUTOMATIONS" | "TRIGGER_IMMUTABLE" | "TRIGGER_INSTANCE_NOT_FOUND" | "TRIGGER_LIMIT_REACHED" | "TRIGGER_NOT_FIREABLE" | "UPLOAD_IN_PROGRESS" | "UPLOAD_NOT_FOUND" | "UPLOAD_NOT_RECEIVED" | "WRITE_CONFLICT";
         EmailsListResponse: {
             data: {
                 emailId: string;
@@ -4451,24 +5008,6 @@ export interface components {
                 hasMore: boolean;
             };
         };
-        ApiErrorEnvelope: {
-            error: {
-                code: components["schemas"]["ApiErrorCode"];
-                /** @enum {string} */
-                type: "authentication_error" | "authorization_error" | "invalid_request" | "not_found" | "not_implemented" | "conflict" | "rate_limit" | "payment_required" | "service_unavailable" | "internal_error";
-                message: string;
-                param?: string;
-                suggestion: string;
-                /** Format: uri */
-                docs: string;
-                retryAfter?: number;
-                details?: {
-                    [key: string]: unknown;
-                };
-            };
-        };
-        /** @enum {string} */
-        ApiErrorCode: "ACCOUNT_SUSPENDED" | "API_KEY_REVOKED" | "AUDIENCE_BUILD_ACTIVE" | "AUDIENCE_BUILD_ALREADY_ACTIVE" | "AUDIENCE_EDIT_CONFLICT" | "AUDIENCE_MEMBERSHIP_NOT_EXPRESSIBLE" | "AUDIENCE_NOT_FOUND" | "AUDIENCE_RUN_NOT_FOUND" | "AUDIT_NOT_FOUND" | "AUTHENTICATION_REQUIRED" | "AUTOMATION_GRAPH_INVALID" | "AUTOMATION_NOT_FOUND" | "AUTOMATION_NOT_PAUSABLE" | "AUTOMATION_NOT_PUBLISHED" | "AUTOMATION_RUN_NOT_FOUND" | "AUTOMATION_VERSION_CONFLICT" | "AUTOMATION_VERSION_NOT_FOUND" | "BATCH_TOO_LARGE" | "BRAND_DOMAIN_CONFLICT" | "BRAND_ID_REQUIRED" | "BRAND_LIMIT_REACHED" | "BRAND_NOT_FOUND" | "BRAND_NOT_READY" | "BRAND_SCOPE_MISMATCH" | "CHAT_NOT_FOUND" | "COMMENT_NOT_FOUND" | "CONSENT_REQUIRED" | "CONTACT_NOT_FOUND" | "CONTENT_OPERATION_FAILED" | "CONTRACT_LOCKED_BY_PUBLISHED_AUTOMATIONS" | "CORE_FIELD_IMMUTABLE" | "DOMAIN_ALREADY_EXISTS" | "DOMAIN_CLAIMED_ELSEWHERE" | "DOMAIN_NOT_FOUND" | "DOMAIN_NOT_READY" | "DOMAIN_OTHER_BRAND" | "DOMAIN_PROVIDER_ERROR" | "DOMAIN_PURPOSE_NOT_ALLOWED" | "DOMAIN_VERIFICATION_FAILED" | "DOMAIN_VERIFIED_ELSEWHERE" | "EMAIL_GENERATION_FAILED" | "EMAIL_GROUP_NAME_CONFLICT" | "EMAIL_GROUP_NOT_FOUND" | "EMAIL_IMAGES_MISSING" | "EMAIL_IMPORT_FAILED" | "EMAIL_IN_PROGRESS" | "EMAIL_IN_USE_BY_AUTOMATION" | "EMAIL_NOT_FOUND" | "EMAIL_NOT_READY" | "EMAIL_RESULT_UNAVAILABLE" | "EMAIL_RUN_AMBIGUOUS" | "EMAIL_TEMPLATE_INVALID" | "EMAIL_VERSION_NOT_FOUND" | "EXPORT_PROVIDER_ERROR" | "EXPORT_UNSUPPORTED" | "FIELD_NAME_COLLISION" | "FIELD_NOT_FOUND" | "FIELD_TYPE_MISMATCH" | "FIGMA_ACCESS_DENIED" | "FIGMA_CONVERSION_FAILED" | "FIGMA_FRAME_NOT_FOUND" | "FIGMA_NOT_CONNECTED" | "FIGMA_UNAVAILABLE" | "FIGMA_URL_INVALID" | "FLOW_NOT_FOUND" | "IDEMPOTENCY_CONFLICT" | "IDEMPOTENCY_IN_PROGRESS" | "INSIGHT_NOT_FOUND" | "INSUFFICIENT_CREDITS" | "INSUFFICIENT_PERMISSIONS" | "INSUFFICIENT_ROLE" | "INTEGRATION_NOT_CONNECTED" | "INTERNAL_ERROR" | "INVALID_API_KEY" | "INVALID_EMAIL" | "INVALID_PAYLOAD" | "INVALID_REQUEST" | "LIQUID_RENDER_ERROR" | "METHOD_NOT_ALLOWED" | "MISSING_EMAIL" | "NO_ELIGIBLE_RECIPIENTS" | "NO_PUBLISHED_AUTOMATION" | "NOT_FOUND" | "NOT_IMPLEMENTED" | "ORG_SCOPE_REQUIRED" | "PAYLOAD_SCHEMA_EMAIL_REQUIRED" | "PAYLOAD_TOO_LARGE" | "PREVIEW_NOT_FOUND" | "PUBLISH_VALIDATION_FAILED" | "RATE_LIMITED" | "RECIPIENT_UNSUBSCRIBED" | "REFERENCE_EMAIL_NOT_FOUND" | "RESUBSCRIBE_NOT_ALLOWED" | "RUN_IN_PROGRESS" | "RUN_NOT_CANCELLABLE" | "RUN_NOT_PAUSABLE" | "RUN_NOT_PAUSED" | "RUN_NOT_RESUMABLE" | "RUN_START_FAILED" | "RUN_STOP_FAILED" | "SEND_NOT_CANCELLABLE" | "SEND_NOT_FOUND" | "SEND_NOT_PAUSABLE" | "SEND_NOT_RESUMABLE" | "SEND_QUOTA_EXCEEDED" | "SERVICE_UNAVAILABLE" | "TEMPLATE_NOT_FOUND" | "TRIGGER_ALREADY_EXISTS" | "TRIGGER_EVENT_NOT_FOUND" | "TRIGGER_HAS_DEPENDENT_AUTOMATIONS" | "TRIGGER_IMMUTABLE" | "TRIGGER_INSTANCE_NOT_FOUND" | "TRIGGER_LIMIT_REACHED" | "TRIGGER_NOT_FIREABLE" | "UPLOAD_IN_PROGRESS" | "UPLOAD_NOT_FOUND" | "UPLOAD_NOT_RECEIVED";
         EmailGenerateTextResponse: {
             response: string;
         };
@@ -4497,6 +5036,8 @@ export interface components {
              * @enum {string}
              */
             category?: "welcome" | "onboarding" | "newsletter" | "content" | "event-invitation" | "event-reminder" | "event-recap" | "product-launch" | "product-update" | "product-pitch" | "promotional" | "cart-abandonment" | "re-engagement" | "subscription" | "feedback-request" | "referral" | "company-news" | "fundraising" | "order-confirmation" | "shipping-update" | "receipt" | "password-reset" | "verification" | "security-alert" | "account-update" | "notification" | "support" | "internal" | "business" | "general";
+            /** @description Canvas name, 2-4 words (e.g. 'Newsletter Welcome'). Omit and Brew names it. */
+            title?: string;
             /** @description Inbox subject line to set on the design (`subjectLine` — distinct from `title`, the canvas name). Sends still take an explicit per-send `subject`; this is the design's default, seeded into the send dialog and returned by `GET /v1/emails/{emailId}`. */
             subjectLine?: string;
             /**
@@ -4530,7 +5071,7 @@ export interface components {
                 dropped?: number;
                 warnings: {
                     /** @enum {string} */
-                    code: "fetch_failed_retained" | "non_image_resource_retained" | "social_icon_substituted" | "tracking_pixel_dropped" | "unsafe_url_stripped" | "unsupported_resource_retained" | "upload_failed_retained" | "inline_asset_retained" | "attachment_dropped" | "embedded_reference_unresolved" | "tailwind_config_unresolved" | "tailwind_class_dropped" | "foreign_component_dropped" | "element_dropped";
+                    code: "fetch_failed_retained" | "non_image_resource_retained" | "social_icon_substituted" | "tracking_pixel_dropped" | "unsafe_url_stripped" | "unsupported_resource_retained" | "upload_failed_retained" | "inline_asset_retained" | "attachment_dropped" | "embedded_reference_unresolved" | "tailwind_config_unresolved" | "tailwind_class_dropped" | "foreign_component_dropped" | "current_time_frozen" | "element_dropped" | "text_dropped";
                     /** @enum {string} */
                     location: "background" | "css-url" | "data-src" | "data-srcset" | "markup" | "module" | "preload" | "src" | "srcset" | "stylesheet" | "vml-src";
                     host?: string;
@@ -4647,7 +5188,7 @@ export interface components {
         EmailCloneRequest: {
             /** @description Exact source version to clone (from GET /v1/emails/{emailId}?include=versions). Omit to clone the current latest version. */
             emailVersionId?: string;
-            /** @description Name for the clone. Omit for `Copy of <source title>`; rename later with `PATCH /v1/emails/{emailId} { title }` over HTTP, update_email_metadata over MCP. */
+            /** @description Name for the clone. Omit for `Copy of <source title>`, cut to 200 characters; rename later with `PATCH /v1/emails/{emailId} { title }` over HTTP, update_email_metadata over MCP. */
             title?: string;
             /** @description File the design under an existing group (`grp_…`), or `ungrouped`. Mutually exclusive with `groupName`. */
             groupId?: string;
@@ -5004,7 +5545,7 @@ export interface components {
             } | null;
             diagnosis?: {
                 /** @enum {string} */
-                id: "spoofing_detected" | "aggregate_auth_failure" | "provider_auth_failure" | "microsoft_junk_filtering" | "provider_spam_placement" | "promotions_tab_placement" | "bulk_folder_placement" | "content_filter_flagged" | "content_rule" | "missing_list_unsubscribe" | "missing_plain_text_part";
+                id: "spoofing_detected" | "aggregate_auth_failure" | "provider_auth_failure" | "microsoft_junk_filtering" | "provider_spam_placement" | "promotions_tab_placement" | "bulk_folder_placement" | "content_filter_flagged" | "content_rule" | "missing_list_unsubscribe" | "missing_plain_text_part" | "seed_delivery_blocked";
                 /** @enum {string} */
                 severity: "critical" | "warning" | "info";
                 provider?: string;
@@ -5125,10 +5666,10 @@ export interface components {
                 /** @enum {string} */
                 approvalState?: "pending" | "approved" | "rejected";
                 /**
-                 * @description Why a paused send is held. `plan_limit`: the plan has too few sends left this period. `domain_unsendable`: its sending domain stopped passing DNS; fails after 7 days. Both resume on their own and can be canceled. `manual`: its operator paused the gradual ramp; resume it to continue.
+                 * @description Why a paused send is held. `plan_limit`: the plan has too few sends left this period. `domain_unsendable`: its sending domain stopped passing DNS; fails after 7 days. Both resume on their own and can be canceled. `manual`: its operator paused the gradual ramp; resume it to continue. `bounce_rate`: at least 4% of its recipients hard-bounced or 0.3% marked it as spam; check the list, then resume or cancel it.
                  * @enum {string}
                  */
-                pauseReason?: "manual" | "plan_limit" | "domain_unsendable";
+                pauseReason?: "manual" | "plan_limit" | "domain_unsendable" | "bounce_rate";
                 subject?: string;
                 previewText?: string;
                 from?: {
@@ -5160,6 +5701,8 @@ export interface components {
                     opened: number;
                     clicked: number;
                     bounced: number;
+                    /** @description Permanent (hard) bounces, a subset of `bounced`. Absent on older sends. */
+                    hardBounced?: number;
                     complained: number;
                     unsubscribed: number;
                 };
@@ -5259,17 +5802,21 @@ export interface components {
             warnings?: components["schemas"]["ApiWarning"][];
         };
         SendEmailRequest: {
-            /** @enum {boolean} */
-            test: true;
-            emailId: string;
             emailVersionId?: string;
-            subject: string;
-            /** @description Inbox preheader for this test send — overrides the design's JSX <Preview>. Omit to deliver the design's own preview line. */
-            previewText?: string;
-            to: string;
             replyTo?: string;
+            /** @description The one address that receives this test. It must be a teammate with access to the brand, an address on a verified sending domain of the brand, or, for a signed-in person (not an API key), their own address or one on their company domain. */
+            to: string;
+            /** @description Example values for {{ var | fallback }} merge tags in the subject, previewText, and body. A supplied value wins over contact fields and the declared fallback; undefined variables render their fallback (or empty). Max 25 entries; keys are tag paths (firstName, first-name, trigger.items[0].sku; max 64 chars); values max 256 chars. */
+            variables?: {
+                [key: string]: string;
+            };
+            /** @description Nested JSON template data, exposed to the ONE Liquid engine as trigger.* / payload.* and as top-level keys. Nested values are always legal and resolve via dotted access ({{ plan.name }}) and {% for %}. Flat `variables` resolve {{ tag | fallback }} merge tags at higher precedence; send both if a design mixes syntaxes. */
+            payload?: {
+                [key: string]: components["schemas"]["SendPayloadValue"];
+            };
             /** @description OPTIONAL verified sending domain for this test. Omit for the Brew default sender (hello@email.brew.new). Must be a verified domain owned by this org/brand — an unverified or foreign domain is rejected (404/422), never silently downgraded to the Brew default. */
             domainId?: string;
+            emailId: string;
             /** @description Sender override `{ email, name? }`; the address must be on the send domain. Omit to use the domain defaults. */
             from?: {
                 /**
@@ -5282,14 +5829,11 @@ export interface components {
             };
             /** @description Fail the test (422 LIQUID_RENDER_ERROR) when the template reads a value that is missing, instead of rendering it blank. */
             strict?: boolean;
-            /** @description Example values for {{ var | fallback }} merge tags in the subject, previewText, and body. A supplied value wins over contact fields and the declared fallback; undefined variables render their fallback (or empty). Max 25 entries; keys are tag paths (firstName, first-name, trigger.items[0].sku; max 64 chars); values max 256 chars. */
-            variables?: {
-                [key: string]: string;
-            };
-            /** @description Nested JSON template data, exposed to the ONE Liquid engine as trigger.* / payload.* and as top-level keys. Nested values are always legal and resolve via dotted access ({{ plan.name }}) and {% for %}. Flat `variables` resolve {{ tag | fallback }} merge tags at higher precedence; send both if a design mixes syntaxes. */
-            payload?: {
-                [key: string]: components["schemas"]["SendPayloadValue"];
-            };
+            subject: string;
+            /** @description Inbox preheader for this test send — overrides the design's JSX <Preview>. Omit to deliver the design's own preview line. */
+            previewText?: string;
+            /** @enum {boolean} */
+            test: true;
         } | {
             /** @enum {boolean} */
             test?: false;
@@ -5522,7 +6066,7 @@ export interface components {
         EventsBreakdownResponse: {
             /** @description Email events counted. */
             count: number;
-            /** @description The largest 200 groups, largest first. `key` maps each `groupBy` field to its value (`null` when the event has none); `bucket` is the UTC period start. `unsubscribeReason` counts an unsubscribe once per reason it gave. */
+            /** @description The largest 200 groups, largest first. `key` maps each `groupBy` field to its value (`null` when the event has none); `bucket` is the UTC period start; `count` counts events, so one recipient's repeat opens each count. `unsubscribeReason` counts an unsubscribe once per reason it gave. */
             groups: {
                 key: {
                     [key: string]: string | null;
@@ -5530,6 +6074,8 @@ export interface components {
                 /** Format: date-time */
                 bucket?: string;
                 count: number;
+                /** @description On a group of opened, clicked or delivered events (its `eventType` key, or the `eventType` filter), unless grouped by `link`: recipients counted once per message sent to them, by the overview's rule, within `range` only; with `bucket`, in the period of their first open or click. Repeat opens and clicks, machine ones, and deliveries a later bounce overturned are not counted. A send's lifetime `stats` can be higher, since they also count clicks recorded before bot screening, which these rows leave out. */
+                recipients?: number;
             }[];
             /** @description The summed counts of the groups not listed. */
             otherCount: number;
@@ -6422,15 +6968,16 @@ export interface components {
                     })[];
                 };
             })[];
+            /** @description The full edge list; it replaces the stored one. Omit to keep the stored edges (also when sending `nodes`); an edge whose end no longer exists is then refused with `AUTOMATION_GRAPH_INVALID`. */
             connections?: {
                 from: string;
                 to: string;
                 branch?: string;
             }[];
             triggerEventId?: string;
-            /** @description Optimistic concurrency guard: the exact version read before deriving this update. Supply together with expectedBaseDefinitionSha256. */
+            /** @description Optimistic concurrency guard: the `automationVersionId` read before deriving this update. The save is refused with a conflict when the automation has changed since. */
             expectedBaseVersionId?: string;
-            /** @description Optimistic concurrency guard: SHA-256 of the exact definition read before deriving this update. Supply together with expectedBaseVersionId. */
+            /** @description Optional stricter guard: SHA-256 of the exact definition read before deriving this update. Requires expectedBaseVersionId. */
             expectedBaseDefinitionSha256?: string;
             /** @description Validate only — runs the full publish-gate check and returns blockers/warnings without writing. */
             dryRun?: boolean;
@@ -6468,6 +7015,71 @@ export interface components {
             } & {
                 [key: string]: unknown;
             })[];
+            /** @description MCP only: the started runs as read after the call waited for them to finish. Never set on HTTP responses; read runs with GET /v1/automations/runs/{automationRunId}. */
+            runs?: {
+                automationRunId: string;
+                automationId: string;
+                automationVersionId?: string;
+                definitionHash?: string;
+                triggerInstanceId?: string;
+                /** @enum {string} */
+                mode: "live" | "test";
+                /** @enum {string} */
+                status: "queued" | "running" | "completed" | "failed" | "canceled";
+                recipientEmail?: string;
+                /** Format: date-time */
+                startedAt?: string;
+                /** Format: date-time */
+                completedAt?: string;
+                error?: string;
+                testCoverage?: {
+                    /** @enum {string} */
+                    mode: "smoke" | "scenario";
+                    complete: boolean;
+                    visitedNodes: string[];
+                    unvisitedNodes: string[];
+                    traversedConnections: {
+                        /** @description The id of the automation node this control applies to. */
+                        from: string;
+                        /** @description The id of the automation node this control applies to. */
+                        to: string;
+                        branch?: string;
+                    }[];
+                    untraversedConnections: {
+                        /** @description The id of the automation node this control applies to. */
+                        from: string;
+                        /** @description The id of the automation node this control applies to. */
+                        to: string;
+                        branch?: string;
+                    }[];
+                    decisions: {
+                        /** @description The id of the automation node this control applies to. */
+                        nodeId: string;
+                        branch: string;
+                        /** @enum {string} */
+                        source: "simulated" | "forced" | "deterministic" | "payload" | "smoke" | "upstream_not_delivered";
+                    }[];
+                    limitations: string[];
+                };
+                logs?: {
+                    automationRunId: string;
+                    nodeId: string;
+                    nodeName: string;
+                    /** @enum {string} */
+                    nodeType: "trigger" | "wait" | "filter" | "split" | "sendEmail";
+                    /** @enum {string} */
+                    status: "running" | "completed" | "failed" | "skipped";
+                    orderIndex: number;
+                    branch?: string;
+                    durationMs?: number;
+                    /** Format: date-time */
+                    startedAt: string;
+                    /** Format: date-time */
+                    completedAt?: string;
+                    error?: string;
+                }[];
+                logsTruncated?: boolean;
+            }[];
         };
         AutomationTestRequest: {
             payload?: {
@@ -6807,7 +7419,7 @@ export interface components {
             title: string;
             description?: string;
             /** @enum {string} */
-            provider: "brew_api" | "custom" | "brew_event" | "clerk" | "stytch" | "supabase" | "workos" | "stripe" | "shopify" | "revenuecat" | "framer";
+            provider: "brew_api" | "custom" | "brew_event" | "clerk" | "stytch" | "supabase" | "workos" | "stripe" | "shopify" | "revenuecat" | "framer" | "posthog" | "typeform" | "webflow" | "hubspot";
             providerEventKey?: string;
             brewEvent?: {
                 /**
@@ -6850,6 +7462,36 @@ export interface components {
             /** @description The marketing domain (from `GET /v1/domains`) whose unsubscribe list this trigger watches. Required when `scope` is `domain`; omit for `all`. */
             domainId?: string;
         };
+        IntegrationEventTriggerSaved: {
+            triggerEventId: string;
+            title: string;
+            description?: string;
+            /** @enum {string} */
+            provider: "brew_api" | "custom" | "brew_event" | "clerk" | "stytch" | "supabase" | "workos" | "stripe" | "shopify" | "revenuecat" | "framer" | "posthog" | "typeform" | "webflow" | "hubspot";
+            providerEventKey?: string;
+            payloadSchema: {
+                /** @enum {string} */
+                type: "object";
+                fields: components["schemas"]["TriggerPayloadField"][];
+            };
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            /** @description True when this call created the trigger; false when it already existed. */
+            created: boolean;
+            /**
+             * @description `current`: listed with the event or read in the last day. `stored`: the provider could not be read now; these are its last description. `rate_limited`: its read budget is spent; these are what Brew stored, possibly none (read again after `retryAfterSeconds`). `unavailable`: not read, and none stored.
+             * @enum {string}
+             */
+            propertiesStatus: "current" | "stored" | "rate_limited" | "unavailable";
+            /** @description With `rate_limited`: seconds until the provider can be read again, when it said. */
+            retryAfterSeconds?: number;
+        };
+        IntegrationEventTriggersPostRequest: {
+            /** @description The live event id from `GET /v1/integrations/events` (`eventId`). Never compose one from a provider and an event name. */
+            eventId: string;
+        };
         TriggersPostRequest: {
             title: string;
             description?: string;
@@ -6865,7 +7507,7 @@ export interface components {
                 title: string;
                 description?: string;
                 /** @enum {string} */
-                provider: "brew_api" | "custom" | "brew_event" | "clerk" | "stytch" | "supabase" | "workos" | "stripe" | "shopify" | "revenuecat" | "framer";
+                provider: "brew_api" | "custom" | "brew_event" | "clerk" | "stytch" | "supabase" | "workos" | "stripe" | "shopify" | "revenuecat" | "framer" | "posthog" | "typeform" | "webflow" | "hubspot";
                 providerEventKey?: string;
                 brewEvent?: {
                     /**
@@ -6942,7 +7584,7 @@ export interface components {
                 automations: number;
                 skipped: number;
             };
-            /** @description Integration triggers only: whether Brew has received this event from its source (`none_recent`: not in the 90-day receipt window). Never affects `ready`. */
+            /** @description Clerk, HubSpot, RevenueCat, Shopify, Stytch, Supabase, Typeform, Webflow, WorkOS triggers only, whose source sends each event to a webhook made for it: whether Brew has received this event from its source (`none_recent`: not in the 90-day receipt window). Never affects `ready`. */
             delivery?: {
                 /** @enum {string} */
                 status: "received" | "never_received" | "none_recent" | "waiting_for_test_event";
@@ -7017,7 +7659,7 @@ export interface components {
             driftStatus?: "fresh" | "stale";
             /** @enum {string} */
             format: "json";
-            fields: components["schemas"]["PayloadContractFieldNode"][];
+            fields: components["schemas"]["PayloadContractStoredFieldNode"][];
         } | {
             /** @enum {string} */
             subjectKind: "trigger";
@@ -7034,6 +7676,52 @@ export interface components {
             /** @enum {string} */
             format: "ts" | "zod" | "jsonschema" | "skill";
             content: string;
+        };
+        PayloadContractStoredFieldNode: {
+            key: string;
+            /** @enum {string} */
+            type: "string" | "int" | "float" | "boolean" | "date" | "enum" | "object" | "array" | "unknown";
+            required: boolean;
+            description?: string;
+            exampleValue?: string | number | boolean;
+            fallbackValue?: string | number | boolean;
+            /** @enum {string} */
+            pii?: "none" | "low" | "high";
+            /** @description True for a value used only to render this email: never stored on contacts, in logs or analytics; cannot be used in filters, splits or recipient fields. Scalars only, never `email`. False explicitly permits ordinary PII outside rendering; pii still controls log masking. When omitted, legacy high-PII scalar protection applies except for email and top-level firstName/lastName. */
+            secret?: boolean;
+            /** @description false keeps this value off the contact record: it reaches the email and nothing else. Omitted means true. The top-level email always identifies the contact. */
+            syncToContact?: boolean;
+            enumValues?: string[];
+            itemType?: ("string" | "int" | "float" | "boolean" | "date" | "enum") | "unknown";
+            usedIn?: ("body" | "subject" | "previewText")[];
+            children?: components["schemas"]["PayloadContractStoredFieldNode"][];
+        };
+        PayloadContractPutResponse: {
+            /** @enum {string} */
+            subjectKind: "trigger";
+            subjectId: string;
+            /** @enum {string} */
+            source: "stored" | "derived_from_schema" | "derived_from_template";
+            typeName: string;
+            contractHash?: string;
+            version?: number;
+            /** @enum {string} */
+            enforcement?: "off" | "prune" | "strict";
+            /** @enum {string} */
+            driftStatus?: "fresh" | "stale";
+            /** @enum {string} */
+            format: "json";
+            fields: components["schemas"]["PayloadContractStoredFieldNode"][];
+            warnings: components["schemas"]["ApiWarning"][];
+        };
+        PayloadContractPutRequest: {
+            fields?: components["schemas"]["PayloadContractFieldNode"][];
+            name?: string;
+            /**
+             * @description How live fires use the contract. `off`: advisory only. `prune`: a fire that breaks a declared field is refused and undeclared keys are dropped. `strict`: undeclared keys are refused too. Omit to keep the current setting.
+             * @enum {string}
+             */
+            enforcement?: "off" | "prune" | "strict";
         };
         PayloadContractFieldNode: {
             key: string;
@@ -7053,33 +7741,6 @@ export interface components {
             itemType?: ("string" | "int" | "float" | "boolean" | "date" | "enum") | "unknown";
             usedIn?: ("body" | "subject" | "previewText")[];
             children?: components["schemas"]["PayloadContractFieldNode"][];
-        };
-        PayloadContractPutResponse: {
-            /** @enum {string} */
-            subjectKind: "trigger";
-            subjectId: string;
-            /** @enum {string} */
-            source: "stored" | "derived_from_schema" | "derived_from_template";
-            typeName: string;
-            contractHash?: string;
-            version?: number;
-            /** @enum {string} */
-            enforcement?: "off" | "prune" | "strict";
-            /** @enum {string} */
-            driftStatus?: "fresh" | "stale";
-            /** @enum {string} */
-            format: "json";
-            fields: components["schemas"]["PayloadContractFieldNode"][];
-            warnings: components["schemas"]["ApiWarning"][];
-        };
-        PayloadContractPutRequest: {
-            fields?: components["schemas"]["PayloadContractFieldNode"][];
-            name?: string;
-            /**
-             * @description How live fires use the contract. `off`: advisory only. `prune`: a fire that breaks a declared field is refused and undeclared keys are dropped. `strict`: undeclared keys are refused too. Omit to keep the current setting.
-             * @enum {string}
-             */
-            enforcement?: "off" | "prune" | "strict";
         };
         PayloadContractValidateResponse: {
             valid: boolean;
@@ -7661,7 +8322,7 @@ export interface components {
                 /** @description The comparison value, as a string. `in`, `not_in`, `contains_any` and `not_contains_any` take a comma-separated list; `between` takes exactly two comma-separated bounds (e.g. "10,30"). Unary operators (`is_empty`, `is_not_empty`, `exists`, `not_exists`, `is_true`, `is_false`) ignore it — pass "". */
                 value: string;
             }[];
-            /** @description Scope to a saved audience's members. The audience's stored filter set is evaluated as one unit with its own `logicalOperator` (an OR audience stays an OR), then ANDed with `filters`. Unknown / cross-brand id, or an audience a send would refuse (unusable filters, a cohort still building) → 400. */
+            /** @description Scope to a saved audience's members. The audience's stored filter set is evaluated as one unit with its own `logicalOperator` (an OR audience stays an OR), then ANDed with `filters`. Unknown / cross-brand id, or an audience a send would refuse (unusable filters, a cohort still building) → 400. Omit it, or pass the reserved `all`, to search every contact. */
             audienceId?: string;
             /**
              * @default and
@@ -8812,13 +9473,10 @@ export interface components {
         ContentGifResponse: {
             /** Format: uri */
             gifUrl: string;
-            /** Format: uri */
-            videoUrl?: string;
-            /** Format: uri */
-            generatedImageUrl?: string;
             altText?: string;
             duration?: number;
             fps?: number;
+            frameCount?: number;
             aspectRatio?: string;
             width?: number;
             height?: number;
@@ -8827,27 +9485,51 @@ export interface components {
         ContentGifRequest: {
             /** @enum {string} */
             from: "prompt";
+            /** @description What the GIF shows and how it moves. */
             prompt: string;
+            /** @description Frames in the loop, 2–16 (default 9). */
+            frameCount?: number;
+            /** @description Frames per second, 1–24 (default 5 for generated GIFs). */
             fps?: number;
-            /** @enum {string} */
+            /**
+             * @description The GIF's shape (default 16:9): 768×432, 432×768 or 640×640.
+             * @enum {string}
+             */
             aspectRatio?: "16:9" | "9:16" | "1:1";
+            /** @description Repeat forever (default true); false plays once. */
             loop?: boolean;
         } | {
             /** @enum {string} */
             from: "image";
-            /** Format: uri */
+            /**
+             * Format: uri
+             * @description Public image to animate.
+             */
             imageUrl: string;
+            /** @description The motion to add; omitted, one deliberate move of the image's main subject that suits it. */
             prompt?: string;
+            /** @description Frames in the loop, 2–16 (default 9). */
+            frameCount?: number;
+            /** @description Frames per second, 1–24 (default 5 for generated GIFs). */
             fps?: number;
-            /** @enum {string} */
+            /**
+             * @description The GIF's shape (default 16:9): 768×432, 432×768 or 640×640.
+             * @enum {string}
+             */
             aspectRatio?: "16:9" | "9:16" | "1:1";
+            /** @description Repeat forever (default true); false plays once. */
             loop?: boolean;
         } | {
             /** @enum {string} */
             from: "video";
-            /** Format: uri */
+            /**
+             * Format: uri
+             * @description Public MP4 to convert.
+             */
             videoUrl: string;
+            /** @description Frames per second, 1–24 (default 5 for generated GIFs). */
             fps?: number;
+            /** @description Output width in pixels; height keeps the video ratio. */
             width?: number;
         };
         ContentTransformResponse: {
@@ -8949,6 +9631,14 @@ export interface components {
                 remaining: number | null;
                 reserved?: number;
             };
+            onDemand: {
+                active: boolean;
+                capUsd: number | null;
+                budgetUsd: number;
+                spentUsd: number;
+                creditsRemaining: number;
+                emailSendsRemaining: number;
+            };
             period: {
                 /** Format: date-time */
                 start: string | null;
@@ -8959,7 +9649,7 @@ export interface components {
         IntegrationsListResponse: {
             data: {
                 /** @enum {string} */
-                provider: "braze" | "brevo" | "clerk" | "customerio" | "figma" | "framer" | "slack" | "hubspot" | "typeform" | "klaviyo" | "iterable" | "postmark" | "onesignal" | "mailgun" | "sendgrid" | "mailjet" | "mailchimp" | "loops" | "stripe" | "stytch" | "supabase" | "workos" | "shopify" | "revenuecat" | "notion";
+                provider: "braze" | "brevo" | "clerk" | "customerio" | "figma" | "framer" | "slack" | "hubspot" | "typeform" | "klaviyo" | "iterable" | "postmark" | "onesignal" | "mailgun" | "sendgrid" | "mailjet" | "mailchimp" | "loops" | "stripe" | "stytch" | "supabase" | "workos" | "shopify" | "revenuecat" | "notion" | "posthog" | "webflow";
                 name: string;
                 /** @enum {string} */
                 category: "data_in" | "data_out";
@@ -8981,6 +9671,103 @@ export interface components {
                 cursor: string | null;
                 hasMore: boolean;
             };
+        };
+        IntegrationEventsListResponse: {
+            data: {
+                eventId: string;
+                provider: string;
+                /** @description The connected account this event comes from. */
+                sourceId: string;
+                /** @description The provider’s own event name, e.g. `created_project`. */
+                eventKey: string;
+                title: string;
+                /** @description Brew’s human name for the event, when it has one. */
+                label?: string;
+                /** @enum {string} */
+                kind: "standard" | "custom" | "action" | "derived" | "observed";
+                category?: string;
+                /**
+                 * @description The lifecycle stage Brew inferred (a brand member’s correction wins).
+                 * @enum {string}
+                 */
+                stage?: "signup" | "activation" | "engagement" | "conversion" | "retention" | "churn_risk" | "none";
+                /** @description This event’s roles in the brand’s product model: `signup`, `activation`, `conversion`, `key_event`. */
+                modelRoles: ("signup" | "activation" | "conversion" | "key_event")[];
+                /** @description Occurrences in the last 30 days, as the provider reported. */
+                volume30d?: number;
+                /** Format: date-time */
+                lastSeenAt?: string;
+                /** @description Present once the event is a trigger. Otherwise get one with `POST /v1/automations/triggers/integration-events`. */
+                triggerEventId?: string;
+            }[];
+            sources: {
+                sourceId: string;
+                provider: string;
+                /** @enum {string} */
+                mode: "static_catalog" | "tenant_catalog";
+                definitionCount: number;
+                isTruncated: boolean;
+                /** Format: date-time */
+                lastSyncedAt?: string;
+            }[];
+            pagination: {
+                limit: number;
+                cursor: string | null;
+                hasMore: boolean;
+            };
+        };
+        IntegrationEventDetailResponse: {
+            eventId: string;
+            provider: string;
+            /** @description The connected account this event comes from. */
+            sourceId: string;
+            /** @description The provider’s own event name, e.g. `created_project`. */
+            eventKey: string;
+            title: string;
+            /** @description Brew’s human name for the event, when it has one. */
+            label?: string;
+            /** @enum {string} */
+            kind: "standard" | "custom" | "action" | "derived" | "observed";
+            category?: string;
+            /**
+             * @description The lifecycle stage Brew inferred (a brand member’s correction wins).
+             * @enum {string}
+             */
+            stage?: "signup" | "activation" | "engagement" | "conversion" | "retention" | "churn_risk" | "none";
+            /** @description This event’s roles in the brand’s product model: `signup`, `activation`, `conversion`, `key_event`. */
+            modelRoles: ("signup" | "activation" | "conversion" | "key_event")[];
+            /** @description Occurrences in the last 30 days, as the provider reported. */
+            volume30d?: number;
+            /** Format: date-time */
+            lastSeenAt?: string;
+            /** @description Present once the event is a trigger. Otherwise get one with `POST /v1/automations/triggers/integration-events`. */
+            triggerEventId?: string;
+            description?: string;
+            /** @description For a derived event: the provider event it is computed from. */
+            derivedFromKey?: string;
+            properties: {
+                key: string;
+                /** @description Its template variable, `{{ <variable> | fallback }}`: `properties.<key>` or `person.<key>` for a tenant catalog’s event, the key itself for a static catalog’s. */
+                variable: string;
+                /**
+                 * @description `event`: a value the event carried. `person`: the person’s value when it fired.
+                 * @enum {string}
+                 */
+                scope: "event" | "person";
+                type: string;
+                description?: string;
+                /** @description Personal data: never put it in an email’s subject. */
+                isPersonal: boolean;
+                /** @description Brew suggests this value to personalize an email. */
+                isPersonalization: boolean;
+            }[];
+            /**
+             * @description `current`: listed with the event or read in the last day. `stored`: the provider could not be read now; these are its last description. `rate_limited`: its read budget is spent; these are what Brew stored, possibly none (read again after `retryAfterSeconds`). `unavailable`: not read, and none stored.
+             * @enum {string}
+             */
+            propertiesStatus: "current" | "stored" | "rate_limited" | "unavailable";
+            /** @description With `rate_limited`: seconds until the provider can be read again, when it said. */
+            retryAfterSeconds?: number;
         };
         ApiKeysListResponse: {
             data: {
@@ -9045,7 +9832,7 @@ export interface components {
                  * @description The chat app the conversation started in; null for the Brew web app.
                  * @enum {string|null}
                  */
-                origin: "slack" | null;
+                origin: "slack" | "teams" | "google-chat" | "telegram" | null;
                 /** Format: date-time */
                 updatedAt: string;
                 /** @description Opens the chat in the Brew app. */
@@ -9062,7 +9849,7 @@ export interface components {
                 /** @description `ntf_` + 20 hex characters: a one-way hash, stable for the row’s life. */
                 notificationId: string;
                 /** @enum {string} */
-                type: "chat_stream" | "import_job" | "brand_image_import" | "validation_job" | "email_sent" | "email_scheduled" | "preview_email" | "brand_extracted" | "domain_status" | "domain_score_run" | "api_key_created" | "email_send_failed" | "gradual_send_paused" | "gradual_send_completed" | "send_limit_reached" | "automation_pause_window_closed" | "send_review_rejected" | "comment_mention" | "comment_reply" | "integration_attention";
+                type: "webhook_attention" | "chat_stream" | "import_job" | "brand_image_import" | "validation_job" | "email_sent" | "email_scheduled" | "preview_email" | "brand_extracted" | "domain_status" | "domain_score_run" | "api_key_created" | "email_send_failed" | "gradual_send_paused" | "gradual_send_completed" | "send_limit_reached" | "trial_ending" | "trial_expired" | "payment_failed" | "automation_pause_window_closed" | "send_review_rejected" | "comment_mention" | "comment_reply" | "integration_attention";
                 /** @enum {string} */
                 status: "uploading" | "preparing" | "processing" | "finalizing" | "streaming" | "background_finalizing" | "completed" | "partial" | "failed" | "interrupted" | "stopped" | "persistence_failed";
                 title: string;
@@ -9160,6 +9947,1932 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    listWebhooks: {
+        parameters: {
+            query?: {
+                /**
+                 * @description Page size (1-100). Defaults to 100.
+                 * @example 50
+                 */
+                limit?: number;
+                cursor?: string;
+            };
+            header?: {
+                /**
+                 * @description The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+                 * @example kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+                 */
+                "X-Brand-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["Webhook"][];
+                        pagination: {
+                            limit: number;
+                            cursor: string | null;
+                            hasMore: boolean;
+                        };
+                    };
+                };
+            };
+            /**
+             * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+             *
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
+             */
+            400: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `API_KEY_REVOKED`: The API key was revoked.
+             *
+             *     `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+             *
+             *     `INVALID_API_KEY`: The API key is malformed or unknown.
+             */
+            401: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+             *
+             *     `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+             *
+             *     `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+             *
+             *     `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+             */
+            403: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+             *
+             *     `NOT_FOUND`: No v1 resource lives at this path.
+             */
+            404: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
+            429: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it. */
+            500: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `SERVICE_UNAVAILABLE`: A dependency the operation must consult (billing, the idempotency store) is temporarily unavailable, so the request was refused rather than run unmetered. */
+            503: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+        };
+    };
+    createWebhook: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+                 * @example kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+                 */
+                "X-Brand-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uri */
+                    endpoint: string;
+                    events: ("email.sent" | "email.delivered" | "email.delivery_delayed" | "email.bounced" | "email.complained" | "email.failed" | "email.opened" | "email.clicked")[];
+                    description?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Success */
+            201: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        id: string;
+                        endpoint: string;
+                        events: ("email.sent" | "email.delivered" | "email.delivery_delayed" | "email.bounced" | "email.complained" | "email.failed" | "email.opened" | "email.clicked")[];
+                        description: string;
+                        /** @enum {string} */
+                        status: "enabled" | "disabled";
+                        /** Format: date-time */
+                        created_at: string;
+                        signing_secret: string;
+                    };
+                };
+            };
+            /**
+             * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+             *
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
+             */
+            400: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `API_KEY_REVOKED`: The API key was revoked.
+             *
+             *     `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+             *
+             *     `INVALID_API_KEY`: The API key is malformed or unknown.
+             */
+            401: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+             *
+             *     `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+             *
+             *     `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+             *
+             *     `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+             */
+            403: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+             *
+             *     `NOT_FOUND`: No v1 resource lives at this path.
+             */
+            404: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+             *
+             *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
+             */
+            409: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `PAYLOAD_TOO_LARGE`: The request body exceeds the route cap. */
+            413: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
+            429: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it. */
+            500: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `SERVICE_UNAVAILABLE`: A dependency the operation must consult (billing, the idempotency store) is temporarily unavailable, so the request was refused rather than run unmetered. */
+            503: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getWebhook: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+                 * @example kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+                 */
+                "X-Brand-Id"?: string;
+            };
+            path: {
+                webhookId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Webhook"];
+                };
+            };
+            /**
+             * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+             *
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
+             */
+            400: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `API_KEY_REVOKED`: The API key was revoked.
+             *
+             *     `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+             *
+             *     `INVALID_API_KEY`: The API key is malformed or unknown.
+             */
+            401: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+             *
+             *     `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+             *
+             *     `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+             *
+             *     `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+             */
+            403: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+             *
+             *     `NOT_FOUND`: No v1 resource lives at this path.
+             */
+            404: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
+            429: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it. */
+            500: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `SERVICE_UNAVAILABLE`: A dependency the operation must consult (billing, the idempotency store) is temporarily unavailable, so the request was refused rather than run unmetered. */
+            503: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+        };
+    };
+    deleteWebhook: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+                 * @example kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+                 */
+                "X-Brand-Id"?: string;
+            };
+            path: {
+                webhookId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        webhookId: string;
+                        deleted: boolean;
+                    };
+                };
+            };
+            /**
+             * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+             *
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
+             */
+            400: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `API_KEY_REVOKED`: The API key was revoked.
+             *
+             *     `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+             *
+             *     `INVALID_API_KEY`: The API key is malformed or unknown.
+             */
+            401: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+             *
+             *     `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+             *
+             *     `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+             *
+             *     `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+             */
+            403: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+             *
+             *     `NOT_FOUND`: No v1 resource lives at this path.
+             */
+            404: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
+            429: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it. */
+            500: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `SERVICE_UNAVAILABLE`: A dependency the operation must consult (billing, the idempotency store) is temporarily unavailable, so the request was refused rather than run unmetered. */
+            503: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+        };
+    };
+    updateWebhook: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+                 * @example kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+                 */
+                "X-Brand-Id"?: string;
+            };
+            path: {
+                webhookId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uri */
+                    endpoint?: string;
+                    events?: ("email.sent" | "email.delivered" | "email.delivery_delayed" | "email.bounced" | "email.complained" | "email.failed" | "email.opened" | "email.clicked")[];
+                    description?: string;
+                    /** @enum {string} */
+                    status?: "enabled" | "disabled";
+                };
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Webhook"];
+                };
+            };
+            /**
+             * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+             *
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
+             */
+            400: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `API_KEY_REVOKED`: The API key was revoked.
+             *
+             *     `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+             *
+             *     `INVALID_API_KEY`: The API key is malformed or unknown.
+             */
+            401: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+             *
+             *     `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+             *
+             *     `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+             *
+             *     `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+             */
+            403: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+             *
+             *     `NOT_FOUND`: No v1 resource lives at this path.
+             */
+            404: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `PAYLOAD_TOO_LARGE`: The request body exceeds the route cap. */
+            413: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
+            429: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it. */
+            500: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `SERVICE_UNAVAILABLE`: A dependency the operation must consult (billing, the idempotency store) is temporarily unavailable, so the request was refused rather than run unmetered. */
+            503: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+        };
+    };
+    rotateWebhookSecret: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+                 * @example kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+                 */
+                "X-Brand-Id"?: string;
+            };
+            path: {
+                webhookId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": Record<string, never>;
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        signing_secret: string;
+                    };
+                };
+            };
+            /**
+             * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+             *
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
+             */
+            400: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `API_KEY_REVOKED`: The API key was revoked.
+             *
+             *     `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+             *
+             *     `INVALID_API_KEY`: The API key is malformed or unknown.
+             */
+            401: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+             *
+             *     `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+             *
+             *     `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+             *
+             *     `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+             */
+            403: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+             *
+             *     `NOT_FOUND`: No v1 resource lives at this path.
+             */
+            404: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+             *
+             *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
+             */
+            409: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `PAYLOAD_TOO_LARGE`: The request body exceeds the route cap. */
+            413: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
+            429: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it. */
+            500: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `SERVICE_UNAVAILABLE`: A dependency the operation must consult (billing, the idempotency store) is temporarily unavailable, so the request was refused rather than run unmetered. */
+            503: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listWebhookEvents: {
+        parameters: {
+            query?: {
+                /**
+                 * @description Page size (1-100). Defaults to 100.
+                 * @example 50
+                 */
+                limit?: number;
+                cursor?: string;
+            };
+            header?: {
+                /**
+                 * @description The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+                 * @example kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+                 */
+                "X-Brand-Id"?: string;
+            };
+            path: {
+                webhookId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            payload: {
+                                /** @enum {string} */
+                                type: "email.sent";
+                                /** Format: date-time */
+                                created_at: string;
+                                data: {
+                                    email_id: string;
+                                    /** Format: date-time */
+                                    created_at: string;
+                                    from?: string;
+                                    to: string[];
+                                    subject?: string;
+                                    tags?: {
+                                        [key: string]: string;
+                                    };
+                                    brew: {
+                                        event_id: string;
+                                        /** @enum {number} */
+                                        schema_version: 1;
+                                        recipient?: string;
+                                        send_id?: string;
+                                        design_id?: string;
+                                        automation_id?: string;
+                                        provider_message_id?: string;
+                                        /** @enum {boolean} */
+                                        test?: true;
+                                    };
+                                };
+                            } | {
+                                /** @enum {string} */
+                                type: "email.delivered";
+                                /** Format: date-time */
+                                created_at: string;
+                                data: {
+                                    email_id: string;
+                                    /** Format: date-time */
+                                    created_at: string;
+                                    from?: string;
+                                    to: string[];
+                                    subject?: string;
+                                    tags?: {
+                                        [key: string]: string;
+                                    };
+                                    brew: {
+                                        event_id: string;
+                                        /** @enum {number} */
+                                        schema_version: 1;
+                                        recipient?: string;
+                                        send_id?: string;
+                                        design_id?: string;
+                                        automation_id?: string;
+                                        provider_message_id?: string;
+                                        /** @enum {boolean} */
+                                        test?: true;
+                                    };
+                                };
+                            } | {
+                                /** @enum {string} */
+                                type: "email.delivery_delayed";
+                                /** Format: date-time */
+                                created_at: string;
+                                data: {
+                                    email_id: string;
+                                    /** Format: date-time */
+                                    created_at: string;
+                                    from?: string;
+                                    to: string[];
+                                    subject?: string;
+                                    tags?: {
+                                        [key: string]: string;
+                                    };
+                                    brew: {
+                                        event_id: string;
+                                        /** @enum {number} */
+                                        schema_version: 1;
+                                        recipient?: string;
+                                        send_id?: string;
+                                        design_id?: string;
+                                        automation_id?: string;
+                                        provider_message_id?: string;
+                                        /** @enum {boolean} */
+                                        test?: true;
+                                    };
+                                };
+                            } | {
+                                /** @enum {string} */
+                                type: "email.complained";
+                                /** Format: date-time */
+                                created_at: string;
+                                data: {
+                                    email_id: string;
+                                    /** Format: date-time */
+                                    created_at: string;
+                                    from?: string;
+                                    to: string[];
+                                    subject?: string;
+                                    tags?: {
+                                        [key: string]: string;
+                                    };
+                                    brew: {
+                                        event_id: string;
+                                        /** @enum {number} */
+                                        schema_version: 1;
+                                        recipient?: string;
+                                        send_id?: string;
+                                        design_id?: string;
+                                        automation_id?: string;
+                                        provider_message_id?: string;
+                                        /** @enum {boolean} */
+                                        test?: true;
+                                    };
+                                };
+                            } | {
+                                /** @enum {string} */
+                                type: "email.bounced";
+                                /** Format: date-time */
+                                created_at: string;
+                                data: {
+                                    email_id: string;
+                                    /** Format: date-time */
+                                    created_at: string;
+                                    from?: string;
+                                    to: string[];
+                                    subject?: string;
+                                    tags?: {
+                                        [key: string]: string;
+                                    };
+                                    brew: {
+                                        event_id: string;
+                                        /** @enum {number} */
+                                        schema_version: 1;
+                                        recipient?: string;
+                                        send_id?: string;
+                                        design_id?: string;
+                                        automation_id?: string;
+                                        provider_message_id?: string;
+                                        /** @enum {boolean} */
+                                        test?: true;
+                                    };
+                                    bounce?: {
+                                        type: string;
+                                        subType?: string;
+                                        message?: string;
+                                        diagnosticCode?: string[];
+                                    };
+                                };
+                            } | {
+                                /** @enum {string} */
+                                type: "email.failed";
+                                /** Format: date-time */
+                                created_at: string;
+                                data: {
+                                    email_id: string;
+                                    /** Format: date-time */
+                                    created_at: string;
+                                    from?: string;
+                                    to: string[];
+                                    subject?: string;
+                                    tags?: {
+                                        [key: string]: string;
+                                    };
+                                    brew: {
+                                        event_id: string;
+                                        /** @enum {number} */
+                                        schema_version: 1;
+                                        recipient?: string;
+                                        send_id?: string;
+                                        design_id?: string;
+                                        automation_id?: string;
+                                        provider_message_id?: string;
+                                        /** @enum {boolean} */
+                                        test?: true;
+                                    };
+                                    failed?: {
+                                        reason: string;
+                                    };
+                                };
+                            } | {
+                                /** @enum {string} */
+                                type: "email.opened";
+                                /** Format: date-time */
+                                created_at: string;
+                                data: {
+                                    email_id: string;
+                                    /** Format: date-time */
+                                    created_at: string;
+                                    from?: string;
+                                    to: string[];
+                                    subject?: string;
+                                    tags?: {
+                                        [key: string]: string;
+                                    };
+                                    brew: {
+                                        event_id: string;
+                                        /** @enum {number} */
+                                        schema_version: 1;
+                                        recipient?: string;
+                                        send_id?: string;
+                                        design_id?: string;
+                                        automation_id?: string;
+                                        provider_message_id?: string;
+                                        /** @enum {boolean} */
+                                        test?: true;
+                                    };
+                                    open?: {
+                                        timestamp?: string;
+                                        ipAddress?: string;
+                                        userAgent?: string;
+                                    };
+                                };
+                            } | {
+                                /** @enum {string} */
+                                type: "email.clicked";
+                                /** Format: date-time */
+                                created_at: string;
+                                data: {
+                                    email_id: string;
+                                    /** Format: date-time */
+                                    created_at: string;
+                                    from?: string;
+                                    to: string[];
+                                    subject?: string;
+                                    tags?: {
+                                        [key: string]: string;
+                                    };
+                                    brew: {
+                                        event_id: string;
+                                        /** @enum {number} */
+                                        schema_version: 1;
+                                        recipient?: string;
+                                        send_id?: string;
+                                        design_id?: string;
+                                        automation_id?: string;
+                                        provider_message_id?: string;
+                                        /** @enum {boolean} */
+                                        test?: true;
+                                    };
+                                    click?: {
+                                        link: string;
+                                        timestamp?: string;
+                                        ipAddress?: string;
+                                        userAgent?: string;
+                                    };
+                                };
+                            } | null;
+                            /** @enum {string} */
+                            status: "succeeded" | "pending" | "failed" | "sending" | "canceled";
+                            /** Format: date-time */
+                            created_at: string;
+                            /** Format: date-time */
+                            next_attempt_at: string | null;
+                        }[];
+                        pagination: {
+                            limit: number;
+                            cursor: string | null;
+                            hasMore: boolean;
+                        };
+                    };
+                };
+            };
+            /**
+             * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+             *
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
+             */
+            400: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `API_KEY_REVOKED`: The API key was revoked.
+             *
+             *     `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+             *
+             *     `INVALID_API_KEY`: The API key is malformed or unknown.
+             */
+            401: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+             *
+             *     `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+             *
+             *     `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+             *
+             *     `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+             */
+            403: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+             *
+             *     `NOT_FOUND`: No v1 resource lives at this path.
+             */
+            404: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
+            429: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it. */
+            500: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `SERVICE_UNAVAILABLE`: A dependency the operation must consult (billing, the idempotency store) is temporarily unavailable, so the request was refused rather than run unmetered. */
+            503: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listWebhookAttempts: {
+        parameters: {
+            query?: {
+                /**
+                 * @description Page size (1-100). Defaults to 100.
+                 * @example 50
+                 */
+                limit?: number;
+                cursor?: string;
+            };
+            header?: {
+                /**
+                 * @description The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+                 * @example kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+                 */
+                "X-Brand-Id"?: string;
+            };
+            path: {
+                webhookId: string;
+                eventId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            event_id: string;
+                            /** @enum {string} */
+                            status: "succeeded" | "pending" | "failed" | "sending" | "canceled";
+                            response_status: number;
+                            response: string;
+                            duration_ms: number;
+                            /** Format: date-time */
+                            created_at: string;
+                        }[];
+                        pagination: {
+                            limit: number;
+                            cursor: string | null;
+                            hasMore: boolean;
+                        };
+                    };
+                };
+            };
+            /**
+             * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+             *
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
+             */
+            400: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `API_KEY_REVOKED`: The API key was revoked.
+             *
+             *     `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+             *
+             *     `INVALID_API_KEY`: The API key is malformed or unknown.
+             */
+            401: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+             *
+             *     `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+             *
+             *     `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+             *
+             *     `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+             */
+            403: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+             *
+             *     `NOT_FOUND`: No v1 resource lives at this path.
+             */
+            404: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
+            429: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it. */
+            500: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `SERVICE_UNAVAILABLE`: A dependency the operation must consult (billing, the idempotency store) is temporarily unavailable, so the request was refused rather than run unmetered. */
+            503: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+        };
+    };
+    replayWebhookEvent: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+                 * @example kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+                 */
+                "X-Brand-Id"?: string;
+            };
+            path: {
+                webhookId: string;
+                eventId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": Record<string, never>;
+            };
+        };
+        responses: {
+            /** @description Success */
+            202: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        id: string;
+                        /** @enum {boolean} */
+                        accepted: true;
+                    };
+                };
+            };
+            /**
+             * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+             *
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
+             */
+            400: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `API_KEY_REVOKED`: The API key was revoked.
+             *
+             *     `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+             *
+             *     `INVALID_API_KEY`: The API key is malformed or unknown.
+             */
+            401: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+             *
+             *     `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+             *
+             *     `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+             *
+             *     `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+             */
+            403: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+             *
+             *     `NOT_FOUND`: No v1 resource lives at this path.
+             */
+            404: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+             *
+             *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
+             */
+            409: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `PAYLOAD_TOO_LARGE`: The request body exceeds the route cap. */
+            413: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
+            429: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it. */
+            500: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `SERVICE_UNAVAILABLE`: A dependency the operation must consult (billing, the idempotency store) is temporarily unavailable, so the request was refused rather than run unmetered. */
+            503: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+        };
+    };
+    testWebhook: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+                 * @example kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+                 */
+                "X-Brand-Id"?: string;
+            };
+            path: {
+                webhookId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    type: "email.sent" | "email.delivered" | "email.delivery_delayed" | "email.bounced" | "email.complained" | "email.failed" | "email.opened" | "email.clicked";
+                };
+            };
+        };
+        responses: {
+            /** @description Success */
+            202: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        id: string;
+                        /** @enum {boolean} */
+                        accepted: true;
+                    };
+                };
+            };
+            /**
+             * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+             *
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
+             */
+            400: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `API_KEY_REVOKED`: The API key was revoked.
+             *
+             *     `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+             *
+             *     `INVALID_API_KEY`: The API key is malformed or unknown.
+             */
+            401: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+             *
+             *     `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+             *
+             *     `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+             *
+             *     `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+             */
+            403: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+             *
+             *     `NOT_FOUND`: No v1 resource lives at this path.
+             */
+            404: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+             *
+             *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
+             */
+            409: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `PAYLOAD_TOO_LARGE`: The request body exceeds the route cap. */
+            413: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
+            429: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it. */
+            500: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `SERVICE_UNAVAILABLE`: A dependency the operation must consult (billing, the idempotency store) is temporarily unavailable, so the request was refused rather than run unmetered. */
+            503: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+        };
+    };
     listEmails: {
         parameters: {
             query?: {
@@ -9245,7 +11958,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -9412,7 +12125,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -9441,7 +12154,11 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed. */
+            /**
+             * @description `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed.
+             *
+             *     `NO_ACTIVE_PLAN`: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
+             */
             402: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -9491,7 +12208,7 @@ export interface operations {
             /**
              * @description `EMAIL_RESULT_UNAVAILABLE`: The email was saved, but its completed result could not be read for this response.
              *
-             *     `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+             *     `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body, or, on a fixed-price operation, for a request it already paid for whose stored response is gone.
              *
              *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
              */
@@ -9645,7 +12362,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -9810,7 +12527,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -9955,7 +12672,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -9984,7 +12701,11 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed. */
+            /**
+             * @description `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed.
+             *
+             *     `NO_ACTIVE_PLAN`: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
+             */
             402: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -10175,7 +12896,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -10309,6 +13030,17 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
+            /** @description `EMAIL_IMPORT_PERSISTENCE_FAILED`: The markup converted, but the design could not be stored; nothing was created. */
+            502: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
         };
     };
     importFigmaDesign: {
@@ -10370,7 +13102,7 @@ export interface operations {
              *
              *     `FIGMA_URL_INVALID`: The Figma link is not a frame link with a node-id.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -10582,7 +13314,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -10707,6 +13439,19 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
+            /** @description `WRITE_CONFLICT`: Other writes to the same records kept conflicting with this one, so nothing was saved. */
+            503: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
         };
     };
     restoreEmailVersion: {
@@ -10770,7 +13515,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -10973,7 +13718,7 @@ export interface operations {
              *
              *     `INTEGRATION_NOT_CONNECTED`: The export target is not connected to this brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -11228,7 +13973,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -11257,7 +14002,11 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed. */
+            /**
+             * @description `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed.
+             *
+             *     `NO_ACTIVE_PLAN`: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
+             */
             402: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -11305,7 +14054,7 @@ export interface operations {
                 };
             };
             /**
-             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body, or, on a fixed-price operation, for a request it already paid for whose stored response is gone.
              *
              *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
              */
@@ -11486,7 +14235,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -11515,7 +14264,11 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed. */
+            /**
+             * @description `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed.
+             *
+             *     `NO_ACTIVE_PLAN`: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
+             */
             402: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -11561,7 +14314,7 @@ export interface operations {
                 };
             };
             /**
-             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body, or, on a fixed-price operation, for a request it already paid for whose stored response is gone.
              *
              *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
              */
@@ -11709,7 +14462,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -11860,7 +14613,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -11892,7 +14645,7 @@ export interface operations {
             /**
              * @description `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed.
              *
-             *     `SEND_QUOTA_EXCEEDED`: The send or manual-audience run would exceed the plan’s monthly email volume. A send must fit at launch and draws from the allowance chunk by chunk as it delivers; `reserved` is only the batch going out right now (`details` carries `used`, `reserved`, `remaining`, `limit`, `planKey` and `requested`, and `periodEnd` when known). The window resets with the billing period.
+             *     `NO_ACTIVE_PLAN`: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
              */
             402: {
                 headers: {
@@ -11941,7 +14694,7 @@ export interface operations {
                 };
             };
             /**
-             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body, or, on a fixed-price operation, for a request it already paid for whose stored response is gone.
              *
              *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
              */
@@ -12113,7 +14866,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -12408,7 +15161,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -12576,7 +15329,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -12727,7 +15480,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -12853,7 +15606,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -12982,7 +15735,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -13142,7 +15895,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -13295,7 +16048,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -13456,7 +16209,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -13595,7 +16348,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -13757,7 +16510,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -13954,7 +16707,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -14124,7 +16877,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -14244,6 +16997,8 @@ export interface operations {
              *     `NO_ELIGIBLE_RECIPIENTS`: Every contact the send targets is unsubscribed, suppressed or undeliverable (or there are none), so an immediate send would deliver nothing; `details.eligibility` carries the counts.
              *
              *     `RECIPIENT_UNSUBSCRIBED`: An inline recipient is an existing contact who unsubscribed from marketing email; details.recipients lists the addresses and Brew never re-subscribes an opt-out.
+             *
+             *     `TEST_RECIPIENT_NOT_ALLOWED`: A test email can reach only a teammate with access to the brand, an address on a verified sending domain of the brand, or, for a signed-in person (not an API key), their own address or one on their company domain; details.recipients lists the refused addresses.
              */
             422: {
                 headers: {
@@ -14366,7 +17121,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -14510,7 +17265,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -14671,7 +17426,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -14832,7 +17587,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -15042,7 +17797,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -15218,7 +17973,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -15329,8 +18084,10 @@ export interface operations {
                 to?: string;
                 /** @description CSV of recipient rules (max 10) matching who RECEIVED the email: a full address matches exactly, `@domain` matches the domain, any other text matches as a substring; prefix `!` to exclude (e.g. `@clay.com,!ceo@clay.com`). Includes OR together; excludes always apply. Narrows the feed to email events. */
                 recipient?: string;
-                eventType?: string;
+                /** @description One event type, spelled exactly (`opened`, not `open`; `clicked`, not `click`). */
+                eventType?: "sent" | "delivered" | "delivery_delayed" | "opened" | "clicked" | "bounced" | "complained" | "failed" | "provider_suppressed" | "suppressed" | "quota_skipped" | "received" | "unsubscribed" | "automation_started" | "automation_completed" | "automation_failed" | "automation_skipped_suppressed" | "automation_step_succeeded" | "automation_step_failed" | "trigger_success" | "trigger_failure" | "trigger_received" | "trigger_deduplicated" | "trigger_signature_failed" | "trigger_rejected" | "trigger_dead_letter";
                 automationId?: string;
+                /** @description One send's events. Not windowed unless `from`/`to` are given: the read is bounded by the send itself. */
                 sendId?: string;
                 /** @description One automation run’s events across every domain, newest first. Not windowed unless `from`/`to` are given; only `eventType` combines with it. */
                 automationRunId?: string;
@@ -15393,7 +18150,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -15551,7 +18308,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -15773,7 +18530,7 @@ export interface operations {
              *
              *     `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -15938,7 +18695,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -16077,7 +18834,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -16125,12 +18882,19 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /**
-             * @description `AUTOMATION_NOT_FOUND`: No automation with that id exists in the brand.
-             *
-             *     `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
-             */
+            /** @description `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization). */
             404: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `AUTOMATION_IN_PROGRESS`: The automation is still being generated, so it cannot be deleted, tested or run yet. */
+            409: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
                     "x-request-id": string;
@@ -16216,7 +18980,7 @@ export interface operations {
              *
              *     `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -16410,7 +19174,7 @@ export interface operations {
              *
              *     `INVALID_PAYLOAD`: The test payload does not match the trigger’s payload schema.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -16474,11 +19238,28 @@ export interface operations {
                 };
             };
             /**
-             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+             * @description `AUTOMATION_IN_PROGRESS`: The automation is still being generated, so it cannot be deleted, tested or run yet.
+             *
+             *     `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
              *
              *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
              */
             409: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `AUTOMATION_NOT_READY`: The saved automation cannot run as it is: generation failed, a step is incomplete or invalid, or a send step’s sender or the bound audience cannot be used; the message names the problem.
+             *
+             *     `TEST_RECIPIENT_NOT_ALLOWED`: A test email can reach only a teammate with access to the brand, an address on a verified sending domain of the brand, or, for a signed-in person (not an API key), their own address or one on their company domain; details.recipients lists the refused addresses.
+             */
+            422: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
                     "x-request-id": string;
@@ -16621,7 +19402,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -16698,7 +19479,9 @@ export interface operations {
                 };
             };
             /**
-             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+             * @description `AUTOMATION_IN_PROGRESS`: The automation is still being generated, so it cannot be deleted, tested or run yet.
+             *
+             *     `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
              *
              *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
              *
@@ -16714,7 +19497,13 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `EMAIL_IMAGES_MISSING`: The email shows an image on cdn.brew.new that does not exist, so it was not sent; `details.missingImages[]` lists each URL and the email it is in. */
+            /**
+             * @description `AUTOMATION_NOT_READY`: The saved automation cannot run as it is: generation failed, a step is incomplete or invalid, or a send step’s sender or the bound audience cannot be used; the message names the problem.
+             *
+             *     `AUTOMATION_NOT_RUNNABLE`: The automation is triggered by an event, so it runs when its trigger fires and cannot be run against an audience.
+             *
+             *     `EMAIL_IMAGES_MISSING`: The email shows an image on cdn.brew.new that does not exist, so it was not sent; `details.missingImages[]` lists each URL and the email it is in.
+             */
             422: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -16844,7 +19633,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -16988,7 +19777,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -17127,7 +19916,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -17195,7 +19984,7 @@ export interface operations {
              *
              *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
              *
-             *     `RUN_NOT_PAUSABLE`: Only a running manual-audience run can be paused.
+             *     `RUN_NOT_PAUSABLE`: A manual-audience run that is scheduled, completed, failed, canceled or held at the plan limit cannot be paused. Pausing a run its operator already paused returns 200.
              */
             409: {
                 headers: {
@@ -17284,7 +20073,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -17365,11 +20154,22 @@ export interface operations {
              *
              *     `RUN_IN_PROGRESS`: A manual-audience run is already in progress for this automation.
              *
-             *     `RUN_NOT_PAUSED`: Only a paused manual-audience run can be resumed.
+             *     `RUN_NOT_PAUSED`: Only a paused or failed manual-audience run can be resumed; this one is scheduled, queued, running, completed or canceled.
              *
              *     `RUN_NOT_RESUMABLE`: The run cannot be resumed: a failed run needs an undelivered send step, and a run held at the plan limit resumes on its own.
              */
             409: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `AUTOMATION_NOT_READY`: The saved automation cannot run as it is: generation failed, a step is incomplete or invalid, or a send step’s sender or the bound audience cannot be used; the message names the problem. */
+            422: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
                     "x-request-id": string;
@@ -17470,7 +20270,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -17580,17 +20380,6 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RUN_STOP_FAILED`: The previous run of this cohort could not be stopped. */
-            503: {
-                headers: {
-                    /** @description Unique request identifier. Share this with support when debugging a request. */
-                    "x-request-id": string;
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiErrorEnvelope"];
-                };
-            };
         };
     };
     listAutomationRuns: {
@@ -17599,7 +20388,7 @@ export interface operations {
                 automationId?: string;
                 triggerEventId?: string;
                 triggerInstanceId?: string;
-                /** @description Only runs for this recipient, matched case-insensitively. Some older runs show a `recipientEmail` this filter does not match. */
+                /** @description Only runs for this recipient, matched case-insensitively. */
                 recipientEmail?: string;
                 status?: "queued" | "running" | "completed" | "failed" | "canceled";
                 mode?: "live" | "test";
@@ -17667,7 +20456,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -17825,7 +20614,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -17973,7 +20762,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -18313,7 +21102,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -18436,6 +21225,232 @@ export interface operations {
             };
         };
     };
+    ensureIntegrationEventTrigger: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Optional idempotency key for safe retries. Reusing the same key with the same request body returns the original response for 24 hours.
+                 * @example api-request-2026-04-08-001
+                 */
+                "Idempotency-Key"?: string;
+                /**
+                 * @description The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+                 * @example kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+                 */
+                "X-Brand-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "eventId": "k5714pq3vm8x2n6c9d0b7f1h4j6g2r8t"
+                 *     }
+                 */
+                "application/json": components["schemas"]["IntegrationEventTriggersPostRequest"];
+            };
+        };
+        responses: {
+            /** @description The trigger already existed for this event. */
+            200: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "triggerEventId": "posthog:org_2abc:brand_9xyz:ev_3f1c9b2e7a4d8c06b5e1f2a3",
+                     *       "title": "created_project",
+                     *       "provider": "posthog",
+                     *       "providerEventKey": "created_project",
+                     *       "payloadSchema": {
+                     *         "type": "object",
+                     *         "fields": [
+                     *           {
+                     *             "key": "email",
+                     *             "type": "string",
+                     *             "required": true
+                     *           }
+                     *         ]
+                     *       },
+                     *       "createdAt": "2026-10-26T12:00:00.000Z",
+                     *       "updatedAt": "2026-10-26T12:00:00.000Z",
+                     *       "propertiesStatus": "current",
+                     *       "created": false
+                     *     }
+                     */
+                    "application/json": components["schemas"]["IntegrationEventTriggerSaved"];
+                };
+            };
+            /** @description Created. */
+            201: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "triggerEventId": "posthog:org_2abc:brand_9xyz:ev_3f1c9b2e7a4d8c06b5e1f2a3",
+                     *       "title": "created_project",
+                     *       "provider": "posthog",
+                     *       "providerEventKey": "created_project",
+                     *       "payloadSchema": {
+                     *         "type": "object",
+                     *         "fields": [
+                     *           {
+                     *             "key": "email",
+                     *             "type": "string",
+                     *             "required": true
+                     *           }
+                     *         ]
+                     *       },
+                     *       "createdAt": "2026-10-26T12:00:00.000Z",
+                     *       "updatedAt": "2026-10-26T12:00:00.000Z",
+                     *       "propertiesStatus": "current",
+                     *       "created": true
+                     *     }
+                     */
+                    "application/json": components["schemas"]["IntegrationEventTriggerSaved"];
+                };
+            };
+            /**
+             * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+             *
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
+             */
+            400: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `API_KEY_REVOKED`: The API key was revoked.
+             *
+             *     `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+             *
+             *     `INVALID_API_KEY`: The API key is malformed or unknown.
+             */
+            401: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+             *
+             *     `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+             *
+             *     `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+             *
+             *     `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+             */
+            403: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+             *
+             *     `INTEGRATION_EVENT_NOT_FOUND`: No live integration event with that id exists in the brand.
+             *
+             *     `NOT_FOUND`: No v1 resource lives at this path.
+             */
+            404: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+             *
+             *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
+             *
+             *     `INTEGRATION_RECONNECT_REQUIRED`: This catalog event’s trigger comes from its integration’s connection, which no longer holds it.
+             *
+             *     `TRIGGER_LIMIT_REACHED`: The brand already holds the maximum number of trigger events.
+             */
+            409: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
+            429: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it. */
+            500: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+        };
+    };
     listTriggers: {
         parameters: {
             query?: {
@@ -18512,7 +21527,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -18693,7 +21708,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              *
              *     `PAYLOAD_SCHEMA_EMAIL_REQUIRED`: A trigger payload schema must declare a required string `email` field.
              */
@@ -18882,7 +21897,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -19021,7 +22036,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -19199,7 +22214,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -19389,7 +22404,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -19613,7 +22628,7 @@ export interface operations {
              *
              *     `INVALID_PAYLOAD`: The test payload does not match the trigger’s payload schema.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -19831,7 +22846,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -20049,7 +23064,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -20238,7 +23253,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -20412,7 +23427,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -20571,7 +23586,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -20717,7 +23732,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -20914,7 +23929,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -21144,7 +24159,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -21173,7 +24188,11 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed. */
+            /**
+             * @description `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed.
+             *
+             *     `NO_ACTIVE_PLAN`: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
+             */
             402: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -21217,7 +24236,7 @@ export interface operations {
             /**
              * @description `FIELD_TYPE_MISMATCH`: A value does not match the declared type of its custom field.
              *
-             *     `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+             *     `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body, or, on a fixed-price operation, for a request it already paid for whose stored response is gone.
              *
              *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
              */
@@ -21237,6 +24256,8 @@ export interface operations {
              *     `CORE_FIELD_IMMUTABLE`: The field is a core contact column and cannot be created, changed, or deleted as a custom field.
              *
              *     `FIELD_NAME_COLLISION`: Two keys in one request name the same contact field (`plan` and `Plan`, `team_size` and `Team Size`), so one value would be lost.
+             *
+             *     `FIELD_NAME_INVALID`: A custom-field name has no ASCII letter or digit (`名前`, `#`), so it cannot become a field key and its value would be lost. A blank name is dropped with a `BLANK_FIELD_NAME_IGNORED` warning instead.
              *
              *     `INVALID_EMAIL`: A contact email is not a deliverable address shape.
              *
@@ -21364,7 +24385,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -21503,7 +24524,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -21668,7 +24689,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -21834,7 +24855,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -22038,7 +25059,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -22067,7 +25088,11 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed. */
+            /**
+             * @description `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed.
+             *
+             *     `NO_ACTIVE_PLAN`: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
+             */
             402: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -22109,7 +25134,7 @@ export interface operations {
                 };
             };
             /**
-             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body, or, on a fixed-price operation, for a request it already paid for whose stored response is gone.
              *
              *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
              */
@@ -22285,7 +25310,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -22314,7 +25339,11 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed. */
+            /**
+             * @description `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed.
+             *
+             *     `NO_ACTIVE_PLAN`: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
+             */
             402: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -22356,7 +25385,7 @@ export interface operations {
                 };
             };
             /**
-             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body, or, on a fixed-price operation, for a request it already paid for whose stored response is gone.
              *
              *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
              */
@@ -22370,7 +25399,11 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `FIELD_NAME_COLLISION`: Two keys in one request name the same contact field (`plan` and `Plan`, `team_size` and `Team Size`), so one value would be lost. */
+            /**
+             * @description `FIELD_NAME_AMBIGUOUS`: A CSV column named with no ASCII letter or digit (`名前`, `#`) matches several existing fields labeled with that name, so the import cannot tell which one holds it; `details.columns` lists the candidate keys.
+             *
+             *     `FIELD_NAME_COLLISION`: Two keys in one request name the same contact field (`plan` and `Plan`, `team_size` and `Team Size`), so one value would be lost.
+             */
             422: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -22542,7 +25575,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -22571,7 +25604,11 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed. */
+            /**
+             * @description `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed.
+             *
+             *     `NO_ACTIVE_PLAN`: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
+             */
             402: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -22613,7 +25650,7 @@ export interface operations {
                 };
             };
             /**
-             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body, or, on a fixed-price operation, for a request it already paid for whose stored response is gone.
              *
              *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
              */
@@ -22732,7 +25769,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -22942,7 +25979,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -23098,7 +26135,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -23259,7 +26296,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -23398,7 +26435,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -23583,7 +26620,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -23752,7 +26789,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -23931,7 +26968,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -24070,7 +27107,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -24238,7 +27275,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -24458,7 +27495,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -24628,7 +27665,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -24821,7 +27858,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -24985,7 +28022,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -25180,7 +28217,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -25319,7 +28356,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -25520,7 +28557,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -25717,7 +28754,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -25920,7 +28957,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -26095,7 +29132,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -26265,7 +29302,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -26439,7 +29476,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -26621,7 +29658,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -26880,7 +29917,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -27085,7 +30122,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender. */
+            /** @description `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20). */
             400: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -27208,7 +30245,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender. */
+            /** @description `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20). */
             400: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -27369,7 +30406,7 @@ export interface operations {
                     "application/json": components["schemas"]["FlowsListResponse"];
                 };
             };
-            /** @description `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender. */
+            /** @description `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20). */
             400: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -27534,7 +30571,7 @@ export interface operations {
                     "application/json": components["schemas"]["Flow"];
                 };
             };
-            /** @description `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender. */
+            /** @description `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20). */
             400: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -27668,7 +30705,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -27808,7 +30845,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -27978,7 +31015,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -28113,7 +31150,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -28267,7 +31304,7 @@ export interface operations {
                     "application/json": components["schemas"]["BrandsListResponse"];
                 };
             };
-            /** @description `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender. */
+            /** @description `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20). */
             400: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -28396,7 +31433,7 @@ export interface operations {
                     "application/json": components["schemas"]["BrandsCreateResponse"];
                 };
             };
-            /** @description `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender. */
+            /** @description `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20). */
             400: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -28428,6 +31465,8 @@ export interface operations {
              * @description `BRAND_LIMIT_REACHED`: The plan allows no more brands.
              *
              *     `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed.
+             *
+             *     `NO_ACTIVE_PLAN`: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
              */
             402: {
                 headers: {
@@ -28561,7 +31600,7 @@ export interface operations {
                     "application/json": components["schemas"]["BrandGetByIdResponse"];
                 };
             };
-            /** @description `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender. */
+            /** @description `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20). */
             400: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -28688,7 +31727,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -28717,7 +31756,11 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed. */
+            /**
+             * @description `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed.
+             *
+             *     `NO_ACTIVE_PLAN`: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
+             */
             402: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -28759,7 +31802,7 @@ export interface operations {
                 };
             };
             /**
-             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body, or, on a fixed-price operation, for a request it already paid for whose stored response is gone.
              *
              *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
              */
@@ -28874,7 +31917,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -28903,7 +31946,11 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed. */
+            /**
+             * @description `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed.
+             *
+             *     `NO_ACTIVE_PLAN`: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
+             */
             402: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -28945,7 +31992,7 @@ export interface operations {
                 };
             };
             /**
-             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body, or, on a fixed-price operation, for a request it already paid for whose stored response is gone.
              *
              *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
              */
@@ -29060,7 +32107,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -29089,7 +32136,11 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed. */
+            /**
+             * @description `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed.
+             *
+             *     `NO_ACTIVE_PLAN`: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
+             */
             402: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -29131,7 +32182,7 @@ export interface operations {
                 };
             };
             /**
-             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body, or, on a fixed-price operation, for a request it already paid for whose stored response is gone.
              *
              *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
              */
@@ -29246,7 +32297,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -29275,7 +32326,11 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed. */
+            /**
+             * @description `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed.
+             *
+             *     `NO_ACTIVE_PLAN`: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
+             */
             402: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -29317,7 +32372,7 @@ export interface operations {
                 };
             };
             /**
-             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body, or, on a fixed-price operation, for a request it already paid for whose stored response is gone.
              *
              *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
              */
@@ -29465,7 +32520,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -29649,7 +32704,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -29749,7 +32804,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Usage snapshot — plan, credits, and email-send quota. */
+            /** @description Usage snapshot — plan, credits, email-send quota, and on-demand headroom. */
             200: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -29780,6 +32835,14 @@ export interface operations {
                      *         "reserved": 27880,
                      *         "remaining": 171209
                      *       },
+                     *       "onDemand": {
+                     *         "active": true,
+                     *         "capUsd": 100,
+                     *         "budgetUsd": 100,
+                     *         "spentUsd": 12.5,
+                     *         "creditsRemaining": 4375,
+                     *         "emailSendsRemaining": 21875
+                     *       },
                      *       "period": {
                      *         "start": "2026-05-28T18:10:35.000Z",
                      *         "end": "2026-06-28T18:10:35.000Z"
@@ -29789,7 +32852,7 @@ export interface operations {
                     "application/json": components["schemas"]["UsageGetResponse"];
                 };
             };
-            /** @description `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender. */
+            /** @description `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20). */
             400: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -29927,9 +32990,9 @@ export interface operations {
                      *           "connected": true
                      *         },
                      *         {
-                     *           "provider": "typeform",
-                     *           "name": "Typeform",
-                     *           "category": "data_in",
+                     *           "provider": "customerio",
+                     *           "name": "Customer.io",
+                     *           "category": "data_out",
                      *           "connected": false,
                      *           "comingSoon": true
                      *         }
@@ -29947,7 +33010,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -29997,6 +33060,360 @@ export interface operations {
             };
             /**
              * @description `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+             *
+             *     `NOT_FOUND`: No v1 resource lives at this path.
+             */
+            404: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
+            429: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it. */
+            500: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listIntegrationEvents: {
+        parameters: {
+            query?: {
+                /**
+                 * @description Page size (1-100). Defaults to 100.
+                 * @example 50
+                 */
+                limit?: number;
+                cursor?: string;
+                /** @description Only this provider’s events, e.g. `posthog`. */
+                provider?: string;
+                /** @description Search event names, titles and categories. Without it, the busiest events come first. */
+                query?: string;
+                /** @description `custom`, `standard`, `action` (a saved provider action), `derived` (Brew computes it from another event) or `observed` (seen in deliveries only). */
+                kind?: "standard" | "custom" | "action" | "derived" | "observed";
+            };
+            header?: {
+                /**
+                 * @description The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+                 * @example kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+                 */
+                "X-Brand-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Live integration events, source by source. */
+            200: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": [
+                     *         {
+                     *           "eventId": "k5714pq3vm8x2n6c9d0b7f1h4j6g2r8t",
+                     *           "provider": "posthog",
+                     *           "sourceId": "cgr_4f2a9c",
+                     *           "eventKey": "created_project",
+                     *           "title": "created_project",
+                     *           "label": "Created a project",
+                     *           "kind": "custom",
+                     *           "stage": "activation",
+                     *           "modelRoles": [
+                     *             "activation",
+                     *             "key_event"
+                     *           ],
+                     *           "volume30d": 8100,
+                     *           "lastSeenAt": "2026-10-26T09:12:00.000Z"
+                     *         }
+                     *       ],
+                     *       "sources": [
+                     *         {
+                     *           "sourceId": "cgr_4f2a9c",
+                     *           "provider": "posthog",
+                     *           "mode": "tenant_catalog",
+                     *           "definitionCount": 214,
+                     *           "isTruncated": false,
+                     *           "lastSyncedAt": "2026-10-26T06:00:00.000Z"
+                     *         }
+                     *       ],
+                     *       "pagination": {
+                     *         "limit": 100,
+                     *         "cursor": null,
+                     *         "hasMore": false
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["IntegrationEventsListResponse"];
+                };
+            };
+            /**
+             * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+             *
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
+             */
+            400: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `API_KEY_REVOKED`: The API key was revoked.
+             *
+             *     `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+             *
+             *     `INVALID_API_KEY`: The API key is malformed or unknown.
+             */
+            401: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+             *
+             *     `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+             *
+             *     `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+             *
+             *     `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+             */
+            403: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+             *
+             *     `NOT_FOUND`: No v1 resource lives at this path.
+             */
+            404: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
+            429: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it. */
+            500: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+        };
+    };
+    describeIntegrationEvent: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+                 * @example kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+                 */
+                "X-Brand-Id"?: string;
+            };
+            path: {
+                /** @description The live event id from `GET /v1/integrations/events`. Never compose one. */
+                eventId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The live integration event. */
+            200: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "eventId": "k5714pq3vm8x2n6c9d0b7f1h4j6g2r8t",
+                     *       "provider": "posthog",
+                     *       "sourceId": "cgr_4f2a9c",
+                     *       "eventKey": "created_project",
+                     *       "title": "created_project",
+                     *       "label": "Created a project",
+                     *       "kind": "custom",
+                     *       "stage": "activation",
+                     *       "modelRoles": [
+                     *         "activation",
+                     *         "key_event"
+                     *       ],
+                     *       "volume30d": 8100,
+                     *       "lastSeenAt": "2026-10-26T09:12:00.000Z",
+                     *       "description": "A person created a project.",
+                     *       "propertiesStatus": "current",
+                     *       "properties": [
+                     *         {
+                     *           "key": "project_name",
+                     *           "variable": "properties.project_name",
+                     *           "scope": "event",
+                     *           "type": "string",
+                     *           "description": "The name of the new project",
+                     *           "isPersonal": false,
+                     *           "isPersonalization": true
+                     *         },
+                     *         {
+                     *           "key": "first_name",
+                     *           "variable": "person.first_name",
+                     *           "scope": "person",
+                     *           "type": "string",
+                     *           "isPersonal": true,
+                     *           "isPersonalization": false
+                     *         }
+                     *       ]
+                     *     }
+                     */
+                    "application/json": components["schemas"]["IntegrationEventDetailResponse"];
+                };
+            };
+            /**
+             * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+             *
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
+             */
+            400: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `API_KEY_REVOKED`: The API key was revoked.
+             *
+             *     `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+             *
+             *     `INVALID_API_KEY`: The API key is malformed or unknown.
+             */
+            401: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+             *
+             *     `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+             *
+             *     `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+             *
+             *     `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+             */
+            403: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+             *
+             *     `INTEGRATION_EVENT_NOT_FOUND`: No live integration event with that id exists in the brand.
              *
              *     `NOT_FOUND`: No v1 resource lives at this path.
              */
@@ -30097,7 +33514,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiKeysListResponse"];
                 };
             };
-            /** @description `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender. */
+            /** @description `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20). */
             400: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -30232,7 +33649,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiKeysCreateResponse"];
                 };
             };
-            /** @description `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender. */
+            /** @description `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20). */
             400: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -30356,7 +33773,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiKeysDeleteResponse"];
                 };
             };
-            /** @description `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender. */
+            /** @description `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20). */
             400: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -30557,7 +33974,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -30741,7 +34158,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -30955,7 +34372,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -31155,7 +34572,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -31254,7 +34671,7 @@ export interface operations {
         parameters: {
             query?: {
                 /** @description Only notifications of this type. A type this credential cannot see (its scopes, or a person-only or admin-only type) is an empty page. */
-                type?: "chat_stream" | "import_job" | "brand_image_import" | "validation_job" | "email_sent" | "email_scheduled" | "preview_email" | "brand_extracted" | "domain_status" | "domain_score_run" | "api_key_created" | "email_send_failed" | "gradual_send_paused" | "gradual_send_completed" | "send_limit_reached" | "automation_pause_window_closed" | "send_review_rejected" | "comment_mention" | "comment_reply" | "integration_attention";
+                type?: "webhook_attention" | "chat_stream" | "import_job" | "brand_image_import" | "validation_job" | "email_sent" | "email_scheduled" | "preview_email" | "brand_extracted" | "domain_status" | "domain_score_run" | "api_key_created" | "email_send_failed" | "gradual_send_paused" | "gradual_send_completed" | "send_limit_reached" | "trial_ending" | "trial_expired" | "payment_failed" | "automation_pause_window_closed" | "send_review_rejected" | "comment_mention" | "comment_reply" | "integration_attention";
                 /**
                  * @description Page size (1-100). Defaults to 100.
                  * @example 50
@@ -31318,7 +34735,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -31524,7 +34941,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {

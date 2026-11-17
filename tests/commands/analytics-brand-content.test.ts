@@ -525,7 +525,37 @@ describe('content gif', () => {
     })
   })
 
-  it('has no --duration flag: the API clip is a fixed 5 seconds', async () => {
+  it('sends --frame-count and --fps for a generated GIF', async () => {
+    let body: unknown
+    server.use(
+      http.post(`${API}/v1/content/gif`, async ({ request }) => {
+        body = await request.json()
+        return HttpResponse.json({ gifUrl: 'https://cdn.brew.new/out.gif' })
+      })
+    )
+    const result = await cli([
+      'content',
+      'gif',
+      '--image-url',
+      'https://cdn.example.com/mug.png',
+      '--prompt',
+      'steam rises',
+      '--frame-count',
+      '12',
+      '--fps',
+      '8',
+    ])
+    expect(result.code).toBe(0)
+    expect(body).toEqual({
+      from: 'image',
+      imageUrl: 'https://cdn.example.com/mug.png',
+      prompt: 'steam rises',
+      frameCount: 12,
+      fps: 8,
+    })
+  })
+
+  it('has no --duration flag: frame count and fps set the length', async () => {
     let called = false
     server.use(
       http.post(`${API}/v1/content/gif`, () => {
