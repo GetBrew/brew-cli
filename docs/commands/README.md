@@ -3061,6 +3061,17 @@ brew-cli api GET /v1/llms.txt
 
 SDK methods intentionally without a dedicated command:
 
+- `webhooks.list` — covered by the existing raw `webhooks list` command until the SDK registry release
+- `webhooks.create` — covered by the existing raw `webhooks create` command until the SDK registry release
+- `webhooks.get` — covered by the existing raw `webhooks get` command until the SDK registry release
+- `webhooks.update` — covered by the existing raw `webhooks update` command until the SDK registry release
+- `webhooks.delete` — covered by the existing raw `webhooks delete` command until the SDK registry release
+- `webhooks.rotateSecret` — covered by the existing raw `webhooks rotate-secret` command until the SDK registry release
+- `webhooks.events` — covered by the existing raw `webhooks events` command until the SDK registry release
+- `webhooks.attempts` — covered by the existing raw `webhooks attempts` command until the SDK registry release
+- `webhooks.replay` — covered by the existing raw `webhooks replay` command until the SDK registry release
+- `webhooks.test` — covered by the existing raw `webhooks test` command until the SDK registry release
+- `webhooks.verify` — server-side signature verification helper for incoming deliveries; not an API command
 - `contacts.searchAll` — auto-pager covered by `contacts search --all`
 - `analytics.eventsAll` — auto-pager covered by `analytics events --all`
 - `sends.listAll` — auto-pager covered by `sends list --all`
