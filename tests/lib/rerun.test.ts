@@ -72,30 +72,33 @@ async function invocationOf(argv: readonly string[]): Promise<RerunInvocation> {
 }
 
 describe('replayable command envelopes', () => {
-  it('asks for JSX stdin again when an audit is interrupted', async () => {
-    const controller = new AbortController()
-    server.use(
-      http.post(`${API}/emails/audit`, () => {
-        controller.abort(new CliInterruptError('SIGINT'))
-        return new Promise<Response>(() => undefined)
+  it.each(['--jsx-file', '--jsx'])(
+    'asks for JSX stdin again when an audit using %s is interrupted',
+    async (flag) => {
+      const controller = new AbortController()
+      server.use(
+        http.post(`${API}/emails/audit`, () => {
+          controller.abort(new CliInterruptError('SIGINT'))
+          return new Promise<Response>(() => undefined)
+        })
+      )
+      const result = await runCli(['emails', 'audit', flag, '-'], {
+        env: env(),
+        stdin: 'export default () => <div>Hello</div>',
+        signal: controller.signal,
       })
-    )
-    const result = await runCli(['emails', 'audit', '--jsx-file', '-'], {
-      env: env(),
-      stdin: 'export default () => <div>Hello</div>',
-      signal: controller.signal,
-    })
-    expect(result.code).toBe(130)
-    const envelope = JSON.parse(
-      result.stderr.trim().split('\n').at(-1) ?? ''
-    ) as {
-      error: { retryCommand: string; suggestion: string }
+      expect(result.code).toBe(130)
+      const envelope = JSON.parse(
+        result.stderr.trim().split('\n').at(-1) ?? ''
+      ) as {
+        error: { retryCommand: string; suggestion: string }
+      }
+      expect(envelope.error.suggestion).toContain(
+        'pipe the same input to it again'
+      )
+      expect(argvOf(envelope.error.retryCommand)).toContain(`${flag}=-`)
     }
-    expect(envelope.error.suggestion).toContain(
-      'pipe the same input to it again'
-    )
-    expect(argvOf(envelope.error.retryCommand)).toContain('--jsx-file=-')
-  })
+  )
 
   it('does not request stdin for an operand that resembles an input flag', async () => {
     const controller = new AbortController()

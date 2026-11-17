@@ -14062,7 +14062,7 @@ components:
             fields:
               type: array
               items:
-                $ref: "#/components/schemas/PayloadContractFieldNode"
+                $ref: "#/components/schemas/PayloadContractStoredFieldNode"
           required:
             - subjectKind
             - subjectId
@@ -14124,6 +14124,167 @@ components:
             - format
             - content
           additionalProperties: false
+    PayloadContractStoredFieldNode:
+      type: object
+      properties:
+        key:
+          type: string
+          minLength: 1
+        type:
+          type: string
+          enum:
+            - string
+            - int
+            - float
+            - boolean
+            - date
+            - enum
+            - object
+            - array
+            - unknown
+        required:
+          type: boolean
+        description:
+          type: string
+          maxLength: 500
+        exampleValue:
+          anyOf:
+            - type: string
+            - type: number
+            - type: boolean
+        fallbackValue:
+          anyOf:
+            - type: string
+            - type: number
+            - type: boolean
+        pii:
+          type: string
+          enum:
+            - none
+            - low
+            - high
+        secret:
+          type: boolean
+          description: "True for a value used only to render this email: never stored on contacts, in logs or analytics; cannot be used in filters, splits or recipient fields. Scalars only, never `email`. False explicitly permits ordinary PII outside rendering; pii still controls log masking. When omitted, legacy high-PII scalar protection applies except for email and top-level firstName/lastName."
+        syncToContact:
+          type: boolean
+          description: "false keeps this value off the contact record: it reaches the email and nothing else. Omitted means true. The top-level email always identifies the contact."
+        enumValues:
+          type: array
+          items:
+            type: string
+            minLength: 1
+          maxItems: 50
+        itemType:
+          anyOf:
+            - type: string
+              enum:
+                - string
+                - int
+                - float
+                - boolean
+                - date
+                - enum
+            - type: string
+              enum:
+                - unknown
+        usedIn:
+          type: array
+          items:
+            type: string
+            enum:
+              - body
+              - subject
+              - previewText
+          maxItems: 3
+        children:
+          type: array
+          items:
+            $ref: "#/components/schemas/PayloadContractStoredFieldNode"
+      required:
+        - key
+        - type
+        - required
+      additionalProperties: false
+    PayloadContractPutResponse:
+      type: object
+      properties:
+        subjectKind:
+          type: string
+          enum:
+            - trigger
+        subjectId:
+          type: string
+          minLength: 1
+        source:
+          type: string
+          enum:
+            - stored
+            - derived_from_schema
+            - derived_from_template
+        typeName:
+          type: string
+          minLength: 1
+        contractHash:
+          type: string
+          minLength: 64
+          maxLength: 64
+        version:
+          type: integer
+          minimum: 1
+        enforcement:
+          type: string
+          enum:
+            - 'off'
+            - prune
+            - strict
+        driftStatus:
+          type: string
+          enum:
+            - fresh
+            - stale
+        format:
+          type: string
+          enum:
+            - json
+        fields:
+          type: array
+          items:
+            $ref: "#/components/schemas/PayloadContractStoredFieldNode"
+        warnings:
+          type: array
+          items:
+            $ref: "#/components/schemas/ApiWarning"
+      required:
+        - subjectKind
+        - subjectId
+        - source
+        - typeName
+        - format
+        - fields
+        - warnings
+      additionalProperties: false
+    PayloadContractPutRequest:
+      type: object
+      properties:
+        fields:
+          type: array
+          items:
+            $ref: "#/components/schemas/PayloadContractFieldNode"
+          minItems: 1
+          maxItems: 100
+        name:
+          type: string
+          minLength: 1
+          maxLength: 160
+        enforcement:
+          type: string
+          enum:
+            - 'off'
+            - prune
+            - strict
+          description: "How live fires use the contract. `off`: advisory only. `prune`: a fire that breaks a declared field is refused and undeclared keys are dropped. `strict`: undeclared keys are refused too. Omit to keep the current setting."
+      additionalProperties: false
     PayloadContractFieldNode:
       type: object
       properties:
@@ -14207,85 +14368,6 @@ components:
         - key
         - type
         - required
-      additionalProperties: false
-    PayloadContractPutResponse:
-      type: object
-      properties:
-        subjectKind:
-          type: string
-          enum:
-            - trigger
-        subjectId:
-          type: string
-          minLength: 1
-        source:
-          type: string
-          enum:
-            - stored
-            - derived_from_schema
-            - derived_from_template
-        typeName:
-          type: string
-          minLength: 1
-        contractHash:
-          type: string
-          minLength: 64
-          maxLength: 64
-        version:
-          type: integer
-          minimum: 1
-        enforcement:
-          type: string
-          enum:
-            - 'off'
-            - prune
-            - strict
-        driftStatus:
-          type: string
-          enum:
-            - fresh
-            - stale
-        format:
-          type: string
-          enum:
-            - json
-        fields:
-          type: array
-          items:
-            $ref: "#/components/schemas/PayloadContractFieldNode"
-        warnings:
-          type: array
-          items:
-            $ref: "#/components/schemas/ApiWarning"
-      required:
-        - subjectKind
-        - subjectId
-        - source
-        - typeName
-        - format
-        - fields
-        - warnings
-      additionalProperties: false
-    PayloadContractPutRequest:
-      type: object
-      properties:
-        fields:
-          type: array
-          items:
-            $ref: "#/components/schemas/PayloadContractFieldNode"
-          minItems: 1
-          maxItems: 100
-        name:
-          type: string
-          minLength: 1
-          maxLength: 160
-        enforcement:
-          type: string
-          enum:
-            - 'off'
-            - prune
-            - strict
-          description: "How live fires use the contract. `off`: advisory only. `prune`: a fire that breaks a declared field is refused and undeclared keys are dropped. `strict`: undeclared keys are refused too. Omit to keep the current setting."
       additionalProperties: false
     PayloadContractValidateResponse:
       type: object

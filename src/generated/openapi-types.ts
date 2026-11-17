@@ -7835,7 +7835,7 @@ export interface components {
             driftStatus?: "fresh" | "stale";
             /** @enum {string} */
             format: "json";
-            fields: components["schemas"]["PayloadContractFieldNode"][];
+            fields: components["schemas"]["PayloadContractStoredFieldNode"][];
         } | {
             /** @enum {string} */
             subjectKind: "trigger";
@@ -7852,6 +7852,52 @@ export interface components {
             /** @enum {string} */
             format: "ts" | "zod" | "jsonschema" | "skill";
             content: string;
+        };
+        PayloadContractStoredFieldNode: {
+            key: string;
+            /** @enum {string} */
+            type: "string" | "int" | "float" | "boolean" | "date" | "enum" | "object" | "array" | "unknown";
+            required: boolean;
+            description?: string;
+            exampleValue?: string | number | boolean;
+            fallbackValue?: string | number | boolean;
+            /** @enum {string} */
+            pii?: "none" | "low" | "high";
+            /** @description True for a value used only to render this email: never stored on contacts, in logs or analytics; cannot be used in filters, splits or recipient fields. Scalars only, never `email`. False explicitly permits ordinary PII outside rendering; pii still controls log masking. When omitted, legacy high-PII scalar protection applies except for email and top-level firstName/lastName. */
+            secret?: boolean;
+            /** @description false keeps this value off the contact record: it reaches the email and nothing else. Omitted means true. The top-level email always identifies the contact. */
+            syncToContact?: boolean;
+            enumValues?: string[];
+            itemType?: ("string" | "int" | "float" | "boolean" | "date" | "enum") | "unknown";
+            usedIn?: ("body" | "subject" | "previewText")[];
+            children?: components["schemas"]["PayloadContractStoredFieldNode"][];
+        };
+        PayloadContractPutResponse: {
+            /** @enum {string} */
+            subjectKind: "trigger";
+            subjectId: string;
+            /** @enum {string} */
+            source: "stored" | "derived_from_schema" | "derived_from_template";
+            typeName: string;
+            contractHash?: string;
+            version?: number;
+            /** @enum {string} */
+            enforcement?: "off" | "prune" | "strict";
+            /** @enum {string} */
+            driftStatus?: "fresh" | "stale";
+            /** @enum {string} */
+            format: "json";
+            fields: components["schemas"]["PayloadContractStoredFieldNode"][];
+            warnings: components["schemas"]["ApiWarning"][];
+        };
+        PayloadContractPutRequest: {
+            fields?: components["schemas"]["PayloadContractFieldNode"][];
+            name?: string;
+            /**
+             * @description How live fires use the contract. `off`: advisory only. `prune`: a fire that breaks a declared field is refused and undeclared keys are dropped. `strict`: undeclared keys are refused too. Omit to keep the current setting.
+             * @enum {string}
+             */
+            enforcement?: "off" | "prune" | "strict";
         };
         PayloadContractFieldNode: {
             key: string;
@@ -7871,33 +7917,6 @@ export interface components {
             itemType?: ("string" | "int" | "float" | "boolean" | "date" | "enum") | "unknown";
             usedIn?: ("body" | "subject" | "previewText")[];
             children?: components["schemas"]["PayloadContractFieldNode"][];
-        };
-        PayloadContractPutResponse: {
-            /** @enum {string} */
-            subjectKind: "trigger";
-            subjectId: string;
-            /** @enum {string} */
-            source: "stored" | "derived_from_schema" | "derived_from_template";
-            typeName: string;
-            contractHash?: string;
-            version?: number;
-            /** @enum {string} */
-            enforcement?: "off" | "prune" | "strict";
-            /** @enum {string} */
-            driftStatus?: "fresh" | "stale";
-            /** @enum {string} */
-            format: "json";
-            fields: components["schemas"]["PayloadContractFieldNode"][];
-            warnings: components["schemas"]["ApiWarning"][];
-        };
-        PayloadContractPutRequest: {
-            fields?: components["schemas"]["PayloadContractFieldNode"][];
-            name?: string;
-            /**
-             * @description How live fires use the contract. `off`: advisory only. `prune`: a fire that breaks a declared field is refused and undeclared keys are dropped. `strict`: undeclared keys are refused too. Omit to keep the current setting.
-             * @enum {string}
-             */
-            enforcement?: "off" | "prune" | "strict";
         };
         PayloadContractValidateResponse: {
             valid: boolean;
