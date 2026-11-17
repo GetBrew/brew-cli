@@ -1,19 +1,19 @@
-import type { operations } from '../../generated/openapi-types'
+import type { WebhookTestInput } from '@brew.new/sdk'
 import { defineCommand } from '../../lib/define-command'
-import { IDEMPOTENCY_FLAG, INPUT_FLAG } from '../../lib/input'
-import { prepareWebhookInput, webhookRunner } from './request'
+import {
+  asSdkInput,
+  IDEMPOTENCY_FLAG,
+  INPUT_FLAG,
+  requestOptions,
+} from '../../lib/input'
+import { prepareWebhookInput } from './request'
 
 const route = { method: 'POST', path: '/v1/webhooks/{webhookId}/test' } as const
-type Output =
-  operations['testWebhook']['responses'][202]['content']['application/json']
-type Input =
-  operations['testWebhook']['requestBody']['content']['application/json']
 
 export const webhooksTestCommand = defineCommand({
   path: ['webhooks', 'test'],
   summary: 'Send a synthetic webhook event to an endpoint',
-  sdkMethod: null,
-  isRawTransport: true,
+  sdkMethod: 'webhooks.test',
   route,
   commandClass: 'destructive',
   args: [
@@ -30,5 +30,13 @@ export const webhooksTestCommand = defineCommand({
   confirmSummary: () =>
     'Send a synthetic webhook event to the endpoint. This does not send an email.',
   prepareInput: prepareWebhookInput,
-  run: webhookRunner<Output, Input>(route),
+  run: async ({ ctx, args, flags, input }) => ({
+    data: await ctx.client().webhooks.test(
+      asSdkInput<WebhookTestInput>({
+        ...input,
+        webhookId: args.webhookId ?? '',
+      }),
+      requestOptions(flags)
+    ),
+  }),
 })

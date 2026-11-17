@@ -1,23 +1,16 @@
-import type { operations } from '../../generated/openapi-types'
 import { defineCommand } from '../../lib/define-command'
-import { IDEMPOTENCY_FLAG, INPUT_FLAG } from '../../lib/input'
-import { prepareWebhookInput, webhookRunner } from './request'
+import { IDEMPOTENCY_FLAG, INPUT_FLAG, requestOptions } from '../../lib/input'
+import { prepareWebhookInput } from './request'
 
 const route = {
   method: 'POST',
   path: '/v1/webhooks/{webhookId}/rotate-secret',
 } as const
-type Output =
-  operations['rotateWebhookSecret']['responses'][200]['content']['application/json']
-type Input = NonNullable<
-  operations['rotateWebhookSecret']['requestBody']
->['content']['application/json']
 
 export const webhooksRotateSecretCommand = defineCommand({
   path: ['webhooks', 'rotate-secret'],
   summary: 'Rotate the signing secret for a webhook endpoint',
-  sdkMethod: null,
-  isRawTransport: true,
+  sdkMethod: 'webhooks.rotateSecret',
   route,
   commandClass: 'destructive',
   args: [
@@ -28,5 +21,9 @@ export const webhooksRotateSecretCommand = defineCommand({
   confirmSummary: () =>
     'Rotate the endpoint signing secret. Update your receiver with the new secret.',
   prepareInput: prepareWebhookInput,
-  run: webhookRunner<Output, Input>(route),
+  run: async ({ ctx, args, flags }) => ({
+    data: await ctx
+      .client()
+      .webhooks.rotateSecret(args.webhookId ?? '', requestOptions(flags)),
+  }),
 })

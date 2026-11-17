@@ -36,14 +36,38 @@ CLI depends on (`^13.3.0`).
 `integrations.events.get` and `automations.triggers.ensureIntegrationEvent`,
 which the published SDK 13.4.0 does not expose. Until an SDK release has
 them, the CLI pins reviewed SDK source commit
-`9fbe435d9b135791861739d322fa648c521bdb98` (GetBrew/typescript-sdk#88). It
-preserves SDK 13.4.0's features and version while adding those methods.
+`696d5c61d7300ebc43b74b859a3bda10a9ce69df` (GetBrew/typescript-sdk#107). This
+development dependency also adds lifecycle goal contracts and forwards the
+outcome version/cursor query fields. Its package version remains 13.4.0;
+it is not the published 13.4.0 registry artifact.
 
 A fresh frozen install must build that source dependency without relying on
 a locally packed SDK. Do not release the CLI with this temporary source pin.
 Deploy the API contract (GetBrew/brew-v2#2411) and release the SDK first, then
 replace the pin with the actual published SDK version and regenerate
 `bun.lock` before releasing the CLI.
+
+`bun run release:check` now fails while that source pin is present. The same
+gate runs before a release workflow installs dependencies and in
+`prepublishOnly`, so a local successful build cannot be mistaken for release
+readiness. It accepts an exact, caret or tilde registry SemVer dependency.
+The release workflow additionally requires `NPM_TOKEN` and a matching version
+tag before creating any release artifacts. Missing npm credentials are an
+error, never a successful skipped publication. GitHub Release creation follows
+successful npm publication.
+
+Local release-gate regression tests require no credentials or API access:
+
+```bash
+bun run release:check:test
+bun run release:check  # expected to fail until the registry SDK replaces the pin
+```
+
+These checks do not deploy the API or prove that a version is published. After
+the SDK release, install its actual registry artifact with a frozen lockfile,
+run the integration-event and webhook command tests plus the built CLI smoke,
+and verify npm, binaries and the Homebrew channel separately. Never substitute
+a local packed SDK for that registry check.
 
 ```bash
 # on a clean main with CI green
@@ -94,6 +118,15 @@ brew install getbrew/tap/brew-cli
   (the release workflow writes `Formula/brew-cli.rb`).
 
 ## Version policy
+
+Before releasing lifecycle contract support, mirror the current app OpenAPI
+into this checkout and run `bun run generate:types`; this also regenerates
+the top-level `--input` allowlists. Goals and outcome version/cursor inputs
+must be accepted by those allowlists. The SDK dependency must come from an
+actual published artifact that forwards the outcome query fields. A local
+candidate tarball can validate that behavior, but does not replace the
+registry release requirement or justify changing the lockfile to an
+unpublished version.
 
 | Change | Bump |
 | --- | --- |

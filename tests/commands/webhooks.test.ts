@@ -90,6 +90,27 @@ it.each([
     expect(bodies).toEqual([body])
   }
 )
+it.each([
+  { command: 'rotate-secret', ids: ['ep_1'] },
+  { command: 'replay', ids: ['ep_1', 'msg_1'] },
+])(
+  'rejects array input before $command can send an SDK action',
+  async ({ command, ids }) => {
+    let requests = 0
+    server.use(
+      http.post(/https:\/\/brew\.new\/api\/v1\/webhooks\//, () => {
+        requests += 1
+        return HttpResponse.json({ id: 'msg_1' })
+      })
+    )
+    const result = await runCli(
+      ['webhooks', command, ...ids, '--input', '[1]', '--yes', '--json'],
+      { env: env() }
+    )
+    expect(result.code).toBe(2)
+    expect(requests).toBe(0)
+  }
+)
 it('merges scalar endpoint flags over JSON and preserves an explicitly empty description', async () => {
   let body: unknown
   server.use(
@@ -314,6 +335,47 @@ it('creates an endpoint from scalar flags alone, with --events as a list', async
     endpoint: 'https://example.com/hook',
     events: ['email.delivered', 'email.bounced'],
   })
+})
+it('retries endpoint creation through the SDK with the same explicit key and body', async () => {
+  const requests: Array<{ key: string | null; body: unknown }> = []
+  server.use(
+    http.post('https://brew.new/api/v1/webhooks', async ({ request }) => {
+      requests.push({
+        key: request.headers.get('Idempotency-Key'),
+        body: await request.json(),
+      })
+      if (requests.length === 1) {
+        return HttpResponse.json(
+          { error: { code: 'SERVICE_UNAVAILABLE', message: 'Retry later.' } },
+          { status: 503, headers: { 'Retry-After': '0' } }
+        )
+      }
+      return HttpResponse.json({ id: 'ep_1' }, { status: 201 })
+    })
+  )
+  const body = {
+    endpoint: 'https://example.com/hook',
+    events: ['email.delivered'],
+  }
+  const result = await runCli(
+    [
+      'webhooks',
+      'create',
+      '--input',
+      JSON.stringify(body),
+      '--idempotency-key',
+      'webhook-create-stable',
+      '--max-retries',
+      '1',
+      '--json',
+    ],
+    { env: env() }
+  )
+  expect(result.code).toBe(0)
+  expect(requests).toEqual([
+    { key: 'webhook-create-stable', body },
+    { key: 'webhook-create-stable', body },
+  ])
 })
 it('requires confirmation for replay and posts only a webhook request after confirmation', async () => {
   const options = { env: env() }

@@ -193,6 +193,7 @@ List webhook endpoints for the selected brand
 
 - Route: `GET /v1/webhooks`
 - Class: read
+- SDK: `brew.webhooks.list(...)`
 - `--limit <n>` — Page size, 1-100 (default 100)
 - `--cursor <cursor>` — Opaque pagination cursor from a previous page
 
@@ -206,6 +207,7 @@ Create a webhook endpoint for the selected brand
 
 - Route: `POST /v1/webhooks`
 - Class: write
+- SDK: `brew.webhooks.create(...)`
 - `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
 - `--idempotency-key <key>` — Idempotency-Key for safe retries (auto-generated otherwise)
 - `--endpoint <url>` — Public HTTPS endpoint URL
@@ -223,6 +225,7 @@ Get a webhook endpoint without revealing its signing secret
 
 - Route: `GET /v1/webhooks/{webhookId}`
 - Class: read
+- SDK: `brew.webhooks.get(...)`
 - Argument `webhookId` — Webhook endpoint ID
 
 ```bash
@@ -235,6 +238,7 @@ Update a webhook endpoint or its event subscriptions
 
 - Route: `PATCH /v1/webhooks/{webhookId}`
 - Class: write
+- SDK: `brew.webhooks.update(...)`
 - Argument `webhookId` — Webhook endpoint ID
 - `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
 - `--endpoint <url>` — Public HTTPS endpoint URL
@@ -252,6 +256,7 @@ Delete a webhook endpoint and stop future deliveries
 
 - Route: `DELETE /v1/webhooks/{webhookId}`
 - Class: destructive
+- SDK: `brew.webhooks.delete(...)`
 - Argument `webhookId` — Webhook endpoint ID
 
 ```bash
@@ -264,6 +269,7 @@ Rotate the signing secret for a webhook endpoint
 
 - Route: `POST /v1/webhooks/{webhookId}/rotate-secret`
 - Class: destructive
+- SDK: `brew.webhooks.rotateSecret(...)`
 - Argument `webhookId` — Webhook endpoint ID
 - `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
 - `--idempotency-key <key>` — Idempotency-Key for safe retries (auto-generated otherwise)
@@ -278,6 +284,7 @@ List delivery history and payloads for a webhook endpoint
 
 - Route: `GET /v1/webhooks/{webhookId}/events`
 - Class: read
+- SDK: `brew.webhooks.events(...)`
 - Argument `webhookId` — Webhook endpoint ID
 - `--limit <n>` — Page size, 1-100 (default 100)
 - `--cursor <cursor>` — Opaque pagination cursor from a previous page
@@ -292,6 +299,7 @@ List HTTP delivery attempts for a webhook event
 
 - Route: `GET /v1/webhooks/{webhookId}/events/{eventId}/attempts`
 - Class: read
+- SDK: `brew.webhooks.attempts(...)`
 - Argument `webhookId` — Webhook endpoint ID
 - Argument `eventId` — Webhook delivery event ID
 - `--limit <n>` — Page size, 1-100 (default 100)
@@ -307,6 +315,7 @@ Replay a webhook event without resending the email
 
 - Route: `POST /v1/webhooks/{webhookId}/events/{eventId}/replay`
 - Class: destructive
+- SDK: `brew.webhooks.replay(...)`
 - Argument `webhookId` — Webhook endpoint ID
 - Argument `eventId` — Webhook delivery event ID
 - `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
@@ -322,6 +331,7 @@ Send a synthetic webhook event to an endpoint
 
 - Route: `POST /v1/webhooks/{webhookId}/test`
 - Class: destructive
+- SDK: `brew.webhooks.test(...)`
 - Argument `webhookId` — Webhook endpoint ID
 - `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
 - `--idempotency-key <key>` — Idempotency-Key for safe retries (auto-generated otherwise)
@@ -2937,6 +2947,7 @@ SDK methods intentionally without a dedicated command:
 - `brand.update` — SDK alias of brand.patch, exposed as `brand update`
 - `brands.waitForExtraction` — read-only SDK polling helper over brands.get; lifecycle reads are exposed by `brands get`
 - `withBrand` — client scoping helper activated by the global `--brand`; not an API command
+- `webhooks.verify` — local signature verification helper for inbound webhook receivers; not an API command
 
 Public API operations not yet available (tracked by the spec parity test):
 

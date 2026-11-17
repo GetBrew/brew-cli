@@ -49,12 +49,14 @@
     "docs:commands": "bun run scripts/generate-command-docs.ts",
     "docs:commands:check": "bun run scripts/generate-command-docs.ts --check",
     "generate:types": "node scripts/generate-types.mjs",
-    "prepublishOnly": "bun run clean && bun run tsc && bun run lint && bun run test && bun run build",
+    "release:check": "node scripts/check-release.mjs",
+    "release:check:test": "node --test tests/release/*.test.mjs",
+    "prepublishOnly": "bun run release:check && bun run release:check:test && bun run clean && bun run tsc && bun run lint && bun run test && bun run build",
     "smoke:signals": "bun run scripts/signal-smoke.ts",
     "smoke:regressions": "bun run scripts/regression-smoke.ts"
   },
   "dependencies": {
-    "@brew.new/sdk": "git+https://github.com/GetBrew/typescript-sdk.git#9fbe435d9b135791861739d322fa648c521bdb98",
+    "@brew.new/sdk": "git+https://github.com/GetBrew/typescript-sdk.git#696d5c61d7300ebc43b74b859a3bda10a9ce69df",
     "commander": "^14.0.0"
   },
   "devDependencies": {

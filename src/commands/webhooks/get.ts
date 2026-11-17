@@ -1,16 +1,11 @@
-import type { operations } from '../../generated/openapi-types'
 import { defineCommand } from '../../lib/define-command'
-import { webhookRunner } from './request'
 
 const route = { method: 'GET', path: '/v1/webhooks/{webhookId}' } as const
-type Output =
-  operations['getWebhook']['responses'][200]['content']['application/json']
 
 export const webhooksGetCommand = defineCommand({
   path: ['webhooks', 'get'],
   summary: 'Get a webhook endpoint without revealing its signing secret',
-  sdkMethod: null,
-  isRawTransport: true,
+  sdkMethod: 'webhooks.get',
   route,
   commandClass: 'read',
   args: [
@@ -18,5 +13,7 @@ export const webhooksGetCommand = defineCommand({
   ],
   flags: [],
   examples: ['brew-cli webhooks get ep_example'],
-  run: webhookRunner<Output>(route),
+  run: async ({ ctx, args }) => ({
+    data: await ctx.client().webhooks.get(args.webhookId ?? ''),
+  }),
 })

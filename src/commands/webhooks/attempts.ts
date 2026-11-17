@@ -1,20 +1,17 @@
-import type { operations } from '../../generated/openapi-types'
+import type { WebhookAttemptsInput } from '@brew.new/sdk'
 import { defineCommand } from '../../lib/define-command'
+import { asSdkInput, flagInt, flagString } from '../../lib/input'
 import { CURSOR_FLAG, LIMIT_FLAG } from '../../lib/paginate'
-import { webhookRunner } from './request'
 
 const route = {
   method: 'GET',
   path: '/v1/webhooks/{webhookId}/events/{eventId}/attempts',
 } as const
-type Output =
-  operations['listWebhookAttempts']['responses'][200]['content']['application/json']
 
 export const webhooksAttemptsCommand = defineCommand({
   path: ['webhooks', 'attempts'],
   summary: 'List HTTP delivery attempts for a webhook event',
-  sdkMethod: null,
-  isRawTransport: true,
+  sdkMethod: 'webhooks.attempts',
   route,
   commandClass: 'read',
   args: [
@@ -23,5 +20,14 @@ export const webhooksAttemptsCommand = defineCommand({
   ],
   flags: [LIMIT_FLAG, CURSOR_FLAG],
   examples: ['brew-cli webhooks attempts ep_example msg_example'],
-  run: webhookRunner<Output>(route),
+  run: async ({ ctx, args, flags }) => ({
+    data: await ctx.client().webhooks.attempts(
+      asSdkInput<WebhookAttemptsInput>({
+        webhookId: args.webhookId ?? '',
+        eventId: args.eventId ?? '',
+        limit: flagInt(flags.limit, '--limit'),
+        cursor: flagString(flags.cursor),
+      })
+    ),
+  }),
 })

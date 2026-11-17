@@ -1,23 +1,19 @@
-import type { operations } from '../../generated/openapi-types'
+import type { CreateWebhookInput } from '@brew.new/sdk'
 import { defineCommand } from '../../lib/define-command'
-import { IDEMPOTENCY_FLAG, INPUT_FLAG } from '../../lib/input'
 import {
-  prepareWebhookInput,
-  WEBHOOK_ENDPOINT_FLAGS,
-  webhookRunner,
-} from './request'
+  asSdkInput,
+  IDEMPOTENCY_FLAG,
+  INPUT_FLAG,
+  requestOptions,
+} from '../../lib/input'
+import { prepareWebhookInput, WEBHOOK_ENDPOINT_FLAGS } from './request'
 
 const route = { method: 'POST', path: '/v1/webhooks' } as const
-type Output =
-  operations['createWebhook']['responses'][201]['content']['application/json']
-type Input =
-  operations['createWebhook']['requestBody']['content']['application/json']
 
 export const webhooksCreateCommand = defineCommand({
   path: ['webhooks', 'create'],
   summary: 'Create a webhook endpoint for the selected brand',
-  sdkMethod: null,
-  isRawTransport: true,
+  sdkMethod: 'webhooks.create',
   route,
   commandClass: 'write',
   args: [],
@@ -27,5 +23,12 @@ export const webhooksCreateCommand = defineCommand({
     'brew-cli webhooks create --input \'{"endpoint":"https://example.com/hook","events":["email.delivered"]}\'',
   ],
   prepareInput: prepareWebhookInput,
-  run: webhookRunner<Output, Input>(route),
+  run: async ({ ctx, flags, input }) => ({
+    data: await ctx
+      .client()
+      .webhooks.create(
+        asSdkInput<CreateWebhookInput>(input),
+        requestOptions(flags)
+      ),
+  }),
 })

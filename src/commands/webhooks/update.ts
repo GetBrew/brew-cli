@@ -1,23 +1,14 @@
-import type { operations } from '../../generated/openapi-types'
+import type { UpdateWebhookInput } from '@brew.new/sdk'
 import { defineCommand } from '../../lib/define-command'
-import { INPUT_FLAG } from '../../lib/input'
-import {
-  prepareWebhookInput,
-  WEBHOOK_ENDPOINT_FLAGS,
-  webhookRunner,
-} from './request'
+import { asSdkInput, INPUT_FLAG, requestOptions } from '../../lib/input'
+import { prepareWebhookInput, WEBHOOK_ENDPOINT_FLAGS } from './request'
 
 const route = { method: 'PATCH', path: '/v1/webhooks/{webhookId}' } as const
-type Output =
-  operations['updateWebhook']['responses'][200]['content']['application/json']
-type Input =
-  operations['updateWebhook']['requestBody']['content']['application/json']
 
 export const webhooksUpdateCommand = defineCommand({
   path: ['webhooks', 'update'],
   summary: 'Update a webhook endpoint or its event subscriptions',
-  sdkMethod: null,
-  isRawTransport: true,
+  sdkMethod: 'webhooks.update',
   route,
   commandClass: 'write',
   args: [
@@ -32,5 +23,13 @@ export const webhooksUpdateCommand = defineCommand({
     'brew-cli webhooks update ep_example --input \'{"status":"disabled"}\'',
   ],
   prepareInput: prepareWebhookInput,
-  run: webhookRunner<Output, Input>(route),
+  run: async ({ ctx, args, flags, input }) => ({
+    data: await ctx.client().webhooks.update(
+      asSdkInput<UpdateWebhookInput>({
+        ...input,
+        webhookId: args.webhookId ?? '',
+      }),
+      requestOptions(flags)
+    ),
+  }),
 })
