@@ -88,6 +88,30 @@ describe('analyzeArgument', () => {
 })
 
 describe('decideRewrites', () => {
+  describe.each(['tokenizer', 'typescript'] as const)(
+    'transformed literal sends (%s)',
+    (engine) => {
+      it.each([
+        "batch.send([{ to: 'x', template: { id: 'welcome' } }].concat(otherMessages))",
+        "batch.send([{ to: 'x', template: { id: 'welcome' } } && otherMessage])",
+        "emails.send({ to: 'x', template: { id: 'welcome' } }.other)",
+      ])('leaves the client on Resend for %s', (call) => {
+        const scan = project(
+          {
+            'src/resend.ts': CLIENT,
+            'src/notify.ts': `import { resend } from './resend'
+export const go = () => resend.${call}
+`,
+          },
+          engine
+        )
+        expect(decideRewrites(scan, new Set(['welcome']), true)).toEqual([
+          expect.objectContaining({ file: 'src/resend.ts', rewritable: false }),
+        ])
+      })
+    }
+  )
+
   it('a client whose key is a local RESEND_API_KEY binding stays on Resend', () => {
     const scan = project({
       'src/mail.ts': `import { Resend } from 'resend'
