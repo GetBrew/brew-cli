@@ -65,6 +65,46 @@ the result's `nextStep` (`codex mcp login brew`). Results: `created |
 updated | unchanged | manual | printed`, plus one-click `deeplink`s for
 Cursor and VS Code.
 
+## App emails: send by key
+
+An app email is a keyed trigger wired to a design and a published
+automation. Code sends it with `brew.send(key, payload)` (SDK) or:
+
+```bash
+brew-cli app-emails kit --stack better-auth --yes   # auth + lifecycle starter kit; exit 1 = a key failed, re-run
+brew-cli app-emails upsert order.paid --source-file emails/order-paid.tsx --yes   # one email from your own source
+brew-cli app-emails list                             # sender (domain | sandbox | none) and readiness per key
+brew-cli send auth.password-reset --to you@example.com --data '{"confirmationUrl":"https://…"}' --yes
+brew-cli types --out lib/brew-contracts.ts           # payload types + the BrewTriggerKeyRegistry augmentation
+```
+
+Before a sending domain verifies, app emails use the team-only sandbox:
+they reach members of the Brew organization only, under a daily cap
+(`sender.mode: "sandbox"`). `send` is destructive (real email): it exits 4
+without `--yes`. `upsert` and `kit` publish, so they confirm too;
+`upsert --no-publish` saves without the gate. `upsert` and `kit` need a key
+with the `automations` and `emails` scopes (403 otherwise).
+Refusals worth knowing (exit 1, the envelope on stderr):
+`409 APP_EMAIL_EDITED_IN_BREW` means a teammate edited the design in Brew:
+keep it, or pass `--overwrite`. `409 APP_EMAIL_TRIGGER_IN_USE`: the key's
+trigger already starts a published automation no setup made, so every send
+would go out twice; unpublish or delete `details.automationIds` first.
+`422 APP_EMAIL_DOMAIN_PURPOSE_MISMATCH`: a kit key never sends from a
+`--domain` of the other purpose (transactional: auth, trial ending, payment
+failed; marketing: welcome, win-back); pass one of its purpose or leave
+`--domain` out. `409 APP_EMAIL_SETUP_IN_PROGRESS`:
+another setup of the key was writing; run it again later.
+`409 CONTRACT_LOCKED_BY_PUBLISHED_AUTOMATIONS`: a `payloadSchema` that drops
+or retypes a field the live automation reads. A `DRAFT_SAVED_NOT_LIVE`
+warning means the published version keeps sending until the draft is
+published. An `APP_EMAIL_NOT_PUBLISHED` warning names why the email is off;
+one unpublished in Brew stays off on a re-run (and `kit`) until you publish
+it in Brew or run the same `upsert` command that set it up, plus `--publish`.
+A bare `upsert <key> --publish` repeats only a kit key's starter setup: it
+replaces a kit key's design built from `--source-file` with the starter, and
+any other key is refused (400).
+`automations triggers create --key <key>` gives any trigger a key.
+
 ## The contract you can rely on
 
 - Exit codes: 0 ok · 1 API error · 2 usage · 3 auth · 4 confirmation

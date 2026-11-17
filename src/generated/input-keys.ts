@@ -84,6 +84,13 @@ export const INPUT_KEYS: Readonly<Record<string, readonly string[]>> = {
     "cursor",
     "limit"
   ],
+  "GET /v1/app-emails": [
+    "cursor",
+    "limit"
+  ],
+  "GET /v1/app-emails/{triggerKey}": [
+    "triggerKey"
+  ],
   "GET /v1/audiences": [
     "cursor",
     "limit",
@@ -299,6 +306,9 @@ export const INPUT_KEYS: Readonly<Record<string, readonly string[]>> = {
     "cursor",
     "limit"
   ],
+  "GET /v1/integrations/{provider}/connection": [
+    "provider"
+  ],
   "GET /v1/integrations/events": [
     "cursor",
     "kind",
@@ -392,6 +402,7 @@ export const INPUT_KEYS: Readonly<Record<string, readonly string[]>> = {
   ],
   "PATCH /v1/automations/triggers/{triggerEventId}": [
     "description",
+    "key",
     "payloadSchema",
     "title",
     "triggerEventId"
@@ -441,6 +452,13 @@ export const INPUT_KEYS: Readonly<Record<string, readonly string[]>> = {
     "permissions",
     "replacesKeyId"
   ],
+  "POST /v1/app-emails/kit": [
+    "domainId",
+    "keys",
+    "overwrite",
+    "sets",
+    "stack"
+  ],
   "POST /v1/audiences": [
     "filters",
     "name"
@@ -487,6 +505,7 @@ export const INPUT_KEYS: Readonly<Record<string, readonly string[]>> = {
   ],
   "POST /v1/automations/triggers": [
     "description",
+    "key",
     "payloadSchema",
     "title"
   ],
@@ -503,6 +522,10 @@ export const INPUT_KEYS: Readonly<Record<string, readonly string[]>> = {
     "domainId",
     "event",
     "scope"
+  ],
+  "POST /v1/automations/triggers/by-key/{triggerKey}/fire": [
+    "payload",
+    "triggerKey"
   ],
   "POST /v1/automations/triggers/integration-events": [
     "eventId"
@@ -702,8 +725,11 @@ export const INPUT_KEYS: Readonly<Record<string, readonly string[]>> = {
     "format",
     "groupId",
     "groupName",
+    "placeholders",
+    "props",
     "subjectLine",
-    "title"
+    "title",
+    "variables"
   ],
   "POST /v1/fields": [
     "fieldName",
@@ -756,10 +782,28 @@ export const INPUT_KEYS: Readonly<Record<string, readonly string[]>> = {
     "type",
     "webhookId"
   ],
+  "PUT /v1/app-emails/{triggerKey}": [
+    "domainId",
+    "from",
+    "overwrite",
+    "payloadSchema",
+    "previewText",
+    "publish",
+    "source",
+    "starter",
+    "subject",
+    "title",
+    "triggerKey"
+  ],
   "PUT /v1/automations/triggers/{triggerEventId}/contract": [
     "enforcement",
     "fields",
     "name",
     "triggerEventId"
+  ],
+  "PUT /v1/integrations/{provider}/connection": [
+    "provider",
+    "settings",
+    "signingSecret"
   ]
 }

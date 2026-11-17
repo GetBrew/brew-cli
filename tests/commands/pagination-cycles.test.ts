@@ -22,6 +22,7 @@ describe('resumed pagination', () => {
   it.each([
     ['analytics', 'events'],
     ['api-keys', 'list'],
+    ['app-emails', 'list'],
     ['audiences', 'list'],
     ['automations', 'audience-runs', 'list'],
     ['automations', 'list'],

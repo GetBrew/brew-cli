@@ -73,6 +73,16 @@ export const LONG_RUNNING_ROUTES: ReadonlyArray<{
     path: '/v1/content/add-image',
     timeoutMs: sdk.ADD_IMAGE_DEFAULT_TIMEOUT_MS,
   },
+  {
+    method: 'PUT',
+    path: '/v1/app-emails/{triggerKey}',
+    timeoutMs: sdk.UPSERT_APP_EMAIL_DEFAULT_TIMEOUT_MS,
+  },
+  {
+    method: 'POST',
+    path: '/v1/app-emails/kit',
+    timeoutMs: sdk.SET_UP_APP_EMAIL_KIT_DEFAULT_TIMEOUT_MS,
+  },
 ]
 
 /** The long-running default for a concrete request path, if it has one. */

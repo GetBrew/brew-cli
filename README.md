@@ -44,6 +44,30 @@ data on stdout and progress on stderr, and documents itself:
 brew-cli emails send --help
 ```
 
+## Send app email by key
+
+An app email is a trigger with a stable key (`auth.password-reset`,
+`order.paid`), wired to a design and a published automation. Your code
+sends it with `brew.send(key, payload)` from `@brew.new/sdk`; the CLI does
+the same from a terminal or an agent:
+
+```bash
+brew-cli app-emails kit --stack better-auth --yes      # auth + lifecycle starter kit, published
+brew-cli app-emails upsert order.paid --source-file emails/order-paid.tsx --yes
+brew-cli app-emails list                                # sender and readiness per key
+brew-cli send auth.password-reset --to you@example.com --data '{"confirmationUrl":"https://…"}' --yes
+brew-cli types --out lib/brew-contracts.ts              # payload types + the brew.send key registry
+```
+
+Until a sending domain verifies, app emails go out from the team-only
+sandbox: members of your Brew organization receive them, under a daily
+cap. `send`, `upsert` and `kit` are destructive (they send or publish) and
+exit 4 without `--yes` off a terminal. `upsert` and `kit` need a key with
+both the `automations` and `emails` scopes. A mistyped key, format, set or
+stack exits 2 before any request. `types` adds a
+`declare module '@brew.new/sdk'` block for keyed triggers; pass
+`--no-registry` in a project that does not install the SDK.
+
 ## Connect your AI editor to Brew (MCP)
 
 ```bash

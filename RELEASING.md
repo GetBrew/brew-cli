@@ -29,6 +29,29 @@ lockfile checksums must never be invented. The canvas tests must preserve
 `contacts.import` and the import response from SDK 13.3.0, the minimum this
 CLI depends on (`^13.3.0`).
 
+### App email SDK gate
+
+The unreleased CLI stack needs the keyed-send, app-email and auth-adapter
+SDK APIs in GetBrew/typescript-sdk#55 and #64. Development branches pin an
+immutable commit of the public SDK repository. Its supported source-install
+prepare step builds the actual distribution and declarations, so CI checks
+the artifact these branches install rather than substituting a local pack.
+The exact source revision is recorded in package.json and bun.lock.
+
+This is a prerelease source dependency, not published-registry support.
+Before tagging a CLI release, publish the SDK APIs first, replace the source
+pin with the appropriate published version (at least 13.6.0 for app email,
+13.7.0 for hosted auth hooks), and regenerate bun.lock with bun add. Run a
+frozen install, the full checks and docs:commands:check against that actual
+registry artifact. Never invent a lockfile checksum or release a source pin.
+
+The API side must be live first: GetBrew/brew-v2#2169 deployed (the by-key
+fire, `/v1/app-emails`, the team sandbox), and the live spec
+(`https://brew.new/openapi/public-api-v1.yaml`, what the spec-drift
+sentinel reads) matching `openapi/public-api-v1.yaml`,
+which is the #2169 head `6e4accea4c` (main's spec, brew-v2 `373e900a9a`,
+plus the DX delta).
+
 ### Integration Events SDK Gate
 
 `integrations events list`, `integrations events get` and
@@ -36,7 +59,7 @@ CLI depends on (`^13.3.0`).
 `integrations.events.get` and `automations.triggers.ensureIntegrationEvent`,
 which the published SDK 13.4.0 does not expose. Until an SDK release has
 them, the CLI pins reviewed SDK source commit
-`9fbe435d9b135791861739d322fa648c521bdb98` (GetBrew/typescript-sdk#88). It
+the exact revision in package.json (GetBrew/typescript-sdk#64, including #88). It
 preserves SDK 13.4.0's features and version while adding those methods.
 
 A fresh frozen install must build that source dependency without relying on
