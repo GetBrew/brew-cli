@@ -55,6 +55,7 @@ import {
   say,
 } from './run'
 import type { MigrationSource } from './source'
+import { auditSuppressions } from './suppression-safety'
 
 /**
  * `migrate <source>`: plan (default) → review `brew.migration.json` →
@@ -304,6 +305,11 @@ function agentInstructions(
         'Something failed (see phases[].error and items[].error). Fix the cause and run the same command again: done items are skipped and paged phases resume from their cursor.'
       )
       break
+    case 'action_required':
+      parts.push(
+        'The migration is not complete. Resolve the blocking nextSteps before any production cutover.'
+      )
+      break
     default:
       parts.push('The Resend account is copied into Brew.')
   }
@@ -314,7 +320,7 @@ function agentInstructions(
     )
   }
   parts.push(
-    'Keep Resend configured (domain, key, webhooks) until a Brew send is verified; never delete Resend data from this flow.'
+    'Keep Resend configured (domain, key, webhooks) until technical-suppression protection and Brew sends are verified; never delete Resend data from this flow.'
   )
   return parts.join(' ')
 }
@@ -424,13 +430,23 @@ export async function runMigration(
   let filesScanned = 0
   let stopAccount = false
   try {
+    let phaseRun = run
+    if (apply && !(await auditSuppressions(run))) {
+      // Keep plans and previously copied artifacts; admit no new effects.
+      phaseRun = { ...run, apply: false }
+    }
     for (const id of PHASES) {
       if (!input.phases.includes(id)) {
         continue
       }
       ctx.signal.throwIfAborted()
       if (id === 'code') {
-        const result = await codePhase(run)
+        // The source may change during a long artifact copy. Recheck before
+        // the phase that can switch application imports onto Brew.
+        if (phaseRun.apply && !(await auditSuppressions(run))) {
+          phaseRun = { ...run, apply: false }
+        }
+        const result = await codePhase(phaseRun)
         engine = result.engine
         filesScanned = result.filesScanned
         continue
@@ -439,7 +455,7 @@ export async function runMigration(
         continue
       }
       try {
-        await PHASE_RUNNERS[id](run)
+        await PHASE_RUNNERS[id](phaseRun)
       } catch (error) {
         if (error instanceof ResendAccessError) {
           stopAccount = true
@@ -473,6 +489,7 @@ export async function runMigration(
       }
       run.persist()
     }
+    if (phaseRun.apply) await auditSuppressions(run)
   } finally {
     run.persist()
   }
@@ -496,7 +513,7 @@ export async function runMigration(
       .concat(manifest.phases.code?.items ?? [])
       .filter((item) => item.status === 'done' && item.key !== undefined)
     const first = keys[0]
-    if (first?.key !== undefined) {
+    if (first?.key !== undefined && run.suppressionAudit?.verified === true) {
       run.nextSteps.push({
         id: 'verify-send',
         actor: 'agent',
@@ -511,8 +528,10 @@ export async function runMigration(
       actor: 'human',
       kind: 'review',
       title:
-        'Cut over once Brew sends are verified: switch production to BREW_API_KEY, then retire RESEND_API_KEY and the resend package. Keep the Resend domain and webhooks until then',
-      blocking: false,
+        run.suppressionAudit?.verified === true
+          ? 'Cut over only after freshly verifying source technical suppression protection and Brew sends: switch production to BREW_API_KEY, then retire RESEND_API_KEY and the resend package. Keep the Resend domain and webhooks until then'
+          : 'Do not cut over: keep the Resend sending, DNS and webhook path until provider-wide technical suppressions are verified in Brew',
+      blocking: run.suppressionAudit?.verified !== true,
     })
   } else if (input.mode === 'plan') {
     run.nextSteps.unshift({
@@ -535,6 +554,21 @@ export async function runMigration(
       title: `After the person reviews ${input.manifestPath}, apply the plan (nothing in ${source.displayName} is changed or deleted)${input.sourceKey?.from === 'stdin' ? '; pipe the Resend key in again' : ''}`,
       blocking: true,
     })
+  }
+
+  if (apply && run.suppressionAudit?.verified !== true) {
+    // A blocked migration must not instruct an agent to perform the cutover
+    // manually through the code/domain phases' otherwise useful next steps.
+    const retained = new Set([
+      'technical-suppressions',
+      'cut-over',
+      'brew-login',
+      'resend-full-access-key',
+    ])
+    for (let index = run.nextSteps.length - 1; index >= 0; index--) {
+      if (!retained.has(run.nextSteps[index]!.id))
+        run.nextSteps.splice(index, 1)
+    }
   }
 
   const phases = PHASES.filter((id) => input.phases.includes(id)).flatMap(
