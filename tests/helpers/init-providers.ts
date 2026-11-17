@@ -101,6 +101,9 @@ export function useClerkApi(delivered: Record<string, boolean>): {
   const calls: VendorCall[] = []
   const state = { ...delivered }
   server.use(
+    http.get(`${CLERK}/instance`, () =>
+      HttpResponse.json({ id: 'ins_test_verified' })
+    ),
     http.get(`${CLERK}/templates/email/:slug`, ({ request, params }) => {
       const slug = String(params.slug)
       calls.push({
@@ -187,4 +190,5 @@ export const ACTIVE_CLERK = {
   connectionId: 'conn_clerk',
   webhookUrl: webhookUrlFor('clerk'),
   status: 'active',
+  verifiedInstanceId: 'ins_test_verified',
 }

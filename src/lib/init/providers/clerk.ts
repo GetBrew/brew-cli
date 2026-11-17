@@ -98,6 +98,24 @@ export function clerkKeyId(secretKey: string): string {
   return createHash('sha256').update(secretKey).digest('hex').slice(0, 16)
 }
 
+/** The instance selected by this Backend API key, independent of Brew's connection. */
+export async function readClerkInstanceId(
+  ctx: Pick<CliContext, 'signal' | 'budget'>,
+  secretKey: string
+): Promise<string | null> {
+  const response = await vendorFetch(ctx, {
+    vendor: 'Clerk',
+    method: 'GET',
+    url: `${CLERK_API_URL}/instance`,
+    headers: { authorization: `Bearer ${secretKey}` },
+  })
+  const record =
+    typeof response.json === 'object' && response.json !== null
+      ? (response.json as Record<string, unknown>)
+      : {}
+  return typeof record.id === 'string' && record.id !== '' ? record.id : null
+}
+
 /** `delivered_by_clerk` for one email template; `null` when it does not exist. */
 export async function readClerkDelivery(
   ctx: Pick<CliContext, 'signal' | 'budget'>,

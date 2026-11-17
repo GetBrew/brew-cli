@@ -140,6 +140,7 @@ describe('init: Supabase Send Email hook', () => {
             body: {
               signingSecret: '[generated v1,whsec_ secret, never shown]',
               settings: { projectUrl: `https://${REF}.supabase.co` },
+              createOnly: true,
             },
           },
           {

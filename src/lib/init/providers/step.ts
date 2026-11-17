@@ -16,13 +16,14 @@ import {
   clerkKeyId,
   clerkToggleUrl,
   readClerkDelivery,
+  readClerkInstanceId,
   readClerkSecret,
   setClerkDelivery,
 } from './clerk'
+import { getOrCreateHostedHookSecret } from './hosted-hook-secret'
 import {
   backupHookSecret,
   detectSupabaseRef,
-  generateHookSecret,
   localValue,
   patchSendEmailHook,
   REDACTED_SECRET,
@@ -80,6 +81,7 @@ export type InitProvider = {
     readonly connectionId: string
     readonly webhookUrl: string
     readonly status: string
+    readonly verifiedInstanceId?: string
   } | null
   /** Supabase only. */
   readonly projectRef?: string | null
@@ -175,6 +177,7 @@ function connectionOf(
     readonly connectionId: string
     readonly webhookUrl: string
     readonly status: string
+    readonly verifiedInstanceId?: string
   } | null
 ): InitProvider['connection'] {
   return connection === null
@@ -183,6 +186,9 @@ function connectionOf(
         connectionId: connection.connectionId,
         webhookUrl: connection.webhookUrl,
         status: connection.status,
+        ...(connection.verifiedInstanceId === undefined
+          ? {}
+          : { verifiedInstanceId: connection.verifiedInstanceId }),
       }
 }
 
@@ -429,7 +435,11 @@ async function supabaseStep(
       vendor: 'Brew',
       method: 'PUT',
       url: '/v1/integrations/supabase_auth/connection',
-      body: { signingSecret: REDACTED_SECRET, settings: { projectUrl } },
+      body: {
+        signingSecret: REDACTED_SECRET,
+        settings: { projectUrl },
+        createOnly: true,
+      },
     },
     {
       vendor: 'Supabase',
@@ -510,15 +520,21 @@ async function supabaseStep(
   // From here every result keeps the saved settings with their secret.
   const withSaved = { ...input, providerConfig }
 
-  const signingSecret = generateHookSecret()
   let connected: Awaited<ReturnType<BrewClient['integrations']['connect']>>
+  let signingSecret: string
   try {
+    signingSecret = await getOrCreateHostedHookSecret(input.writer, ref, {
+      ...(ctx.io.spawn === undefined ? {} : { spawn: ctx.io.spawn }),
+      signal: ctx.signal,
+    })
     progress(ctx, 'Connecting Brew as the Supabase Send Email hook…')
-    connected = await client.integrations.connect({
-      provider: 'supabase_auth',
+    const connectInput = {
+      provider: 'supabase_auth' as const,
       signingSecret,
       settings: { projectUrl },
-    })
+      createOnly: true,
+    }
+    connected = await client.integrations.connect(connectInput)
   } catch (error) {
     rethrowIfFatal(ctx, error)
     return failed(
@@ -818,6 +834,40 @@ async function clerkStep(
       ],
       providerConfig: input.providerConfig,
     }
+  }
+  const verifiedInstanceId = connection.verifiedInstanceId
+  let selectedInstanceId: string | null = null
+  if (verifiedInstanceId !== undefined) {
+    try {
+      selectedInstanceId = await readClerkInstanceId(ctx, secretKey)
+    } catch (error) {
+      rethrowIfFatal(ctx, error)
+      return failed(input, 'clerk', describe(error), undefined, connection)
+    }
+  }
+  if (
+    verifiedInstanceId === undefined ||
+    selectedInstanceId !== verifiedInstanceId
+  ) {
+    nextSteps.push({
+      id: 'verify-clerk-instance',
+      actor: 'human',
+      kind: 'open-url',
+      url: CLERK_EMAILS_DASHBOARD_URL,
+      title:
+        verifiedInstanceId === undefined
+          ? 'Keep Clerk delivery on until Brew exposes the instance verified by its signed email.created webhook. Verify that instance before changing delivery in its dashboard.'
+          : 'CLERK_SECRET_KEY selects another Clerk instance. Use the API key of the instance whose signed webhook Brew verified, then run init again.',
+      blocking: true,
+    })
+    return refused(
+      input,
+      'clerk',
+      connection,
+      undefined,
+      "Clerk delivery left on: the selected instance is not proven to match Brew's verified webhook",
+      nextSteps
+    )
   }
   if (input.dryRun) {
     return {
