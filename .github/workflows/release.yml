@@ -29,6 +29,12 @@ jobs:
           node-version: 22
           registry-url: https://registry.npmjs.org
       - run: bun install --frozen-lockfile
+      - name: Pinned API contract integrity
+        run: bun run contract:check
+      - name: Generated types freshness
+        run: |
+          bun run generate:types
+          git diff --exit-code src/generated/openapi-types.ts src/generated/input-keys.ts
       - name: Verify tag matches package.json
         run: |
           PKG_V=$(node -p "require('./package.json').version")

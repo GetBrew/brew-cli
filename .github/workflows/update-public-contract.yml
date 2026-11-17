@@ -1,0 +1,188 @@
+name: Update public contract
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_run_id:
+        description: Successful Public contract artifact run ID in GetBrew/brew-v2
+        type: string
+        required: true
+      source_commit:
+        description: Full 40-character source commit from that run
+        type: string
+        required: true
+      artifact_digest:
+        description: Manifest SHA256 from the source run summary (not the ZIP digest)
+        type: string
+        required: true
+
+# CONTRACT_SOURCE_TOKEN: fine-grained PAT with Actions/Contents read on brew-v2.
+# CONTRACT_PR_TOKEN is optional: consumer Contents/Pull requests write access.
+# GITHUB_TOKEN-created PRs do not trigger ordinary CI; the draft records checks.
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: public-contract-update-${{ inputs.artifact_digest }}
+  cancel-in-progress: false
+
+jobs:
+  update:
+    if: github.repository == 'GetBrew/brew-cli' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      SOURCE_RUN_ID: ${{ inputs.source_run_id }}
+      SOURCE_COMMIT: ${{ inputs.source_commit }}
+      ARTIFACT_DIGEST: ${{ inputs.artifact_digest }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Verify the explicit source run and artifact identity
+        env:
+          GH_TOKEN: ${{ secrets.CONTRACT_SOURCE_TOKEN }}
+        run: |
+          [[ "$SOURCE_RUN_ID" =~ ^[1-9][0-9]*$ ]] || { echo 'Invalid source run ID'; exit 1; }
+          [[ "$SOURCE_COMMIT" =~ ^[a-f0-9]{40}$ ]] || { echo 'Invalid source commit'; exit 1; }
+          [[ "$ARTIFACT_DIGEST" =~ ^[a-f0-9]{64}$ ]] || { echo 'Invalid manifest digest'; exit 1; }
+          [[ -n "$GH_TOKEN" ]] || { echo 'Configure CONTRACT_SOURCE_TOKEN with Actions read access to GetBrew/brew-v2'; exit 1; }
+          gh api "repos/GetBrew/brew-v2/actions/runs/$SOURCE_RUN_ID" > "$RUNNER_TEMP/contract-source-run.json"
+          jq --exit-status --arg sha "$SOURCE_COMMIT" --arg run "$SOURCE_RUN_ID" '
+            .id == ($run | tonumber) and
+            .repository.full_name == "GetBrew/brew-v2" and
+            .head_repository.full_name == "GetBrew/brew-v2" and
+            .head_sha == $sha and .head_branch == "main" and
+            .path == ".github/workflows/public-contract-artifact.yml" and
+            .event == "workflow_dispatch" and
+            .status == "completed" and .conclusion == "success"
+          ' "$RUNNER_TEMP/contract-source-run.json"
+          gh api "repos/GetBrew/brew-v2/actions/runs/$SOURCE_RUN_ID/artifacts?per_page=100" > "$RUNNER_TEMP/contract-source-artifacts.json"
+          jq --exit-status --arg name "brew-contract-$ARTIFACT_DIGEST" '
+            [.artifacts[] | select(.name == $name and .expired == false)] | length == 1
+          ' "$RUNNER_TEMP/contract-source-artifacts.json"
+          printf 'CONTRACT_ARTIFACT_DIR=%s/public-contract\n' "$RUNNER_TEMP" >> "$GITHUB_ENV"
+      - name: Download the verified immutable artifact
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: brew-contract-${{ inputs.artifact_digest }}
+          path: ${{ runner.temp }}/public-contract
+          repository: GetBrew/brew-v2
+          run-id: ${{ inputs.source_run_id }}
+          github-token: ${{ secrets.CONTRACT_SOURCE_TOKEN }}
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.10
+      - run: bun install --frozen-lockfile
+      - name: Verify the manifest pin before invoking the local importer
+        run: |
+          node --input-type=module <<'NODE'
+          import { createHash } from 'node:crypto'
+          import { readFileSync } from 'node:fs'
+
+          const bytes = readFileSync(`${process.env.CONTRACT_ARTIFACT_DIR}/manifest.json`)
+          const digest = createHash('sha256').update(bytes).digest('hex')
+          if (digest !== process.env.ARTIFACT_DIGEST) throw new Error('Artifact manifest digest mismatch')
+          const manifest = JSON.parse(bytes)
+          if (manifest.schemaVersion !== 1 || manifest.source?.repository !== 'GetBrew/brew-v2' || manifest.source.revision !== process.env.SOURCE_COMMIT || manifest.source.dirty !== false) {
+            throw new Error('Artifact source must match the explicit clean source revision')
+          }
+          NODE
+      - name: Import contract and generate consumer types
+        run: |
+          node scripts/contract-artifact.mjs import --artifact "$CONTRACT_ARTIFACT_DIR" --digest "$ARTIFACT_DIGEST"
+          node scripts/contract-artifact.mjs check
+      - name: Run owning validation
+        id: validation
+        continue-on-error: true
+        run: |
+          bun run tsc
+          bun run lint
+          bun run test
+          bun run docs:commands:check
+      - name: Open a draft update for review
+        env:
+          GH_TOKEN: ${{ secrets.CONTRACT_PR_TOKEN || github.token }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          CONSUMER_REPOSITORY: ${{ github.repository }}
+          VALIDATION_OUTCOME: ${{ steps.validation.outcome }}
+          USES_AUTOMATION_TOKEN: ${{ secrets.CONTRACT_PR_TOKEN != '' }}
+        run: |
+          MANAGED_PATHS=(contract.lock.json openapi/public-api-v1.yaml openapi/contract-manifest.json scripts/contract-artifact.mjs src/generated/openapi-types.ts src/generated/input-keys.ts)
+          git add --all -- "${MANAGED_PATHS[@]}"
+          if git diff --cached --quiet; then
+            echo 'This contract artifact is already pinned.'
+            exit 0
+          fi
+          BRANCH="automation/public-contract-$ARTIFACT_DIGEST"
+          gh auth setup-git
+          if git ls-remote --exit-code --heads origin "refs/heads/$BRANCH" > "$RUNNER_TEMP/contract-remote-head"; then
+            git fetch --no-tags --depth=2 origin "refs/heads/$BRANCH"
+            CONTRACT_REMOTE_HEAD=$(git rev-parse FETCH_HEAD)
+            CONTRACT_MANAGED_PATHS=$(node -e 'process.stdout.write(JSON.stringify(process.argv.slice(1)))' "${MANAGED_PATHS[@]}")
+            export CONTRACT_REMOTE_HEAD CONTRACT_MANAGED_PATHS
+            # Inspect remote Git objects as data; never execute the remote branch's tool.
+            node --input-type=module <<'NODE'
+          import { execFileSync } from 'node:child_process'
+
+          const head = process.env.CONTRACT_REMOTE_HEAD
+          const managed = JSON.parse(process.env.CONTRACT_MANAGED_PATHS)
+          const git = (...args) => execFileSync('git', args, {encoding: 'utf8'}).trim()
+          const parents = git('show', '--format=%P', '--no-patch', head).split(/\s+/)
+          if (parents.length !== 1 || !/^[a-f0-9]{40}$/.test(parents[0])) {
+            throw new Error('Existing digest branch must contain one update commit on the default branch')
+          }
+          const parent = parents[0]
+          const comparison = JSON.parse(execFileSync('gh', ['api', `repos/${process.env.CONSUMER_REPOSITORY}/compare/${parent}...${process.env.DEFAULT_BRANCH}`], {encoding: 'utf8'}))
+          if (comparison.merge_base_commit?.sha !== parent) {
+            throw new Error('Existing digest branch parent is outside default-branch history')
+          }
+          const changed = git('diff', '--name-only', '-z', parent, head).split('\0').filter(Boolean)
+          for (const file of changed) {
+            if (!managed.some(path => file === path || file.startsWith(`${path}/`))) {
+              throw new Error(`Existing digest branch contains an unrelated change: ${file}`)
+            }
+          }
+          // Includes the exact source pin, manifest, spec, importer and generated output.
+          execFileSync('git', ['diff', '--exit-code', '--cached', head, '--', ...managed], {stdio: 'inherit'})
+          NODE
+            EXISTING=$(gh pr list --repo "$CONSUMER_REPOSITORY" --head "$BRANCH" --base "$DEFAULT_BRANCH" --state open --json url,headRefOid,isCrossRepository --jq ".[] | select(.isCrossRepository == false and .headRefOid == \"$CONTRACT_REMOTE_HEAD\") | .url")
+            if [[ -n "$EXISTING" ]]; then
+              echo "A verified update for this digest already exists: $EXISTING"
+              exit 0
+            fi
+            # Reuse the verified pushed commit after an interrupted or closed draft.
+            git switch --create "$BRANCH" "$CONTRACT_REMOTE_HEAD"
+          else
+            REMOTE_STATUS=$?
+            if [[ "$REMOTE_STATUS" != 2 ]]; then
+              echo 'Could not inspect the remote digest branch; refusing to create or overwrite it.' >&2
+              exit "$REMOTE_STATUS"
+            fi
+            git switch --create "$BRANCH"
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git commit -m "chore: import public contract $SOURCE_COMMIT"
+            git push origin "HEAD:refs/heads/$BRANCH"
+          fi
+          cat > "$RUNNER_TEMP/contract-pr.md" <<EOF
+          Imports the public API contract from GetBrew/brew-v2 at $SOURCE_COMMIT and regenerates this consumer's derived files with its local importer.
+
+          - Manifest SHA256: $ARTIFACT_DIGEST
+          - Source artifact run: https://github.com/GetBrew/brew-v2/actions/runs/$SOURCE_RUN_ID
+          - Contract integrity check: passed
+          - Owning validation: $VALIDATION_OUTCOME
+
+          Review API compatibility and parity findings before merging. This draft is never merged automatically.
+          EOF
+          if [[ "$USES_AUTOMATION_TOKEN" != 'true' ]]; then
+            cat >> "$RUNNER_TEMP/contract-pr.md" <<'EOF'
+
+          This PR was created with GITHUB_TOKEN, which does not trigger ordinary pull-request CI. The workflow ran the owning checks above; arrange a normal CI run before merging, or configure CONTRACT_PR_TOKEN for future updates.
+          EOF
+          fi
+          gh pr create --repo "$CONSUMER_REPOSITORY" --draft --base "$DEFAULT_BRANCH" --head "$BRANCH" --title "chore: update public contract ($SOURCE_COMMIT)" --body-file "$RUNNER_TEMP/contract-pr.md"

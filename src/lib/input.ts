@@ -116,7 +116,10 @@ export function mergeInput(
   base: unknown,
   overrides: Readonly<Record<string, unknown>>
 ): Record<string, unknown> {
-  if (base !== undefined && (base === null || typeof base !== 'object')) {
+  if (
+    base !== undefined &&
+    (base === null || typeof base !== 'object' || Array.isArray(base))
+  ) {
     throw new CliUsageError('--input must be a JSON object')
   }
   const merged: Record<string, unknown> = {

@@ -37,7 +37,7 @@ jobs:
           EXISTING=$(gh issue list --label spec-drift --state open --json number --jq '.[0].number // empty')
           BODY="The nightly sentinel found drift between the live published spec (https://brew.new/openapi/public-api-v1.yaml) and this repo's vendored copy. See the [workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for the operation diff.
 
-          Fix: refresh the vendored spec (\`pnpm openapi:generate\` in the app repo mirrors it here), run \`bun run generate:types\`, and let the parity tests enumerate the commands to add."
+          Fix: use the Update public contract workflow to import the reviewed source artifact and digest. The importer pins the spec and regenerates types; parity tests enumerate any commands to add."
           if [ -n "$EXISTING" ]; then
             gh issue comment "$EXISTING" --body "Still drifting as of $(date -u +%F). $BODY"
           else
