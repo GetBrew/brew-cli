@@ -22,6 +22,52 @@ function env(): Record<string, string | undefined> {
 }
 
 describe('emails audit', () => {
+  it.each(['', '   '])(
+    'rejects an explicitly empty version pin %j',
+    async (pin) => {
+      const result = await runCli(
+        ['emails', 'audit', '--email-id', 'email_1', '--email-version-id', pin],
+        { env: env(), extraCommands: [emailsAuditCommand] }
+      )
+      expect(result.code).toBe(2)
+      expect(result.stderr).toContain(
+        'emailVersionId must be a non-empty string'
+      )
+    }
+  )
+
+  it('rejects an empty version pin in JSON input', async () => {
+    const result = await runCli(
+      [
+        'emails',
+        'audit',
+        '--input',
+        '{"emailId":"email_1","emailVersionId":""}',
+      ],
+      { env: env(), extraCommands: [emailsAuditCommand] }
+    )
+    expect(result.code).toBe(2)
+    expect(result.stderr).toContain('emailVersionId must be a non-empty string')
+  })
+
+  it('keeps --jsx as an alias for --jsx-file', async () => {
+    const directory = mkdtempSync(join(tmpdir(), 'brew-audit-alias-'))
+    const file = join(directory, 'welcome.tsx')
+    writeFileSync(file, '<Text>Hello</Text>')
+    let body: unknown
+    server.use(
+      http.post(`${API}/v1/emails/audit`, async ({ request }) => {
+        body = await request.json()
+        return HttpResponse.json({ completion: { status: 'complete' } })
+      })
+    )
+    const result = await runCli(['emails', 'audit', '--jsx', file], {
+      env: env(),
+      extraCommands: [emailsAuditCommand],
+    })
+    expect(result.code).toBe(0)
+    expect(body).toEqual({ emailJsx: '<Text>Hello</Text>' })
+  })
   it.each([
     {
       base: { emailHtml: '<p>Old</p>', subject: 'From JSON' },
