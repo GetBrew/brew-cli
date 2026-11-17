@@ -1,6 +1,7 @@
 import type { BrewClient } from './client'
 import type { CommandMetadata } from './define-command'
 import type { Budget, TransportState } from './transport'
+import type { TextKind } from './utf8'
 
 /**
  * The process boundary, injected so tests can run the whole CLI in-process
@@ -12,8 +13,11 @@ export type CliIo = {
   readonly isTtyOut: boolean
   readonly isTtyIn: boolean
   readonly env: Readonly<Record<string, string | undefined>>
-  /** When supplied, the command signal closes input on interrupt or timeout. */
-  readonly readStdin: (signal?: AbortSignal) => Promise<string>
+  /**
+   * Reads stdin through EOF as strict UTF-8. When supplied, the command signal
+   * closes input on interrupt or timeout; `kind` tailors the not-UTF-8 advice.
+   */
+  readonly readStdin: (signal?: AbortSignal, kind?: TextKind) => Promise<string>
   readonly readLine: (prompt: string) => Promise<string>
   /**
    * Aborts on SIGINT/SIGTERM with a `CliInterruptError` (see

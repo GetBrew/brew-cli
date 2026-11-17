@@ -150,6 +150,7 @@ describe('required string values', () => {
     ['emails', 'create-inbox-placement-test', 'eml_1', '--domain', ''],
     ['emails', 'export', 'eml_1', '--provider', ''],
     ['automations', 'triggers', 'ensure-brew-event', '--scope', ''],
+    ['automations', 'triggers', 'ensure-integration-event', '--event-id', ''],
     [
       'automations',
       'triggers',

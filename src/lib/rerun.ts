@@ -73,7 +73,7 @@ export function buildRerunCommand(
 
 /** Only effective parsed input flags can require stdin on a retry. */
 export function readsStdin(invocation: RerunInvocation): boolean {
-  return ['input', 'file', 'jsxFile', 'data'].some(
+  return ['input', 'file', 'jsxFile', 'jsx', 'data'].some(
     (name) => invocation.flags[name] === '-'
   )
 }
