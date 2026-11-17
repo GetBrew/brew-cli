@@ -2605,7 +2605,7 @@ export interface paths {
         };
         /**
          * Get usage
-         * @description Returns the org usage snapshot: current plan, AI credit balance (limit/used/remaining — `null` = unlimited), monthly email-send quota (`remaining` = `limit` − `used` − `reserved`, where `reserved` is held by sends still delivering), and the billing-period window. Check it before a credit-metered call. Billing belongs to the ORGANIZATION, so this needs an organization-scoped credential: a key bound to one brand gets `403 ORG_SCOPE_REQUIRED` no matter which scopes it holds.
+         * @description Returns the org usage snapshot: current plan, AI credit balance (limit/used/remaining — `null` = unlimited), monthly email-send quota (`remaining` = `limit` − `used` − `reserved`, where `reserved` is held by sends still delivering; units already billed on demand count in both `limit` and `used`), on-demand spending (`onDemand`: when `active`, usage may continue past `remaining` by up to `creditsRemaining` credits or `emailSendsRemaining` sends, billed at the end of the billing month; the two share one budget, so spending either lowers both), and the billing-period window. Check it before a credit-metered call. Billing belongs to the ORGANIZATION, so this needs an organization-scoped credential: a key bound to one brand gets `403 ORG_SCOPE_REQUIRED` no matter which scopes it holds.
          */
         get: operations["getUsage"];
         put?: never;
@@ -7658,7 +7658,7 @@ export interface components {
             driftStatus?: "fresh" | "stale";
             /** @enum {string} */
             format: "json";
-            fields: components["schemas"]["PayloadContractFieldNode"][];
+            fields: components["schemas"]["PayloadContractStoredFieldNode"][];
         } | {
             /** @enum {string} */
             subjectKind: "trigger";
@@ -7675,6 +7675,52 @@ export interface components {
             /** @enum {string} */
             format: "ts" | "zod" | "jsonschema" | "skill";
             content: string;
+        };
+        PayloadContractStoredFieldNode: {
+            key: string;
+            /** @enum {string} */
+            type: "string" | "int" | "float" | "boolean" | "date" | "enum" | "object" | "array" | "unknown";
+            required: boolean;
+            description?: string;
+            exampleValue?: string | number | boolean;
+            fallbackValue?: string | number | boolean;
+            /** @enum {string} */
+            pii?: "none" | "low" | "high";
+            /** @description True for a value used only to render this email: never stored on contacts, in logs or analytics; cannot be used in filters, splits or recipient fields. Scalars only, never `email`. False explicitly permits ordinary PII outside rendering; pii still controls log masking. When omitted, legacy high-PII scalar protection applies except for email and top-level firstName/lastName. */
+            secret?: boolean;
+            /** @description false keeps this value off the contact record: it reaches the email and nothing else. Omitted means true. The top-level email always identifies the contact. */
+            syncToContact?: boolean;
+            enumValues?: string[];
+            itemType?: ("string" | "int" | "float" | "boolean" | "date" | "enum") | "unknown";
+            usedIn?: ("body" | "subject" | "previewText")[];
+            children?: components["schemas"]["PayloadContractStoredFieldNode"][];
+        };
+        PayloadContractPutResponse: {
+            /** @enum {string} */
+            subjectKind: "trigger";
+            subjectId: string;
+            /** @enum {string} */
+            source: "stored" | "derived_from_schema" | "derived_from_template";
+            typeName: string;
+            contractHash?: string;
+            version?: number;
+            /** @enum {string} */
+            enforcement?: "off" | "prune" | "strict";
+            /** @enum {string} */
+            driftStatus?: "fresh" | "stale";
+            /** @enum {string} */
+            format: "json";
+            fields: components["schemas"]["PayloadContractStoredFieldNode"][];
+            warnings: components["schemas"]["ApiWarning"][];
+        };
+        PayloadContractPutRequest: {
+            fields?: components["schemas"]["PayloadContractFieldNode"][];
+            name?: string;
+            /**
+             * @description How live fires use the contract. `off`: advisory only. `prune`: a fire that breaks a declared field is refused and undeclared keys are dropped. `strict`: undeclared keys are refused too. Omit to keep the current setting.
+             * @enum {string}
+             */
+            enforcement?: "off" | "prune" | "strict";
         };
         PayloadContractFieldNode: {
             key: string;
@@ -7694,33 +7740,6 @@ export interface components {
             itemType?: ("string" | "int" | "float" | "boolean" | "date" | "enum") | "unknown";
             usedIn?: ("body" | "subject" | "previewText")[];
             children?: components["schemas"]["PayloadContractFieldNode"][];
-        };
-        PayloadContractPutResponse: {
-            /** @enum {string} */
-            subjectKind: "trigger";
-            subjectId: string;
-            /** @enum {string} */
-            source: "stored" | "derived_from_schema" | "derived_from_template";
-            typeName: string;
-            contractHash?: string;
-            version?: number;
-            /** @enum {string} */
-            enforcement?: "off" | "prune" | "strict";
-            /** @enum {string} */
-            driftStatus?: "fresh" | "stale";
-            /** @enum {string} */
-            format: "json";
-            fields: components["schemas"]["PayloadContractFieldNode"][];
-            warnings: components["schemas"]["ApiWarning"][];
-        };
-        PayloadContractPutRequest: {
-            fields?: components["schemas"]["PayloadContractFieldNode"][];
-            name?: string;
-            /**
-             * @description How live fires use the contract. `off`: advisory only. `prune`: a fire that breaks a declared field is refused and undeclared keys are dropped. `strict`: undeclared keys are refused too. Omit to keep the current setting.
-             * @enum {string}
-             */
-            enforcement?: "off" | "prune" | "strict";
         };
         PayloadContractValidateResponse: {
             valid: boolean;
@@ -9610,6 +9629,14 @@ export interface components {
                 used: number;
                 remaining: number | null;
                 reserved?: number;
+            };
+            onDemand: {
+                active: boolean;
+                capUsd: number | null;
+                budgetUsd: number;
+                spentUsd: number;
+                creditsRemaining: number;
+                emailSendsRemaining: number;
             };
             period: {
                 /** Format: date-time */
@@ -32776,7 +32803,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Usage snapshot — plan, credits, and email-send quota. */
+            /** @description Usage snapshot — plan, credits, email-send quota, and on-demand headroom. */
             200: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -32806,6 +32833,14 @@ export interface operations {
                      *         "used": 911,
                      *         "reserved": 27880,
                      *         "remaining": 171209
+                     *       },
+                     *       "onDemand": {
+                     *         "active": true,
+                     *         "capUsd": 100,
+                     *         "budgetUsd": 100,
+                     *         "spentUsd": 12.5,
+                     *         "creditsRemaining": 4375,
+                     *         "emailSendsRemaining": 21875
                      *       },
                      *       "period": {
                      *         "start": "2026-05-28T18:10:35.000Z",
