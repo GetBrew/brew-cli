@@ -42,6 +42,23 @@ export const INPUT_KEYS: Readonly<Record<string, readonly string[]>> = {
   "DELETE /v1/webhooks/{webhookId}": [
     "webhookId"
   ],
+  "GET /v1/agent-goals": [
+    "cursor",
+    "limit"
+  ],
+  "GET /v1/agent-goals/{goalId}": [
+    "goalId"
+  ],
+  "GET /v1/agent-goals/{goalId}/documents": [
+    "cursor",
+    "goalId",
+    "limit"
+  ],
+  "GET /v1/agent-goals/{goalId}/tasks": [
+    "cursor",
+    "goalId",
+    "limit"
+  ],
   "GET /v1/analytics/automations": [
     "automationId",
     "from",
@@ -367,6 +384,10 @@ export const INPUT_KEYS: Readonly<Record<string, readonly string[]>> = {
     "limit",
     "webhookId"
   ],
+  "PATCH /v1/agent-goals/{goalId}": [
+    "goalId",
+    "status"
+  ],
   "PATCH /v1/audiences/{audienceId}": [
     "addEmails",
     "audienceId",
@@ -434,6 +455,29 @@ export const INPUT_KEYS: Readonly<Record<string, readonly string[]>> = {
     "events",
     "status",
     "webhookId"
+  ],
+  "POST /v1/agent-goals": [
+    "audienceId",
+    "budget",
+    "cadence",
+    "chatId",
+    "name",
+    "objective",
+    "planningHorizonDays",
+    "successMetric"
+  ],
+  "POST /v1/agent-goals/{goalId}/documents": [
+    "content",
+    "expectedRevision",
+    "goalId",
+    "path",
+    "source"
+  ],
+  "POST /v1/agent-goals/{goalId}/follow-ups": [
+    "dueAt",
+    "goalId",
+    "message",
+    "sourceId"
   ],
   "POST /v1/api-keys": [
     "brandId",
