@@ -268,8 +268,11 @@ function analyzeMessage(
       matchingBracket(tokens, template.from) === template.to
     ) {
       for (const property of objectProperties(tokens, template.from)) {
-        if (property.name === 'id' && property.from === property.to) {
-          templateId = stringValue(tokens[property.from] as Token)
+        if (property.name === 'id') {
+          templateId =
+            property.from === property.to
+              ? stringValue(tokens[property.from] as Token)
+              : null
         } else if (property.spread) {
           // It may carry an `id` that replaces the one before it.
           templateId = null

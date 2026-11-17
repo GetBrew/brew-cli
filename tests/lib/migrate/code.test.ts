@@ -89,6 +89,30 @@ describe('analyzeArgument', () => {
 
 describe('decideRewrites', () => {
   describe.each(['tokenizer', 'typescript'] as const)(
+    'later duplicate template IDs (%s)',
+    (engine) => {
+      it.each([
+        'chooseTemplate()',
+        "condition ? 'missing' : 'welcome'",
+        "'prefix-' + suffix",
+      ])('keeps Resend when a later id is %s', (id) => {
+        const scan = project(
+          {
+            'src/resend.js': CLIENT,
+            'src/notify.js': `import { resend } from './resend'
+export const go = () => resend.emails.send({ to: 'x', template: { id: 'welcome', id: ${id} } })
+`,
+          },
+          engine
+        )
+        expect(decideRewrites(scan, new Set(['welcome']), false)).toEqual([
+          expect.objectContaining({ file: 'src/resend.js', rewritable: false }),
+        ])
+      })
+    }
+  )
+
+  describe.each(['tokenizer', 'typescript'] as const)(
     'transformed literal sends (%s)',
     (engine) => {
       it.each([
