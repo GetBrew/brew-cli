@@ -52,6 +52,22 @@ sentinel reads) matching `openapi/public-api-v1.yaml`,
 which is the #2169 head `6e4accea4c` (main's spec, brew-v2 `373e900a9a`,
 plus the DX delta).
 
+### Integration Events SDK Gate
+
+`integrations events list`, `integrations events get` and
+`automations triggers ensure-integration-event` call `integrations.events.list`,
+`integrations.events.get` and `automations.triggers.ensureIntegrationEvent`,
+which the published SDK 13.4.0 does not expose. Until an SDK release has
+them, the CLI pins reviewed SDK source commit
+the exact revision in package.json (GetBrew/typescript-sdk#64, including #88). It
+preserves SDK 13.4.0's features and version while adding those methods.
+
+A fresh frozen install must build that source dependency without relying on
+a locally packed SDK. Do not release the CLI with this temporary source pin.
+Deploy the API contract (GetBrew/brew-v2#2411) and release the SDK first, then
+replace the pin with the actual published SDK version and regenerate
+`bun.lock` before releasing the CLI.
+
 ```bash
 # on a clean main with CI green
 npm version <patch|minor|major> --no-git-tag-version
