@@ -49,7 +49,7 @@ export const automationsTestCommand = defineCommand({
     if (typeof testRecipient !== 'string' || testRecipient.trim() === '') {
       return
     }
-    return `Test automation ${args.automationId ?? ''}: each send node delivers REAL mail to ${testRecipient.trim()}. Test deliveries do not count toward your plan's email sends.`
+    return `Test automation ${args.automationId ?? ''}: each send node delivers REAL mail to ${testRecipient.trim()}. Test deliveries never count toward the plan's email sends.`
   },
   run: async ({ ctx, args, flags }) => {
     const base = await readJsonFlag(ctx, flags.input, '--input')
