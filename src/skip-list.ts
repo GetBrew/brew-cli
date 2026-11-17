@@ -21,6 +21,61 @@ export type SpecSkip = {
 /** SDK methods that intentionally have no dedicated CLI command. */
 export const SDK_SKIP_LIST: readonly SdkSkip[] = [
   {
+    sdkPath: 'webhooks.list',
+    reason:
+      'covered by the existing raw `webhooks list` command until the SDK registry release',
+  },
+  {
+    sdkPath: 'webhooks.create',
+    reason:
+      'covered by the existing raw `webhooks create` command until the SDK registry release',
+  },
+  {
+    sdkPath: 'webhooks.get',
+    reason:
+      'covered by the existing raw `webhooks get` command until the SDK registry release',
+  },
+  {
+    sdkPath: 'webhooks.update',
+    reason:
+      'covered by the existing raw `webhooks update` command until the SDK registry release',
+  },
+  {
+    sdkPath: 'webhooks.delete',
+    reason:
+      'covered by the existing raw `webhooks delete` command until the SDK registry release',
+  },
+  {
+    sdkPath: 'webhooks.rotateSecret',
+    reason:
+      'covered by the existing raw `webhooks rotate-secret` command until the SDK registry release',
+  },
+  {
+    sdkPath: 'webhooks.events',
+    reason:
+      'covered by the existing raw `webhooks events` command until the SDK registry release',
+  },
+  {
+    sdkPath: 'webhooks.attempts',
+    reason:
+      'covered by the existing raw `webhooks attempts` command until the SDK registry release',
+  },
+  {
+    sdkPath: 'webhooks.replay',
+    reason:
+      'covered by the existing raw `webhooks replay` command until the SDK registry release',
+  },
+  {
+    sdkPath: 'webhooks.test',
+    reason:
+      'covered by the existing raw `webhooks test` command until the SDK registry release',
+  },
+  {
+    sdkPath: 'webhooks.verify',
+    reason:
+      'server-side signature verification helper for incoming deliveries; not an API command',
+  },
+  {
     sdkPath: 'contacts.searchAll',
     reason: 'auto-pager covered by `contacts search --all`',
   },

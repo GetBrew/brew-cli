@@ -69,6 +69,22 @@ GetBrew/brew-v2#2169, must be deployed first: re-fetch
 before tagging. Generated app code still asks for `^13.6.0`
 (`SDK_RANGE`): only the CLI itself needs 13.7.0.
 
+### Integration Events SDK Gate
+
+`integrations events list`, `integrations events get` and
+`automations triggers ensure-integration-event` call `integrations.events.list`,
+`integrations.events.get` and `automations.triggers.ensureIntegrationEvent`,
+which the published SDK 13.4.0 does not expose. Until an SDK release has
+them, the CLI pins the reviewed SDK source revision in package.json
+(GetBrew/typescript-sdk#74, including #64 and #88). It
+preserves SDK 13.4.0's features and version while adding those methods.
+
+A fresh frozen install must build that source dependency without relying on
+a locally packed SDK. Do not release the CLI with this temporary source pin.
+Deploy the API contract (GetBrew/brew-v2#2411) and release the SDK first, then
+replace the pin with the actual published SDK version and regenerate
+`bun.lock` before releasing the CLI.
+
 ```bash
 # on a clean main with CI green
 npm version <patch|minor|major> --no-git-tag-version

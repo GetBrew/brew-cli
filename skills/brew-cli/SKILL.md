@@ -165,6 +165,11 @@ resumes when re-run. Pass the Resend key on stdin with
   the CLI (`brew-cli …`, or a package-runner prefix such as
   `npx -y @brew.new/cli@<version> …`), so run them as printed. Do not pass `--yes` for real campaign sends without an explicit
   human instruction; `emails send --test --to you@x.com` is the safe lane.
+  The CLI authenticates with an API key, so a test (and `automations test`
+  with `testRecipient`) reaches only a teammate with access to the brand
+  (your own member address counts) or an address on a verified sending
+  domain of the brand; anyone else is `422 TEST_RECIPIENT_NOT_ALLOWED` with
+  `details.recipients`.
 - `--input '<json>'` (or `-` for stdin) carries full request bodies;
   positional ids always win over `--input`. `--all` drains pagination.
   `--idempotency-key` makes POST retries safe (except `api-keys create`,
