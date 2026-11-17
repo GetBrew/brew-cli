@@ -28,6 +28,11 @@ jobs:
         with:
           node-version: 22
           registry-url: https://registry.npmjs.org
+      - name: Release preflight
+        run: node scripts/check-release.mjs --publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - run: node --test tests/release/*.test.mjs
       - run: bun install --frozen-lockfile
       - name: Verify tag matches package.json
         run: |
@@ -53,6 +58,10 @@ jobs:
         run: bun run smoke:regressions
       - name: Compile standalone binaries
         run: bun run scripts/build-binaries.ts
+      - name: Publish to npm with provenance
+        run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -60,16 +69,6 @@ jobs:
           files: |
             dist-bin/*
           generate_release_notes: true
-      - name: Publish to npm with provenance
-        run: |
-          if [ -z "$NODE_AUTH_TOKEN" ]; then
-            echo "NPM_TOKEN secret not set — skipping npm publish." \
-              "Add it and re-run this workflow to publish."
-            exit 0
-          fi
-          npm publish --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       - name: Bump Homebrew tap
         run: bun run scripts/update-tap.ts
         env:

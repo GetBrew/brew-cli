@@ -46,6 +46,8 @@ export const INPUT_KEYS: Readonly<Record<string, readonly string[]>> = {
     "automationId",
     "from",
     "limit",
+    "outcomesCursor",
+    "outcomesVersionId",
     "to"
   ],
   "GET /v1/analytics/events": [
@@ -383,6 +385,7 @@ export const INPUT_KEYS: Readonly<Record<string, readonly string[]>> = {
     "dryRun",
     "expectedBaseDefinitionSha256",
     "expectedBaseVersionId",
+    "goal",
     "name",
     "nodes",
     "paused",
@@ -456,6 +459,7 @@ export const INPUT_KEYS: Readonly<Record<string, readonly string[]>> = {
     "connections",
     "description",
     "dryRun",
+    "goal",
     "name",
     "nodes",
     "triggerEventId"

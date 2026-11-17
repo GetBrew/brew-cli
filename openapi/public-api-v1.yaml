@@ -2446,6 +2446,44 @@ components:
           type: string
           minLength: 1
           maxLength: 120
+        goal:
+          type: object
+          properties:
+            schemaVersion:
+              type: number
+              enum:
+                - 1
+            kind:
+              type: string
+              enum:
+                - event
+            event:
+              type: object
+              properties:
+                sourceId:
+                  type: string
+                  minLength: 1
+                providerEventKey:
+                  type: string
+                  minLength: 1
+                  maxLength: 255
+              required:
+                - sourceId
+                - providerEventKey
+              additionalProperties: false
+            windowDays:
+              type: integer
+              minimum: 1
+              maximum: 90
+            stopRemainingSends:
+              type: boolean
+          required:
+            - schemaVersion
+            - kind
+            - event
+            - windowDays
+            - stopRemainingSends
+          additionalProperties: false
         description:
           type: string
           maxLength: 2000
@@ -3770,6 +3808,7 @@ components:
                       - before
                       - after
                       - on_date
+                      - inactive_for_days
                   value: {}
                   type:
                     type: string
@@ -8940,6 +8979,339 @@ components:
               - clickThroughRate
               - unsubscribeRate
             additionalProperties: false
+        observedPayments:
+          type: object
+          properties:
+            status:
+              type: string
+              enum:
+                - observed_only
+            ownershipPolicy:
+              type: string
+              enum:
+                - latest_eligible_original_entry_pinned
+            values:
+              type: array
+              items:
+                type: object
+                properties:
+                  currency:
+                    type: string
+                  paymentCount:
+                    type: integer
+                    minimum: 0
+                  grossMinor:
+                    type: integer
+                    minimum: 0
+                  refundedMinor:
+                    type: integer
+                    minimum: 0
+                  netMinor:
+                    type: integer
+                    minimum: 0
+                  exposurePrecededPaymentCount:
+                    type: integer
+                    minimum: 0
+                required:
+                  - currency
+                  - paymentCount
+                  - grossMinor
+                  - refundedMinor
+                  - netMinor
+                  - exposurePrecededPaymentCount
+            unassignedBrandValues:
+              type: array
+              items:
+                type: object
+                properties:
+                  currency:
+                    type: string
+                  paymentCount:
+                    type: integer
+                    minimum: 0
+                  grossMinor:
+                    type: integer
+                    minimum: 0
+                  refundedMinor:
+                    type: integer
+                    minimum: 0
+                  netMinor:
+                    type: integer
+                    minimum: 0
+                  exposurePrecededPaymentCount:
+                    type: integer
+                    minimum: 0
+                required:
+                  - currency
+                  - paymentCount
+                  - grossMinor
+                  - refundedMinor
+                  - netMinor
+                  - exposurePrecededPaymentCount
+            attributedValues:
+              type: array
+              items:
+                type: object
+                properties:
+                  currency:
+                    type: string
+                  paymentCount:
+                    type: integer
+                    minimum: 0
+                  grossMinor:
+                    type: integer
+                    minimum: 0
+                  refundedMinor:
+                    type: integer
+                    minimum: 0
+                  netMinor:
+                    type: integer
+                    minimum: 0
+                  exposurePrecededPaymentCount:
+                    type: integer
+                    minimum: 0
+                required:
+                  - currency
+                  - paymentCount
+                  - grossMinor
+                  - refundedMinor
+                  - netMinor
+                  - exposurePrecededPaymentCount
+            unattributedBrandValues:
+              type: array
+              items:
+                type: object
+                properties:
+                  currency:
+                    type: string
+                  paymentCount:
+                    type: integer
+                    minimum: 0
+                  grossMinor:
+                    type: integer
+                    minimum: 0
+                  refundedMinor:
+                    type: integer
+                    minimum: 0
+                  netMinor:
+                    type: integer
+                    minimum: 0
+                  exposurePrecededPaymentCount:
+                    type: integer
+                    minimum: 0
+                required:
+                  - currency
+                  - paymentCount
+                  - grossMinor
+                  - refundedMinor
+                  - netMinor
+                  - exposurePrecededPaymentCount
+            attribution:
+              type: object
+              properties:
+                policy:
+                  type: string
+                  enum:
+                    - last_confirmed_human_click_7d_v1
+                windowDays:
+                  type: number
+                  enum:
+                    - 7
+                availability:
+                  type: string
+                  enum:
+                    - partial
+                historyCheckpoint:
+                  type: string
+                  enum:
+                    - unavailable
+                coverageReason:
+                  type: string
+                  enum:
+                    - Available confirmed human click ledger only; no history completeness watermark. Pending, legacy, degraded, missing execution and missing acceptance evidence receive no credit. First qualifying decision is pinned; this model does not establish causal lift.
+                causal:
+                  type: boolean
+                  enum:
+                    - false
+              required:
+                - policy
+                - windowDays
+                - availability
+                - historyCheckpoint
+                - coverageReason
+                - causal
+            coverage:
+              type: string
+              enum:
+                - partial
+            coverageReason:
+              type: string
+              enum:
+                - Captured Stripe charges resolved from invoice-paid and refund deliveries; complete bounded refund lists count succeeded refunds only. Provider charge-created authorization time, not settlement time. Observed program ownership does not establish email credit.
+            truncated:
+              type: boolean
+          required:
+            - status
+            - ownershipPolicy
+            - values
+            - unassignedBrandValues
+            - attributedValues
+            - unattributedBrandValues
+            - attribution
+            - coverage
+            - coverageReason
+            - truncated
+          description: Captured Stripe money for all versions of this program, not email attribution. Provider minor-unit integers are separate per currency; unassignedBrandValues belong to the brand, not this program. Independent of from/to and outcomesVersionId.
+        outcomes:
+          type: object
+          properties:
+            automationId:
+              type: string
+            automationVersionId:
+              type:
+                - string
+                - "null"
+            scope:
+              type: string
+              enum:
+                - population
+            period:
+              type: string
+              enum:
+                - all_time_enrollments
+            counts:
+              type: object
+              properties:
+                enrolled:
+                  type: integer
+                  minimum: 0
+                achieved:
+                  type: integer
+                  minimum: 0
+                pending:
+                  type: integer
+                  minimum: 0
+                windowClosed:
+                  type: integer
+                  minimum: 0
+                prequalified:
+                  type: integer
+                  minimum: 0
+                unknown:
+                  type: integer
+                  minimum: 0
+                exposed:
+                  type: integer
+                  minimum: 0
+                achievedAfterExposure:
+                  type: integer
+                  minimum: 0
+              required:
+                - enrolled
+                - achieved
+                - pending
+                - windowClosed
+                - prequalified
+                - unknown
+                - exposed
+                - achievedAfterExposure
+              additionalProperties: false
+            uniquePeople:
+              type: integer
+              minimum: 0
+            observedAchievementRate:
+              type:
+                - number
+                - "null"
+              minimum: 0
+              maximum: 1
+            evidence:
+              type: array
+              items:
+                type: object
+                properties:
+                  observationId:
+                    type: string
+                  executionId:
+                    type: string
+                  automationVersionId:
+                    type: string
+                  sourceId:
+                    type: string
+                  providerEventKey:
+                    type: string
+                  contactEmail:
+                    type: string
+                  resolution:
+                    type: string
+                    enum:
+                      - pending
+                      - achieved
+                      - window_closed
+                      - prequalified
+                  coverage:
+                    type: string
+                    enum:
+                      - complete
+                      - incomplete
+                      - unavailable
+                  coverageReason:
+                    type: string
+                  anchorBasis:
+                    type: string
+                    enum:
+                      - entry_event
+                      - admission_time
+                  admittedAt:
+                    type: number
+                  anchorAt:
+                    type: number
+                  windowEndsAt:
+                    type: number
+                  achievedAt:
+                    type: number
+                  providerEventId:
+                    type: string
+                  firstAcceptedEmailAt:
+                    type: number
+                  firstAcceptedSendId:
+                    type: string
+                  matchedAt:
+                    type: number
+                  goalDefinitionHash:
+                    type: string
+                required:
+                  - observationId
+                  - executionId
+                  - sourceId
+                  - providerEventKey
+                  - contactEmail
+                  - resolution
+                  - coverage
+                  - anchorBasis
+                  - admittedAt
+                  - anchorAt
+                  - windowEndsAt
+                additionalProperties: false
+            evidenceTruncated:
+              type: boolean
+            continueCursor:
+              type:
+                - string
+                - "null"
+          required:
+            - automationId
+            - automationVersionId
+            - scope
+            - period
+            - counts
+            - uniquePeople
+            - observedAchievementRate
+            - evidence
+            - evidenceTruncated
+            - continueCursor
+          additionalProperties: false
+          description: Observed event-goal outcomes for automationId, across all-time eligible enrollments or outcomesVersionId. Separate from the delivery metrics from/to window; not email attribution.
         totals:
           type: object
           properties:
@@ -9205,6 +9577,44 @@ components:
           type: string
           minLength: 1
           maxLength: 120
+        goal:
+          type: object
+          properties:
+            schemaVersion:
+              type: number
+              enum:
+                - 1
+            kind:
+              type: string
+              enum:
+                - event
+            event:
+              type: object
+              properties:
+                sourceId:
+                  type: string
+                  minLength: 1
+                providerEventKey:
+                  type: string
+                  minLength: 1
+                  maxLength: 255
+              required:
+                - sourceId
+                - providerEventKey
+              additionalProperties: false
+            windowDays:
+              type: integer
+              minimum: 1
+              maximum: 90
+            stopRemainingSends:
+              type: boolean
+          required:
+            - schemaVersion
+            - kind
+            - event
+            - windowDays
+            - stopRemainingSends
+          additionalProperties: false
         description:
           type: string
           maxLength: 2000
@@ -10188,6 +10598,44 @@ components:
                 type: string
                 minLength: 1
                 maxLength: 120
+              goal:
+                type: object
+                properties:
+                  schemaVersion:
+                    type: number
+                    enum:
+                      - 1
+                  kind:
+                    type: string
+                    enum:
+                      - event
+                  event:
+                    type: object
+                    properties:
+                      sourceId:
+                        type: string
+                        minLength: 1
+                      providerEventKey:
+                        type: string
+                        minLength: 1
+                        maxLength: 255
+                    required:
+                      - sourceId
+                      - providerEventKey
+                    additionalProperties: false
+                  windowDays:
+                    type: integer
+                    minimum: 1
+                    maximum: 90
+                  stopRemainingSends:
+                    type: boolean
+                required:
+                  - schemaVersion
+                  - kind
+                  - event
+                  - windowDays
+                  - stopRemainingSends
+                additionalProperties: false
               description:
                 type: string
                 maxLength: 2000
@@ -10690,6 +11138,46 @@ components:
           type: string
           minLength: 1
           maxLength: 120
+        goal:
+          type:
+            - object
+            - "null"
+          properties:
+            schemaVersion:
+              type: number
+              enum:
+                - 1
+            kind:
+              type: string
+              enum:
+                - event
+            event:
+              type: object
+              properties:
+                sourceId:
+                  type: string
+                  minLength: 1
+                providerEventKey:
+                  type: string
+                  minLength: 1
+                  maxLength: 255
+              required:
+                - sourceId
+                - providerEventKey
+              additionalProperties: false
+            windowDays:
+              type: integer
+              minimum: 1
+              maximum: 90
+            stopRemainingSends:
+              type: boolean
+          required:
+            - schemaVersion
+            - kind
+            - event
+            - windowDays
+            - stopRemainingSends
+          additionalProperties: false
         description:
           type: string
           maxLength: 2000
@@ -11795,6 +12283,21 @@ components:
                     enum:
                       - smoke
                       - scenario
+                  goal:
+                    type: object
+                    properties:
+                      resolution:
+                        type: string
+                        enum:
+                          - achieved
+                          - not_observed
+                      afterMs:
+                        type: number
+                      stopRemainingSends:
+                        type: boolean
+                    required:
+                      - resolution
+                      - stopRemainingSends
                   complete:
                     type: boolean
                   visitedNodes:
@@ -11966,6 +12469,17 @@ components:
         scenario:
           type: object
           properties:
+            goal:
+              type: object
+              properties:
+                afterMs:
+                  type: integer
+                  minimum: 0
+                  maximum: 7776000000
+              required:
+                - afterMs
+              additionalProperties: false
+              description: One matching pinned goal event, milliseconds after journey entry on the virtual test clock. No provider event is created.
             engagement:
               type: array
               items:
@@ -12462,6 +12976,21 @@ components:
                     enum:
                       - smoke
                       - scenario
+                  goal:
+                    type: object
+                    properties:
+                      resolution:
+                        type: string
+                        enum:
+                          - achieved
+                          - not_observed
+                      afterMs:
+                        type: number
+                      stopRemainingSends:
+                        type: boolean
+                    required:
+                      - resolution
+                      - stopRemainingSends
                   complete:
                     type: boolean
                   visitedNodes:
@@ -12690,6 +13219,21 @@ components:
               enum:
                 - smoke
                 - scenario
+            goal:
+              type: object
+              properties:
+                resolution:
+                  type: string
+                  enum:
+                    - achieved
+                    - not_observed
+                afterMs:
+                  type: number
+                stopRemainingSends:
+                  type: boolean
+              required:
+                - resolution
+                - stopRemainingSends
             complete:
               type: boolean
             visitedNodes:
@@ -13399,7 +13943,10 @@ components:
               - reason
             additionalProperties: false
           default: []
-          description: Matched automations whose run failed to start, each with the reason; one skipped on purpose (paused past its window, a suppressed contact) is not listed. A fire can answer `triggered` with no runs; this says why.
+          description: Matched automations whose run did not start, each with the reason, including accepted goal entry refusals. A fire can answer `triggered` with no runs; this says why. On replay, check notStartedTruncated before treating this as a complete list.
+        notStartedTruncated:
+          type: boolean
+          description: True when the replay omits additional goal entry refusals from its bounded receipt summary. Each refusal retains its full per-automation audit receipt.
         publishedAutomations:
           type: array
           items:
@@ -15100,7 +15647,7 @@ components:
               operator:
                 type: string
                 minLength: 1
-                description: "Allowed operators depend on the field's type — string: equals, not_equals, contains, not_contains, contains_any, not_contains_any, starts_with, ends_with, is_empty, is_not_empty, in, not_in, exists, not_exists; number: equals, not_equals, gt, gte, lt, lte, between, is_empty, is_not_empty; date: on_date, before, after, between, is_empty, is_not_empty; bool: is_true, is_false (`equals` with true/false/1/0 is accepted as an alias). Any other operator, or an operator on a field type that does not support it, is rejected with 400 INVALID_REQUEST (`param: \"filter\"`) — nothing is silently ignored. E.g. use `equals`, not `eq`."
+                description: "Allowed operators depend on the field's type — string: equals, not_equals, contains, not_contains, contains_any, not_contains_any, starts_with, ends_with, is_empty, is_not_empty, in, not_in, exists, not_exists; number: equals, not_equals, gt, gte, lt, lte, between, is_empty, is_not_empty; date: on_date, before, after, between, is_empty, is_not_empty, inactive_for_days; bool: is_true, is_false (`equals` with true/false/1/0 is accepted as an alias). Any other operator, or an operator on a field type that does not support it, is rejected with 400 INVALID_REQUEST (`param: \"filter\"`) — nothing is silently ignored. E.g. use `equals`, not `eq`."
               value:
                 type: string
                 description: The comparison value, as a string. `in`, `not_in`, `contains_any` and `not_contains_any` take a comma-separated list; `between` takes exactly two comma-separated bounds (e.g. "10,30"). Unary operators (`is_empty`, `is_not_empty`, `exists`, `not_exists`, `is_true`, `is_false`) ignore it — pass "".
@@ -15774,6 +16321,7 @@ components:
                             - before
                             - after
                             - on_date
+                            - inactive_for_days
                         value: {}
                         type:
                           type: string
@@ -16023,6 +16571,7 @@ components:
                       - before
                       - after
                       - on_date
+                      - inactive_for_days
                   value: {}
                   type:
                     type: string
@@ -16310,8 +16859,9 @@ components:
                       - before
                       - after
                       - on_date
+                      - inactive_for_days
                   value:
-                    description: "Operator-dependent: `between` takes `[min, max]` or `{min, max}`; `in`/`not_in`/`contains_any`/`not_contains_any` take an array, not a comma-separated string; unary operators (`is_empty`, `is_not_empty`, `exists`, `is_true`, …) omit it."
+                    description: "Operator-dependent: `inactive_for_days` requires type `date` and value `30` (known activity at least thirty elapsed days ago); `between` takes `[min, max]` or `{min, max}`; `in`/`not_in`/`contains_any`/`not_contains_any` take an array, not a comma-separated string; unary operators (`is_empty`, `is_not_empty`, `exists`, `is_true`, …) omit it."
                   type:
                     type: string
                     description: 'Saved audiences infer omitted types from the field registry. Unknown fields compare as strings. Date ranges require type: "date".'
@@ -16384,6 +16934,7 @@ components:
                       - before
                       - after
                       - on_date
+                      - inactive_for_days
                   value: {}
                   type:
                     type: string
@@ -16693,8 +17244,9 @@ components:
                       - before
                       - after
                       - on_date
+                      - inactive_for_days
                   value:
-                    description: "Operator-dependent: `between` takes `[min, max]` or `{min, max}`; `in`/`not_in`/`contains_any`/`not_contains_any` take an array, not a comma-separated string; unary operators (`is_empty`, `is_not_empty`, `exists`, `is_true`, …) omit it."
+                    description: "Operator-dependent: `inactive_for_days` requires type `date` and value `30` (known activity at least thirty elapsed days ago); `between` takes `[min, max]` or `{min, max}`; `in`/`not_in`/`contains_any`/`not_contains_any` take an array, not a comma-separated string; unary operators (`is_empty`, `is_not_empty`, `exists`, `is_true`, …) omit it."
                   type:
                     type: string
                     description: 'Saved audiences infer omitted types from the field registry. Unknown fields compare as strings. Date ranges require type: "date".'
@@ -19090,6 +19642,36 @@ components:
             - used
             - remaining
           additionalProperties: false
+        onDemand:
+          type: object
+          properties:
+            active:
+              type: boolean
+            capUsd:
+              type:
+                - number
+                - "null"
+              minimum: 0
+            budgetUsd:
+              type: number
+              minimum: 0
+            spentUsd:
+              type: number
+              minimum: 0
+            creditsRemaining:
+              type: integer
+              minimum: 0
+            emailSendsRemaining:
+              type: integer
+              minimum: 0
+          required:
+            - active
+            - capUsd
+            - budgetUsd
+            - spentUsd
+            - creditsRemaining
+            - emailSendsRemaining
+          additionalProperties: false
         period:
           type: object
           properties:
@@ -19111,6 +19693,7 @@ components:
         - plan
         - credits
         - emailSends
+        - onDemand
         - period
       additionalProperties: false
     IntegrationsListResponse:
@@ -25494,7 +26077,7 @@ paths:
                       code: INSUFFICIENT_CREDITS
                       type: payment_required
                       message: The credit balance is below what this operation requires; `details.cost` is the amount needed.
-                      suggestion: Upgrade your plan or wait for the next billing period to reset. Check your balance up front with GET /v1/usage.
+                      suggestion: Upgrade your plan, turn on or raise on-demand spending at https://brew.new/plan, or wait for the next billing period to reset. Check your balance, including on-demand headroom, up front with GET /v1/usage.
                       docs: https://docs.brew.new/api-reference/api/credits
                       details:
                         cost: 5
@@ -26514,7 +27097,7 @@ paths:
                       code: INSUFFICIENT_CREDITS
                       type: payment_required
                       message: The credit balance is below what this operation requires; `details.cost` is the amount needed.
-                      suggestion: Upgrade your plan or wait for the next billing period to reset. Check your balance up front with GET /v1/usage.
+                      suggestion: Upgrade your plan, turn on or raise on-demand spending at https://brew.new/plan, or wait for the next billing period to reset. Check your balance, including on-demand headroom, up front with GET /v1/usage.
                       docs: https://docs.brew.new/api-reference/api/credits
                       details:
                         cost: 5
@@ -29879,7 +30462,7 @@ paths:
                       code: INSUFFICIENT_CREDITS
                       type: payment_required
                       message: The credit balance is below what this operation requires; `details.cost` is the amount needed.
-                      suggestion: Upgrade your plan or wait for the next billing period to reset. Check your balance up front with GET /v1/usage.
+                      suggestion: Upgrade your plan, turn on or raise on-demand spending at https://brew.new/plan, or wait for the next billing period to reset. Check your balance, including on-demand headroom, up front with GET /v1/usage.
                       docs: https://docs.brew.new/api-reference/api/credits
                       details:
                         cost: 5
@@ -30553,7 +31136,7 @@ paths:
                       code: INSUFFICIENT_CREDITS
                       type: payment_required
                       message: The credit balance is below what this operation requires; `details.cost` is the amount needed.
-                      suggestion: Upgrade your plan or wait for the next billing period to reset. Check your balance up front with GET /v1/usage.
+                      suggestion: Upgrade your plan, turn on or raise on-demand spending at https://brew.new/plan, or wait for the next billing period to reset. Check your balance, including on-demand headroom, up front with GET /v1/usage.
                       docs: https://docs.brew.new/api-reference/api/credits
                       details:
                         cost: 5
@@ -31058,7 +31641,7 @@ paths:
                       code: INSUFFICIENT_CREDITS
                       type: payment_required
                       message: The credit balance is below what this operation requires; `details.cost` is the amount needed.
-                      suggestion: Upgrade your plan or wait for the next billing period to reset. Check your balance up front with GET /v1/usage.
+                      suggestion: Upgrade your plan, turn on or raise on-demand spending at https://brew.new/plan, or wait for the next billing period to reset. Check your balance, including on-demand headroom, up front with GET /v1/usage.
                       docs: https://docs.brew.new/api-reference/api/credits
                       details:
                         cost: 5
@@ -39419,32 +40002,52 @@ paths:
       summary: Automation performance
       description: "Windowed per-automation performance + scoped `totals` + the resolved `range`. Defaults to the last 30 days. Reflects LIVE runs only (test runs never contribute). Totals include every matching automation independently from the displayed row `limit`. Narrow with the `automationId` filter; bound the window with `from` / `to`. Check `truncated`: when true, scan budgets clipped the requested window and the metrics are partial. Requires the `automations` scope."
       parameters:
-        - name: from
-          in: query
-          required: false
-          schema:
+        - schema:
             type: string
             format: date-time
-        - name: to
-          in: query
           required: false
-          schema:
+          name: from
+          in: query
+        - schema:
             type: string
             format: date-time
-        - name: automationId
-          in: query
           required: false
-          schema:
+          name: to
+          in: query
+        - schema:
             type: string
             minLength: 1
             maxLength: 64
-        - name: limit
-          in: query
           required: false
-          schema:
+          name: automationId
+          in: query
+        - schema:
+            type: string
+            minLength: 1
+            maxLength: 64
+            description: Optionally select one pinned automation version for observed outcomes; requires automationId.
+          required: false
+          description: Optionally select one pinned automation version for observed outcomes; requires automationId.
+          name: outcomesVersionId
+          in: query
+        - schema:
+            type: string
+            maxLength: 4096
+            description: Next observed-outcome evidence page; population counts do not change.
+          required: false
+          description: Next observed-outcome evidence page; population counts do not change.
+          name: outcomesCursor
+          in: query
+        - schema:
+            anyOf:
+              - type: number
+              - type: string
             type: integer
             minimum: 1
             maximum: 100
+          required: false
+          name: limit
+          in: query
           description: Page size (1-100). Defaults to 100.
           example: 50
         - name: X-Brand-Id
@@ -53136,7 +53739,7 @@ paths:
                       code: INSUFFICIENT_CREDITS
                       type: payment_required
                       message: The credit balance is below what this operation requires; `details.cost` is the amount needed.
-                      suggestion: Upgrade your plan or wait for the next billing period to reset. Check your balance up front with GET /v1/usage.
+                      suggestion: Upgrade your plan, turn on or raise on-demand spending at https://brew.new/plan, or wait for the next billing period to reset. Check your balance, including on-demand headroom, up front with GET /v1/usage.
                       docs: https://docs.brew.new/api-reference/api/credits
                       details:
                         cost: 5
@@ -55685,7 +56288,7 @@ paths:
                       code: INSUFFICIENT_CREDITS
                       type: payment_required
                       message: The credit balance is below what this operation requires; `details.cost` is the amount needed.
-                      suggestion: Upgrade your plan or wait for the next billing period to reset. Check your balance up front with GET /v1/usage.
+                      suggestion: Upgrade your plan, turn on or raise on-demand spending at https://brew.new/plan, or wait for the next billing period to reset. Check your balance, including on-demand headroom, up front with GET /v1/usage.
                       docs: https://docs.brew.new/api-reference/api/credits
                       details:
                         cost: 5
@@ -56194,7 +56797,7 @@ paths:
                       code: INSUFFICIENT_CREDITS
                       type: payment_required
                       message: The credit balance is below what this operation requires; `details.cost` is the amount needed.
-                      suggestion: Upgrade your plan or wait for the next billing period to reset. Check your balance up front with GET /v1/usage.
+                      suggestion: Upgrade your plan, turn on or raise on-demand spending at https://brew.new/plan, or wait for the next billing period to reset. Check your balance, including on-demand headroom, up front with GET /v1/usage.
                       docs: https://docs.brew.new/api-reference/api/credits
                       details:
                         cost: 5
@@ -56729,7 +57332,7 @@ paths:
                       code: INSUFFICIENT_CREDITS
                       type: payment_required
                       message: The credit balance is below what this operation requires; `details.cost` is the amount needed.
-                      suggestion: Upgrade your plan or wait for the next billing period to reset. Check your balance up front with GET /v1/usage.
+                      suggestion: Upgrade your plan, turn on or raise on-demand spending at https://brew.new/plan, or wait for the next billing period to reset. Check your balance, including on-demand headroom, up front with GET /v1/usage.
                       docs: https://docs.brew.new/api-reference/api/credits
                       details:
                         cost: 5
@@ -69875,7 +70478,7 @@ paths:
                       code: BRAND_LIMIT_REACHED
                       type: payment_required
                       message: The plan allows no more brands.
-                      suggestion: Delete an unused brand, or upgrade the plan to add more brands.
+                      suggestion: Delete an unused brand, upgrade the plan, or add extra brands at https://brew.new/plan.
                       docs: https://docs.brew.new/api-reference/api/credits
                 insufficientCredits:
                   summary: INSUFFICIENT_CREDITS
@@ -69884,7 +70487,7 @@ paths:
                       code: INSUFFICIENT_CREDITS
                       type: payment_required
                       message: The credit balance is below what this operation requires; `details.cost` is the amount needed.
-                      suggestion: Upgrade your plan or wait for the next billing period to reset. Check your balance up front with GET /v1/usage.
+                      suggestion: Upgrade your plan, turn on or raise on-demand spending at https://brew.new/plan, or wait for the next billing period to reset. Check your balance, including on-demand headroom, up front with GET /v1/usage.
                       docs: https://docs.brew.new/api-reference/api/credits
                       details:
                         cost: 5
@@ -70575,7 +71178,7 @@ paths:
                       code: INSUFFICIENT_CREDITS
                       type: payment_required
                       message: The credit balance is below what this operation requires; `details.cost` is the amount needed.
-                      suggestion: Upgrade your plan or wait for the next billing period to reset. Check your balance up front with GET /v1/usage.
+                      suggestion: Upgrade your plan, turn on or raise on-demand spending at https://brew.new/plan, or wait for the next billing period to reset. Check your balance, including on-demand headroom, up front with GET /v1/usage.
                       docs: https://docs.brew.new/api-reference/api/credits
                       details:
                         cost: 5
@@ -71030,7 +71633,7 @@ paths:
                       code: INSUFFICIENT_CREDITS
                       type: payment_required
                       message: The credit balance is below what this operation requires; `details.cost` is the amount needed.
-                      suggestion: Upgrade your plan or wait for the next billing period to reset. Check your balance up front with GET /v1/usage.
+                      suggestion: Upgrade your plan, turn on or raise on-demand spending at https://brew.new/plan, or wait for the next billing period to reset. Check your balance, including on-demand headroom, up front with GET /v1/usage.
                       docs: https://docs.brew.new/api-reference/api/credits
                       details:
                         cost: 5
@@ -71485,7 +72088,7 @@ paths:
                       code: INSUFFICIENT_CREDITS
                       type: payment_required
                       message: The credit balance is below what this operation requires; `details.cost` is the amount needed.
-                      suggestion: Upgrade your plan or wait for the next billing period to reset. Check your balance up front with GET /v1/usage.
+                      suggestion: Upgrade your plan, turn on or raise on-demand spending at https://brew.new/plan, or wait for the next billing period to reset. Check your balance, including on-demand headroom, up front with GET /v1/usage.
                       docs: https://docs.brew.new/api-reference/api/credits
                       details:
                         cost: 5
@@ -71940,7 +72543,7 @@ paths:
                       code: INSUFFICIENT_CREDITS
                       type: payment_required
                       message: The credit balance is below what this operation requires; `details.cost` is the amount needed.
-                      suggestion: Upgrade your plan or wait for the next billing period to reset. Check your balance up front with GET /v1/usage.
+                      suggestion: Upgrade your plan, turn on or raise on-demand spending at https://brew.new/plan, or wait for the next billing period to reset. Check your balance, including on-demand headroom, up front with GET /v1/usage.
                       docs: https://docs.brew.new/api-reference/api/credits
                       details:
                         cost: 5
@@ -73049,10 +73652,10 @@ paths:
       tags:
         - Usage
       summary: Get usage
-      description: "Returns the org usage snapshot: current plan, AI credit balance (limit/used/remaining — `null` = unlimited), monthly email-send quota (`remaining` = `limit` − `used` − `reserved`, where `reserved` is held by sends still delivering), and the billing-period window. Check it before a credit-metered call. Billing belongs to the ORGANIZATION, so this needs an organization-scoped credential: a key bound to one brand gets `403 ORG_SCOPE_REQUIRED` no matter which scopes it holds."
+      description: "Returns the org usage snapshot: current plan, AI credit balance (limit/used/remaining — `null` = unlimited), monthly email-send quota (`remaining` = `limit` − `used` − `reserved`, where `reserved` is held by sends still delivering; units already billed on demand count in both `limit` and `used`), on-demand spending (`onDemand`: when `active`, usage may continue past `remaining` by up to `creditsRemaining` credits or `emailSendsRemaining` sends, billed at the end of the billing month; the two share one budget, so spending either lowers both), and the billing-period window. Check it before a credit-metered call. Billing belongs to the ORGANIZATION, so this needs an organization-scoped credential: a key bound to one brand gets `403 ORG_SCOPE_REQUIRED` no matter which scopes it holds."
       responses:
         "200":
-          description: Usage snapshot — plan, credits, and email-send quota.
+          description: Usage snapshot — plan, credits, email-send quota, and on-demand headroom.
           headers:
             x-request-id:
               schema:
@@ -73099,6 +73702,13 @@ paths:
                   used: 911
                   reserved: 27880
                   remaining: 171209
+                onDemand:
+                  active: true
+                  capUsd: 100
+                  budgetUsd: 100
+                  spentUsd: 12.5
+                  creditsRemaining: 4375
+                  emailSendsRemaining: 21875
                 period:
                   start: '2026-05-28T18:10:35.000Z'
                   end: '2026-06-28T18:10:35.000Z'

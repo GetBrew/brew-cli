@@ -2605,7 +2605,7 @@ export interface paths {
         };
         /**
          * Get usage
-         * @description Returns the org usage snapshot: current plan, AI credit balance (limit/used/remaining — `null` = unlimited), monthly email-send quota (`remaining` = `limit` − `used` − `reserved`, where `reserved` is held by sends still delivering), and the billing-period window. Check it before a credit-metered call. Billing belongs to the ORGANIZATION, so this needs an organization-scoped credential: a key bound to one brand gets `403 ORG_SCOPE_REQUIRED` no matter which scopes it holds.
+         * @description Returns the org usage snapshot: current plan, AI credit balance (limit/used/remaining — `null` = unlimited), monthly email-send quota (`remaining` = `limit` − `used` − `reserved`, where `reserved` is held by sends still delivering; units already billed on demand count in both `limit` and `used`), on-demand spending (`onDemand`: when `active`, usage may continue past `remaining` by up to `creditsRemaining` credits or `emailSendsRemaining` sends, billed at the end of the billing month; the two share one budget, so spending either lowers both), and the billing-period window. Check it before a credit-metered call. Billing belongs to the ORGANIZATION, so this needs an organization-scoped credential: a key bound to one brand gets `403 ORG_SCOPE_REQUIRED` no matter which scopes it holds.
          */
         get: operations["getUsage"];
         put?: never;
@@ -3831,6 +3831,18 @@ export interface components {
             automationVersionId: string;
             triggerEventId?: string;
             name: string;
+            goal?: {
+                /** @enum {number} */
+                schemaVersion: 1;
+                /** @enum {string} */
+                kind: "event";
+                event: {
+                    sourceId: string;
+                    providerEventKey: string;
+                };
+                windowDays: number;
+                stopRemainingSends: boolean;
+            };
             description?: string;
             version: number | "latest";
             published: boolean;
@@ -4319,7 +4331,7 @@ export interface components {
                 filters: {
                     field: string;
                     /** @enum {string} */
-                    operator: "equals" | "not_equals" | "contains" | "not_contains" | "contains_any" | "not_contains_any" | "starts_with" | "ends_with" | "gt" | "gte" | "lt" | "lte" | "between" | "is_true" | "is_false" | "in" | "not_in" | "is_empty" | "not_exists" | "is_not_empty" | "exists" | "is_set" | "before" | "after" | "on_date";
+                    operator: "equals" | "not_equals" | "contains" | "not_contains" | "contains_any" | "not_contains_any" | "starts_with" | "ends_with" | "gt" | "gte" | "lt" | "lte" | "between" | "is_true" | "is_false" | "in" | "not_in" | "is_empty" | "not_exists" | "is_not_empty" | "exists" | "is_set" | "before" | "after" | "on_date" | "inactive_for_days";
                     value?: unknown;
                     /** @description Saved audiences infer omitted types from the field registry. Unknown fields compare as strings. Date ranges require type: "date". */
                     type?: string;
@@ -5993,6 +6005,111 @@ export interface components {
                 lastRunAt?: string;
                 lastRunStatus?: string;
             }[];
+            /** @description Captured Stripe money for all versions of this program, not email attribution. Provider minor-unit integers are separate per currency; unassignedBrandValues belong to the brand, not this program. Independent of from/to and outcomesVersionId. */
+            observedPayments?: {
+                /** @enum {string} */
+                status: "observed_only";
+                /** @enum {string} */
+                ownershipPolicy: "latest_eligible_original_entry_pinned";
+                values: {
+                    currency: string;
+                    paymentCount: number;
+                    grossMinor: number;
+                    refundedMinor: number;
+                    netMinor: number;
+                    exposurePrecededPaymentCount: number;
+                }[];
+                unassignedBrandValues: {
+                    currency: string;
+                    paymentCount: number;
+                    grossMinor: number;
+                    refundedMinor: number;
+                    netMinor: number;
+                    exposurePrecededPaymentCount: number;
+                }[];
+                attributedValues: {
+                    currency: string;
+                    paymentCount: number;
+                    grossMinor: number;
+                    refundedMinor: number;
+                    netMinor: number;
+                    exposurePrecededPaymentCount: number;
+                }[];
+                unattributedBrandValues: {
+                    currency: string;
+                    paymentCount: number;
+                    grossMinor: number;
+                    refundedMinor: number;
+                    netMinor: number;
+                    exposurePrecededPaymentCount: number;
+                }[];
+                attribution: {
+                    /** @enum {string} */
+                    policy: "last_confirmed_human_click_7d_v1";
+                    /** @enum {number} */
+                    windowDays: 7;
+                    /** @enum {string} */
+                    availability: "partial";
+                    /** @enum {string} */
+                    historyCheckpoint: "unavailable";
+                    /** @enum {string} */
+                    coverageReason: "Available confirmed human click ledger only; no history completeness watermark. Pending, legacy, degraded, missing execution and missing acceptance evidence receive no credit. First qualifying decision is pinned; this model does not establish causal lift.";
+                    /** @enum {boolean} */
+                    causal: false;
+                };
+                /** @enum {string} */
+                coverage: "partial";
+                /** @enum {string} */
+                coverageReason: "Captured Stripe charges resolved from invoice-paid and refund deliveries; complete bounded refund lists count succeeded refunds only. Provider charge-created authorization time, not settlement time. Observed program ownership does not establish email credit.";
+                truncated: boolean;
+            };
+            /** @description Observed event-goal outcomes for automationId, across all-time eligible enrollments or outcomesVersionId. Separate from the delivery metrics from/to window; not email attribution. */
+            outcomes?: {
+                automationId: string;
+                automationVersionId: string | null;
+                /** @enum {string} */
+                scope: "population";
+                /** @enum {string} */
+                period: "all_time_enrollments";
+                counts: {
+                    enrolled: number;
+                    achieved: number;
+                    pending: number;
+                    windowClosed: number;
+                    prequalified: number;
+                    unknown: number;
+                    exposed: number;
+                    achievedAfterExposure: number;
+                };
+                uniquePeople: number;
+                observedAchievementRate: number | null;
+                evidence: {
+                    observationId: string;
+                    executionId: string;
+                    automationVersionId?: string;
+                    sourceId: string;
+                    providerEventKey: string;
+                    contactEmail: string;
+                    /** @enum {string} */
+                    resolution: "pending" | "achieved" | "window_closed" | "prequalified";
+                    /** @enum {string} */
+                    coverage: "complete" | "incomplete" | "unavailable";
+                    coverageReason?: string;
+                    /** @enum {string} */
+                    anchorBasis: "entry_event" | "admission_time";
+                    admittedAt: number;
+                    anchorAt: number;
+                    windowEndsAt: number;
+                    achievedAt?: number;
+                    providerEventId?: string;
+                    firstAcceptedEmailAt?: number;
+                    firstAcceptedSendId?: string;
+                    matchedAt?: number;
+                    goalDefinitionHash?: string;
+                }[];
+                evidenceTruncated: boolean;
+                continueCursor: string | null;
+            };
             totals: {
                 runs: number;
                 completed: number;
@@ -6093,6 +6210,18 @@ export interface components {
         };
         AutomationsPostRequest: {
             name: string;
+            goal?: {
+                /** @enum {number} */
+                schemaVersion: 1;
+                /** @enum {string} */
+                kind: "event";
+                event: {
+                    sourceId: string;
+                    providerEventKey: string;
+                };
+                windowDays: number;
+                stopRemainingSends: boolean;
+            };
             description?: string;
             triggerEventId?: string;
             nodes: ({
@@ -6453,6 +6582,18 @@ export interface components {
                 automationVersionId: string;
                 triggerEventId?: string;
                 name: string;
+                goal?: {
+                    /** @enum {number} */
+                    schemaVersion: 1;
+                    /** @enum {string} */
+                    kind: "event";
+                    event: {
+                        sourceId: string;
+                        providerEventKey: string;
+                    };
+                    windowDays: number;
+                    stopRemainingSends: boolean;
+                };
                 description?: string;
                 version: number | "latest";
                 published: boolean;
@@ -6623,6 +6764,18 @@ export interface components {
         };
         AutomationsUpdateRequest: {
             name?: string;
+            goal?: {
+                /** @enum {number} */
+                schemaVersion: 1;
+                /** @enum {string} */
+                kind: "event";
+                event: {
+                    sourceId: string;
+                    providerEventKey: string;
+                };
+                windowDays: number;
+                stopRemainingSends: boolean;
+            } | null;
             description?: string;
             nodes?: ({
                 id: string;
@@ -7034,6 +7187,12 @@ export interface components {
                 testCoverage?: {
                     /** @enum {string} */
                     mode: "smoke" | "scenario";
+                    goal?: {
+                        /** @enum {string} */
+                        resolution: "achieved" | "not_observed";
+                        afterMs?: number;
+                        stopRemainingSends: boolean;
+                    };
                     complete: boolean;
                     visitedNodes: string[];
                     unvisitedNodes: string[];
@@ -7087,6 +7246,10 @@ export interface components {
             testRecipient?: string;
             /** @description Simulated engagement and forced split branches for this test run; omit for a plain dry run in which engagement filters take their else branch. */
             scenario?: {
+                /** @description One matching pinned goal event, milliseconds after journey entry on the virtual test clock. No provider event is created. */
+                goal?: {
+                    afterMs: number;
+                };
                 /**
                  * @description Simulated opens/clicks per engagement-filter node; a node not listed here sees no engagement.
                  * @default []
@@ -7287,6 +7450,12 @@ export interface components {
                 testCoverage?: {
                     /** @enum {string} */
                     mode: "smoke" | "scenario";
+                    goal?: {
+                        /** @enum {string} */
+                        resolution: "achieved" | "not_observed";
+                        afterMs?: number;
+                        stopRemainingSends: boolean;
+                    };
                     complete: boolean;
                     visitedNodes: string[];
                     unvisitedNodes: string[];
@@ -7357,6 +7526,12 @@ export interface components {
             testCoverage?: {
                 /** @enum {string} */
                 mode: "smoke" | "scenario";
+                goal?: {
+                    /** @enum {string} */
+                    resolution: "achieved" | "not_observed";
+                    afterMs?: number;
+                    stopRemainingSends: boolean;
+                };
                 complete: boolean;
                 visitedNodes: string[];
                 unvisitedNodes: string[];
@@ -7606,7 +7781,7 @@ export interface components {
             /** @description The runs this fire started — `GET /v1/automations/runs/{automationRunId}`. */
             automationRunIds: string[];
             /**
-             * @description Matched automations whose run failed to start, each with the reason; one skipped on purpose (paused past its window, a suppressed contact) is not listed. A fire can answer `triggered` with no runs; this says why.
+             * @description Matched automations whose run did not start, each with the reason, including accepted goal entry refusals. A fire can answer `triggered` with no runs; this says why. On replay, check notStartedTruncated before treating this as a complete list.
              * @default []
              */
             notStarted?: {
@@ -7614,6 +7789,8 @@ export interface components {
                 /** @description Why its run did not start. A refusal (a merge tag or condition field the trigger does not declare, a step the run gate finds incomplete) repeats on every fire until the automation or trigger is fixed; an unexpected error is retried automatically. */
                 reason: string;
             }[];
+            /** @description True when the replay omits additional goal entry refusals from its bounded receipt summary. Each refusal retains its full per-automation audit receipt. */
+            notStartedTruncated?: boolean;
             publishedAutomations: ({
                 automationId: string;
                 name?: string;
@@ -8297,7 +8474,7 @@ export interface components {
             filters?: {
                 /** @description The contact column or custom-field name to filter on (e.g. `email`, `firstName`, or a key from GET /v1/fields). */
                 field: string;
-                /** @description Allowed operators depend on the field's type — string: equals, not_equals, contains, not_contains, contains_any, not_contains_any, starts_with, ends_with, is_empty, is_not_empty, in, not_in, exists, not_exists; number: equals, not_equals, gt, gte, lt, lte, between, is_empty, is_not_empty; date: on_date, before, after, between, is_empty, is_not_empty; bool: is_true, is_false (`equals` with true/false/1/0 is accepted as an alias). Any other operator, or an operator on a field type that does not support it, is rejected with 400 INVALID_REQUEST (`param: "filter"`) — nothing is silently ignored. E.g. use `equals`, not `eq`. */
+                /** @description Allowed operators depend on the field's type — string: equals, not_equals, contains, not_contains, contains_any, not_contains_any, starts_with, ends_with, is_empty, is_not_empty, in, not_in, exists, not_exists; number: equals, not_equals, gt, gte, lt, lte, between, is_empty, is_not_empty; date: on_date, before, after, between, is_empty, is_not_empty, inactive_for_days; bool: is_true, is_false (`equals` with true/false/1/0 is accepted as an alias). Any other operator, or an operator on a field type that does not support it, is rejected with 400 INVALID_REQUEST (`param: "filter"`) — nothing is silently ignored. E.g. use `equals`, not `eq`. */
                 operator: string;
                 /** @description The comparison value, as a string. `in`, `not_in`, `contains_any` and `not_contains_any` take a comma-separated list; `between` takes exactly two comma-separated bounds (e.g. "10,30"). Unary operators (`is_empty`, `is_not_empty`, `exists`, `not_exists`, `is_true`, `is_false`) ignore it — pass "". */
                 value: string;
@@ -8555,7 +8732,7 @@ export interface components {
                     filters: {
                         field: string;
                         /** @enum {string} */
-                        operator: "equals" | "not_equals" | "contains" | "not_contains" | "contains_any" | "not_contains_any" | "starts_with" | "ends_with" | "gt" | "gte" | "lt" | "lte" | "between" | "is_true" | "is_false" | "in" | "not_in" | "is_empty" | "not_exists" | "is_not_empty" | "exists" | "is_set" | "before" | "after" | "on_date";
+                        operator: "equals" | "not_equals" | "contains" | "not_contains" | "contains_any" | "not_contains_any" | "starts_with" | "ends_with" | "gt" | "gte" | "lt" | "lte" | "between" | "is_true" | "is_false" | "in" | "not_in" | "is_empty" | "not_exists" | "is_not_empty" | "exists" | "is_set" | "before" | "after" | "on_date" | "inactive_for_days";
                         value?: unknown;
                         /** @description Saved audiences infer omitted types from the field registry. Unknown fields compare as strings. Date ranges require type: "date". */
                         type?: string;
@@ -8623,7 +8800,7 @@ export interface components {
                 filters: {
                     field: string;
                     /** @enum {string} */
-                    operator: "equals" | "not_equals" | "contains" | "not_contains" | "contains_any" | "not_contains_any" | "starts_with" | "ends_with" | "gt" | "gte" | "lt" | "lte" | "between" | "is_true" | "is_false" | "in" | "not_in" | "is_empty" | "not_exists" | "is_not_empty" | "exists" | "is_set" | "before" | "after" | "on_date";
+                    operator: "equals" | "not_equals" | "contains" | "not_contains" | "contains_any" | "not_contains_any" | "starts_with" | "ends_with" | "gt" | "gte" | "lt" | "lte" | "between" | "is_true" | "is_false" | "in" | "not_in" | "is_empty" | "not_exists" | "is_not_empty" | "exists" | "is_set" | "before" | "after" | "on_date" | "inactive_for_days";
                     value?: unknown;
                     /** @description Saved audiences infer omitted types from the field registry. Unknown fields compare as strings. Date ranges require type: "date". */
                     type?: string;
@@ -8707,8 +8884,8 @@ export interface components {
                 filters: {
                     field: string;
                     /** @enum {string} */
-                    operator: "equals" | "not_equals" | "contains" | "not_contains" | "contains_any" | "not_contains_any" | "starts_with" | "ends_with" | "gt" | "gte" | "lt" | "lte" | "between" | "is_true" | "is_false" | "in" | "not_in" | "is_empty" | "not_exists" | "is_not_empty" | "exists" | "is_set" | "before" | "after" | "on_date";
-                    /** @description Operator-dependent: `between` takes `[min, max]` or `{min, max}`; `in`/`not_in`/`contains_any`/`not_contains_any` take an array, not a comma-separated string; unary operators (`is_empty`, `is_not_empty`, `exists`, `is_true`, …) omit it. */
+                    operator: "equals" | "not_equals" | "contains" | "not_contains" | "contains_any" | "not_contains_any" | "starts_with" | "ends_with" | "gt" | "gte" | "lt" | "lte" | "between" | "is_true" | "is_false" | "in" | "not_in" | "is_empty" | "not_exists" | "is_not_empty" | "exists" | "is_set" | "before" | "after" | "on_date" | "inactive_for_days";
+                    /** @description Operator-dependent: `inactive_for_days` requires type `date` and value `30` (known activity at least thirty elapsed days ago); `between` takes `[min, max]` or `{min, max}`; `in`/`not_in`/`contains_any`/`not_contains_any` take an array, not a comma-separated string; unary operators (`is_empty`, `is_not_empty`, `exists`, `is_true`, …) omit it. */
                     value?: unknown;
                     /** @description Saved audiences infer omitted types from the field registry. Unknown fields compare as strings. Date ranges require type: "date". */
                     type?: string;
@@ -8724,7 +8901,7 @@ export interface components {
                 filters: {
                     field: string;
                     /** @enum {string} */
-                    operator: "equals" | "not_equals" | "contains" | "not_contains" | "contains_any" | "not_contains_any" | "starts_with" | "ends_with" | "gt" | "gte" | "lt" | "lte" | "between" | "is_true" | "is_false" | "in" | "not_in" | "is_empty" | "not_exists" | "is_not_empty" | "exists" | "is_set" | "before" | "after" | "on_date";
+                    operator: "equals" | "not_equals" | "contains" | "not_contains" | "contains_any" | "not_contains_any" | "starts_with" | "ends_with" | "gt" | "gte" | "lt" | "lte" | "between" | "is_true" | "is_false" | "in" | "not_in" | "is_empty" | "not_exists" | "is_not_empty" | "exists" | "is_set" | "before" | "after" | "on_date" | "inactive_for_days";
                     value?: unknown;
                     /** @description Saved audiences infer omitted types from the field registry. Unknown fields compare as strings. Date ranges require type: "date". */
                     type?: string;
@@ -8815,8 +8992,8 @@ export interface components {
                 filters: {
                     field: string;
                     /** @enum {string} */
-                    operator: "equals" | "not_equals" | "contains" | "not_contains" | "contains_any" | "not_contains_any" | "starts_with" | "ends_with" | "gt" | "gte" | "lt" | "lte" | "between" | "is_true" | "is_false" | "in" | "not_in" | "is_empty" | "not_exists" | "is_not_empty" | "exists" | "is_set" | "before" | "after" | "on_date";
-                    /** @description Operator-dependent: `between` takes `[min, max]` or `{min, max}`; `in`/`not_in`/`contains_any`/`not_contains_any` take an array, not a comma-separated string; unary operators (`is_empty`, `is_not_empty`, `exists`, `is_true`, …) omit it. */
+                    operator: "equals" | "not_equals" | "contains" | "not_contains" | "contains_any" | "not_contains_any" | "starts_with" | "ends_with" | "gt" | "gte" | "lt" | "lte" | "between" | "is_true" | "is_false" | "in" | "not_in" | "is_empty" | "not_exists" | "is_not_empty" | "exists" | "is_set" | "before" | "after" | "on_date" | "inactive_for_days";
+                    /** @description Operator-dependent: `inactive_for_days` requires type `date` and value `30` (known activity at least thirty elapsed days ago); `between` takes `[min, max]` or `{min, max}`; `in`/`not_in`/`contains_any`/`not_contains_any` take an array, not a comma-separated string; unary operators (`is_empty`, `is_not_empty`, `exists`, `is_true`, …) omit it. */
                     value?: unknown;
                     /** @description Saved audiences infer omitted types from the field registry. Unknown fields compare as strings. Date ranges require type: "date". */
                     type?: string;
@@ -9610,6 +9787,14 @@ export interface components {
                 used: number;
                 remaining: number | null;
                 reserved?: number;
+            };
+            onDemand: {
+                active: boolean;
+                capUsd: number | null;
+                budgetUsd: number;
+                spentUsd: number;
+                creditsRemaining: number;
+                emailSendsRemaining: number;
             };
             period: {
                 /** Format: date-time */
@@ -17866,11 +18051,15 @@ export interface operations {
                 from?: string;
                 to?: string;
                 automationId?: string;
+                /** @description Optionally select one pinned automation version for observed outcomes; requires automationId. */
+                outcomesVersionId?: string;
+                /** @description Next observed-outcome evidence page; population counts do not change. */
+                outcomesCursor?: string;
                 /**
                  * @description Page size (1-100). Defaults to 100.
                  * @example 50
                  */
-                limit?: number;
+                limit?: number | string;
             };
             header?: {
                 /**
@@ -32776,7 +32965,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Usage snapshot — plan, credits, and email-send quota. */
+            /** @description Usage snapshot — plan, credits, email-send quota, and on-demand headroom. */
             200: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -32806,6 +32995,14 @@ export interface operations {
                      *         "used": 911,
                      *         "reserved": 27880,
                      *         "remaining": 171209
+                     *       },
+                     *       "onDemand": {
+                     *         "active": true,
+                     *         "capUsd": 100,
+                     *         "budgetUsd": 100,
+                     *         "spentUsd": 12.5,
+                     *         "creditsRemaining": 4375,
+                     *         "emailSendsRemaining": 21875
                      *       },
                      *       "period": {
                      *         "start": "2026-05-28T18:10:35.000Z",
