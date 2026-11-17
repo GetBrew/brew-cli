@@ -45,7 +45,7 @@ function phaseList(flags: Readonly<Record<string, unknown>>): string {
 export const migrateResendCommand = defineCommand({
   path: ['migrate', 'resend'],
   summary:
-    'Move a Resend account and codebase to Brew: plan by default (writes brew.migration.json), --apply to copy templates, contacts, segments, topics, suppressions and draft broadcasts',
+    'Move a Resend account and codebase to Brew: plan by default (writes brew.migration.json), --apply to copy artifacts and contacts after verifying provider-wide technical suppression protection',
   sdkMethod: null,
   derivedFrom: [
     'brand.get',
@@ -54,6 +54,7 @@ export const migrateResendCommand = defineCommand({
     'emails.import',
     'appEmails.upsert',
     'emails.delete',
+    'contacts.get',
     'contacts.upsertMany',
     'audiences.list',
     'audiences.create',
@@ -64,7 +65,7 @@ export const migrateResendCommand = defineCommand({
     {
       flag: '--apply',
       summary:
-        'Execute the plan: import templates as app emails, upsert contacts, create segment and topic audiences, import suppressions, copy draft broadcasts as Brew drafts (resumes from brew.migration.json)',
+        'Execute the plan after a fresh technical-suppression audit: import app emails, contacts, audiences and draft broadcasts; unverifiable protection holds all apply effects (resumes from brew.migration.json)',
     },
     {
       flag: '--dry-run',
@@ -87,7 +88,7 @@ export const migrateResendCommand = defineCommand({
     {
       flag: '--domain <domain>',
       summary:
-        "Brew domain (id or host) whose unsubscribe list takes Resend's suppressions and unsubscribed contacts",
+        'Brew marketing domain (id or host) for unsubscribed contacts; provider technical suppression requires verified address-level protection separately',
     },
     {
       flag: '--manifest <path>',
@@ -116,7 +117,7 @@ export const migrateResendCommand = defineCommand({
       return
     }
     return [
-      `Copy ${phaseList(flags)} from Resend into your Brew brand: import templates and React Email files as app emails (published where they were), upsert contacts (unsubscribed ones stay unsubscribed), create segment and topic fields and audiences, copy draft broadcasts as Brew drafts (nothing is sent)${flagString(flags.domain) === undefined ? '' : `, add suppressions to ${String(flags.domain)}'s unsubscribe list`}.`,
+      `Copy ${phaseList(flags)} from Resend only after verifying provider-wide technical suppression: import app emails, contacts (unsubscribed stay unsubscribed), segment and topic audiences and draft broadcasts. A marketing domain opt-out does not replace technical suppression.`,
       flags.rewriteImports === true
         ? "Rewrite 'resend' imports to '@brew.new/sdk/resend' where every send is a migrated template, and write lib/brew-resend-map.ts."
         : '',

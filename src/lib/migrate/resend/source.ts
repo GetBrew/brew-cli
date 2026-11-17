@@ -208,19 +208,28 @@ export const resendSource: MigrationSource = {
               ]
         }),
       suppressions: async (after): Promise<Page<SourceSuppression>> => {
-        const page = await client.page<Row>(
-          '/suppressions',
-          after === null ? {} : { after }
-        )
-        const rows = page.data.flatMap((row) => {
+        const page = (await client.get('/suppressions', {
+          limit: '100',
+          ...(after === null ? {} : { after }),
+        })) as { data?: Row[]; has_more?: boolean } | undefined
+        if (!Array.isArray(page?.data) || typeof page.has_more !== 'boolean') {
+          throw new Error(
+            'Resend suppression inventory is unavailable or incomplete.'
+          )
+        }
+        const rows = page.data.map((row) => {
           const id = text(row.id)
           const email = text(row.email)
-          return id === null || email === null
-            ? []
-            : [{ id, email, origin: text(row.origin) ?? 'manual' }]
+          if (id === null || email === null)
+            throw new Error(
+              'Resend suppression inventory contains an unreadable row.'
+            )
+          return { id, email, origin: text(row.origin) ?? 'unknown' }
         })
         const last = text(page.data.at(-1)?.id)
-        return { rows, next: page.hasMore && last !== null ? last : null }
+        if (page.has_more && last === null)
+          throw new Error('Resend suppression inventory did not finish paging.')
+        return { rows, next: page.has_more ? last : null }
       },
       broadcasts: async () =>
         (await listAll(client, '/broadcasts')).flatMap((row) => {

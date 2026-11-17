@@ -215,9 +215,20 @@ then copies:
 | React Email files | App emails by key, props as merge tags (`props: "merge_tags"`) |
 | Contacts | Contacts (subscribed with an import consent record; unsubscribed stay unsubscribed) |
 | Segments, topics | A boolean contact field each, and an audience on it |
-| Suppressions, unsubscribed contacts | `--domain`'s unsubscribe list |
+| Provider technical suppressions | Freshly verify matching Brew contacts are technically suppressed; otherwise all apply effects and cutover are held |
+| Unsubscribed contacts | Remain globally unsubscribed for marketing; optionally also join `--domain`'s marketing opt-out list |
 | Draft broadcasts | Brew draft emails (nothing is sent) |
 | Domains, webhooks, automations | Reported only |
+
+Every apply, including code-only apply, needs a fresh complete Resend suppression
+inventory and verifies existing Brew address-level technical protection before
+any effects. An unavailable source inventory or an unprotected address holds the
+apply and production cutover; a domain marketing opt-out or a global marketing
+unsubscribe does not protect transactional mail. No suppression flags or consent
+are invented. Previously copied artifacts remain recorded for resumption.
+Protection is checked again before the code phase and final cutover report;
+recheck immediately before switching production because the source account can
+change while it is still sending.
 
 Progress lives in `brew.migration.json` (ids, keys, counts and cursors,
 never an address, a name or a key), so an interrupted apply resumes where

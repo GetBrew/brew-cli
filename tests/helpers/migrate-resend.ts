@@ -50,6 +50,8 @@ export function useBrewApi(
     readonly failContact?: string
     /** Refuse this address's row (and land the rest) until healed. */
     readonly refuseRow?: string
+    /** Existing address-level technical protection, separate from marketing consent. */
+    readonly suppressedContacts?: readonly string[]
     /** Refuse the app email setup of these keys with this API error. */
     readonly refuseKeys?: Readonly<
       Record<string, { readonly status: number; readonly error: object }>
@@ -72,6 +74,19 @@ export function useBrewApi(
     return body
   }
   server.use(
+    http.get(`${API}/v1/contacts/:email`, async ({ request, params }) => {
+      await record(request)
+      const email = String(params.email)
+      return HttpResponse.json({
+        email,
+        subscribed: true,
+        suppressed: (
+          options.suppressedContacts ?? ['bounced@example.com']
+        ).includes(email),
+        unsubscribedDomains: ['news.acme.dev'],
+        customFields: {},
+      })
+    }),
     http.get(`${API}/v1/brand`, async ({ request }) => {
       await record(request)
       return HttpResponse.json({

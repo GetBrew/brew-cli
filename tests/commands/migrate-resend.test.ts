@@ -250,7 +250,7 @@ describe('migrate resend --apply', () => {
     expect(result.code).toBe(4)
   })
 
-  it('copies templates, React Email, contacts, segments, topics, suppressions and broadcasts', async () => {
+  it('copies artifacts and contacts while verifying technical suppression separately', async () => {
     const root = copyFixture('migrate-resend')
     const clock = fakeClock()
     server.use(useResendApi({ key: RESEND_KEY, clock }).handler)
@@ -345,8 +345,10 @@ describe('migrate resend --apply', () => {
     )
     expect(optOuts.map((call) => (call.body as { csv: string }).csv)).toEqual([
       'email\nbob@example.com',
-      'email\nbounced@example.com',
     ])
+    expect(phase(result.report, 'suppressions')?.counts).toEqual({
+      verified: 1,
+    })
 
     // Segments and topics: a boolean field each, and an audience on it. A
     // member keeps the state the contacts phase gives it (consent, or

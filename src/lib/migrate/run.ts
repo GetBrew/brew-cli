@@ -65,6 +65,7 @@ export type RunContext = {
   readonly templates: Map<string, SourceTemplate | null>
   readonly findings: Finding[]
   readonly nextSteps: NextStep[]
+  suppressionAudit?: { readonly verified: boolean; readonly checked: number }
   /** Writes the manifest (no-op on a dry run). */
   readonly persist: () => void
 }

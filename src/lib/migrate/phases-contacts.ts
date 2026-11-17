@@ -433,108 +433,37 @@ export async function segmentsPhase(run: RunContext): Promise<void> {
   }
 }
 
-// ---- Suppressions → the chosen Brew domain's unsubscribe list.
+// ---- Provider technical suppression requires verified address-level protection.
 
 export async function suppressionsPhase(run: RunContext): Promise<void> {
   const phase = phaseState(run, 'suppressions')
-  delete phase.error
+  if (run.suppressionAudit !== undefined) return
   const inventory = inventoryOf(run)
-  if (!run.apply) {
-    // As for contacts: an interrupted apply keeps its counts and cursor.
-    if (phase.status === 'done' || typeof phase.cursor === 'string') {
-      return
+  const counts: Record<string, number> = {}
+  const { truncated } = await countPages(
+    (after) => inventory.suppressions(after),
+    (row) => {
+      counts[row.origin] = (counts[row.origin] ?? 0) + 1
     }
-    const counts: Record<string, number> = {}
-    const { truncated } = await countPages(
-      (after) => inventory.suppressions(after),
-      (row) => {
-        counts[row.origin] = (counts[row.origin] ?? 0) + 1
-      }
-    )
-    phase.counts = counts
-    const total = Object.values(counts).reduce((a, b) => a + b, 0)
-    phase.status =
-      total === 0 ? 'skipped' : run.targetDomain === null ? 'manual' : 'planned'
-    phase.detail =
-      total === 0
-        ? 'no suppressions in Resend'
-        : run.targetDomain === null
-          ? 'pass --domain <your Brew domain> to import them into its unsubscribe list'
-          : `${truncated ? `counted the first ${PLAN_COUNT_PAGES * 100}; ` : ''}imported into ${run.targetDomain.name}'s unsubscribe list`
-    if (total > 0 && run.targetDomain === null) {
-      addNextStep(run, {
-        id: 'suppressions-domain',
-        actor: 'agent',
-        kind: 'run-command',
-        command: `${run.prefix} migrate resend --only suppressions --domain <brew-domain> --apply --yes`,
-        title:
-          "Import Resend suppressions into a Brew marketing domain's unsubscribe list (name the domain)",
-        blocking: false,
-      })
-    }
-    return
-  }
-  if (phase.status === 'done') {
-    return
-  }
-  if (run.targetDomain === null) {
-    phase.status = 'manual'
-    phase.detail = 'pass --domain <your Brew domain> to import suppressions'
+  )
+  phase.counts = counts
+  const total = Object.values(counts).reduce((a, b) => a + b, 0)
+  phase.status = total === 0 && !truncated ? 'skipped' : 'manual'
+  phase.detail =
+    total === 0 && !truncated
+      ? 'no suppressions in Resend'
+      : 'Provider technical suppressions require address-level protection for every sending class and host; a marketing domain opt-out is not equivalent.'
+  delete phase.cursor
+  delete phase.error
+  if (phase.status === 'manual')
     addNextStep(run, {
-      id: 'suppressions-domain',
-      actor: 'agent',
-      kind: 'run-command',
-      command: `${run.prefix} migrate resend --only suppressions --domain <brew-domain> --apply --yes`,
+      id: 'technical-suppressions',
+      actor: 'human',
+      kind: 'review',
+      blocking: true,
       title:
-        "Import Resend suppressions into a Brew marketing domain's unsubscribe list (name the domain)",
-      blocking: false,
+        'Preserve provider-wide technical suppression through a supported process and verify Brew technical contact state before applying or cutting over. Keep the Resend sending, DNS and webhook path.',
     })
-    return
-  }
-  const brew = brewOf(run)
-  const domain = run.targetDomain
-  let after = phase.cursor ?? null
-  if (after === null) {
-    phase.counts = {}
-  }
-  phase.status = 'partial'
-  do {
-    run.ctx.signal.throwIfAborted()
-    const page = await inventory.suppressions(after)
-    try {
-      if (page.rows.length > 0) {
-        const csv = csvOf(page.rows.map((row) => row.email))
-        const result = await brew.domains.unsubscribes.import(
-          { domainId: domain.domainId, csv },
-          {
-            idempotencyKey: idempotencyKey(
-              run,
-              `suppressions-${after ?? 'start'}`,
-              csv
-            ),
-          }
-        )
-        bump(phase, 'added', result.summary.added + result.summary.created)
-        bump(phase, 'alreadyUnsubscribed', result.summary.alreadyUnsubscribed)
-        bump(phase, 'skipped', result.summary.skipped)
-      }
-    } catch (error) {
-      rethrowIfFatal(run.ctx, error)
-      phase.error = errorOf(run, error)
-      phase.status = 'failed'
-      phase.cursor = after
-      run.persist()
-      return
-    }
-    bump(phase, 'read', page.rows.length)
-    after = page.next
-    phase.cursor = after
-    run.persist()
-  } while (after !== null)
-  phase.status = 'done'
-  phase.cursor = null
-  phase.detail = `imported into ${domain.name}'s unsubscribe list`
-  run.persist()
 }
 
 // ---- Topics → a boolean contact field (opted in) and an audience per topic.
