@@ -1,4 +1,5 @@
 import type { AudienceFromEventsInput } from '@brew.new/sdk'
+import type { components } from '../../generated/openapi-types'
 import { defineCommand } from '../../lib/define-command'
 import { CliUsageError } from '../../lib/errors'
 import {
@@ -12,6 +13,27 @@ import {
   toStringArray,
 } from '../../lib/input'
 
+type CohortEventType =
+  components['schemas']['AudiencesFromEventsRequest']['cohort']['eventTypes'][number]
+
+/**
+ * The cohort's event types, in the vendored spec's order. `satisfies` makes
+ * `tsc` refuse a type the spec lacks and miss none it declares, so a spec sync
+ * that changes the enum fails until this help text follows it.
+ */
+const COHORT_EVENT_TYPES = Object.keys({
+  sent: true,
+  delivered: true,
+  delivery_delayed: true,
+  opened: true,
+  clicked: true,
+  bounced: true,
+  complained: true,
+  failed: true,
+  skipped: true,
+  unsubscribed: true,
+} satisfies Record<CohortEventType, true>)
+
 export const audiencesFromEventsCommand = defineCommand({
   path: ['audiences', 'from-events'],
   summary:
@@ -23,8 +45,7 @@ export const audiencesFromEventsCommand = defineCommand({
     { flag: '--name <name>', summary: 'Audience name' },
     {
       flag: '--event-types <types...>',
-      summary:
-        'Event type(s), repeatable: sent, delivered, delivery_delayed, opened, clicked, bounced, complained, failed, skipped, unsubscribed',
+      summary: `Event type(s), repeatable: ${COHORT_EVENT_TYPES.join(', ')}`,
     },
     {
       flag: '--since <datetime>',

@@ -1,15 +1,19 @@
-import { PassThrough } from 'node:stream'
+import { PassThrough, Readable } from 'node:stream'
 import { run } from '../../src/cli'
 import type { Clock } from '../../src/lib/clock'
 import type { CommandSpec } from '../../src/lib/define-command'
+import { readStdinText } from '../../src/lib/stdin'
 import type { CliIo, SpawnFn } from '../../src/lib/types'
 import { ALL_COMMANDS } from '../../src/registry'
 
 export type RunCliOptions = {
   /** Synthetic environment. Host env NEVER leaks into tests. */
   readonly env?: Readonly<Record<string, string | undefined>>
-  /** Text available on stdin (for `-` inputs and piped login). */
-  readonly stdin?: string
+  /**
+   * Text or raw bytes on stdin (for `-` inputs and piped login), read through
+   * the real decoder like the binary's stdin.
+   */
+  readonly stdin?: string | Uint8Array
   /** Controlled stdin reader for cancellation and command-deadline tests. */
   readonly readStdin?: CliIo['readStdin']
   /** Answer returned by interactive prompts (readLine). */
@@ -83,7 +87,14 @@ export async function runCli(
     isTtyOut: options.ttyOut ?? false,
     isTtyIn: options.ttyIn ?? false,
     env: options.env ?? {},
-    readStdin: options.readStdin ?? (async () => options.stdin ?? ''),
+    readStdin:
+      options.readStdin ??
+      ((signal, kind) =>
+        readStdinText({
+          stream: Readable.from([Buffer.from(options.stdin ?? '')]),
+          signal: signal ?? new AbortController().signal,
+          kind,
+        })),
     readLine: async () => options.promptAnswer ?? '',
     ...(options.signal === undefined ? {} : { signal: options.signal }),
     ...(options.cwd === undefined ? {} : { cwd: options.cwd }),

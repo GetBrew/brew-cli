@@ -47,6 +47,7 @@ import {
 import { automationsTriggersCreateCommand } from './commands/automations/triggers/create'
 import { automationsTriggersDeleteCommand } from './commands/automations/triggers/delete'
 import { automationsTriggersEnsureBrewEventCommand } from './commands/automations/triggers/ensure-brew-event'
+import { automationsTriggersEnsureIntegrationEventCommand } from './commands/automations/triggers/ensure-integration-event'
 import { automationsTriggersFireCommand } from './commands/automations/triggers/fire'
 import { automationsTriggersGetCommand } from './commands/automations/triggers/get'
 import { automationsTriggersListCommand } from './commands/automations/triggers/list'
@@ -141,6 +142,8 @@ import { healthCommand } from './commands/health'
 import { initCommand } from './commands/init'
 import { insightsGetCommand } from './commands/insights/get'
 import { insightsListCommand } from './commands/insights/list'
+import { integrationsEventsGetCommand } from './commands/integrations/events/get'
+import { integrationsEventsListCommand } from './commands/integrations/events/list'
 import { integrationsListCommand } from './commands/integrations/list'
 import { loginCommand } from './commands/login'
 import { logoutCommand } from './commands/logout'
@@ -156,6 +159,16 @@ import { templatesGetCommand } from './commands/templates/get'
 import { templatesListCommand } from './commands/templates/list'
 import { typesCommand } from './commands/types'
 import { usageCommand } from './commands/usage'
+import { webhooksAttemptsCommand } from './commands/webhooks/attempts'
+import { webhooksCreateCommand } from './commands/webhooks/create'
+import { webhooksDeleteCommand } from './commands/webhooks/delete'
+import { webhooksEventsCommand } from './commands/webhooks/events'
+import { webhooksGetCommand } from './commands/webhooks/get'
+import { webhooksListCommand } from './commands/webhooks/list'
+import { webhooksReplayCommand } from './commands/webhooks/replay'
+import { webhooksRotateSecretCommand } from './commands/webhooks/rotate-secret'
+import { webhooksTestCommand } from './commands/webhooks/test'
+import { webhooksUpdateCommand } from './commands/webhooks/update'
 import { whoamiCommand } from './commands/whoami'
 import type { CommandSpec } from './lib/define-command'
 
@@ -165,6 +178,17 @@ import type { CommandSpec } from './lib/define-command'
  * the vendored OpenAPI spec.
  */
 export const ALL_COMMANDS: readonly CommandSpec[] = [
+  webhooksListCommand,
+  webhooksCreateCommand,
+  webhooksGetCommand,
+  webhooksUpdateCommand,
+  webhooksDeleteCommand,
+  webhooksRotateSecretCommand,
+  webhooksEventsCommand,
+  webhooksAttemptsCommand,
+  webhooksReplayCommand,
+  webhooksTestCommand,
+
   loginCommand,
   logoutCommand,
   whoamiCommand,
@@ -244,6 +268,7 @@ export const ALL_COMMANDS: readonly CommandSpec[] = [
   contractsInferCommand,
   automationsTriggersCreateCommand,
   automationsTriggersEnsureBrewEventCommand,
+  automationsTriggersEnsureIntegrationEventCommand,
   automationsTriggersUpdateCommand,
   automationsTriggersDeleteCommand,
   automationsTriggersFireCommand,
@@ -307,6 +332,8 @@ export const ALL_COMMANDS: readonly CommandSpec[] = [
   flowsListCommand,
   flowsGetCommand,
   integrationsListCommand,
+  integrationsEventsListCommand,
+  integrationsEventsGetCommand,
   chatsListCommand,
   chatsGetCommand,
   canvasSessionsCreateCommand,

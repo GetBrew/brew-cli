@@ -53,9 +53,9 @@ export function makeContext(input: {
     get isTtyIn() {
       return input.io.isTtyIn && !stdinConsumed
     },
-    readStdin: (signal) => {
+    readStdin: (signal, kind) => {
       stdinConsumed = true
-      return input.io.readStdin(signal)
+      return input.io.readStdin(signal, kind)
     },
   }
   const ctx: CliContext = {
