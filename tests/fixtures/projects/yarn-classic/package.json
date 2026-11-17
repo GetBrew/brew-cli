@@ -1,0 +1,6 @@
+{
+  "name": "classic-api",
+  "dependencies": {
+    "express": "4.21.0"
+  }
+}

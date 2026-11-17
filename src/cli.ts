@@ -20,6 +20,7 @@ import {
 } from './lib/errors'
 import { IDEMPOTENCY_FLAG, INPUT_FLAG } from './lib/input'
 import { assertKnownInputKeys } from './lib/input-keys'
+import { getInvocationPrefix } from './lib/invocation'
 import { matchesTemplate } from './lib/long-running'
 import { printData } from './lib/output'
 import { type RerunInvocation, readsStdin } from './lib/rerun'
@@ -50,6 +51,7 @@ const GROUP_SUMMARIES: Readonly<Record<string, string>> = {
   insights:
     "Brew Insights: findings about the brand's email, plus its pulse, report, suggestions and memo",
   integrations: 'Read the connected-integration catalog',
+  mcp: 'Connect AI editors and agents to the Brew MCP server',
   'inbox-placement-tests': 'Inbox placement (seed) test results',
   notifications:
     'What finished or failed: generations, sends, imports, domain checks',
@@ -187,7 +189,12 @@ function errorContextFor(
       ? {}
       : {
           retryCommand: (key: string) =>
-            buildRetryCommand(invocation, key, activeSpec),
+            buildRetryCommand(
+              invocation,
+              key,
+              activeSpec,
+              getInvocationPrefix(ctx.io.env)
+            ),
         }),
     ...(finalizeUpload === undefined
       ? {}
@@ -200,7 +207,8 @@ function errorContextFor(
                 brand: request?.brandId ?? ctx.globals.brand,
                 apiUrl: ctx.globals.apiUrl,
               },
-              finalizeUpload
+              finalizeUpload,
+              getInvocationPrefix(ctx.io.env)
             ),
         }),
   }

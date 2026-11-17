@@ -142,6 +142,7 @@ import { integrationsEventsListCommand } from './commands/integrations/events/li
 import { integrationsListCommand } from './commands/integrations/list'
 import { loginCommand } from './commands/login'
 import { logoutCommand } from './commands/logout'
+import { mcpInstallCommand } from './commands/mcp/install'
 import { notificationsListCommand } from './commands/notifications/list'
 import { sendsCancelCommand } from './commands/sends/cancel'
 import { sendsGetCommand } from './commands/sends/get'
@@ -333,5 +334,6 @@ export const ALL_COMMANDS: readonly CommandSpec[] = [
   doctorCommand,
   docsCommand,
   docsApiCommand,
+  mcpInstallCommand,
   apiCommand,
 ]
