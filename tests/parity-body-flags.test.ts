@@ -108,7 +108,11 @@ const MAPPED: Readonly<
   'emails import-figma': { '--url': 'figmaUrl' },
   'emails edit': { '--clear-lang': 'lang', '--ungroup': 'groupId' },
   'emails restore': { '--to-version': 'emailVersionId' },
-  'emails audit': { '--file': 'emailHtml', '--jsx-file': 'emailJsx' },
+  'emails audit': {
+    '--file': 'emailHtml',
+    '--jsx-file': 'emailJsx',
+    '--jsx': 'emailJsx',
+  },
   'emails create-inbox-placement-test': { '--domain': 'domainId' },
   'emails send': {
     '--audience': 'audienceId',

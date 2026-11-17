@@ -1065,6 +1065,7 @@ Audit HTML, JSX, or a saved email for production readiness (5 credits when compl
 - SDK: `brew.emails.auditEmail(...)`
 - `--file <path>` — Email HTML file to audit, or - for stdin
 - `--jsx-file <path>` — React Email JSX file to audit, or - for stdin
+- `--jsx <path>` — Alias for --jsx-file
 - `--email-id <id>` — Saved email to audit (latest version by default)
 - `--email-version-id <id>` — Saved email version ID; requires emailId
 - `--subject <text>` — Inbox subject line
