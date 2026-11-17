@@ -63,6 +63,11 @@ export const integrationsConnectCommand = defineCommand({
   args: [PROVIDER_ARG],
   flags: [
     {
+      flag: '--create-only',
+      summary:
+        'Initial setup: accept a matching setup and refuse changing a saved secret or settings',
+    },
+    {
       flag: '--signing-secret-env <var>',
       summary:
         'Read the signing secret from this environment variable (never pass the secret itself)',
@@ -78,11 +83,14 @@ export const integrationsConnectCommand = defineCommand({
     },
   ],
   examples: [
-    'brew-cli integrations connect supabase_auth --signing-secret-env SEND_EMAIL_HOOK_SECRET --project-url https://abcdefghijklmnopqrst.supabase.co --yes',
+    'brew-cli integrations connect supabase_auth --signing-secret-env SEND_EMAIL_HOOK_SECRET --project-url https://abcdefghijklmnopqrst.supabase.co --create-only --yes',
     'printenv CLERK_WEBHOOK_SIGNING_SECRET | brew-cli integrations connect clerk --signing-secret-stdin --yes --json',
   ],
   confirmSummary: ({ args, flags }) => {
     checkSecretEnvName(flagString(flags.signingSecretEnv))
+    if (flags.createOnly === true) {
+      return `Connect ${args.provider ?? 'the provider'} for this brand and set up its auth app emails, refusing a different existing secret or settings.`
+    }
     return `Connect ${args.provider ?? 'the provider'} for this brand: Brew verifies its deliveries with this signing secret (replacing any saved before, so deliveries signed with the old one stop working) and sets up its auth app emails.`
   },
   run: async ({ ctx, args, flags }) => {
@@ -98,6 +106,7 @@ export const integrationsConnectCommand = defineCommand({
     const input: ConnectIntegrationInput = {
       provider,
       signingSecret,
+      ...(flags.createOnly === true ? { createOnly: true } : {}),
       ...(projectUrl === undefined ? {} : { settings: { projectUrl } }),
     }
     progress(ctx, `Connecting ${provider} and setting up its auth emails…`)

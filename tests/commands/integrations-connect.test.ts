@@ -138,6 +138,46 @@ function useConnectionApi(
 }
 
 describe('integrations connect', () => {
+  it('passes --create-only to the API so initial setup cannot replace an existing secret', async () => {
+    const seen = useConnectionApi()
+    const result = await cli(
+      [
+        'integrations',
+        'connect',
+        'supabase_auth',
+        '--signing-secret-env',
+        'HOOK_SECRET',
+        '--create-only',
+        '--yes',
+      ],
+      { env: { HOOK_SECRET: SUPABASE_SECRET } }
+    )
+    expect(result.code).toBe(1) // The fixture includes one failed auth-email setup.
+    expect(seen).toEqual([
+      expect.objectContaining({
+        body: { signingSecret: SUPABASE_SECRET, createOnly: true },
+      }),
+    ])
+  })
+
+  it('describes the create-only choice in the confirmation before reading a secret', async () => {
+    const seen = useConnectionApi()
+    const result = await cli([
+      'integrations',
+      'connect',
+      'clerk',
+      '--signing-secret-env',
+      'HOOK_SECRET',
+      '--create-only',
+      '--json',
+    ])
+    expect(result.code).toBe(4)
+    expect(result.json).toMatchObject({
+      summary: expect.stringContaining('refusing a different existing'),
+    })
+    expect(seen).toEqual([])
+  })
+
   it('connects supabase_auth with the secret from an env var and prints the webhook URL', async () => {
     const seen = useConnectionApi()
     const result = await cli(

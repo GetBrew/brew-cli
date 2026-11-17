@@ -2847,12 +2847,13 @@ Connect a hosted auth email hook (Supabase Send Email Hook, Clerk email.created)
 - Class: destructive
 - SDK: `brew.integrations.connect(...)`
 - Argument `provider` — supabase_auth (the Supabase Auth Send Email Hook) or clerk (Clerk webhooks: email.created)
+- `--create-only` — Initial setup: accept a matching setup and refuse changing a saved secret or settings
 - `--signing-secret-env <var>` — Read the signing secret from this environment variable (never pass the secret itself)
 - `--signing-secret-stdin` — Read the signing secret from stdin (a pipe)
 - `--project-url <url>` — supabase_auth only: the project URL confirmation links point at (https://<ref>.supabase.co); default: the one Supabase sends
 
 ```bash
-brew-cli integrations connect supabase_auth --signing-secret-env SEND_EMAIL_HOOK_SECRET --project-url https://abcdefghijklmnopqrst.supabase.co --yes
+brew-cli integrations connect supabase_auth --signing-secret-env SEND_EMAIL_HOOK_SECRET --project-url https://abcdefghijklmnopqrst.supabase.co --create-only --yes
 printenv CLERK_WEBHOOK_SIGNING_SECRET | brew-cli integrations connect clerk --signing-secret-stdin --yes --json
 ```
 
