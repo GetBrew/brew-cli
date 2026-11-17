@@ -1,0 +1,519 @@
+import { readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { join } from 'node:path'
+import { HttpResponse, http } from 'msw'
+import { describe, expect, it } from 'vitest'
+import { copyFixture } from '../helpers/fixtures'
+import { fakeClock } from '../helpers/login-server'
+import {
+  env,
+  MUTATING,
+  migrate,
+  phase,
+  RESEND_KEY,
+  readManifest,
+  useBrewApi,
+} from '../helpers/migrate-resend'
+import { server } from '../helpers/msw-server'
+import {
+  RESEND_ACCOUNT,
+  RESEND_API,
+  type ResendAccount,
+  useResendApi,
+} from '../helpers/resend-api'
+
+/** What a second `migrate resend` run does with what the first one left. */
+
+const APPLY = ['--apply', '--yes', '--json']
+
+function setUp(account: ResendAccount = RESEND_ACCOUNT) {
+  const root = copyFixture('migrate-resend')
+  const clock = fakeClock()
+  server.use(useResendApi({ key: RESEND_KEY, clock, account }).handler)
+  return { root, clock, run: { cwd: root, env: env(), clock } }
+}
+
+describe('migrate resend: a re-run keeps its destination', () => {
+  it('refuses a manifest written for another Brew brand (exit 2)', async () => {
+    const { root, run } = setUp()
+    useBrewApi()
+    expect((await migrate(['--json', '--only', 'domains'], run)).code).toBe(0)
+    const before = readFileSync(join(root, 'brew.migration.json'), 'utf8')
+    useBrewApi({ brandId: 'bd_other' })
+    const second = await migrate(['--json', '--only', 'domains'], run)
+    expect(second.code).toBe(2)
+    expect(second.stderr).toContain('bd_acme')
+    expect(readFileSync(join(root, 'brew.migration.json'), 'utf8')).toBe(before)
+  })
+
+  it('refuses another --domain than the one its unsubscribe imports resume on (exit 2), not the same one by id', async () => {
+    const { run } = setUp()
+    const domains = ['news', 'promo'].map((label) => ({
+      domainId: `dom_${label}`,
+      name: `${label}.acme.dev`,
+      status: 'verified',
+      sendingPurpose: 'marketing',
+    }))
+    useBrewApi({ domains })
+    const only = ['--only', 'suppressions', '--domain']
+    expect(
+      (await migrate([...APPLY, ...only, 'news.acme.dev'], run)).code
+    ).toBe(0)
+    const second = await migrate([...APPLY, ...only, 'promo.acme.dev'], run)
+    expect(second.code).toBe(2)
+    expect(second.stderr).toContain('--domain news.acme.dev')
+    expect((await migrate([...APPLY, ...only, 'dom_news'], run)).code).toBe(0)
+  })
+
+  it('a --domain first named after the contacts moved gets their opt-outs', async () => {
+    const { run } = setUp()
+    const brew = useBrewApi()
+    const contacts = [...APPLY, '--only', 'contacts']
+    expect((await migrate(contacts, run)).code).toBe(0)
+    await migrate([...contacts, '--domain', 'news.acme.dev'], run)
+    expect(brew.calls.map((call) => call.path)).toContain(
+      '/v1/domains/dom_news/unsubscribes/import'
+    )
+  })
+
+  it('an apply without --domain resumes on the domain the plan recorded', async () => {
+    const { run } = setUp()
+    const brew = useBrewApi()
+    const only = ['--only', 'contacts']
+    await migrate(['--json', ...only, '--domain', 'news.acme.dev'], run)
+    expect((await migrate([...APPLY, ...only], run)).code).toBe(0)
+    expect(brew.calls.map((call) => call.path)).toContain(
+      '/v1/domains/dom_news/unsubscribes/import'
+    )
+  })
+
+  it('another Resend key reads the contacts again instead of skipping them as done', async () => {
+    const { root, clock, run } = setUp()
+    const brew = useBrewApi()
+    const contacts = [...APPLY, '--only', 'contacts']
+    expect((await migrate(contacts, run)).code).toBe(0)
+    // A second account, read with its own key, against the same manifest.
+    const otherKey = 're_OTHER_account_key_0123456789'
+    server.use(
+      useResendApi({
+        key: otherKey,
+        clock,
+        account: {
+          ...RESEND_ACCOUNT,
+          contacts: [
+            {
+              id: 'ct_b1',
+              email: 'cy@example.org',
+              first_name: null,
+              last_name: null,
+              unsubscribed: false,
+              properties: {},
+            },
+          ],
+        },
+      }).handler
+    )
+    const before = brew.calls.length
+    const second = await migrate(contacts, {
+      ...run,
+      env: env({ RESEND_API_KEY: otherKey }),
+    })
+    expect(second.code).toBe(0)
+    const upserted = brew.calls
+      .slice(before)
+      .filter((call) => call.method === 'POST' && call.path === '/v1/contacts')
+      .flatMap(
+        (call) => (call.body as { contacts: { email: string }[] }).contacts
+      )
+    expect(upserted.map((row) => row.email)).toEqual(['cy@example.org'])
+    expect(
+      readFileSync(join(root, 'brew.migration.json'), 'utf8')
+    ).not.toContain(otherKey)
+  })
+
+  it('contacts wait while the recorded --domain cannot be read, then get their opt-outs', async () => {
+    const { run } = setUp()
+    useBrewApi()
+    const only = ['--only', 'contacts']
+    await migrate(['--json', ...only, '--domain', 'news.acme.dev'], run)
+    server.use(
+      http.get('https://brew.new/api/v1/domains', () =>
+        HttpResponse.json(
+          { error: { code: 'SERVICE_UNAVAILABLE', message: 'Try again.' } },
+          { status: 503 }
+        )
+      )
+    )
+    const blocked = await migrate(
+      [...APPLY, ...only, '--max-retries', '0'],
+      run
+    )
+    expect(blocked.code).toBe(1)
+    expect(phase(blocked.report, 'contacts')?.status).not.toBe('done')
+    const brew = useBrewApi()
+    expect((await migrate([...APPLY, ...only], run)).code).toBe(0)
+    expect(brew.calls.map((call) => call.path)).toContain(
+      '/v1/domains/dom_news/unsubscribes/import'
+    )
+  })
+})
+
+describe('migrate resend: unfinished work is retried', () => {
+  it('rows Brew refuses keep the phase open until they land', async () => {
+    const { root, run } = setUp()
+    const brew = useBrewApi({ refuseRow: 'ada@example.com' })
+    const first = await migrate([...APPLY, '--only', 'contacts'], run)
+    expect(first.code).toBe(1)
+    expect(phase(first.report, 'contacts')).toMatchObject({
+      status: 'partial',
+      error: { code: 'CONTACT_ROWS_FAILED' },
+    })
+
+    brew.heal()
+    const second = await migrate([...APPLY, '--only', 'contacts'], run)
+    expect(second.code).toBe(0)
+    expect(readManifest(root).phases.contacts).toMatchObject({
+      status: 'done',
+      counts: { upserted: 1, failed: 0 },
+    })
+  })
+
+  it('a pass after refused rows sends new idempotency keys, so Brew tries them again', async () => {
+    const { run } = setUp()
+    const brew = useBrewApi({ refuseRow: 'ada@example.com' })
+    const contacts = [...APPLY, '--only', 'contacts']
+    await migrate(contacts, run)
+    const keysOf = (from: number) =>
+      brew.calls
+        .slice(from)
+        .filter(
+          (call) => call.method === 'POST' && call.path === '/v1/contacts'
+        )
+        .map((call) => call.idempotencyKey)
+    const first = keysOf(0)
+    const before = brew.calls.length
+    brew.heal()
+    await migrate(contacts, run)
+    const second = keysOf(before)
+    expect(first.length).toBeGreaterThan(0)
+    expect(second.some((key) => first.includes(key))).toBe(false)
+    // An interrupted pass (outcome unknown) keeps its keys: see the resume test.
+  })
+
+  it('a plan between an interrupted apply and its retry keeps the rows still to land', async () => {
+    const { root, clock, run } = setUp()
+    server.use(useResendApi({ key: RESEND_KEY, clock, pageSize: 1 }).handler)
+    // Page 1 has a refused row; page 2 interrupts the pass.
+    const brew = useBrewApi({
+      refuseRow: 'ada@example.com',
+      failContact: 'bob@example.com',
+    })
+    const contacts = ['--only', 'contacts']
+    expect((await migrate([...APPLY, ...contacts], run)).code).toBe(1)
+    expect(readManifest(root).phases.contacts?.cursor).toBe('ct_1')
+    await migrate(['--json', ...contacts], run)
+    brew.heal()
+    await migrate([...APPLY, ...contacts], run)
+    // Ada's refused row has not landed: the phase stays open for it.
+    expect(readManifest(root).phases.contacts?.status).not.toBe('done')
+    await migrate([...APPLY, ...contacts], run)
+    expect(readManifest(root).phases.contacts?.status).toBe('done')
+  })
+
+  it('a topic added since the contact pass sends every contact through it again', async () => {
+    const { root, clock } = setUp()
+    useBrewApi()
+    const run = { cwd: root, env: env(), clock }
+    expect((await migrate([...APPLY, '--only', 'topics'], run)).code).toBe(0)
+
+    const account: ResendAccount = {
+      ...RESEND_ACCOUNT,
+      topics: [
+        ...RESEND_ACCOUNT.topics,
+        { id: 'top_2', name: 'Events', default_subscription: 'opt_out' },
+      ],
+      contactTopics: {
+        ...RESEND_ACCOUNT.contactTopics,
+        ct_1: [{ id: 'top_2', name: 'Events', subscription: 'opt_in' }],
+      },
+    }
+    server.use(useResendApi({ key: RESEND_KEY, clock, account }).handler)
+    const brew = useBrewApi()
+    expect((await migrate([...APPLY, '--only', 'topics'], run)).code).toBe(0)
+    expect(
+      brew.calls.some(
+        (call) =>
+          call.path === '/v1/contacts' &&
+          JSON.stringify(call.body).includes('"resend_topic_events":true')
+      )
+    ).toBe(true)
+  })
+
+  it('a Resend key revoked while segment members are read asks for a new key (exit 3)', async () => {
+    const { run } = setUp()
+    server.use(
+      http.get(`${RESEND_API}/segments/:id/contacts`, () =>
+        HttpResponse.json(
+          {
+            statusCode: 401,
+            name: 'validation_error',
+            message: 'API key is invalid',
+          },
+          { status: 401 }
+        )
+      )
+    )
+    useBrewApi()
+    const result = await migrate([...APPLY, '--only', 'segments'], run)
+    expect(result.code).toBe(3)
+    expect(result.report.status).toBe('auth_required')
+    expect(
+      result.report.nextSteps.some(
+        (step) => step.id === 'resend-full-access-key'
+      )
+    ).toBe(true)
+  })
+
+  it('reuses no audience that selects other contacts', async () => {
+    const { run } = setUp()
+    const other = {
+      filters: [{ field: 'plan', operator: 'equals', value: 'pro' }],
+      logicalOperator: 'and',
+    }
+    const brew = useBrewApi({
+      audiences: ['Beta users', 'Beta users (Resend)'].map((name, index) => ({
+        audienceId: `aud_other_${index}`,
+        audienceName: name,
+        filters: other,
+        count: 3,
+        createdAt: '2026-10-01T00:00:00.000Z',
+        updatedAt: '2026-10-01T00:00:00.000Z',
+      })),
+    })
+    const result = await migrate([...APPLY, '--only', 'segments'], run)
+    expect(result.code).toBe(1)
+    const item = phase(result.report, 'segments')?.items[0]
+    expect(item?.status).toBe('failed')
+    expect(item?.brew?.audienceId).toBeUndefined()
+    expect(
+      brew.calls.some(
+        (call) => call.method === 'POST' && call.path === '/v1/audiences'
+      )
+    ).toBe(false)
+  })
+})
+
+describe('migrate resend: app email keys', () => {
+  it('sets up nothing while Brew app emails are unreadable, then plans around the keys Brew has', async () => {
+    const { root, run } = setUp()
+    const blind = useBrewApi({ appEmailKeys: 'unreadable' })
+    const first = await migrate([...APPLY, '--only', 'templates'], run)
+    expect(first.code).toBe(1)
+    expect(blind.calls.filter((call) => MUTATING.has(call.method))).toEqual([])
+    expect(
+      readManifest(root).phases.templates?.items.map((item) => item.error?.code)
+    ).toEqual(['BREW_APP_EMAILS_UNREADABLE', 'BREW_APP_EMAILS_UNREADABLE'])
+
+    // Another email holds reset-password: the template takes another key.
+    const brew = useBrewApi({ appEmailKeys: ['reset-password'] })
+    expect((await migrate([...APPLY, '--only', 'templates'], run)).code).toBe(0)
+    const setUps = brew.calls
+      .filter((call) => call.method === 'PUT')
+      .map((call) => call.path)
+    expect(setUps).toHaveLength(2)
+    expect(setUps).not.toContain('/v1/app-emails/reset-password')
+  })
+
+  it('finishes a setup whose answer was lost on its own key, not a second email', async () => {
+    const { root, run } = setUp()
+    // Brew set up reset-password, but the answer never came back.
+    useBrewApi({
+      refuseKeys: {
+        'reset-password': {
+          status: 504,
+          error: {
+            code: 'GATEWAY_TIMEOUT',
+            type: 'internal',
+            message: 'Lost.',
+          },
+        },
+      },
+    })
+    const once = ['--max-retries', '0', ...APPLY, '--only', 'templates']
+    expect((await migrate(once, run)).code).toBe(1)
+
+    const brew = useBrewApi({ appEmailKeys: ['reset-password', 'receipt'] })
+    expect((await migrate([...APPLY, '--only', 'templates'], run)).code).toBe(0)
+    expect(
+      brew.calls
+        .filter((call) => call.method === 'PUT')
+        .map((call) => call.path)
+    ).toEqual(['/v1/app-emails/reset-password'])
+    expect(
+      readManifest(root).phases.templates?.items.map((item) => item.key)
+    ).toContain('reset-password')
+  })
+})
+
+describe('migrate resend --rewrite-imports: the template map', () => {
+  const REWRITE = [...APPLY, '--rewrite-imports', '--only', 'templates', 'code']
+  const MAP = 'src/lib/brew-resend-map.ts'
+  /** A CommonJS job that sends a migrated template. */
+  const RECEIPT_CJS = [
+    "const { Resend } = require('resend')",
+    'const resend = new Resend(process.env.RESEND_API_KEY)',
+    "module.exports = (to) => resend.emails.send({ to, template: { id: 'tmpl_receipt_1' } })",
+    '',
+  ].join('\n')
+  /** The account after a template was added since the clients moved. */
+  const WITH_INVITE: ResendAccount = {
+    ...RESEND_ACCOUNT,
+    templates: [
+      ...RESEND_ACCOUNT.templates,
+      { id: 'tmpl_new', name: 'Invite', alias: null, status: 'published' },
+    ],
+    templateDetails: {
+      ...RESEND_ACCOUNT.templateDetails,
+      tmpl_new: {
+        id: 'tmpl_new',
+        name: 'Invite',
+        alias: null,
+        status: 'published',
+        subject: 'Join us',
+        from: null,
+        html: '<p>Join</p>',
+        variables: [],
+      },
+    },
+  }
+
+  it('follows templates added after the clients moved', async () => {
+    const { root, clock } = setUp()
+    useBrewApi()
+    const run = { cwd: root, env: env(), clock }
+    expect((await migrate(REWRITE, run)).code).toBe(0)
+
+    server.use(
+      useResendApi({ key: RESEND_KEY, clock, account: WITH_INVITE }).handler
+    )
+    useBrewApi({ appEmailKeys: ['reset-password', 'receipt'] })
+    await migrate(REWRITE, run)
+    expect(readFileSync(join(root, MAP), 'utf8')).toContain(
+      '"tmpl_new": "invite"'
+    )
+  })
+
+  it('leaves a sender edited while the migration ran, and moves it on a re-run', async () => {
+    const { root, run } = setUp()
+    useBrewApi()
+    const client = join(root, 'src/lib/resend.ts')
+    let edited = false
+    // A formatter touches the client while the React Email imports run
+    // (after the scan); the handler falls through to the Brew mock.
+    server.use(
+      http.post(
+        'https://brew.new/api/v1/emails/import',
+        async ({ request }) => {
+          const body = (await request.clone().json()) as { props?: string }
+          if (!edited && body.props === 'merge_tags') {
+            edited = true
+            writeFileSync(
+              client,
+              `${readFileSync(client, 'utf8')}// formatted\n`
+            )
+          }
+        }
+      )
+    )
+    const first = await migrate(REWRITE, run)
+    expect(edited).toBe(true)
+    const kept = readFileSync(client, 'utf8')
+    expect(kept).toContain('// formatted')
+    expect(kept).toContain("from 'resend'")
+    expect(
+      phase(first.report, 'code')?.items?.find(
+        (item) => item.file === 'src/lib/resend.ts' && item.kind === 'rewrite'
+      )
+    ).toMatchObject({
+      status: 'failed',
+      error: { code: 'FILE_CHANGED' },
+    })
+    useBrewApi({ appEmailKeys: ['reset-password', 'receipt'] })
+    await migrate(REWRITE, run)
+    const moved = readFileSync(client, 'utf8')
+    expect(moved).toContain("from '@brew.new/sdk/resend'")
+    expect(moved).toContain('// formatted')
+  })
+
+  it('counts the sends through a moved client as done on a re-run', async () => {
+    const { root, run } = setUp()
+    useBrewApi()
+    expect((await migrate(REWRITE, run)).code).toBe(0)
+    useBrewApi({ appEmailKeys: ['reset-password', 'receipt'] })
+    const { report } = await migrate(REWRITE, run)
+    const notify = (sites: ReadonlyArray<{ file: string; status: string }>) =>
+      sites
+        .filter((site) => site.file === 'src/lib/notify.ts')
+        .map((site) => site.status)
+    expect(notify(report.callSites)).toEqual(['done', 'done'])
+    expect(notify(readManifest(root).callSites)).toEqual(['done', 'done'])
+    expect(
+      report.nextSteps.filter((step) => step.path === 'src/lib/notify.ts')
+    ).toEqual([])
+  })
+
+  it('in JavaScript, keeps the ESM map current after a CommonJS client moves', async () => {
+    const { root, clock } = setUp()
+    rmSync(join(root, 'tsconfig.json'))
+    writeFileSync(
+      join(root, 'package.json'),
+      JSON.stringify({ type: 'module', dependencies: { next: '^16.0.0' } })
+    )
+    useBrewApi()
+    const run = { cwd: root, env: env(), clock }
+    expect((await migrate(REWRITE, run)).code).toBe(0)
+    writeFileSync(join(root, 'src/jobs/receipt.cjs'), RECEIPT_CJS)
+    server.use(
+      useResendApi({ key: RESEND_KEY, clock, account: WITH_INVITE }).handler
+    )
+    useBrewApi({ appEmailKeys: ['reset-password', 'receipt'] })
+    await migrate(REWRITE, run)
+    for (const map of [
+      'src/lib/brew-resend-map.mjs',
+      'src/lib/brew-resend-map.cjs',
+    ]) {
+      expect(readFileSync(join(root, map), 'utf8')).toContain(
+        '"tmpl_new": "invite"'
+      )
+    }
+  })
+
+  it('in TypeScript, a CommonJS job reads a .cjs map Node can load', async () => {
+    const { root, run } = setUp()
+    writeFileSync(join(root, 'src/jobs/receipt.cjs'), RECEIPT_CJS)
+    useBrewApi()
+    expect((await migrate(REWRITE, run)).code).toBe(0)
+    expect(readFileSync(join(root, 'src/jobs/receipt.cjs'), 'utf8')).toContain(
+      "require('../lib/brew-resend-map.cjs').brewResendTemplates"
+    )
+    expect(
+      readFileSync(join(root, 'src/lib/brew-resend-map.cjs'), 'utf8')
+    ).toContain('exports.brewResendTemplates = {')
+  })
+
+  it('moves no client to a map the migration did not write', async () => {
+    const { root, run } = setUp()
+    useBrewApi()
+    const client = readFileSync(join(root, 'src/lib/resend.ts'), 'utf8')
+    writeFileSync(
+      join(root, MAP),
+      'export const brewResendTemplates = { "reset-password": "reset" }\n'
+    )
+    const result = await migrate(REWRITE, run)
+    expect(result.code).toBe(1)
+    expect(
+      result.report.findings.find((finding) => finding.code === 'MAP_FILE_KEPT')
+        ?.severity
+    ).toBe('error')
+    expect(readFileSync(join(root, 'src/lib/resend.ts'), 'utf8')).toBe(client)
+  })
+})
