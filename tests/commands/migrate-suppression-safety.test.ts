@@ -58,6 +58,47 @@ describe('provider-wide technical suppression migration', () => {
     )
   })
 
+  it.each([401, 403])(
+    'keeps Brew suppression-read access failures (%s) as auth exit 3',
+    async (status) => {
+      const root = copyFixture('migrate-resend')
+      const clock = fakeClock()
+      server.use(useResendApi({ key: RESEND_KEY, clock }).handler)
+      const brew = useBrewApi()
+      let contactReads = 0
+      server.use(
+        http.get('https://brew.new/api/v1/contacts/:email', () => {
+          contactReads++
+          return HttpResponse.json(
+            {
+              error: {
+                code:
+                  status === 401 ? 'UNAUTHORIZED' : 'INSUFFICIENT_PERMISSIONS',
+                type: 'authentication',
+                message: 'Contact access refused',
+              },
+            },
+            { status }
+          )
+        })
+      )
+      const result = await migrate(
+        ['--apply', '--yes', '--json', '--quiet', '--only', 'suppressions'],
+        { cwd: root, env: env(), clock }
+      )
+      expect(contactReads).toBe(1)
+      expect(brew.calls.some((call) => call.path === '/v1/brand')).toBe(true)
+      expect(brew.calls.filter((call) => MUTATING.has(call.method))).toEqual([])
+      expect(result.code).toBe(3)
+      expect(result.stdout).toBe('')
+      expect(JSON.parse(result.stderr)).toMatchObject({
+        error: {
+          code: status === 401 ? 'UNAUTHORIZED' : 'INSUFFICIENT_PERMISSIONS',
+        },
+      })
+    }
+  )
+
   it('does not trust an old done suppression phase on a later apply', async () => {
     const root = copyFixture('migrate-resend')
     const clock = fakeClock()

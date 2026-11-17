@@ -1,5 +1,5 @@
 import { ResendAccessError } from './resend/client'
-import { addNextStep, phaseState, type RunContext } from './run'
+import { addNextStep, phaseState, type RunContext, rethrowIfFatal } from './run'
 
 /** Provider technical suppression must cover every sending class and host. */
 export async function auditSuppressions(run: RunContext): Promise<boolean> {
@@ -69,6 +69,8 @@ export async function auditSuppressions(run: RunContext): Promise<boolean> {
         severity: 'error',
         message: error.message,
       })
+    } else {
+      rethrowIfFatal(run.ctx, error)
     }
     return hold(
       'The complete source suppression inventory or Brew technical protection could not be verified.'
