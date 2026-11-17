@@ -18,6 +18,27 @@ function env(): Record<string, string | undefined> {
 const SEARCH_URL = 'https://brew.new/api/v1/contacts/search'
 
 describe('contacts search', () => {
+  it.each(['[]', '[{"search":"jane"}]'])(
+    'rejects array input %s before sending a request',
+    async (input) => {
+      let requests = 0
+      server.use(
+        http.post(SEARCH_URL, () => {
+          requests += 1
+          return HttpResponse.json({ data: [], pagination: { cursor: null } })
+        })
+      )
+      const result = await runCli(['contacts', 'search', '--input', input], {
+        env: env(),
+      })
+      expect(result.code).toBe(2)
+      expect(JSON.parse(result.stderr)).toMatchObject({
+        error: { code: 'CLI_USAGE', message: '--input must be a JSON object' },
+      })
+      expect(requests).toBe(0)
+    }
+  )
+
   it.each([undefined, 7])(
     'leaves the request limit at %s when its flag is omitted',
     async (limit) => {

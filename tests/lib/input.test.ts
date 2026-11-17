@@ -41,6 +41,16 @@ describe('string flag presence', () => {
   })
 })
 
+describe('object input', () => {
+  it.each(
+    [[], [{ search: 'jane' }], null, 'text', false, 0].map((input) => ({
+      input,
+    }))
+  )('rejects $input instead of coercing it to an object', ({ input }) => {
+    expect(() => mergeInput(input, {})).toThrow('--input must be a JSON object')
+  })
+})
+
 describe('request envelope detection', () => {
   const keys = { payload: true, enforcement: true } as const
 
