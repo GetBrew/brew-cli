@@ -128,6 +128,11 @@ flags below, init prints the manual steps.
 `init --rollback-provider --yes` puts back what either flag changed, from
 `brew.json`.
 
+Only one non-dry-run `init` may run in a project at a time, including rollback,
+so overlapping runs cannot discard saved rollback settings. Retry after the
+active run finishes. If a process was killed, remove its `.brew-init.lock` only
+after checking no `init` is running in that project. Dry runs do not take the lock.
+
 ### Hosted auth hooks: `integrations connect`
 
 ```bash

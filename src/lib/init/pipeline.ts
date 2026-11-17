@@ -71,6 +71,7 @@ import {
   type InitPatch,
   supabaseConfigPatch,
 } from './patches'
+import { acquireProjectInitLock } from './project-lock'
 import { runProviderRollback } from './providers/rollback'
 import {
   type InitProvider,
@@ -260,8 +261,6 @@ export async function runInit(
   options: InitOptions
 ): Promise<CommandOutcome> {
   const env = ctx.io.env
-  const prefix = getInvocationPrefix(env)
-  const spawn = resolveSpawn(ctx.io)
   const cwd = resolveCwd(ctx.io)
   const { dryRun } = options
 
@@ -288,6 +287,25 @@ export async function runInit(
           auth: options.stack === 'custom' ? 'none' : options.stack,
           authVersion: null,
         }
+  if (dryRun) return runDetectedInit(ctx, options, project)
+  const release = acquireProjectInitLock(project.root)
+  try {
+    return await runDetectedInit(ctx, options, project)
+  } finally {
+    release()
+  }
+}
+
+async function runDetectedInit(
+  ctx: CliContext,
+  options: InitOptions,
+  project: ProjectDetection
+): Promise<CommandOutcome> {
+  const env = ctx.io.env
+  const prefix = getInvocationPrefix(env)
+  const spawn = resolveSpawn(ctx.io)
+  const cwd = resolveCwd(ctx.io)
+  const { dryRun } = options
   progress(
     ctx,
     `Setting up Brew in ${project.root} (${project.framework}, auth: ${project.auth})…`
