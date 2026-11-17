@@ -268,9 +268,114 @@ the team sandbox, app emails and browser sign-in.
   `generate:skills:check`).
 - npm keywords for MCP, transactional and auth email, Resend and React
   Email, so the package shows up where people look for them.
+The live integration event commands require an SDK release exposing
+`integrations.events` and `automations.triggers.ensureIntegrationEvent`
+(GetBrew/typescript-sdk#88). The published SDK 13.4.0 does not provide them.
+Until that release, the CLI pins that PR's immutable source commit. Follow
+the integration events SDK gate in `RELEASING.md` before release.
+
+### Added
+
+- Live integration events (GetBrew/brew-v2#2411): the events a brand's
+  connected live sources send, such as a PostHog project's own events or the
+  Stripe and Shopify app catalogs. All three commands need the
+  `automations` scope.
+  - `integrations events list` (`GET /v1/integrations/events`) lists them
+    source by source, busiest first, with `--provider`, `--query`, `--kind`,
+    `--limit`, `--cursor`, `--all` and `--input`. A page can be short, even
+    empty, before the last one: on a terminal it ends with the next
+    `--cursor`, and `--all` follows the cursor to the end and keeps the
+    page's `sources` beside the rows.
+  - `integrations events get <eventId>` (`GET /v1/integrations/events/{eventId}`)
+    reads one event with each property's template `variable`, and whether it
+    is personal data or suggested for personalization, plus
+    `propertiesStatus`: `current`, `stored`, `rate_limited` (with
+    `retryAfterSeconds`) or `unavailable`. Brew may read the provider first;
+    a spent read budget still answers, with what Brew stored.
+  - `automations triggers ensure-integration-event --event-id <eventId>`
+    (`POST /v1/automations/triggers/integration-events`) gets or creates the
+    event's trigger and prints the row with `created` and the same
+    `propertiesStatus`. A missing `--event-id` exits 2 before any request;
+    `--idempotency-key` replays a retry.
+- `webhooks list|create|get|update|delete|rotate-secret|test|events|attempts|replay`
+  manage brand-scoped email webhooks (GetBrew/brew-v2#2398). `create` and
+  `update` take `--endpoint`, `--events` (comma-separated) and
+  `--description`, or `--input` JSON. `delete`, `rotate-secret`, `test` and
+  `replay` ask for confirmation (`--yes` skips it). The commands use raw
+  transport until the SDK's `webhooks` resource is published.
+
+### Changed
+
+- Vendored spec and generated API types follow app revision `b2df757e44`.
+  Beyond the integration event operations above, no operations were added
+  or removed.
+  - `contacts upsert`, `contacts upsert-many` and `contacts import` refuse a
+    custom-field name with no ASCII letter or digit (`名前`, `#`) with
+    `422 FIELD_NAME_INVALID`: it cannot become a field key, so its value
+    would be lost. A blank name (`""` or only spaces) is dropped with a
+    `BLANK_FIELD_NAME_IGNORED` warning while the rest of the contact is
+    stored (GetBrew/brew-v2#2884).
+  - `contacts import-csv` imports a column named with no ASCII letter or
+    digit into the existing field labeled with that name and adds a
+    `CSV_COLUMN_MATCHED_FIELD` warning. A name that labels several fields is
+    `422 FIELD_NAME_AMBIGUOUS` (`details.columns` lists the candidate keys):
+    map the column with `--mapping` (GetBrew/brew-v2#2884).
+  - `chats list` `origin` can be `teams`, `google-chat` or `telegram`
+    beside `slack` (GetBrew/brew-v2#2846). Trigger `provider` adds `hubspot`
+    (GetBrew/brew-v2#2910), and an inbox placement test's `diagnosis` ids
+    add `seed_delivery_blocked` (GetBrew/brew-v2#2931).
+  - `409 IDEMPOTENCY_CONFLICT` has a second cause on fixed-price credited
+    commands (`contacts upsert`, `upsert-many`, `import`, `import-csv` and
+    `validate`; `content generate-image`, `gif`, `transform` and
+    `html-to-png`; `emails generate`, `audit`, `preview-clients` and
+    `create-inbox-placement-test`): an `--idempotency-key` that already
+    paid for a request whose stored response is gone. The request is not
+    run or charged again; send a new key to repeat it
+    (GetBrew/brew-v2#2876).
+  - `content gif --image-url` with no `--prompt` now adds one deliberate
+    move of the image's main subject; the default was a subtle motion
+    (GetBrew/brew-v2#2854).
+
+- Vendored spec and generated API types follow app revision `57a327ed7f`:
+  new error codes `WRITE_CONFLICT` (`503`, retry after `Retry-After`, now
+  possible on `emails clone`) and `NO_ACTIVE_PLAN` (`402`), the
+  `bounce_rate` send pause reason and `stats.hardBounced` on sends
+  (GetBrew/brew-v2#2624, GetBrew/brew-v2#2756). `automations delete`, `test`
+  and `run` refuse with `AUTOMATION_IN_PROGRESS` (`409`),
+  `AUTOMATION_NOT_READY` (`422`) or, for `run` on an event automation,
+  `AUTOMATION_NOT_RUNNABLE` (`422`) instead of `INTERNAL_ERROR`,
+  `INVALID_PAYLOAD` or `INVALID_REQUEST` (GetBrew/brew-v2#2839).
+  `automations audience-runs resume` returns `AUTOMATION_NOT_READY` when a
+  send step still to go can no longer send (GetBrew/brew-v2#2841), and
+  `pause` on a run held at the plan limit is `409 RUN_NOT_PAUSABLE`
+  (GetBrew/brew-v2#2838). No operations were added or removed. The `automations test` confirmation no longer says test
+  deliveries count toward send usage: they never count toward the plan's
+  email sends (GetBrew/brew-v2#2770).
+
+- `content gif` takes `--frame-count <n>` (2-16, default 9) for a prompt or
+  image GIF; `--fps` (default 5) sets playback speed. GIFs from a prompt or
+  an image are now one GPT Image 2.6 generation (GetBrew/brew-v2#2668):
+  the response no longer carries `videoUrl` or `generatedImageUrl` and adds
+  `frameCount`. `--fps` now sets playback speed over the frames, so a loop
+  lasts `frameCount / fps` seconds (`--fps 15` alone loops in 0.6 s); raise
+  `--frame-count` for smoother motion. Vendored spec and generated API types
+  follow that revision.
 
 ### Fixed
 
+- `--file` and stdin are decoded as strict UTF-8. A file in another encoding,
+  such as Excel's default "CSV" on Western Windows (Windows-1252), used to
+  reach Brew with every accented letter replaced by `�` (`José` stored as
+  `Jos�`), answering `200` with no warning. It now exits 2 (`CLI_USAGE`)
+  before any request, naming the first bad byte and its line (or that the
+  file is UTF-16), with how to re-save it as UTF-8. On macOS and Linux it
+  also prints an `iconv` command when the bytes can be Windows-1252 or
+  UTF-16. An `.eml` (by extension or `--format eml`) is told to import its
+  HTML instead, because re-encoding it would leave the charset its parts
+  declare wrong. A leading UTF-8 byte-order mark is dropped, so a JSON
+  `--file` or `--input -` saved with one now parses. This applies to every
+  command that reads `--file`, `--jsx-file`, `--input -` or `--data -`, and to
+  a piped `login` key.
 - `brand get-images --query` is free: semantic image search no longer costs
   a credit on its first page or answers `402 INSUFFICIENT_CREDITS`
   (GetBrew/brew-v2#2492). The command is no longer marked credited in help,
@@ -290,6 +395,40 @@ the team sandbox, app emails and browser sign-in.
   refused with `409 FIELD_TYPE_MISMATCH` instead of being stored rounded; send
   large ids as strings to a `string` field (#2488). This applies to
   `contacts upsert`, `upsert-many`, `update` and `import`.
+- An audience filter with `in`, `not_in`, `contains_any` or
+  `not_contains_any` now needs its `value` as a JSON array; the API refuses a
+  comma-separated string such as `"pro,team"` (GetBrew/brew-v2#2571). This
+  applies to `audiences create` and `audiences update`, which pass `--input`
+  filters through unchanged. `audiences create` gains an example with an
+  array value.
+- Vendored spec and generated API types follow app revision `507dbacf45`.
+  Only descriptions changed: brand identity and extraction fields, payload
+  contract enforcement modes, `measured` on send analytics, flow `kind`,
+  `sendId` scoping and the automation runs `recipientEmail` filter. No
+  command's flags changed.
+
+### Changed
+
+- Vendored spec and generated API types follow app revision `19c7b0d9da`
+  (GetBrew/brew-v2#2592, #2604). `emails import` can report a `text_dropped`
+  warning naming source words the editable design does not carry (version 1
+  keeps the exact source). `emails generate` gains `--title <text>`, the design's
+  canvas name (the body's new optional `title`; omit and Brew names it).
+  `analytics events --send` and `analytics event-counts --send-id` without
+  `--since` cover the whole send instead of the last 7 days. `--event-type` must
+  be one of the spec's event types, spelled exactly (`opened`, not `open`);
+  anything else is a `400 INVALID_REQUEST`, and a request with several problems
+  lists each under `details.issues[]` (at most 20). `automations update` keeps
+  the stored edges when `--input` omits `connections`; `expectedBaseVersionId`
+  (the `automationVersionId` you read) now guards a save on its own, with `409`
+  when the automation changed since, and `expectedBaseDefinitionSha256` is an
+  optional stricter guard that needs it. `analytics event-counts` groups of
+  opened, clicked or delivered events carry `recipients`, each recipient counted
+  once per message, and the human table shows it as RECIPIENTS (#2582). Because
+  the CLI authenticates with an API key, `emails send --test` and `automations
+  test` with `testRecipient` reach only a teammate with access to the brand or
+  an address on a verified sending domain of the brand; anyone else is `422
+  TEST_RECIPIENT_NOT_ALLOWED` with `details.recipients` (#2578).
 
 ## 0.19.0
 
