@@ -36,7 +36,7 @@ CLI depends on (`^13.3.0`).
 `integrations.events.get` and `automations.triggers.ensureIntegrationEvent`,
 which the published SDK 13.4.0 does not expose. Until an SDK release has
 them, the CLI pins reviewed SDK source commit
-`5be4c78740d4187a77cee13e11c18c96956f1cdb` (GetBrew/typescript-sdk#107). This
+`696d5c61d7300ebc43b74b859a3bda10a9ce69df` (GetBrew/typescript-sdk#107). This
 development dependency also adds lifecycle goal contracts and forwards the
 outcome version/cursor query fields. Its package version remains 13.4.0;
 it is not the published 13.4.0 registry artifact.

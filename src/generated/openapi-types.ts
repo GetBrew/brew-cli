@@ -6099,14 +6099,20 @@ export interface components {
                     coverageReason?: string;
                     /** @enum {string} */
                     anchorBasis: "entry_event" | "admission_time";
-                    admittedAt: number;
-                    anchorAt: number;
-                    windowEndsAt: number;
-                    achievedAt?: number;
+                    /** Format: date-time */
+                    admittedAt: string;
+                    /** Format: date-time */
+                    anchorAt: string;
+                    /** Format: date-time */
+                    windowEndsAt: string;
+                    /** Format: date-time */
+                    achievedAt?: string;
                     providerEventId?: string;
-                    firstAcceptedEmailAt?: number;
+                    /** Format: date-time */
+                    firstAcceptedEmailAt?: string;
                     firstAcceptedSendId?: string;
-                    matchedAt?: number;
+                    /** Format: date-time */
+                    matchedAt?: string;
                     goalDefinitionHash?: string;
                 }[];
                 evidenceTruncated: boolean;

@@ -9267,21 +9267,27 @@ components:
                       - entry_event
                       - admission_time
                   admittedAt:
-                    type: number
+                    type: string
+                    format: date-time
                   anchorAt:
-                    type: number
+                    type: string
+                    format: date-time
                   windowEndsAt:
-                    type: number
+                    type: string
+                    format: date-time
                   achievedAt:
-                    type: number
+                    type: string
+                    format: date-time
                   providerEventId:
                     type: string
                   firstAcceptedEmailAt:
-                    type: number
+                    type: string
+                    format: date-time
                   firstAcceptedSendId:
                     type: string
                   matchedAt:
-                    type: number
+                    type: string
+                    format: date-time
                   goalDefinitionHash:
                     type: string
                 required:
