@@ -7706,6 +7706,19 @@ export interface components {
         };
         IntegrationEventTriggerSaved: {
             triggerEventId: string;
+            /** @description Stable developer key your code names this trigger by; unique in the brand. Fire by it with `POST /v1/automations/triggers/by-key/{triggerKey}/fire`. Absent when the trigger has none. */
+            key?: string;
+            /** @description Present when an app-email setup wired this keyed trigger to an automation and design. */
+            appEmail?: {
+                /** @description The automation that sends this app email. */
+                automationId: string;
+                /** @description The email design it sends. */
+                emailId: string;
+                /** @description The starter-kit template the design came from, if any. */
+                starterId?: string;
+                /** @description Version of that starter template. */
+                starterVersion?: number;
+            };
             title: string;
             description?: string;
             /** @enum {string} */
@@ -36918,6 +36931,17 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
+            /** @description `NO_ACTIVE_PLAN`: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it. */
+            402: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
             /**
              * @description `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
              *
@@ -37077,6 +37101,17 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
+            /** @description `NO_ACTIVE_PLAN`: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it. */
+            402: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
             /**
              * @description `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
              *
@@ -37112,7 +37147,9 @@ export interface operations {
                 };
             };
             /**
-             * @description `INTEGRATION_ALREADY_CONNECTED`: A create-only hook connect found an existing connection with different credentials or settings.
+             * @description `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
+             *
+             *     `INTEGRATION_ALREADY_CONNECTED`: A create-only hook connect found an existing connection with different credentials or settings.
              *
              *     `INTEGRATION_CONNECTED_IN_APP`: The provider is connected on its integration page in Brew with another signing secret; the API connect never replaces that connection.
              */

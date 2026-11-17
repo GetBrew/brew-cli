@@ -13138,6 +13138,29 @@ components:
           type: string
           minLength: 1
           maxLength: 256
+        key:
+          type: string
+          description: Stable developer key your code names this trigger by; unique in the brand. Fire by it with `POST /v1/automations/triggers/by-key/{triggerKey}/fire`. Absent when the trigger has none.
+        appEmail:
+          type: object
+          properties:
+            automationId:
+              type: string
+              description: The automation that sends this app email.
+            emailId:
+              type: string
+              description: The email design it sends.
+            starterId:
+              type: string
+              description: The starter-kit template the design came from, if any.
+            starterVersion:
+              type: integer
+              description: Version of that starter template.
+          required:
+            - automationId
+            - emailId
+          additionalProperties: false
+          description: Present when an app-email setup wired this keyed trigger to an automation and design.
         title:
           type: string
           minLength: 1
@@ -81709,6 +81732,32 @@ paths:
                       message: The API key is malformed or unknown.
                       suggestion: Check the API key format and retry with a valid active key.
                       docs: https://docs.brew.new/api-reference/api/authentication
+        "402":
+          description: "`NO_ACTIVE_PLAN`: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it."
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                noActivePlan:
+                  summary: NO_ACTIVE_PLAN
+                  value:
+                    error:
+                      code: NO_ACTIVE_PLAN
+                      type: payment_required
+                      message: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
+                      suggestion: An organization admin must choose a plan, or update the payment method, at https://brew.new/plan. Check the current state up front with GET /v1/usage.
+                      docs: https://docs.brew.new/api-reference/api/credits
+                      details:
+                        reason: NO_PLAN
         "403":
           description: |-
             `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
@@ -82081,6 +82130,32 @@ paths:
                       message: The API key is malformed or unknown.
                       suggestion: Check the API key format and retry with a valid active key.
                       docs: https://docs.brew.new/api-reference/api/authentication
+        "402":
+          description: "`NO_ACTIVE_PLAN`: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it."
+          headers:
+            x-request-id:
+              schema:
+                type: string
+                description: Unique request identifier. Share this with support when debugging a request.
+                example: req_8cac13fd94e6420cacdd75a1aa403a28
+              required: true
+              description: Unique request identifier. Share this with support when debugging a request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+              examples:
+                noActivePlan:
+                  summary: NO_ACTIVE_PLAN
+                  value:
+                    error:
+                      code: NO_ACTIVE_PLAN
+                      type: payment_required
+                      message: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
+                      suggestion: An organization admin must choose a plan, or update the payment method, at https://brew.new/plan. Check the current state up front with GET /v1/usage.
+                      docs: https://docs.brew.new/api-reference/api/credits
+                      details:
+                        reason: NO_PLAN
         "403":
           description: |-
             `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
@@ -82177,6 +82252,8 @@ paths:
                       docs: https://docs.brew.new/api-reference/api/api-introduction
         "409":
           description: |-
+            `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
+
             `INTEGRATION_ALREADY_CONNECTED`: A create-only hook connect found an existing connection with different credentials or settings.
 
             `INTEGRATION_CONNECTED_IN_APP`: The provider is connected on its integration page in Brew with another signing secret; the API connect never replaces that connection.
@@ -82193,6 +82270,24 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelope"
               examples:
+                idempotencyInProgress:
+                  summary: IDEMPOTENCY_IN_PROGRESS
+                  value:
+                    error:
+                      code: IDEMPOTENCY_IN_PROGRESS
+                      type: conflict
+                      message: A request with this Idempotency-Key is still executing.
+                      suggestion: Wait for the original request to finish, then retry the same key to replay its response.
+                      docs: https://docs.brew.new/api-reference/api/idempotency
+                integrationAlreadyConnected:
+                  summary: INTEGRATION_ALREADY_CONNECTED
+                  value:
+                    error:
+                      code: INTEGRATION_ALREADY_CONNECTED
+                      type: conflict
+                      message: A create-only hook connect found an existing connection with different credentials or settings.
+                      suggestion: Reuse the original signing secret and settings, or rotate the existing connection explicitly without createOnly.
+                      docs: https://docs.brew.new/api-reference/api/errors
                 integrationConnectedInApp:
                   summary: INTEGRATION_CONNECTED_IN_APP
                   value:
@@ -82204,15 +82299,6 @@ paths:
                       docs: https://docs.brew.new/api-reference/api/errors
                       details:
                         provider: clerk
-                integrationAlreadyConnected:
-                  summary: INTEGRATION_ALREADY_CONNECTED
-                  value:
-                    error:
-                      code: INTEGRATION_ALREADY_CONNECTED
-                      type: conflict
-                      message: A create-only hook connect found an existing connection with different credentials or settings.
-                      suggestion: Reuse the original signing secret and settings, or rotate the existing connection explicitly without createOnly.
-                      docs: https://docs.brew.new/api-reference/api/errors
         "429":
           description: "`RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot."
           headers:

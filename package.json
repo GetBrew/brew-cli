@@ -69,7 +69,7 @@
     "smoke:launchers": "bun run scripts/smoke-launchers.ts"
   },
   "dependencies": {
-    "@brew.new/sdk": "git+https://github.com/GetBrew/typescript-sdk.git#d9730af47213e17f1bc1fb6c6f4a68a1382f6670",
+    "@brew.new/sdk": "git+https://github.com/GetBrew/typescript-sdk.git#23dc04085611cd22ea0442e2a5a61ccd6db2a38d",
     "commander": "^14.0.0"
   },
   "devDependencies": {
