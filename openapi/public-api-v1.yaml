@@ -13515,7 +13515,7 @@ components:
             fields:
               type: array
               items:
-                $ref: "#/components/schemas/PayloadContractFieldNode"
+                $ref: "#/components/schemas/PayloadContractStoredFieldNode"
           required:
             - subjectKind
             - subjectId
@@ -13577,6 +13577,167 @@ components:
             - format
             - content
           additionalProperties: false
+    PayloadContractStoredFieldNode:
+      type: object
+      properties:
+        key:
+          type: string
+          minLength: 1
+        type:
+          type: string
+          enum:
+            - string
+            - int
+            - float
+            - boolean
+            - date
+            - enum
+            - object
+            - array
+            - unknown
+        required:
+          type: boolean
+        description:
+          type: string
+          maxLength: 500
+        exampleValue:
+          anyOf:
+            - type: string
+            - type: number
+            - type: boolean
+        fallbackValue:
+          anyOf:
+            - type: string
+            - type: number
+            - type: boolean
+        pii:
+          type: string
+          enum:
+            - none
+            - low
+            - high
+        secret:
+          type: boolean
+          description: "True for a value used only to render this email: never stored on contacts, in logs or analytics; cannot be used in filters, splits or recipient fields. Scalars only, never `email`. False explicitly permits ordinary PII outside rendering; pii still controls log masking. When omitted, legacy high-PII scalar protection applies except for email and top-level firstName/lastName."
+        syncToContact:
+          type: boolean
+          description: "false keeps this value off the contact record: it reaches the email and nothing else. Omitted means true. The top-level email always identifies the contact."
+        enumValues:
+          type: array
+          items:
+            type: string
+            minLength: 1
+          maxItems: 50
+        itemType:
+          anyOf:
+            - type: string
+              enum:
+                - string
+                - int
+                - float
+                - boolean
+                - date
+                - enum
+            - type: string
+              enum:
+                - unknown
+        usedIn:
+          type: array
+          items:
+            type: string
+            enum:
+              - body
+              - subject
+              - previewText
+          maxItems: 3
+        children:
+          type: array
+          items:
+            $ref: "#/components/schemas/PayloadContractStoredFieldNode"
+      required:
+        - key
+        - type
+        - required
+      additionalProperties: false
+    PayloadContractPutResponse:
+      type: object
+      properties:
+        subjectKind:
+          type: string
+          enum:
+            - trigger
+        subjectId:
+          type: string
+          minLength: 1
+        source:
+          type: string
+          enum:
+            - stored
+            - derived_from_schema
+            - derived_from_template
+        typeName:
+          type: string
+          minLength: 1
+        contractHash:
+          type: string
+          minLength: 64
+          maxLength: 64
+        version:
+          type: integer
+          minimum: 1
+        enforcement:
+          type: string
+          enum:
+            - 'off'
+            - prune
+            - strict
+        driftStatus:
+          type: string
+          enum:
+            - fresh
+            - stale
+        format:
+          type: string
+          enum:
+            - json
+        fields:
+          type: array
+          items:
+            $ref: "#/components/schemas/PayloadContractStoredFieldNode"
+        warnings:
+          type: array
+          items:
+            $ref: "#/components/schemas/ApiWarning"
+      required:
+        - subjectKind
+        - subjectId
+        - source
+        - typeName
+        - format
+        - fields
+        - warnings
+      additionalProperties: false
+    PayloadContractPutRequest:
+      type: object
+      properties:
+        fields:
+          type: array
+          items:
+            $ref: "#/components/schemas/PayloadContractFieldNode"
+          minItems: 1
+          maxItems: 100
+        name:
+          type: string
+          minLength: 1
+          maxLength: 160
+        enforcement:
+          type: string
+          enum:
+            - 'off'
+            - prune
+            - strict
+          description: "How live fires use the contract. `off`: advisory only. `prune`: a fire that breaks a declared field is refused and undeclared keys are dropped. `strict`: undeclared keys are refused too. Omit to keep the current setting."
+      additionalProperties: false
     PayloadContractFieldNode:
       type: object
       properties:
@@ -13660,85 +13821,6 @@ components:
         - key
         - type
         - required
-      additionalProperties: false
-    PayloadContractPutResponse:
-      type: object
-      properties:
-        subjectKind:
-          type: string
-          enum:
-            - trigger
-        subjectId:
-          type: string
-          minLength: 1
-        source:
-          type: string
-          enum:
-            - stored
-            - derived_from_schema
-            - derived_from_template
-        typeName:
-          type: string
-          minLength: 1
-        contractHash:
-          type: string
-          minLength: 64
-          maxLength: 64
-        version:
-          type: integer
-          minimum: 1
-        enforcement:
-          type: string
-          enum:
-            - 'off'
-            - prune
-            - strict
-        driftStatus:
-          type: string
-          enum:
-            - fresh
-            - stale
-        format:
-          type: string
-          enum:
-            - json
-        fields:
-          type: array
-          items:
-            $ref: "#/components/schemas/PayloadContractFieldNode"
-        warnings:
-          type: array
-          items:
-            $ref: "#/components/schemas/ApiWarning"
-      required:
-        - subjectKind
-        - subjectId
-        - source
-        - typeName
-        - format
-        - fields
-        - warnings
-      additionalProperties: false
-    PayloadContractPutRequest:
-      type: object
-      properties:
-        fields:
-          type: array
-          items:
-            $ref: "#/components/schemas/PayloadContractFieldNode"
-          minItems: 1
-          maxItems: 100
-        name:
-          type: string
-          minLength: 1
-          maxLength: 160
-        enforcement:
-          type: string
-          enum:
-            - 'off'
-            - prune
-            - strict
-          description: "How live fires use the contract. `off`: advisory only. `prune`: a fire that breaks a declared field is refused and undeclared keys are dropped. `strict`: undeclared keys are refused too. Omit to keep the current setting."
       additionalProperties: false
     PayloadContractValidateResponse:
       type: object
@@ -19090,6 +19172,36 @@ components:
             - used
             - remaining
           additionalProperties: false
+        onDemand:
+          type: object
+          properties:
+            active:
+              type: boolean
+            capUsd:
+              type:
+                - number
+                - "null"
+              minimum: 0
+            budgetUsd:
+              type: number
+              minimum: 0
+            spentUsd:
+              type: number
+              minimum: 0
+            creditsRemaining:
+              type: integer
+              minimum: 0
+            emailSendsRemaining:
+              type: integer
+              minimum: 0
+          required:
+            - active
+            - capUsd
+            - budgetUsd
+            - spentUsd
+            - creditsRemaining
+            - emailSendsRemaining
+          additionalProperties: false
         period:
           type: object
           properties:
@@ -19111,6 +19223,7 @@ components:
         - plan
         - credits
         - emailSends
+        - onDemand
         - period
       additionalProperties: false
     IntegrationsListResponse:
@@ -25494,7 +25607,7 @@ paths:
                       code: INSUFFICIENT_CREDITS
                       type: payment_required
                       message: The credit balance is below what this operation requires; `details.cost` is the amount needed.
-                      suggestion: Upgrade your plan or wait for the next billing period to reset. Check your balance up front with GET /v1/usage.
+                      suggestion: Upgrade your plan, turn on or raise on-demand spending at https://brew.new/plan, or wait for the next billing period to reset. Check your balance, including on-demand headroom, up front with GET /v1/usage.
                       docs: https://docs.brew.new/api-reference/api/credits
                       details:
                         cost: 5
@@ -26514,7 +26627,7 @@ paths:
                       code: INSUFFICIENT_CREDITS
                       type: payment_required
                       message: The credit balance is below what this operation requires; `details.cost` is the amount needed.
-                      suggestion: Upgrade your plan or wait for the next billing period to reset. Check your balance up front with GET /v1/usage.
+                      suggestion: Upgrade your plan, turn on or raise on-demand spending at https://brew.new/plan, or wait for the next billing period to reset. Check your balance, including on-demand headroom, up front with GET /v1/usage.
                       docs: https://docs.brew.new/api-reference/api/credits
                       details:
                         cost: 5
@@ -29879,7 +29992,7 @@ paths:
                       code: INSUFFICIENT_CREDITS
                       type: payment_required
                       message: The credit balance is below what this operation requires; `details.cost` is the amount needed.
-                      suggestion: Upgrade your plan or wait for the next billing period to reset. Check your balance up front with GET /v1/usage.
+                      suggestion: Upgrade your plan, turn on or raise on-demand spending at https://brew.new/plan, or wait for the next billing period to reset. Check your balance, including on-demand headroom, up front with GET /v1/usage.
                       docs: https://docs.brew.new/api-reference/api/credits
                       details:
                         cost: 5
@@ -30553,7 +30666,7 @@ paths:
                       code: INSUFFICIENT_CREDITS
                       type: payment_required
                       message: The credit balance is below what this operation requires; `details.cost` is the amount needed.
-                      suggestion: Upgrade your plan or wait for the next billing period to reset. Check your balance up front with GET /v1/usage.
+                      suggestion: Upgrade your plan, turn on or raise on-demand spending at https://brew.new/plan, or wait for the next billing period to reset. Check your balance, including on-demand headroom, up front with GET /v1/usage.
                       docs: https://docs.brew.new/api-reference/api/credits
                       details:
                         cost: 5
@@ -31058,7 +31171,7 @@ paths:
                       code: INSUFFICIENT_CREDITS
                       type: payment_required
                       message: The credit balance is below what this operation requires; `details.cost` is the amount needed.
-                      suggestion: Upgrade your plan or wait for the next billing period to reset. Check your balance up front with GET /v1/usage.
+                      suggestion: Upgrade your plan, turn on or raise on-demand spending at https://brew.new/plan, or wait for the next billing period to reset. Check your balance, including on-demand headroom, up front with GET /v1/usage.
                       docs: https://docs.brew.new/api-reference/api/credits
                       details:
                         cost: 5
@@ -53136,7 +53249,7 @@ paths:
                       code: INSUFFICIENT_CREDITS
                       type: payment_required
                       message: The credit balance is below what this operation requires; `details.cost` is the amount needed.
-                      suggestion: Upgrade your plan or wait for the next billing period to reset. Check your balance up front with GET /v1/usage.
+                      suggestion: Upgrade your plan, turn on or raise on-demand spending at https://brew.new/plan, or wait for the next billing period to reset. Check your balance, including on-demand headroom, up front with GET /v1/usage.
                       docs: https://docs.brew.new/api-reference/api/credits
                       details:
                         cost: 5
@@ -55685,7 +55798,7 @@ paths:
                       code: INSUFFICIENT_CREDITS
                       type: payment_required
                       message: The credit balance is below what this operation requires; `details.cost` is the amount needed.
-                      suggestion: Upgrade your plan or wait for the next billing period to reset. Check your balance up front with GET /v1/usage.
+                      suggestion: Upgrade your plan, turn on or raise on-demand spending at https://brew.new/plan, or wait for the next billing period to reset. Check your balance, including on-demand headroom, up front with GET /v1/usage.
                       docs: https://docs.brew.new/api-reference/api/credits
                       details:
                         cost: 5
@@ -56194,7 +56307,7 @@ paths:
                       code: INSUFFICIENT_CREDITS
                       type: payment_required
                       message: The credit balance is below what this operation requires; `details.cost` is the amount needed.
-                      suggestion: Upgrade your plan or wait for the next billing period to reset. Check your balance up front with GET /v1/usage.
+                      suggestion: Upgrade your plan, turn on or raise on-demand spending at https://brew.new/plan, or wait for the next billing period to reset. Check your balance, including on-demand headroom, up front with GET /v1/usage.
                       docs: https://docs.brew.new/api-reference/api/credits
                       details:
                         cost: 5
@@ -56729,7 +56842,7 @@ paths:
                       code: INSUFFICIENT_CREDITS
                       type: payment_required
                       message: The credit balance is below what this operation requires; `details.cost` is the amount needed.
-                      suggestion: Upgrade your plan or wait for the next billing period to reset. Check your balance up front with GET /v1/usage.
+                      suggestion: Upgrade your plan, turn on or raise on-demand spending at https://brew.new/plan, or wait for the next billing period to reset. Check your balance, including on-demand headroom, up front with GET /v1/usage.
                       docs: https://docs.brew.new/api-reference/api/credits
                       details:
                         cost: 5
@@ -69875,7 +69988,7 @@ paths:
                       code: BRAND_LIMIT_REACHED
                       type: payment_required
                       message: The plan allows no more brands.
-                      suggestion: Delete an unused brand, or upgrade the plan to add more brands.
+                      suggestion: Delete an unused brand, upgrade the plan, or add extra brands at https://brew.new/plan.
                       docs: https://docs.brew.new/api-reference/api/credits
                 insufficientCredits:
                   summary: INSUFFICIENT_CREDITS
@@ -69884,7 +69997,7 @@ paths:
                       code: INSUFFICIENT_CREDITS
                       type: payment_required
                       message: The credit balance is below what this operation requires; `details.cost` is the amount needed.
-                      suggestion: Upgrade your plan or wait for the next billing period to reset. Check your balance up front with GET /v1/usage.
+                      suggestion: Upgrade your plan, turn on or raise on-demand spending at https://brew.new/plan, or wait for the next billing period to reset. Check your balance, including on-demand headroom, up front with GET /v1/usage.
                       docs: https://docs.brew.new/api-reference/api/credits
                       details:
                         cost: 5
@@ -70575,7 +70688,7 @@ paths:
                       code: INSUFFICIENT_CREDITS
                       type: payment_required
                       message: The credit balance is below what this operation requires; `details.cost` is the amount needed.
-                      suggestion: Upgrade your plan or wait for the next billing period to reset. Check your balance up front with GET /v1/usage.
+                      suggestion: Upgrade your plan, turn on or raise on-demand spending at https://brew.new/plan, or wait for the next billing period to reset. Check your balance, including on-demand headroom, up front with GET /v1/usage.
                       docs: https://docs.brew.new/api-reference/api/credits
                       details:
                         cost: 5
@@ -71030,7 +71143,7 @@ paths:
                       code: INSUFFICIENT_CREDITS
                       type: payment_required
                       message: The credit balance is below what this operation requires; `details.cost` is the amount needed.
-                      suggestion: Upgrade your plan or wait for the next billing period to reset. Check your balance up front with GET /v1/usage.
+                      suggestion: Upgrade your plan, turn on or raise on-demand spending at https://brew.new/plan, or wait for the next billing period to reset. Check your balance, including on-demand headroom, up front with GET /v1/usage.
                       docs: https://docs.brew.new/api-reference/api/credits
                       details:
                         cost: 5
@@ -71485,7 +71598,7 @@ paths:
                       code: INSUFFICIENT_CREDITS
                       type: payment_required
                       message: The credit balance is below what this operation requires; `details.cost` is the amount needed.
-                      suggestion: Upgrade your plan or wait for the next billing period to reset. Check your balance up front with GET /v1/usage.
+                      suggestion: Upgrade your plan, turn on or raise on-demand spending at https://brew.new/plan, or wait for the next billing period to reset. Check your balance, including on-demand headroom, up front with GET /v1/usage.
                       docs: https://docs.brew.new/api-reference/api/credits
                       details:
                         cost: 5
@@ -71940,7 +72053,7 @@ paths:
                       code: INSUFFICIENT_CREDITS
                       type: payment_required
                       message: The credit balance is below what this operation requires; `details.cost` is the amount needed.
-                      suggestion: Upgrade your plan or wait for the next billing period to reset. Check your balance up front with GET /v1/usage.
+                      suggestion: Upgrade your plan, turn on or raise on-demand spending at https://brew.new/plan, or wait for the next billing period to reset. Check your balance, including on-demand headroom, up front with GET /v1/usage.
                       docs: https://docs.brew.new/api-reference/api/credits
                       details:
                         cost: 5
@@ -73049,10 +73162,10 @@ paths:
       tags:
         - Usage
       summary: Get usage
-      description: "Returns the org usage snapshot: current plan, AI credit balance (limit/used/remaining — `null` = unlimited), monthly email-send quota (`remaining` = `limit` − `used` − `reserved`, where `reserved` is held by sends still delivering), and the billing-period window. Check it before a credit-metered call. Billing belongs to the ORGANIZATION, so this needs an organization-scoped credential: a key bound to one brand gets `403 ORG_SCOPE_REQUIRED` no matter which scopes it holds."
+      description: "Returns the org usage snapshot: current plan, AI credit balance (limit/used/remaining — `null` = unlimited), monthly email-send quota (`remaining` = `limit` − `used` − `reserved`, where `reserved` is held by sends still delivering; units already billed on demand count in both `limit` and `used`), on-demand spending (`onDemand`: when `active`, usage may continue past `remaining` by up to `creditsRemaining` credits or `emailSendsRemaining` sends, billed at the end of the billing month; the two share one budget, so spending either lowers both), and the billing-period window. Check it before a credit-metered call. Billing belongs to the ORGANIZATION, so this needs an organization-scoped credential: a key bound to one brand gets `403 ORG_SCOPE_REQUIRED` no matter which scopes it holds."
       responses:
         "200":
-          description: Usage snapshot — plan, credits, and email-send quota.
+          description: Usage snapshot — plan, credits, email-send quota, and on-demand headroom.
           headers:
             x-request-id:
               schema:
@@ -73099,6 +73212,13 @@ paths:
                   used: 911
                   reserved: 27880
                   remaining: 171209
+                onDemand:
+                  active: true
+                  capUsd: 100
+                  budgetUsd: 100
+                  spentUsd: 12.5
+                  creditsRemaining: 4375
+                  emailSendsRemaining: 21875
                 period:
                   start: '2026-05-28T18:10:35.000Z'
                   end: '2026-06-28T18:10:35.000Z'
