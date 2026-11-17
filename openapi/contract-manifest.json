@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "source": {
     "repository": "GetBrew/brew-v2",
-    "revision": "9fe69ce9d9180340047dbb781d402e917058fcf4",
+    "revision": "f617e73d978247362a7b82d02bec4533ace261f0",
     "dirty": false
   },
   "files": {
@@ -15,6 +15,6 @@
     "docs/snippets/generated/v1-surface.mdx": "67f699baf7ac1cf2e80bd265993b76023ee161a28a9798c5c439a70cce030584",
     "docs/snippets/generated/warning-codes.mdx": "1da42fca98a0b933f33e7ae58c90534f14bdb2568d9b4b627096097479ac3bbf",
     "openapi/public-api-v1.yaml": "bdbe9bbb3ccbaa23142f9a5b9cd6d13f70f238d82a1cafe43057e95e2fb8c3a7",
-    "tools/contract-artifact.mjs": "24dac12d83192fc52fe3b184f85d44b0e3e9be7894f05e642dbc1c39b1031066"
+    "tools/contract-artifact.mjs": "f51b4c00167a5582b9363a4fe0d4c4fd4b0e822c4b156823ddef9d9618439c4b"
   }
 }

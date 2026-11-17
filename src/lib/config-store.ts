@@ -1,14 +1,16 @@
 import {
   chmodSync,
+  lstatSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  realpathSync,
   renameSync,
   rmSync,
   writeFileSync,
 } from 'node:fs'
 import { homedir } from 'node:os'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 
 export type StoredConfig = {
   readonly apiKey?: string
@@ -57,7 +59,13 @@ export function readConfig(
       'code' in error &&
       error.code === 'ENOENT'
     ) {
-      return {}
+      try {
+        if (lstatSync(path, { throwIfNoEntry: false }) === undefined) {
+          return {}
+        }
+      } catch {
+        // A failed path check is not evidence that configuration is absent.
+      }
     }
     throw new Error(
       `Cannot read CLI configuration at "${path}". Check the file and its permissions.`
@@ -111,14 +119,18 @@ export function writeConfig(
       compact[key] = value
     }
   }
-  const stagingDir = mkdtempSync(join(dir, '.config-'))
+  // Preserve an existing user-managed symlink; replace its resolved file atomically.
+  const target = lstatSync(path, { throwIfNoEntry: false })?.isSymbolicLink()
+    ? realpathSync(path)
+    : path
+  const stagingDir = mkdtempSync(join(dirname(target), '.config-'))
   try {
     const stagingPath = join(stagingDir, 'config.json')
     writeFileSync(stagingPath, `${JSON.stringify(compact, null, 2)}\n`, {
       mode: 0o600,
     })
     chmodSync(stagingPath, 0o600)
-    renameSync(stagingPath, path)
+    renameSync(stagingPath, target)
   } finally {
     rmSync(stagingDir, { recursive: true, force: true })
   }

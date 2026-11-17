@@ -1,4 +1,5 @@
 import {
+  lstatSync,
   mkdirSync,
   mkdtempSync,
   readdirSync,
@@ -6,6 +7,7 @@ import {
   renameSync,
   rmSync,
   statSync,
+  symlinkSync,
   writeFileSync,
 } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -122,4 +124,35 @@ describe('config store', () => {
     expect(readFileSync(path, 'utf8')).toBe(original)
     expect(readdirSync(env.BREW_CLI_CONFIG_DIR ?? '')).toEqual(['config.json'])
   })
+})
+
+it('keeps an existing config symlink attached while atomically updating its target', () => {
+  const env = tempEnv()
+  const targetEnv = tempEnv()
+  const target = configPath(targetEnv)
+  writeFileSync(
+    target,
+    JSON.stringify({ apiKey: 'brew_secret', brandId: 'old' })
+  )
+  symlinkSync(target, configPath(env))
+  updateConfig(env, { brandId: 'new' })
+  expect(lstatSync(configPath(env)).isSymbolicLink()).toBe(true)
+  expect(readConfig(targetEnv)).toEqual({
+    apiKey: 'brew_secret',
+    brandId: 'new',
+  })
+  expect(readConfig(env)).toEqual(readConfig(targetEnv))
+  expect(statSync(target).mode & 0o777).toBe(0o600)
+  expect(readdirSync(targetEnv.BREW_CLI_CONFIG_DIR ?? '')).toEqual([
+    'config.json',
+  ])
+})
+
+it('reports a dangling config symlink instead of treating it as missing login', () => {
+  const env = tempEnv()
+  const absent = join(env.BREW_CLI_CONFIG_DIR ?? '', 'missing-target.json')
+  symlinkSync(absent, configPath(env))
+  expect(() => readConfig(env)).toThrow(/Cannot read CLI configuration/)
+  expect(() => updateConfig(env, { brandId: 'new' })).toThrow()
+  expect(lstatSync(configPath(env)).isSymbolicLink()).toBe(true)
 })

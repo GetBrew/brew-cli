@@ -108,6 +108,11 @@ function assertContainedPath(root, path) {
     if (!isWithinRoot(root, target)) {
       throw new Error(`Contract path is outside the consumer checkout: ${path}`)
     }
+    // A link to an unmanaged file inside this checkout is still a different
+    // write target. This also protects rollback after a generator retargets it.
+    throw new Error(
+      `Managed contract paths must not traverse a symlink: ${path}`
+    )
   }
 }
 
@@ -311,13 +316,14 @@ export function importContract({ artifact, root, artifactSha256 }) {
 
 if (
   process.argv[1] &&
-  resolve(process.argv[1]) === fileURLToPath(import.meta.url)
+  existsSync(process.argv[1]) &&
+  realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)
 ) {
   try {
     const [command, ...args] = process.argv
       .slice(2)
       .filter((value) => value !== '--')
-    const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
+    const root = resolve(dirname(resolve(process.argv[1])), '..')
     if (command === 'check' && args.length === 0) {
       console.log(JSON.stringify(checkContract({ root })))
     } else if (

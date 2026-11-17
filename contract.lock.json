@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
-  "artifactSha256": "6bf8cf64163a19b04c0b0bd3df734a596fb21d4bd8fe3b80c731de743c646707",
+  "artifactSha256": "7b03a711eb70946eab54eae42c6775285138f889d6d700e2424dd869819f13fb",
   "source": {
     "repository": "GetBrew/brew-v2",
-    "revision": "9fe69ce9d9180340047dbb781d402e917058fcf4",
+    "revision": "f617e73d978247362a7b82d02bec4533ace261f0",
     "dirty": false
   }
 }

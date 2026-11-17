@@ -157,6 +157,21 @@ jobs:
             fi
             # Reuse the verified pushed commit after an interrupted or closed draft.
             git switch --create "$BRANCH" "$CONTRACT_REMOTE_HEAD"
+            # Default-branch code and dependencies may have advanced since this
+            # commit was pushed. Qualify the actual recovered head, without giving
+            # install scripts the PR-writing credential from this step.
+            if (
+              unset GH_TOKEN
+              bun install --frozen-lockfile &&
+              bun run tsc &&
+              bun run lint &&
+              bun run test &&
+              bun run docs:commands:check
+            ); then
+              VALIDATION_OUTCOME=success
+            else
+              VALIDATION_OUTCOME=failure
+            fi
           else
             REMOTE_STATUS=$?
             if [[ "$REMOTE_STATUS" != 2 ]]; then
