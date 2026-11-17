@@ -262,7 +262,11 @@ function analyzeMessage(
   if (template !== undefined) {
     kind = 'template'
     const first = tokens[template.from]
-    if (first?.type === 'punct' && first.value === '{') {
+    if (
+      first?.type === 'punct' &&
+      first.value === '{' &&
+      matchingBracket(tokens, template.from) === template.to
+    ) {
       for (const property of objectProperties(tokens, template.from)) {
         if (property.name === 'id' && property.from === property.to) {
           templateId = stringValue(tokens[property.from] as Token)
@@ -326,6 +330,13 @@ export function analyzeArgument(
     return { kind: 'unknown', shape: 'other', messages: [UNKNOWN_MESSAGE] }
   }
   const first = tokens[0]
+  if (
+    first?.type === 'punct' &&
+    (first.value === '{' || first.value === '[') &&
+    matchingBracket(tokens, 0) !== tokens.length - 1
+  ) {
+    return { kind: 'unknown', shape: 'other', messages: [UNKNOWN_MESSAGE] }
+  }
   if (first?.type === 'punct' && first.value === '{') {
     const message = analyzeMessage(text, tokens, 0)
     return { kind: message.kind, shape: 'object', messages: [message] }
@@ -338,7 +349,9 @@ export function analyzeArgument(
         ? [UNKNOWN_MESSAGE]
         : elements.map((element) => {
             const head = tokens[element.from]
-            return head?.type === 'punct' && head.value === '{'
+            return head?.type === 'punct' &&
+              head.value === '{' &&
+              matchingBracket(tokens, element.from) === element.to
               ? analyzeMessage(text, tokens, element.from)
               : UNKNOWN_MESSAGE
           })
