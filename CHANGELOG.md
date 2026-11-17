@@ -1,5 +1,76 @@
 # Changelog
 
+## 0.21.0
+
+Needs the same SDK release as 0.20.0 (`appEmails.setUpKit` and the auth
+adapter subpaths from GetBrew/typescript-sdk#64), and the API from
+GetBrew/brew-v2#2169 (its head `6e4accea4c`, the spec 0.20.0 vendors).
+
+### Added
+
+- **`brew-cli init`** sets up Brew app email in a project: detect
+  (package manager, monorepo, framework: Next.js app/pages, Vite + React,
+  React Router, Remix, SvelteKit, Astro, Express, Hono, Supabase Edge
+  Functions; auth: Better Auth, Auth.js v4/v5, Supabase, Clerk, Firebase,
+  WorkOS, Stytch; Stripe; existing email providers; editors; cloud
+  shells), sign in through the browser for a CLI key and an app key (the
+  app key only ever lands in `.env.local`, 0600, git-ignored), set up the
+  starter kit for the detected stack, install `@brew.new/sdk`, write
+  `lib/brew.ts`, `lib/brew-auth.ts`, `lib/brew-contracts.ts`, a Supabase
+  Send Email Hook function, `.env.example` and `brew.json` (create-only,
+  hashes kept in `brew.json`), print patches for the auth config
+  (`--apply-patches <id>@<hash>,…` from the report applies each only while
+  its file still matches the reviewed hash), configure
+  MCP for detected editors, write an `AGENTS.md` block and (in Claude Code
+  projects) the skills, and send a sandbox test email. Destructive class:
+  `--dry-run --json` plans with no writes and no mutating requests,
+  `--yes --json` runs; `--no-wait` / `--resume` for agents (exit 3 with
+  the sign-in link and code). Flags: `--app`, `--domain`, `--sets`,
+  `--stack`, `--test-to`, `--apply-patches`, `--app-url` (shown on the
+  approval page so the right brand is picked), `--no-install`, `--no-mcp`,
+  `--no-agent-files`, `--no-test-email`, `--no-open`. The JSON report
+  follows `schemas/init-report.json` (`schemaVersion: 1`). Re-runs reuse
+  the idempotency keys `init:<projectId>:<step>:<body hash>`. After a
+  browser sign-in the run acts as the new app key, so the kit lands in the
+  brand that key is bound to. The CLI key is saved with the API URL it
+  signed in against (as `login` saves it), and `--resume` against another
+  API URL than the sign-in started on exits 2 before polling.
+  `lib/brew.ts` reads the key through `$env/dynamic/private` in SvelteKit
+  and `import.meta.env` in Astro; Express, Hono and plain Node get a
+  blocking step to load `.env.local`. Every generated client sends to
+  `BREW_API_URL` when it is set, and an init against another Brew server
+  (`--api-url`) writes it to `.env.local` beside the key.
+  A test email that does not go out (say `SANDBOX_DAILY_LIMIT`) is a
+  non-blocking retry step, not a failed run. A domain `--domain` adds that
+  already publishes another DKIM key (`DKIM_SELECTOR_IN_USE`) gets a
+  `dkim-selector-in-use` step naming the suggested subdomain instead of
+  the DNS records step, and a kit key refused with
+  `APP_EMAIL_TRIGGER_IN_USE` gets a human `trigger-in-use:<key>` review
+  step ahead of the re-run. A kit key someone unpublished in Brew stays
+  off: the kit step counts only published keys, names the others, and a
+  human `publish-app-emails` step says how to turn them back on. Until
+  they are on, no auth config patch applies (`--apply-patches` leaves it
+  pending) and that step is blocking; a failed SDK install holds it too,
+  since the helper it imports needs the SDK. The generated code and the
+  install command use `@brew.new/sdk@^13.6.0`, the planned release with
+  `appEmails` and the auth adapters (on top of 13.5.0's `send`).
+- Not in this release (they need platform work first): the Supabase and
+  Clerk provider switch-over (Supabase Management API hook, Clerk
+  `toggle_delivery`; init prints them as human steps), `integrations
+  connect` (GetBrew/brew-v2#2169 and SDK `integrations.connect`), and brand
+  creation from `--app-url` (sign-in keys are bound to a brand picked on
+  the approval page).
+- **Launchers** `brew.new` and `create-brew` (`packages/launchers/`):
+  each runs `@brew.new/cli` in-process, pinned to the same version,
+  inserts `init` when no subcommand is given, and sets
+  `BREW_CLI_INVOKED_AS` (`npx -y brew.new@<version>`, `npm create
+  brew@latest --`). `bun run sync:launchers[:check]` keeps them in
+  lockstep; `bun run smoke:launchers` packs and runs them. The release
+  workflow publishes them after the CLI and skips them, with a warning,
+  while the npm names are not ours yet; they are not on npm today.
+- The `brew-app-emails` agent skill (embedded; `init` installs it).
+- `types` exports its contracts builder and trigger pager for `init`.
+
 ## 0.20.0
 
 Needs `@brew.new/sdk` 13.6.0: `brew.send` and

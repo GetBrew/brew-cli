@@ -1,0 +1,11 @@
+{
+  "name": "firebase-app",
+  "dependencies": {
+    "firebase": "11.6.0",
+    "next": "15.3.0",
+    "react": "19.1.0"
+  },
+  "devDependencies": {
+    "typescript": "5.8.3"
+  }
+}

@@ -127,6 +127,13 @@ CSV recipe with `jq`; Linux terminal checks use the `script` utility.
 - `openapi/public-api-v1.yaml` and `docs/commands/README.md` are
   generated — regenerate, never hand-edit.
 
+## Launchers
+
+`packages/launchers/{brew.new,create-brew}` are thin `npx`/`npm create`
+launchers for `init`. Edit `packages/launchers/launcher.mjs`, then
+`bun run sync:launchers` (copies it, pins the CLI version);
+`sync:launchers:check` and `smoke:launchers` gate CI.
+
 ## Releasing
 
 See [`RELEASING.md`](./RELEASING.md) — tag-driven npm publish with

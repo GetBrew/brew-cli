@@ -1,0 +1,11 @@
+{
+  "name": "express-api",
+  "type": "module",
+  "dependencies": {
+    "express": "5.1.0",
+    "resend": "4.5.1"
+  },
+  "devDependencies": {
+    "typescript": "5.8.3"
+  }
+}

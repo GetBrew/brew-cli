@@ -1,0 +1,373 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://unpkg.com/@brew.new/cli/schemas/init-report.json",
+  "title": "brew-cli init report",
+  "description": "What `brew-cli init --json` prints. schemaVersion 1. Never carries a secret: keys are masked.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "status",
+    "dryRun",
+    "project",
+    "brand",
+    "credential",
+    "domain",
+    "stack",
+    "emails",
+    "files",
+    "patches",
+    "mcp",
+    "testEmail",
+    "steps",
+    "nextSteps",
+    "agentInstructions"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "status": {
+      "enum": [
+        "planned",
+        "complete",
+        "action_required",
+        "auth_required",
+        "ambiguous_project",
+        "failed"
+      ]
+    },
+    "dryRun": { "type": "boolean" },
+    "project": {
+      "type": "object",
+      "required": [
+        "root",
+        "name",
+        "projectId",
+        "packageManager",
+        "monorepo",
+        "framework",
+        "runtime",
+        "auth",
+        "authVersion",
+        "authDetected",
+        "billing",
+        "existingEmail",
+        "builder",
+        "typescript",
+        "editors",
+        "remote"
+      ],
+      "properties": {
+        "root": { "type": "string" },
+        "name": { "type": "string" },
+        "projectId": { "type": ["string", "null"] },
+        "packageManager": {
+          "enum": ["npm", "pnpm", "yarn", "bun", "deno", null]
+        },
+        "monorepo": {
+          "type": ["object", "null"],
+          "required": ["tool", "root", "workspace"],
+          "properties": {
+            "tool": { "type": "string" },
+            "root": { "type": "string" },
+            "workspace": { "type": ["string", "null"] }
+          }
+        },
+        "candidates": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "dir", "framework"],
+            "properties": {
+              "name": { "type": "string" },
+              "dir": { "type": "string" },
+              "framework": { "type": "string" }
+            }
+          }
+        },
+        "framework": {
+          "enum": [
+            "next-app",
+            "next-pages",
+            "vite-react",
+            "react-router",
+            "remix",
+            "sveltekit",
+            "astro",
+            "express",
+            "hono",
+            "supabase-functions",
+            "node",
+            null
+          ]
+        },
+        "runtime": { "enum": ["node", "workers", "deno", "browser", null] },
+        "auth": {
+          "enum": [
+            "better-auth",
+            "authjs",
+            "supabase",
+            "clerk",
+            "firebase",
+            "workos",
+            "stytch",
+            "none",
+            null
+          ]
+        },
+        "authVersion": { "enum": ["v4", "v5", null] },
+        "authDetected": { "type": "array", "items": { "type": "string" } },
+        "billing": { "type": "array", "items": { "type": "string" } },
+        "existingEmail": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["provider", "source"],
+            "properties": {
+              "provider": { "type": "string" },
+              "source": { "enum": ["dependency", "directory"] },
+              "path": { "type": "string" }
+            }
+          }
+        },
+        "builder": { "type": ["string", "null"] },
+        "typescript": { "type": "boolean" },
+        "editors": { "type": "array", "items": { "type": "string" } },
+        "remote": { "type": ["string", "null"] }
+      }
+    },
+    "brand": {
+      "type": ["object", "null"],
+      "required": ["brandId", "name"],
+      "properties": {
+        "brandId": { "type": "string" },
+        "name": { "type": ["string", "null"] }
+      }
+    },
+    "credential": {
+      "type": "object",
+      "required": ["source", "apiKey", "appKey"],
+      "properties": {
+        "source": {
+          "enum": ["flag", "env", "config", "env-file", "browser", "none"]
+        },
+        "apiKey": { "type": ["string", "null"] },
+        "appKey": {
+          "type": "object",
+          "required": ["variable", "file", "status", "masked"],
+          "properties": {
+            "variable": { "const": "BREW_API_KEY" },
+            "file": { "const": ".env.local" },
+            "status": { "enum": ["existing", "written", "planned", "missing"] },
+            "masked": { "type": ["string", "null"] }
+          }
+        }
+      }
+    },
+    "domain": {
+      "type": "object",
+      "required": [
+        "mode",
+        "domainId",
+        "name",
+        "status",
+        "added",
+        "records",
+        "settingsUrl",
+        "sandbox"
+      ],
+      "properties": {
+        "mode": { "enum": ["domain", "sandbox", "unknown"] },
+        "domainId": { "type": ["string", "null"] },
+        "name": { "type": ["string", "null"] },
+        "status": { "type": ["string", "null"] },
+        "added": { "type": "boolean" },
+        "records": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["type", "name", "value"],
+            "properties": {
+              "type": { "type": "string" },
+              "name": { "type": "string" },
+              "value": { "type": "string" },
+              "priority": { "type": "number" }
+            }
+          }
+        },
+        "settingsUrl": { "type": "string" },
+        "sandbox": {
+          "type": ["object", "null"],
+          "required": ["note"],
+          "properties": { "note": { "type": "string" } }
+        }
+      }
+    },
+    "stack": {
+      "type": ["object", "null"],
+      "required": ["provider", "authDelivery", "note"],
+      "properties": {
+        "provider": { "type": "string" },
+        "authDelivery": { "type": ["string", "null"] },
+        "note": { "type": ["string", "null"] }
+      }
+    },
+    "emails": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["key", "ok"],
+        "properties": {
+          "key": { "type": "string" },
+          "ok": { "type": "boolean" },
+          "triggerEventId": { "type": "string" },
+          "automationId": { "type": "string" },
+          "published": { "type": "boolean" },
+          "sender": { "enum": ["domain", "sandbox"] },
+          "created": { "type": "boolean" },
+          "error": {
+            "type": "object",
+            "required": ["code", "message"],
+            "properties": {
+              "code": { "type": "string" },
+              "message": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "files": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["path", "action", "role"],
+        "properties": {
+          "path": { "type": "string" },
+          "action": {
+            "enum": [
+              "created",
+              "updated",
+              "unchanged",
+              "kept-user-version",
+              "missing",
+              "refused",
+              "planned"
+            ]
+          },
+          "role": { "type": "string" },
+          "note": { "type": "string" }
+        }
+      }
+    },
+    "patches": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "path", "title", "description", "status"],
+        "properties": {
+          "id": { "type": "string" },
+          "path": { "type": "string" },
+          "title": { "type": "string" },
+          "description": { "type": "string" },
+          "status": {
+            "enum": ["pending", "applied", "already-applied", "manual", "stale"]
+          },
+          "baseSha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+          "diff": { "type": "string" },
+          "snippet": { "type": "string" }
+        }
+      }
+    },
+    "mcp": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["client", "action"],
+        "properties": {
+          "client": { "type": "string" },
+          "path": { "type": "string" },
+          "action": {
+            "enum": ["created", "updated", "unchanged", "manual", "printed"]
+          },
+          "deeplink": { "type": "string" },
+          "snippet": { "type": "string" },
+          "note": { "type": "string" },
+          "nextStep": { "type": "string" }
+        }
+      }
+    },
+    "testEmail": {
+      "type": "object",
+      "required": ["status", "key", "to"],
+      "properties": {
+        "status": {
+          "enum": ["sent", "replayed", "skipped", "planned", "failed"]
+        },
+        "key": { "type": ["string", "null"] },
+        "to": { "type": ["string", "null"] },
+        "triggerInstanceId": { "type": "string" },
+        "reason": { "type": "string" }
+      }
+    },
+    "steps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "status"],
+        "properties": {
+          "id": {
+            "enum": [
+              "detect",
+              "sign-in",
+              "env",
+              "brand",
+              "domain",
+              "kit",
+              "install",
+              "files",
+              "patches",
+              "mcp",
+              "agent-files",
+              "state",
+              "test-email"
+            ]
+          },
+          "status": {
+            "enum": ["done", "skipped", "planned", "pending", "failed"]
+          },
+          "detail": { "type": "string" }
+        }
+      }
+    },
+    "nextSteps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "actor", "kind", "title", "blocking"],
+        "properties": {
+          "id": { "type": "string" },
+          "actor": { "enum": ["agent", "human"] },
+          "kind": {
+            "enum": [
+              "run-command",
+              "open-url",
+              "apply-patch",
+              "edit-file",
+              "set-secret",
+              "add-dns-records",
+              "review"
+            ]
+          },
+          "title": { "type": "string" },
+          "blocking": { "type": "boolean" },
+          "command": { "type": "string" },
+          "url": { "type": "string" },
+          "path": { "type": "string" },
+          "patchId": { "type": "string" }
+        }
+      }
+    },
+    "agentInstructions": { "type": "string" }
+  }
+}

@@ -1,0 +1,49 @@
+{
+  "name": "create-brew",
+  "version": "0.21.0",
+  "description": "npm create brew: set up Brew email in your app (auth and lifecycle email, the SDK, MCP for your editor).",
+  "license": "MIT",
+  "author": "Brew",
+  "homepage": "https://brew.new/developers",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/GetBrew/brew-cli.git",
+    "directory": "packages/launchers/create-brew"
+  },
+  "bugs": {
+    "url": "https://github.com/GetBrew/brew-cli/issues"
+  },
+  "keywords": [
+    "brew",
+    "brew.new",
+    "email",
+    "init",
+    "transactional-email",
+    "auth-emails",
+    "better-auth",
+    "next-auth",
+    "supabase",
+    "resend-alternative",
+    "mcp",
+    "cli"
+  ],
+  "type": "module",
+  "bin": {
+    "create-brew": "bin.mjs"
+  },
+  "files": [
+    "bin.mjs",
+    "launcher.mjs",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@brew.new/cli": "0.21.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

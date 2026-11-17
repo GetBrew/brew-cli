@@ -154,7 +154,7 @@ export const mcpInstallCommand = defineCommand({
   },
 })
 
-function installOne(input: {
+export function installOne(input: {
   readonly client: McpClientId
   readonly scope: McpScope
   readonly auth: McpAuthMode

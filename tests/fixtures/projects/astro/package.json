@@ -1,0 +1,7 @@
+{
+  "name": "astro-site",
+  "type": "module",
+  "dependencies": {
+    "astro": "5.7.0"
+  }
+}
