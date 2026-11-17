@@ -5305,6 +5305,7 @@ components:
         - INSUFFICIENT_CREDITS
         - INSUFFICIENT_PERMISSIONS
         - INSUFFICIENT_ROLE
+        - INTEGRATION_ALREADY_CONNECTED
         - INTEGRATION_CONNECTED_IN_APP
         - INTEGRATION_NOT_CONNECTED
         - INTERNAL_ERROR
@@ -19220,6 +19221,10 @@ components:
           enum:
             - supabase_auth
             - clerk
+        verifiedInstanceId:
+          type: string
+          maxLength: 512
+          description: Clerk instance id from a real signed delivery verified against the current credential revision. Absent until that proof is available; never supplied by the caller.
         connectionId:
           type: string
           description: Server-derived, stable per brand and provider.
@@ -19246,6 +19251,10 @@ components:
           enum:
             - supabase_auth
             - clerk
+        verifiedInstanceId:
+          type: string
+          maxLength: 512
+          description: Clerk instance id from a real signed delivery verified against the current credential revision. Absent until that proof is available; never supplied by the caller.
         connectionId:
           type: string
           description: Server-derived, stable per brand and provider.
@@ -19293,6 +19302,9 @@ components:
     IntegrationConnectionPutRequest:
       type: object
       properties:
+        createOnly:
+          type: boolean
+          description: Create a connection only if none exists. An unchanged secret and settings replay safely; an existing different connection returns 409 INTEGRATION_ALREADY_CONNECTED.
         signingSecret:
           type: string
           minLength: 1
@@ -70906,7 +70918,10 @@ paths:
                       suggestion: Check the request path and HTTP method against the API reference.
                       docs: https://docs.brew.new/api-reference/api/api-introduction
         "409":
-          description: "`INTEGRATION_CONNECTED_IN_APP`: The provider is connected on its integration page in Brew with another signing secret; the API connect never replaces that connection."
+          description: |-
+            `INTEGRATION_ALREADY_CONNECTED`: A create-only hook connect found an existing connection with different credentials or settings.
+
+            `INTEGRATION_CONNECTED_IN_APP`: The provider is connected on its integration page in Brew with another signing secret; the API connect never replaces that connection.
           headers:
             x-request-id:
               schema:
@@ -70920,6 +70935,15 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiErrorEnvelope"
               examples:
+                integrationAlreadyConnected:
+                  summary: INTEGRATION_ALREADY_CONNECTED
+                  value:
+                    error:
+                      code: INTEGRATION_ALREADY_CONNECTED
+                      type: conflict
+                      message: A create-only hook connect found an existing connection with different credentials or settings.
+                      suggestion: Reuse the original signing secret and settings, or rotate the existing connection explicitly without createOnly.
+                      docs: https://docs.brew.new/api-reference/api/errors
                 integrationConnectedInApp:
                   summary: INTEGRATION_CONNECTED_IN_APP
                   value:

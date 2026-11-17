@@ -109,6 +109,10 @@ flags below, init prints the manual steps.
   changes only once every auth email reaches every user (set up, with a
   verified domain, not the team-only sandbox), and never takes over a
   connection that is active for another hook.
+  Setup keeps its generated credential in a git-ignored, owner-only
+  `.env.brew-supabase-<project-ref>` file before connecting either service.
+  Keep that file when retrying an interrupted setup. A create-only connect
+  refuses another setup's different credential before changing Supabase.
   `--dry-run --json` shows the exact PATCH with the secret replaced. The
   self-hosted Edge Function init writes stays the alternative.
 - **Clerk**: connect Clerk's `email.created` webhook first
@@ -116,8 +120,10 @@ flags below, init prints the manual steps.
   "Delivered by Clerk" for exactly the templates whose Brew email reaches
   every user (published, not the team-only sandbox), through
   Clerk's Backend API with `CLERK_SECRET_KEY` (shell or `.env.local`), and
-  only once `integrations connection clerk` reports `active`, so no email
-  is dropped in between.
+  only once the instance selected by that key matches the signed-instance
+  proof Brew returns for its current webhook credential. An active
+  connection without current proof leaves Clerk delivery on; send a fresh
+  signed webhook and use a Brew API version exposing that proof first.
 
 `init --rollback-provider --yes` puts back what either flag changed, from
 `brew.json`.

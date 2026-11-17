@@ -7,8 +7,16 @@ Not released yet. Needs `@brew.new/sdk` 13.7.0: `integrations.connect` and
 13.6.0 that 0.20.0 needs; see the SDK gates in `RELEASING.md`), and the API
 from GetBrew/brew-v2#2169 (`GET|PUT /v1/integrations/{provider}/connection`,
 the `supabase_auth` hosted Send Email Hook, and Clerk `email.created`
-sending the app's auth emails). The bundled spec is 0.20.0's, the #2169
-head `6e4accea4c` (main's spec, brew-v2 `373e900a9a`, plus the DX delta).
+sending the app's auth emails). The bundled spec includes create-only hook
+setup and proof of the Clerk instance verified by the current credential.
+
+### Fixed
+
+- Overlapping hosted Supabase setup runs keep one durable local credential
+  and use a create-only connect, so a competing machine cannot rotate Brew's
+  secret before the winning run updates Supabase.
+- Clerk delivery changes require signed proof of the selected instance,
+  compared with the Backend API key's instance, before disabling templates.
 
 ### Added
 
