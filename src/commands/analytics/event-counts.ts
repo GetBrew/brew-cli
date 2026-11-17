@@ -1,4 +1,5 @@
-import type { EventCountsInput, EventCountsResponse } from '@brew.new/sdk'
+import type { EventCountsInput } from '@brew.new/sdk'
+import type { components } from '../../generated/openapi-types'
 import { defineCommand } from '../../lib/define-command'
 import { CliUsageError } from '../../lib/errors'
 import {
@@ -40,11 +41,16 @@ export const analyticsEventCountsCommand = defineCommand({
       flag: '--bucket <period>',
       summary: 'Count per UTC day, week (Monday start) or month',
     },
-    { flag: '--since <datetime>', summary: 'Window start (ISO-8601)' },
+    {
+      flag: '--since <datetime>',
+      summary:
+        'Window start (ISO-8601); default 7 days ago, or the whole send with --send-id',
+    },
     { flag: '--until <datetime>', summary: 'Window end (ISO-8601)' },
     {
       flag: '--event-type <type>',
-      summary: 'Only one email event type (e.g. clicked)',
+      summary:
+        'Only one email event type, spelled exactly (e.g. clicked, not click)',
     },
     { flag: '--send-id <sendId>', summary: 'Only one send' },
     { flag: '--email-id <emailId>', summary: 'Only one design' },
@@ -83,7 +89,7 @@ export const analyticsEventCountsCommand = defineCommand({
       }
     }
     const { limit: _pageSize, ...counted } = input
-    const body = await ctx.client().analytics.eventCounts(
+    const body: EventCounts = await ctx.client().analytics.eventCounts(
       asSdkInput<EventCountsInput>({
         ...counted,
         ...(counted.groupBy === undefined
@@ -110,7 +116,14 @@ function toFieldList(value: unknown): unknown {
     .filter((field) => field !== '')
 }
 
-function renderCounts(body: EventCountsResponse): string {
+/**
+ * The breakdown body as the vendored spec types it: groups of opened,
+ * clicked or delivered events also carry `recipients`, which the SDK's own
+ * response type may not declare yet.
+ */
+type EventCounts = components['schemas']['EventsBreakdownResponse']
+
+function renderCounts(body: EventCounts): string {
   if (body.groups.length === 0) {
     return `No events counted (total ${body.count}).`
   }
@@ -120,6 +133,7 @@ function renderCounts(body: EventCountsResponse): string {
       .join(' '),
     ...(group.bucket === undefined ? {} : { bucket: group.bucket }),
     count: group.count,
+    ...(group.recipients === undefined ? {} : { recipients: group.recipients }),
   }))
   // A --bucket-only count has no grouped fields: leave out an all-blank column.
   const table = renderTable(rows, [
@@ -130,6 +144,10 @@ function renderCounts(body: EventCountsResponse): string {
       ? [{ key: 'bucket', header: 'PERIOD' }]
       : []),
     { key: 'count', header: 'COUNT' },
+    // Each recipient once per message: shown when any group carries it.
+    ...(rows.some((row) => 'recipients' in row)
+      ? [{ key: 'recipients', header: 'RECIPIENTS' }]
+      : []),
   ])
   const footer = [
     `total ${body.count}`,

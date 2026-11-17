@@ -39,6 +39,9 @@ export const INPUT_KEYS: Readonly<Record<string, readonly string[]>> = {
   "DELETE /v1/fields/{fieldName}": [
     "fieldName"
   ],
+  "DELETE /v1/webhooks/{webhookId}": [
+    "webhookId"
+  ],
   "GET /v1/analytics/automations": [
     "automationId",
     "from",
@@ -296,6 +299,16 @@ export const INPUT_KEYS: Readonly<Record<string, readonly string[]>> = {
     "cursor",
     "limit"
   ],
+  "GET /v1/integrations/events": [
+    "cursor",
+    "kind",
+    "limit",
+    "provider",
+    "query"
+  ],
+  "GET /v1/integrations/events/{eventId}": [
+    "eventId"
+  ],
   "GET /v1/notifications": [
     "cursor",
     "limit",
@@ -336,6 +349,24 @@ export const INPUT_KEYS: Readonly<Record<string, readonly string[]>> = {
     "templateId"
   ],
   "GET /v1/usage": [],
+  "GET /v1/webhooks": [
+    "cursor",
+    "limit"
+  ],
+  "GET /v1/webhooks/{webhookId}": [
+    "webhookId"
+  ],
+  "GET /v1/webhooks/{webhookId}/events": [
+    "cursor",
+    "limit",
+    "webhookId"
+  ],
+  "GET /v1/webhooks/{webhookId}/events/{eventId}/attempts": [
+    "cursor",
+    "eventId",
+    "limit",
+    "webhookId"
+  ],
   "PATCH /v1/audiences/{audienceId}": [
     "addEmails",
     "audienceId",
@@ -396,6 +427,13 @@ export const INPUT_KEYS: Readonly<Record<string, readonly string[]>> = {
     "prompt",
     "subjectLine",
     "title"
+  ],
+  "PATCH /v1/webhooks/{webhookId}": [
+    "description",
+    "endpoint",
+    "events",
+    "status",
+    "webhookId"
   ],
   "POST /v1/api-keys": [
     "brandId",
@@ -465,6 +503,9 @@ export const INPUT_KEYS: Readonly<Record<string, readonly string[]>> = {
     "domainId",
     "event",
     "scope"
+  ],
+  "POST /v1/automations/triggers/integration-events": [
+    "eventId"
   ],
   "POST /v1/brands": [
     "excludePaths",
@@ -546,6 +587,7 @@ export const INPUT_KEYS: Readonly<Record<string, readonly string[]>> = {
   "POST /v1/content/gif": [
     "aspectRatio",
     "fps",
+    "frameCount",
     "from",
     "imageUrl",
     "loop",
@@ -602,7 +644,8 @@ export const INPUT_KEYS: Readonly<Record<string, readonly string[]>> = {
     "lang",
     "prompt",
     "referenceEmailId",
-    "subjectLine"
+    "subjectLine",
+    "title"
   ],
   "POST /v1/emails/{emailId}/client-previews": [
     "clients",
@@ -696,6 +739,22 @@ export const INPUT_KEYS: Readonly<Record<string, readonly string[]>> = {
   ],
   "POST /v1/sends/{sendId}/resume": [
     "sendId"
+  ],
+  "POST /v1/webhooks": [
+    "description",
+    "endpoint",
+    "events"
+  ],
+  "POST /v1/webhooks/{webhookId}/events/{eventId}/replay": [
+    "eventId",
+    "webhookId"
+  ],
+  "POST /v1/webhooks/{webhookId}/rotate-secret": [
+    "webhookId"
+  ],
+  "POST /v1/webhooks/{webhookId}/test": [
+    "type",
+    "webhookId"
   ],
   "PUT /v1/automations/triggers/{triggerEventId}/contract": [
     "enforcement",
