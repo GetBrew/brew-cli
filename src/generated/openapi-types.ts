@@ -13438,7 +13438,11 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `WRITE_CONFLICT`: Other writes to the same records kept conflicting with this one, so nothing was saved. */
+            /**
+             * @description `SERVICE_UNAVAILABLE`: A dependency the operation must consult (billing, the idempotency store) is temporarily unavailable, so the request was refused rather than run unmetered.
+             *
+             *     `WRITE_CONFLICT`: Other writes to the same records kept conflicting with this one, so nothing was saved.
+             */
             503: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -13618,6 +13622,19 @@ export interface operations {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
                     "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `SERVICE_UNAVAILABLE`: A dependency the operation must consult (billing, the idempotency store) is temporarily unavailable, so the request was refused rather than run unmetered. */
+            503: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
                     [name: string]: unknown;
                 };
                 content: {
