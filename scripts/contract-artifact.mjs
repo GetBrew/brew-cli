@@ -4,13 +4,15 @@ import { spawnSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import {
   existsSync,
+  lstatSync,
   mkdirSync,
   readdirSync,
   readFileSync,
+  realpathSync,
   rmSync,
   writeFileSync,
 } from 'node:fs'
-import { dirname, resolve } from 'node:path'
+import { dirname, isAbsolute, relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 export function sha256(bytes) {
@@ -61,6 +63,60 @@ function readManifest(bytes, expectedDigest) {
   return manifest
 }
 
+function isWithinRoot(root, path) {
+  const fromRoot = relative(root, path)
+  return (
+    fromRoot === '' ||
+    (!isAbsolute(fromRoot) &&
+      fromRoot !== '..' &&
+      !fromRoot.startsWith(`..${sep}`))
+  )
+}
+
+/** A lexical allow-list also has to respect where existing filesystem links lead. */
+function assertContainedPath(root, path) {
+  if (realpathSync(root) !== root) {
+    throw new Error(
+      'Contract path is outside the consumer checkout: checkout root changed'
+    )
+  }
+  const absolute = resolve(root, path)
+  if (!isWithinRoot(root, absolute)) {
+    throw new Error(`Contract path is outside the consumer checkout: ${path}`)
+  }
+  let current = root
+  for (const part of relative(root, absolute).split(sep)) {
+    current = resolve(current, part)
+    let stat
+    try {
+      stat = lstatSync(current)
+    } catch (error) {
+      if (error.code === 'ENOENT') {
+        return
+      }
+      throw error
+    }
+    if (!stat.isSymbolicLink()) {
+      continue
+    }
+    let target
+    try {
+      target = realpathSync(current)
+    } catch {
+      throw new Error(`Contract path has an unresolved symlink: ${path}`)
+    }
+    if (!isWithinRoot(root, target)) {
+      throw new Error(`Contract path is outside the consumer checkout: ${path}`)
+    }
+  }
+}
+
+function assertContainedPaths(root, paths) {
+  for (const path of paths) {
+    assertContainedPath(root, path)
+  }
+}
+
 function consumerConfig(root) {
   const name = JSON.parse(
     readFileSync(resolve(root, 'package.json'), 'utf8')
@@ -71,6 +127,7 @@ function consumerConfig(root) {
   }
   return {
     isDocs,
+    generatedSnippetDirectory: isDocs ? 'snippets/generated' : null,
     manifestPath: isDocs
       ? 'api-reference/contract-manifest.json'
       : 'openapi/contract-manifest.json',
@@ -94,7 +151,13 @@ function consumerConfig(root) {
 
 /** Checks the locally pinned artifact. It does not claim to check server freshness. */
 export function checkContract({ root }) {
+  root = realpathSync(root)
   const config = consumerConfig(root)
+  assertContainedPaths(root, [
+    config.manifestPath,
+    'contract.lock.json',
+    ...config.generatedPaths,
+  ])
   const pin = JSON.parse(
     readFileSync(resolve(root, 'contract.lock.json'), 'utf8')
   )
@@ -110,6 +173,9 @@ export function checkContract({ root }) {
   }
   for (const [path, digest] of Object.entries(manifest.files)) {
     const destination = config.destination(path)
+    if (destination) {
+      assertContainedPath(root, destination)
+    }
     if (
       destination &&
       sha256(readFileSync(resolve(root, destination))) !== digest
@@ -120,9 +186,15 @@ export function checkContract({ root }) {
     }
   }
   if (config.isDocs) {
+    assertContainedPath(root, config.generatedSnippetDirectory)
     const managed = new Set(Object.keys(manifest.files).map(config.destination))
-    for (const file of readdirSync(resolve(root, 'snippets/generated'))) {
-      if (file.endsWith('.mdx') && !managed.has(`snippets/generated/${file}`)) {
+    for (const file of readdirSync(
+      resolve(root, config.generatedSnippetDirectory)
+    )) {
+      if (
+        file.endsWith('.mdx') &&
+        !managed.has(`${config.generatedSnippetDirectory}/${file}`)
+      ) {
         throw new Error(`Unpinned generated snippet: ${file}`)
       }
     }
@@ -132,7 +204,16 @@ export function checkContract({ root }) {
 
 /** Validate the entire explicit artifact before updating this checkout. */
 export function importContract({ artifact, root, artifactSha256 }) {
+  root = realpathSync(root)
   const config = consumerConfig(root)
+  assertContainedPaths(root, [
+    config.manifestPath,
+    'contract.lock.json',
+    ...config.generatedPaths,
+  ])
+  if (config.generatedSnippetDirectory) {
+    assertContainedPath(root, config.generatedSnippetDirectory)
+  }
   const manifestBytes = readFileSync(resolve(artifact, 'manifest.json'))
   const manifest = readManifest(manifestBytes, artifactSha256)
   const payloads = new Map()
@@ -168,6 +249,8 @@ export function importContract({ artifact, root, artifactSha256 }) {
     'contract.lock.json',
     Buffer.from(`${JSON.stringify(pin, null, 2)}\n`)
   )
+  // Include retired snippets and generator outputs before the first write.
+  assertContainedPaths(root, [...payloads.keys(), ...config.generatedPaths])
   const previous = new Map(
     [...payloads.keys(), ...config.generatedPaths].map((path) => {
       const absolute = resolve(root, path)
@@ -176,6 +259,7 @@ export function importContract({ artifact, root, artifactSha256 }) {
   )
   try {
     for (const [path, bytes] of payloads) {
+      assertContainedPath(root, path)
       const absolute = resolve(root, path)
       mkdirSync(dirname(absolute), { recursive: true })
       if (bytes === null) {
@@ -198,13 +282,27 @@ export function importContract({ artifact, root, artifactSha256 }) {
     }
     checkContract({ root })
   } catch (error) {
+    const failures = []
     for (const [path, bytes] of previous) {
-      const absolute = resolve(root, path)
-      if (bytes === null) {
-        rmSync(absolute, { force: true })
-      } else {
-        writeFileSync(absolute, bytes)
+      try {
+        // A generator can change the directory tree before it fails. Never
+        // restore bytes through a link that now points to another checkout.
+        assertContainedPath(root, path)
+        const absolute = resolve(root, path)
+        if (bytes === null) {
+          rmSync(absolute, { force: true })
+        } else {
+          writeFileSync(absolute, bytes)
+        }
+      } catch (restoreError) {
+        failures.push(restoreError)
       }
+    }
+    if (failures.length > 0) {
+      throw new AggregateError(
+        [error, ...failures],
+        'Contract import failed; rollback could not safely restore every file'
+      )
     }
     throw error
   }

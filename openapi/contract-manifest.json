@@ -2,19 +2,19 @@
   "schemaVersion": 1,
   "source": {
     "repository": "GetBrew/brew-v2",
-    "revision": "1d793eda0f5f9391607ec3bb761e090454794de2",
-    "dirty": true
+    "revision": "9fe69ce9d9180340047dbb781d402e917058fcf4",
+    "dirty": false
   },
   "files": {
-    "docs/snippets/generated/data-model-mermaid.mdx": "ea9bb831f3cd6b556b754ca87b2a10f6c0a171ef42a7fe2f9ac47532b1a16e83",
-    "docs/snippets/generated/error-codes.mdx": "dcd1b8482f6b97c17652c5911450a8fd178e9186a188214de566571c8ab9e3a9",
-    "docs/snippets/generated/identifier-table.mdx": "fb7c24f582843c202c9f02198dd4806ede766a4abb89ef8c44a01fe0766b63d4",
-    "docs/snippets/generated/mcp-api-key-setup.mdx": "8ad2cd7f0764b290cc78687c8c82ea7baf25ce030997bb1dd751081c637442c5",
-    "docs/snippets/generated/mcp-client-setup.mdx": "186049141758df6138e065374d62f252ac332714f5db202b516077c6b471d656",
-    "docs/snippets/generated/mcp-tools.mdx": "963086582dee5c35da2bdd8c74fb0a8ed6942e04b01544a5ef9af2418a8a957b",
-    "docs/snippets/generated/v1-surface.mdx": "c72a73441d42a375ae046b70bf491b81de3d036373dc7f377c33f2015a7f2b43",
-    "docs/snippets/generated/warning-codes.mdx": "254aef88a4dbb53bf1eea547b2e93ffbf2cc581f1d2ef268a28645f493055647",
-    "openapi/public-api-v1.yaml": "db7982fe9afbad13b91440689bc655d683efec9394184a00a23f224e6180165d",
-    "tools/contract-artifact.mjs": "5f934b716e8deca89a4684a963a56884a579210463ad08a4a7cd157c495d6cf0"
+    "docs/snippets/generated/data-model-mermaid.mdx": "80140dc8038de607f9e71823aebdf9cca12f2815a40b6cb6639f025bb2806588",
+    "docs/snippets/generated/error-codes.mdx": "f2dd7ba96e0eb288dcbfcad72d41796ae9412bb9c9019e4072fa8e2bd7d3f936",
+    "docs/snippets/generated/identifier-table.mdx": "4762717310fc3b8c78250f97aecf158f6b948db0e377a46d8595c31f06478492",
+    "docs/snippets/generated/mcp-api-key-setup.mdx": "f8e672acd262126b9b6d67e928ed3d2569610ade2d4d5272c27d5a337217d653",
+    "docs/snippets/generated/mcp-client-setup.mdx": "a81ae14303839a807d1fd8a5fb236d619215bd4b067d0c69baff338f8cfba2e4",
+    "docs/snippets/generated/mcp-tools.mdx": "d784972cfb39bcf2c4c9d4080254ace204169a5cc99353853f0f5010e785ec93",
+    "docs/snippets/generated/v1-surface.mdx": "67f699baf7ac1cf2e80bd265993b76023ee161a28a9798c5c439a70cce030584",
+    "docs/snippets/generated/warning-codes.mdx": "1da42fca98a0b933f33e7ae58c90534f14bdb2568d9b4b627096097479ac3bbf",
+    "openapi/public-api-v1.yaml": "bdbe9bbb3ccbaa23142f9a5b9cd6d13f70f238d82a1cafe43057e95e2fb8c3a7",
+    "tools/contract-artifact.mjs": "24dac12d83192fc52fe3b184f85d44b0e3e9be7894f05e642dbc1c39b1031066"
   }
 }
