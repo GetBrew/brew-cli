@@ -1,23 +1,16 @@
-import type { operations } from '../../generated/openapi-types'
 import { defineCommand } from '../../lib/define-command'
-import { IDEMPOTENCY_FLAG, INPUT_FLAG } from '../../lib/input'
-import { prepareWebhookInput, webhookRunner } from './request'
+import { IDEMPOTENCY_FLAG, INPUT_FLAG, requestOptions } from '../../lib/input'
+import { prepareWebhookInput } from './request'
 
 const route = {
   method: 'POST',
   path: '/v1/webhooks/{webhookId}/events/{eventId}/replay',
 } as const
-type Output =
-  operations['replayWebhookEvent']['responses'][202]['content']['application/json']
-type Input = NonNullable<
-  operations['replayWebhookEvent']['requestBody']
->['content']['application/json']
 
 export const webhooksReplayCommand = defineCommand({
   path: ['webhooks', 'replay'],
   summary: 'Replay a webhook event without resending the email',
-  sdkMethod: null,
-  isRawTransport: true,
+  sdkMethod: 'webhooks.replay',
   route,
   commandClass: 'destructive',
   args: [
@@ -29,5 +22,13 @@ export const webhooksReplayCommand = defineCommand({
   confirmSummary: () =>
     'Deliver the original webhook event again. This does not resend the email.',
   prepareInput: prepareWebhookInput,
-  run: webhookRunner<Output, Input>(route),
+  run: async ({ ctx, args, flags }) => ({
+    data: await ctx
+      .client()
+      .webhooks.replay(
+        args.webhookId ?? '',
+        args.eventId ?? '',
+        requestOptions(flags)
+      ),
+  }),
 })

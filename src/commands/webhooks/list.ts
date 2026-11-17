@@ -1,21 +1,25 @@
-import type { operations } from '../../generated/openapi-types'
+import type { WebhookListInput } from '@brew.new/sdk'
 import { defineCommand } from '../../lib/define-command'
+import { asSdkInput, flagInt, flagString } from '../../lib/input'
 import { CURSOR_FLAG, LIMIT_FLAG } from '../../lib/paginate'
-import { webhookRunner } from './request'
 
 const route = { method: 'GET', path: '/v1/webhooks' } as const
-type Output =
-  operations['listWebhooks']['responses'][200]['content']['application/json']
 
 export const webhooksListCommand = defineCommand({
   path: ['webhooks', 'list'],
   summary: 'List webhook endpoints for the selected brand',
-  sdkMethod: null,
-  isRawTransport: true,
+  sdkMethod: 'webhooks.list',
   route,
   commandClass: 'read',
   args: [],
   flags: [LIMIT_FLAG, CURSOR_FLAG],
   examples: ['brew-cli webhooks list'],
-  run: webhookRunner<Output>(route),
+  run: async ({ ctx, flags }) => ({
+    data: await ctx.client().webhooks.list(
+      asSdkInput<WebhookListInput>({
+        limit: flagInt(flags.limit, '--limit'),
+        cursor: flagString(flags.cursor),
+      })
+    ),
+  }),
 })

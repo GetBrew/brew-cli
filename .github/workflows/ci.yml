@@ -39,6 +39,8 @@ jobs:
       - run: bun run tsc
       - run: bun run lint
       - run: bun run test
+      - name: Release preflight regression tests
+        run: node --test tests/release/*.test.mjs
       - run: bun run docs:commands:check
       - run: bun run build
       - name: Bin smoke

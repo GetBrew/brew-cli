@@ -9197,6 +9197,10 @@ components:
                 prequalified:
                   type: integer
                   minimum: 0
+                entryWindowExpired:
+                  type: integer
+                  minimum: 0
+                  default: 0
                 unknown:
                   type: integer
                   minimum: 0

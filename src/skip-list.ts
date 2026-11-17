@@ -63,6 +63,11 @@ export const SDK_SKIP_LIST: readonly SdkSkip[] = [
     reason:
       'client scoping helper activated by the global `--brand`; not an API command',
   },
+  {
+    sdkPath: 'webhooks.verify',
+    reason:
+      'local signature verification helper for inbound webhook receivers; not an API command',
+  },
 ]
 
 /**

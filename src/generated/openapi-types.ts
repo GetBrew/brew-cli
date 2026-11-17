@@ -6077,6 +6077,8 @@ export interface components {
                     pending: number;
                     windowClosed: number;
                     prequalified: number;
+                    /** @default 0 */
+                    entryWindowExpired?: number;
                     unknown: number;
                     exposed: number;
                     achievedAfterExposure: number;
