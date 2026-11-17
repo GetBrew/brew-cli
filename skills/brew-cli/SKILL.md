@@ -22,6 +22,21 @@ this build lacks (update the CLI); auth/reachability failures name the fix.
 ## Auth and targeting
 
 - `BREW_API_KEY` env var (or `brew-cli login` once, or `--api-key`).
+- No key and a person to ask? Sign in through their browser without
+  blocking on it:
+
+  ```bash
+  brew-cli login --no-wait --json   # exit 3: {status: "pending", verificationUrl, userCode, expiresAt, resumeCommand}
+  ```
+
+  Show the person `verificationUrl` and `userCode`, and ask them to approve
+  on brew.new only if the code on the page matches. Then run the
+  `resumeCommand` (`brew-cli login --resume`): exit 0 stores the key and
+  reports `userEmail` and `brandName`; exit 3 with `status: "pending"`
+  means not approved yet (add `--wait 2m` to wait for it); exit 3 with
+  `CLI_LOGIN_DENIED` or `CLI_LOGIN_EXPIRED` means start over. Never ask for
+  or print the key itself. A plain `brew-cli login` off a terminal exits 2
+  instead of waiting.
 - Default target is production. For a local dev server:
   `BREW_API_URL=http://localhost:3000/api` (Brew repo dev keys live in
   `.env.test.local` as `TEST_API_KEY`).

@@ -1,5 +1,6 @@
 import { maskApiKey } from '../lib/client'
 import {
+  type ConfigKey,
   configPath,
   isConfigKey,
   readConfig,
@@ -27,7 +28,11 @@ export const configGetCommand = defineCommand({
   sdkMethod: null,
   commandClass: 'read',
   args: [
-    { name: 'key', summary: 'brandId | apiUrl | apiKey', isRequired: true },
+    {
+      name: 'key',
+      summary: 'brandId | apiUrl | apiKey | userEmail | brandName',
+      isRequired: true,
+    },
   ],
   examples: ['brew-cli config get brandId'],
   run: async ({ ctx, args }) => {
@@ -53,7 +58,12 @@ export const configSetCommand = defineCommand({
     if (value === '') {
       throw new CliUsageError('A non-empty value is required.')
     }
-    const path = updateConfig(ctx.io.env, { [key]: value })
+    const path = updateConfig(ctx.io.env, {
+      [key]: value,
+      // A brand id set by hand is not the one a browser sign-in bound its
+      // key to: without `brandName` it holds for any key and past logout.
+      ...(key === 'brandId' ? { brandName: undefined } : {}),
+    })
     return { data: { [key]: value, configPath: path } }
   },
 })
@@ -67,7 +77,10 @@ export const configUnsetCommand = defineCommand({
   examples: ['brew-cli config unset brandId'],
   run: async ({ ctx, args }) => {
     const key = requireSettableKey(args.key, ctx)
-    const path = updateConfig(ctx.io.env, { [key]: undefined })
+    const path = updateConfig(ctx.io.env, {
+      [key]: undefined,
+      ...(key === 'brandId' ? { brandName: undefined } : {}),
+    })
     return { data: { [key]: null, configPath: path } }
   },
 })
@@ -83,23 +96,23 @@ function maskedConfig(ctx: CliContext): Record<string, string | undefined> {
   }
 }
 
-function requireKnownKey(
-  value: string | undefined
-): 'apiKey' | 'apiUrl' | 'brandId' {
+function requireKnownKey(value: string | undefined): ConfigKey {
   if (value !== undefined && isConfigKey(value)) {
     return value
   }
-  throw new CliUsageError('Unknown key. Expected brandId, apiUrl, or apiKey.')
+  throw new CliUsageError(
+    'Unknown key. Expected brandId, apiUrl, apiKey, userEmail, or brandName.'
+  )
 }
 
 function requireSettableKey(
   value: string | undefined,
   ctx: CliContext
 ): 'apiUrl' | 'brandId' {
-  if (value === 'apiKey') {
+  if (value === 'apiKey' || value === 'userEmail' || value === 'brandName') {
     const prefix = getInvocationPrefix(ctx.io.env)
     throw new CliUsageError(
-      `The API key is managed by \`${prefix} login\` / \`${prefix} logout\`.`
+      `${value === 'apiKey' ? 'The API key is' : `${value} is`} managed by \`${prefix} login\` / \`${prefix} logout\`.`
     )
   }
   const key = requireKnownKey(value)

@@ -1,5 +1,6 @@
 import { PassThrough, Readable } from 'node:stream'
 import { run } from '../../src/cli'
+import type { Clock } from '../../src/lib/clock'
 import type { CommandSpec } from '../../src/lib/define-command'
 import { readStdinText } from '../../src/lib/stdin'
 import type { CliIo, SpawnFn } from '../../src/lib/types'
@@ -37,8 +38,18 @@ export type RunCliOptions = {
    * a host binary.
    */
   readonly spawn?: SpawnFn
-  /** Records URLs a command asks to open. */
+  /**
+   * Records URLs a command asks to open. Absent: every open fails as if no
+   * opener were installed, so a test never launches the host browser.
+   */
   readonly openUrl?: (url: string) => Promise<void>
+  /** Stands in for the wall clock and waits (`login` polling). */
+  readonly clock?: Clock
+}
+
+/** An opener that is not installed, as on a host without a browser. */
+const noHostOpenUrl = async (): Promise<void> => {
+  throw new Error('No browser opener in tests.')
 }
 
 /** A spawn that finds no program, as on a host without it. */
@@ -88,7 +99,8 @@ export async function runCli(
     ...(options.signal === undefined ? {} : { signal: options.signal }),
     ...(options.cwd === undefined ? {} : { cwd: options.cwd }),
     spawn: options.spawn ?? noHostSpawn,
-    ...(options.openUrl === undefined ? {} : { openUrl: options.openUrl }),
+    openUrl: options.openUrl ?? noHostOpenUrl,
+    ...(options.clock === undefined ? {} : { clock: options.clock }),
   }
   const code = await run(
     argv,
