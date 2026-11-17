@@ -17,6 +17,7 @@ const VALUE_FLAGS = new Set([
   '--test-to',
   '--apply-patches',
   '--app-url',
+  '--supabase-project',
 ])
 
 const VERSION_FLAGS = new Set(['--version', '-V'])

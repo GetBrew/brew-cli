@@ -10,6 +10,8 @@ export default defineConfig({
   format: ['esm'],
   target: 'es2022',
   platform: 'node',
+  // Keep range parsing in the shipped binary; users install only SDK + Commander.
+  noExternal: ['semver'],
   sourcemap: true,
   clean: true,
   treeshake: true,

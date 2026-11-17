@@ -1,5 +1,6 @@
 import { posix } from 'node:path'
-import { type AuthId, type ProjectDetection, rangeVersion } from './detect'
+import { gte, minVersion } from 'semver'
+import type { AuthId, ProjectDetection } from './detect'
 
 /**
  * The files `init` writes into an app. Each template is deterministic (same
@@ -22,23 +23,17 @@ export const SDK_PACKAGE = '@brew.new/sdk'
  * and migrate install SDK_RANGE over it.
  */
 export function reachesSdkRange(declared: string | null | undefined): boolean {
-  // Only a floor (`^`, `~`, `>=` or an exact version) names the lowest
-  // release it installs; anything else (`<13.6.0`, `a || b`) gets SDK_RANGE.
-  if (
-    !/^\s*(?:[\^~]|>=)?\s*v?\d+\.\d+(?:\.\d+)?(?:[-+][\w.-]*)?\s*$/.test(
-      declared ?? ''
-    )
-  ) {
+  if (declared == null) {
     return false
   }
-  const version = rangeVersion(declared ?? undefined)
-  const needed = rangeVersion(SDK_RANGE)
-  return (
-    version !== null &&
-    needed !== null &&
-    (version[0] > needed[0] ||
-      (version[0] === needed[0] && version[1] >= needed[1]))
-  )
+  try {
+    const version = minVersion(declared)
+    const needed = minVersion(SDK_RANGE)
+    return version !== null && needed !== null && gte(version, needed)
+  } catch {
+    // Tags and source dependencies have no provable installed version floor.
+    return false
+  }
 }
 
 /** The project-facing command, for files teammates commit and read. */
@@ -303,9 +298,9 @@ const AUTH_NOTES: Readonly<
   Record<Exclude<AuthId, 'better-auth' | 'authjs'>, string>
 > = {
   supabase:
-    'With the auth set, Supabase Auth emails go through the Send Email Hook in supabase/functions/send-email.',
+    "With the auth set, Supabase Auth emails go through Brew's hosted Send Email Hook once connected (`integrations connect supabase_auth`, or `init --configure-supabase`); supabase/functions/send-email is the self-hosted alternative.",
   clerk:
-    'Clerk keeps sending its own sign-in and verification emails; connect Clerk in Brew (Integrations) to start lifecycle automations from Clerk events, or send them from your code.',
+    "Clerk sends its own auth emails until its email.created webhook is connected to Brew (`integrations connect clerk`) and `init --configure-clerk` turns off Clerk's delivery for the templates Brew sends; lifecycle emails go out from your code.",
   firebase:
     'Firebase Auth keeps sending its own auth emails; Brew sends your lifecycle emails from your code.',
   workos:

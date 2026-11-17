@@ -802,6 +802,7 @@ export const INPUT_KEYS: Readonly<Record<string, readonly string[]>> = {
     "triggerEventId"
   ],
   "PUT /v1/integrations/{provider}/connection": [
+    "createOnly",
     "provider",
     "settings",
     "signingSecret"

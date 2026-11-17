@@ -1,6 +1,6 @@
 {
   "name": "@brew.new/cli",
-  "version": "0.22.0",
+  "version": "0.23.0",
   "description": "Official agent-first command-line interface for the Brew public API.",
   "license": "MIT",
   "author": "Brew",
@@ -69,14 +69,16 @@
     "smoke:launchers": "bun run scripts/smoke-launchers.ts"
   },
   "dependencies": {
-    "@brew.new/sdk": "git+https://github.com/GetBrew/typescript-sdk.git#98bd4e23d6b4cfc04c1010d0b995c74bae9624ad",
+    "@brew.new/sdk": "git+https://github.com/GetBrew/typescript-sdk.git#23dc04085611cd22ea0442e2a5a61ccd6db2a38d",
     "commander": "^14.0.0"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.6",
     "@types/node": "^25.5.0",
+    "@types/semver": "^7.7.1",
     "msw": "^2.13.2",
     "openapi-typescript": "7.13.0",
+    "semver": "7.8.6",
     "tsup": "^8.5.0",
     "typescript": "~6.0.2",
     "vitest": "^4.1.2",

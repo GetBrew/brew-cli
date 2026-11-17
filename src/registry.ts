@@ -142,6 +142,9 @@ import { healthCommand } from './commands/health'
 import { initCommand } from './commands/init'
 import { insightsGetCommand } from './commands/insights/get'
 import { insightsListCommand } from './commands/insights/list'
+import { integrationsConnectCommand } from './commands/integrations/connect'
+import { integrationsConnectionCommand } from './commands/integrations/connection'
+
 import { integrationsEventsGetCommand } from './commands/integrations/events/get'
 import { integrationsEventsListCommand } from './commands/integrations/events/list'
 import { integrationsListCommand } from './commands/integrations/list'
@@ -333,6 +336,9 @@ export const ALL_COMMANDS: readonly CommandSpec[] = [
   flowsListCommand,
   flowsGetCommand,
   integrationsListCommand,
+  integrationsConnectCommand,
+  integrationsConnectionCommand,
+
   integrationsEventsListCommand,
   integrationsEventsGetCommand,
   chatsListCommand,

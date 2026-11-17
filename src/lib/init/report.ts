@@ -3,6 +3,7 @@ import { EXIT_AUTH, EXIT_OK, EXIT_RUNTIME, EXIT_USAGE } from '../errors'
 import type { ChangeAction } from '../project/fs-writer'
 import type { AuthId, ExistingEmail, FrameworkId, Runtime } from './detect'
 import type { InitPatch } from './patches'
+import type { InitProvider } from './providers/step'
 
 /**
  * `init`'s result: one JSON document (schema `schemas/init-report.json`,
@@ -39,6 +40,7 @@ export type InitStepId =
   | 'install'
   | 'files'
   | 'patches'
+  | 'provider'
   | 'mcp'
   | 'agent-files'
   | 'state'
@@ -131,6 +133,12 @@ export type InitReport = {
   readonly brand: {
     readonly brandId: string
     readonly name: string | null
+    /** The brand's website, when known. */
+    readonly domain?: string | null
+    /** `--app-url` only: whether the brand's website matches it. */
+    readonly matchesAppUrl?: boolean | null
+    /** `--app-url` only: true when this run created the brand. */
+    readonly created?: boolean
   } | null
   readonly credential: {
     /** Where this run's API key came from. */
@@ -152,6 +160,12 @@ export type InitReport = {
     readonly added: boolean
     readonly records: readonly DnsRecord[]
     readonly settingsUrl: string
+    /**
+     * The domain's page in Brew, where "Connect automatically" (Entri, in
+     * the app only: v1 has no API for it) adds the records at the DNS
+     * provider. `null` until a domain is chosen or added.
+     */
+    readonly connectUrl?: string | null
     readonly sandbox: { readonly note: string } | null
   }
   readonly stack: {
@@ -163,6 +177,8 @@ export type InitReport = {
   readonly files: readonly InitFile[]
   readonly patches: readonly InitPatch[]
   readonly mcp: readonly McpInstallResult[]
+  /** Where the auth provider's own emails go (Supabase, Clerk). */
+  readonly providers?: readonly InitProvider[]
   readonly testEmail: {
     readonly status: 'sent' | 'replayed' | 'skipped' | 'planned' | 'failed'
     readonly key: string | null
@@ -219,6 +235,7 @@ const STEP_LABELS: Readonly<Record<InitStepId, string>> = {
   install: 'Install @brew.new/sdk',
   files: 'Write files',
   patches: 'Auth config patches',
+  provider: 'Auth email provider',
   mcp: 'MCP clients',
   'agent-files': 'AGENTS.md and skills',
   state: 'brew.json',
@@ -300,6 +317,32 @@ export function renderReport(report: InitReport): string {
     lines.push('', `DNS records for ${report.domain.name ?? 'your domain'}:`)
     for (const record of report.domain.records) {
       lines.push(`  ${record.type.padEnd(6)} ${record.name}  ${record.value}`)
+    }
+    if (
+      report.domain.connectUrl !== undefined &&
+      report.domain.connectUrl !== null
+    ) {
+      lines.push(
+        `  Or add them automatically from Brew (Connect automatically): ${report.domain.connectUrl}`
+      )
+    }
+  }
+  for (const provider of report.providers ?? []) {
+    if (provider.requests.length === 0) {
+      continue
+    }
+    lines.push(
+      '',
+      `${provider.provider} ${provider.action === 'planned' ? 'would send' : 'sent'} (secrets not shown):`
+    )
+    for (const request of provider.requests) {
+      lines.push(
+        `  ${request.vendor} ${request.method} ${request.url}`,
+        `    ${JSON.stringify(request.body)}`
+      )
+    }
+    if (provider.rollbackCommand !== null) {
+      lines.push(`  Undo: ${provider.rollbackCommand}`)
     }
   }
   if (report.nextSteps.length > 0) {
