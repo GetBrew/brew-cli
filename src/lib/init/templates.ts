@@ -1,5 +1,6 @@
 import { posix } from 'node:path'
-import { type AuthId, type ProjectDetection, rangeVersion } from './detect'
+import { gte, minVersion } from 'semver'
+import type { AuthId, ProjectDetection } from './detect'
 
 /**
  * The files `init` writes into an app. Each template is deterministic (same
@@ -22,23 +23,17 @@ export const SDK_PACKAGE = '@brew.new/sdk'
  * and migrate install SDK_RANGE over it.
  */
 export function reachesSdkRange(declared: string | null | undefined): boolean {
-  // Only a floor (`^`, `~`, `>=` or an exact version) names the lowest
-  // release it installs; anything else (`<13.6.0`, `a || b`) gets SDK_RANGE.
-  if (
-    !/^\s*(?:[\^~]|>=)?\s*v?\d+\.\d+(?:\.\d+)?(?:[-+][\w.-]*)?\s*$/.test(
-      declared ?? ''
-    )
-  ) {
+  if (declared == null) {
     return false
   }
-  const version = rangeVersion(declared ?? undefined)
-  const needed = rangeVersion(SDK_RANGE)
-  return (
-    version !== null &&
-    needed !== null &&
-    (version[0] > needed[0] ||
-      (version[0] === needed[0] && version[1] >= needed[1]))
-  )
+  try {
+    const version = minVersion(declared)
+    const needed = minVersion(SDK_RANGE)
+    return version !== null && needed !== null && gte(version, needed)
+  } catch {
+    // Tags and source dependencies have no provable installed version floor.
+    return false
+  }
 }
 
 /** The project-facing command, for files teammates commit and read. */

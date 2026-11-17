@@ -198,6 +198,18 @@ function statusOf(report: ProjectDoctorReport, id: string): readonly string[] {
 }
 
 describe('doctor --project', () => {
+  it('accepts a compatible compound SDK range with a compatible installed version', async () => {
+    const root = healthyProject()
+    useProjectApi({ verifiedDomain: true })
+    writeFileSync(
+      join(root, 'package.json'),
+      JSON.stringify({ dependencies: { '@brew.new/sdk': '>=13.6.0 <14.0.0' } })
+    )
+    const result = await doctor(root)
+    expect(statusOf(result.report, 'sdk')).toEqual(['ok'])
+    expect(result.code).toBe(0)
+  })
+
   it('a project as init left it: every check ok, the app key from .env.local (no X-Brand-Id), exit 0', async () => {
     const root = healthyProject()
     const seen = useProjectApi({ verifiedDomain: true })
