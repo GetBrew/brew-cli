@@ -10,20 +10,32 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   ci:
     runs-on: ${{ vars.CI_RUNNER_SMALL || 'ubuntu-latest' }}
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: latest
+          bun-version: 1.3.10
+      - name: Root agent guidance budget
+        run: |
+          python3 - <<'PYCODE'
+          from pathlib import Path
+          source = Path('AGENTS.md').read_bytes()
+          assert len(source) <= 8192 and len(source.splitlines()) <= 300, 'Keep root AGENTS.md below 300 lines and 8 KiB'
+          PYCODE
       - run: bun install --frozen-lockfile
       - name: Generated types freshness
         run: |
           bun run generate:types
-          git diff --exit-code src/generated/openapi-types.ts
+          git diff --exit-code src/generated/openapi-types.ts src/generated/input-keys.ts
       - run: bun run tsc
       - run: bun run lint
       - run: bun run test
@@ -38,3 +50,5 @@ jobs:
       # prove the process dies by the signal after printing its envelope.
       - name: Signal smoke
         run: bun run smoke:signals
+      - name: CLI regression smoke
+        run: bun run smoke:regressions

@@ -18,6 +18,8 @@ export const automationsTriggersFireCommand = defineCommand({
     path: '/v1/automations/triggers/{triggerEventId}/fire',
   },
   commandClass: 'destructive',
+  // The input keys are the user's own data: a bare object is shorthand for the { payload } envelope.
+  inputKeys: 'unchecked',
   args: [
     {
       name: 'triggerEventId',

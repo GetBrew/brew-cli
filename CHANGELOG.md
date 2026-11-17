@@ -1,29 +1,588 @@
 # Changelog
 
-## 0.12.0
+## Unreleased
 
-`emails audit` takes every source the rebuilt audit accepts (GetBrew/brew-v2
-email audit PR). Picks up `@brew.new/sdk` 11.6.0's audit types and its 40 s
-audit deadline once that release is installed.
+The live integration event commands require an SDK release exposing
+`integrations.events` and `automations.triggers.ensureIntegrationEvent`
+(GetBrew/typescript-sdk#88). The published SDK 13.4.0 does not provide them.
+Until that release, the CLI pins that PR's immutable source commit. Follow
+the integration events SDK gate in `RELEASING.md` before release.
 
 ### Added
 
-- **`--jsx <path>`** audits a React Email module (or `-` for stdin); Brew
-  renders it with the renderer it sends with, and a module that does not
-  render is `422`.
-- **`--email-id <id>`** audits a saved design, its latest version or the one
-  `--email-version-id <id>` pins; the design's subject and preview fill any
-  you omit.
+- Live integration events (GetBrew/brew-v2#2411): the events a brand's
+  connected live sources send, such as a PostHog project's own events or the
+  Stripe and Shopify app catalogs. All three commands need the
+  `automations` scope.
+  - `integrations events list` (`GET /v1/integrations/events`) lists them
+    source by source, busiest first, with `--provider`, `--query`, `--kind`,
+    `--limit`, `--cursor`, `--all` and `--input`. A page can be short, even
+    empty, before the last one: on a terminal it ends with the next
+    `--cursor`, and `--all` follows the cursor to the end and keeps the
+    page's `sources` beside the rows.
+  - `integrations events get <eventId>` (`GET /v1/integrations/events/{eventId}`)
+    reads one event with each property's template `variable`, and whether it
+    is personal data or suggested for personalization, plus
+    `propertiesStatus`: `current`, `stored`, `rate_limited` (with
+    `retryAfterSeconds`) or `unavailable`. Brew may read the provider first;
+    a spent read budget still answers, with what Brew stored.
+  - `automations triggers ensure-integration-event --event-id <eventId>`
+    (`POST /v1/automations/triggers/integration-events`) gets or creates the
+    event's trigger and prints the row with `created` and the same
+    `propertiesStatus`. A missing `--event-id` exits 2 before any request;
+    `--idempotency-key` replays a retry.
+- `webhooks list|create|get|update|delete|rotate-secret|test|events|attempts|replay`
+  manage brand-scoped email webhooks (GetBrew/brew-v2#2398). `create` and
+  `update` take `--endpoint`, `--events` (comma-separated) and
+  `--description`, or `--input` JSON. `delete`, `rotate-secret`, `test` and
+  `replay` ask for confirmation (`--yes` skips it). The commands use raw
+  transport until the SDK's `webhooks` resource is published.
 
 ### Changed
 
-- `emails audit` refuses before calling the API when it names no source, two
-  sources, or `--email-version-id` without `--email-id`. `--file` is no
-  longer the only way in.
-- `--sending-purpose` help now says what an omitted purpose does: the audit
-  infers it (`policy.source: "inferred"`), instead of "default: marketing".
-- The spec mirror carries the audit's request union, `evidence` and the
-  `inferred` policy source.
+- Vendored spec and generated API types follow app revision `b2df757e44`.
+  Beyond the integration event operations above, no operations were added
+  or removed.
+  - `contacts upsert`, `contacts upsert-many` and `contacts import` refuse a
+    custom-field name with no ASCII letter or digit (`名前`, `#`) with
+    `422 FIELD_NAME_INVALID`: it cannot become a field key, so its value
+    would be lost. A blank name (`""` or only spaces) is dropped with a
+    `BLANK_FIELD_NAME_IGNORED` warning while the rest of the contact is
+    stored (GetBrew/brew-v2#2884).
+  - `contacts import-csv` imports a column named with no ASCII letter or
+    digit into the existing field labeled with that name and adds a
+    `CSV_COLUMN_MATCHED_FIELD` warning. A name that labels several fields is
+    `422 FIELD_NAME_AMBIGUOUS` (`details.columns` lists the candidate keys):
+    map the column with `--mapping` (GetBrew/brew-v2#2884).
+  - `chats list` `origin` can be `teams`, `google-chat` or `telegram`
+    beside `slack` (GetBrew/brew-v2#2846). Trigger `provider` adds `hubspot`
+    (GetBrew/brew-v2#2910), and an inbox placement test's `diagnosis` ids
+    add `seed_delivery_blocked` (GetBrew/brew-v2#2931).
+  - `409 IDEMPOTENCY_CONFLICT` has a second cause on fixed-price credited
+    commands (`contacts upsert`, `upsert-many`, `import`, `import-csv` and
+    `validate`; `content generate-image`, `gif`, `transform` and
+    `html-to-png`; `emails generate`, `audit`, `preview-clients` and
+    `create-inbox-placement-test`): an `--idempotency-key` that already
+    paid for a request whose stored response is gone. The request is not
+    run or charged again; send a new key to repeat it
+    (GetBrew/brew-v2#2876).
+  - `content gif --image-url` with no `--prompt` now adds one deliberate
+    move of the image's main subject; the default was a subtle motion
+    (GetBrew/brew-v2#2854).
+
+- Vendored spec and generated API types follow app revision `57a327ed7f`:
+  new error codes `WRITE_CONFLICT` (`503`, retry after `Retry-After`, now
+  possible on `emails clone`) and `NO_ACTIVE_PLAN` (`402`), the
+  `bounce_rate` send pause reason and `stats.hardBounced` on sends
+  (GetBrew/brew-v2#2624, GetBrew/brew-v2#2756). `automations delete`, `test`
+  and `run` refuse with `AUTOMATION_IN_PROGRESS` (`409`),
+  `AUTOMATION_NOT_READY` (`422`) or, for `run` on an event automation,
+  `AUTOMATION_NOT_RUNNABLE` (`422`) instead of `INTERNAL_ERROR`,
+  `INVALID_PAYLOAD` or `INVALID_REQUEST` (GetBrew/brew-v2#2839).
+  `automations audience-runs resume` returns `AUTOMATION_NOT_READY` when a
+  send step still to go can no longer send (GetBrew/brew-v2#2841), and
+  `pause` on a run held at the plan limit is `409 RUN_NOT_PAUSABLE`
+  (GetBrew/brew-v2#2838). No operations were added or removed. The `automations test` confirmation no longer says test
+  deliveries count toward send usage: they never count toward the plan's
+  email sends (GetBrew/brew-v2#2770).
+
+- `content gif` takes `--frame-count <n>` (2-16, default 9) for a prompt or
+  image GIF; `--fps` (default 5) sets playback speed. GIFs from a prompt or
+  an image are now one GPT Image 2.6 generation (GetBrew/brew-v2#2668):
+  the response no longer carries `videoUrl` or `generatedImageUrl` and adds
+  `frameCount`. `--fps` now sets playback speed over the frames, so a loop
+  lasts `frameCount / fps` seconds (`--fps 15` alone loops in 0.6 s); raise
+  `--frame-count` for smoother motion. Vendored spec and generated API types
+  follow that revision.
+
+### Fixed
+
+- `--file` and stdin are decoded as strict UTF-8. A file in another encoding,
+  such as Excel's default "CSV" on Western Windows (Windows-1252), used to
+  reach Brew with every accented letter replaced by `�` (`José` stored as
+  `Jos�`), answering `200` with no warning. It now exits 2 (`CLI_USAGE`)
+  before any request, naming the first bad byte and its line (or that the
+  file is UTF-16), with how to re-save it as UTF-8. On macOS and Linux it
+  also prints an `iconv` command when the bytes can be Windows-1252 or
+  UTF-16. An `.eml` (by extension or `--format eml`) is told to import its
+  HTML instead, because re-encoding it would leave the charset its parts
+  declare wrong. A leading UTF-8 byte-order mark is dropped, so a JSON
+  `--file` or `--input -` saved with one now parses. This applies to every
+  command that reads `--file`, `--jsx-file`, `--input -` or `--data -`, and to
+  a piped `login` key.
+- `brand get-images --query` is free: semantic image search no longer costs
+  a credit on its first page or answers `402 INSUFFICIENT_CREDITS`
+  (GetBrew/brew-v2#2492). The command is no longer marked credited in help,
+  `docs --agent` and the command reference. Its search cursor is the same
+  opaque `--cursor` value as before.
+- Vendored spec and generated API types follow app revision `373e900a9a`.
+  `contacts update` returns `warnings[]`, and `updated` is empty when nothing
+  changed (#2488); automation warnings include `NODE_ID_REPLACED` (#2486);
+  `stopInFlight` on a draft with nobody in flight is a `422
+  AUTOMATION_NOT_PUBLISHED` (#2489); a date written to a `date` field no
+  longer warns `FIELD_TYPE_COERCED` (#2490); `emails import` lists markup it
+  could not keep as `element_dropped` asset warnings (#2471); `sends pause`
+  on a send you already paused returns `200` and changes nothing, while a
+  send held at the plan limit or for its domain is still `409
+  SEND_NOT_PAUSABLE` (#2492). No command's flags changed.
+- A contact write with a JSON number past 9007199254740991 (2^53 - 1) is now
+  refused with `409 FIELD_TYPE_MISMATCH` instead of being stored rounded; send
+  large ids as strings to a `string` field (#2488). This applies to
+  `contacts upsert`, `upsert-many`, `update` and `import`.
+- An audience filter with `in`, `not_in`, `contains_any` or
+  `not_contains_any` now needs its `value` as a JSON array; the API refuses a
+  comma-separated string such as `"pro,team"` (GetBrew/brew-v2#2571). This
+  applies to `audiences create` and `audiences update`, which pass `--input`
+  filters through unchanged. `audiences create` gains an example with an
+  array value.
+- Vendored spec and generated API types follow app revision `507dbacf45`.
+  Only descriptions changed: brand identity and extraction fields, payload
+  contract enforcement modes, `measured` on send analytics, flow `kind`,
+  `sendId` scoping and the automation runs `recipientEmail` filter. No
+  command's flags changed.
+
+### Changed
+
+- Vendored spec and generated API types follow app revision `19c7b0d9da`
+  (GetBrew/brew-v2#2592, #2604). `emails import` can report a `text_dropped`
+  warning naming source words the editable design does not carry (version 1
+  keeps the exact source). `emails generate` gains `--title <text>`, the design's
+  canvas name (the body's new optional `title`; omit and Brew names it).
+  `analytics events --send` and `analytics event-counts --send-id` without
+  `--since` cover the whole send instead of the last 7 days. `--event-type` must
+  be one of the spec's event types, spelled exactly (`opened`, not `open`);
+  anything else is a `400 INVALID_REQUEST`, and a request with several problems
+  lists each under `details.issues[]` (at most 20). `automations update` keeps
+  the stored edges when `--input` omits `connections`; `expectedBaseVersionId`
+  (the `automationVersionId` you read) now guards a save on its own, with `409`
+  when the automation changed since, and `expectedBaseDefinitionSha256` is an
+  optional stricter guard that needs it. `analytics event-counts` groups of
+  opened, clicked or delivered events carry `recipients`, each recipient counted
+  once per message, and the human table shows it as RECIPIENTS (#2582). Because
+  the CLI authenticates with an API key, `emails send --test` and `automations
+  test` with `testRecipient` reach only a teammate with access to the brand or
+  an address on a verified sending domain of the brand; anyone else is `422
+  TEST_RECIPIENT_NOT_ALLOWED` with `details.recipients` (#2578).
+
+## 0.19.0
+
+Minor release, still `@brew.new/sdk` `^13.3.0`. `--input` now refuses a
+top-level key the command would not send, with a usage error (exit 2), where
+it used to drop the key silently: a script that passed such a key now fails
+before the request instead of sending without it.
+
+### Fixed
+
+- Vendored spec and generated API types follow app revision `3d6a8e188d`,
+  clearing the spec drift sentinel. Contact write and import warnings include
+  `FIELD_TYPE_COERCED` and `VALIDATION_SKIPPED`; when two requests create the
+  same new custom field at once, only the import that created it lists the
+  field under "New custom fields", and the other request's values are
+  converted or refused against the stored type (GetBrew/brew-v2#2472). Error
+  codes include `FIELD_NAME_COLLISION` (#2469), and `brand get` always
+  returns `identity` (#2470). No command changed.
+- Explicit empty string flags now override `--input`, including clearable
+  descriptions and sender names. Required values remain validated locally;
+  invalid empty email settings are forwarded for API validation.
+- Confirmation and retry commands serialize the effective parsed invocation,
+  preserving dash-prefixed IDs, option-like values, variadic arguments and
+  idempotency keys while redacting credentials.
+- Contract infer and validate recognize only canonical request wrappers;
+  application fields named `example` or `payload` no longer discard siblings.
+  Help shows explicit nesting for payloads shaped like wrappers.
+- `doctor` exits 1 when a configured key cannot be checked, retaining
+  `authValid: null` and explaining the failure in `authCheckError`.
+- `audiences from-events` accepts `--send-id` without `--since` and leaves
+  the send-derived window to the API.
+- Correct page-size defaults, analytics datetime examples, CSV extraction,
+  partial analytics notices and conditional credit metadata in help and
+  `docs --agent`. CI and releases now exercise the built Node CLI against a
+  disposable local API, including shell reruns and terminal output.
+- `--input` refuses a top-level key the command would not send, with a usage
+  error (exit 2) that names the key, suggests a close match
+  (`firstname` → `firstName`) and lists the accepted keys. Such a key used to
+  be dropped without a word and the command exited 0. The accepted keys are
+  the route's parameters and body fields from the vendored spec. Shorthand
+  inputs whose keys are your own data (a bare trigger payload, flat contact
+  fields, an inferred example) and array bodies are not checked. Inline
+  `--input` is checked before the confirmation prompt.
+
+## 0.18.1
+
+Bug fixes only, and still `@brew.new/sdk` `^13.3.0`. `RELEASING.md` treats a
+removed flag as breaking, but `content gif --duration` and
+`content generate-image --model` failed with a `400` on every call, so no
+command that worked before stops working. They now fail before the request,
+with a usage error (exit 2) instead of the API error (exit 1).
+
+### Fixed
+
+- Image-upload finalization errors now retain the original `uploadId` and
+  idempotency key in JSON and terminal output. The recovery command uses
+  `content add-image` with that upload and brand, including after timeouts
+  or interrupts, instead of opening another upload.
+- `emails list` in a terminal now shows the folder name in the GROUP column,
+  and "Ungrouped" for designs outside a folder. The column read a top-level
+  `groupName` the API does not send, so it was always blank. `--json` output
+  is unchanged.
+- `analytics events` refuses `groupBy` and `bucket` in `--input` with a usage
+  error (exit 2) that points to `analytics event-counts`. It used to drop both
+  keys, return event rows and exit 0, so a caller asking for counts got rows
+  and no `count`.
+- `content gif` no longer offers `--duration`. The API makes a fixed 5-second
+  clip and refused every request that carried it (`400 INVALID_REQUEST`,
+  "Unrecognized key: duration").
+- `content generate-image` no longer offers `--model`. Brew uses one image
+  model, and the API refused every request that carried `model` the same way.
+- A parity test now checks every flag on a command with a JSON body against
+  the request body the spec declares, so a flag cannot send an undeclared key
+  again.
+
+## 0.18.0
+
+These import changes require `@brew.new/sdk` 13.3.0 or newer, which adds
+`contacts.import` and the shared import response.
+
+### Added
+
+- Add `--lang <code>` (ISO 639-1, or `zh-Hans` / `zh-Hant`) to
+  `emails generate` and `emails edit`, sent as the body `lang`, shipped in
+  GetBrew/brew-v2#2225. On `emails edit`, `--lang` alone is a free envelope
+  patch: no AI run, no new version, and Brew stops re-detecting the language.
+  `emails edit --clear-lang` sends `lang: null` to clear it, so Brew reads the
+  language again.
+  `emails get` shows the design's `lang` once Brew has read it.
+- Synchronize email-category and template browse-group contracts with app
+  revision `9bf2e01f14d8260bdde0825e901a05497b66c70c`. Template reads accept
+  `--group`, and `--count --group-by group` labels browse groups correctly in
+  human output. These additions require the matching API deployment.
+- **`contacts import`** (`POST /v1/contacts/import`): bulk-import up to 1000
+  contacts from a JSON file (an array, or `{ "contacts": [...] }`) or stdin as
+  one batch in Brew's Import History. Takes `--file-name`, `--validate` and
+  `--consent-source`, and prints the batch's `importId` (none on a `--dry-run`). A JSON object body
+  keeps its own `validate`, `consent` and `fileName`; a flag overrides them
+  only when given.
+- `contacts import-csv` names its batch in Import History: `--file-name`, else
+  a `fileName` in `--input`, else the `--file` name. Both imports return
+  `importId`, except on a `--dry-run`.
+- `contacts import` and `contacts import-csv` take `--dry-run` (print what
+  the import would do and write nothing: no contacts, fields or Import History
+  batch, no `importId`) and `--on-conflict upsert|skip` (`skip` creates
+  missing contacts and leaves existing ones unchanged, counted as skipped
+  with a `CONTACT_EXISTS_SKIPPED` warning). The terminal summary of a dry run
+  reads "Dry run of <file> — nothing was written: N to add, …" (or "Dry run
+  — nothing was written: …" without a file name). These flags require the
+  matching API deployment.
+- On a terminal, `contacts import` and `contacts import-csv` print the API's
+  submitted total and outcome counts, plus failed rows and warnings with
+  available row, email and field details. `--json` preserves the API envelope.
+  CSV skip warnings list the first 100 skipped rows and summarize the rest;
+  column-wide and aggregate warnings have no row index.
+- Completed import deliverability checks show valid, risky, invalid and
+  unscored counts, plus available persistence counts, in terminal output.
+
+### Changed
+
+- `contacts upsert-many` says what it is for: up to 1000 contacts per call
+  (its summary said 100) with no Import History entry, for recurring syncs.
+
+
+### Fixed
+
+- `flows get` takes a `<domain>/<kind>` slug from `flows list` (one send
+  stream's flow) and a `--kind` flag for a bare-domain slug.
+
+## 0.17.0
+
+Requires `@brew.new/sdk` `^13.0.0`. This is a minor release because it adds
+canvas commands: the published npm `0.16.0` artifact (`gitHead`
+`2213a2060ba13d378c1f11f75abb2ff303e9bf5a`) did not include them.
+
+### Added
+
+- `canvas sessions create`, `refresh`, and `revoke` manage origin-bound grants
+  for one group or email. Credentials stay out of iframe URLs; API keys stay
+  on the host backend. Revocation requires confirmation, and create/refresh
+  requests never retry credentials that cannot be replayed.
+
+### Changed
+
+- Canvas session create, refresh, and revoke use the SDK methods. JSON output,
+  revocation confirmation, and create/refresh no-retry behavior are preserved.
+- The SDK dependency uses its published registry artifact instead of the
+  temporary source pin. The read-only SDK extraction waiter has no separate
+  CLI command; scripts can poll the existing `brands get` command.
+
+### Fixed
+
+- EML import help now lists the supported saved-message format. Import output
+  preserves the complete asset report, including warnings.
+- Email recovery guidance distinguishes a committed `409
+  EMAIL_RESULT_UNAVAILABLE` from an unknown outcome. Read the saved version
+  instead of repeating generation or editing.
+- List drains reject repeated or cyclic cursors with `CLI_PAGINATION` and
+  preserve safe resume information; advancing empty pages remain supported.
+- Delivery and automation confirmation preserve stdin payloads and apply
+  command deadlines to input preparation without charging human approval time.
+- Generated contracts include validation outcomes and persistence counts, plus
+  current audience count freshness and email recovery behavior.
+
+Follow the SDK migration gate in `RELEASING.md` before releasing.
+
+## 0.16.0
+
+Needs `@brew.new/sdk` `^12.2.0`, which adds `triggers.ensureBrewEvent`
+(GetBrew/typescript-sdk#66), and the API from GetBrew/brew-v2#2071.
+
+### Added
+
+- **`automations triggers ensure-brew-event`**
+  (`POST /v1/automations/triggers/brew-events`). Gets or creates the brand's
+  trigger for a contact unsubscribing. `--scope domain --domain-id <id>`
+  watches one marketing domain's list (ids from `domains list`), and
+  `--scope all` watches every email the brand sends. `--event` defaults to
+  `contact.unsubscribed`, the only Brew event so far. The same scope always
+  prints the same row, and `created` says whether this call made it. A
+  missing or unknown `--scope`, a `--scope domain` without `--domain-id`, or
+  a `--domain-id` with `--scope all` exits 2 before any request.
+- Brew starts these triggers itself. `automations triggers fire` on one exits
+  1 with `409 TRIGGER_NOT_FIREABLE`, and `update` and `contract put` exit 1
+  with `422 TRIGGER_IMMUTABLE`. Try the automation with `automations test`:
+  the test runs on the trigger's sample, with any payload fields you pass laid
+  over it, and writes no contact.
+- The bundled spec carries `provider: "brew_event"` on trigger rows (with a
+  `brewEvent` config) and `source: "brew_event"` on trigger instances.
+
+## 0.14.0
+
+Needs `@brew.new/sdk` `^12.0.0`, which removes `data.run`
+(GetBrew/typescript-sdk#45).
+
+Removing a command is breaking. Under 0.x this repo ships a breaking
+release as the next minor, as 0.5.0 (the `transactional` group removed), 0.7.0
+and 0.8.0 did, and a `^0.13.0` range never resolves to it.
+
+### Breaking
+
+- **`brew-cli data run` is removed; `POST /v1/data` is retired**
+  (GetBrew/brew-v2#1825). It now exits 2 with `unknown command 'data'`. Use
+  the typed commands instead: `emails list`, `emails groups list`,
+  `contacts search`, `contacts count`, `contacts count-by`, `audiences list`,
+  `audiences get`, `automations list`, `automations runs list`,
+  `domains list`, `sends list`, `analytics overview`, `analytics events` and
+  `analytics event-counts`. The full question-by-question mapping is in the
+  API changelog (https://docs.brew.new/changelog/api).
+- The tables only the data command used to read have typed commands since
+  0.13.0:
+  - design comments: `emails comments list <emailId>` (`--include messages`
+    adds the messages);
+  - brand insights and intelligence: `insights list`, whose
+    `--include pulse,report,suggestions,memo` adds the page-level reads, and
+    `insights get <insightId>`;
+  - notifications: `notifications list`;
+  - chats: `chats list`, then `chats get <chatId>` for one;
+  - domain-score history:
+    `domains health <domainId> --include scoreHistory,scoreRuns`;
+  - contact open profiles: `contacts get <email> --include openProfile` and
+    `contacts search --include openProfile`.
+- No equivalent: table discovery (`db ls`, `db schema`) and `jq` pipelines.
+  Read the typed command's `--json` and filter it; writes go through each
+  resource's own commands. `brew-cli api` still sends any raw request.
+
+### Spec sync
+
+- The vendored spec and generated types drop `POST /v1/data` and its
+  `DataCommandResponse` schema, and take Intelligent Send from the app spec
+  (GetBrew/brew-v2#1827): `smartSend` on the `POST /v1/sends` body (send it
+  in `emails send --input`) and on send rows. The spec is byte-identical to
+  `@brew.new/sdk` 12.0.0's.
+
+## 0.13.1
+
+### Fixed
+
+- **`insights list --all --cursor <c>` no longer retries from a cursor the
+  API refused.** When the findings changed mid-walk, `--all` read the list
+  again from where it started, so a walk begun at `--cursor` asked for that
+  cursor again, was refused again, and failed after a wasted walk. A walk
+  begun at `--cursor` now does not restart (reading from the first page
+  would return rows it was not asked for). It exits 1 with the API's `400
+  INVALID_REQUEST` (`param: cursor`), and its suggestion gives the command
+  that reads the same list again without `--cursor`: the same `--state`,
+  `--severity` and `--include` (from flags or `--input`), and the `--brand`
+  and `--api-url` it was given (never the API key). A cursor given in
+  `--input` is treated the same way. A walk from the first page still
+  restarts once.
+- Whenever a refused cursor ends an `insights list --all`, its error no
+  longer offers that cursor to resume at (`progress` is left out, and a TTY
+  prints no "resume with --cursor" line): the API refuses it.
+
+## 0.13.0
+
+Needs `@brew.new/sdk` `^11.6.0` (`insights.list` / `insights.get`,
+`emails.comments.list`, `chats.list`, `notifications.list`, and `include` on
+`domains.health`, `contacts.get` and `contacts.search`).
+
+Typed reads for what the data command (`data run`, `POST /v1/data`) used to
+answer from its tables. `data run` itself is unchanged in this release.
+
+### Added
+
+- **`insights list`** reads Brew Insights (GetBrew/brew-v2#1828): the findings
+  the insight engine keeps about the brand's email (at most 200), most severe
+  first, with the engine's `freshness` on every page. `--state open|all`,
+  `--severity critical|warning|opportunity|info`, `--limit`, `--cursor`,
+  `--all`. `--include pulse,report,suggestions,memo` adds what the Insights
+  page shows beside the findings: the last 7 days against the 7 before, the
+  latest intelligence report, its suggestions (up to 25) and the analysis
+  agent's memo (`pulse`, `report` and `memo` are `null` until they exist;
+  `suggestions` is `[]` when there are none). `--all` asks for them on the first
+  page only and keeps them, with `freshness`, beside the merged rows. The list
+  is ranked live: when a finding a walk already returned leaves the list or
+  moves, or a new one ranks among them, the API refuses the next cursor (`400
+  INVALID_REQUEST`, `param: cursor`; GetBrew/brew-v2#1860) rather than skip or
+  repeat rows, so `--all` reads the list again from where it started, once,
+  and a second refusal is the error. A TTY
+  leads with how current the findings are, says when the latest run failed
+  (the findings may be stale), and prints each expansion it asked for under
+  the table; a pulse taken with engagement tracking off says opens are not
+  measured instead of printing them, and a counts-only one says it has too
+  few deliveries for rates. Free.
+- **`insights get <insightId>`**: one finding in full, with its rationale, the
+  frozen `metrics` (the only numbers to quote about it), `evidence` links, the
+  detector's `method` and the run that produced it. An unknown id and another
+  brand's id are the same `404 INSIGHT_NOT_FOUND`. Free.
+- **`emails comments list <emailId>`** reads a design's open comment threads,
+  newest activity first, as the canvas pins show them (GetBrew/brew-v2#1831):
+  where each sits, who is in it, how many messages and the latest one.
+  `--include messages` adds each thread's newest messages (author, body with
+  each mention as `@Name`, mentions; at most 3 threads a page). `--comment-id <cmt_…>` reads one
+  thread, `--messages-cursor` its next older messages, and `--comment-id …
+  --all` follows that cursor to the first message and prints the whole thread,
+  oldest first. A stop mid-walk, a thread resolved under it included (`404
+  COMMENT_NOT_FOUND`), prints nothing and reports the `--messages-cursor` it
+  stopped at in `progress.resumeCursor`, and in `progress.resumeWith` the flags
+  that resume it (`--comment-id <id> --messages-cursor <cursor> --all`, which a
+  TTY prints). `--messages-cursor` without
+  `--comment-id`, or `--cursor` with it, exits 2 before sending. A design
+  with no open threads is an empty page; one the brand does not have is `404
+  EMAIL_NOT_FOUND`, and a `--comment-id` that is not an open thread `404
+  COMMENT_NOT_FOUND`. Free.
+- **`chats list`**: the brand's Brew chats, most recently active first, with
+  title (an untitled chat shows its opening prompt on a TTY), status, origin
+  and link; `chats get <chatId>` reads one (GetBrew/brew-v2#1831). `--limit`,
+  `--cursor`, `--all`. Free.
+- **`notifications list`**: the app's bell as a read, newest first: generations,
+  sends, imports, domain checks and score runs finishing or failing
+  (GetBrew/brew-v2#1831). `--type` keeps one type. A page can hold fewer rows
+  than `--limit`, even none, while more follow, so a TTY prints the next
+  `--cursor` whenever there is one and `--all` drains through short pages.
+  The table leads with each row's `notificationId` (`ntf_…`, stable for the
+  row's life). A row shows only when the key may read its feature: `emails`
+  for chats and previews, `sends` for sends and `domains` for domain checks
+  (`emails` implies both), `contacts` for imports and validations,
+  `automations` for pause windows; brand extraction and image imports reach
+  every key, `api_key_created` needs the `all` scope, `send_limit_reached`
+  reaches organization admins only, and a comment mention or reply never
+  reaches an API key. A type the key cannot see is an empty page, not an
+  error. Reading marks nothing read. Free.
+- **`domains health --include scoreHistory,scoreRuns`** adds up to 50 saved
+  score snapshots, newest first (`scoreHistory`), and the last 5 automated
+  domain score runs (`scoreRuns`) (GetBrew/brew-v2#1830).
+- **`contacts get --include openProfile`** and **`contacts search --include
+  openProfile`** attach the smart-send open-time profile: 48 UTC half-hour
+  open counts, `totalOpens`, `lastOpenedAt`, and once there is enough history
+  the best open and send minute (`null` before any opens)
+  (GetBrew/brew-v2#1830). The key needs the `emails` scope as well (`403
+  INSUFFICIENT_PERMISSIONS` without it). `contacts search` sends it as the
+  body's `include` array; a page then holds at most 10 contacts, and a TTY adds
+  `OPENS` and `BEST SEND (UTC)` columns.
+
+### Fixed
+
+- **`contacts search --input '{"count":true}'`** (or with `groupBy` /
+  `bucket`) exits 2 and names `contacts count` and `contacts count-by`. The
+  SDK's search always sends `count: false`, so the count was dropped and the
+  command printed a page of rows as if it had counted.
+
+### Spec sync
+
+- The vendored OpenAPI spec and generated types take only the typed-reads
+  hunks: the five operations above, `include` on `getDomainHealth`,
+  `getContact` and `searchContacts`, and the error codes `INSIGHT_NOT_FOUND`
+  and `COMMENT_NOT_FOUND`.
+
+## 0.12.0
+
+Needs `@brew.new/sdk` `^11.5.0` (`brand.deleteImage`, `content.uploadImage`,
+`content.createImageUpload`, `addImage({ uploadId })`).
+
+### Added
+
+- **`content upload-image <file>`** puts a local image file in the brand
+  library in one command and prints what `add-image` prints, `assetId`
+  included (GetBrew/brew-v2#1819). It opens an upload, POSTs the bytes to its
+  `uploadUrl` without the API key (the URL carries its own credential, and is
+  never printed in an error), then adds the upload. PNG, JPEG, GIF, WebP,
+  AVIF, TIFF or SVG; the type comes from the extension, or `--content-type`.
+  `--file-name` sets the name Brew stores it under. A missing or unreadable
+  path, a directory, an empty file, an extension it cannot read, a type the
+  API does not take, or a file over 20,000,000 bytes (2,097,152 for SVG) exits
+  2 before anything is read or sent. Free.
+- **`content create-image-upload --file-name --size [--content-type]`**: the
+  first step alone, for bytes sent from somewhere else. Prints the `uploadId`,
+  `uploadUrl`, `expiresAt` and `maxBytes`, and on a TTY the `curl` and
+  `content add-image --upload-id` that finish it (the add-image line keeps the
+  `--brand` and `--api-url` it was given). The type is read from the
+  name when `--content-type` is absent. No `--idempotency-key`: the route
+  never replays (its answer carries a bearer URL).
+- **`content add-image --upload-id <id>`** adds an upload whose bytes were
+  sent. A repeat returns the same image for 24 hours. `--url`, `--upload-id`
+  and an `imageUrls` batch in `--input` are exclusive: two of them exit 2.
+- **`brand delete-image <assetId>`** removes one image from the brand library
+  and image search, as Delete image on the Assets page does
+  (GetBrew/brew-v2#1817). `assetId` is what `brand get-images` lists. It is
+  destructive: exit 4 with a `confirmCommand` unless `--yes`, a y/N prompt on
+  a TTY. It prints `{ assetId, deleted }`; an id not in the library is
+  `deleted: false` and exits 0. The file stays hosted, so emails already using
+  it keep rendering. A logo is the API's `400 INVALID_REQUEST`. Free.
+
+### Fixed
+
+- **`content add-image` is free**, and no longer says it consumes credits. Its
+  summary said it mirrored an image; it adds it to the brand library and
+  returns `{ url, width, height, aspectRatio, assetId }`, which a TTY now
+  shows as lines instead of raw JSON.
+- `content add-image --input '{"imageUrls":[...]}'` exited 2 ("An image URL is
+  required"): a batch import is accepted now and answers the API's `202
+  { accepted, skipped, runId }`.
+- `content add-image` gives an attempt the SDK's 300 s (the route's own
+  limit) instead of 30 s, inside a 300 s whole-command deadline like the
+  other long-running commands, so converting a large animation no longer
+  times out while the server keeps working. `api POST /v1/content/add-image`
+  waits as long.
+- A command that sends several requests no longer borrows the replay advice
+  of whichever route its last request hit. Every command now answers for
+  itself, and only the `api` escape hatch borrows the policy of the route it
+  called; the non-replaying advice says "this command does not replay a
+  request".
+
+- **`templates list --input '{"count":true}'` (and `groupBy`) no longer
+  crashes** with `CLI_UNEXPECTED`: the API's count mode (GetBrew/brew-v2#1821)
+  answers `{ count, groups? }`, and the command drew its row table from it in
+  every mode. `--json` prints the answer verbatim; a TTY shows `167
+  templates`, or one `value  name  count` line per group with the total, the
+  group count, the ungrouped count and the `--cursor` for more groups. `--all`
+  with a count exits 2 (it pages rows; a count has none).
+
+### Spec sync
+
+- The vendored OpenAPI spec and generated types catch up with the API: the
+  two routes above, `uploadId` on add-image and `assetId` on its answer, the
+  upload error codes (`404 UPLOAD_NOT_FOUND`, `409 UPLOAD_NOT_RECEIVED`,
+  `409 UPLOAD_IN_PROGRESS`, `413 PAYLOAD_TOO_LARGE`), `count` / `groupBy` on
+  `GET /v1/templates` (GetBrew/brew-v2#1821), and `409 AUDIENCE_BUILD_ACTIVE`
+  on a field delete (GetBrew/brew-v2#1758).
 
 ## 0.11.0
 

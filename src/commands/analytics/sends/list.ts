@@ -6,6 +6,7 @@ import {
 import { defineCommand } from '../../../lib/define-command'
 import {
   flagInt,
+  flagNonEmptyString,
   flagString,
   INPUT_FLAG,
   mergeInput,
@@ -26,6 +27,8 @@ export const analyticsSendsListCommand = defineCommand({
   derivedFrom: 'sends.list',
   route: { method: 'GET', path: '/v1/sends' },
   commandClass: 'read',
+  // The detail read's keys, which `run` takes from --input to switch to it.
+  inputKeys: { extra: ['sendId', 'include'] },
   flags: [
     {
       flag: '--send <sendId>',
@@ -52,7 +55,8 @@ export const analyticsSendsListCommand = defineCommand({
   ],
   run: async ({ ctx, flags }) => {
     const base = await readJsonFlag(ctx, flags.input, '--input')
-    const sendId = flagString(flags.send) ?? inputField(base, 'sendId')
+    const sendId =
+      flagNonEmptyString(flags.send, '--send') ?? inputField(base, 'sendId')
     const include = flagString(flags.include) ?? inputField(base, 'include')
     if (sendId !== undefined) {
       const row = await ctx

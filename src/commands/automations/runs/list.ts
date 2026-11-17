@@ -8,6 +8,7 @@ import { defineCommand } from '../../../lib/define-command'
 import {
   asSdkInput,
   flagInt,
+  flagNonEmptyString,
   flagString,
   INPUT_FLAG,
   mergeInput,
@@ -28,6 +29,8 @@ export const automationsRunsListCommand = defineCommand({
   sdkMethod: 'automations.runs.list',
   route: { method: 'GET', path: '/v1/automations/runs' },
   commandClass: 'read',
+  // The detail read's keys, which `run` takes from --input to switch to it.
+  inputKeys: { extra: ['automationRunId', 'include'] },
   flags: [
     { flag: '--automation <automationId>', summary: 'Filter by automation' },
     {
@@ -74,7 +77,9 @@ export const automationsRunsListCommand = defineCommand({
   run: async ({ ctx, flags }) => {
     const runs = ctx.client().automations.runs
     const base = await readJsonFlag(ctx, flags.input, '--input')
-    const runId = flagString(flags.run) ?? inputField(base, 'automationRunId')
+    const runId =
+      flagNonEmptyString(flags.run, '--run') ??
+      inputField(base, 'automationRunId')
     const include = flagString(flags.include) ?? inputField(base, 'include')
     if (runId !== undefined) {
       const row = await runs.get(
@@ -99,13 +104,16 @@ export const automationsRunsListCommand = defineCommand({
       cursor: flagString(flags.cursor),
     })
     if (flags.all === true) {
-      const rows = await collectAll(ctx, (cursor) =>
-        runs.list(
-          asSdkInput<ListAutomationRunsInput>({
-            ...input,
-            ...(cursor === undefined ? {} : { cursor }),
-          })
-        )
+      const rows = await collectAll(
+        ctx,
+        (cursor) =>
+          runs.list(
+            asSdkInput<ListAutomationRunsInput>({
+              ...input,
+              ...(cursor === undefined ? {} : { cursor }),
+            })
+          ),
+        { cursor: flagString(input.cursor) }
       )
       return {
         data: { data: rows, pagination: { cursor: null, hasMore: false } },

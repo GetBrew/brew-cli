@@ -3,6 +3,7 @@ import { defineCommand } from '../../lib/define-command'
 import {
   asSdkInput,
   flagInt,
+  flagNonEmptyString,
   flagString,
   INPUT_FLAG,
   mergeInput,
@@ -42,7 +43,7 @@ export const emailsGetInboxPlacementResultsCommand = defineCommand({
   ],
   run: async ({ ctx, args, flags }) => {
     const emailId = args.emailId ?? ''
-    const testId = flagString(flags.testId)
+    const testId = flagNonEmptyString(flags.testId, '--test-id')
     const inboxPlacementTests = ctx.client().emails.inboxPlacementTests
     if (testId !== undefined) {
       return { data: await inboxPlacementTests.get(emailId, testId) }

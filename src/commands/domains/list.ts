@@ -45,13 +45,16 @@ export const domainsListCommand = defineCommand({
     })
     const domains = ctx.client().domains
     if (flags.all === true) {
-      const rows = await collectAll(ctx, (cursor) =>
-        domains.list(
-          asSdkInput<ListDomainsInput>({
-            ...input,
-            ...(cursor === undefined ? {} : { cursor }),
-          })
-        )
+      const rows = await collectAll(
+        ctx,
+        (cursor) =>
+          domains.list(
+            asSdkInput<ListDomainsInput>({
+              ...input,
+              ...(cursor === undefined ? {} : { cursor }),
+            })
+          ),
+        { cursor: flagString(input.cursor) }
       )
       return {
         data: { data: rows, pagination: { cursor: null, hasMore: false } },

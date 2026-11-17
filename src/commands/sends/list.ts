@@ -98,13 +98,16 @@ export async function listSends(
 ): Promise<{ data: unknown; human: string }> {
   const sends = ctx.client().sends
   if (followCursor) {
-    const rows = await collectAll(ctx, (cursor) =>
-      sends.list(
-        asSdkInput<ListSendsInput>({
-          ...input,
-          ...(cursor === undefined ? {} : { cursor }),
-        })
-      )
+    const rows = await collectAll(
+      ctx,
+      (cursor) =>
+        sends.list(
+          asSdkInput<ListSendsInput>({
+            ...input,
+            ...(cursor === undefined ? {} : { cursor }),
+          })
+        ),
+      { cursor: flagString(input.cursor) }
     )
     return {
       data: { data: rows, pagination: { cursor: null, hasMore: false } },

@@ -27,7 +27,6 @@ export const contentGenerateImageCommand = defineCommand({
       flag: '--aspect-ratio <ratio>',
       summary: 'e.g. 16:9, 3:2, 1:1, 9:16',
     },
-    { flag: '--model <model>', summary: 'Image model override' },
     { flag: '--image1 <url>', summary: 'Source image for image-editing' },
     {
       flag: '--image2 <url>',
@@ -45,7 +44,6 @@ export const contentGenerateImageCommand = defineCommand({
       prompt: flagString(flags.prompt),
       mode: flagString(flags.mode),
       aspectRatio: flagString(flags.aspectRatio),
-      model: flagString(flags.model),
       image1: flagString(flags.image1),
       image2: flagString(flags.image2),
     })

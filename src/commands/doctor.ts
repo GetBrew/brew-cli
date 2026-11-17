@@ -3,7 +3,6 @@ import { maskApiKey, resolveAuth } from '../lib/client'
 import { defineCommand } from '../lib/define-command'
 import { CliApiError } from '../lib/errors'
 import type { CliContext } from '../lib/types'
-import { ALL_COMMANDS } from '../registry'
 
 /** Discovery endpoints without a dedicated command route. */
 const NON_COMMAND_OPS = new Set(['GET /v1/llms.txt'])
@@ -40,6 +39,7 @@ export const doctorCommand = defineCommand({
     }
 
     let isAuthValid: boolean | null = null
+    let authCheckError: string | null = null
     let plan: string | null = null
     if (isKeyPresent && isReachable) {
       try {
@@ -50,13 +50,15 @@ export const doctorCommand = defineCommand({
         plan = usage.plan?.key ?? null
       } catch (error) {
         rethrowIfStopped(ctx)
+        authCheckError = error instanceof Error ? error.message : String(error)
         if (
           (error instanceof BrewApiError || error instanceof CliApiError) &&
           (error.status === 401 || error.status === 403)
         ) {
           isAuthValid = false
         }
-        // Other failures leave auth unknown; reachability already reported.
+        // Other failures leave auth unknown: a public health check cannot
+        // establish whether the configured key works.
       }
     }
 
@@ -74,7 +76,7 @@ export const doctorCommand = defineCommand({
             .map((e) => `${e.method} ${e.path}`)
         )
         const localOps = new Set(
-          ALL_COMMANDS.flatMap((spec) =>
+          ctx.commands.flatMap((spec) =>
             spec.route === undefined
               ? []
               : [`${spec.route.method} ${spec.route.path}`]
@@ -93,7 +95,7 @@ export const doctorCommand = defineCommand({
 
     const isHealthy =
       isReachable &&
-      isAuthValid !== false &&
+      (!isKeyPresent || isAuthValid === true) &&
       isSurfaceChecked &&
       missingLocally.length === 0
     const data = {
@@ -105,11 +107,12 @@ export const doctorCommand = defineCommand({
       apiKey: isKeyPresent ? maskApiKey(auth.apiKey) : null,
       apiKeySource: isKeyPresent ? auth.apiKeySource : null,
       authValid: isAuthValid,
+      ...(authCheckError === null ? {} : { authCheckError }),
       plan,
       brandId: auth.brandId ?? null,
       surface: {
         checked: isSurfaceChecked,
-        commands: ALL_COMMANDS.length,
+        commands: ctx.commands.length,
         missingLocally,
         extraLocally,
       },
@@ -117,11 +120,11 @@ export const doctorCommand = defineCommand({
     const lines = [
       `${isReachable ? 'ok' : 'FAIL'}  api ${auth.apiUrl} (${apiVersion ?? 'unreachable'})`,
       isKeyPresent
-        ? `${isAuthValid === false ? 'FAIL' : isAuthValid === true ? 'ok' : '??'}  auth ${maskApiKey(auth.apiKey)} via ${auth.apiKeySource}${plan === null ? '' : ` (${plan} plan)`}`
+        ? `${isAuthValid === false ? 'FAIL' : isAuthValid === true ? 'ok' : '??'}  auth ${maskApiKey(auth.apiKey)} via ${auth.apiKeySource}${plan === null ? '' : ` (${plan} plan)`}${authCheckError === null ? '' : ` — ${authCheckError}`}`
         : '--  no API key (run `brew-cli login` or set BREW_API_KEY)',
       isSurfaceChecked
         ? missingLocally.length === 0
-          ? `ok  surface in sync (${ALL_COMMANDS.length} commands cover the live API)`
+          ? `ok  surface in sync (${ctx.commands.length} commands cover the live API)`
           : `DRIFT  live API has ${missingLocally.length} operation(s) this CLI lacks — update @brew.new/cli:\n${missingLocally.map((op) => `      ${op}`).join('\n')}`
         : '--  surface not checked (API unreachable)',
       ...(extraLocally.length > 0

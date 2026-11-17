@@ -5,7 +5,7 @@ description: Drive the Brew email platform from the terminal with brew-cli — e
 
 # brew-cli for agents
 
-One typed command per public-API operation (137 commands, generated docs in
+One typed command per public-API operation (162 commands, generated docs in
 `docs/commands/README.md`). JSON output is automatic when stdout is piped.
 
 ## Start every session with the trust check
@@ -47,12 +47,18 @@ this build lacks (update the CLI); auth/reachability failures name the fix.
   exit 4 with a `confirmCommand` to re-run once a human approves, or take
   `--yes`. Do not pass `--yes` for real campaign sends without an explicit
   human instruction; `emails send --test --to you@x.com` is the safe lane.
+  The CLI authenticates with an API key, so a test (and `automations test`
+  with `testRecipient`) reaches only a teammate with access to the brand
+  (your own member address counts) or an address on a verified sending
+  domain of the brand; anyone else is `422 TEST_RECIPIENT_NOT_ALLOWED` with
+  `details.recipients`.
 - `--input '<json>'` (or `-` for stdin) carries full request bodies;
   positional ids always win over `--input`. `--all` drains pagination.
   `--idempotency-key` makes POST retries safe (except `api-keys create`,
   whose route never replays).
-- Every collection has a real detail read (`<group> get <id>`) returning the
-  BARE row; list routes reject id filters. Runs, sends, audience builds and
+- Every collection with ids to look up has a real detail read (`<group> get
+  <id>`) returning the BARE row; list routes reject id filters
+  (`notifications list` and `emails comments list` are list-only). Runs, sends, audience builds and
   inbox-placement tests share ONE status vocabulary: `queued | scheduled |
   running | paused | completed | partially_completed | failed | canceled`.
 
@@ -67,6 +73,16 @@ brew-cli emails get <emailId> --email-version-id <id>   # a saved version (ids f
 brew-cli emails preview-clients <emailId>        # starts a rendering job (10 credits)
 brew-cli emails get-client-preview <previewId>   # poll it; screenshots are previews[].imageUrl
 brew-cli sends get <sendId> --include events
+brew-cli insights list --severity critical       # what Brew Insights found; insights get <id> for one in full
+brew-cli insights list --include pulse,report,suggestions,memo --json
+brew-cli emails comments list <emailId> --include messages   # teammates' comment threads on a design
+brew-cli emails comments list <emailId> --comment-id <cmt_…> --all --json   # one thread, every message
+brew-cli chats list                              # recent Brew chats; chats get <chatId> to resume one
+brew-cli notifications list --type email_send_failed   # what finished or failed (reading marks nothing read)
+brew-cli domains health <domainId> --include scoreHistory,scoreRuns
+brew-cli contacts get <email> --include openProfile     # smart-send open-time profile (needs the emails scope)
+brew-cli content upload-image ./logo.png         # a local file into the brand library (free); prints its assetId
+brew-cli brand delete-image <assetId> --yes      # remove one library image (destructive; its URL keeps working)
 brew-cli api GET '/v1/sends?kind=campaign'   # raw escape hatch for anything else
 ```
 

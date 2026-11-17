@@ -2,6 +2,7 @@ import { inputField, singleRowPage } from '../../../lib/compat'
 import { defineCommand } from '../../../lib/define-command'
 import {
   flagInt,
+  flagNonEmptyString,
   flagString,
   INPUT_FLAG,
   mergeInput,
@@ -25,6 +26,8 @@ export const analyticsTriggerInstancesListCommand = defineCommand({
   derivedFrom: 'automations.triggerInstances.list',
   route: { method: 'GET', path: '/v1/automations/trigger-instances' },
   commandClass: 'read',
+  // The detail read's keys, which `run` takes from --input to switch to it.
+  inputKeys: { extra: ['triggerInstanceId'] },
   flags: [
     {
       flag: '--trigger <triggerEventId>',
@@ -47,7 +50,8 @@ export const analyticsTriggerInstancesListCommand = defineCommand({
   run: async ({ ctx, flags }) => {
     const base = await readJsonFlag(ctx, flags.input, '--input')
     const triggerInstanceId =
-      flagString(flags.triggerInstance) ?? inputField(base, 'triggerInstanceId')
+      flagNonEmptyString(flags.triggerInstance, '--trigger-instance') ??
+      inputField(base, 'triggerInstanceId')
     if (triggerInstanceId !== undefined) {
       const row = await ctx
         .client()

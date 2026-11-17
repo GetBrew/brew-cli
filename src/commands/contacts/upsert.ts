@@ -18,6 +18,7 @@ export const contactsUpsertCommand = defineCommand({
   sdkMethod: 'contacts.upsert',
   route: { method: 'POST', path: '/v1/contacts' },
   commandClass: 'write',
+  isCredited: true,
   flags: [
     { flag: '--email <email>', summary: 'Email address (the identity)' },
     { flag: '--first-name <name>', summary: 'First name' },

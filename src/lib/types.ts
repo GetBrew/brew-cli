@@ -1,5 +1,7 @@
 import type { BrewClient } from './client'
+import type { CommandMetadata } from './define-command'
 import type { Budget, TransportState } from './transport'
+import type { TextKind } from './utf8'
 
 /**
  * The process boundary, injected so tests can run the whole CLI in-process
@@ -11,11 +13,15 @@ export type CliIo = {
   readonly isTtyOut: boolean
   readonly isTtyIn: boolean
   readonly env: Readonly<Record<string, string | undefined>>
-  readonly readStdin: () => Promise<string>
+  /**
+   * Reads stdin through EOF as strict UTF-8. When supplied, the command signal
+   * closes input on interrupt or timeout; `kind` tailors the not-UTF-8 advice.
+   */
+  readonly readStdin: (signal?: AbortSignal, kind?: TextKind) => Promise<string>
   readonly readLine: (prompt: string) => Promise<string>
   /**
    * Aborts on SIGINT/SIGTERM with a `CliInterruptError` (see
-   * `lib/interrupt.ts`). Absent in tests that do not exercise cancellation.
+   * `src/lib/interrupt.ts`). Absent in tests that do not exercise cancellation.
    */
   readonly signal?: AbortSignal
 }
@@ -42,8 +48,20 @@ export type CommandTraits = {
   readonly isRead: boolean
   /** The route replays a request that carries the same idempotency key. */
   readonly replays: boolean
+  /**
+   * The command names its own API operation (a route, an SDK method, or the
+   * methods it fans out to), so a failure is described by its own class and
+   * replay policy. Only a command with none — the `api` escape hatch —
+   * borrows those of the route its request hit.
+   */
+  readonly declaresOperation: boolean
   /** A long-running command's own whole-command deadline. */
   readonly defaultTimeoutMs: number | undefined
+  /**
+   * The top-level `--input` keys the command sends; any other key is
+   * refused. Undefined when the input is not checked.
+   */
+  readonly inputKeys?: ReadonlySet<string> | undefined
 }
 
 export type ClientOptions = {
@@ -52,6 +70,7 @@ export type ClientOptions = {
 }
 
 export type CliContext = {
+  readonly commands: readonly CommandMetadata[]
   readonly io: CliIo
   readonly mode: OutputMode
   readonly globals: GlobalFlags
@@ -66,7 +85,9 @@ export type CliContext = {
   readonly budget: Budget
   readonly transport: TransportState
   readonly traits: CommandTraits | undefined
-  /** Start the whole-command deadline, after any confirmation prompt. */
+  /** Start or resume the whole-command deadline; human prompts pause it. */
   readonly startDeadline: () => void
+  /** Pause an active clock; the returned callback resumes its remaining budget. */
+  readonly pauseDeadline: () => () => void
   readonly stopDeadline: () => void
 }

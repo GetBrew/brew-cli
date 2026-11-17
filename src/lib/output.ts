@@ -1,3 +1,4 @@
+import type { CommandOutcome } from './define-command'
 import type { CliContext, OutputMode } from './types'
 
 export function resolveOutputMode(input: {
@@ -18,13 +19,15 @@ export function resolveOutputMode(input: {
 export function printData(
   ctx: CliContext,
   data: unknown,
-  human?: string
+  human?: CommandOutcome['human']
 ): void {
   if (ctx.mode === 'json') {
     ctx.io.stdout.write(`${JSON.stringify(data)}\n`)
     return
   }
-  const text = human ?? JSON.stringify(data, null, 2)
+  const text =
+    (typeof human === 'function' ? human() : human) ??
+    JSON.stringify(data, null, 2)
   ctx.io.stdout.write(`${text}\n`)
 }
 
@@ -41,9 +44,9 @@ export function renderTable(
   columns: ReadonlyArray<{ readonly key: string; readonly header: string }>
 ): string {
   const widths = columns.map((column) =>
-    Math.max(
-      column.header.length,
-      ...rows.map((row) => formatCell(row[column.key]).length)
+    rows.reduce(
+      (width, row) => Math.max(width, formatCell(row[column.key]).length),
+      column.header.length
     )
   )
   const line = (cells: readonly string[]) =>

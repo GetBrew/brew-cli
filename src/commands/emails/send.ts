@@ -1,4 +1,5 @@
 import type { SendEmailInput } from '@brew.new/sdk'
+import { enforceStdinConfirmation } from '../../lib/confirm'
 import { defineCommand } from '../../lib/define-command'
 import { CliUsageError } from '../../lib/errors'
 import {
@@ -22,11 +23,13 @@ export const emailsSendCommand = defineCommand({
   flags: [
     {
       flag: '--test',
-      summary: 'Test delivery to --to only; skips the confirmation gate',
+      summary:
+        'Test delivery to --to only (a teammate with access to the brand, or an address on a verified sending domain of the brand; your own address counts as a teammate address); skips the confirmation gate',
     },
     {
       flag: '--to <emails...>',
-      summary: 'Recipient(s): required for --test, ad-hoc list for campaigns',
+      summary:
+        'Recipient(s): one address, required for --test; an ad-hoc list for campaigns',
     },
     { flag: '--subject <text>', summary: 'Subject line' },
     { flag: '--audience <audienceId>', summary: 'Campaign audience segment' },
@@ -39,11 +42,15 @@ export const emailsSendCommand = defineCommand({
     IDEMPOTENCY_FLAG,
   ],
   examples: [
-    'brew-cli emails send eml_1 --test --to qa@example.com --subject "Preview"',
+    'brew-cli emails send eml_1 --test --to you@company.com --subject "Preview"',
     'brew-cli emails send eml_1 --subject "Fall sale" --domain dom_1 --audience aud_1 --yes',
     'brew-cli emails send eml_1 --subject "Fall sale" --domain dom_1 --audience aud_1 --schedule-at 2026-09-01T09:00:00Z --yes',
   ],
   confirmSummary: ({ args, flags }) => {
+    // Stdin is checked in run after its body and flag overrides are merged.
+    if (flags.input === '-') {
+      return
+    }
     // The gate must describe the MERGED send, not just the flags — an
     // --input body can carry test/audienceId/to/scheduledAt on its own.
     const inline = parseInlineInput(flags.input)
@@ -55,14 +62,12 @@ export const emailsSendCommand = defineCommand({
     const scheduleAt =
       flagString(flags.scheduleAt) ?? asString(inline?.scheduledAt)
     const recipients = toStringArray(flags.to) ?? asRecipients(inline?.to)
-    const target =
-      audience === undefined
-        ? recipients === undefined
-          ? flags.input === '-'
-            ? 'the recipients named in the --input body on stdin'
-            : 'its recipients'
-          : `${recipients.length} listed recipient(s)`
-        : `audience ${audience}`
+    let target = 'its recipients'
+    if (audience !== undefined) {
+      target = `audience ${audience}`
+    } else if (recipients !== undefined) {
+      target = `${recipients.length} listed recipient(s)`
+    }
     const timing = scheduleAt === undefined ? 'now' : `at ${scheduleAt}`
     return `Send email ${args.emailId ?? ''} as a REAL campaign to ${target} ${timing}. Real recipients receive it; this cannot be undone.`
   },
@@ -77,6 +82,11 @@ export const emailsSendCommand = defineCommand({
       domainId: flagString(flags.domain),
       scheduledAt: flagString(flags.scheduleAt),
     })
+    await enforceStdinConfirmation(
+      emailsSendCommand,
+      { ctx, args, flags },
+      input
+    )
     if (typeof input.subject !== 'string' || input.subject === '') {
       throw new CliUsageError(
         '--subject is required (or provide it via --input).'
@@ -85,7 +95,10 @@ export const emailsSendCommand = defineCommand({
     if (input.test === true && input.to === undefined) {
       throw new CliUsageError('--to is required for a --test send.')
     }
-    if (input.test !== true && typeof input.domainId !== 'string') {
+    if (
+      input.test !== true &&
+      (typeof input.domainId !== 'string' || input.domainId === '')
+    ) {
       throw new CliUsageError(
         'Campaign sends require --domain (a verified domain id); use --test for a test delivery.'
       )

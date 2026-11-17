@@ -1,4 +1,5 @@
 import { defineCommand } from '../../lib/define-command'
+import { flagString } from '../../lib/input'
 
 export const contactsGetCommand = defineCommand({
   path: ['contacts', 'get'],
@@ -13,8 +14,26 @@ export const contactsGetCommand = defineCommand({
       isRequired: true,
     },
   ],
-  examples: ['brew-cli contacts get jane@example.com'],
-  run: async ({ ctx, args }) => ({
-    data: await ctx.client().contacts.get(args.email ?? ''),
-  }),
+  flags: [
+    {
+      flag: '--include <tokens>',
+      summary:
+        "Expansions: openProfile (the contact's smart-send open-time profile, null before any opens; needs the emails scope too)",
+    },
+  ],
+  examples: [
+    'brew-cli contacts get jane@example.com',
+    'brew-cli contacts get jane@example.com --include openProfile --json',
+  ],
+  run: async ({ ctx, args, flags }) => {
+    const include = flagString(flags.include)
+    return {
+      data: await ctx
+        .client()
+        .contacts.get(
+          args.email ?? '',
+          include === undefined ? undefined : { include }
+        ),
+    }
+  },
 })

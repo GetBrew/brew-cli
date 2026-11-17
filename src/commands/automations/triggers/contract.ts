@@ -1,5 +1,6 @@
 import type {
   GetTriggerContractInput,
+  PayloadContractGetResponse,
   PutTriggerContractInput,
   ValidateTriggerPayloadInput,
 } from '@brew.new/sdk'
@@ -9,6 +10,7 @@ import {
   asSdkInput,
   flagString,
   INPUT_FLAG,
+  isInputEnvelope,
   mergeInput,
   readJsonFlag,
 } from '../../../lib/input'
@@ -41,8 +43,10 @@ function formatOption(value: unknown): string | undefined {
 }
 
 /** Text formats print `content` raw on a TTY; `--json | jq -r .content` for pipes. */
-function contentHuman(body: { content?: string }): { human?: string } {
-  return typeof body.content === 'string' ? { human: body.content } : {}
+function contentHuman(body: PayloadContractGetResponse): { human?: string } {
+  return body.format !== 'json' && typeof body.content === 'string'
+    ? { human: body.content }
+    : {}
 }
 
 export const automationsTriggersContractGetCommand = defineCommand({
@@ -110,7 +114,7 @@ export const automationsTriggersContractPutCommand = defineCommand({
     'brew-cli automations triggers contract put tri_signup --enforcement strict',
   ],
   // Trigger contracts must keep a top-level required `email` string;
-  // nested object/array fields need a Liquid-enabled workspace. The
+  // nested object/array fields are supported. The
   // response is the same body a follow-up `contract get` returns.
   run: async ({ ctx, args, flags }) => {
     const input = mergeInput(
@@ -162,6 +166,8 @@ export const automationsTriggersContractValidateCommand = defineCommand({
     path: '/v1/automations/triggers/{triggerEventId}/contract/validate',
   },
   commandClass: 'read',
+  // The input keys are the user's own data: a bare payload is shorthand for the { payload } envelope.
+  inputKeys: 'unchecked',
   args: [
     {
       name: 'triggerEventId',
@@ -170,7 +176,11 @@ export const automationsTriggersContractValidateCommand = defineCommand({
     },
   ],
   flags: [
-    INPUT_FLAG,
+    {
+      ...INPUT_FLAG,
+      summary:
+        'JSON payload or {payload, enforcement?} request (or - for stdin); nest reserved-key data in payload',
+    },
     {
       flag: '--enforcement <mode>',
       summary: 'Preview a mode other than the stored one: prune | strict',
@@ -178,22 +188,31 @@ export const automationsTriggersContractValidateCommand = defineCommand({
   ],
   examples: [
     `brew-cli automations triggers contract validate tri_signup --input '{"payload":{"email":"jane@example.com"}}'`,
+    `brew-cli automations triggers contract validate tri_signup --input '{"payload":{"email":"jane@example.com"},"enforcement":"strict"}'`,
+    `brew-cli automations triggers contract validate tri_signup --input '{"payload":{"payload":{"email":"jane@example.com"}}}'`,
   ],
   run: async ({ ctx, args, flags }) => {
     const input = mergeInput(
       await readJsonFlag(ctx, flags.input, '--input'),
       {}
     )
-    const payload = input.payload ?? input
-    const enforcement = flagString(flags.enforcement)
+    const isEnvelope = isInputEnvelope<
+      Omit<ValidateTriggerPayloadInput, 'triggerEventId'>
+    >(input, 'payload', { payload: true, enforcement: true })
+    const payload = isEnvelope ? input.payload : input
+    const enforcementFlag = flagString(flags.enforcement)
     if (
-      enforcement !== undefined &&
-      !VALIDATE_ENFORCEMENT_MODES.has(enforcement)
+      enforcementFlag !== undefined &&
+      !VALIDATE_ENFORCEMENT_MODES.has(enforcementFlag)
     ) {
       throw new CliUsageError(
-        `Unknown --enforcement '${enforcement}' (expected prune | strict).`
+        `Unknown --enforcement '${enforcementFlag}' (expected prune | strict).`
       )
     }
+    // Only canonical request keys identify an envelope. Explicit nesting
+    // disambiguates raw data containing only payload/enforcement keys.
+    const enforcement =
+      enforcementFlag ?? (isEnvelope ? input.enforcement : undefined)
     const body = await ctx.client().automations.triggers.validatePayload(
       asSdkInput<ValidateTriggerPayloadInput>({
         triggerEventId: args.triggerEventId ?? '',

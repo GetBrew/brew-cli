@@ -2,6 +2,218 @@ export type SendPayloadValue = string | number | boolean | null | SendPayloadVal
     [key: string]: SendPayloadValue;
 };
 export interface paths {
+    "/v1/webhooks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List webhooks
+         * @description List notification endpoints for the authorized brand. Signing secrets are never included.
+         *
+         *     **Use when** you need to inspect endpoint configuration or paginate endpoints.
+         *
+         *     **Returns** A page of endpoints and an opaque continuation cursor.
+         *
+         *     **Errors** `ACCOUNT_SUSPENDED`, `API_KEY_REVOKED`, `AUTHENTICATION_REQUIRED`, `BRAND_ID_REQUIRED`, `BRAND_NOT_FOUND`, `BRAND_SCOPE_MISMATCH`, `INSUFFICIENT_PERMISSIONS`, `INSUFFICIENT_ROLE`, `INTERNAL_ERROR`, `INVALID_API_KEY`, `INVALID_REQUEST`, `NOT_FOUND`, `RATE_LIMITED`, `SERVICE_UNAVAILABLE`.
+         */
+        get: operations["listWebhooks"];
+        put?: never;
+        /**
+         * Create webhook
+         * @description Create a signed HTTPS notification endpoint for one authorized brand. The initial signing secret is returned once.
+         *
+         *     **Use when** you want to subscribe a receiver to supported email events. Supply an Idempotency-Key for this mutation.
+         *
+         *     **Returns** The created endpoint and its signing secret.
+         *
+         *     **Errors** `ACCOUNT_SUSPENDED`, `API_KEY_REVOKED`, `AUTHENTICATION_REQUIRED`, `BRAND_ID_REQUIRED`, `BRAND_NOT_FOUND`, `BRAND_SCOPE_MISMATCH`, `IDEMPOTENCY_CONFLICT`, `IDEMPOTENCY_IN_PROGRESS`, `INSUFFICIENT_PERMISSIONS`, `INSUFFICIENT_ROLE`, `INTERNAL_ERROR`, `INVALID_API_KEY`, `INVALID_REQUEST`, `NOT_FOUND`, `PAYLOAD_TOO_LARGE`, `RATE_LIMITED`, `SERVICE_UNAVAILABLE`.
+         */
+        post: operations["createWebhook"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/webhooks/{webhookId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get webhook
+         * @description Read one notification endpoint within the authorized brand. Signing secrets are excluded.
+         *
+         *     **Use when** you know an endpoint ID and need its current configuration.
+         *
+         *     **Returns** The endpoint URL, subscriptions, status and metadata.
+         *
+         *     **Errors** `ACCOUNT_SUSPENDED`, `API_KEY_REVOKED`, `AUTHENTICATION_REQUIRED`, `BRAND_ID_REQUIRED`, `BRAND_NOT_FOUND`, `BRAND_SCOPE_MISMATCH`, `INSUFFICIENT_PERMISSIONS`, `INSUFFICIENT_ROLE`, `INTERNAL_ERROR`, `INVALID_API_KEY`, `INVALID_REQUEST`, `NOT_FOUND`, `RATE_LIMITED`, `SERVICE_UNAVAILABLE`.
+         */
+        get: operations["getWebhook"];
+        put?: never;
+        post?: never;
+        /**
+         * Delete webhook
+         * @description Delete an endpoint within the authorized brand and stop its pending deliveries.
+         *
+         *     **Use when** you want to permanently remove a receiver.
+         *
+         *     **Returns** The deleted endpoint ID and deletion confirmation.
+         *
+         *     **Errors** `ACCOUNT_SUSPENDED`, `API_KEY_REVOKED`, `AUTHENTICATION_REQUIRED`, `BRAND_ID_REQUIRED`, `BRAND_NOT_FOUND`, `BRAND_SCOPE_MISMATCH`, `INSUFFICIENT_PERMISSIONS`, `INSUFFICIENT_ROLE`, `INTERNAL_ERROR`, `INVALID_API_KEY`, `INVALID_REQUEST`, `NOT_FOUND`, `RATE_LIMITED`, `SERVICE_UNAVAILABLE`.
+         */
+        delete: operations["deleteWebhook"];
+        options?: never;
+        head?: never;
+        /**
+         * Update webhook
+         * @description Update an endpoint URL, event subscriptions, description or enabled status within the authorized brand.
+         *
+         *     **Use when** you need to change receiver configuration or pause delivery.
+         *
+         *     **Returns** The updated endpoint without its signing secret.
+         *
+         *     **Errors** `ACCOUNT_SUSPENDED`, `API_KEY_REVOKED`, `AUTHENTICATION_REQUIRED`, `BRAND_ID_REQUIRED`, `BRAND_NOT_FOUND`, `BRAND_SCOPE_MISMATCH`, `INSUFFICIENT_PERMISSIONS`, `INSUFFICIENT_ROLE`, `INTERNAL_ERROR`, `INVALID_API_KEY`, `INVALID_REQUEST`, `NOT_FOUND`, `PAYLOAD_TOO_LARGE`, `RATE_LIMITED`, `SERVICE_UNAVAILABLE`.
+         */
+        patch: operations["updateWebhook"];
+        trace?: never;
+    };
+    "/v1/webhooks/{webhookId}/rotate-secret": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Rotate webhook secret
+         * @description Rotate an endpoint signing secret. The provider keeps the previous secret valid during its rotation grace period.
+         *
+         *     **Use when** you are replacing receiver credentials. Supply an Idempotency-Key and update your receiver with the returned secret.
+         *
+         *     **Returns** The new signing secret.
+         *
+         *     **Errors** `ACCOUNT_SUSPENDED`, `API_KEY_REVOKED`, `AUTHENTICATION_REQUIRED`, `BRAND_ID_REQUIRED`, `BRAND_NOT_FOUND`, `BRAND_SCOPE_MISMATCH`, `IDEMPOTENCY_CONFLICT`, `IDEMPOTENCY_IN_PROGRESS`, `INSUFFICIENT_PERMISSIONS`, `INSUFFICIENT_ROLE`, `INTERNAL_ERROR`, `INVALID_API_KEY`, `INVALID_REQUEST`, `NOT_FOUND`, `PAYLOAD_TOO_LARGE`, `RATE_LIMITED`, `SERVICE_UNAVAILABLE`.
+         */
+        post: operations["rotateWebhookSecret"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/webhooks/{webhookId}/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List webhook events
+         * @description List retained event deliveries to one endpoint within the authorized brand. Expired payloads may be absent.
+         *
+         *     **Use when** you need to inspect delivery status, payloads or the next retry time.
+         *
+         *     **Returns** A page of delivery records and an opaque continuation cursor.
+         *
+         *     **Errors** `ACCOUNT_SUSPENDED`, `API_KEY_REVOKED`, `AUTHENTICATION_REQUIRED`, `BRAND_ID_REQUIRED`, `BRAND_NOT_FOUND`, `BRAND_SCOPE_MISMATCH`, `INSUFFICIENT_PERMISSIONS`, `INSUFFICIENT_ROLE`, `INTERNAL_ERROR`, `INVALID_API_KEY`, `INVALID_REQUEST`, `NOT_FOUND`, `RATE_LIMITED`, `SERVICE_UNAVAILABLE`.
+         */
+        get: operations["listWebhookEvents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/webhooks/{webhookId}/events/{eventId}/attempts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List webhook attempts
+         * @description List delivery attempts for one endpoint event, including receiver responses.
+         *
+         *     **Use when** you need to diagnose receiver failures or inspect retry history.
+         *
+         *     **Returns** A page of attempts with status, response, duration and continuation cursor.
+         *
+         *     **Errors** `ACCOUNT_SUSPENDED`, `API_KEY_REVOKED`, `AUTHENTICATION_REQUIRED`, `BRAND_ID_REQUIRED`, `BRAND_NOT_FOUND`, `BRAND_SCOPE_MISMATCH`, `INSUFFICIENT_PERMISSIONS`, `INSUFFICIENT_ROLE`, `INTERNAL_ERROR`, `INVALID_API_KEY`, `INVALID_REQUEST`, `NOT_FOUND`, `RATE_LIMITED`, `SERVICE_UNAVAILABLE`.
+         */
+        get: operations["listWebhookAttempts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/webhooks/{webhookId}/events/{eventId}/replay": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Replay webhook event
+         * @description Request another delivery of a retained webhook notification with the same event identity. This never sends another email.
+         *
+         *     **Use when** you have repaired a receiver and need the notification delivered again. Supply an Idempotency-Key.
+         *
+         *     **Returns** An accepted delivery request; inspect delivery history for the result.
+         *
+         *     **Errors** `ACCOUNT_SUSPENDED`, `API_KEY_REVOKED`, `AUTHENTICATION_REQUIRED`, `BRAND_ID_REQUIRED`, `BRAND_NOT_FOUND`, `BRAND_SCOPE_MISMATCH`, `IDEMPOTENCY_CONFLICT`, `IDEMPOTENCY_IN_PROGRESS`, `INSUFFICIENT_PERMISSIONS`, `INSUFFICIENT_ROLE`, `INTERNAL_ERROR`, `INVALID_API_KEY`, `INVALID_REQUEST`, `NOT_FOUND`, `PAYLOAD_TOO_LARGE`, `RATE_LIMITED`, `SERVICE_UNAVAILABLE`.
+         */
+        post: operations["replayWebhookEvent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/webhooks/{webhookId}/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Test webhook
+         * @description Queue a signed synthetic email event to one endpoint. The payload is marked as a test and no email is sent.
+         *
+         *     **Use when** you need to verify your receiver and signature handling. Supply an Idempotency-Key.
+         *
+         *     **Returns** An accepted test request; inspect delivery history for the result.
+         *
+         *     **Errors** `ACCOUNT_SUSPENDED`, `API_KEY_REVOKED`, `AUTHENTICATION_REQUIRED`, `BRAND_ID_REQUIRED`, `BRAND_NOT_FOUND`, `BRAND_SCOPE_MISMATCH`, `IDEMPOTENCY_CONFLICT`, `IDEMPOTENCY_IN_PROGRESS`, `INSUFFICIENT_PERMISSIONS`, `INSUFFICIENT_ROLE`, `INTERNAL_ERROR`, `INVALID_API_KEY`, `INVALID_REQUEST`, `NOT_FOUND`, `PAYLOAD_TOO_LARGE`, `RATE_LIMITED`, `SERVICE_UNAVAILABLE`.
+         */
+        post: operations["testWebhook"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/emails": {
         parameters: {
             query?: never;
@@ -31,11 +243,11 @@ export interface paths {
          *
          *     **Use when** you have a brief and want Brew to author on brand. For existing markup use `importEmail`; for a Figma frame use `importFigmaDesign`.
          *
-         *     **Input** `prompt`; optional `category` (steers the design treatment only: transactional categories get receipt or reset conventions, while delivery for those flows is a triggered automation on a transactional-purpose domain), `contentUrls`, `referenceEmailId`, `subjectLine` (the design-default inbox subject; `createSend` still takes a per-send `subject`), and `groupId` (`grp_…` or `ungrouped`) or `groupName` (resolve or create), not both; omit to land Ungrouped. Supports `Idempotency-Key`.
+         *     **Input** `prompt`; optional `category` (steers the design treatment only: transactional categories get receipt or reset conventions, while delivery for those flows is a triggered automation on a transactional-purpose domain), `contentUrls`, `referenceEmailId`, `title` (the canvas name, 1 to 200 characters; omit and Brew derives one from the subject line or the prompt), `subjectLine` (the design-default inbox subject; `createSend` still takes a per-send `subject`), `lang` (the language of the copy, ISO 639-1; omit and Brew detects it from the finished body), and `groupId` (`grp_…` or `ungrouped`) or `groupName` (resolve or create), not both; omit to land Ungrouped. Supports `Idempotency-Key`.
          *
-         *     **Returns** `201 { emailId, emailVersionId, html, previewImage?, group, subjectLine? }` when a design was persisted, or `200 { response }` when the agent answered in prose without writing a design.
+         *     **Returns** `201 { emailId, emailVersionId, html, previewImage?, group, subjectLine?, title? }` when a design was persisted, or `200 { response }` when the agent answered in prose without writing a design.
          *
-         *     **Errors** `404 REFERENCE_EMAIL_NOT_FOUND` for an unknown `referenceEmailId`; `404 EMAIL_GROUP_NOT_FOUND` for an unknown `groupId`; `422 BRAND_NOT_READY` while the brand is still extracting; `502 EMAIL_GENERATION_FAILED` when the agent could not produce a design; `402 INSUFFICIENT_CREDITS` on an empty balance.
+         *     **Errors** `404 REFERENCE_EMAIL_NOT_FOUND` for an unknown `referenceEmailId`; `404 EMAIL_GROUP_NOT_FOUND` for an unknown `groupId`; `422 BRAND_NOT_READY` while the brand is still extracting; `502 EMAIL_GENERATION_FAILED` when the agent could not produce a design; `409 EMAIL_RESULT_UNAVAILABLE` when the design was saved but its completed result could not be returned (read the saved `emailVersionId` from `error.details`; do not repeat generation); `402 INSUFFICIENT_CREDITS` on an empty balance.
          *
          *     **See also** `editEmail`, `importEmail`, `createSend`.
          */
@@ -55,7 +267,7 @@ export interface paths {
         };
         /**
          * Get an email design
-         * @description Reads one design as the bare `EmailDetail` row: `emailId`, the `emailVersionId` (the pin for `POST /v1/sends` and sendEmail nodes), `title`, `status`, `previewStatus`, `subjectLine`, `previewText`, `previewImage`, `updatedAt`, `group` and `createdBy` / `createdByUserId` (the design’s creator, shared by every version), plus `errorMessage` when a generation failed.
+         * @description Reads one design as the bare `EmailDetail` row: `emailId`, the `emailVersionId` (the pin for `POST /v1/sends` and sendEmail nodes), `title`, `status`, `previewStatus`, `subjectLine`, `previewText`, `lang`, `previewImage`, `updatedAt`, `group` and `createdBy` / `createdByUserId` (the design’s creator, shared by every version), plus `errorMessage` when a generation failed.
          *
          *     **Use when** inspecting a design before sending it, pinning a version, polling a generation you started, or pulling rendered HTML or version history.
          *
@@ -79,17 +291,17 @@ export interface paths {
         head?: never;
         /**
          * Edit an email design
-         * @description Updates a design: an AI edit (`prompt`), its envelope (`title`, `subjectLine`, `groupId`), or both in one call. At least one of the four is required. A design renames and moves between groups here exactly like an audience, trigger, automation or group renames through its own PATCH.
+         * @description Updates a design: an AI edit (`prompt`), its envelope (`title`, `subjectLine`, `lang`, `groupId`), or both in one call. At least one of the five is required. A design renames and moves between groups here exactly like an audience, trigger, automation or group renames through its own PATCH.
          *
          *     **Use when** changing an existing design: rewording or restyling it with a prompt, renaming it (a clone starts as `Copy of …`), setting the inbox subject the design carries by default, or filing it in another group.
          *
-         *     **Input** `prompt` runs the Brew email agent against the current latest version (or the `emailVersionId` pin, optionally grounded by `contentUrls`) and writes a new `version: "latest"` row on the same `emailId` (the previous head becomes a numeric historical version); usage-metered by actual token spend. `title` renames the design (its canvas name, 1 to 200 characters), `subjectLine` sets the default inbox subject and `groupId` moves it into an existing group (`null` = Ungrouped); any of them without `prompt` is ONE atomic in-place patch (no AI run, no new version, free). With `prompt`, the rename and move land first so the new version inherits them and the subject is applied to the new head. `emailVersionId` requires `prompt`.
+         *     **Input** `prompt` runs the Brew email agent against the current latest version (or the `emailVersionId` pin, optionally grounded by `contentUrls`) and writes a new `version: "latest"` row on the same `emailId` (the previous head becomes a numeric historical version); usage-metered by actual token spend. `title` renames the design (its canvas name, 1 to 200 characters), `subjectLine` sets the default inbox subject, `lang` sets the language of the copy (kept from then on; Brew stops re-detecting it) and `groupId` moves it into an existing group (`null` = Ungrouped); any of them without `prompt` is ONE atomic in-place patch (no AI run, no new version, free). With `prompt`, the rename and move land first so the new version inherits them and the subject is applied to the new head. `emailVersionId` requires `prompt`.
          *
          *     **Returns** `200` with the generated-email shape: the NEW head after a prompt edit, or the CURRENT head after an envelope patch (with its `title`, `subjectLine` and `group` after the patch); a text response when the agent answered in prose.
          *
          *     **Automations** a prompt edit moves every automation `sendEmail` step pinned to the previous latest version onto the new one, in a new unpublished automation version (while a Brew agent is still building that automation, its in-progress draft is updated in place instead); the published version keeps its pin until the next publish. Steps pinned to an older version do not move. An envelope patch writes no version and moves nothing.
          *
-         *     **Errors** `404 EMAIL_NOT_FOUND`, `EMAIL_VERSION_NOT_FOUND` (a pin that is not one of this design's versions), `EMAIL_GROUP_NOT_FOUND` (a `groupId` that is not one of this brand's groups); `409 EMAIL_IN_PROGRESS` while the design is still generating (or a concurrent edit moved the head between read and patch); `422 BRAND_NOT_READY` until the brand has finished extracting; `502 EMAIL_GENERATION_FAILED` when the agent run fails (retry later); `400 INVALID_REQUEST` for a body with none of the four fields, or `emailVersionId` without `prompt`.
+         *     **Errors** `404 EMAIL_NOT_FOUND`, `EMAIL_VERSION_NOT_FOUND` (a pin that is not one of this design's versions), `EMAIL_GROUP_NOT_FOUND` (a `groupId` that is not one of this brand's groups); `409 EMAIL_IN_PROGRESS` while the design is still generating (or a concurrent edit moved the head between read and patch); `409 EMAIL_RESULT_UNAVAILABLE` when the edit was saved but its completed result could not be returned (read the saved `emailVersionId` from `error.details`; do not repeat the edit); `422 BRAND_NOT_READY` until the brand has finished extracting; `502 EMAIL_GENERATION_FAILED` when the agent run fails (retry later); `400 INVALID_REQUEST` for a body with none of the four fields, or `emailVersionId` without `prompt`.
          *
          *     **See also** `cloneEmail` (name the copy with `title`), `restoreEmailVersion`, `listEmails`.
          */
@@ -111,11 +323,11 @@ export interface paths {
          *
          *     **Use when** you already have HTML, MJML, React Email JSX or a saved `.eml` message. To author from a brief use `generateEmail`; for a Figma frame use `importFigmaDesign`.
          *
-         *     **Input** `content` (the raw source as a string) and `format`: `html` (a document or fragment), `mjml`, `jsx` (a module with a default-exported component or a bare `<Html>` element; static values, `PreviewProps` and local sub-components fold, anything executable is rejected with the offending line) or `eml` (the HTML body is imported, inline `cid:` images are rehosted, other attachments are dropped, and the Subject becomes the title). HTML, MJML and EML land as source-preserved designs with an editable projection; JSX lands as a native React Email design. Optional `baseUrl` resolves relative image paths; optional `title` and `subjectLine` (the design-default inbox subject; an EML Subject is the default); optional `groupId` (`grp_…` or `ungrouped`) or `groupName` (resolve or create), not both; omit to land Ungrouped. Limits: 5,000,000 UTF-8 bytes, 256 remote resources, 8 concurrent fetches, 10 MB per resource and 50 MB aggregate downloads.
+         *     **Input** `content` (the raw source as a string) and `format`: `html` (a document or fragment), `mjml`, `jsx` (a module with a default-exported component or a bare `<Html>` element; static values, `PreviewProps` and local sub-components fold; `new Date()` and `Date.now()` with no arguments read the clock once at import and are saved as fixed text with a `current_time_frozen` warning, and `process.env.X` reads as `undefined`; anything else executable is rejected with the offending line) or `eml` (the HTML body is imported, inline `cid:` images are rehosted, other attachments are dropped, and the Subject becomes the title). HTML, MJML and EML land as source-preserved designs with an editable projection; JSX lands as a native React Email design. Optional `baseUrl` resolves relative image paths; optional `title` and `subjectLine` (the design-default inbox subject; an EML Subject is the default); optional `groupId` (`grp_…` or `ungrouped`) or `groupName` (resolve or create), not both; omit to land Ungrouped. Limits: 5,000,000 UTF-8 bytes, 256 remote resources, 8 concurrent fetches, 10 MB per resource, 50 MB aggregate downloads, 128 distinct inline SVG images and 8 seconds of inline SVG rendering (past either, the rest are dropped with a warning).
          *
-         *     **Returns** `201 { emailId, emailVersionId, html, previewImage?, assetReport, group, subjectLine? }`.
+         *     **Returns** `201 { emailId, emailVersionId, html, previewImage?, assetReport, group, subjectLine? }`. Each source element with content that a design could not keep is listed once in `assetReport.warnings` as `{ code: "element_dropped", location: "markup", host: "<tag>" }`: inline `svg`, `math` and `canvas`, and `button`, `select`, `textarea` or table `caption` holding text are left out of the editable projection (the original source keeps them); `audio`, `video`, `iframe`, `object` and `embed` are removed from both, with `audio`/`video` fallback content kept. Email clients block SVG images, so an SVG image, hosted or inline (`data:image/svg+xml` in a `src` or `background` attribute or a CSS `url()`), becomes a hosted PNG: twice the pixel box its `<img>` sets (the SVG fitted as its `preserveAspectRatio` says), otherwise its own size so the layout holds. An inline one that will not render is removed (in JSX, its `src`) and listed as `element_dropped` with host `svg`; a hosted one that will not render, or whose URL has a `#` fragment, stays an SVG. Source words the editable design does not carry are named once as `{ code: "text_dropped", location: "markup", host: "<words>" }`; version 1 keeps the exact source. JSX clock reads are named as `{ code: "current_time_frozen", location: "module", host: "Date.now() (line 10)" }` (the first 20).
          *
-         *     **Errors** `422 EMAIL_IMPORT_FAILED` when the markup cannot become an editable design (a lossy round trip persists nothing); `404 EMAIL_GROUP_NOT_FOUND` for an unknown `groupId`; `413 PAYLOAD_TOO_LARGE` over the byte cap; `422 BRAND_NOT_READY` while the brand is still extracting.
+         *     **Errors** `400 INVALID_REQUEST` (naming the field in `param`) when `title`, `subjectLine` or `content` holds an unpaired surrogate (half of an emoji); `422 EMAIL_IMPORT_FAILED` when the markup cannot be compiled into a design or its editable model is over the size budget, with nothing persisted; `502 EMAIL_IMPORT_PERSISTENCE_FAILED` when the markup converted but the design could not be stored (nothing was created; the message carries the request id to give support); `404 EMAIL_GROUP_NOT_FOUND` for an unknown `groupId`; `413 PAYLOAD_TOO_LARGE` over the byte cap; `422 BRAND_NOT_READY` while the brand is still extracting.
          *
          *     **See also** `generateEmail`, `importFigmaDesign`, `auditEmail`.
          */
@@ -203,7 +415,7 @@ export interface paths {
         put?: never;
         /**
          * Export a design to an ESP
-         * @description Export a finished email DESIGN to a connected third-party ESP (Braze, Brevo, HubSpot, Klaviyo, Mailchimp, Mailjet, Iterable, Postmark, OneSignal, Mailgun, SendGrid) as a reusable TEMPLATE. This is NOT a Brew send — it creates a template in the destination platform and does NOT deliver to recipients, and is unrelated to Brew sending domains or audiences. The `provider` must already be connected for the brand (connect ESPs in the Brew app). The exported HTML is automatically made ESP-portable. Brevo and Mailjet need `senderEmail` when the account has more than one active sender (with exactly one, it is selected automatically). Pass `dryRun: true` to validate the design, brand ownership, and ESP connection without creating a template. Free (no credits).
+         * @description Export a finished email DESIGN to a connected third-party ESP (Braze, Brevo, HubSpot, Klaviyo, Loops, Mailchimp, Mailjet, Iterable, Postmark, OneSignal, Mailgun, SendGrid) as a reusable TEMPLATE. This is NOT a Brew send — it creates a template in the destination platform and does NOT deliver to recipients, and is unrelated to Brew sending domains or audiences. The `provider` must already be connected for the brand (connect ESPs in the Brew app). The exported HTML is automatically made ESP-portable; Loops converts supported content to LMX and creates an editable campaign draft to review before sending. Brevo and Mailjet need `senderEmail` when the account has more than one active sender (with exactly one, it is selected automatically). Pass `dryRun: true` to validate the design, brand ownership, and ESP connection without creating a template. Free (no credits).
          */
         post: operations["exportEmailDesign"];
         delete?: never;
@@ -374,6 +586,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/canvas/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create an authenticated email canvas embed session
+         * @description Create a short-lived grant for exactly one group or email. Call from your backend after authenticating your user and authorizing the target. Credentials are returned once; response replay is disabled. API keys remain server-side.
+         */
+        post: operations["createCanvasSession"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/canvas/sessions/{sessionId}/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Refresh a canvas session
+         * @description Issue a new bootstrap credential without changing the target or external user. Requires the original issuing authority. Response replay is disabled.
+         */
+        post: operations["refreshCanvasSession"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/canvas/sessions/{sessionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Revoke a canvas session
+         * @description Stop reads and writes through an existing session, including active subscriptions.
+         */
+        delete: operations["revokeCanvasSession"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/email-groups": {
         parameters: {
             query?: never;
@@ -459,11 +731,11 @@ export interface paths {
          *
          *     **Use when** auditing what a design was sent to, reading campaign performance, or joining an automation run to its deliveries (`listAutomationRuns`, then `?automationRunId=` here, then `getEventsAnalytics` with the same id).
          *
-         *     **Input** the default list is campaign sends: `emailId` narrows to one design; `status`, `messageClass` (`marketing` or `transactional`) and an inclusive `from`/`to` window on `updatedAt` filter it. A join filter (`automationId`, `automationRunId`, `audienceRunId` or `triggerInstanceId`) switches to the automation grain, one row per recipient; `kind=automation` is implied and per-recipient rows are never listed brand-wide. `limit` and `cursor` page (an opaque native cursor; a `triggerInstanceId` read merges the runs of one fire into a single bounded page).
+         *     **Input** the default list is campaign sends: `emailId` narrows to one design; `status`, `messageClass` (`marketing` or `transactional`) and an inclusive `from`/`to` window on `updatedAt` filter it. A join filter (`automationId`, `automationRunId`, `audienceRunId` or `triggerInstanceId`) switches to the automation grain, one row per recipient; `kind=automation` is implied and per-recipient rows are never listed brand-wide. `limit` and `cursor` page (an opaque native cursor; a `triggerInstanceId` read merges the runs of one fire into a single bounded page). `status`, `messageClass` and `from`/`to` are applied while the sends are read, so a filtered page fills to `limit`. Each page scans a bounded number of sends, so when matches are rare a page can still hold fewer rows than `limit`, even none, while `hasMore` is true: keep paging until `hasMore` is false. A cursor works only with the filters it was issued under.
          *
          *     **Returns** `200` with a page of `Send` rows.
          *
-         *     **Errors** `404 AUTOMATION_RUN_NOT_FOUND` or `AUDIENCE_RUN_NOT_FOUND` when a join filter names a run outside the brand; `400 INVALID_REQUEST` for `kind=campaign` with a join filter, `emailId` with a join filter, `kind=automation` without one, or a malformed cursor.
+         *     **Errors** `404 AUTOMATION_RUN_NOT_FOUND` or `AUDIENCE_RUN_NOT_FOUND` when a join filter names a run outside the brand; `400 INVALID_REQUEST` for `kind=campaign` with a join filter, `emailId` with a join filter, `kind=automation` without one, or a malformed cursor or one issued under other filters.
          *
          *     **See also** `getSend` (`?include=events`), `createSend`, `getEventsAnalytics`, `getAnalyticsOverview`.
          */
@@ -475,11 +747,13 @@ export interface paths {
          *
          *     **Use when** a design is ready to go out. For per-recipient event-driven delivery, publish an automation and fire its trigger (`fireTrigger`).
          *
-         *     **Input** Campaign (`test` omitted or `false`): `emailId` (optionally pinned to `emailVersionId`), a verified `domainId`, `subject`, and exactly one of `audienceId` (a saved audience, or `"all"` for every contact in the brand) or `to` (one address or an array of up to 50). Optional `from` (`{ email, name? }`, an address on the send domain), `previewText`, `replyTo`, `scheduledAt`, `gradualSend`, and `consent` provenance (`source`, optional `capturedAt`, `policyVersion`, `evidence`) for inline recipients that are not yet contacts: each is created as a subscribed contact carrying that record. An existing opt-out is never re-subscribed. Inline recipients face the same unsubscribe and suppression gate and per-recipient quota as audience sends. Test (`test: true`): `emailId`, `subject`, one `to` address, optional `emailVersionId`, `previewText`, `replyTo`, `domainId` (a verified org-owned domain; otherwise the Brew default sender, and an unverified or foreign domain is rejected, never downgraded), `from` (`{ email, name? }`, an address on that domain), `variables` (example values for `{{ var | fallback }}` merge tags; a value wins over the fallback) and `payload` (template data; nested JSON renders via Liquid as `trigger.*`); the subject carries a `[TEST]` prefix. The same design can be sent unlimited times; every campaign call mints a new send.
+         *     **Input** Campaign (`test` omitted or `false`): `emailId` (optionally pinned to `emailVersionId`), a verified `domainId`, `subject`, and exactly one of `audienceId` (a saved audience, or `"all"` for every contact in the brand) or `to` (one address or an array of up to 50). Optional `from` (`{ email, name? }`, an address on the send domain), `previewText`, `replyTo`, `scheduledAt`, one delivery mode (`gradualSend`, or `smartSend: true` for Intelligent Send: each recipient with past opens or clicks gets it at the upcoming hour, within 24 hours, their own history makes them most likely to open, and the rest right away; it composes with `scheduledAt`), and `consent` provenance (`source`, optional `capturedAt`, `policyVersion`, `evidence`) for inline recipients that are not yet contacts: each is created as a subscribed contact carrying that record. An existing opt-out is never re-subscribed. Inline recipients face the same unsubscribe and suppression gate and per-recipient quota as audience sends.
          *
-         *     **Returns** campaign `202 { status: 'queued' | 'scheduled', sendId, scheduledAt?, warnings? }` (poll `getSend`; `warnings[]` carries one `CONSENT_RECORD_MISSING` per inline recipient that is a subscribed contact with no consent record, and one `RECIPIENTS_EXCLUDED` with the counts when unsubscribed, suppressed or undeliverable contacts will be skipped); test `200 { status: 'completed', recipient }`.
+         *     Test (`test: true`): `emailId`, `subject`, one `to` address, optional `emailVersionId`, `previewText`, `replyTo`, `domainId` (a verified org-owned domain; otherwise the Brew default sender, and an unverified or foreign domain is rejected, never downgraded), `from` (`{ email, name? }`, an address on that domain), `variables` (example values for `{{ var | fallback }}` merge tags; a value wins over the fallback) and `payload` (template data; nested JSON renders via Liquid as `trigger.*`); the subject carries a `[TEST]` prefix. A test reaches only a teammate with access to the brand, an address on a verified sending domain of the brand, or, for a signed-in person (not an API key), their own address or one on their company domain; anyone else is `422 TEST_RECIPIENT_NOT_ALLOWED` (`details.recipients`). The same design can be sent unlimited times; every campaign call mints a new send.
          *
-         *     **Errors** `400 INVALID_REQUEST` (`param: subject`) when `subject` has a line break or runs over 1000 characters (993 on a test send, for the `[TEST]` prefix), judged on the text every recipient receives; `404 EMAIL_NOT_FOUND`, `DOMAIN_NOT_FOUND`, `AUDIENCE_NOT_FOUND` (a resource in another brand also surfaces as `404`); `422 EMAIL_NOT_READY`, `DOMAIN_NOT_READY`, `DOMAIN_PURPOSE_NOT_ALLOWED`, `LIQUID_RENDER_ERROR`; `422 CONSENT_REQUIRED` when an inline marketing recipient has no contact record with marketing consent and no `consent` was supplied (`details.recipients`); `422 RECIPIENT_UNSUBSCRIBED` when an inline recipient is an existing contact who opted out (`details.recipients`, never re-subscribed); `422 NO_ELIGIBLE_RECIPIENTS` when an immediate send would reach nobody because every contact it targets is unsubscribed, suppressed or undeliverable (`details.eligibility` = `{ total, eligible, excluded: { unsubscribed, suppressed, invalidEmail } }`; no send is created, while a scheduled send is accepted instead); `422 EMAIL_IMAGES_MISSING` when the email shows a cdn.brew.new image that does not exist (`details.missingImages[]`; a dead icon whose real file sits elsewhere in its pack is moved there instead when the key has `emails` access); `402 SEND_QUOTA_EXCEEDED` when the plan's monthly volume would be exceeded (no `Retry-After`).
+         *     **Returns** campaign `202 { status: 'queued' | 'scheduled', sendId, scheduledAt?, warnings? }` (poll `getSend`; `warnings[]` carries one `CONSENT_RECORD_MISSING` per inline recipient that is a subscribed contact with no consent record, and one `RECIPIENTS_EXCLUDED` with the counts when unsubscribed, suppressed, undeliverable or permission-less recipients will be skipped); test `200 { status: 'completed', recipient }`.
+         *
+         *     **Errors** `400 INVALID_REQUEST` (`param: subject`) when `subject` has a line break or runs over 1000 characters (993 on a test send, for the `[TEST]` prefix), judged on the text every recipient receives; `404 EMAIL_NOT_FOUND`, `DOMAIN_NOT_FOUND`, `AUDIENCE_NOT_FOUND` (a resource in another brand also surfaces as `404`); `422 EMAIL_NOT_READY`, `DOMAIN_NOT_READY`, `DOMAIN_PURPOSE_NOT_ALLOWED`, `LIQUID_RENDER_ERROR`, `TEST_RECIPIENT_NOT_ALLOWED`; `422 CONSENT_REQUIRED` when an inline marketing recipient has no contact record with marketing consent and no `consent` was supplied (`details.recipients`); `422 RECIPIENT_UNSUBSCRIBED` when an inline recipient is an existing contact who opted out (`details.recipients`, never re-subscribed); `422 NO_ELIGIBLE_RECIPIENTS` when an immediate send would reach nobody because every contact it targets is excluded (`details.eligibility` = `{ total, eligible, excluded: { unsubscribed, suppressed, invalidEmail, consentRequired? } }`, each address counted once; no send is created, while a scheduled send is accepted instead); `422 EMAIL_IMAGES_MISSING` when the email shows a cdn.brew.new image that does not exist (`details.missingImages[]`; a dead icon whose real file sits elsewhere in its pack is moved there instead when the key has `emails` access); `402 SEND_QUOTA_EXCEEDED` when the plan's monthly volume would be exceeded (no `Retry-After`).
          *
          *     **See also** `listSends`, `cancelSend`, `fireTrigger`.
          */
@@ -551,7 +825,7 @@ export interface paths {
         put?: never;
         /**
          * Pause a gradual send
-         * @description Manually pauses an in-flight GRADUAL (domain-warmup) send. The ramp stops before its next chunk and holds its current batch until `POST /v1/sends/{sendId}/resume` (or a cancel). A send that is not a `running` gradual send returns `409 SEND_NOT_PAUSABLE`. Brand-scoped: an unknown / cross-brand `sendId` is `404`.
+         * @description Manually pauses an in-flight GRADUAL (domain-warmup) send. The ramp stops before its next chunk and holds its current batch until `POST /v1/sends/{sendId}/resume` (or a cancel). A send its operator already paused returns the same 200 and changes nothing; any other send that is not a `running` gradual send (including one held at the plan limit or for its domain) returns `409 SEND_NOT_PAUSABLE`. Brand-scoped: an unknown / cross-brand `sendId` is `404`.
          */
         post: operations["pauseSend"];
         delete?: never;
@@ -570,8 +844,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Resume a paused gradual send
-         * @description Resumes a manually paused GRADUAL send. The ramp picks the resume up at its next hold check (seconds after a short pause, up to an hour after a long one); the unsent tail is re-spread and later batches shift so missed intervals do not compress into a burst. A send held at the plan limit resumes on its own once the plan allowance is available; any other send returns `409 SEND_NOT_RESUMABLE`. Brand-scoped: an unknown / cross-brand `sendId` is `404`.
+         * Resume a paused send
+         * @description Resumes a manually paused GRADUAL send, or any campaign paused for its bounce or complaint rate (`pauseReason: bounce_rate`; such a send is never paused for it again). The send picks the resume up at its next hold check (seconds after a short pause, up to an hour after a long one); a ramp re-spreads its unsent tail and shifts later batches so missed intervals do not compress into a burst. A send held at the plan limit resumes on its own once the plan allowance is available; any other send returns `409 SEND_NOT_RESUMABLE`. Brand-scoped: an unknown / cross-brand `sendId` is `404`.
          */
         post: operations["resumeSend"];
         delete?: never;
@@ -639,15 +913,15 @@ export interface paths {
         };
         /**
          * Unified events feed
-         * @description Read-only feed of the brand's analytics events (email, automation, trigger, inbound), newest first, over a `from`/`to` window that defaults to the last 7 days. Email rows carry the send behind them (`sendId`, `emailId`), so a page joins back to `GET /v1/sends/{sendId}`.
+         * @description Read-only feed of the brand's analytics events (email, automation, trigger, inbound), newest first, over a `from`/`to` window that defaults to the last 7 days, except for a `sendId` or `automationRunId` read, which is bounded by that send or run. Email rows carry the send behind them (`sendId`, `emailId`), so a page joins back to `GET /v1/sends/{sendId}`.
          *
-         *     **Use when** you need per-event or per-recipient detail. For windowed totals and rates use `getAnalyticsOverview`; for one send's feed use `listSends` with `?sendId=&include=events`.
+         *     **Use when** you need per-event or per-recipient detail. For windowed totals and rates use `getAnalyticsOverview`; for one send's events in one bounded page use `GET /v1/sends/{sendId}?include=events` (`getSend`).
          *
-         *     **Input** Equality filters: `eventType`, `sendId`, `emailId`, `automationId`, `messageClass` (`marketing` or `transactional`; absent stamps count as marketing). Run scope: `automationRunId` returns one run’s events across every domain (its lifecycle rows and the deliveries it produced), newest first and not windowed unless `from`/`to` are given; only `eventType` combines with it. Recipient rules `recipient` (csv, max 10): a full address matches exactly, `@domain` matches everyone on the domain, other text matches as a substring, a `!` prefix excludes (`recipient=@clay.com,!ceo@clay.com`); includes OR together, excludes always apply. Send facets `source` (csv), `audienceId` (csv, max 20), `domain` (sending domain), `triggerEventId` (csv, max 10, resolved to the automations they wire). Any facet or recipient rule narrows the feed to email events and adds `sendSource`, `sendContext` and `messageClass` to each row (plus `triggerProvider` and `triggerTitle` on triggered rows). Machine-classified opens and clicks (scanner detonation, Apple proxy prefetch) are excluded unless `includeMachineOpens=true` or `includeMachineClicks=true` (audit only).
+         *     **Input** Equality filters: `eventType`, `sendId` (not windowed unless `from`/`to` are given), `emailId`, `automationId`, `messageClass` (`marketing` or `transactional`; absent stamps count as marketing). Run scope: `automationRunId` returns one run’s events across every domain (its lifecycle rows and the deliveries it produced), newest first and not windowed unless `from`/`to` are given; only `eventType` combines with it. Recipient rules `recipient` (csv, max 10): a full address matches exactly, `@domain` matches everyone on the domain, other text matches as a substring, a `!` prefix excludes (`recipient=@clay.com,!ceo@clay.com`); includes OR together, excludes always apply. Send facets `source` (csv), `audienceId` (csv, max 20), `domain` (sending domain), `triggerEventId` (csv, max 10, resolved to the automations they wire). Any facet or recipient rule narrows the feed to email events and adds `sendSource`, `sendContext` and `messageClass` to each row (plus `triggerProvider` and `triggerTitle` on triggered rows). Machine-classified opens and clicks (scanner detonation, Apple proxy prefetch) are excluded unless `includeMachineOpens=true` or `includeMachineClicks=true` (audit only).
          *
-         *     **Grouped counts** `groupBy` (one or two csv fields: `eventType`, `emailId`, `automationId`, `sendId`, `source`, `link`, `recipientDomain`, `unsubscribeReason`) and/or `bucket` (`day`, `week` or `month`, UTC, Monday weeks) count the email events the same filters list instead of returning them: `link` with `eventType=clicked` is clicks per link, `unsubscribeReason` counts an unsubscribe once per reason it gave. The count reads the newest 20,000 events; a busier window answers `truncated: true` with `coveredFrom` (narrow `from`/`to` or add `eventType`). Events, not unique recipients: `getAnalyticsOverview` `opened`/`clicked` count unique human recipients.
+         *     **Grouped counts** `groupBy` (one or two csv fields: `eventType`, `emailId`, `automationId`, `sendId`, `source`, `link`, `recipientDomain`, `unsubscribeReason`) and/or `bucket` (`day`, `week` or `month`, UTC, Monday weeks) count the email events the same filters list instead of returning them: `link` with `eventType=clicked` is clicks per link, `unsubscribeReason` counts an unsubscribe once per reason it gave. The count reads the newest 20,000 events; a busier window answers `truncated: true` with `coveredFrom` (narrow `from`/`to` or add `eventType`). `count` counts events, so repeat opens each count; a group of opened, clicked or delivered events (not grouped by `link`) also carries `recipients`, each recipient counted once per message within `range`.
          *
-         *     **Returns** `200 { data: Event[], pagination: { limit, cursor, hasMore }, range }`; page with `cursor` until it is `null`. Rows carry the run join keys when stamped: `automationRunId`, `triggerInstanceId`, `audienceRunId` (plus `sendId`, `nodeId`). With `groupBy`/`bucket`: `200 { count, groups: [{ key, bucket?, count }], otherCount, range, truncated, coveredFrom? }`, the largest 200 groups first. Requires the `emails` scope.
+         *     **Returns** `200 { data: Event[], pagination: { limit, cursor, hasMore }, range }`; page with `cursor` until it is `null`. Rows carry the run join keys when stamped: `automationRunId`, `triggerInstanceId`, `audienceRunId` (plus `sendId`, `nodeId`). With `groupBy`/`bucket`: `200 { count, groups: [{ key, bucket?, count, recipients? }], otherCount, range, truncated, coveredFrom? }`, the largest 200 groups first. Requires the `emails` scope.
          *
          *     **Errors** `400 INVALID_REQUEST` for an inverted window, an unknown `eventType`, or more than 10 recipient rules or 20 audience ids; with `groupBy`/`bucket`, for an unknown or repeated field, more than two fields, a non-email `eventType`, `cursor` or `automationRunId` (`limit` is ignored).
          *
@@ -691,11 +965,11 @@ export interface paths {
          *
          *     **Use when** you have minted every design a `sendEmail` node references (`generateEmail` first). Publish afterwards with `updateAutomation` (`{ "published": true }`), or launch a manual-audience automation with `runAutomation`.
          *
-         *     **Input** Trigger binding, exactly one: an EVENT automation passes `triggerEventId`; a MANUAL-AUDIENCE automation omits it and gives the trigger node `config: { "mode": "manualAudience", "audienceId": "…" }`. Typed conditions: every filter and condition-mode split uses a non-empty `conditions` array; each condition needs `field`, `type` (`string`, `number`, `date` or `bool`) and a canonical snake_case `operator`; unary operators omit `value`, comparisons require a type-correct scalar, a non-empty array, or an exact two-value `between` tuple (see `AutomationNode`). Every `sendEmail` node carries `emailId`, `emailVersionId` and `subject` (`previewText` is optional; the design's `<Preview>` is the source of truth). `domainId` is optional at create time; publishing or running requires a verified one from `listDomains`. There is no `messageClass` key: the delivery class derives from the sending domain's `sendingPurpose` (a transactional-purpose domain sends with no unsubscribe link and delivers to unsubscribed contacts), so pick the class by picking the domain. `dryRun: true` validates without persisting.
+         *     **Input** Trigger binding, exactly one: an EVENT automation passes `triggerEventId`; a MANUAL-AUDIENCE automation omits it and gives the trigger node `config: { "mode": "manualAudience", "audienceId": "…" }`. Typed conditions: every filter and condition-mode split uses a non-empty `conditions` array; each condition needs `field`, `type` (`string`, `number`, `date` or `bool`) and a canonical snake_case `operator`; unary operators omit `value`, comparisons require a type-correct scalar, a non-empty array, or an exact two-value `between` tuple (see `AutomationNode`). Every `sendEmail` node carries `emailId`, `emailVersionId` and `subject` (`previewText` is optional; the design's `<Preview>` is the source of truth). `domainId` is optional at create time; publishing or running requires a verified one from `listDomains`. There is no `messageClass` key: the delivery class derives from the sending domain's `sendingPurpose` (a transactional-purpose domain sends with no unsubscribe link and delivers to unsubscribed contacts), so pick the class by picking the domain. Node ids are stored as sent, except the two shapes `NODE_ID_REPLACED` reports. `dryRun: true` validates without persisting.
          *
          *     **Returns** `201` with the bare `AutomationRow`; with `dryRun: true`, `200` with an `AutomationDryRunReport` `{ valid, blockers[], warnings[], blockingIssues[], nodeCounts }` (`blockers[]` fail publish, `warnings[]` are advisory, `blockingIssues[]` lists per-node references the bound trigger or contact catalog cannot provide, each of which also fails publish; `valid` is false when any blocker or blocking issue is present).
          *
-         *     **Errors** `400 AUTOMATION_GRAPH_INVALID` with `details.issues[]` (`kind`, `nodeId`, `message` per problem); `404 TRIGGER_EVENT_NOT_FOUND` for an unknown `triggerEventId`.
+         *     **Errors** `400 AUTOMATION_GRAPH_INVALID` with `details.issues[]` (`kind`, `nodeId`, `message` per problem, plus `code` on a `structure` issue); `404 TRIGGER_EVENT_NOT_FOUND` for an unknown `triggerEventId`.
          *
          *     **See also** `updateAutomation`, `testAutomation`, `runAutomation`, `createTrigger`.
          */
@@ -732,7 +1006,7 @@ export interface paths {
         post?: never;
         /**
          * Delete an automation
-         * @description Cascade-deletes the automation: every version row, runs, and logs. Referenced email DESIGNS are shared resources and always survive. Idempotent — an unknown id resolves with `deleted: false`.
+         * @description Cascade-deletes the automation: every version row, its event and test runs, and their logs. Contacts mid-flow stop. Manual-audience runs that have not finished (scheduled, queued, running or paused) are canceled and kept as history, so `listAudienceRuns` still returns them. Referenced email DESIGNS are shared resources and always survive. Idempotent — an unknown or cross-brand id resolves with `deleted: false`, never `404 AUTOMATION_NOT_FOUND`. `409 AUTOMATION_IN_PROGRESS` while the agent is still generating the automation; retry once it finishes.
          */
         delete: operations["deleteAutomation"];
         options?: never;
@@ -743,11 +1017,11 @@ export interface paths {
          *
          *     **Use when** editing a graph or changing runtime state of an automation created with `createAutomation`. Manual-audience runs are controlled with `pauseAudienceRun`, `resumeAudienceRun` and `cancelAudienceRun`, not here.
          *
-         *     **Input** Update: one or more of `name`, `description`, `nodes`, `connections`, `triggerEventId`, under the same typed condition contract as create (explicit `type`, canonical snake_case `operator`, no `value` for unary operators, type-correct values elsewhere); `dryRun: true` validates without persisting. Lifecycle: `published: true` promotes the stored latest version live (optionally pin `automationVersionId`; the graph is validated first), `published: false` unpublishes, `paused: true` or `false` freezes or resumes future send steps (`stopInFlight` also stops runs already in progress).
+         *     **Input** Update: one or more of `name`, `description`, `nodes`, `connections`, `triggerEventId`, under the same typed condition contract as create (explicit `type`, canonical snake_case `operator`, no `value` for unary operators, type-correct values elsewhere); `dryRun: true` validates without persisting. Node ids are stored as sent, so renamed nodes keep their new ids, except the two shapes `NODE_ID_REPLACED` reports. Lifecycle: `published: true` promotes the stored latest version live (optionally pin `automationVersionId`; the graph is validated first), `published: false` unpublishes, `paused: true` or `false` freezes or resumes future send steps (`stopInFlight` also stops runs already in progress).
          *
-         *     **Returns** the bare automation row, or with `dryRun: true` a `200 AutomationDryRunReport` `{ valid, blockers[], warnings[], blockingIssues[], nodeCounts }`: `blockingIssues[]` lists per-node references the effective trigger or contact catalog cannot provide, and publish refuses every one of them, fallback or not (`fatal` says what the reference would do: `true` for filter or split conditions and triple-brace `{{{ }}}` body tokens would break the run, `false` for subject, previewText, fromName, replyTo and double-brace body tags would render empty); `valid` is false when any blocker or blocking issue is present. Updating a LIVE automation saves a draft and does not go live: the previously published version keeps serving until you republish, `published` describes the returned row, `isLive`, `liveVersion` and `liveAutomationVersionId` describe the automation, and `warnings[]` carries `DRAFT_SAVED_NOT_LIVE`.
+         *     **Returns** the bare automation row, or with `dryRun: true` a `200 AutomationDryRunReport` `{ valid, blockers[], warnings[], blockingIssues[], nodeCounts }`: `blockingIssues[]` lists per-node references the effective trigger or contact catalog cannot provide, and publish refuses every one of them, fallback or not (`fatal` says what the reference would do: `true` for filter or split conditions and triple-brace `{{{ }}}` body tokens would break the run, `false` for subject, previewText, fromName, replyTo and double-brace body tags would render empty); `valid` is false when any blocker or blocking issue is present. Updating a LIVE automation saves a draft and does not go live: the previously published version keeps serving until you republish, `published` describes the returned row, `isLive`, `liveVersion` and `liveAutomationVersionId` describe the automation, and `warnings[]` carries `DRAFT_SAVED_NOT_LIVE`. Publishing an automation whose integration trigger has not received its event on the current connection (a Shopify topic with no webhook) still succeeds, and `warnings[]` carries `TRIGGER_EVENT_NOT_RECEIVED` saying what to set up.
          *
-         *     **Errors** `404 AUTOMATION_NOT_FOUND`, `AUTOMATION_VERSION_NOT_FOUND` (pin `liveAutomationVersionId`, a `versions[]` id, or a run row's `automationVersionId`), `TRIGGER_EVENT_NOT_FOUND`; `400 AUTOMATION_GRAPH_INVALID` (`details.issues[]`); `409 AUTOMATION_VERSION_CONFLICT` (re-read, reapply, retry); `422 PUBLISH_VALIDATION_FAILED` (`details.blockers[]`; a cdn.brew.new image a step would send that does not exist is a blocker, listed in `details.missingImages[]`, and a dead icon whose real file sits elsewhere in its pack is moved there instead when the key has `emails` access), `AUTOMATION_NOT_PUBLISHED` (nothing to unpublish), `AUTOMATION_NOT_PAUSABLE` (a manual-audience automation pauses through its runs).
+         *     **Errors** `404 AUTOMATION_NOT_FOUND`, `AUTOMATION_VERSION_NOT_FOUND` (pin `liveAutomationVersionId`, a `versions[]` id, or a run row's `automationVersionId`), `TRIGGER_EVENT_NOT_FOUND`; `400 AUTOMATION_GRAPH_INVALID` (`details.issues[]`); `409 AUTOMATION_VERSION_CONFLICT` (re-read, reapply, retry); `422 PUBLISH_VALIDATION_FAILED` (`details.blockers[]`; a cdn.brew.new image a step would send that does not exist is a blocker, listed in `details.missingImages[]`, and a dead icon whose real file sits elsewhere in its pack is moved there instead when the key has `emails` access), `AUTOMATION_NOT_PUBLISHED` (nothing to unpublish; with `stopInFlight: true` on a draft, also no contacts in flight to stop), `AUTOMATION_NOT_PAUSABLE` (a manual-audience automation pauses through its runs).
          *
          *     **See also** `createAutomation`, `testAutomation`, `runAutomation`, `listAutomationRuns`.
          */
@@ -765,7 +1039,7 @@ export interface paths {
         put?: never;
         /**
          * Test an automation
-         * @description Runs the saved automation END-TO-END through the real workflow in TEST mode — works on drafts and for both event and manual-audience automations; every node executes (filters/splits evaluate against `payload`, and `contact.<name>` conditions read the test recipient’s contact unless `payload` supplies that field — a flat `contact.<name>` key or a `contact` object — and the trigger’s contract keeps extra keys; wait nodes fast-forward). Pass `testRecipient` to DELIVER each send-email node’s email for real to that address (real subject/preview/sender name via the Brew test domain; customer addresses are never hit) — omit it for a silent dry-run with no mail. Test runs never count against analytics rollups or send quotas. Returns `202` with the started run id; follow per-node status via `GET /v1/automations/runs/{automationRunId}&include=logs`. Optional `scenario` controls simulate timed opens/clicks at engagement-filter nodes and force left/right percentage-split choices (waits use a virtual clock; controls stay separate from `payload`, and simulated events never enter live analytics or send quotas); the run row’s `testCoverage` reports visited nodes, traversed connections, evaluated or forced decisions, uncovered paths and simulation limitations.
+         * @description Runs the saved automation END-TO-END through the real workflow in TEST mode — works on drafts and for both event and manual-audience automations; every node executes (filters/splits evaluate against `payload`, and `contact.<name>` conditions read the test recipient’s contact unless `payload` supplies that field — a flat `contact.<name>` key or a `contact` object — and the trigger’s contract keeps extra keys; wait nodes fast-forward). Pass `testRecipient` to DELIVER each send-email node’s email for real to that address (real subject/preview/sender name; verified configured sender domains are preserved, otherwise delivery uses the Brew test domain; customer addresses are never hit; the address must be a teammate with access to the brand, an address on a verified sending domain of the brand, or, for a signed-in person (not an API key), their own address or one on their company domain, else `422 TEST_RECIPIENT_NOT_ALLOWED`) — omit it for a silent dry-run with no mail. Test runs are excluded from live analytics rollups. Test deliveries never count toward the plan’s email sends. Test payloads never update real contact records. Returns `202` with the started run id; follow per-node status via `GET /v1/automations/runs/{automationRunId}?include=logs`. Optional `scenario` controls simulate timed opens/clicks at engagement-filter nodes and force left/right percentage-split choices (waits use a virtual clock; controls stay separate from `payload`, and simulated events never enter live analytics or send quotas); the run row’s `testCoverage` reports visited nodes, traversed connections, evaluated or forced decisions, uncovered paths and simulation limitations. On a Brew-event (unsubscribe) trigger, omit payload to use Brew’s sample event; supplied fields replace the sample’s. The run never creates or edits a contact. `400 INVALID_PAYLOAD` when `payload` does not match the trigger’s payload schema; `422 AUTOMATION_NOT_READY` when generation failed or a step is incomplete or invalid (the message names it); `409 AUTOMATION_IN_PROGRESS` while the agent is still generating the automation.
          */
         post: operations["testAutomation"];
         delete?: never;
@@ -785,7 +1059,7 @@ export interface paths {
         put?: never;
         /**
          * Run a manual-audience automation
-         * @description Launches a MANUAL-AUDIENCE automation against the audience bound to its trigger node. `dryRun: true` previews without sending; `scheduledAt` launches later, at most 1 year ahead. Percentage-based `gradualSend` delivers each send step in custom hour or calendar-day batches and supports manual pause/resume/cancel. `400` when `scheduledAt` is more than 1 year ahead, or a `gradualSend` plan exceeds 50,000 recipients, 30 batches, or 30 elapsed days. `422 EMAIL_IMAGES_MISSING` when a step would send a cdn.brew.new image that does not exist (`details.missingImages[]`). Returns `202` with the `audienceRunId`.
+         * @description Launches a MANUAL-AUDIENCE automation against the audience bound to its trigger node. `dryRun: true` previews without sending; `scheduledAt` launches later, at most 1 year ahead. Percentage-based `gradualSend` delivers each send step in custom hour or calendar-day batches and supports manual pause/resume/cancel. `400` when `scheduledAt` is more than 1 year ahead, or a `gradualSend` plan exceeds 50,000 recipients, 30 batches, or 30 elapsed days. `422 AUTOMATION_NOT_RUNNABLE` for an event automation, which runs when its trigger fires. `422 AUTOMATION_NOT_READY` when the saved flow cannot launch: a step is incomplete or invalid, a send step’s sender domain is not verified, generation failed, or no usable audience is bound (the message names which). `422 EMAIL_IMAGES_MISSING` when a step would send a cdn.brew.new image that does not exist (`details.missingImages[]`). `409 AUTOMATION_IN_PROGRESS` while the agent is still generating the automation. Returns `202` with the `audienceRunId`.
          */
         post: operations["runAutomation"];
         delete?: never;
@@ -871,9 +1145,9 @@ export interface paths {
          *
          *     **Input** `audienceRunId` in the path; no body.
          *
-         *     **Returns** `200` with the run’s new `status` (`paused`).
+         *     **Returns** `200` with the run’s new `status` (`paused`). A run its operator already paused returns the same `200` and changes nothing.
          *
-         *     **Errors** `409 RUN_NOT_PAUSABLE` unless the run is running; `404 AUDIENCE_RUN_NOT_FOUND` for an unknown or cross-brand id.
+         *     **Errors** `409 RUN_NOT_PAUSABLE` when the run is scheduled, completed, failed or canceled, or held at the plan limit (`pauseReason: plan_limit`: it resumes on its own once the monthly send allowance has room, so cancel it to stop it); `404 AUDIENCE_RUN_NOT_FOUND` for an unknown or cross-brand id.
          *
          *     **See also** `resumeAudienceRun`, `cancelAudienceRun`, `getAudienceRun`.
          */
@@ -903,7 +1177,7 @@ export interface paths {
          *
          *     **Returns** `200` with the run’s new `status` and `resumedFrom` (`paused` or `failed`).
          *
-         *     **Errors** `409 RUN_NOT_PAUSED` when a running run is resumed; `409 RUN_NOT_RESUMABLE` when the run is held at the plan limit, or a failed run has no undelivered send step or a send step delivered to only part of its segment; `409 RUN_IN_PROGRESS` when another run of the automation is active; `402 SEND_QUOTA_EXCEEDED` when resuming would exceed the monthly send limit; `422 INVALID_REQUEST` when a send step is no longer valid; `503 RUN_STOP_FAILED` / `RUN_START_FAILED` when the workflow engine could not stop the previous run or start the new one (retry); `404 AUDIENCE_RUN_NOT_FOUND` for an unknown or cross-brand id.
+         *     **Errors** `409 RUN_NOT_PAUSED` when the run is neither paused nor failed (scheduled, queued, running, completed or canceled); `409 RUN_NOT_RESUMABLE` when the run is held at the plan limit, or a failed run has no undelivered send step or a send step delivered to only part of its segment; `409 RUN_IN_PROGRESS` when another run of the automation is active; `402 SEND_QUOTA_EXCEEDED` when resuming would exceed the monthly send limit; `422 AUTOMATION_NOT_READY` when a send step still to go can no longer send, such as a sender domain that is no longer verified (the message names the step); `503 RUN_STOP_FAILED` / `RUN_START_FAILED` when the workflow engine could not stop the previous run or start the new one (retry); `404 AUDIENCE_RUN_NOT_FOUND` for an unknown or cross-brand id.
          *
          *     **See also** `pauseAudienceRun`, `cancelAudienceRun`, `getAudienceRun`.
          */
@@ -933,7 +1207,7 @@ export interface paths {
          *
          *     **Returns** `200` with the run’s new `status` (`canceled`).
          *
-         *     **Errors** `409 RUN_NOT_CANCELLABLE` when the run already finished; `503 RUN_STOP_FAILED` when the workflow could not be stopped (retry); `404 AUDIENCE_RUN_NOT_FOUND` for an unknown or cross-brand id.
+         *     **Errors** `409 RUN_NOT_CANCELLABLE` when the run already completed, failed or was canceled, including a repeat cancel with a new `Idempotency-Key` (a retry with the same key replays the first answer); `404 AUDIENCE_RUN_NOT_FOUND` for an unknown or cross-brand id.
          *
          *     **See also** `pauseAudienceRun`, `resumeAudienceRun`, `cancelAutomationRun` (one event or test run).
          */
@@ -959,7 +1233,7 @@ export interface paths {
          *
          *     **Input** `automationId`, `triggerEventId`, `triggerInstanceId`, `recipientEmail` (one contact's run history, matched case-insensitively), `status`, `mode` (`live` | `test`), an inclusive `from`/`to` window on `startedAt`, `limit` and `cursor` (an opaque native cursor).
          *
-         *     **Returns** `200` with a page of run rows.
+         *     **Returns** `200` with a page of run rows. Each page reads a bounded slice of history, so it can hold fewer rows than `limit`, even none, while `hasMore` is true; follow `cursor` until it is `null`.
          *
          *     **Errors** `400 INVALID_REQUEST` for an unknown query key, a reversed window or a malformed cursor.
          *
@@ -987,7 +1261,7 @@ export interface paths {
          *
          *     **Use when** debugging one contact’s journey or confirming a test run finished.
          *
-         *     **Input** `automationRunId` in the path; `include=logs` inlines the newest 100 per-node execution logs and sets `logsTruncated` when older logs exist.
+         *     **Input** `automationRunId` in the path; `include=logs` inlines the newest 100 execution log rows in `orderIndex` order and sets `logsTruncated` when older rows exist. Each node status change is its own row: a node that runs has a `running` row (no `completedAt`), then its terminal `completed` or `failed` row, or `skipped` when the run is canceled while it runs; a node a branch rules out has only a `skipped` row. A node’s outcome is its last row. A run canceled between two nodes adds no row, so the node that finished keeps its outcome; the run’s `status` and `error` record the cancel.
          *
          *     **Returns** `200` with the row; `logs` is present only when requested.
          *
@@ -1034,6 +1308,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/automations/triggers/brew-events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Get or create an unsubscribe trigger
+         * @description Returns the brand’s trigger for one Brew event scope, creating it the first time. Brew events start automations from things that happen inside Brew. The first is `contact.unsubscribed`: a contact unsubscribed with an email’s unsubscribe link or their mail app’s one-click button (never a bounce, complaint, import or API edit).
+         *
+         *     **Use when** an automation should start when a contact unsubscribes, from one marketing domain’s list or from every email the brand sends.
+         *
+         *     **Input** `{ event: "contact.unsubscribed", scope: "domain", domainId }` for one marketing domain’s list (ids from `listDomains`), or `{ event: "contact.unsubscribed", scope: "all" }` for every email. An unsubscribe from all clicked in one of a domain’s emails also starts that domain’s trigger, while the contact was still on its list.
+         *
+         *     **Returns** `201` with the new trigger row, or `200` with the existing one (`created: false`). Brew owns its title and payload, so the row is immutable and never fires over the API. The contact has just opted out, so an automation on this trigger sends only a message they need (such as confirming the unsubscribe) from a transactional domain, or mail from another marketing domain they are still on; publish refuses a flow none of whose emails could reach them.
+         *
+         *     **Errors** `400 INVALID_REQUEST` when `domainId` is missing for `scope: "domain"` or sent for `scope: "all"`; `404 DOMAIN_NOT_FOUND` for an unknown or cross-brand domain; `422 DOMAIN_PURPOSE_NOT_ALLOWED` for a transactional domain, which owns no list; `409 TRIGGER_LIMIT_REACHED` when the brand already holds the maximum number of triggers.
+         *
+         *     **See also** `createAutomation`, `fireTrigger`, `listDomains`.
+         */
+        post: operations["ensureBrewEventTrigger"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/automations/triggers/integration-events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Get or create an integration event trigger
+         * @description Returns the trigger for one live integration event, creating it the first time: an event a connected live source sends, such as a PostHog project’s own events or the Stripe and Shopify app catalogs.
+         *
+         *     **Use when** an automation should start on such an event. Find it with `listIntegrationEvents`; read its variables with `describeIntegrationEvent`.
+         *
+         *     **Input** `{ eventId }` from `listIntegrationEvents`. Never compose an id from a provider and an event name.
+         *
+         *     **Returns** `201` with the new trigger row, or `200` with the existing one (`created: false`). The same event always returns the same trigger, across reconnects of the same account. Brew owns its title and payload contract. The provider starts sending the event once an automation using it is published; saving a draft changes nothing upstream. An event listed bare, or described more than a day ago, is first described at the provider on the account’s read budget, so `payloadSchema` carries its properties; `propertiesStatus` says when the provider could not be read (`rate_limited` with `retryAfterSeconds`, `stored` or `unavailable`).
+         *
+         *     **Errors** `404 INTEGRATION_EVENT_NOT_FOUND` for an unknown or cross-brand `eventId`; `404 NOT_FOUND` when the event left its source between the read and the write; `409 INTEGRATION_RECONNECT_REQUIRED` when a catalog event’s trigger was removed with its connection (reconnect the integration); `409 TRIGGER_LIMIT_REACHED` when the brand already holds the maximum number of triggers.
+         *
+         *     **See also** `listIntegrationEvents`, `describeIntegrationEvent`, `createAutomation`.
+         */
+        post: operations["ensureIntegrationEventTrigger"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/automations/triggers": {
         parameters: {
             query?: never;
@@ -1043,7 +1377,7 @@ export interface paths {
         };
         /**
          * List triggers
-         * @description Lists every trigger the brand has under `{ data, pagination }`: `provider: "brew_api"` for API-created customs and `provider: "clerk" | "stripe" | …` for integration-provisioned triggers. Each row carries its `payloadSchema`.
+         * @description Lists every trigger the brand has under `{ data, pagination }`: `provider: "brew_api"` for API-created customs, `provider: "clerk" | "stripe" | …` for integration-provisioned triggers, and `provider: "brew_event"` for the unsubscribe triggers Brew starts itself. Each row carries its `payloadSchema`.
          *
          *     **Use when** finding the `triggerEventId` to fire, to wire an automation to, or to read the typed contract of.
          *
@@ -1121,9 +1455,11 @@ export interface paths {
          *
          *     **Use when** wiring an external service, before sending a live event.
          *
-         *     **Returns** `200 { ready, blockers[], payloadSchema, endpoint, publishedAutomations, counts }`. A `NO_PUBLISHED_AUTOMATION` blocker with `ready: false` means the trigger resolves and the credential passes, but nothing published listens for it yet, so a fire would start no runs. That stays a 200 because a probe has to report why a fire would not work.
+         *     **Returns** `200 { ready, blockers[], payloadSchema, endpoint, publishedAutomations, counts, delivery? }`. A `NO_PUBLISHED_AUTOMATION` blocker with `ready: false` means the trigger resolves and the credential passes, but nothing published listens for it yet, so a fire would start no runs. That stays a 200 because a probe has to report why a fire would not work.
          *
-         *     **Errors** `404 TRIGGER_EVENT_NOT_FOUND` for an unknown or cross-brand id.
+         *     `delivery` appears for an integration trigger whose source sends only the events set up at its end (a Shopify shop sends a topic only to its own webhook): whether Brew has received that event, and what to set up when it has not. It never changes `ready`.
+         *
+         *     **Errors** `404 TRIGGER_EVENT_NOT_FOUND` for an unknown or cross-brand id; `409 TRIGGER_NOT_FIREABLE` for a Brew event trigger, which Brew starts itself.
          *
          *     **See also** `fireTrigger`, `getTriggerContract`, `listTriggers`.
          */
@@ -1151,13 +1487,13 @@ export interface paths {
          *
          *     **Use when** an event in your product should start every published automation attached to this trigger.
          *
-         *     **Input** `{ payload }`, validated against the trigger’s `payloadSchema`. Unknown fields are accepted and reported in `warnings[]`. The contact derived from the payload is upserted before the fan-out with the declared top-level scalar fields the fire sent; object and array fields stay template data, and a contract `fallbackValue` is never written onto the contact. A value the contact field’s type refuses is left out and reported as a `FIELD_TYPE_MISMATCH` warning (`field`, `expectedType`, `actualType`); the rest of the contact is written and the runs still start.
+         *     **Input** `{ payload }`, validated against the trigger’s `payloadSchema`. Unknown fields are accepted and reported in `warnings[]`. The contact derived from the payload is upserted before the fan-out with the declared top-level scalar fields the fire sent; object and array fields stay template data, and a contract `fallbackValue` is never written onto the contact. A value the contact field’s type refuses is left out and reported as a `FIELD_TYPE_MISMATCH` warning (`field`, `expectedType`, `actualType`), and a declared key with no ASCII letter or digit (`お名前`, `#`), which no contact field can hold, as a `FIELD_NAME_INVALID` warning (`field`); the rest of the contact is written and the runs still start.
          *
          *     **Returns** `202 { triggerInstanceId, triggerEventId, status, automationRunIds[], notStarted[], publishedAutomations[], counts, warnings[], receivedAt }`. Follow a run with `getAutomationRun`, the fire itself with `getTriggerInstance`. `notStarted[]` names each automation whose run failed to start and why, so a `triggered` fire with no runs explains itself. `counts.skipped` is the recipients a suppression already covered, so `automations: 2, skipped: 2` means nothing was delivered.
          *
-         *     **Idempotency** send a stable `Idempotency-Key` header on every retry. A repeat answers `200` with `status: "replayed"` and the ORIGINAL run ids; nothing fires twice.
+         *     **Idempotency** send a stable `Idempotency-Key` header on every retry. A repeat answers `200` with `status: "replayed"` and the ORIGINAL run ids; nothing fires twice. A fire key is matched against the stored trigger receipt, so it replays for as long as the receipt is kept (90 days), not only the 24 hours of the shared response cache. Use one key per business action and never reuse it for a different fire.
          *
-         *     **Errors** `400 INVALID_PAYLOAD` when the payload does not satisfy the schema, or when `email` (or `user.email`) is not one plain address such as `jane@example.com`: a display name (`Jane <jane@example.com>`), a list or a line break is refused with `details.errors[].code: "invalid_email"`, and no contact is written; `404 TRIGGER_EVENT_NOT_FOUND` for an unknown or cross-brand id; `422 NO_PUBLISHED_AUTOMATION` when nothing published listens for the trigger; `409 IDEMPOTENCY_CONFLICT` when a key is reused with a different body.
+         *     **Errors** `400 INVALID_PAYLOAD` when the payload does not satisfy the schema, or when `email` (or `user.email`) is not one plain address such as `jane@example.com`: a display name (`Jane <jane@example.com>`), a list or a line break is refused with `details.errors[].code: "invalid_email"`, and no contact is written; `404 TRIGGER_EVENT_NOT_FOUND` for an unknown or cross-brand id; `422 NO_PUBLISHED_AUTOMATION` when nothing published listens for the trigger; `409 IDEMPOTENCY_CONFLICT` when a key is reused with a different body; `409 TRIGGER_NOT_FIREABLE` for a Brew event trigger, which Brew starts itself (try its automation with `testAutomation`).
          *
          *     **See also** `checkTriggerReady`, `getTriggerInstance`, `listAutomationRuns`.
          */
@@ -1190,11 +1526,11 @@ export interface paths {
          *
          *     **Use when** you want generated types, a dry-run validator (`validateTriggerPayload`) and drift detection for the JSON your service fires, or when you flip `enforcement`. Draft the tree from a real payload with `inferPayloadContract`. Trigger contracts MUST keep a top-level `{ key: "email", type: "string", required: true }` field so automations can resolve a recipient.
          *
-         *     **Input** `fields` is a tree: scalars (`string`, `int`, `float`, `boolean`, `date`, `enum`), `object` nodes with `children`, `array` nodes with `children` (object elements), `itemType` (scalar elements) or neither. The tree is validated BEFORE any write: unknown-typed nodes are refused, keys are unique per level, an `object` declares at least one child. `enforcement`: `off` (advisory, the default for a new contract), `prune` (drop undeclared keys before the run), `strict` (reject a payload carrying them). A `fallbackValue` satisfies `required` in EVERY mode: a producer that omits the key never fails a fire, every recipient gets the fallback. The version bumps only when the behavioral surface changes (keys, types, required, fallbacks; not descriptions or examples). Declaring a contract never changes fire behavior by itself. Loosening is the escape hatch when `strict` rejects a drifted producer in production.
+         *     **Input** `fields` is a tree: scalars (`string`, `int`, `float`, `boolean`, `date`, `enum`), `object` nodes with `children`, `array` nodes with `children` (object elements), `itemType` (scalar elements) or neither. The tree is validated BEFORE any write: unknown-typed nodes are refused, keys are unique per level, an `object` declares at least one child, and no two top-level fields that a fire copies onto the contact fold to one contact field (`plan` and `Plan`, `team_size` and `Team Size`; rename one or set `syncToContact: false` on one). `enforcement`: `off` (advisory, the default for a new contract), `prune` (drop undeclared keys before the run), `strict` (reject a payload carrying them). A `fallbackValue` satisfies `required` in EVERY mode: a producer that omits the key never fails a fire, every recipient gets the fallback. The version bumps only when the behavioral surface changes (keys, types, required, fallbacks; not descriptions or examples). Declaring a contract never changes fire behavior by itself. Loosening is the escape hatch when `strict` rejects a drifted producer in production.
          *
          *     **Returns** `200` with the same body a follow-up `getTriggerContract` returns plus `warnings[]` (always present, often empty): `ENFORCEMENT_LOOSENED_WHILE_PUBLISHED` when enforcement went down while published automations consume the trigger (tightening back is refused until they are unpublished or detached), and one `REQUIRED_FIELD_SATISFIED_BY_FALLBACK` per required field that declares a fallback (`field` is its dotted path). Ratchet while a published automation consumes the trigger: tighten `off→prune`, `off→strict`, `prune→strict` = `409`; loosen = `200` + warning; remove, retype or enum-narrow a field, or add a required field WITHOUT a fallback = `409`; add an optional field, widen a type, add an enum value, or add a required field WITH a fallback = `200` (+ warning per fallback). With no published consumer every change is `200`.
          *
-         *     **Errors** `409 CONTRACT_LOCKED_BY_PUBLISHED_AUTOMATIONS` for a change the ratchet refuses (`message` names the incompatibility; unpublish or detach the consumers, or make a compatible change); `404 TRIGGER_EVENT_NOT_FOUND`; `400 INVALID_REQUEST` (`param: "fields"`) when the tree fails structural validation, or when a body with no `fields` targets a trigger that has no stored contract yet.
+         *     **Errors** `409 CONTRACT_LOCKED_BY_PUBLISHED_AUTOMATIONS` for a change the ratchet refuses (`message` names the incompatibility; unpublish or detach the consumers, or make a compatible change); `404 TRIGGER_EVENT_NOT_FOUND`; `422 TRIGGER_IMMUTABLE` for a Brew event trigger, whose contract Brew owns; `400 INVALID_REQUEST` (`param: "fields"`) when the tree fails structural validation, or when a body with no `fields` targets a trigger that has no stored contract yet.
          *
          *     **See also** `getTriggerContract`, `validateTriggerPayload`, `inferPayloadContract`, `updateAutomation` (publishing a consumer starts the ratchet).
          */
@@ -1259,7 +1595,7 @@ export interface paths {
         };
         /**
          * List trigger instances
-         * @description Lists fired trigger-event instances, newest first, under `{ data, pagination }`: the audit log of every inbound fire, from the API (`source: "api"`) or an integration webhook (`source: "integration"`). Each row links the fire to the automations it matched and the runs it started (`automationRunIds`).
+         * @description Lists fired trigger-event instances, newest first, under `{ data, pagination }`: the audit log of every inbound fire, from the API (`source: "api"`), an integration webhook (`source: "integration"`), or Brew itself (`source: "brew_event"`, a contact unsubscribing). Each row links the fire to the automations it matched and the runs it started (`automationRunIds`).
          *
          *     **Use when** confirming that fires arrived, or following a fire to its runs and sends.
          *
@@ -1335,9 +1671,11 @@ export interface paths {
         put?: never;
         /**
          * Create or update contacts
-         * @description Upserts a single contact OR a batch (`{ contacts: [...] }`, up to 1000 rows). Unknown custom fields auto-create field definitions on the brand, typed from the batch (native booleans/numbers, ISO-date strings → `date`, anything else `string`).
+         * @description Upserts a single contact OR a batch (`{ contacts: [...] }`, up to 1000 rows). Unknown custom fields auto-create field definitions on the brand, typed from the batch (native booleans/numbers, ISO-date strings → `date`, anything else `string`). `fieldsCreated` names only the definitions this request created: when two requests create the same new field at once, the first definition wins and the values in the other request are coerced or refused against it, exactly as if it had been sent second. Create the field first with `POST /v1/fields` to pin its type.
          *
-         *     Custom-field values are coerced to the definition's type (dates → epoch ms, `"1,234"` → 1234, `yes`/`no` → booleans). A value that cannot be coerced (`"$49"` in a number field) is a `409 FIELD_TYPE_MISMATCH` on a single upsert and a per-row `errors[]` entry (`code: FIELD_TYPE_MISMATCH`, `field`) in a batch — the other rows still land. A `customFields` key is never stored under a core field name. One whose loss would change the contact (`subscribed`, `First Name`, `consent`, a suppression flag or domain opt-out, or an `email` naming another address) is a `422 CORE_FIELD_IMMUTABLE` on a single upsert (nothing written) and a per-row `errors[]` entry (`code: CORE_FIELD_IMMUTABLE`, `field`) in a batch; send `firstName`, `lastName`, `subscribed` and `consent` at the top level. A key naming a field Brew manages (`createdAt`, `validationStatus`) is dropped with a `warnings[]` entry (`code: CORE_FIELD_IGNORED`, `field`) and the contact is still written, and an `email` key repeating the contact address is ignored.
+         *     Custom-field names are folded to one key: words split at spaces, `_`, `-` and a lower-to-upper letter change, then joined camelCase (`Plan`, `PLAN` and `plan` are the field `plan`; `team_size` and `Team Size` are `teamSize`). A key written under its folded name adds a `FIELD_NAME_NORMALIZED` warning (`original`, `normalized`). Two keys that fold to one field (`plan` and `Plan`) would lose one value, so they are a `422 FIELD_NAME_COLLISION` on a single upsert (nothing written) and a per-row `errors[]` entry (`code: FIELD_NAME_COLLISION`) in a batch. A key with no ASCII letter or digit (`名前`, `#`) folds to no field, so it is a `422 FIELD_NAME_INVALID` on a single upsert (nothing written, valid keys beside it included) and a per-row `errors[]` entry (`code: FIELD_NAME_INVALID`, `field`) in a batch; send such a value under an ASCII name. A blank key (`""` or only spaces) is not stored either, but the contact is still written and a `warnings[]` entry (`code: BLANK_FIELD_NAME_IGNORED`, `field`) names it. Values may be any text.
+         *
+         *     Custom-field values are coerced to the definition's type (dates → epoch ms, `"1,234"` → 1234, `yes`/`no` → booleans). A value that cannot be coerced (`"$49"` in a number field) is a `409 FIELD_TYPE_MISMATCH` on a single upsert and a per-row `errors[]` entry (`code: FIELD_TYPE_MISMATCH`, `field`) in a batch — the other rows still land. A value that was converted adds one `warnings[]` entry per field (`code: FIELD_TYPE_COERCED`, `field`, `from`, `to`); a date written to a `date` field is not reported. A `customFields` key is never stored under a core field name. One whose loss would change the contact (`subscribed`, `First Name`, `consent`, a suppression flag or domain opt-out, or an `email` naming another address) is a `422 CORE_FIELD_IMMUTABLE` on a single upsert (nothing written) and a per-row `errors[]` entry (`code: CORE_FIELD_IMMUTABLE`, `field`) in a batch; send `firstName`, `lastName`, `subscribed` and `consent` at the top level. A key naming a field Brew manages (`createdAt`, `validationStatus`) is dropped with a `warnings[]` entry (`code: CORE_FIELD_IGNORED`, `field`) and the contact is still written, and an `email` key repeating the contact address is ignored.
          *
          *     Dates: a JSON number is epoch milliseconds. A string may be ISO (`2026-04-03`, with or without a time and offset), a Unix timestamp in seconds (10 digits) or milliseconds (13), a month name (`3 Apr 2026`, `April 3, 2026`, `03-Apr-26`), year-first (`2026/04/03`), compact (`20260403`), month and year read as the 1st (`2026-04`), dotted day-first (`03.04.2026`), or a slash or dash date. A slash or dash date with a day over 12 reads that way (`13/04/2026` is 13 April). One that reads either way (`03/04/2026`) follows the day/month order the batch's other dates in that field prove, else month/day, with a `warnings[]` entry (`code: DATE_ORDER_ASSUMED`, `field`). Send `YYYY-MM-DD` to be unambiguous.
          *
@@ -1367,11 +1705,11 @@ export interface paths {
          *
          *     **Use when** checking whether an address exists, reading its consent record, or inspecting its custom fields before a send.
          *
-         *     **Input** `email` in the path (URL-encoded; matched case-insensitively).
+         *     **Input** `email` in the path (URL-encoded; matched case-insensitively). `include=openProfile` attaches `openProfile`: the smart-send open-time profile, 48 UTC half-hour open counts (`histogram`), `totalOpens`, `lastOpenedAt`, and once there is enough history `bestOpenMinuteUtc`, `bestSendMinuteUtc` and `confidence`; `null` when the contact has no opens folded yet. It is not bot detection: machine opens cannot be told apart in it (per-event classification is on `getEventsAnalytics`). It needs the `emails` scope as well as `contacts`.
          *
          *     **Returns** `200` with the row.
          *
-         *     **Errors** `404 CONTACT_NOT_FOUND` when no contact carries that address.
+         *     **Errors** `404 CONTACT_NOT_FOUND` when no contact carries that address; `403 INSUFFICIENT_PERMISSIONS` when `include=openProfile` is asked for without the `emails` scope; `400 INVALID_REQUEST` for an unknown `include` token.
          *
          *     **See also** `listContacts`, `updateContact`, `deleteContact`, `upsertContacts`.
          */
@@ -1387,7 +1725,7 @@ export interface paths {
         head?: never;
         /**
          * Update a contact
-         * @description Patches fields on the contact (`{ fields: { <name>: <value> } }` — core columns or custom fields) and/or records marketing consent provenance (`{ consent: { source, capturedAt?, policyVersion?, evidence? } }`, never re-subscribing an opt-out). Send one or both. Returns `{ contact, updated }` where `updated` lists the field names that changed (`consent` included). `fields.subscribed: false` unsubscribes; `true` on a contact who opted out is a `422 RESUBSCRIBE_NOT_ALLOWED` (they re-subscribe through their own action, or from their contact page in the Brew app).
+         * @description Patches fields on the contact (`{ fields: { <name>: <value> } }` — core columns or custom fields) and/or records marketing consent provenance (`{ consent: { source, capturedAt?, policyVersion?, evidence? } }`, never re-subscribing an opt-out). Send one or both. Returns `{ contact, updated, warnings }`: `updated` lists the fields whose stored value changed (`consent` included), and is empty when every value sent matched what was stored (nothing is written then). `warnings` carries the same `DATE_ORDER_ASSUMED` and `FIELD_TYPE_COERCED` caveats a single upsert reports: an ambiguous date such as `03/04/2026` reads month/day, so send `YYYY-MM-DD`. A JSON number past 9007199254740991 (2^53 - 1) arrives already rounded, so a `number` or `string` field refuses it with `409 FIELD_TYPE_MISMATCH`; send large ids as JSON strings to a `string` field. `fields.subscribed: false` unsubscribes; `true` on a contact who opted out is a `422 RESUBSCRIBE_NOT_ALLOWED` (they re-subscribe through their own action, or from their contact page in the Brew app). Two `fields` keys that name one field (`plan` and `Plan`, `customFields.plan` and `plan`) are a `422 FIELD_NAME_COLLISION`, nothing written.
          */
         patch: operations["updateContact"];
         trace?: never;
@@ -1410,6 +1748,8 @@ export interface paths {
          *     Pass an optional `audienceId` to scope the search to a saved audience’s members — its stored filter set is evaluated as one unit with its own `logicalOperator` (an OR audience stays an OR) and then ANDed with `filters`, so the page is exactly who a send to that audience reaches (an unknown / cross-brand id, or an audience a send would refuse → `400`).
          *
          *     Set `count: true` to get `{ count }` instead of a page.
+         *
+         *     `include: ["openProfile"]` attaches each returned contact’s smart-send open-time profile (`openProfile`, as on `getContact`; `null` when they have no opens yet). Each row costs one profile read, so a page then holds at most 10 contacts (`pagination.limit` reports the size read); it needs the `emails` scope as well (`403 INSUFFICIENT_PERMISSIONS` without it) and is refused with `count: true`.
          */
         post: operations["searchContacts"];
         delete?: never;
@@ -1429,7 +1769,7 @@ export interface paths {
         put?: never;
         /**
          * Validate email deliverability
-         * @description Batch deliverability check (up to 100 addresses) — run BEFORE importing or sending. Each address is classified `valid` (safe), `risky` (deliverable but flagged — e.g. role account, disposable, catch-all), or `invalid` (undeliverable / do-not-send), with a machine-readable `reason` and a `didYouMean` typo correction when applicable. Cost: 2 credits PER ADDRESS (`X-Credit-Cost` = 2 × the number of addresses), charged ONLY on success — if the check cannot complete for the whole batch, the call returns a retryable `503` and is NOT billed.
+         * @description Batch deliverability check (up to 100 addresses) — run BEFORE importing or sending. Each address is classified `valid` (safe), `risky` (deliverable but flagged — e.g. role account, disposable, catch-all), or `invalid` (undeliverable / do-not-send), with a machine-readable `reason` and a `didYouMean` typo correction when applicable. Partial outages retain the legacy `status: risky` with `checkOutcome: unavailable` (not a completed risky verdict) and preserve the stored verdict. `persistence` reports matched, modified and failed update-only writes; validation never grants subscription or clears suppression. Cost: 2 credits PER ADDRESS (`X-Credit-Cost` = 2 × the number of addresses), charged ONLY on success — if the check cannot complete for the whole batch, the call returns `503` (transient outages are retryable; configuration failures need support) and is NOT billed.
          */
         post: operations["validateContacts"];
         delete?: never;
@@ -1449,15 +1789,41 @@ export interface paths {
         put?: never;
         /**
          * Bulk-import contacts from CSV
-         * @description Parse a raw CSV string and upsert the rows as contacts (≤ 1000). By default each column header maps to a field of the same name (`email` is required). A header that spells a core field, ignoring case, spaces, `_` and `-`, or whose field key equals it (`First.Name`), maps to it: `Email`, `First Name`, `Last Name` and `Subscribed` fill `email`, `firstName`, `lastName` and `subscribed`. Pass `mapping` to remap single columns; the columns it leaves out keep their default mapping, `""` leaves a column out, and a key that names no column is a `400`. A core field that `mapping` fills is filled from that column alone: another column whose default would fill it is left out with a `CSV_COLUMN_IGNORED` warning. Rows with a missing/invalid email are SKIPPED (counted in `summary.skipped`), not errored; disposable-domain rows are imported with `validationStatus: "risky"` (deliverable but flagged). Returns the same `{ summary, fieldsCreated, errors, warnings }` as batch-create — `207` when some rows fail.
+         * @description Parse a raw CSV string and upsert the rows as contacts (≤ 1000). By default each column header maps to the custom field its name folds to, the same camelCase name `POST /v1/contacts` stores (`Plan` → `plan`, `Team Size` → `teamSize`); `email` is required. A header that spells a core field, ignoring case, spaces, `_` and `-`, or whose field key equals it (`First.Name`), maps to it: `Email`, `First Name`, `Last Name` and `Subscribed` fill `email`, `firstName`, `lastName` and `subscribed`. Pass `mapping` to remap single columns; the columns it leaves out keep their default mapping, `""` leaves a column out, and a key that names no column is a `400`. Two columns that land on one field (`plan,Plan`: names fold as on `POST /v1/contacts`; `First Name,firstName`; `email,Email`) are a `422 FIELD_NAME_COLLISION` before any row is read: map one to another name or leave it out with `""`. `mapping` applies first: a core field it fills is read only from the columns it maps there, and an unlisted column whose default would fill the same field is left out with a `CSV_COLUMN_IGNORED` warning (with `mapping: { Consent: "subscribed" }`, a row whose `Subscribed` is `false` and `Consent` is `true` follows `Consent`). Then every column still filling `subscribed` is read, and an opt-out in any of them wins (`Subscribed,Subscribed?`). A column whose name (its header, or the name `mapping` gives it) has no ASCII letter or digit (`名前`, `#`) lands on the existing field labeled with that name, else on a new `column<N>` field labeled with it, N its 1-based column position (`column2v2` when another field or column already holds `column2`). Two columns given one such name are a `422 FIELD_NAME_COLLISION`, and a blank name leaves its column out, as `""` does. Landing on an existing field adds a `CSV_COLUMN_MATCHED_FIELD` warning naming the column and the field key. A name that labels several existing fields is a `422 FIELD_NAME_AMBIGUOUS` (`details.columns` lists the candidate keys) before anything is written, dry run included: map such a column in `mapping`. Rows with a missing/invalid email are SKIPPED (counted in `summary.skipped`), not errored; disposable-domain rows are imported with `validationStatus: "risky"` (deliverable but flagged). Returns the same `{ summary, fieldsCreated, errors, warnings }` as batch-create plus `importId` — `207` when some rows fail. The batch is listed in Import History under `fileName` (optional), and each contact it writes carries `importId` until a later import touches it (filter on it to list them; deleting the import in the app removes the contacts it created). For rows you already hold as JSON, use `POST /v1/contacts/import`.
          *
-         *     CSV cells are text: a column mapped onto an EXISTING field is coerced to that field's type (dates → epoch ms, `1,234` → 1234, `yes`/`no` → booleans), and a cell that cannot be coerced (`$49` in a number column) fails ITS row with a per-row `errors[]` entry (`code: FIELD_TYPE_MISMATCH`, `field`) while the other rows still land. An undeclared column is created as a `string` field unless every value is an ISO date (→ `date`); predeclare `number` / `bool` columns with `POST /v1/fields`. A column whose field Brew manages (`Created At`, `Validation Status`) is not imported and adds a `warnings[]` entry (`code: CSV_COLUMN_IGNORED`, `field` names the column).
+         *     CSV cells are text: a column mapped onto an EXISTING field is coerced to that field's type (dates → epoch ms, `1,234` → 1234, `yes`/`no` → booleans), and a cell that cannot be coerced (`$49` in a number column) fails ITS row with a per-row `errors[]` entry (`code: FIELD_TYPE_MISMATCH`, `field`) while the other rows still land. A converted cell adds a `warnings[]` entry (`code: FIELD_TYPE_COERCED`, `field`, `from`, `to`); a date written to a `date` field is not reported. An undeclared column is created as a `string` field unless every value is an ISO date (→ `date`); predeclare `number` / `bool` columns with `POST /v1/fields`. A column whose field Brew manages (`Created At`, `Validation Status`) is not imported and adds a `warnings[]` entry (`code: CSV_COLUMN_IGNORED`, `field` names the column).
          *
          *     A date column is read in ONE day/month order: the order its own dates prove (a day over 12 anywhere in the column, `13/04/2026`), else `dateOrder` (`day_first` reads `03/04/2026` as 3 April, `month_first` as 4 March), else month/day with a `warnings[]` entry (`code: DATE_ORDER_ASSUMED`, `field`). Dotted dates (`03.04.2026`) are day-first. ISO (`2026-04-03`), Unix seconds or milliseconds, month names (`3 Apr 2026`), year-first (`2026/04/03`) and compact (`20260403`) dates need no order. Convert to `YYYY-MM-DD` to be unambiguous.
          *
-         *     A `subscribed` column reads true/false and ESP status words (`unsubscribed`, `cleaned`, `blocklisted`, `transactional`, `active`, …). An opt-out unsubscribes the contact, new or existing. A word that is not a subscription status (`maybe`) fails its row (`code: FIELD_TYPE_MISMATCH`, `field: subscribed`) instead of importing the contact subscribed. A subscribed value only applies to new contacts: a row that asks to re-subscribe a contact who opted out keeps its other fields and adds a `warnings[]` entry (`code: RESUBSCRIBE_SKIPPED`, `email`).
+         *     A `subscribed` column reads true/false and ESP status words (`unsubscribed`, `cleaned`, `blocklisted`, `transactional`, `active`, …). An opt-out unsubscribes the contact, new or existing (with `onConflict: "skip"` an existing contact is left unchanged, and its `CONTACT_EXISTS_SKIPPED` warning says so). A word that is not a subscription status (`maybe`) fails its row (`code: FIELD_TYPE_MISMATCH`, `field: subscribed`) instead of importing the contact subscribed. A subscribed value only applies to new contacts: a row that asks to re-subscribe a contact who opted out keeps its other fields and adds a `warnings[]` entry (`code: RESUBSCRIBE_SKIPPED`, `email`).
+         *
+         *     Two opt-in modes. `dryRun: true` returns the response this import would return (`summary`, `errors`, row `warnings`, `fieldsCreated` as fields it would create) with `dryRun: true` and no `importId`, and writes nothing: no contacts, field definitions or Import History entry; `validate` is not run and nothing is charged. Insert vs update is decided by the same address match the write uses, so a real run right after returns the same counts. `onConflict: "skip"` only creates missing contacts: each existing contact is left unchanged (an opt-out row included), counted in `summary.skipped` with a `CONTACT_EXISTS_SKIPPED` warning naming its `row`. Either way `inserted + updated + failed + skipped = total`. A dry run cannot foresee failures that only happen while writing (a concurrent change, a database refusal), so the real run can still fail where the preview succeeded. With `validate: true`, inline checks are still metered per submitted row, rows `skip` left alone included; a request that leaves no address to check is not charged.
          */
         post: operations["importContactsCsv"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/contacts/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Bulk-import contacts from JSON
+         * @description Create or update up to 1000 contacts from JSON rows and record them as one Import History batch: the JSON twin of `POST /v1/contacts/import-csv`. Rows take the batch-create shape (`email`, `firstName`, `lastName`, `subscribed`, `customFields`, `consent`) and follow its rules: a missing or invalid email, an address repeated in the batch, or a `customFields` key with no ASCII letter or digit (`名前`, `#`: `FIELD_NAME_INVALID`), fails its row (`errors[]`, `207`) while the others land. A blank `customFields` key is dropped from its row with a `BLANK_FIELD_NAME_IGNORED` warning. New contacts are subscribed unless the row says `subscribed: false`; re-subscribing a contact who opted out keeps its other fields and adds a `RESUBSCRIBE_SKIPPED` warning.
+         *
+         *     The batch is listed in Import History under `fileName` (optional), and each contact it writes carries the returned `importId` until a later import touches it (filter on it to list them; deleting the import in the app removes the contacts it created). `POST /v1/contacts` with `contacts[]` writes the same rows without an Import History entry, for recurring syncs.
+         *
+         *     Two opt-in modes. `dryRun: true` returns the response this import would return (`summary`, `errors`, row `warnings`, `fieldsCreated` as fields it would create) with `dryRun: true` and no `importId`, and writes nothing: no contacts, field definitions or Import History entry; `validate` is not run and nothing is charged. Insert vs update is decided by the same address match the write uses, so a real run right after returns the same counts. `onConflict: "skip"` only creates missing contacts: each existing contact is left unchanged (an opt-out row included), counted in `summary.skipped` with a `CONTACT_EXISTS_SKIPPED` warning naming its `row`. Either way `inserted + updated + failed + skipped = total`. A dry run cannot foresee failures that only happen while writing (a concurrent change, a database refusal), so the real run can still fail where the preview succeeded. With `validate: true`, inline checks are still metered per submitted row, rows `skip` left alone included; a request that leaves no address to check is not charged.
+         */
+        post: operations["importContacts"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1499,7 +1865,7 @@ export interface paths {
         put?: never;
         /**
          * Create a contact field
-         * @description Creates a custom field definition (`{ fieldName, fieldType: "string" | "number" | "date" | "bool" }`). Returns `201` with the bare definition. (Contact upserts also auto-create unknown fields — explicit creation is for pinning the type up front.)
+         * @description Creates a custom field definition (`{ fieldName, fieldType: "string" | "number" | "date" | "bool" }`). A `number` field holds values up to 9007199254740991 (2^53 - 1) in magnitude, the largest integer it stores exactly; a contact write with a larger JSON number is refused (in a `string` field too, since it arrives already rounded), so send 64-bit ids and counters as JSON strings to a `string` field. Returns `201` with the bare definition. (Contact upserts also auto-create unknown fields — explicit creation is for pinning the type up front.)
          */
         post: operations["createContactField"];
         delete?: never;
@@ -1542,7 +1908,7 @@ export interface paths {
          *
          *     **Returns** `200` with `{ fieldName, deleted }`. A name with no custom field resolves `deleted: false` and clears nothing, so repeating the call is safe. The three legacy consent fields (`marketingConsentSource`, `marketingConsentCapturedAt`, `marketingConsentPolicyVersion`) lose only the definition: their values stay, because they still serve as consent evidence.
          *
-         *     **Errors** `422 CORE_FIELD_IMMUTABLE` for a core column.
+         *     **Errors** `422 CORE_FIELD_IMMUTABLE` for a core column. `409 AUDIENCE_BUILD_ACTIVE` for the hidden field of an event-derived audience that is still building; retry once the build finishes.
          *
          *     **See also** `listContactFields`, `getContactField`, `createContactField`.
          */
@@ -1561,13 +1927,13 @@ export interface paths {
         };
         /**
          * List audiences
-         * @description Lists the brand’s saved audiences under `{ data, pagination }`. Each row carries its contact `filters`, the cached member `count` and ISO timestamps; an audience is the recipient target for `createSend`.
+         * @description Lists the brand’s saved audiences under `{ data, pagination }`. Each row carries its contact `filters`, a member `count` and ISO timestamps; an audience is the recipient target for `createSend`.
          *
          *     **Use when** choosing the `audienceId` for a campaign or an automation launch.
          *
          *     **Input** `limit` and `cursor`.
          *
-         *     **Returns** `200` with a page of `Audience` rows.
+         *     **Returns** `200` with a page of `Audience` rows. A listed audience's `count` is its saved member total, recounted before the list answers when contacts changed since that count or it is a day old; an audience that cannot be recounted (still building, unusable filters, a failed or timed-out count) keeps its saved total. `GET /v1/audiences/{audienceId}?include=count` returns the exact total a send targets.
          *
          *     **Errors** `400 INVALID_REQUEST` for an unknown query key.
          *
@@ -1849,7 +2215,7 @@ export interface paths {
         };
         /**
          * Get domain health
-         * @description The domain's deliverability health in one FREE read: a `verdict` (`healthy` / `at_risk` / `critical`) with actionable `signals`, DNS/auth state incl. DMARC, active percentage-based gradual sends, general bounce/complaint reporting, workspace reputation, and inbox-placement history. No bounce or complaint threshold is attached to a gradual-send configuration.
+         * @description The domain's deliverability health in one FREE read: a `verdict` (`healthy` / `at_risk` / `critical`) with actionable `signals`, DNS/auth state incl. DMARC, active percentage-based gradual sends, sampled bounce/complaint activity from campaign and automation sends, workspace reputation, and inbox-placement history. No bounce or complaint threshold is attached to a gradual-send configuration. `include=scoreHistory` adds `scoreHistory`: up to 50 saved score snapshots, newest first (score, grade, confidence, the event that saved it, and each pillar's score and weight); only snapshots saved under this brand count, searched among the domain's newest 500, so a domain that moved between brands can show fewer. `include=scoreRuns` adds `scoreRuns`: the last 5 automated domain score runs (the 5-variant seed check), each with its status in the shared run vocabulary, the score it ended on, the credits it cost and every variant's placement test.
          */
         get: operations["getDomainHealth"];
         put?: never;
@@ -1869,7 +2235,7 @@ export interface paths {
         };
         /**
          * List templates
-         * @description Lists public templates under { data, pagination }. The default full representation includes HTML. Set representation=summary for metadata, previewImage, viewUrl, and referenceEmailId without HTML. Supports exact brand and category filters; query matches title text or an exact template identifier. semantic ranks up to 200 matches using vector search; query additionally filters those matches when both are supplied. Browse defaults to 50 full rows or 20 summary rows. Brand and category match case-insensitively. Continue with pagination.cursor, including after an empty filtered page with hasMore=true. Templates are organization-wide references; pass referenceEmailId to POST /v1/emails to remix one.
+         * @description Lists public templates under { data, pagination }. The default full representation includes HTML. Set representation=summary for metadata, previewImage, viewUrl, and referenceEmailId without HTML. Supports exact brand and category filters and a group filter (a browse group: every category in it); query matches title text or an exact template identifier. semantic ranks up to 200 matches using vector search; query additionally filters those matches when both are supplied. Browse defaults to 50 full rows or 20 summary rows. Brand and category match case-insensitively. Continue with pagination.cursor, including after an empty filtered page with hasMore=true. Templates are organization-wide references; pass referenceEmailId to POST /v1/emails to remix one. Set count=true for { count }, the number of templates matching brand, category and group (refreshed every 15 minutes), instead of rows; add groupBy=brand, groupBy=category or groupBy=group for per-value counts, largest first, 100 groups a page with the same pagination.cursor (count does not combine with semantic or query).
          */
         get: operations["listTemplates"];
         put?: never;
@@ -1969,9 +2335,11 @@ export interface paths {
         };
         /**
          * Get the brand bound to this API key
-         * @description Returns `{ brand }` — the single brand bound to the API key. Check `ready` (`status === "completed"`) before calling `POST /v1/emails`, which returns `422 BRAND_NOT_READY` until brand extraction finishes.
+         * @description Returns the bare brand row for the single brand bound to the API key. Check `ready` (`status === "completed"`) before calling `POST /v1/emails`, which returns `422 BRAND_NOT_READY` until brand extraction finishes.
          *
-         *     Embed the design context in the same call with `?include=identity,emailDesign,imageStyle,logos` (comma-separated). `identity` is the structured brand facts; `emailDesign` / `imageStyle` are the markdown design system the email agent follows; `logos` is the CDN logo set. The paginated image library is a separate read (`GET /v1/brand/images`).
+         *     `identity` is always returned: the brand name and tagline saved in Brew (`identity.brandName`, `identity.tagline`), plus its description, contact details and links. `domain` is the website the brand was extracted from, not its name.
+         *
+         *     Embed the design context in the same call with `?include=emailDesign,imageStyle,logos` (comma-separated). `emailDesign` / `imageStyle` are the markdown design system the email agent follows; `logos` is the CDN logo set. `include=identity` is still accepted and changes nothing. The paginated image library is a separate read (`GET /v1/brand/images`).
          */
         get: operations["getBrand"];
         put?: never;
@@ -1981,7 +2349,7 @@ export interface paths {
         head?: never;
         /**
          * Update brand identity + design system
-         * @description Partial update of the writable design artifacts in one call. `identity` shallow-merges the provided fields; `emailDesign` / `imageStyle` replace the markdown design-system documents the email agent follows. Provide at least one. Returns the touched fields in the `GET /v1/brand` shape.
+         * @description Partial update of the writable design artifacts in one call. `identity` shallow-merges the provided fields; `emailDesign` / `imageStyle` replace the markdown design-system documents the email agent follows. Provide at least one. Returns the brand in the `GET /v1/brand` shape: `identity` always, plus the markdown documents the call wrote.
          */
         patch: operations["updateBrand"];
         trace?: never;
@@ -1995,12 +2363,42 @@ export interface paths {
         };
         /**
          * Get brand images
-         * @description The brand’s asset library, as the Assets page shows it: logos, brand images (from the site or uploaded, including the social preview and site screenshot) and images made with Brew. Omit `?q=` to BROWSE it (free), newest first or `?sort=oldest`. Pass `?q=` for SEMANTIC search over brand and generated images (the query is embedded + vector-searched), in relevance order — this path is **credit-metered** on its first page (`402 INSUFFICIENT_CREDITS` when out of credits). `?kind=logo|brand|generated` narrows either mode; logos are not searchable. Each row carries `assetId` (the id the app opens at `/assets?image=<assetId>`), `kind`, `url` and what is known: description, dimensions, category, page, when it was added, and a logo’s variant. (The smaller `identity` / `emailDesign` / `imageStyle` / `logos` sub-resources embed into `GET /v1/brand?include=…`; images stay separate because they paginate.)
+         * @description The brand’s asset library, as the Assets page shows it: logos, brand images (from the site or uploaded, including the social preview and site screenshot) and images made with Brew. Omit `?q=` to BROWSE it, newest first or `?sort=oldest`. Pass `?q=` for SEMANTIC search over brand and generated images (the query is embedded + vector-searched), in relevance order. Both are free. `?kind=logo|brand|generated` narrows either mode; logos are not searchable. Each row carries `assetId` (the id the app opens at `/assets?image=<assetId>`), `kind`, `url` and what is known: description, dimensions, category, page, when it was added, and a logo’s variant. (`GET /v1/brand` returns the brand `identity`, and the smaller `emailDesign` / `imageStyle` / `logos` sub-resources embed with `?include=…`; images stay separate because they paginate.)
          */
         get: operations["getBrandImages"];
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/brand/images/{assetId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete a brand image
+         * @description Removes one image from the brand library and from image search, as Delete image on the Assets page does. Its file stays hosted at its URL, so emails already using it keep rendering.
+         *
+         *     **Use when** an image should no longer be offered for new designs. Confirm with the user first. Free; no credits are charged.
+         *
+         *     **Input** `assetId` in the path, as `getBrandImages` returns it. One image per call.
+         *
+         *     **Returns** `200` with `{ assetId, deleted }`. An `assetId` not in the library resolves `deleted: false` and changes nothing, so repeating the call is safe.
+         *
+         *     **Errors** `400 INVALID_REQUEST` for a logo (manage logos on the Assets page) or a malformed `assetId`.
+         *
+         *     **See also** `getBrandImages`, `addImage`.
+         */
+        delete: operations["deleteBrandImage"];
         options?: never;
         head?: never;
         patch?: never;
@@ -2089,7 +2487,7 @@ export interface paths {
         put?: never;
         /**
          * Generate a GIF
-         * @description Produces a looping animated GIF (5-second source clip), routed by the `from` discriminator: `prompt` generates an on-brand still then animates it, `image` animates a source image (both via the AI gif workflow), and `video` converts a source MP4. Aspect ratio is one of `16:9`, `9:16`, `1:1`. Returns CDN-hosted `gifUrl` (plus `videoUrl` and motion metadata for the AI sources). Credit-metered (fixed cost: prompt 20, image 10, video 10).
+         * @description Produces an animated GIF, routed by the `from` discriminator: `prompt` generates one from text, `image` animates a public source image (both with GPT Image 2.6), and `video` converts a source MP4. For `prompt` and `image` sources, aspect ratio is one of `16:9`, `9:16`, `1:1` (default `16:9`, 768×432 / 432×768 / 640×640), `frameCount` is 2–16 (default 9) and `fps` sets playback speed (default 5, so 9 frames loop in 1.8s). An `image` source the model cannot read, or a request it refuses, returns `422 CONTENT_OPERATION_FAILED`. For `video`, use width and fps for conversion. Returns CDN-hosted `gifUrl` (plus `altText`, `width`/`height` and timing metadata for the AI sources). Credit-metered (fixed cost: prompt 20, image 10, video 10).
          */
         post: operations["createGif"];
         delete?: never;
@@ -2149,9 +2547,49 @@ export interface paths {
         put?: never;
         /**
          * Add image
-         * @description Adds image URLs to the brand image library: fetches them, optimizes them, stores them, and vector-indexes them so the email agent can find them. Pass `imageUrl` for one synchronous import or `imageUrls` for up to 100 images in a durable background import. Free; no credits are charged.
+         * @description Adds an image to the brand image library: fetches or reads it, converts it, stores it, and vector-indexes it so the email agent can find it. Free; no credits are charged.
+         *
+         *     **Use when** a public image URL, a batch of them, or a local file should be reusable in designs and searches.
+         *
+         *     **Input** exactly one of `imageUrl` (one public URL, synchronous), `imageUrls` (1 to 100 public URLs, a durable background import) or `uploadId` (a local file whose bytes were sent to the `uploadUrl` from `createImageUpload`, synchronous).
+         *
+         *     **Returns** `200` with `{ url, width, height, aspectRatio, assetId }` for `imageUrl` and `uploadId`; `202` with `{ accepted, skipped, runId }` for `imageUrls`. An image whose size could not be measured answers `width` and `height` `0` and `aspectRatio` `unknown`. Repeating an `uploadId` call returns the same answer for 24 hours, even if the image was deleted since.
+         *
+         *     **Errors** `422 CONTENT_OPERATION_FAILED` when the image cannot be fetched, decoded or saved (for an upload: bytes that are not PNG, JPEG, GIF, WebP, AVIF, TIFF or SVG). For `uploadId`: `404 UPLOAD_NOT_FOUND` (unknown, expired or another brand), `409 UPLOAD_NOT_RECEIVED` (the bytes were never sent), `409 UPLOAD_IN_PROGRESS` (another call is converting it; retry shortly) and `413 PAYLOAD_TOO_LARGE` (over 20 MB, or an SVG over 2 MB).
+         *
+         *     **See also** `createImageUpload`, `getBrandImages`, `deleteBrandImage`.
          */
         post: operations["addImage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/content/image-uploads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create an image upload
+         * @description Opens a single-use upload for one local image file. POST the file's raw bytes to the returned `uploadUrl`, then call `addImage` with the `uploadId` to put it in the brand library. The bytes go straight to storage, so files up to 20 MB fit even though a JSON body is capped far lower. Free; no credits are charged.
+         *
+         *     **Use when** the image is a file on your machine rather than a public URL (a public URL goes straight to `addImage` as `imageUrl`).
+         *
+         *     **Input** `fileName`, `contentType` (`image/png`, `image/jpeg`, `image/gif`, `image/webp`, `image/avif`, `image/tiff` or `image/svg+xml`) and `size` in bytes (at most 20,000,000; 2,097,152 for SVG).
+         *
+         *     **Returns** `201` with `{ uploadId, uploadUrl, expiresAt, maxBytes }`. Within 15 minutes, send the bytes: `curl -X POST --data-binary @logo.png "<uploadUrl>"` answers `200` with `{ uploadId, status: "uploaded", size, expiresAt }`; call `addImage` before that `expiresAt` (15 minutes from when the bytes land) (`404 UPLOAD_NOT_FOUND` for an unknown or expired URL, `413 PAYLOAD_TOO_LARGE` over `maxBytes`). The URL carries its own credential; keep it private. Sending again never replaces the first file.
+         *
+         *     **Errors** `400 INVALID_REQUEST` for an unsupported `contentType` or a `size` over the cap; `429 RATE_LIMITED` also when the brand already has 20 uploads open (its message says so, and `Retry-After` is when the oldest expires).
+         *
+         *     **See also** `addImage`, `getBrandImages`.
+         */
+        post: operations["createImageUpload"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2167,41 +2605,11 @@ export interface paths {
         };
         /**
          * Get usage
-         * @description Returns the org usage snapshot: current plan, AI credit balance (limit/used/remaining — `null` = unlimited), monthly email-send quota, and the billing-period window. Check it before a credit-metered call. Billing belongs to the ORGANIZATION, so this needs an organization-scoped credential: a key bound to one brand gets `403 ORG_SCOPE_REQUIRED` no matter which scopes it holds.
+         * @description Returns the org usage snapshot: current plan, AI credit balance (limit/used/remaining — `null` = unlimited), monthly email-send quota (`remaining` = `limit` − `used` − `reserved`, where `reserved` is held by sends still delivering), and the billing-period window. Check it before a credit-metered call. Billing belongs to the ORGANIZATION, so this needs an organization-scoped credential: a key bound to one brand gets `403 ORG_SCOPE_REQUIRED` no matter which scopes it holds.
          */
         get: operations["getUsage"];
         put?: never;
         post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/data": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Run a data command
-         * @description One surface over the brand's data: runs a sandboxed bash command with the `db` verbs (`db ls`, `db schema <table>`, `db find`, `db agg`, `db get`, `db insert`, `db set`, `db del`) plus `jq`, `grep`, `sort` and `head` pipes. The same engine serves the in-app agent and, read-only, the MCP `query_brew_data` tool.
-         *
-         *     **Use when** a question spans tables or needs a filter the REST reads do not offer. Start with `db ls` (the tables your credential may touch) and `db schema <table>`.
-         *
-         *     **Input** `command`. `find` and `agg` take `--since` and `--until` (epoch ms, ISO, or relative such as `7d`) on every table; `agg` aggregates server-side (`--fn count|sum:f|avg:f|min:f|max:f`, `--group-by`, `--bucket hour|day|week|month`). `find` prints NDJSON on stdout; counts and the next-page cursor arrive on stderr. Tables are permission-scoped per credential; writes are policy-gated, and a refusal names the endpoint that owns the operation.
-         *
-         *     **Returns** `200 { exitCode, output, truncated }`. A failed command is still `200` with `exitCode != 0` and the message in `output`: read it, adjust, retry.
-         *
-         *     **Errors** `400 INVALID_REQUEST` for a malformed body; per-table refusals surface inside `output`.
-         *
-         *     **See also** `searchContacts`, `getEventsAnalytics`.
-         */
-        post: operations["runDataCommand"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2217,9 +2625,49 @@ export interface paths {
         };
         /**
          * List integrations
-         * @description Returns the product integration catalog for the brand in scope under `{ data, pagination }`, with a `connected` flag per provider. Connecting is a human Settings hop at `/integrations/{provider}` — never paste a connect URL into model output. Brand-scoped (`X-Brand-Id` on an org credential). No permission scope.
+         * @description Returns the product integration catalog for the brand in scope under `{ data, pagination }`, with a `connected` flag per provider. Canonical providers also expose active, ready installation counts and readiness per capability. Connecting is a human Settings hop at `/integrations/{provider}`; never paste a connect URL into model output. Brand-scoped (`X-Brand-Id` on an org credential). No permission scope.
          */
         get: operations["listIntegrations"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/integrations/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List integration events
+         * @description Returns the events the brand’s connected live sources offer as automation triggers (a PostHog project’s own events; the Stripe and Shopify app catalogs) under `{ data, sources, pagination }`. Each event carries its `eventId`, the provider’s `eventKey`, Brew’s `label` and lifecycle `stage`, its roles in the brand’s product model, 30-day volume, and its `triggerEventId` once it is a trigger. Events come source by source: `query` searches names, titles and categories, and without it each source’s busiest events come first. Events a brand member hid, and internal traffic Brew suppressed, are left out, so a page can hold fewer than `limit`; follow `pagination.cursor` until `hasMore` is false to read every event. Brand-scoped (`X-Brand-Id` on an org credential). Requires the `automations` scope, as `ensureIntegrationEventTrigger` does.
+         */
+        get: operations["listIntegrationEvents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/integrations/events/{eventId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Describe an integration event
+         * @description Returns one live integration event in full: each property with its template `variable` (`properties.<key>` or `person.<key>` for a tenant catalog’s event, the key itself for a static catalog’s), which hold personal data, which Brew suggests for personalization, its lifecycle stage and its roles in the product model. This GET may call the provider: an event listed bare, or described more than a day ago, is described there first on the account’s read budget, and `propertiesStatus` says how current `properties` are (`rate_limited` with `retryAfterSeconds` when the budget is spent). `404 INTEGRATION_EVENT_NOT_FOUND` for an unknown or cross-brand id. Brand-scoped. Requires the `automations` scope.
+         */
+        get: operations["describeIntegrationEvent"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2312,6 +2760,36 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/chats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List chats
+         * @description Lists the brand's Brew chats, most recently active first, under `{ data, pagination }`, as the app's chat list shows them: `chatId`, `title`, the opening prompt, Brew's latest reply, `status` (still streaming or not), `origin` (the chat app it started in; null for the Brew web app) and a link. No transcript and no participants. Free.
+         *
+         *     **Use when** finding a chat to resume, or seeing what was worked on recently.
+         *
+         *     **Input** `limit` and `cursor` (an opaque native cursor).
+         *
+         *     **Returns** `200` with a page of `ChatListRow` rows.
+         *
+         *     **Errors** `400 INVALID_REQUEST` for an unknown query key or a malformed cursor.
+         *
+         *     **See also** `getChatContext` (one chat, with its artifacts and recent messages).
+         */
+        get: operations["listChats"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/chats/{chatId}": {
         parameters: {
             query?: never;
@@ -2332,10 +2810,387 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/insights": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List insights
+         * @description The brand’s Brew Insights as the Insights page ranks them, most severe first and then by score, under `{ data, pagination, freshness }`. Each row is one deterministic finding of the insight engine; the engine keeps at most 200 findings in view.
+         *
+         *     **Use when** reporting what Brew found about the brand’s email: deliverability problems, campaigns that under- or over-performed, timing, audience and automation opportunities.
+         *
+         *     **Input** `state` (`open`, the default: active findings and snoozes that have ended; or `all`, which adds resolved, cleared, dismissed and stale findings), `severity` to read one severity (up to 200 of its own, however many more severe findings exist), `limit`/`cursor` to page. A `cursor` belongs to the walk that returned it: it continues only the same `state` and `severity`, and only while the findings it already returned are still the rows before it. A finding added, removed or moved further down is served when its page comes, so a walk returns each finding of the list as it stands at its last page exactly once. `include` adds the intelligence layer the page shows beside the findings: `pulse` (the last 7 days against the 7 before), `report` (the latest report the analysis agent published), `suggestions` (its proposed and launched suggestions, up to 25) and `memo` (the agent’s memory across runs).
+         *
+         *     **Returns** `200`. Each row carries `insightId`, `title`, `description` (the detector’s headline), `severity`, `confidence`, `kind`, `category`, `detectorId`, `state`, `firstSeenAt`, `lastSeenAt`, `recurrenceCount`, an optional `action` and the finding’s `url` in Brew. `freshness` is on every page: `dataAsOf` is how current the data behind the findings is, and `latestAttempt.status: failed` means they may be stale. An expansion that does not exist yet answers `null`. Read-only and free.
+         *
+         *     **Errors** `400 INVALID_REQUEST` for an unknown query key, value or `include` token, or a malformed `cursor`. Also `400 INVALID_REQUEST` with `param: cursor` when the findings changed since the cursor was issued (one it already returned left the list or moved, or a new finding ranks among them; the engine re-ran, or a finding was snoozed, dismissed or changed state): read again from the first page, without `cursor`. A cursor issued for another `state` or `severity` is refused the same way.
+         *
+         *     **See also** `getInsight`, `getAnalyticsOverview`.
+         */
+        get: operations["listInsights"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/insights/{insightId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get an insight
+         * @description One finding in full, as its page in Brew reads it: the list row’s fields plus `rationale`, `closedReason`, `closedAt`, `lastActedAt`, `churnCount`, the frozen `metrics`, `evidence` links, its `subject`, the detector’s `method` (what it measures, how, against what, and what resolves it), `generatedBy` (the engine run that produced it and what that run could not see) and `freshness`.
+         *
+         *     **Use when** explaining why a finding exists or what would resolve it. `metrics` were frozen when the finding was computed and are the only numbers to quote about it.
+         *
+         *     **Input** `insightId` in the path, as a `listInsights` row carries it.
+         *
+         *     **Returns** `200` with the finding. Read-only and free.
+         *
+         *     **Errors** `404 INSIGHT_NOT_FOUND` for an unknown, malformed or over-long id OR a finding of another brand: one identical error, so the cases are indistinguishable.
+         *
+         *     **See also** `listInsights`.
+         */
+        get: operations["getInsight"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/notifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List notifications
+         * @description Lists the brand's notifications, newest first, under `{ data, pagination }`, as the app's bell shows them: generations, sends, imports, domain checks and score runs finishing or failing, plus comment mentions and replies. Each row has `type`, `status`, `title`, `subtitle`, a `url` into the app and the ids it concerns (`chatId`, `emailId`, `domainId`). Reading marks nothing read. Free.
+         *
+         *     **Access** each row is shown only when the credential may read its feature, scopes included, so an empty page can mean nothing happened or that this credential cannot see that kind of row (a `type` it cannot see is an empty page, not an error). By type:
+         *
+         *     - `chat_stream`, `preview_email`: the `emails` scope.
+         *     - `email_sent`, `email_scheduled`, `email_send_failed`, `gradual_send_paused`, `gradual_send_completed`, `send_review_rejected`: `sends` (`emails` implies it).
+         *     - `domain_status`, `domain_score_run`: `domains` (`emails` implies it).
+         *     - `import_job`, `validation_job`: `contacts`.
+         *     - `automation_pause_window_closed`: `automations`.
+         *     - `brand_extracted`, `brand_image_import`, `integration_attention` (a connected integration such as Stripe needs a reconnect, moved to another brand, or lost a permission): every credential on the brand.
+         *     - `api_key_created`: the `all` scope (a signed-in member, or a key or connection holding `all`).
+         *     - `send_limit_reached`, `trial_ending`, `trial_expired`, `payment_failed`: organization admins only (a signed-in admin, an admin’s organization-wide connection, or an organization-wide key holding `all`); never a brand key.
+         *     - `comment_mention`, `comment_reply` (`isPersonal: true`): only the person addressed, signed in or on a personal connection; never an API key.
+         *
+         *     **Use when** checking what finished or failed since you last looked.
+         *
+         *     **Input** `type` keeps one notification type; `limit` and `cursor` (an opaque native cursor; a page can hold fewer rows than `limit` while `hasMore` is true).
+         *
+         *     **Returns** `200` with a page of `Notification` rows; `notificationId` (`ntf_…`) is stable for the row’s life.
+         *
+         *     **Errors** `400 INVALID_REQUEST` for an unknown query key or `type`, or a malformed cursor.
+         *
+         *     **See also** `getChatContext`, `getEmail`, `getDomainHealth`.
+         */
+        get: operations["listNotifications"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/emails/{emailId}/comments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List email comments
+         * @description Lists one design's open comment threads, newest activity first, under `{ data, pagination }`, as the canvas pins show them: `commentId`, `target` (whole email or one element), the 12 most recent `participants` with `participantCount`, `messageCount`, the latest message preview and a link to the thread. People are `{ userId, name }`; resolving deletes a thread. Free.
+         *
+         *     **Use when** reading what teammates asked for on a design before editing it.
+         *
+         *     **Input** `emailId` in the path; `limit` and `cursor`. `include=messages` adds each thread's newest messages (author, body, mentions), oldest first, and caps the page at 3 threads sharing a fixed size budget. A thread with older messages returns `messagesCursor`: send it back with that thread's `commentId` to read the next older slice (the whole budget, at least one message), until it comes back null. `commentId` alone reads one thread.
+         *
+         *     **Returns** `200` with a page of `EmailCommentThread` rows. A design with no threads is an empty page.
+         *
+         *     **Errors** `400 INVALID_REQUEST` for an unknown query key, an unknown `include` token, a malformed cursor, a `messagesCursor` without its `commentId` or from another thread, or `cursor` with `commentId`. `404 EMAIL_NOT_FOUND` for an `emailId` the brand does not have: unknown, malformed or another brand’s design, one identical error as `getEmail` answers. `404 COMMENT_NOT_FOUND` for a `commentId` that is not an open thread on that design (resolving deletes a thread, so a resolved one is the same case).
+         *
+         *     **See also** `getEmail`.
+         */
+        get: operations["listEmailComments"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        EmailWebhookEvent: {
+            /** @enum {string} */
+            type: "email.sent";
+            /** Format: date-time */
+            created_at: string;
+            data: {
+                email_id: string;
+                /** Format: date-time */
+                created_at: string;
+                from?: string;
+                to: string[];
+                subject?: string;
+                tags?: {
+                    [key: string]: string;
+                };
+                brew: {
+                    event_id: string;
+                    /** @enum {number} */
+                    schema_version: 1;
+                    recipient?: string;
+                    send_id?: string;
+                    design_id?: string;
+                    automation_id?: string;
+                    provider_message_id?: string;
+                    /** @enum {boolean} */
+                    test?: true;
+                };
+            };
+        } | {
+            /** @enum {string} */
+            type: "email.delivered";
+            /** Format: date-time */
+            created_at: string;
+            data: {
+                email_id: string;
+                /** Format: date-time */
+                created_at: string;
+                from?: string;
+                to: string[];
+                subject?: string;
+                tags?: {
+                    [key: string]: string;
+                };
+                brew: {
+                    event_id: string;
+                    /** @enum {number} */
+                    schema_version: 1;
+                    recipient?: string;
+                    send_id?: string;
+                    design_id?: string;
+                    automation_id?: string;
+                    provider_message_id?: string;
+                    /** @enum {boolean} */
+                    test?: true;
+                };
+            };
+        } | {
+            /** @enum {string} */
+            type: "email.delivery_delayed";
+            /** Format: date-time */
+            created_at: string;
+            data: {
+                email_id: string;
+                /** Format: date-time */
+                created_at: string;
+                from?: string;
+                to: string[];
+                subject?: string;
+                tags?: {
+                    [key: string]: string;
+                };
+                brew: {
+                    event_id: string;
+                    /** @enum {number} */
+                    schema_version: 1;
+                    recipient?: string;
+                    send_id?: string;
+                    design_id?: string;
+                    automation_id?: string;
+                    provider_message_id?: string;
+                    /** @enum {boolean} */
+                    test?: true;
+                };
+            };
+        } | {
+            /** @enum {string} */
+            type: "email.complained";
+            /** Format: date-time */
+            created_at: string;
+            data: {
+                email_id: string;
+                /** Format: date-time */
+                created_at: string;
+                from?: string;
+                to: string[];
+                subject?: string;
+                tags?: {
+                    [key: string]: string;
+                };
+                brew: {
+                    event_id: string;
+                    /** @enum {number} */
+                    schema_version: 1;
+                    recipient?: string;
+                    send_id?: string;
+                    design_id?: string;
+                    automation_id?: string;
+                    provider_message_id?: string;
+                    /** @enum {boolean} */
+                    test?: true;
+                };
+            };
+        } | {
+            /** @enum {string} */
+            type: "email.bounced";
+            /** Format: date-time */
+            created_at: string;
+            data: {
+                email_id: string;
+                /** Format: date-time */
+                created_at: string;
+                from?: string;
+                to: string[];
+                subject?: string;
+                tags?: {
+                    [key: string]: string;
+                };
+                brew: {
+                    event_id: string;
+                    /** @enum {number} */
+                    schema_version: 1;
+                    recipient?: string;
+                    send_id?: string;
+                    design_id?: string;
+                    automation_id?: string;
+                    provider_message_id?: string;
+                    /** @enum {boolean} */
+                    test?: true;
+                };
+                bounce?: {
+                    type: string;
+                    subType?: string;
+                    message?: string;
+                    diagnosticCode?: string[];
+                };
+            };
+        } | {
+            /** @enum {string} */
+            type: "email.failed";
+            /** Format: date-time */
+            created_at: string;
+            data: {
+                email_id: string;
+                /** Format: date-time */
+                created_at: string;
+                from?: string;
+                to: string[];
+                subject?: string;
+                tags?: {
+                    [key: string]: string;
+                };
+                brew: {
+                    event_id: string;
+                    /** @enum {number} */
+                    schema_version: 1;
+                    recipient?: string;
+                    send_id?: string;
+                    design_id?: string;
+                    automation_id?: string;
+                    provider_message_id?: string;
+                    /** @enum {boolean} */
+                    test?: true;
+                };
+                failed?: {
+                    reason: string;
+                };
+            };
+        } | {
+            /** @enum {string} */
+            type: "email.opened";
+            /** Format: date-time */
+            created_at: string;
+            data: {
+                email_id: string;
+                /** Format: date-time */
+                created_at: string;
+                from?: string;
+                to: string[];
+                subject?: string;
+                tags?: {
+                    [key: string]: string;
+                };
+                brew: {
+                    event_id: string;
+                    /** @enum {number} */
+                    schema_version: 1;
+                    recipient?: string;
+                    send_id?: string;
+                    design_id?: string;
+                    automation_id?: string;
+                    provider_message_id?: string;
+                    /** @enum {boolean} */
+                    test?: true;
+                };
+                open?: {
+                    timestamp?: string;
+                    ipAddress?: string;
+                    userAgent?: string;
+                };
+            };
+        } | {
+            /** @enum {string} */
+            type: "email.clicked";
+            /** Format: date-time */
+            created_at: string;
+            data: {
+                email_id: string;
+                /** Format: date-time */
+                created_at: string;
+                from?: string;
+                to: string[];
+                subject?: string;
+                tags?: {
+                    [key: string]: string;
+                };
+                brew: {
+                    event_id: string;
+                    /** @enum {number} */
+                    schema_version: 1;
+                    recipient?: string;
+                    send_id?: string;
+                    design_id?: string;
+                    automation_id?: string;
+                    provider_message_id?: string;
+                    /** @enum {boolean} */
+                    test?: true;
+                };
+                click?: {
+                    link: string;
+                    timestamp?: string;
+                    ipAddress?: string;
+                    userAgent?: string;
+                };
+            };
+        };
         EmailSummary: {
             emailId: string;
             emailVersionId?: string;
@@ -2353,6 +3208,11 @@ export interface components {
             subjectLine?: string;
             /** @description The design's inbox preview line, read directly from the latest version's JSX <Preview> (its single source of truth) — what a send delivers when no explicit `previewText` override is passed to POST /v1/sends. Detail-only; absent when the design has no <Preview>. */
             previewText?: string;
+            /**
+             * @description The language the email's copy is written in (ISO 639-1, or zh-Hans / zh-Hant), read by Brew's language model after each content change unless a caller set it. Rendered as the HTML document's lang. Detail-only; absent until it has been read.
+             * @enum {string}
+             */
+            lang?: "en" | "de" | "fr" | "es" | "pt" | "it" | "nl" | "pl" | "sv" | "da" | "no" | "fi" | "cs" | "sk" | "hu" | "ro" | "bg" | "el" | "tr" | "ru" | "uk" | "hr" | "sr" | "sl" | "lt" | "lv" | "et" | "ca" | "ar" | "he" | "fa" | "ur" | "hi" | "bn" | "th" | "vi" | "id" | "ms" | "tl" | "ja" | "ko" | "zh-Hans" | "zh-Hant" | "sw" | "af";
             html?: string;
             versions?: {
                 version: number | "latest";
@@ -2384,6 +3244,11 @@ export interface components {
             subjectLine?: string;
             /** @description The design's inbox preview line, read directly from the latest version's JSX <Preview> (its single source of truth) — what a send delivers when no explicit `previewText` override is passed to POST /v1/sends. Detail-only; absent when the design has no <Preview>. */
             previewText?: string;
+            /**
+             * @description The language the email's copy is written in (ISO 639-1, or zh-Hans / zh-Hant), read by Brew's language model after each content change unless a caller set it. Rendered as the HTML document's lang. Detail-only; absent until it has been read.
+             * @enum {string}
+             */
+            lang?: "en" | "de" | "fr" | "es" | "pt" | "it" | "nl" | "pl" | "sv" | "da" | "no" | "fi" | "cs" | "sk" | "hu" | "ro" | "bg" | "el" | "tr" | "ru" | "uk" | "hr" | "sr" | "sl" | "lt" | "lv" | "et" | "ca" | "ar" | "he" | "fa" | "ur" | "hi" | "bn" | "th" | "vi" | "id" | "ms" | "tl" | "ja" | "ko" | "zh-Hans" | "zh-Hant" | "sw" | "af";
             html?: string;
             versions?: {
                 version: number | "latest";
@@ -2431,6 +3296,23 @@ export interface components {
             /** @description A stable failure category, when one was recorded. */
             errorCause?: string;
         };
+        CanvasSession: {
+            sessionId: string;
+            /** Format: uri */
+            embedUrl: string;
+            bootstrapToken: string;
+            /** Format: date-time */
+            expiresAt: string;
+            target: {
+                /** @enum {string} */
+                type: "group";
+                groupId: string;
+            } | {
+                /** @enum {string} */
+                type: "email";
+                emailId: string;
+            };
+        };
         EmailGroupSummary: {
             groupId: string;
             groupName: string;
@@ -2477,10 +3359,10 @@ export interface components {
             /** @enum {string} */
             approvalState?: "pending" | "approved" | "rejected";
             /**
-             * @description Why a paused send is held. `plan_limit`: the organization ran out of monthly email sends. `domain_unsendable`: its sending domain stopped passing DNS; fails after 7 days. Both resume on their own and can be canceled. `manual`: its operator paused the gradual ramp; resume it to continue.
+             * @description Why a paused send is held. `plan_limit`: the plan has too few sends left this period. `domain_unsendable`: its sending domain stopped passing DNS; fails after 7 days. Both resume on their own and can be canceled. `manual`: its operator paused the gradual ramp; resume it to continue. `bounce_rate`: at least 4% of its recipients hard-bounced or 0.3% marked it as spam; check the list, then resume or cancel it.
              * @enum {string}
              */
-            pauseReason?: "manual" | "plan_limit" | "domain_unsendable";
+            pauseReason?: "manual" | "plan_limit" | "domain_unsendable" | "bounce_rate";
             subject?: string;
             previewText?: string;
             from?: {
@@ -2512,6 +3394,8 @@ export interface components {
                 opened: number;
                 clicked: number;
                 bounced: number;
+                /** @description Permanent (hard) bounces, a subset of `bounced`. Absent on older sends. */
+                hardBounced?: number;
                 complained: number;
                 unsubscribed: number;
             };
@@ -2555,6 +3439,19 @@ export interface components {
                 pauseReason?: "manual";
                 /** Format: date-time */
                 resumedAt?: string;
+            };
+            smartSend?: {
+                /**
+                 * Format: date-time
+                 * @description Every recipient is sent by then: 24 hours after timing starts.
+                 */
+                windowEndsAt?: string;
+                /** @description Recipients timed from their own opens and clicks. */
+                assignedViaModel?: number;
+                /** @description Recipients with no opens or clicks, sent right away. */
+                assignedImmediately?: number;
+                /** @description Recipients with history that could not be timed, sent right away. */
+                modelFallbacks?: number;
             };
             /** Format: date-time */
             createdAt: string;
@@ -3098,7 +3995,7 @@ export interface components {
         };
         ApiWarning: {
             /** @enum {string} */
-            code: "DRAFT_SAVED_NOT_LIVE" | "ENFORCEMENT_LOOSENED_WHILE_PUBLISHED" | "REQUIRED_FIELD_SATISFIED_BY_FALLBACK" | "RESUBSCRIBE_SKIPPED" | "CORE_FIELD_IGNORED" | "DATE_ORDER_ASSUMED" | "CSV_COLUMN_IGNORED" | "RECIPIENTS_EXCLUDED" | "CONSENT_RECORD_MISSING";
+            code: "DRAFT_SAVED_NOT_LIVE" | "NODE_ID_REPLACED" | "TRIGGER_EVENT_NOT_RECEIVED" | "ENFORCEMENT_LOOSENED_WHILE_PUBLISHED" | "REQUIRED_FIELD_SATISFIED_BY_FALLBACK" | "RESUBSCRIBE_SKIPPED" | "CORE_FIELD_IGNORED" | "BLANK_FIELD_NAME_IGNORED" | "DATE_ORDER_ASSUMED" | "FIELD_TYPE_COERCED" | "CSV_ROW_SKIPPED" | "CONTACT_EXISTS_SKIPPED" | "CSV_COLUMN_IGNORED" | "CSV_COLUMN_MATCHED_FIELD" | "VALIDATION_SKIPPED" | "RECIPIENTS_EXCLUDED" | "CONSENT_RECORD_MISSING";
             message: string;
             field?: string;
         };
@@ -3164,7 +4061,7 @@ export interface components {
             /** @enum {string} */
             approvalState?: "pending" | "approved" | "rejected";
             /**
-             * @description Why a paused run is held. `plan_limit` means the organization ran out of monthly email sends; the run resumes on its own once the allowance has room (`resumeAudienceRun` refuses it), or you can cancel it. `manual` means an operator paused it; resume it to continue.
+             * @description Why a paused run is held. `plan_limit` means the plan has too few sends left this period; the run resumes on its own once the allowance has room (`resumeAudienceRun` refuses it), or you can cancel it. `manual` means an operator paused it; resume it to continue.
              * @enum {string}
              */
             pauseReason?: "manual" | "plan_limit";
@@ -3273,8 +4170,22 @@ export interface components {
             title: string;
             description?: string;
             /** @enum {string} */
-            provider: "brew_api" | "clerk" | "stripe" | "shopify" | "stytch" | "supabase" | "workos" | "framer" | "revenuecat" | "custom";
+            provider: "brew_api" | "custom" | "brew_event" | "clerk" | "stytch" | "supabase" | "workos" | "stripe" | "shopify" | "revenuecat" | "framer" | "posthog" | "typeform" | "webflow" | "hubspot";
             providerEventKey?: string;
+            brewEvent?: {
+                /**
+                 * @description The Brew event this trigger starts on.
+                 * @enum {string}
+                 */
+                event: "contact.unsubscribed";
+                /**
+                 * @description `domain`: unsubscribes from one marketing sending domain (its list). `all`: unsubscribes from every email the brand sends.
+                 * @enum {string}
+                 */
+                scope: "domain" | "all";
+                /** @description The sending domain whose list this trigger watches, e.g. `news.acme.com`. Present only when `scope` is `domain`. */
+                domainHost?: string;
+            };
             payloadSchema: {
                 /** @enum {string} */
                 type: "object";
@@ -3287,7 +4198,7 @@ export interface components {
             skill?: string;
         };
         TriggerPayloadField: {
-            /** @description Variable name used by emails and automations, e.g. email or firstName. Prefer self-descriptive keys; this column has no separate description field. */
+            /** @description Email/automation variable name, e.g. firstName. Use descriptive keys; fields have no separate description. */
             key: string;
             /** @enum {string} */
             type: "string" | "int" | "boolean" | "object" | "array";
@@ -3300,6 +4211,8 @@ export interface components {
              * @enum {string}
              */
             pii?: "none" | "low" | "high";
+            /** @description True for a value used only to render this email: never stored on contacts, in logs or analytics; cannot be used in filters, splits or recipient fields. Scalars only, never `email`. False explicitly permits ordinary PII outside rendering; pii still controls log masking. When omitted, legacy high-PII scalar protection applies except for email and top-level firstName/lastName. */
+            secret?: boolean;
             /** @description Nested field nodes for type "object", or the element shape for an array of objects. Emails reference nested leaves as dotted paths ({{ order.total }}) and arrays via {% for %}. */
             children?: components["schemas"]["TriggerPayloadField"][];
             /**
@@ -3311,7 +4224,7 @@ export interface components {
         TriggerInstance: {
             triggerInstanceId: string;
             /** @enum {string} */
-            source: "api" | "integration";
+            source: "api" | "integration" | "brew_event";
             provider?: string;
             triggerEventId?: string;
             /** @enum {string} */
@@ -3333,10 +4246,10 @@ export interface components {
             subscribed?: boolean;
             consent?: {
                 /**
-                 * @description Who captured it: `api` (an API caller asserted it), `form` (a signup form), `import` (a bulk import), `app` (the in-app CSV wizard checkbox).
+                 * @description Who captured it: `api` (an API caller asserted it), `form` (a signup form), `import` (a bulk import), `app` (the in-app CSV wizard checkbox), `integration` (an integration sync such as Stripe created the contact; provenance only, not an opt-in).
                  * @enum {string}
                  */
-                source: "api" | "form" | "import" | "app";
+                source: "api" | "form" | "import" | "app" | "integration";
                 /**
                  * Format: date-time
                  * @description When it was captured.
@@ -3408,7 +4321,7 @@ export interface components {
                     /** @enum {string} */
                     operator: "equals" | "not_equals" | "contains" | "not_contains" | "contains_any" | "not_contains_any" | "starts_with" | "ends_with" | "gt" | "gte" | "lt" | "lte" | "between" | "is_true" | "is_false" | "in" | "not_in" | "is_empty" | "not_exists" | "is_not_empty" | "exists" | "is_set" | "before" | "after" | "on_date";
                     value?: unknown;
-                    /** @description The field's value type — set `number`, `date`, or `boolean` for typed comparisons (dates are stored as epoch-ms, so a string `equals` on a date never matches). Omit for plain string fields. */
+                    /** @description Saved audiences infer omitted types from the field registry. Unknown fields compare as strings. Date ranges require type: "date". */
                     type?: string;
                 }[];
                 /** @enum {string} */
@@ -3427,17 +4340,11 @@ export interface components {
                 status: "queued" | "running" | "completed" | "partially_completed" | "failed";
                 cohort: {
                     eventTypes: ("sent" | "delivered" | "delivery_delayed" | "opened" | "clicked" | "bounced" | "complained" | "failed" | "skipped" | "unsubscribed")[];
-                    /**
-                     * Format: date-time
-                     * @description Window start. Required unless `sendId` is set — then it defaults to one hour before that send was dispatched (its scheduled time for a scheduled send; a completion pass's re-stamped start is never used), and `to` to now.
-                     */
+                    /** Format: date-time */
                     from: string;
-                    /**
-                     * Format: date-time
-                     * @description Defaults to now.
-                     */
+                    /** Format: date-time */
                     to: string;
-                    /** @description Scope to one send (the id in /analytics/sends/{sendId}). With `sendId` the window may be omitted. */
+                    /** @description Scope to one send (a `sendId` from a send or send-analytics row). With `sendId` the window may be omitted. */
                     sendId?: string;
                     emailId?: string;
                     automationIds?: string[];
@@ -3473,17 +4380,11 @@ export interface components {
             status: "queued" | "running" | "completed" | "partially_completed" | "failed";
             cohort: {
                 eventTypes: ("sent" | "delivered" | "delivery_delayed" | "opened" | "clicked" | "bounced" | "complained" | "failed" | "skipped" | "unsubscribed")[];
-                /**
-                 * Format: date-time
-                 * @description Window start. Required unless `sendId` is set — then it defaults to one hour before that send was dispatched (its scheduled time for a scheduled send; a completion pass's re-stamped start is never used), and `to` to now.
-                 */
+                /** Format: date-time */
                 from: string;
-                /**
-                 * Format: date-time
-                 * @description Defaults to now.
-                 */
+                /** Format: date-time */
                 to: string;
-                /** @description Scope to one send (the id in /analytics/sends/{sendId}). With `sendId` the window may be omitted. */
+                /** @description Scope to one send (a `sendId` from a send or send-analytics row). With `sendId` the window may be omitted. */
                 sendId?: string;
                 emailId?: string;
                 automationIds?: string[];
@@ -3576,6 +4477,8 @@ export interface components {
             title: string;
             /** @enum {string} */
             type: "newsletter" | "signup";
+            /** @enum {string} */
+            kind?: "onboarding" | "trial" | "events" | "product_updates" | "promotions";
             category: string;
             categoryLabel: string;
             emailCount: number;
@@ -3615,6 +4518,453 @@ export interface components {
             previewImage?: string;
             html?: string;
         };
+        ChatListRow: {
+            /** @description Resume the chat with the chat-context read. */
+            chatId: string;
+            title: string | null;
+            /** @description The opening prompt, cut at 80 characters. */
+            firstUserPrompt: string | null;
+            /** @description Brew's latest reply, cut at 140 characters. */
+            lastAssistantPreview: string | null;
+            /**
+             * @description `streaming` or `background_finalizing` while a run is still going; null before the first run.
+             * @enum {string|null}
+             */
+            status: "idle" | "streaming" | "background_finalizing" | "completed" | "failed" | "interrupted" | "stopped" | "persistence_failed" | null;
+            /**
+             * @description The chat app the conversation started in; null for the Brew web app.
+             * @enum {string|null}
+             */
+            origin: "slack" | "teams" | "google-chat" | "telegram" | null;
+            /** Format: date-time */
+            updatedAt: string;
+            /** @description Opens the chat in the Brew app. */
+            url: string;
+        };
+        InsightListRow: {
+            insightId: string;
+            /** @description What the finding is about. */
+            title: string;
+            /** @description The detector’s deterministic headline; quote it, never restate its numbers. */
+            description: string;
+            /** @enum {string} */
+            severity: "critical" | "warning" | "opportunity" | "info";
+            /** @enum {string} */
+            confidence: "high" | "medium" | "low";
+            /**
+             * @description `answer` reports what happened, `insight` a change that passed its statistical test, `strategy` a recommended next step.
+             * @enum {string}
+             */
+            kind: "answer" | "insight" | "strategy";
+            category: string;
+            detectorId: string;
+            /**
+             * @description A snooze that has ended reads as `active`.
+             * @enum {string}
+             */
+            state: "active" | "snoozed" | "cleared" | "dismissed" | "resolved" | "stale";
+            /** Format: date-time */
+            firstSeenAt: string;
+            /** Format: date-time */
+            lastSeenAt: string;
+            recurrenceCount: number;
+            action?: {
+                /** @enum {string} */
+                kind: "navigate";
+                label: string;
+                /** @description Absolute link to the page in Brew. */
+                url: string;
+            } | {
+                /** @enum {string} */
+                kind: "assistant";
+                label: string;
+                /** @enum {string} */
+                intent: "review_domain_health" | "validate_contacts" | "create_campaign" | "repeat_campaign" | "draft_automation" | "review_recommendation";
+                /** @description The request the Insights page sends to Brew’s assistant. */
+                prompt: string;
+            };
+            /** @description The finding’s page in Brew. */
+            url: string;
+        };
+        InsightList: {
+            data: components["schemas"]["InsightListRow"][];
+            pagination: {
+                limit: number;
+                cursor: string | null;
+                hasMore: boolean;
+            };
+            freshness: {
+                /**
+                 * Format: date-time
+                 * @description How current the data behind the findings is; null before the first successful run.
+                 */
+                dataAsOf: string | null;
+                /** Format: date-time */
+                lastSuccessfulRunAt: string | null;
+                /** @description The newest engine run and its outcome; `failed` means the findings may be stale. */
+                latestAttempt: {
+                    /** @enum {string} */
+                    status: "succeeded" | "failed" | "running" | "unknown";
+                    /** Format: date-time */
+                    at: string;
+                } | null;
+            };
+            /** @description With `include` pulse: the weekly pulse, or null before the first run. */
+            pulse?: {
+                /**
+                 * Format: date-time
+                 * @description Exclusive end of the 7-day window: the start of the newest incomplete day.
+                 */
+                windowEnd: string;
+                delivered: number;
+                priorDelivered: number;
+                uniqueOpens: number;
+                priorUniqueOpens: number;
+                uniqueClicks: number;
+                priorUniqueClicks: number;
+                unsubscribed: number;
+                priorUnsubscribed: number;
+                /** @description Percent, one decimal; null when counts-only or not measured. */
+                openRatePct: number | null;
+                priorOpenRatePct: number | null;
+                clickRatePct: number | null;
+                priorClickRatePct: number | null;
+                /**
+                 * @description `up` or `down` only when the change is statistically real.
+                 * @enum {string}
+                 */
+                openDirection: "up" | "down" | "steady";
+                /** @enum {string} */
+                clickDirection: "up" | "down" | "steady";
+                /** @description Too few deliveries for rates; read the counts. */
+                countsOnly: boolean;
+                /** @description False when opens or clicks are not measured; an unmeasured rate is null, not zero. */
+                measured: boolean;
+            } | null;
+            /** @description With `include` report: the latest intelligence report, or null when none was published. */
+            report?: {
+                reportId: string;
+                /** @description The Brew chat whose analysis run wrote the report. */
+                chatId: string;
+                /** @enum {string} */
+                runTrigger: "manual" | "scheduled";
+                /** Format: date-time */
+                createdAt: string;
+                insights: {
+                    key: string;
+                    /** @enum {string} */
+                    kind: "performance" | "audience" | "trend" | "risk" | "content" | "setup";
+                    title: string;
+                    body: string;
+                    impact: string | null;
+                    /** @description The suggestion this insight proposes, if any. */
+                    suggestionId: string | null;
+                }[];
+            } | null;
+            /** @description With `include` suggestions: proposed and launched suggestions, most recently updated first. */
+            suggestions?: {
+                suggestionId: string;
+                title: string;
+                /** @description Exactly what launching the suggestion asks Brew to do. */
+                prompt: string;
+                /** @enum {string} */
+                kind: "audience" | "campaign" | "automation" | "deliverability" | "schedule";
+                /** @enum {string} */
+                status: "proposed" | "launched" | "dismissed" | "concluded";
+                rationale: string | null;
+                /** @description The report insight keys that motivated it. */
+                sourceInsightKeys: string[];
+                /** @description The chat a launched suggestion runs in. */
+                executionChatId: string | null;
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
+            }[];
+            /** @description With `include` memo: the memo, or null before the first run. */
+            memo?: {
+                /** @description Learnings, Watchlist, Experiments and History sections; at most 8192 bytes. */
+                markdown: string;
+                version: number;
+                /** Format: date-time */
+                updatedAt: string;
+                updatedByChatId: string | null;
+            } | null;
+        };
+        Insight: {
+            insightId: string;
+            /** @description What the finding is about. */
+            title: string;
+            /** @description The detector’s deterministic headline; quote it, never restate its numbers. */
+            description: string;
+            /** @enum {string} */
+            severity: "critical" | "warning" | "opportunity" | "info";
+            /** @enum {string} */
+            confidence: "high" | "medium" | "low";
+            /**
+             * @description `answer` reports what happened, `insight` a change that passed its statistical test, `strategy` a recommended next step.
+             * @enum {string}
+             */
+            kind: "answer" | "insight" | "strategy";
+            category: string;
+            detectorId: string;
+            /**
+             * @description A snooze that has ended reads as `active`.
+             * @enum {string}
+             */
+            state: "active" | "snoozed" | "cleared" | "dismissed" | "resolved" | "stale";
+            /** Format: date-time */
+            firstSeenAt: string;
+            /** Format: date-time */
+            lastSeenAt: string;
+            recurrenceCount: number;
+            action?: {
+                /** @enum {string} */
+                kind: "navigate";
+                label: string;
+                /** @description Absolute link to the page in Brew. */
+                url: string;
+            } | {
+                /** @enum {string} */
+                kind: "assistant";
+                label: string;
+                /** @enum {string} */
+                intent: "review_domain_health" | "validate_contacts" | "create_campaign" | "repeat_campaign" | "draft_automation" | "review_recommendation";
+                /** @description The request the Insights page sends to Brew’s assistant. */
+                prompt: string;
+            };
+            /** @description The finding’s page in Brew. */
+            url: string;
+            rationale: string | null;
+            closedReason: string | null;
+            /** Format: date-time */
+            closedAt: string | null;
+            /** Format: date-time */
+            lastActedAt: string | null;
+            /** @description How often the finding has closed and reopened. */
+            churnCount: number;
+            /** @description Frozen when the finding was computed: the figures it rests on, which later data does not change. */
+            metrics: {
+                [key: string]: {
+                    /** @enum {string} */
+                    kind: "count";
+                    value: number;
+                    noun: string;
+                } | {
+                    /** @enum {string} */
+                    kind: "rate";
+                    value: number | null;
+                    numerator: number;
+                    denominator: number;
+                    /** @enum {string} */
+                    basis: "delivered" | "sent" | "uniqueOpened" | "recipients";
+                    anomalous?: boolean;
+                } | {
+                    /** @enum {string} */
+                    kind: "share";
+                    value: number | null;
+                    part: number;
+                    whole: number;
+                    wholeNoun: string;
+                } | {
+                    /** @enum {string} */
+                    kind: "duration";
+                    ms: number;
+                    bucketIndex?: number;
+                } | {
+                    /** @enum {string} */
+                    kind: "delta";
+                    value: number;
+                    /** @enum {string} */
+                    unit: "pp" | "pct" | "abs";
+                    from: number;
+                    to: number;
+                } | {
+                    /** @enum {string} */
+                    kind: "hourOfDay";
+                    hour: number;
+                    slot?: number;
+                    /** @enum {string} */
+                    basis: "utc" | "brand_zone";
+                    timeZone?: string;
+                } | {
+                    /** @enum {string} */
+                    kind: "multiple";
+                    value: number;
+                    referenceLabel: string;
+                } | {
+                    /** @enum {string} */
+                    kind: "rank";
+                    position: number;
+                    outOf: number;
+                } | {
+                    /** @enum {string} */
+                    kind: "interval";
+                    lo: number;
+                    hi: number;
+                    confidenceLevel: 0.9 | 0.95;
+                    /** @enum {string} */
+                    as: "rate" | "delta" | "count";
+                } | {
+                    /** @enum {string} */
+                    kind: "label";
+                    text: string;
+                };
+            };
+            evidence: {
+                label: string;
+                url?: string;
+            }[];
+            /** @description What the finding is about: a send, an automation, a domain. */
+            subject: {
+                kind: string;
+                id: string;
+                label: string;
+            };
+            /** @description How the detector works; null when none is recorded. */
+            method: {
+                what: string;
+                how: string;
+                comparedAgainst: string;
+                resolvesWhen: string;
+                caveat?: string;
+            } | null;
+            /** @description The engine run that last produced the finding. */
+            generatedBy: {
+                /** @enum {string} */
+                trigger: "cron_daily" | "send_settled" | "lifecycle_event" | "manual_refresh";
+                /** Format: date-time */
+                startedAt: string;
+                /** Format: date-time */
+                completedAt: string | null;
+                /** @description What that run could not see. */
+                blindSpots: string[];
+            } | null;
+            freshness: {
+                /**
+                 * Format: date-time
+                 * @description How current the data behind the findings is; null before the first successful run.
+                 */
+                dataAsOf: string | null;
+                /** Format: date-time */
+                lastSuccessfulRunAt: string | null;
+                /** @description The newest engine run and its outcome; `failed` means the findings may be stale. */
+                latestAttempt: {
+                    /** @enum {string} */
+                    status: "succeeded" | "failed" | "running" | "unknown";
+                    /** Format: date-time */
+                    at: string;
+                } | null;
+            };
+        };
+        Notification: {
+            /** @description `ntf_` + 20 hex characters: a one-way hash, stable for the row’s life. */
+            notificationId: string;
+            /** @enum {string} */
+            type: "webhook_attention" | "chat_stream" | "import_job" | "brand_image_import" | "validation_job" | "email_sent" | "email_scheduled" | "preview_email" | "brand_extracted" | "domain_status" | "domain_score_run" | "api_key_created" | "email_send_failed" | "gradual_send_paused" | "gradual_send_completed" | "send_limit_reached" | "trial_ending" | "trial_expired" | "payment_failed" | "automation_pause_window_closed" | "send_review_rejected" | "comment_mention" | "comment_reply" | "integration_attention";
+            /** @enum {string} */
+            status: "uploading" | "preparing" | "processing" | "finalizing" | "streaming" | "background_finalizing" | "completed" | "partial" | "failed" | "interrupted" | "stopped" | "persistence_failed";
+            title: string;
+            subtitle: string;
+            /** @description 0-100 while work is running, where it reports progress. */
+            progressPercent?: number;
+            /** @description Where the bell opens it in the Brew app. */
+            url?: string;
+            chatId?: string;
+            emailId?: string;
+            domainId?: string;
+            domainName?: string;
+            /** @description Addressed to the caller alone: a comment mention or reply, shown only on a personal connection. */
+            isPersonal: boolean;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            /** Format: date-time */
+            completedAt?: string;
+        };
+        EmailCommentThread: {
+            /** @description `cmt_…`; the app opens it with `?commentId=`. */
+            commentId: string;
+            emailId: string;
+            /** @enum {string} */
+            status: "open";
+            /** @description Whether the thread is on the whole design or one element of it. */
+            target: {
+                /** @enum {string} */
+                kind: "email";
+            } | {
+                /** @enum {string} */
+                kind: "element";
+                /** @description The element the thread is pinned to (`elm_…`). */
+                elementId?: string;
+                /** @description What the element is: `button`, `image`, `heading`, … */
+                nodeType?: string;
+            };
+            /** @description Who started, replied to, or was mentioned in the thread: the 12 most recent. */
+            participants: {
+                userId: string;
+                name: string;
+            }[];
+            /** @description How many people are in the thread; `participants` lists at most 12. */
+            participantCount: number;
+            messageCount: number;
+            /** Format: date-time */
+            lastMessageAt: string;
+            /** @description The latest message, shortened to 140 characters; mentions read as in `body`. */
+            lastMessagePreview: string;
+            /** @description Opens the thread on the design in the Brew app. */
+            url: string;
+            /** @description Only with messages: the thread's newest messages (or, after a `messagesCursor`, the next older ones) that fit the page's size budget, oldest first. */
+            messages?: {
+                /** @description `cmm_…` */
+                messageId: string;
+                author: {
+                    userId: string;
+                    name: string;
+                };
+                /** @description The message text. Each mention reads `@` + the name `mentions` gives; other `@` text is as typed. */
+                body: string;
+                mentions: {
+                    userId: string;
+                    name: string;
+                }[];
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
+            }[];
+            /** @description Only with messages: pass it back with this thread's `commentId` to read its older messages; null when none remain. */
+            messagesCursor?: string | null;
+        };
+        Webhook: {
+            id: string;
+            endpoint: string;
+            events: ("email.sent" | "email.delivered" | "email.delivery_delayed" | "email.bounced" | "email.complained" | "email.failed" | "email.opened" | "email.clicked")[];
+            description: string;
+            /** @enum {string} */
+            status: "enabled" | "disabled";
+            /** Format: date-time */
+            created_at: string;
+        };
+        ApiErrorEnvelope: {
+            error: {
+                code: components["schemas"]["ApiErrorCode"];
+                /** @enum {string} */
+                type: "authentication_error" | "authorization_error" | "invalid_request" | "not_found" | "not_implemented" | "conflict" | "rate_limit" | "payment_required" | "service_unavailable" | "internal_error";
+                message: string;
+                param?: string;
+                suggestion: string;
+                /** Format: uri */
+                docs: string;
+                retryAfter?: number;
+                details?: {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        /** @enum {string} */
+        ApiErrorCode: "ACCOUNT_SUSPENDED" | "API_KEY_REVOKED" | "AUDIENCE_BUILD_ACTIVE" | "AUDIENCE_BUILD_ALREADY_ACTIVE" | "AUDIENCE_EDIT_CONFLICT" | "AUDIENCE_MEMBERSHIP_NOT_EXPRESSIBLE" | "AUDIENCE_NOT_FOUND" | "AUDIENCE_RUN_NOT_FOUND" | "AUDIT_NOT_FOUND" | "AUTHENTICATION_REQUIRED" | "AUTOMATION_GRAPH_INVALID" | "AUTOMATION_IN_PROGRESS" | "AUTOMATION_NOT_FOUND" | "AUTOMATION_NOT_PAUSABLE" | "AUTOMATION_NOT_PUBLISHED" | "AUTOMATION_NOT_READY" | "AUTOMATION_NOT_RUNNABLE" | "AUTOMATION_RUN_NOT_FOUND" | "AUTOMATION_VERSION_CONFLICT" | "AUTOMATION_VERSION_NOT_FOUND" | "BATCH_TOO_LARGE" | "BRAND_DOMAIN_CONFLICT" | "BRAND_ID_REQUIRED" | "BRAND_LIMIT_REACHED" | "BRAND_NOT_FOUND" | "BRAND_NOT_READY" | "BRAND_SCOPE_MISMATCH" | "CHAT_NOT_FOUND" | "COMMENT_NOT_FOUND" | "CONSENT_REQUIRED" | "CONTACT_NOT_FOUND" | "CONTENT_OPERATION_FAILED" | "CONTRACT_LOCKED_BY_PUBLISHED_AUTOMATIONS" | "CORE_FIELD_IMMUTABLE" | "DOMAIN_ALREADY_EXISTS" | "DOMAIN_CLAIMED_ELSEWHERE" | "DOMAIN_NOT_FOUND" | "DOMAIN_NOT_READY" | "DOMAIN_OTHER_BRAND" | "DOMAIN_PROVIDER_ERROR" | "DOMAIN_PURPOSE_NOT_ALLOWED" | "DOMAIN_VERIFICATION_FAILED" | "DOMAIN_VERIFIED_ELSEWHERE" | "EMAIL_GENERATION_FAILED" | "EMAIL_GROUP_NAME_CONFLICT" | "EMAIL_GROUP_NOT_FOUND" | "EMAIL_IMAGES_MISSING" | "EMAIL_IMPORT_FAILED" | "EMAIL_IMPORT_PERSISTENCE_FAILED" | "EMAIL_IN_PROGRESS" | "EMAIL_IN_USE_BY_AUTOMATION" | "EMAIL_NOT_FOUND" | "EMAIL_NOT_READY" | "EMAIL_RESULT_UNAVAILABLE" | "EMAIL_RUN_AMBIGUOUS" | "EMAIL_TEMPLATE_INVALID" | "EMAIL_VERSION_NOT_FOUND" | "EXPORT_PROVIDER_ERROR" | "EXPORT_UNSUPPORTED" | "FIELD_NAME_AMBIGUOUS" | "FIELD_NAME_COLLISION" | "FIELD_NAME_INVALID" | "FIELD_NOT_FOUND" | "FIELD_TYPE_MISMATCH" | "FIGMA_ACCESS_DENIED" | "FIGMA_CONVERSION_FAILED" | "FIGMA_FRAME_NOT_FOUND" | "FIGMA_NOT_CONNECTED" | "FIGMA_UNAVAILABLE" | "FIGMA_URL_INVALID" | "FLOW_NOT_FOUND" | "IDEMPOTENCY_CONFLICT" | "IDEMPOTENCY_IN_PROGRESS" | "INSIGHT_NOT_FOUND" | "INSUFFICIENT_CREDITS" | "INSUFFICIENT_PERMISSIONS" | "INSUFFICIENT_ROLE" | "INTEGRATION_EVENT_NOT_FOUND" | "INTEGRATION_NOT_CONNECTED" | "INTEGRATION_RECONNECT_REQUIRED" | "INTERNAL_ERROR" | "INVALID_API_KEY" | "INVALID_EMAIL" | "INVALID_PAYLOAD" | "INVALID_REQUEST" | "LIQUID_RENDER_ERROR" | "METHOD_NOT_ALLOWED" | "MISSING_EMAIL" | "NO_ACTIVE_PLAN" | "NO_ELIGIBLE_RECIPIENTS" | "NO_PUBLISHED_AUTOMATION" | "NOT_FOUND" | "NOT_IMPLEMENTED" | "ORG_SCOPE_REQUIRED" | "PAYLOAD_SCHEMA_EMAIL_REQUIRED" | "PAYLOAD_TOO_LARGE" | "PREVIEW_NOT_FOUND" | "PUBLISH_VALIDATION_FAILED" | "RATE_LIMITED" | "RECIPIENT_UNSUBSCRIBED" | "REFERENCE_EMAIL_NOT_FOUND" | "RESUBSCRIBE_NOT_ALLOWED" | "RUN_IN_PROGRESS" | "RUN_NOT_CANCELLABLE" | "RUN_NOT_PAUSABLE" | "RUN_NOT_PAUSED" | "RUN_NOT_RESUMABLE" | "RUN_START_FAILED" | "RUN_STOP_FAILED" | "SEND_NOT_CANCELLABLE" | "SEND_NOT_FOUND" | "SEND_NOT_PAUSABLE" | "SEND_NOT_RESUMABLE" | "SEND_QUOTA_EXCEEDED" | "SERVICE_UNAVAILABLE" | "TEMPLATE_NOT_FOUND" | "TEST_RECIPIENT_NOT_ALLOWED" | "TRIGGER_ALREADY_EXISTS" | "TRIGGER_EVENT_NOT_FOUND" | "TRIGGER_HAS_DEPENDENT_AUTOMATIONS" | "TRIGGER_IMMUTABLE" | "TRIGGER_INSTANCE_NOT_FOUND" | "TRIGGER_LIMIT_REACHED" | "TRIGGER_NOT_FIREABLE" | "UPLOAD_IN_PROGRESS" | "UPLOAD_NOT_FOUND" | "UPLOAD_NOT_RECEIVED" | "WRITE_CONFLICT";
         EmailsListResponse: {
             data: {
                 emailId: string;
@@ -3633,6 +4983,11 @@ export interface components {
                 subjectLine?: string;
                 /** @description The design's inbox preview line, read directly from the latest version's JSX <Preview> (its single source of truth) — what a send delivers when no explicit `previewText` override is passed to POST /v1/sends. Detail-only; absent when the design has no <Preview>. */
                 previewText?: string;
+                /**
+                 * @description The language the email's copy is written in (ISO 639-1, or zh-Hans / zh-Hant), read by Brew's language model after each content change unless a caller set it. Rendered as the HTML document's lang. Detail-only; absent until it has been read.
+                 * @enum {string}
+                 */
+                lang?: "en" | "de" | "fr" | "es" | "pt" | "it" | "nl" | "pl" | "sv" | "da" | "no" | "fi" | "cs" | "sk" | "hu" | "ro" | "bg" | "el" | "tr" | "ru" | "uk" | "hr" | "sr" | "sl" | "lt" | "lv" | "et" | "ca" | "ar" | "he" | "fa" | "ur" | "hi" | "bn" | "th" | "vi" | "id" | "ms" | "tl" | "ja" | "ko" | "zh-Hans" | "zh-Hant" | "sw" | "af";
                 html?: string;
                 versions?: {
                     version: number | "latest";
@@ -3653,24 +5008,6 @@ export interface components {
                 hasMore: boolean;
             };
         };
-        ApiErrorEnvelope: {
-            error: {
-                code: components["schemas"]["ApiErrorCode"];
-                /** @enum {string} */
-                type: "authentication_error" | "authorization_error" | "invalid_request" | "not_found" | "not_implemented" | "conflict" | "rate_limit" | "payment_required" | "service_unavailable" | "internal_error";
-                message: string;
-                param?: string;
-                suggestion: string;
-                /** Format: uri */
-                docs: string;
-                retryAfter?: number;
-                details?: {
-                    [key: string]: unknown;
-                };
-            };
-        };
-        /** @enum {string} */
-        ApiErrorCode: "ACCOUNT_SUSPENDED" | "API_KEY_REVOKED" | "AUDIENCE_BUILD_ACTIVE" | "AUDIENCE_BUILD_ALREADY_ACTIVE" | "AUDIENCE_EDIT_CONFLICT" | "AUDIENCE_MEMBERSHIP_NOT_EXPRESSIBLE" | "AUDIENCE_NOT_FOUND" | "AUDIENCE_RUN_NOT_FOUND" | "AUDIT_NOT_FOUND" | "AUTHENTICATION_REQUIRED" | "AUTOMATION_GRAPH_INVALID" | "AUTOMATION_NOT_FOUND" | "AUTOMATION_NOT_PAUSABLE" | "AUTOMATION_NOT_PUBLISHED" | "AUTOMATION_RUN_NOT_FOUND" | "AUTOMATION_VERSION_CONFLICT" | "AUTOMATION_VERSION_NOT_FOUND" | "BATCH_TOO_LARGE" | "BRAND_DOMAIN_CONFLICT" | "BRAND_ID_REQUIRED" | "BRAND_LIMIT_REACHED" | "BRAND_NOT_FOUND" | "BRAND_NOT_READY" | "BRAND_SCOPE_MISMATCH" | "CHAT_NOT_FOUND" | "CONSENT_REQUIRED" | "CONTACT_NOT_FOUND" | "CONTENT_OPERATION_FAILED" | "CONTRACT_LOCKED_BY_PUBLISHED_AUTOMATIONS" | "CORE_FIELD_IMMUTABLE" | "DOMAIN_ALREADY_EXISTS" | "DOMAIN_CLAIMED_ELSEWHERE" | "DOMAIN_NOT_FOUND" | "DOMAIN_NOT_READY" | "DOMAIN_OTHER_BRAND" | "DOMAIN_PROVIDER_ERROR" | "DOMAIN_PURPOSE_NOT_ALLOWED" | "DOMAIN_VERIFICATION_FAILED" | "DOMAIN_VERIFIED_ELSEWHERE" | "EMAIL_GENERATION_FAILED" | "EMAIL_GROUP_NAME_CONFLICT" | "EMAIL_GROUP_NOT_FOUND" | "EMAIL_IMAGES_MISSING" | "EMAIL_IMPORT_FAILED" | "EMAIL_IN_PROGRESS" | "EMAIL_IN_USE_BY_AUTOMATION" | "EMAIL_NOT_FOUND" | "EMAIL_NOT_READY" | "EMAIL_RUN_AMBIGUOUS" | "EMAIL_TEMPLATE_INVALID" | "EMAIL_VERSION_NOT_FOUND" | "EXPORT_PROVIDER_ERROR" | "EXPORT_UNSUPPORTED" | "FIELD_NOT_FOUND" | "FIELD_TYPE_MISMATCH" | "FIGMA_ACCESS_DENIED" | "FIGMA_CONVERSION_FAILED" | "FIGMA_FRAME_NOT_FOUND" | "FIGMA_NOT_CONNECTED" | "FIGMA_UNAVAILABLE" | "FIGMA_URL_INVALID" | "FLOW_NOT_FOUND" | "IDEMPOTENCY_CONFLICT" | "IDEMPOTENCY_IN_PROGRESS" | "INSUFFICIENT_CREDITS" | "INSUFFICIENT_PERMISSIONS" | "INSUFFICIENT_ROLE" | "INTEGRATION_NOT_CONNECTED" | "INTERNAL_ERROR" | "INVALID_API_KEY" | "INVALID_EMAIL" | "INVALID_PAYLOAD" | "INVALID_REQUEST" | "LIQUID_RENDER_ERROR" | "METHOD_NOT_ALLOWED" | "MISSING_EMAIL" | "NO_ELIGIBLE_RECIPIENTS" | "NO_PUBLISHED_AUTOMATION" | "NOT_FOUND" | "NOT_IMPLEMENTED" | "ORG_SCOPE_REQUIRED" | "PAYLOAD_SCHEMA_EMAIL_REQUIRED" | "PAYLOAD_TOO_LARGE" | "PREVIEW_NOT_FOUND" | "PUBLISH_VALIDATION_FAILED" | "RATE_LIMITED" | "RECIPIENT_UNSUBSCRIBED" | "REFERENCE_EMAIL_NOT_FOUND" | "RESUBSCRIBE_NOT_ALLOWED" | "RUN_IN_PROGRESS" | "RUN_NOT_CANCELLABLE" | "RUN_NOT_PAUSABLE" | "RUN_NOT_PAUSED" | "RUN_NOT_RESUMABLE" | "RUN_START_FAILED" | "RUN_STOP_FAILED" | "SEND_NOT_CANCELLABLE" | "SEND_NOT_FOUND" | "SEND_NOT_PAUSABLE" | "SEND_NOT_RESUMABLE" | "SEND_QUOTA_EXCEEDED" | "SERVICE_UNAVAILABLE" | "TEMPLATE_NOT_FOUND" | "TRIGGER_ALREADY_EXISTS" | "TRIGGER_EVENT_NOT_FOUND" | "TRIGGER_HAS_DEPENDENT_AUTOMATIONS" | "TRIGGER_IMMUTABLE" | "TRIGGER_INSTANCE_NOT_FOUND" | "TRIGGER_LIMIT_REACHED";
         EmailGenerateTextResponse: {
             response: string;
         };
@@ -3695,12 +5032,19 @@ export interface components {
             /** @description The `emailId` of an existing design to redraw in this brand's voice — one of this brand's own designs (GET /v1/emails) or a public gallery template (GET /v1/templates). Its layout and structure are the reference; the copy, imagery and styling become this brand's. */
             referenceEmailId?: string;
             /**
-             * @description Email category that steers the design treatment (exemplars, hero recipe, personalization) — mirrors what the in-app agent infers per request. One of: welcome, newsletter, promotional, product-launch, product-update, order-confirmation, shipping-update, receipt, cart-abandonment, subscription, password-reset, verification, security-alert, account-update, event-invitation, event-reminder, feedback-request, re-engagement, referral, support, business, internal, notification, general. Omit for a general treatment. Transactional categories (receipt, password-reset, order-confirmation, …) steer receipt/reset design conventions; to DELIVER those emails, wire the design into an automation with a trigger and a transactional-purpose sending domain, then fire the trigger.
+             * @description Email category that steers the design treatment (exemplars, hero recipe, personalization) — mirrors what the in-app agent infers per request. One of: welcome, onboarding, newsletter, content, event-invitation, event-reminder, event-recap, product-launch, product-update, product-pitch, promotional, cart-abandonment, re-engagement, subscription, feedback-request, referral, company-news, fundraising, order-confirmation, shipping-update, receipt, password-reset, verification, security-alert, account-update, notification, support, internal, business, general. Omit for a general treatment. Transactional categories (receipt, password-reset, order-confirmation, …) steer receipt/reset design conventions; to DELIVER those emails, wire the design into an automation with a trigger and a transactional-purpose sending domain, then fire the trigger.
              * @enum {string}
              */
-            category?: "welcome" | "newsletter" | "promotional" | "product-launch" | "product-update" | "order-confirmation" | "shipping-update" | "receipt" | "cart-abandonment" | "subscription" | "password-reset" | "verification" | "security-alert" | "account-update" | "event-invitation" | "event-reminder" | "feedback-request" | "re-engagement" | "referral" | "support" | "business" | "internal" | "notification" | "general";
+            category?: "welcome" | "onboarding" | "newsletter" | "content" | "event-invitation" | "event-reminder" | "event-recap" | "product-launch" | "product-update" | "product-pitch" | "promotional" | "cart-abandonment" | "re-engagement" | "subscription" | "feedback-request" | "referral" | "company-news" | "fundraising" | "order-confirmation" | "shipping-update" | "receipt" | "password-reset" | "verification" | "security-alert" | "account-update" | "notification" | "support" | "internal" | "business" | "general";
+            /** @description Canvas name, 2-4 words (e.g. 'Newsletter Welcome'). Omit and Brew names it. */
+            title?: string;
             /** @description Inbox subject line to set on the design (`subjectLine` — distinct from `title`, the canvas name). Sends still take an explicit per-send `subject`; this is the design's default, seeded into the send dialog and returned by `GET /v1/emails/{emailId}`. */
             subjectLine?: string;
+            /**
+             * @description ISO 639-1 language code of the email's copy (or zh-Hans / zh-Hant). Omit and Brew's language model reads it from the finished body; a value you set is kept and never re-detected. Becomes the HTML document's lang (and dir for right-to-left languages) on every send and export. One of: en, de, fr, es, pt, it, nl, pl, sv, da, no, fi, cs, sk, hu, ro, bg, el, tr, ru, uk, hr, sr, sl, lt, lv, et, ca, ar, he, fa, ur, hi, bn, th, vi, id, ms, tl, ja, ko, zh-Hans, zh-Hant, sw, af.
+             * @enum {string}
+             */
+            lang?: "en" | "de" | "fr" | "es" | "pt" | "it" | "nl" | "pl" | "sv" | "da" | "no" | "fi" | "cs" | "sk" | "hu" | "ro" | "bg" | "el" | "tr" | "ru" | "uk" | "hr" | "sr" | "sl" | "lt" | "lv" | "et" | "ca" | "ar" | "he" | "fa" | "ur" | "hi" | "bn" | "th" | "vi" | "id" | "ms" | "tl" | "ja" | "ko" | "zh-Hans" | "zh-Hant" | "sw" | "af";
             /** @description File the design under an existing group (`grp_…`), or `ungrouped`. Mutually exclusive with `groupName`. */
             groupId?: string;
             /** @description File the design under a group resolved (or created) by this name. Mutually exclusive with `groupId`. */
@@ -3727,9 +5071,9 @@ export interface components {
                 dropped?: number;
                 warnings: {
                     /** @enum {string} */
-                    code: "fetch_failed_retained" | "non_image_resource_retained" | "social_icon_substituted" | "tracking_pixel_dropped" | "unsafe_url_stripped" | "unsupported_resource_retained" | "upload_failed_retained" | "inline_asset_retained" | "attachment_dropped" | "embedded_reference_unresolved" | "tailwind_config_unresolved" | "tailwind_class_dropped" | "foreign_component_dropped";
+                    code: "fetch_failed_retained" | "non_image_resource_retained" | "social_icon_substituted" | "tracking_pixel_dropped" | "unsafe_url_stripped" | "unsupported_resource_retained" | "upload_failed_retained" | "inline_asset_retained" | "attachment_dropped" | "embedded_reference_unresolved" | "tailwind_config_unresolved" | "tailwind_class_dropped" | "foreign_component_dropped" | "current_time_frozen" | "element_dropped" | "text_dropped";
                     /** @enum {string} */
-                    location: "background" | "css-url" | "data-src" | "data-srcset" | "module" | "preload" | "src" | "srcset" | "stylesheet" | "vml-src";
+                    location: "background" | "css-url" | "data-src" | "data-srcset" | "markup" | "module" | "preload" | "src" | "srcset" | "stylesheet" | "vml-src";
                     host?: string;
                 }[];
             };
@@ -3769,6 +5113,10 @@ export interface components {
             subjectLine?: string;
         };
         FigmaToEmailRequest: {
+            /** @description Optional Figma node-id to destination map (at most 100 entries). Overrides authored text/CTA links and prevents linked content being flattened into artwork. */
+            hrefMap?: {
+                [key: string]: string;
+            };
             /**
              * Format: uri
              * @description A figma.com design, file, or prototype URL for a specific frame. The URL must include a node-id query parameter.
@@ -3805,7 +5153,7 @@ export interface components {
             response: string;
         };
         EmailEditRequest: {
-            /** @description The edit to make, in plain language — e.g. "swap the hero for the spring campaign image and tighten the CTA copy". Scoped edits beat full rewrites. Omit to only patch `title`, `subjectLine` or `groupId` (at least one of the four is required). */
+            /** @description The edit to make, in plain language — e.g. "swap the hero for the spring campaign image and tighten the CTA copy". Scoped edits beat full rewrites. Omit to only patch `title`, `subjectLine`, `lang` or `groupId` (at least one of the five is required). */
             prompt?: string;
             /** @description Pin the edit to a specific source version (from `GET /v1/emails/{emailId}?include=versions`). Requires `prompt`. Omit to edit the current latest. */
             emailVersionId?: string;
@@ -3815,6 +5163,11 @@ export interface components {
             title?: string;
             /** @description Inbox subject line to set on the design (`subjectLine` — distinct from `title`, the canvas name). Sends still take an explicit per-send `subject`; this is the design's default, seeded into the send dialog and returned by `GET /v1/emails/{emailId}`. */
             subjectLine?: string;
+            /**
+             * @description Set the language of the email (ISO 639-1, or zh-Hans / zh-Hant). Part of the free envelope patch: no AI run, no new version. Once set it is kept: Brew no longer re-detects it after edits. null clears a language you set, and Brew reads it again from the email.
+             * @enum {string|null}
+             */
+            lang?: "en" | "de" | "fr" | "es" | "pt" | "it" | "nl" | "pl" | "sv" | "da" | "no" | "fi" | "cs" | "sk" | "hu" | "ro" | "bg" | "el" | "tr" | "ru" | "uk" | "hr" | "sr" | "sl" | "lt" | "lv" | "et" | "ca" | "ar" | "he" | "fa" | "ur" | "hi" | "bn" | "th" | "vi" | "id" | "ms" | "tl" | "ja" | "ko" | "zh-Hans" | "zh-Hant" | "sw" | "af" | null;
             /** @description Move the design into this existing group (`grp_…`); `null` moves it to Ungrouped; omit to leave its group alone. Part of the free envelope patch: no AI run, no new version. */
             groupId?: string | null;
         };
@@ -3835,7 +5188,7 @@ export interface components {
         EmailCloneRequest: {
             /** @description Exact source version to clone (from GET /v1/emails/{emailId}?include=versions). Omit to clone the current latest version. */
             emailVersionId?: string;
-            /** @description Name for the clone. Omit for `Copy of <source title>`; rename later with `PATCH /v1/emails/{emailId} { title }` over HTTP, update_email_metadata over MCP. */
+            /** @description Name for the clone. Omit for `Copy of <source title>`, cut to 200 characters; rename later with `PATCH /v1/emails/{emailId} { title }` over HTTP, update_email_metadata over MCP. */
             title?: string;
             /** @description File the design under an existing group (`grp_…`), or `ungrouped`. Mutually exclusive with `groupName`. */
             groupId?: string;
@@ -3849,7 +5202,7 @@ export interface components {
         EmailExportResponse: {
             emailId: string;
             /** @enum {string} */
-            provider: "braze" | "brevo" | "hubspot" | "klaviyo" | "mailchimp" | "mailjet" | "iterable" | "postmark" | "onesignal" | "mailgun" | "sendgrid";
+            provider: "braze" | "brevo" | "hubspot" | "klaviyo" | "mailchimp" | "mailjet" | "iterable" | "postmark" | "onesignal" | "mailgun" | "sendgrid" | "loops";
             providerName: string;
             templateName: string;
             templateId?: string;
@@ -3860,7 +5213,7 @@ export interface components {
              * @description The connected ESP to export the design to as a template.
              * @enum {string}
              */
-            provider: "braze" | "brevo" | "hubspot" | "klaviyo" | "mailchimp" | "mailjet" | "iterable" | "postmark" | "onesignal" | "mailgun" | "sendgrid";
+            provider: "braze" | "brevo" | "hubspot" | "klaviyo" | "mailchimp" | "mailjet" | "iterable" | "postmark" | "onesignal" | "mailgun" | "sendgrid" | "loops";
             /** @description Template name in the ESP. Defaults to the email title. */
             templateName?: string;
             /**
@@ -4101,7 +5454,7 @@ export interface components {
         EmailClientPreviewRequest: {
             /** @description Exact email version to render; omit for latest. */
             emailVersionId?: string;
-            /** @description Client ids to render. Omit for popular Gmail, Outlook, Apple Mail and iOS clients. Supported: gmailcom-lm_chrcurrent_win10 = Gmail (Web); gmailcom-dm_chrcurrent_win10 = Gmail (Web, Dark); android16_gmailapp_pixel10_lm = Gmail (Android); android16_gmailapp_pixel10_dm = Gmail (Android, Dark); iphone16gmail_18 = Gmail (iOS); outlook2021_win11_lm_dt = Outlook 2021 (Windows); outlook2021_win11_dm_dt = Outlook 2021 (Windows, Dark); o365_w10_lm_dt = Outlook 365 (Windows); outlookcom-lm_chrcurrent_win10 = Outlook.com (Web); applemail16 = Apple Mail (macOS); applemail16_dm = Apple Mail (macOS, Dark); iphone16_18 = Apple Mail (iOS); iphone16_18_dm = Apple Mail (iOS, Dark); yahoocom-lm_chrcurrent_win10 = Yahoo Mail (Web). */
+            /** @description Client ids to render. Omit for popular Gmail, Outlook, Apple Mail and iOS clients. Supported: gmailcom-lm_chrcurrent_win10 = Gmail (Web); gmailcom-dm_chrcurrent_win10 = Gmail (Web, Dark); android16_gmailapp_pixel10_lm = Gmail (Android); android16_gmailapp_pixel10_dm = Gmail (Android, Dark); outlook2021_win11_lm_dt = Outlook 2021 (Windows); outlook2021_win11_dm_dt = Outlook 2021 (Windows, Dark); o365_w10_lm_dt = Outlook 365 (Windows); outlookcom-lm_chrcurrent_win10 = Outlook.com (Web); applemail16 = Apple Mail (macOS); applemail16_dm = Apple Mail (macOS, Dark); iphone16_18 = Apple Mail (iOS); iphone16_18_dm = Apple Mail (iOS, Dark); yahoocom-lm_chrcurrent_win10 = Yahoo Mail (Web). */
             clients?: string[];
         };
         EmailInboxPlacementTest: {
@@ -4192,7 +5545,7 @@ export interface components {
             } | null;
             diagnosis?: {
                 /** @enum {string} */
-                id: "spoofing_detected" | "aggregate_auth_failure" | "provider_auth_failure" | "microsoft_junk_filtering" | "provider_spam_placement" | "promotions_tab_placement" | "bulk_folder_placement" | "content_filter_flagged" | "content_rule" | "missing_list_unsubscribe" | "missing_plain_text_part";
+                id: "spoofing_detected" | "aggregate_auth_failure" | "provider_auth_failure" | "microsoft_junk_filtering" | "provider_spam_placement" | "promotions_tab_placement" | "bulk_folder_placement" | "content_filter_flagged" | "content_rule" | "missing_list_unsubscribe" | "missing_plain_text_part" | "seed_delivery_blocked";
                 /** @enum {string} */
                 severity: "critical" | "warning" | "info";
                 provider?: string;
@@ -4313,10 +5666,10 @@ export interface components {
                 /** @enum {string} */
                 approvalState?: "pending" | "approved" | "rejected";
                 /**
-                 * @description Why a paused send is held. `plan_limit`: the organization ran out of monthly email sends. `domain_unsendable`: its sending domain stopped passing DNS; fails after 7 days. Both resume on their own and can be canceled. `manual`: its operator paused the gradual ramp; resume it to continue.
+                 * @description Why a paused send is held. `plan_limit`: the plan has too few sends left this period. `domain_unsendable`: its sending domain stopped passing DNS; fails after 7 days. Both resume on their own and can be canceled. `manual`: its operator paused the gradual ramp; resume it to continue. `bounce_rate`: at least 4% of its recipients hard-bounced or 0.3% marked it as spam; check the list, then resume or cancel it.
                  * @enum {string}
                  */
-                pauseReason?: "manual" | "plan_limit" | "domain_unsendable";
+                pauseReason?: "manual" | "plan_limit" | "domain_unsendable" | "bounce_rate";
                 subject?: string;
                 previewText?: string;
                 from?: {
@@ -4348,6 +5701,8 @@ export interface components {
                     opened: number;
                     clicked: number;
                     bounced: number;
+                    /** @description Permanent (hard) bounces, a subset of `bounced`. Absent on older sends. */
+                    hardBounced?: number;
                     complained: number;
                     unsubscribed: number;
                 };
@@ -4391,6 +5746,19 @@ export interface components {
                     pauseReason?: "manual";
                     /** Format: date-time */
                     resumedAt?: string;
+                };
+                smartSend?: {
+                    /**
+                     * Format: date-time
+                     * @description Every recipient is sent by then: 24 hours after timing starts.
+                     */
+                    windowEndsAt?: string;
+                    /** @description Recipients timed from their own opens and clicks. */
+                    assignedViaModel?: number;
+                    /** @description Recipients with no opens or clicks, sent right away. */
+                    assignedImmediately?: number;
+                    /** @description Recipients with history that could not be timed, sent right away. */
+                    modelFallbacks?: number;
                 };
                 /** Format: date-time */
                 createdAt: string;
@@ -4441,6 +5809,7 @@ export interface components {
             subject: string;
             /** @description Inbox preheader for this test send — overrides the design's JSX <Preview>. Omit to deliver the design's own preview line. */
             previewText?: string;
+            /** @description The one address that receives this test. It must be a teammate with access to the brand, an address on a verified sending domain of the brand, or, for a signed-in person (not an API key), their own address or one on their company domain. */
             to: string;
             replyTo?: string;
             /** @description OPTIONAL verified sending domain for this test. Omit for the Brew default sender (hello@email.brew.new). Must be a verified domain owned by this org/brand — an unverified or foreign domain is rejected (404/422), never silently downgraded to the Brew default. */
@@ -4520,6 +5889,8 @@ export interface components {
                 /** @description IANA timezone used to preserve local wall-clock time for day intervals. */
                 timeZone: string;
             };
+            /** @description Intelligent Send: true sends each recipient with past opens or clicks at the upcoming hour (within 24 hours) their own history makes them most likely to open, and everyone else right away. Composes with scheduledAt; not with gradualSend. */
+            smartSend?: boolean;
         };
         SendPayloadValue: SendPayloadValue;
         SendCancelResponse: {
@@ -4693,7 +6064,7 @@ export interface components {
         EventsBreakdownResponse: {
             /** @description Email events counted. */
             count: number;
-            /** @description The largest 200 groups, largest first. `key` maps each `groupBy` field to its value (`null` when the event has none); `bucket` is the UTC period start. `unsubscribeReason` counts an unsubscribe once per reason it gave. */
+            /** @description The largest 200 groups, largest first. `key` maps each `groupBy` field to its value (`null` when the event has none); `bucket` is the UTC period start; `count` counts events, so one recipient's repeat opens each count. `unsubscribeReason` counts an unsubscribe once per reason it gave. */
             groups: {
                 key: {
                     [key: string]: string | null;
@@ -4701,6 +6072,8 @@ export interface components {
                 /** Format: date-time */
                 bucket?: string;
                 count: number;
+                /** @description On a group of opened, clicked or delivered events (its `eventType` key, or the `eventType` filter), unless grouped by `link`: recipients counted once per message sent to them, by the overview's rule, within `range` only; with `bucket`, in the period of their first open or click. Repeat opens and clicks, machine ones, and deliveries a later bounce overturned are not counted. A send's lifetime `stats` can be higher, since they also count clicks recorded before bot screening, which these rows leave out. */
+                recipients?: number;
             }[];
             /** @description The summed counts of the groups not listed. */
             otherCount: number;
@@ -5594,15 +6967,16 @@ export interface components {
                     })[];
                 };
             })[];
+            /** @description The full edge list; it replaces the stored one. Omit to keep the stored edges (also when sending `nodes`); an edge whose end no longer exists is then refused with `AUTOMATION_GRAPH_INVALID`. */
             connections?: {
                 from: string;
                 to: string;
                 branch?: string;
             }[];
             triggerEventId?: string;
-            /** @description Optimistic concurrency guard: the exact version read before deriving this update. Supply together with expectedBaseDefinitionSha256. */
+            /** @description Optimistic concurrency guard: the `automationVersionId` read before deriving this update. The save is refused with a conflict when the automation has changed since. */
             expectedBaseVersionId?: string;
-            /** @description Optimistic concurrency guard: SHA-256 of the exact definition read before deriving this update. Supply together with expectedBaseVersionId. */
+            /** @description Optional stricter guard: SHA-256 of the exact definition read before deriving this update. Requires expectedBaseVersionId. */
             expectedBaseDefinitionSha256?: string;
             /** @description Validate only — runs the full publish-gate check and returns blockers/warnings without writing. */
             dryRun?: boolean;
@@ -5610,7 +6984,7 @@ export interface components {
             published?: boolean;
             /** @description Exact version to publish; requires `published: true`. */
             automationVersionId?: string;
-            /** @description With `published: false` only — ALSO permanently stop contacts already mid-flow (default: they drain to completion). */
+            /** @description With `published: false` only — ALSO permanently stop contacts already mid-flow (default: they drain to completion). On an automation that is already a draft it only stops those contacts, and is a 422 AUTOMATION_NOT_PUBLISHED when none are in flight. */
             stopInFlight?: boolean;
             /** @description Freeze (`true`) / resume (`false`) a LIVE automation without unpublishing; held contacts resume from the same point. */
             paused?: boolean;
@@ -5640,6 +7014,71 @@ export interface components {
             } & {
                 [key: string]: unknown;
             })[];
+            /** @description MCP only: the started runs as read after the call waited for them to finish. Never set on HTTP responses; read runs with GET /v1/automations/runs/{automationRunId}. */
+            runs?: {
+                automationRunId: string;
+                automationId: string;
+                automationVersionId?: string;
+                definitionHash?: string;
+                triggerInstanceId?: string;
+                /** @enum {string} */
+                mode: "live" | "test";
+                /** @enum {string} */
+                status: "queued" | "running" | "completed" | "failed" | "canceled";
+                recipientEmail?: string;
+                /** Format: date-time */
+                startedAt?: string;
+                /** Format: date-time */
+                completedAt?: string;
+                error?: string;
+                testCoverage?: {
+                    /** @enum {string} */
+                    mode: "smoke" | "scenario";
+                    complete: boolean;
+                    visitedNodes: string[];
+                    unvisitedNodes: string[];
+                    traversedConnections: {
+                        /** @description The id of the automation node this control applies to. */
+                        from: string;
+                        /** @description The id of the automation node this control applies to. */
+                        to: string;
+                        branch?: string;
+                    }[];
+                    untraversedConnections: {
+                        /** @description The id of the automation node this control applies to. */
+                        from: string;
+                        /** @description The id of the automation node this control applies to. */
+                        to: string;
+                        branch?: string;
+                    }[];
+                    decisions: {
+                        /** @description The id of the automation node this control applies to. */
+                        nodeId: string;
+                        branch: string;
+                        /** @enum {string} */
+                        source: "simulated" | "forced" | "deterministic" | "payload" | "smoke" | "upstream_not_delivered";
+                    }[];
+                    limitations: string[];
+                };
+                logs?: {
+                    automationRunId: string;
+                    nodeId: string;
+                    nodeName: string;
+                    /** @enum {string} */
+                    nodeType: "trigger" | "wait" | "filter" | "split" | "sendEmail";
+                    /** @enum {string} */
+                    status: "running" | "completed" | "failed" | "skipped";
+                    orderIndex: number;
+                    branch?: string;
+                    durationMs?: number;
+                    /** Format: date-time */
+                    startedAt: string;
+                    /** Format: date-time */
+                    completedAt?: string;
+                    error?: string;
+                }[];
+                logsTruncated?: boolean;
+            }[];
         };
         AutomationTestRequest: {
             payload?: {
@@ -5694,6 +7133,7 @@ export interface components {
             sendNodeCount: number;
             /** Format: date-time */
             scheduledAt?: string;
+            warnings?: components["schemas"]["ApiWarning"][];
         };
         AudienceAutomationRunStartedResponse: {
             audienceRunId: string;
@@ -5701,6 +7141,7 @@ export interface components {
             /** @enum {string} */
             status: "queued" | "scheduled";
             totalRecipients: number;
+            warnings?: components["schemas"]["ApiWarning"][];
             workflowRunId?: string;
             /**
              * @description Present when org-level send approval holds the run for admin review: no workflow starts until an admin approves; rejection cancels the run with zero deliveries.
@@ -5711,7 +7152,7 @@ export interface components {
             receivedAt: string;
         };
         AutomationRunRequest: {
-            /** @description Preview the recipient count + flow without launching a run (no sends, no side effects). */
+            /** @description Preview who will receive the email, and the flow, without launching a run (no sends, no side effects). recipientCount already excludes unsubscribed, suppressed and undeliverable contacts. */
             dryRun?: boolean;
             /** Format: date-time */
             scheduledAt?: string;
@@ -5743,7 +7184,7 @@ export interface components {
                 /** @enum {string} */
                 approvalState?: "pending" | "approved" | "rejected";
                 /**
-                 * @description Why a paused run is held. `plan_limit` means the organization ran out of monthly email sends; the run resumes on its own once the allowance has room (`resumeAudienceRun` refuses it), or you can cancel it. `manual` means an operator paused it; resume it to continue.
+                 * @description Why a paused run is held. `plan_limit` means the plan has too few sends left this period; the run resumes on its own once the allowance has room (`resumeAudienceRun` refuses it), or you can cancel it. `manual` means an operator paused it; resume it to continue.
                  * @enum {string}
                  */
                 pauseReason?: "manual" | "plan_limit";
@@ -5972,6 +7413,84 @@ export interface components {
             /** @description Why the run was stopped; stored on the run for the audit trail. */
             reason?: string;
         };
+        BrewEventTriggerSaved: {
+            triggerEventId: string;
+            title: string;
+            description?: string;
+            /** @enum {string} */
+            provider: "brew_api" | "custom" | "brew_event" | "clerk" | "stytch" | "supabase" | "workos" | "stripe" | "shopify" | "revenuecat" | "framer" | "posthog" | "typeform" | "webflow" | "hubspot";
+            providerEventKey?: string;
+            brewEvent?: {
+                /**
+                 * @description The Brew event this trigger starts on.
+                 * @enum {string}
+                 */
+                event: "contact.unsubscribed";
+                /**
+                 * @description `domain`: unsubscribes from one marketing sending domain (its list). `all`: unsubscribes from every email the brand sends.
+                 * @enum {string}
+                 */
+                scope: "domain" | "all";
+                /** @description The sending domain whose list this trigger watches, e.g. `news.acme.com`. Present only when `scope` is `domain`. */
+                domainHost?: string;
+            };
+            payloadSchema: {
+                /** @enum {string} */
+                type: "object";
+                fields: components["schemas"]["TriggerPayloadField"][];
+            };
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            skill?: string;
+            /** @description True when this call created the trigger; false when it already existed. */
+            created: boolean;
+        };
+        BrewEventTriggersPostRequest: {
+            /**
+             * @description The Brew event. `contact.unsubscribed`: a contact unsubscribed with an email unsubscribe link or their mail app’s unsubscribe button.
+             * @enum {string}
+             */
+            event: "contact.unsubscribed";
+            /**
+             * @description `domain`: unsubscribes from one marketing sending domain (pass `domainId`). `all`: unsubscribes from every email the brand sends.
+             * @enum {string}
+             */
+            scope: "domain" | "all";
+            /** @description The marketing domain (from `GET /v1/domains`) whose unsubscribe list this trigger watches. Required when `scope` is `domain`; omit for `all`. */
+            domainId?: string;
+        };
+        IntegrationEventTriggerSaved: {
+            triggerEventId: string;
+            title: string;
+            description?: string;
+            /** @enum {string} */
+            provider: "brew_api" | "custom" | "brew_event" | "clerk" | "stytch" | "supabase" | "workos" | "stripe" | "shopify" | "revenuecat" | "framer" | "posthog" | "typeform" | "webflow" | "hubspot";
+            providerEventKey?: string;
+            payloadSchema: {
+                /** @enum {string} */
+                type: "object";
+                fields: components["schemas"]["TriggerPayloadField"][];
+            };
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            /** @description True when this call created the trigger; false when it already existed. */
+            created: boolean;
+            /**
+             * @description `current`: listed with the event or read in the last day. `stored`: the provider could not be read now; these are its last description. `rate_limited`: its read budget is spent; these are what Brew stored, possibly none (read again after `retryAfterSeconds`). `unavailable`: not read, and none stored.
+             * @enum {string}
+             */
+            propertiesStatus: "current" | "stored" | "rate_limited" | "unavailable";
+            /** @description With `rate_limited`: seconds until the provider can be read again, when it said. */
+            retryAfterSeconds?: number;
+        };
+        IntegrationEventTriggersPostRequest: {
+            /** @description The live event id from `GET /v1/integrations/events` (`eventId`). Never compose one from a provider and an event name. */
+            eventId: string;
+        };
         TriggersPostRequest: {
             title: string;
             description?: string;
@@ -5987,8 +7506,22 @@ export interface components {
                 title: string;
                 description?: string;
                 /** @enum {string} */
-                provider: "brew_api" | "clerk" | "stripe" | "shopify" | "stytch" | "supabase" | "workos" | "framer" | "revenuecat" | "custom";
+                provider: "brew_api" | "custom" | "brew_event" | "clerk" | "stytch" | "supabase" | "workos" | "stripe" | "shopify" | "revenuecat" | "framer" | "posthog" | "typeform" | "webflow" | "hubspot";
                 providerEventKey?: string;
+                brewEvent?: {
+                    /**
+                     * @description The Brew event this trigger starts on.
+                     * @enum {string}
+                     */
+                    event: "contact.unsubscribed";
+                    /**
+                     * @description `domain`: unsubscribes from one marketing sending domain (its list). `all`: unsubscribes from every email the brand sends.
+                     * @enum {string}
+                     */
+                    scope: "domain" | "all";
+                    /** @description The sending domain whose list this trigger watches, e.g. `news.acme.com`. Present only when `scope` is `domain`. */
+                    domainHost?: string;
+                };
                 payloadSchema: {
                     /** @enum {string} */
                     type: "object";
@@ -6049,6 +7582,16 @@ export interface components {
             counts: {
                 automations: number;
                 skipped: number;
+            };
+            /** @description Clerk, HubSpot, RevenueCat, Shopify, Stytch, Supabase, Typeform, Webflow, WorkOS triggers only, whose source sends each event to a webhook made for it: whether Brew has received this event from its source (`none_recent`: not in the 90-day receipt window). Never affects `ready`. */
+            delivery?: {
+                /** @enum {string} */
+                status: "received" | "never_received" | "none_recent" | "waiting_for_test_event";
+                /** Format: date-time */
+                lastReceivedAt?: string;
+                /** @description The provider dashboard name (Shopify Admin: "Customer update"). */
+                sourceEvent?: string;
+                message: string;
             };
         };
         TriggerFireAccepted: {
@@ -6113,10 +7656,25 @@ export interface components {
             enforcement?: "off" | "prune" | "strict";
             /** @enum {string} */
             driftStatus?: "fresh" | "stale";
-            fields?: components["schemas"]["PayloadContractFieldNode"][];
             /** @enum {string} */
-            format: "json" | "ts" | "zod" | "jsonschema" | "skill";
-            content?: string;
+            format: "json";
+            fields: components["schemas"]["PayloadContractFieldNode"][];
+        } | {
+            /** @enum {string} */
+            subjectKind: "trigger";
+            subjectId: string;
+            /** @enum {string} */
+            source: "stored" | "derived_from_schema" | "derived_from_template";
+            typeName: string;
+            contractHash?: string;
+            version?: number;
+            /** @enum {string} */
+            enforcement?: "off" | "prune" | "strict";
+            /** @enum {string} */
+            driftStatus?: "fresh" | "stale";
+            /** @enum {string} */
+            format: "ts" | "zod" | "jsonschema" | "skill";
+            content: string;
         };
         PayloadContractFieldNode: {
             key: string;
@@ -6128,6 +7686,10 @@ export interface components {
             fallbackValue?: string | number | boolean;
             /** @enum {string} */
             pii?: "none" | "low" | "high";
+            /** @description True for a value used only to render this email: never stored on contacts, in logs or analytics; cannot be used in filters, splits or recipient fields. Scalars only, never `email`. False explicitly permits ordinary PII outside rendering; pii still controls log masking. When omitted, legacy high-PII scalar protection applies except for email and top-level firstName/lastName. */
+            secret?: boolean;
+            /** @description false keeps this value off the contact record: it reaches the email and nothing else. Omitted means true. The top-level email always identifies the contact. */
+            syncToContact?: boolean;
             enumValues?: string[];
             itemType?: ("string" | "int" | "float" | "boolean" | "date" | "enum") | "unknown";
             usedIn?: ("body" | "subject" | "previewText")[];
@@ -6146,16 +7708,18 @@ export interface components {
             enforcement?: "off" | "prune" | "strict";
             /** @enum {string} */
             driftStatus?: "fresh" | "stale";
-            fields?: components["schemas"]["PayloadContractFieldNode"][];
             /** @enum {string} */
-            format: "json" | "ts" | "zod" | "jsonschema" | "skill";
-            content?: string;
+            format: "json";
+            fields: components["schemas"]["PayloadContractFieldNode"][];
             warnings: components["schemas"]["ApiWarning"][];
         };
         PayloadContractPutRequest: {
             fields?: components["schemas"]["PayloadContractFieldNode"][];
             name?: string;
-            /** @enum {string} */
+            /**
+             * @description How live fires use the contract. `off`: advisory only. `prune`: a fire that breaks a declared field is refused and undeclared keys are dropped. `strict`: undeclared keys are refused too. Omit to keep the current setting.
+             * @enum {string}
+             */
             enforcement?: "off" | "prune" | "strict";
         };
         PayloadContractValidateResponse: {
@@ -6188,7 +7752,10 @@ export interface components {
             payload: {
                 [key: string]: unknown;
             };
-            /** @enum {string} */
+            /**
+             * @description Check as this mode instead of the stored one: `prune` drops undeclared keys, `strict` reports them as errors. Omit for the stored mode (`prune` when enforcement is off).
+             * @enum {string}
+             */
             enforcement?: "prune" | "strict";
         };
         PayloadContractInferResponse: {
@@ -6208,7 +7775,7 @@ export interface components {
             data: {
                 triggerInstanceId: string;
                 /** @enum {string} */
-                source: "api" | "integration";
+                source: "api" | "integration" | "brew_event";
                 provider?: string;
                 triggerEventId?: string;
                 /** @enum {string} */
@@ -6237,6 +7804,8 @@ export interface components {
             fieldsCreated: string[];
             errors: {
                 email: string;
+                /** @description The 1-based row that failed: `contacts[row - 1]`, or the CSV data row (header and blank lines not counted). */
+                row?: number;
                 code: string;
                 field?: string;
                 message: string;
@@ -6244,6 +7813,8 @@ export interface components {
             warnings: {
                 code: string;
                 email?: string;
+                /** @description The 1-based row it is about (CSV: data row; header and blank lines not counted). */
+                row?: number;
                 field?: string;
                 message: string;
                 from?: string;
@@ -6256,6 +7827,11 @@ export interface components {
                 risky: number;
                 invalid: number;
                 unscored: number;
+                persistence?: {
+                    matched: number;
+                    modified: number;
+                    failed: number;
+                };
             };
             validationJobId?: string;
         };
@@ -6268,10 +7844,10 @@ export interface components {
                 subscribed?: boolean;
                 consent?: {
                     /**
-                     * @description Who captured it: `api` (an API caller asserted it), `form` (a signup form), `import` (a bulk import), `app` (the in-app CSV wizard checkbox).
+                     * @description Who captured it: `api` (an API caller asserted it), `form` (a signup form), `import` (a bulk import), `app` (the in-app CSV wizard checkbox), `integration` (an integration sync such as Stripe created the contact; provenance only, not an opt-in).
                      * @enum {string}
                      */
-                    source: "api" | "form" | "import" | "app";
+                    source: "api" | "form" | "import" | "app" | "integration";
                     /**
                      * Format: date-time
                      * @description When it was captured.
@@ -6319,6 +7895,8 @@ export interface components {
             warnings: {
                 code: string;
                 email?: string;
+                /** @description The 1-based row it is about (CSV: data row; header and blank lines not counted). */
+                row?: number;
                 field?: string;
                 message: string;
                 from?: string;
@@ -6331,6 +7909,11 @@ export interface components {
                 risky: number;
                 invalid: number;
                 unscored: number;
+                persistence?: {
+                    matched: number;
+                    modified: number;
+                    failed: number;
+                };
             };
         };
         ContactsPostRequest: components["schemas"]["ContactsPostSingleRequest"] | components["schemas"]["ContactsPostBatchRequest"];
@@ -6412,10 +7995,10 @@ export interface components {
                 subscribed?: boolean;
                 consent?: {
                     /**
-                     * @description Who captured it: `api` (an API caller asserted it), `form` (a signup form), `import` (a bulk import), `app` (the in-app CSV wizard checkbox).
+                     * @description Who captured it: `api` (an API caller asserted it), `form` (a signup form), `import` (a bulk import), `app` (the in-app CSV wizard checkbox), `integration` (an integration sync such as Stripe created the contact; provenance only, not an opt-in).
                      * @enum {string}
                      */
-                    source: "api" | "form" | "import" | "app";
+                    source: "api" | "form" | "import" | "app" | "integration";
                     /**
                      * Format: date-time
                      * @description When it was captured.
@@ -6458,7 +8041,20 @@ export interface components {
                     [key: string]: unknown;
                 };
             };
+            /** @description The fields whose stored value changed (`consent` included). Empty when every value sent matched what was stored; nothing is written then and `updatedAt` stays the same. */
             updated: string[];
+            warnings: {
+                code: string;
+                email?: string;
+                /** @description The 1-based row it is about (CSV: data row; header and blank lines not counted). */
+                row?: number;
+                field?: string;
+                message: string;
+                from?: string;
+                to?: string;
+                original?: string;
+                normalized?: string;
+            }[];
         };
         ContactsPatchRequest: {
             fields?: {
@@ -6493,10 +8089,10 @@ export interface components {
                 subscribed?: boolean;
                 consent?: {
                     /**
-                     * @description Who captured it: `api` (an API caller asserted it), `form` (a signup form), `import` (a bulk import), `app` (the in-app CSV wizard checkbox).
+                     * @description Who captured it: `api` (an API caller asserted it), `form` (a signup form), `import` (a bulk import), `app` (the in-app CSV wizard checkbox), `integration` (an integration sync such as Stripe created the contact; provenance only, not an opt-in).
                      * @enum {string}
                      */
-                    source: "api" | "form" | "import" | "app";
+                    source: "api" | "form" | "import" | "app" | "integration";
                     /**
                      * Format: date-time
                      * @description When it was captured.
@@ -6545,7 +8141,142 @@ export interface components {
                 hasMore: boolean;
             };
         };
-        ContactsSearchSuccessResponse: components["schemas"]["ContactsListResponse"] | components["schemas"]["ContactsCountResponse"];
+        ContactWithOpenProfile: {
+            email: string;
+            firstName?: string;
+            lastName?: string;
+            /** @default true */
+            subscribed?: boolean;
+            consent?: {
+                /**
+                 * @description Who captured it: `api` (an API caller asserted it), `form` (a signup form), `import` (a bulk import), `app` (the in-app CSV wizard checkbox), `integration` (an integration sync such as Stripe created the contact; provenance only, not an opt-in).
+                 * @enum {string}
+                 */
+                source: "api" | "form" | "import" | "app" | "integration";
+                /**
+                 * Format: date-time
+                 * @description When it was captured.
+                 */
+                capturedAt: string;
+                /** @description The policy or terms version in force when it was captured. */
+                policyVersion?: string;
+                /** @description Free-text evidence: a form URL, a ticket, a checkbox label. */
+                evidence?: string;
+            };
+            /**
+             * @description The latest verdict. `valid` only ever comes from a deliverability check (`validate: true` on ingest, or POST /v1/contacts/validate), which also sets `lastValidatedAt`. Without a check the free format check on ingest stores `risky` (disposable or role address) or `invalid`, and leaves the field unset otherwise: not validated.
+             * @enum {string}
+             */
+            validationStatus?: "valid" | "risky" | "invalid";
+            /** @default false */
+            suppressed?: boolean;
+            suppressedReason?: string | null;
+            /** @default [] */
+            unsubscribedDomains?: string[];
+            /** Format: date-time */
+            lastValidatedAt?: string;
+            validationDetails?: {
+                /** @enum {string} */
+                provider: "brew";
+                reason?: string;
+                didYouMean?: string;
+                risk?: string;
+                isDisposable?: boolean;
+                isRole?: boolean;
+            };
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            importId?: string | null;
+            csvFileName?: string | null;
+            /** @default {} */
+            customFields?: {
+                [key: string]: unknown;
+            };
+            /** @description With `include` openProfile: the contact's smart-send open-time profile (48 UTC half-hour open counts and the best send time derived from them), or null when they have no opens folded yet. Not bot detection: machine opens cannot be told apart here. */
+            openProfile?: {
+                totalOpens: number;
+                /** Format: date-time */
+                lastOpenedAt: string;
+                bestOpenMinuteUtc?: number;
+                bestSendMinuteUtc?: number;
+                confidence?: number;
+                histogram: number[];
+            } | null;
+        };
+        ContactsSearchSuccessResponse: components["schemas"]["ContactsListResponse"] | components["schemas"]["ContactsWithOpenProfileListResponse"] | components["schemas"]["ContactsCountResponse"];
+        ContactsWithOpenProfileListResponse: {
+            data: {
+                email: string;
+                firstName?: string;
+                lastName?: string;
+                /** @default true */
+                subscribed?: boolean;
+                consent?: {
+                    /**
+                     * @description Who captured it: `api` (an API caller asserted it), `form` (a signup form), `import` (a bulk import), `app` (the in-app CSV wizard checkbox), `integration` (an integration sync such as Stripe created the contact; provenance only, not an opt-in).
+                     * @enum {string}
+                     */
+                    source: "api" | "form" | "import" | "app" | "integration";
+                    /**
+                     * Format: date-time
+                     * @description When it was captured.
+                     */
+                    capturedAt: string;
+                    /** @description The policy or terms version in force when it was captured. */
+                    policyVersion?: string;
+                    /** @description Free-text evidence: a form URL, a ticket, a checkbox label. */
+                    evidence?: string;
+                };
+                /**
+                 * @description The latest verdict. `valid` only ever comes from a deliverability check (`validate: true` on ingest, or POST /v1/contacts/validate), which also sets `lastValidatedAt`. Without a check the free format check on ingest stores `risky` (disposable or role address) or `invalid`, and leaves the field unset otherwise: not validated.
+                 * @enum {string}
+                 */
+                validationStatus?: "valid" | "risky" | "invalid";
+                /** @default false */
+                suppressed?: boolean;
+                suppressedReason?: string | null;
+                /** @default [] */
+                unsubscribedDomains?: string[];
+                /** Format: date-time */
+                lastValidatedAt?: string;
+                validationDetails?: {
+                    /** @enum {string} */
+                    provider: "brew";
+                    reason?: string;
+                    didYouMean?: string;
+                    risk?: string;
+                    isDisposable?: boolean;
+                    isRole?: boolean;
+                };
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
+                importId?: string | null;
+                csvFileName?: string | null;
+                /** @default {} */
+                customFields?: {
+                    [key: string]: unknown;
+                };
+                /** @description With `include` openProfile: the contact's smart-send open-time profile (48 UTC half-hour open counts and the best send time derived from them), or null when they have no opens folded yet. Not bot detection: machine opens cannot be told apart here. */
+                openProfile?: {
+                    totalOpens: number;
+                    /** Format: date-time */
+                    lastOpenedAt: string;
+                    bestOpenMinuteUtc?: number;
+                    bestSendMinuteUtc?: number;
+                    confidence?: number;
+                    histogram: number[];
+                } | null;
+            }[];
+            pagination: {
+                limit: number;
+                cursor: string | null;
+                hasMore: boolean;
+            };
+        };
         ContactsCountResponse: {
             count: number;
             /** @description With `groupBy` or `bucket`: the largest 200 groups; `key` maps each grouped field to its value, `bucket` is the ISO period start. */
@@ -6571,7 +8302,7 @@ export interface components {
                 /** @description The comparison value, as a string. `in`, `not_in`, `contains_any` and `not_contains_any` take a comma-separated list; `between` takes exactly two comma-separated bounds (e.g. "10,30"). Unary operators (`is_empty`, `is_not_empty`, `exists`, `not_exists`, `is_true`, `is_false`) ignore it — pass "". */
                 value: string;
             }[];
-            /** @description Scope to a saved audience's members. The audience's stored filter set is evaluated as one unit with its own `logicalOperator` (an OR audience stays an OR), then ANDed with `filters`. Unknown / cross-brand id, or an audience a send would refuse (unusable filters, a cohort still building) → 400. */
+            /** @description Scope to a saved audience's members. The audience's stored filter set is evaluated as one unit with its own `logicalOperator` (an OR audience stays an OR), then ANDed with `filters`. Unknown / cross-brand id, or an audience a send would refuse (unusable filters, a cohort still building) → 400. Omit it, or pass the reserved `all`, to search every contact. */
             audienceId?: string;
             /**
              * @default and
@@ -6597,33 +8328,57 @@ export interface components {
             /** @default 50 */
             limit?: number;
             cursor?: string;
+            /** @description `openProfile` attaches each returned contact's smart-send open-time profile (needs the `emails` permission as well). A page then holds at most 10 contacts; not with `count: true`. */
+            include?: "openProfile"[];
         };
         ContactsValidateResponse: {
-            data: {
+            data: ({
                 email: string;
                 valid: boolean;
                 /** @enum {string} */
                 status: "valid" | "risky" | "invalid";
+                /** @enum {string} */
+                checkOutcome: "completed";
                 reason?: string;
                 didYouMean?: string;
                 risk?: string;
                 isDisposable?: boolean;
                 isRole?: boolean;
-            }[];
+            } | {
+                email: string;
+                /** @enum {boolean} */
+                valid: false;
+                /** @enum {string} */
+                status: "risky";
+                /** @enum {string} */
+                checkOutcome: "unavailable";
+                /** @enum {string} */
+                reason: "validation_unavailable";
+            })[];
+            persistence: {
+                matched: number;
+                modified: number;
+                failed: number;
+            };
         };
         ContactsValidateRequest: {
             emails: string[];
         };
-        ContactsImportCsvResponse: {
+        ContactsImportResponse: {
             summary: {
                 inserted: number;
                 updated: number;
                 failed: number;
+                /** @description Rows not written and not failed: existing contacts left alone by `onConflict: "skip"` (one `CONTACT_EXISTS_SKIPPED` warning each), and CSV rows omitted for a missing/invalid email or merged into a later duplicate (up to 100 `CSV_ROW_SKIPPED` warnings name each `row`; a final warning counts further skipped rows). */
                 skipped: number;
+                /** @description Rows submitted (JSON contacts, or CSV data rows). Always `inserted + updated + failed + skipped`. */
+                total: number;
             };
             fieldsCreated: string[];
             errors: {
                 email: string;
+                /** @description The 1-based row that failed: `contacts[row - 1]`, or the CSV data row (header and blank lines not counted). */
+                row?: number;
                 code: string;
                 field?: string;
                 message: string;
@@ -6631,6 +8386,8 @@ export interface components {
             warnings: {
                 code: string;
                 email?: string;
+                /** @description The 1-based row it is about (CSV: data row; header and blank lines not counted). */
+                row?: number;
                 field?: string;
                 message: string;
                 from?: string;
@@ -6643,15 +8400,27 @@ export interface components {
                 risky: number;
                 invalid: number;
                 unscored: number;
+                persistence?: {
+                    matched: number;
+                    modified: number;
+                    failed: number;
+                };
             };
             validationJobId?: string;
+            /** @description This batch's Import History id. Each contact it wrote carries it as `importId` until a later import touches that contact, so a contact filter on `importId` lists them. Absent on a dry run. */
+            importId?: string;
+            /**
+             * @description Present on a dry run: the counts say what the import would do, and nothing was written.
+             * @enum {boolean}
+             */
+            dryRun?: true;
         };
         ContactsImportCsvRequest: {
             csv: string;
             mapping?: {
                 [key: string]: string;
             };
-            /** @description Optional deliverability check on ingestion. When true, each address is validated with the provider (2 credits per address, charged on success) and the verdict is saved to the contact’s `validationStatus`. Submissions above the inline cap (100 addresses) upsert first and validate as a background job, returning a `validationJobId`. */
+            /** @description Optional deliverability check on ingestion. When true, each imported address is validated with the provider and the verdict is saved to the contact’s `validationStatus`. Imports of at most 100 submitted CSV data rows validate inline, metered at 2 credits per submitted row on a successful response, including skipped rows and repeated addresses. Larger imports write first and use a background validation workflow billed per address as it runs; `validationJobId` is returned when a job is queued. The job skips unsubscribed, suppressed and recently validated addresses, and a `VALIDATION_SKIPPED` warning gives the counts; when every address is skipped no job is queued and `validationJobId` is absent. */
             validate?: boolean;
             /** @description Consent record stamped on every imported row (typically `{ "source": "import" }`). */
             consent?: {
@@ -6673,6 +8442,67 @@ export interface components {
              * @enum {string}
              */
             dateOrder?: "month_first" | "day_first";
+            /** @description Name this batch is listed under in Import History (usually the source file name, e.g. `customers.csv`), also stamped on every contact it writes as `csvFileName`. A path keeps only its last segment. */
+            fileName?: string;
+            /** @description When true, returns what this import would return and writes nothing: no contacts, fields, Import History entry or `importId`; `validate` is skipped and nothing is charged. */
+            dryRun?: boolean;
+            /**
+             * @description `upsert` (default) updates existing contacts; `skip` only creates missing ones, leaving each existing contact unchanged (counted in `summary.skipped`, with a `CONTACT_EXISTS_SKIPPED` warning).
+             * @enum {string}
+             */
+            onConflict?: "upsert" | "skip";
+        };
+        ContactsImportRequest: {
+            contacts: {
+                email?: string;
+                firstName?: string;
+                lastName?: string;
+                subscribed?: boolean;
+                customFields?: {
+                    [key: string]: unknown;
+                };
+                /** @description Marketing consent provenance to record on this contact. Optional at creation; an inline marketing send to this address later needs the contact to be subscribed and warns when no record exists. */
+                consent?: {
+                    /**
+                     * @description Who captured it: `api`, `form`, or `import`. (`app` is reserved for the in-app CSV wizard.)
+                     * @enum {string}
+                     */
+                    source: "api" | "form" | "import";
+                    /**
+                     * Format: date-time
+                     * @description ISO 8601; defaults to now.
+                     */
+                    capturedAt?: string;
+                    policyVersion?: string;
+                    evidence?: string;
+                };
+            }[];
+            /** @description Optional deliverability check on ingestion. When true, each imported address is validated with the provider and the verdict is saved to the contact’s `validationStatus`. Imports of at most 100 submitted contacts validate inline, metered at 2 credits per submitted contact on a successful response, including rows that fail. Larger imports write first and use a background validation workflow billed per address as it runs; `validationJobId` is returned when a job is queued. The job skips unsubscribed, suppressed and recently validated addresses, and a `VALIDATION_SKIPPED` warning gives the counts; when every address is skipped no job is queued and `validationJobId` is absent. */
+            validate?: boolean;
+            /** @description Default consent record for every row that does not carry its own `consent` (typically `{ "source": "import" }`). */
+            consent?: {
+                /**
+                 * @description Who captured it: `api`, `form`, or `import`. (`app` is reserved for the in-app CSV wizard.)
+                 * @enum {string}
+                 */
+                source: "api" | "form" | "import";
+                /**
+                 * Format: date-time
+                 * @description ISO 8601; defaults to now.
+                 */
+                capturedAt?: string;
+                policyVersion?: string;
+                evidence?: string;
+            };
+            /** @description Name this batch is listed under in Import History (usually the source file name, e.g. `customers.csv`), also stamped on every contact it writes as `csvFileName`. A path keeps only its last segment. */
+            fileName?: string;
+            /** @description When true, returns what this import would return and writes nothing: no contacts, fields, Import History entry or `importId`; `validate` is skipped and nothing is charged. */
+            dryRun?: boolean;
+            /**
+             * @description `upsert` (default) updates existing contacts; `skip` only creates missing ones, leaving each existing contact unchanged (counted in `summary.skipped`, with a `CONTACT_EXISTS_SKIPPED` warning).
+             * @enum {string}
+             */
+            onConflict?: "upsert" | "skip";
         };
         ContactsBatchDeleteResponse: {
             deletedCount: number;
@@ -6727,7 +8557,7 @@ export interface components {
                         /** @enum {string} */
                         operator: "equals" | "not_equals" | "contains" | "not_contains" | "contains_any" | "not_contains_any" | "starts_with" | "ends_with" | "gt" | "gte" | "lt" | "lte" | "between" | "is_true" | "is_false" | "in" | "not_in" | "is_empty" | "not_exists" | "is_not_empty" | "exists" | "is_set" | "before" | "after" | "on_date";
                         value?: unknown;
-                        /** @description The field's value type — set `number`, `date`, or `boolean` for typed comparisons (dates are stored as epoch-ms, so a string `equals` on a date never matches). Omit for plain string fields. */
+                        /** @description Saved audiences infer omitted types from the field registry. Unknown fields compare as strings. Date ranges require type: "date". */
                         type?: string;
                     }[];
                     /** @enum {string} */
@@ -6746,17 +8576,11 @@ export interface components {
                     status: "queued" | "running" | "completed" | "partially_completed" | "failed";
                     cohort: {
                         eventTypes: ("sent" | "delivered" | "delivery_delayed" | "opened" | "clicked" | "bounced" | "complained" | "failed" | "skipped" | "unsubscribed")[];
-                        /**
-                         * Format: date-time
-                         * @description Window start. Required unless `sendId` is set — then it defaults to one hour before that send was dispatched (its scheduled time for a scheduled send; a completion pass's re-stamped start is never used), and `to` to now.
-                         */
+                        /** Format: date-time */
                         from: string;
-                        /**
-                         * Format: date-time
-                         * @description Defaults to now.
-                         */
+                        /** Format: date-time */
                         to: string;
-                        /** @description Scope to one send (the id in /analytics/sends/{sendId}). With `sendId` the window may be omitted. */
+                        /** @description Scope to one send (a `sendId` from a send or send-analytics row). With `sendId` the window may be omitted. */
                         sendId?: string;
                         emailId?: string;
                         automationIds?: string[];
@@ -6801,7 +8625,7 @@ export interface components {
                     /** @enum {string} */
                     operator: "equals" | "not_equals" | "contains" | "not_contains" | "contains_any" | "not_contains_any" | "starts_with" | "ends_with" | "gt" | "gte" | "lt" | "lte" | "between" | "is_true" | "is_false" | "in" | "not_in" | "is_empty" | "not_exists" | "is_not_empty" | "exists" | "is_set" | "before" | "after" | "on_date";
                     value?: unknown;
-                    /** @description The field's value type — set `number`, `date`, or `boolean` for typed comparisons (dates are stored as epoch-ms, so a string `equals` on a date never matches). Omit for plain string fields. */
+                    /** @description Saved audiences infer omitted types from the field registry. Unknown fields compare as strings. Date ranges require type: "date". */
                     type?: string;
                 }[];
                 /** @enum {string} */
@@ -6820,17 +8644,11 @@ export interface components {
                 status: "queued" | "running" | "completed" | "partially_completed" | "failed";
                 cohort: {
                     eventTypes: ("sent" | "delivered" | "delivery_delayed" | "opened" | "clicked" | "bounced" | "complained" | "failed" | "skipped" | "unsubscribed")[];
-                    /**
-                     * Format: date-time
-                     * @description Window start. Required unless `sendId` is set — then it defaults to one hour before that send was dispatched (its scheduled time for a scheduled send; a completion pass's re-stamped start is never used), and `to` to now.
-                     */
+                    /** Format: date-time */
                     from: string;
-                    /**
-                     * Format: date-time
-                     * @description Defaults to now.
-                     */
+                    /** Format: date-time */
                     to: string;
-                    /** @description Scope to one send (the id in /analytics/sends/{sendId}). With `sendId` the window may be omitted. */
+                    /** @description Scope to one send (a `sendId` from a send or send-analytics row). With `sendId` the window may be omitted. */
                     sendId?: string;
                     emailId?: string;
                     automationIds?: string[];
@@ -6890,9 +8708,9 @@ export interface components {
                     field: string;
                     /** @enum {string} */
                     operator: "equals" | "not_equals" | "contains" | "not_contains" | "contains_any" | "not_contains_any" | "starts_with" | "ends_with" | "gt" | "gte" | "lt" | "lte" | "between" | "is_true" | "is_false" | "in" | "not_in" | "is_empty" | "not_exists" | "is_not_empty" | "exists" | "is_set" | "before" | "after" | "on_date";
-                    /** @description Operator-dependent: `between` takes `[min, max]` or `{min, max}`; `in`/`not_in`/`contains_any`/`not_contains_any` take a list; unary operators (`is_empty`, `is_not_empty`, `exists`, `is_true`, …) omit it. */
+                    /** @description Operator-dependent: `between` takes `[min, max]` or `{min, max}`; `in`/`not_in`/`contains_any`/`not_contains_any` take an array, not a comma-separated string; unary operators (`is_empty`, `is_not_empty`, `exists`, `is_true`, …) omit it. */
                     value?: unknown;
-                    /** @description The field's value type — set `number`, `date`, or `boolean` for typed comparisons (dates are stored as epoch-ms, so a string `equals` on a date never matches). Omit for plain string fields. */
+                    /** @description Saved audiences infer omitted types from the field registry. Unknown fields compare as strings. Date ranges require type: "date". */
                     type?: string;
                 }[];
                 /** @enum {string} */
@@ -6908,7 +8726,7 @@ export interface components {
                     /** @enum {string} */
                     operator: "equals" | "not_equals" | "contains" | "not_contains" | "contains_any" | "not_contains_any" | "starts_with" | "ends_with" | "gt" | "gte" | "lt" | "lte" | "between" | "is_true" | "is_false" | "in" | "not_in" | "is_empty" | "not_exists" | "is_not_empty" | "exists" | "is_set" | "before" | "after" | "on_date";
                     value?: unknown;
-                    /** @description The field's value type — set `number`, `date`, or `boolean` for typed comparisons (dates are stored as epoch-ms, so a string `equals` on a date never matches). Omit for plain string fields. */
+                    /** @description Saved audiences infer omitted types from the field registry. Unknown fields compare as strings. Date ranges require type: "date". */
                     type?: string;
                 }[];
                 /** @enum {string} */
@@ -6927,17 +8745,11 @@ export interface components {
                 status: "queued" | "running" | "completed" | "partially_completed" | "failed";
                 cohort: {
                     eventTypes: ("sent" | "delivered" | "delivery_delayed" | "opened" | "clicked" | "bounced" | "complained" | "failed" | "skipped" | "unsubscribed")[];
-                    /**
-                     * Format: date-time
-                     * @description Window start. Required unless `sendId` is set — then it defaults to one hour before that send was dispatched (its scheduled time for a scheduled send; a completion pass's re-stamped start is never used), and `to` to now.
-                     */
+                    /** Format: date-time */
                     from: string;
-                    /**
-                     * Format: date-time
-                     * @description Defaults to now.
-                     */
+                    /** Format: date-time */
                     to: string;
-                    /** @description Scope to one send (the id in /analytics/sends/{sendId}). With `sendId` the window may be omitted. */
+                    /** @description Scope to one send (a `sendId` from a send or send-analytics row). With `sendId` the window may be omitted. */
                     sendId?: string;
                     emailId?: string;
                     automationIds?: string[];
@@ -6980,7 +8792,7 @@ export interface components {
                  * @description Defaults to now.
                  */
                 to?: string;
-                /** @description Scope to one send (the id in /analytics/sends/{sendId}). With `sendId` the window may be omitted. */
+                /** @description Scope to one send (a `sendId` from a send or send-analytics row). With `sendId` the window may be omitted. */
                 sendId?: string;
                 emailId?: string;
                 automationIds?: string[];
@@ -7004,9 +8816,9 @@ export interface components {
                     field: string;
                     /** @enum {string} */
                     operator: "equals" | "not_equals" | "contains" | "not_contains" | "contains_any" | "not_contains_any" | "starts_with" | "ends_with" | "gt" | "gte" | "lt" | "lte" | "between" | "is_true" | "is_false" | "in" | "not_in" | "is_empty" | "not_exists" | "is_not_empty" | "exists" | "is_set" | "before" | "after" | "on_date";
-                    /** @description Operator-dependent: `between` takes `[min, max]` or `{min, max}`; `in`/`not_in`/`contains_any`/`not_contains_any` take a list; unary operators (`is_empty`, `is_not_empty`, `exists`, `is_true`, …) omit it. */
+                    /** @description Operator-dependent: `between` takes `[min, max]` or `{min, max}`; `in`/`not_in`/`contains_any`/`not_contains_any` take an array, not a comma-separated string; unary operators (`is_empty`, `is_not_empty`, `exists`, `is_true`, …) omit it. */
                     value?: unknown;
-                    /** @description The field's value type — set `number`, `date`, or `boolean` for typed comparisons (dates are stored as epoch-ms, so a string `equals` on a date never matches). Omit for plain string fields. */
+                    /** @description Saved audiences infer omitted types from the field registry. Unknown fields compare as strings. Date ranges require type: "date". */
                     type?: string;
                 }[];
                 /** @enum {string} */
@@ -7244,6 +9056,7 @@ export interface components {
                 day: string;
                 sent: number;
             }[];
+            /** @description Campaign and automation activity, excluding placement seeds. A bounded sample, not a time-window total. Null when no sampled recipients were sent. */
             domainActivity: {
                 /** @enum {boolean} */
                 sampled: true;
@@ -7301,6 +9114,78 @@ export interface components {
             }[];
             /** Format: date-time */
             checkedAt: string;
+            /** @description With `include=scoreHistory`: up to 50 saved score snapshots, newest first. Snapshots are saved when a placement test completes, the domain is verified, or a score run finishes. Only snapshots saved under this brand count, searched among the domain's newest 500, so a domain that moved between brands can show fewer. */
+            scoreHistory?: {
+                score: number;
+                /** @enum {string} */
+                grade: "excellent" | "good" | "fair" | "poor" | "critical";
+                /** @enum {string} */
+                confidence: "high" | "medium" | "low";
+                /** @enum {string} */
+                trigger: "placement_test" | "domain_verified" | "domain_score_run" | "health_read";
+                /** Format: date-time */
+                computedAt: string;
+                components: {
+                    placement: {
+                        score: number;
+                        weight: number;
+                    };
+                    authentication: {
+                        score: number;
+                        weight: number;
+                    };
+                    reputation: {
+                        score: number;
+                        weight: number;
+                    };
+                    content: {
+                        score: number;
+                        weight: number;
+                    };
+                    posture: {
+                        score: number;
+                        weight: number;
+                    };
+                };
+            }[];
+            /** @description With `include=scoreRuns`: the last 5 automated domain score runs (the 5-variant seed check), newest first. */
+            scoreRuns?: {
+                runId: string;
+                /** @enum {string} */
+                trigger: "domain_verified" | "manual";
+                /** @enum {string} */
+                status: "queued" | "running" | "completed" | "partially_completed" | "failed";
+                /** @enum {string} */
+                phase?: "preparing" | "collecting";
+                scoreAfter: {
+                    score: number;
+                    /** @enum {string} */
+                    grade: "excellent" | "good" | "fair" | "poor" | "critical";
+                } | null;
+                creditsCharged: number;
+                variants: {
+                    /** @enum {string} */
+                    variant: "plain_text" | "text_forward" | "balanced" | "image_heavy" | "promotional";
+                    /** @enum {string} */
+                    status?: "queued" | "running" | "completed" | "partially_completed" | "failed";
+                    /** @enum {string} */
+                    phase?: "sending" | "collecting";
+                    testId?: string;
+                    emailId?: string;
+                    overall?: {
+                        total: number;
+                        inbox: number;
+                        spam: number;
+                        missing: number;
+                        pending: number;
+                    };
+                }[];
+                errorMessage?: string;
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
+            }[];
         };
         TemplatesListResponse: {
             data: {
@@ -7331,6 +9216,8 @@ export interface components {
                 title: string;
                 /** @enum {string} */
                 type: "newsletter" | "signup";
+                /** @enum {string} */
+                kind?: "onboarding" | "trial" | "events" | "product_updates" | "promotions";
                 category: string;
                 categoryLabel: string;
                 emailCount: number;
@@ -7380,7 +9267,7 @@ export interface components {
             createdAt?: string;
             /** Format: date-time */
             updatedAt?: string;
-            identity?: {
+            identity: {
                 brandName?: string;
                 description?: string;
                 tagline?: string;
@@ -7406,12 +9293,19 @@ export interface components {
             }[];
         };
         BrandPatchRequest: {
+            /** @description Saved identity fields to change; fields left out keep their value. */
             identity?: {
+                /** @description The brand name as emails write it. */
                 brandName?: string;
+                /** @description A short summary of what the brand does and for whom. */
                 description?: string;
+                /** @description The brand’s slogan. */
                 tagline?: string;
+                /** @description The brand’s public contact email address. */
                 contactEmail?: string;
+                /** @description The brand’s public contact phone number. */
                 contactPhone?: string;
+                /** @description The brand’s postal address, for email footers. */
                 address?: string;
             };
             emailDesign?: string;
@@ -7442,6 +9336,10 @@ export interface components {
                 cursor: string | null;
                 hasMore: boolean;
             };
+        };
+        BrandImageDeleteResponse: {
+            assetId: string;
+            deleted: boolean;
         };
         BrandsListResponse: {
             data: {
@@ -7483,10 +9381,15 @@ export interface components {
             };
         };
         BrandsCreateRequest: {
+            /** @description Website URL or bare domain to extract the brand from. */
             url: string;
+            /** @description Brand guidance the extraction treats as authoritative: brand name, colors, fonts, voice, which pages matter most. */
             instructions?: string;
+            /** @description Extra page URLs to read beyond the automatic crawl. */
             includePaths?: string[];
+            /** @description Path prefixes the crawl skips, e.g. `/blog` or `/careers` (case-insensitive). */
             excludePaths?: string[];
+            /** @description Subdomains the crawl skips: a full host such as `shop.example.com`, or a leftmost label such as `blog`. */
             excludeSubdomains?: string[];
         };
         BrandGetByIdResponse: {
@@ -7550,40 +9453,63 @@ export interface components {
         ContentGifResponse: {
             /** Format: uri */
             gifUrl: string;
-            /** Format: uri */
-            videoUrl?: string;
-            /** Format: uri */
-            generatedImageUrl?: string;
             altText?: string;
             duration?: number;
             fps?: number;
+            frameCount?: number;
             aspectRatio?: string;
+            width?: number;
+            height?: number;
             loop?: boolean;
         };
         ContentGifRequest: {
             /** @enum {string} */
             from: "prompt";
+            /** @description What the GIF shows and how it moves. */
             prompt: string;
+            /** @description Frames in the loop, 2–16 (default 9). */
+            frameCount?: number;
+            /** @description Frames per second, 1–24 (default 5 for generated GIFs). */
             fps?: number;
-            /** @enum {string} */
+            /**
+             * @description The GIF's shape (default 16:9): 768×432, 432×768 or 640×640.
+             * @enum {string}
+             */
             aspectRatio?: "16:9" | "9:16" | "1:1";
+            /** @description Repeat forever (default true); false plays once. */
             loop?: boolean;
         } | {
             /** @enum {string} */
             from: "image";
-            /** Format: uri */
+            /**
+             * Format: uri
+             * @description Public image to animate.
+             */
             imageUrl: string;
+            /** @description The motion to add; omitted, one deliberate move of the image's main subject that suits it. */
             prompt?: string;
+            /** @description Frames in the loop, 2–16 (default 9). */
+            frameCount?: number;
+            /** @description Frames per second, 1–24 (default 5 for generated GIFs). */
             fps?: number;
-            /** @enum {string} */
+            /**
+             * @description The GIF's shape (default 16:9): 768×432, 432×768 or 640×640.
+             * @enum {string}
+             */
             aspectRatio?: "16:9" | "9:16" | "1:1";
+            /** @description Repeat forever (default true); false plays once. */
             loop?: boolean;
         } | {
             /** @enum {string} */
             from: "video";
-            /** Format: uri */
+            /**
+             * Format: uri
+             * @description Public MP4 to convert.
+             */
             videoUrl: string;
+            /** @description Frames per second, 1–24 (default 5 for generated GIFs). */
             fps?: number;
+            /** @description Output width in pixels; height keeps the video ratio. */
             width?: number;
         };
         ContentTransformResponse: {
@@ -7634,6 +9560,7 @@ export interface components {
             width: number;
             height: number;
             aspectRatio: string;
+            assetId: string;
         };
         ContentAddImageBatchResponse: {
             accepted: number;
@@ -7645,6 +9572,27 @@ export interface components {
             imageUrl: string;
         } | {
             imageUrls: string[];
+        } | {
+            uploadId: string;
+        };
+        ContentImageUploadCreateResponse: {
+            uploadId: string;
+            /** Format: uri */
+            uploadUrl: string;
+            /** Format: date-time */
+            expiresAt: string;
+            maxBytes: number;
+        };
+        ContentImageUploadCreateRequest: {
+            /** @description The file name, for example logo.png. It names the converted file; the library description comes from the image caption. */
+            fileName: string;
+            /**
+             * @description The file type: image/png, image/jpeg, image/gif, image/webp, image/avif, image/tiff or image/svg+xml. It sets the size cap (2 MB for SVG). The bytes decide what is converted: a declared type that differs is ignored, and bytes that are none of these formats are refused when the image is added.
+             * @enum {string}
+             */
+            contentType: "image/jpeg" | "image/png" | "image/gif" | "image/webp" | "image/avif" | "image/tiff" | "image/svg+xml";
+            /** @description The file size in bytes: at most 20,000,000 (2,097,152 for SVG). */
+            size: number;
         };
         UsageGetResponse: {
             plan: {
@@ -7670,37 +9618,128 @@ export interface components {
                 end: string | null;
             };
         };
-        DataCommandResponse: {
-            /** @description 0 = success; non-zero = the command failed (see output) */
-            exitCode: number;
-            /** @description stdout, then stderr under a `[stderr]` marker when present. Row contents are customer data. */
-            output: string;
-            /** @description true when the output was cut at the size budget */
-            truncated: boolean;
-            stdout?: string;
-            stderr?: string;
-            pagination?: {
-                incomplete: boolean;
-                continuations: string[];
-            };
-            retryCommand?: string;
-        };
         IntegrationsListResponse: {
             data: {
                 /** @enum {string} */
-                provider: "braze" | "brevo" | "clerk" | "customerio" | "figma" | "framer" | "slack" | "hubspot" | "typeform" | "klaviyo" | "iterable" | "postmark" | "onesignal" | "mailgun" | "sendgrid" | "mailjet" | "mailchimp" | "stripe" | "stytch" | "supabase" | "workos" | "shopify" | "revenuecat";
+                provider: "braze" | "brevo" | "clerk" | "customerio" | "figma" | "framer" | "slack" | "hubspot" | "typeform" | "klaviyo" | "iterable" | "postmark" | "onesignal" | "mailgun" | "sendgrid" | "mailjet" | "mailchimp" | "loops" | "stripe" | "stytch" | "supabase" | "workos" | "shopify" | "revenuecat" | "notion" | "posthog" | "webflow";
                 name: string;
                 /** @enum {string} */
                 category: "data_in" | "data_out";
                 connected: boolean;
                 /** @enum {boolean} */
                 comingSoon?: true;
+                /** @enum {boolean} */
+                inviteOnly?: true;
+                /** @enum {boolean} */
+                paused?: true;
+                installationCount?: number;
+                capabilities?: {
+                    capabilityId: string;
+                    isReady: boolean;
+                }[];
             }[];
             pagination: {
                 limit: number;
                 cursor: string | null;
                 hasMore: boolean;
             };
+        };
+        IntegrationEventsListResponse: {
+            data: {
+                eventId: string;
+                provider: string;
+                /** @description The connected account this event comes from. */
+                sourceId: string;
+                /** @description The provider’s own event name, e.g. `created_project`. */
+                eventKey: string;
+                title: string;
+                /** @description Brew’s human name for the event, when it has one. */
+                label?: string;
+                /** @enum {string} */
+                kind: "standard" | "custom" | "action" | "derived" | "observed";
+                category?: string;
+                /**
+                 * @description The lifecycle stage Brew inferred (a brand member’s correction wins).
+                 * @enum {string}
+                 */
+                stage?: "signup" | "activation" | "engagement" | "conversion" | "retention" | "churn_risk" | "none";
+                /** @description This event’s roles in the brand’s product model: `signup`, `activation`, `conversion`, `key_event`. */
+                modelRoles: ("signup" | "activation" | "conversion" | "key_event")[];
+                /** @description Occurrences in the last 30 days, as the provider reported. */
+                volume30d?: number;
+                /** Format: date-time */
+                lastSeenAt?: string;
+                /** @description Present once the event is a trigger. Otherwise get one with `POST /v1/automations/triggers/integration-events`. */
+                triggerEventId?: string;
+            }[];
+            sources: {
+                sourceId: string;
+                provider: string;
+                /** @enum {string} */
+                mode: "static_catalog" | "tenant_catalog";
+                definitionCount: number;
+                isTruncated: boolean;
+                /** Format: date-time */
+                lastSyncedAt?: string;
+            }[];
+            pagination: {
+                limit: number;
+                cursor: string | null;
+                hasMore: boolean;
+            };
+        };
+        IntegrationEventDetailResponse: {
+            eventId: string;
+            provider: string;
+            /** @description The connected account this event comes from. */
+            sourceId: string;
+            /** @description The provider’s own event name, e.g. `created_project`. */
+            eventKey: string;
+            title: string;
+            /** @description Brew’s human name for the event, when it has one. */
+            label?: string;
+            /** @enum {string} */
+            kind: "standard" | "custom" | "action" | "derived" | "observed";
+            category?: string;
+            /**
+             * @description The lifecycle stage Brew inferred (a brand member’s correction wins).
+             * @enum {string}
+             */
+            stage?: "signup" | "activation" | "engagement" | "conversion" | "retention" | "churn_risk" | "none";
+            /** @description This event’s roles in the brand’s product model: `signup`, `activation`, `conversion`, `key_event`. */
+            modelRoles: ("signup" | "activation" | "conversion" | "key_event")[];
+            /** @description Occurrences in the last 30 days, as the provider reported. */
+            volume30d?: number;
+            /** Format: date-time */
+            lastSeenAt?: string;
+            /** @description Present once the event is a trigger. Otherwise get one with `POST /v1/automations/triggers/integration-events`. */
+            triggerEventId?: string;
+            description?: string;
+            /** @description For a derived event: the provider event it is computed from. */
+            derivedFromKey?: string;
+            properties: {
+                key: string;
+                /** @description Its template variable, `{{ <variable> | fallback }}`: `properties.<key>` or `person.<key>` for a tenant catalog’s event, the key itself for a static catalog’s. */
+                variable: string;
+                /**
+                 * @description `event`: a value the event carried. `person`: the person’s value when it fired.
+                 * @enum {string}
+                 */
+                scope: "event" | "person";
+                type: string;
+                description?: string;
+                /** @description Personal data: never put it in an email’s subject. */
+                isPersonal: boolean;
+                /** @description Brew suggests this value to personalize an email. */
+                isPersonalization: boolean;
+            }[];
+            /**
+             * @description `current`: listed with the event or read in the last day. `stored`: the provider could not be read now; these are its last description. `rate_limited`: its read budget is spent; these are what Brew stored, possibly none (read again after `retryAfterSeconds`). `unavailable`: not read, and none stored.
+             * @enum {string}
+             */
+            propertiesStatus: "current" | "stored" | "rate_limited" | "unavailable";
+            /** @description With `rate_limited`: seconds until the provider can be read again, when it said. */
+            retryAfterSeconds?: number;
         };
         ApiKeysListResponse: {
             data: {
@@ -7747,6 +9786,130 @@ export interface components {
         HelpResponse: {
             [key: string]: unknown;
         };
+        ChatList: {
+            data: {
+                /** @description Resume the chat with the chat-context read. */
+                chatId: string;
+                title: string | null;
+                /** @description The opening prompt, cut at 80 characters. */
+                firstUserPrompt: string | null;
+                /** @description Brew's latest reply, cut at 140 characters. */
+                lastAssistantPreview: string | null;
+                /**
+                 * @description `streaming` or `background_finalizing` while a run is still going; null before the first run.
+                 * @enum {string|null}
+                 */
+                status: "idle" | "streaming" | "background_finalizing" | "completed" | "failed" | "interrupted" | "stopped" | "persistence_failed" | null;
+                /**
+                 * @description The chat app the conversation started in; null for the Brew web app.
+                 * @enum {string|null}
+                 */
+                origin: "slack" | "teams" | "google-chat" | "telegram" | null;
+                /** Format: date-time */
+                updatedAt: string;
+                /** @description Opens the chat in the Brew app. */
+                url: string;
+            }[];
+            pagination: {
+                limit: number;
+                cursor: string | null;
+                hasMore: boolean;
+            };
+        };
+        NotificationList: {
+            data: {
+                /** @description `ntf_` + 20 hex characters: a one-way hash, stable for the row’s life. */
+                notificationId: string;
+                /** @enum {string} */
+                type: "webhook_attention" | "chat_stream" | "import_job" | "brand_image_import" | "validation_job" | "email_sent" | "email_scheduled" | "preview_email" | "brand_extracted" | "domain_status" | "domain_score_run" | "api_key_created" | "email_send_failed" | "gradual_send_paused" | "gradual_send_completed" | "send_limit_reached" | "trial_ending" | "trial_expired" | "payment_failed" | "automation_pause_window_closed" | "send_review_rejected" | "comment_mention" | "comment_reply" | "integration_attention";
+                /** @enum {string} */
+                status: "uploading" | "preparing" | "processing" | "finalizing" | "streaming" | "background_finalizing" | "completed" | "partial" | "failed" | "interrupted" | "stopped" | "persistence_failed";
+                title: string;
+                subtitle: string;
+                /** @description 0-100 while work is running, where it reports progress. */
+                progressPercent?: number;
+                /** @description Where the bell opens it in the Brew app. */
+                url?: string;
+                chatId?: string;
+                emailId?: string;
+                domainId?: string;
+                domainName?: string;
+                /** @description Addressed to the caller alone: a comment mention or reply, shown only on a personal connection. */
+                isPersonal: boolean;
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
+                /** Format: date-time */
+                completedAt?: string;
+            }[];
+            pagination: {
+                limit: number;
+                cursor: string | null;
+                hasMore: boolean;
+            };
+        };
+        EmailCommentThreadList: {
+            data: {
+                /** @description `cmt_…`; the app opens it with `?commentId=`. */
+                commentId: string;
+                emailId: string;
+                /** @enum {string} */
+                status: "open";
+                /** @description Whether the thread is on the whole design or one element of it. */
+                target: {
+                    /** @enum {string} */
+                    kind: "email";
+                } | {
+                    /** @enum {string} */
+                    kind: "element";
+                    /** @description The element the thread is pinned to (`elm_…`). */
+                    elementId?: string;
+                    /** @description What the element is: `button`, `image`, `heading`, … */
+                    nodeType?: string;
+                };
+                /** @description Who started, replied to, or was mentioned in the thread: the 12 most recent. */
+                participants: {
+                    userId: string;
+                    name: string;
+                }[];
+                /** @description How many people are in the thread; `participants` lists at most 12. */
+                participantCount: number;
+                messageCount: number;
+                /** Format: date-time */
+                lastMessageAt: string;
+                /** @description The latest message, shortened to 140 characters; mentions read as in `body`. */
+                lastMessagePreview: string;
+                /** @description Opens the thread on the design in the Brew app. */
+                url: string;
+                /** @description Only with messages: the thread's newest messages (or, after a `messagesCursor`, the next older ones) that fit the page's size budget, oldest first. */
+                messages?: {
+                    /** @description `cmm_…` */
+                    messageId: string;
+                    author: {
+                        userId: string;
+                        name: string;
+                    };
+                    /** @description The message text. Each mention reads `@` + the name `mentions` gives; other `@` text is as typed. */
+                    body: string;
+                    mentions: {
+                        userId: string;
+                        name: string;
+                    }[];
+                    /** Format: date-time */
+                    createdAt: string;
+                    /** Format: date-time */
+                    updatedAt: string;
+                }[];
+                /** @description Only with messages: pass it back with this thread's `commentId` to read its older messages; null when none remain. */
+                messagesCursor?: string | null;
+            }[];
+            pagination: {
+                limit: number;
+                cursor: string | null;
+                hasMore: boolean;
+            };
+        };
     };
     responses: never;
     parameters: never;
@@ -7756,6 +9919,1932 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    listWebhooks: {
+        parameters: {
+            query?: {
+                /**
+                 * @description Page size (1-100). Defaults to 100.
+                 * @example 50
+                 */
+                limit?: number;
+                cursor?: string;
+            };
+            header?: {
+                /**
+                 * @description The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+                 * @example kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+                 */
+                "X-Brand-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["Webhook"][];
+                        pagination: {
+                            limit: number;
+                            cursor: string | null;
+                            hasMore: boolean;
+                        };
+                    };
+                };
+            };
+            /**
+             * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+             *
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
+             */
+            400: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `API_KEY_REVOKED`: The API key was revoked.
+             *
+             *     `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+             *
+             *     `INVALID_API_KEY`: The API key is malformed or unknown.
+             */
+            401: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+             *
+             *     `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+             *
+             *     `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+             *
+             *     `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+             */
+            403: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+             *
+             *     `NOT_FOUND`: No v1 resource lives at this path.
+             */
+            404: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
+            429: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it. */
+            500: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `SERVICE_UNAVAILABLE`: A dependency the operation must consult (billing, the idempotency store) is temporarily unavailable, so the request was refused rather than run unmetered. */
+            503: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+        };
+    };
+    createWebhook: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+                 * @example kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+                 */
+                "X-Brand-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uri */
+                    endpoint: string;
+                    events: ("email.sent" | "email.delivered" | "email.delivery_delayed" | "email.bounced" | "email.complained" | "email.failed" | "email.opened" | "email.clicked")[];
+                    description?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Success */
+            201: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        id: string;
+                        endpoint: string;
+                        events: ("email.sent" | "email.delivered" | "email.delivery_delayed" | "email.bounced" | "email.complained" | "email.failed" | "email.opened" | "email.clicked")[];
+                        description: string;
+                        /** @enum {string} */
+                        status: "enabled" | "disabled";
+                        /** Format: date-time */
+                        created_at: string;
+                        signing_secret: string;
+                    };
+                };
+            };
+            /**
+             * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+             *
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
+             */
+            400: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `API_KEY_REVOKED`: The API key was revoked.
+             *
+             *     `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+             *
+             *     `INVALID_API_KEY`: The API key is malformed or unknown.
+             */
+            401: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+             *
+             *     `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+             *
+             *     `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+             *
+             *     `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+             */
+            403: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+             *
+             *     `NOT_FOUND`: No v1 resource lives at this path.
+             */
+            404: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+             *
+             *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
+             */
+            409: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `PAYLOAD_TOO_LARGE`: The request body exceeds the route cap. */
+            413: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
+            429: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it. */
+            500: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `SERVICE_UNAVAILABLE`: A dependency the operation must consult (billing, the idempotency store) is temporarily unavailable, so the request was refused rather than run unmetered. */
+            503: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getWebhook: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+                 * @example kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+                 */
+                "X-Brand-Id"?: string;
+            };
+            path: {
+                webhookId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Webhook"];
+                };
+            };
+            /**
+             * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+             *
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
+             */
+            400: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `API_KEY_REVOKED`: The API key was revoked.
+             *
+             *     `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+             *
+             *     `INVALID_API_KEY`: The API key is malformed or unknown.
+             */
+            401: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+             *
+             *     `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+             *
+             *     `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+             *
+             *     `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+             */
+            403: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+             *
+             *     `NOT_FOUND`: No v1 resource lives at this path.
+             */
+            404: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
+            429: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it. */
+            500: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `SERVICE_UNAVAILABLE`: A dependency the operation must consult (billing, the idempotency store) is temporarily unavailable, so the request was refused rather than run unmetered. */
+            503: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+        };
+    };
+    deleteWebhook: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+                 * @example kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+                 */
+                "X-Brand-Id"?: string;
+            };
+            path: {
+                webhookId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        webhookId: string;
+                        deleted: boolean;
+                    };
+                };
+            };
+            /**
+             * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+             *
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
+             */
+            400: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `API_KEY_REVOKED`: The API key was revoked.
+             *
+             *     `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+             *
+             *     `INVALID_API_KEY`: The API key is malformed or unknown.
+             */
+            401: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+             *
+             *     `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+             *
+             *     `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+             *
+             *     `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+             */
+            403: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+             *
+             *     `NOT_FOUND`: No v1 resource lives at this path.
+             */
+            404: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
+            429: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it. */
+            500: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `SERVICE_UNAVAILABLE`: A dependency the operation must consult (billing, the idempotency store) is temporarily unavailable, so the request was refused rather than run unmetered. */
+            503: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+        };
+    };
+    updateWebhook: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+                 * @example kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+                 */
+                "X-Brand-Id"?: string;
+            };
+            path: {
+                webhookId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uri */
+                    endpoint?: string;
+                    events?: ("email.sent" | "email.delivered" | "email.delivery_delayed" | "email.bounced" | "email.complained" | "email.failed" | "email.opened" | "email.clicked")[];
+                    description?: string;
+                    /** @enum {string} */
+                    status?: "enabled" | "disabled";
+                };
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Webhook"];
+                };
+            };
+            /**
+             * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+             *
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
+             */
+            400: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `API_KEY_REVOKED`: The API key was revoked.
+             *
+             *     `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+             *
+             *     `INVALID_API_KEY`: The API key is malformed or unknown.
+             */
+            401: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+             *
+             *     `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+             *
+             *     `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+             *
+             *     `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+             */
+            403: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+             *
+             *     `NOT_FOUND`: No v1 resource lives at this path.
+             */
+            404: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `PAYLOAD_TOO_LARGE`: The request body exceeds the route cap. */
+            413: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
+            429: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it. */
+            500: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `SERVICE_UNAVAILABLE`: A dependency the operation must consult (billing, the idempotency store) is temporarily unavailable, so the request was refused rather than run unmetered. */
+            503: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+        };
+    };
+    rotateWebhookSecret: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+                 * @example kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+                 */
+                "X-Brand-Id"?: string;
+            };
+            path: {
+                webhookId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": Record<string, never>;
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        signing_secret: string;
+                    };
+                };
+            };
+            /**
+             * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+             *
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
+             */
+            400: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `API_KEY_REVOKED`: The API key was revoked.
+             *
+             *     `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+             *
+             *     `INVALID_API_KEY`: The API key is malformed or unknown.
+             */
+            401: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+             *
+             *     `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+             *
+             *     `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+             *
+             *     `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+             */
+            403: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+             *
+             *     `NOT_FOUND`: No v1 resource lives at this path.
+             */
+            404: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+             *
+             *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
+             */
+            409: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `PAYLOAD_TOO_LARGE`: The request body exceeds the route cap. */
+            413: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
+            429: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it. */
+            500: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `SERVICE_UNAVAILABLE`: A dependency the operation must consult (billing, the idempotency store) is temporarily unavailable, so the request was refused rather than run unmetered. */
+            503: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listWebhookEvents: {
+        parameters: {
+            query?: {
+                /**
+                 * @description Page size (1-100). Defaults to 100.
+                 * @example 50
+                 */
+                limit?: number;
+                cursor?: string;
+            };
+            header?: {
+                /**
+                 * @description The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+                 * @example kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+                 */
+                "X-Brand-Id"?: string;
+            };
+            path: {
+                webhookId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            payload: {
+                                /** @enum {string} */
+                                type: "email.sent";
+                                /** Format: date-time */
+                                created_at: string;
+                                data: {
+                                    email_id: string;
+                                    /** Format: date-time */
+                                    created_at: string;
+                                    from?: string;
+                                    to: string[];
+                                    subject?: string;
+                                    tags?: {
+                                        [key: string]: string;
+                                    };
+                                    brew: {
+                                        event_id: string;
+                                        /** @enum {number} */
+                                        schema_version: 1;
+                                        recipient?: string;
+                                        send_id?: string;
+                                        design_id?: string;
+                                        automation_id?: string;
+                                        provider_message_id?: string;
+                                        /** @enum {boolean} */
+                                        test?: true;
+                                    };
+                                };
+                            } | {
+                                /** @enum {string} */
+                                type: "email.delivered";
+                                /** Format: date-time */
+                                created_at: string;
+                                data: {
+                                    email_id: string;
+                                    /** Format: date-time */
+                                    created_at: string;
+                                    from?: string;
+                                    to: string[];
+                                    subject?: string;
+                                    tags?: {
+                                        [key: string]: string;
+                                    };
+                                    brew: {
+                                        event_id: string;
+                                        /** @enum {number} */
+                                        schema_version: 1;
+                                        recipient?: string;
+                                        send_id?: string;
+                                        design_id?: string;
+                                        automation_id?: string;
+                                        provider_message_id?: string;
+                                        /** @enum {boolean} */
+                                        test?: true;
+                                    };
+                                };
+                            } | {
+                                /** @enum {string} */
+                                type: "email.delivery_delayed";
+                                /** Format: date-time */
+                                created_at: string;
+                                data: {
+                                    email_id: string;
+                                    /** Format: date-time */
+                                    created_at: string;
+                                    from?: string;
+                                    to: string[];
+                                    subject?: string;
+                                    tags?: {
+                                        [key: string]: string;
+                                    };
+                                    brew: {
+                                        event_id: string;
+                                        /** @enum {number} */
+                                        schema_version: 1;
+                                        recipient?: string;
+                                        send_id?: string;
+                                        design_id?: string;
+                                        automation_id?: string;
+                                        provider_message_id?: string;
+                                        /** @enum {boolean} */
+                                        test?: true;
+                                    };
+                                };
+                            } | {
+                                /** @enum {string} */
+                                type: "email.complained";
+                                /** Format: date-time */
+                                created_at: string;
+                                data: {
+                                    email_id: string;
+                                    /** Format: date-time */
+                                    created_at: string;
+                                    from?: string;
+                                    to: string[];
+                                    subject?: string;
+                                    tags?: {
+                                        [key: string]: string;
+                                    };
+                                    brew: {
+                                        event_id: string;
+                                        /** @enum {number} */
+                                        schema_version: 1;
+                                        recipient?: string;
+                                        send_id?: string;
+                                        design_id?: string;
+                                        automation_id?: string;
+                                        provider_message_id?: string;
+                                        /** @enum {boolean} */
+                                        test?: true;
+                                    };
+                                };
+                            } | {
+                                /** @enum {string} */
+                                type: "email.bounced";
+                                /** Format: date-time */
+                                created_at: string;
+                                data: {
+                                    email_id: string;
+                                    /** Format: date-time */
+                                    created_at: string;
+                                    from?: string;
+                                    to: string[];
+                                    subject?: string;
+                                    tags?: {
+                                        [key: string]: string;
+                                    };
+                                    brew: {
+                                        event_id: string;
+                                        /** @enum {number} */
+                                        schema_version: 1;
+                                        recipient?: string;
+                                        send_id?: string;
+                                        design_id?: string;
+                                        automation_id?: string;
+                                        provider_message_id?: string;
+                                        /** @enum {boolean} */
+                                        test?: true;
+                                    };
+                                    bounce?: {
+                                        type: string;
+                                        subType?: string;
+                                        message?: string;
+                                        diagnosticCode?: string[];
+                                    };
+                                };
+                            } | {
+                                /** @enum {string} */
+                                type: "email.failed";
+                                /** Format: date-time */
+                                created_at: string;
+                                data: {
+                                    email_id: string;
+                                    /** Format: date-time */
+                                    created_at: string;
+                                    from?: string;
+                                    to: string[];
+                                    subject?: string;
+                                    tags?: {
+                                        [key: string]: string;
+                                    };
+                                    brew: {
+                                        event_id: string;
+                                        /** @enum {number} */
+                                        schema_version: 1;
+                                        recipient?: string;
+                                        send_id?: string;
+                                        design_id?: string;
+                                        automation_id?: string;
+                                        provider_message_id?: string;
+                                        /** @enum {boolean} */
+                                        test?: true;
+                                    };
+                                    failed?: {
+                                        reason: string;
+                                    };
+                                };
+                            } | {
+                                /** @enum {string} */
+                                type: "email.opened";
+                                /** Format: date-time */
+                                created_at: string;
+                                data: {
+                                    email_id: string;
+                                    /** Format: date-time */
+                                    created_at: string;
+                                    from?: string;
+                                    to: string[];
+                                    subject?: string;
+                                    tags?: {
+                                        [key: string]: string;
+                                    };
+                                    brew: {
+                                        event_id: string;
+                                        /** @enum {number} */
+                                        schema_version: 1;
+                                        recipient?: string;
+                                        send_id?: string;
+                                        design_id?: string;
+                                        automation_id?: string;
+                                        provider_message_id?: string;
+                                        /** @enum {boolean} */
+                                        test?: true;
+                                    };
+                                    open?: {
+                                        timestamp?: string;
+                                        ipAddress?: string;
+                                        userAgent?: string;
+                                    };
+                                };
+                            } | {
+                                /** @enum {string} */
+                                type: "email.clicked";
+                                /** Format: date-time */
+                                created_at: string;
+                                data: {
+                                    email_id: string;
+                                    /** Format: date-time */
+                                    created_at: string;
+                                    from?: string;
+                                    to: string[];
+                                    subject?: string;
+                                    tags?: {
+                                        [key: string]: string;
+                                    };
+                                    brew: {
+                                        event_id: string;
+                                        /** @enum {number} */
+                                        schema_version: 1;
+                                        recipient?: string;
+                                        send_id?: string;
+                                        design_id?: string;
+                                        automation_id?: string;
+                                        provider_message_id?: string;
+                                        /** @enum {boolean} */
+                                        test?: true;
+                                    };
+                                    click?: {
+                                        link: string;
+                                        timestamp?: string;
+                                        ipAddress?: string;
+                                        userAgent?: string;
+                                    };
+                                };
+                            } | null;
+                            /** @enum {string} */
+                            status: "succeeded" | "pending" | "failed" | "sending" | "canceled";
+                            /** Format: date-time */
+                            created_at: string;
+                            /** Format: date-time */
+                            next_attempt_at: string | null;
+                        }[];
+                        pagination: {
+                            limit: number;
+                            cursor: string | null;
+                            hasMore: boolean;
+                        };
+                    };
+                };
+            };
+            /**
+             * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+             *
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
+             */
+            400: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `API_KEY_REVOKED`: The API key was revoked.
+             *
+             *     `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+             *
+             *     `INVALID_API_KEY`: The API key is malformed or unknown.
+             */
+            401: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+             *
+             *     `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+             *
+             *     `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+             *
+             *     `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+             */
+            403: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+             *
+             *     `NOT_FOUND`: No v1 resource lives at this path.
+             */
+            404: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
+            429: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it. */
+            500: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `SERVICE_UNAVAILABLE`: A dependency the operation must consult (billing, the idempotency store) is temporarily unavailable, so the request was refused rather than run unmetered. */
+            503: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listWebhookAttempts: {
+        parameters: {
+            query?: {
+                /**
+                 * @description Page size (1-100). Defaults to 100.
+                 * @example 50
+                 */
+                limit?: number;
+                cursor?: string;
+            };
+            header?: {
+                /**
+                 * @description The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+                 * @example kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+                 */
+                "X-Brand-Id"?: string;
+            };
+            path: {
+                webhookId: string;
+                eventId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            event_id: string;
+                            /** @enum {string} */
+                            status: "succeeded" | "pending" | "failed" | "sending" | "canceled";
+                            response_status: number;
+                            response: string;
+                            duration_ms: number;
+                            /** Format: date-time */
+                            created_at: string;
+                        }[];
+                        pagination: {
+                            limit: number;
+                            cursor: string | null;
+                            hasMore: boolean;
+                        };
+                    };
+                };
+            };
+            /**
+             * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+             *
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
+             */
+            400: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `API_KEY_REVOKED`: The API key was revoked.
+             *
+             *     `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+             *
+             *     `INVALID_API_KEY`: The API key is malformed or unknown.
+             */
+            401: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+             *
+             *     `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+             *
+             *     `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+             *
+             *     `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+             */
+            403: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+             *
+             *     `NOT_FOUND`: No v1 resource lives at this path.
+             */
+            404: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
+            429: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it. */
+            500: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `SERVICE_UNAVAILABLE`: A dependency the operation must consult (billing, the idempotency store) is temporarily unavailable, so the request was refused rather than run unmetered. */
+            503: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+        };
+    };
+    replayWebhookEvent: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+                 * @example kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+                 */
+                "X-Brand-Id"?: string;
+            };
+            path: {
+                webhookId: string;
+                eventId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": Record<string, never>;
+            };
+        };
+        responses: {
+            /** @description Success */
+            202: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        id: string;
+                        /** @enum {boolean} */
+                        accepted: true;
+                    };
+                };
+            };
+            /**
+             * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+             *
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
+             */
+            400: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `API_KEY_REVOKED`: The API key was revoked.
+             *
+             *     `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+             *
+             *     `INVALID_API_KEY`: The API key is malformed or unknown.
+             */
+            401: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+             *
+             *     `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+             *
+             *     `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+             *
+             *     `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+             */
+            403: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+             *
+             *     `NOT_FOUND`: No v1 resource lives at this path.
+             */
+            404: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+             *
+             *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
+             */
+            409: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `PAYLOAD_TOO_LARGE`: The request body exceeds the route cap. */
+            413: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
+            429: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it. */
+            500: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `SERVICE_UNAVAILABLE`: A dependency the operation must consult (billing, the idempotency store) is temporarily unavailable, so the request was refused rather than run unmetered. */
+            503: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+        };
+    };
+    testWebhook: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+                 * @example kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+                 */
+                "X-Brand-Id"?: string;
+            };
+            path: {
+                webhookId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    type: "email.sent" | "email.delivered" | "email.delivery_delayed" | "email.bounced" | "email.complained" | "email.failed" | "email.opened" | "email.clicked";
+                };
+            };
+        };
+        responses: {
+            /** @description Success */
+            202: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        id: string;
+                        /** @enum {boolean} */
+                        accepted: true;
+                    };
+                };
+            };
+            /**
+             * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+             *
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
+             */
+            400: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `API_KEY_REVOKED`: The API key was revoked.
+             *
+             *     `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+             *
+             *     `INVALID_API_KEY`: The API key is malformed or unknown.
+             */
+            401: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+             *
+             *     `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+             *
+             *     `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+             *
+             *     `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+             */
+            403: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+             *
+             *     `NOT_FOUND`: No v1 resource lives at this path.
+             */
+            404: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+             *
+             *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
+             */
+            409: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `PAYLOAD_TOO_LARGE`: The request body exceeds the route cap. */
+            413: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
+            429: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it. */
+            500: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `SERVICE_UNAVAILABLE`: A dependency the operation must consult (billing, the idempotency store) is temporarily unavailable, so the request was refused rather than run unmetered. */
+            503: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+        };
+    };
     listEmails: {
         parameters: {
             query?: {
@@ -7799,7 +11888,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -7841,7 +11930,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -7900,7 +11989,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -7909,7 +11998,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -7966,7 +12055,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -7988,7 +12077,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -8008,7 +12097,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -8037,7 +12126,11 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed. */
+            /**
+             * @description `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed.
+             *
+             *     `NO_ACTIVE_PLAN`: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
+             */
             402: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -8085,7 +12178,9 @@ export interface operations {
                 };
             };
             /**
-             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+             * @description `EMAIL_RESULT_UNAVAILABLE`: The email was saved, but its completed result could not be read for this response.
+             *
+             *     `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body, or, on a fixed-price operation, for a request it already paid for whose stored response is gone.
              *
              *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
              */
@@ -8110,7 +12205,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -8119,7 +12214,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -8200,7 +12295,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -8239,7 +12334,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -8315,7 +12410,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -8324,7 +12419,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -8387,7 +12482,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -8404,7 +12499,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -8474,7 +12569,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -8483,7 +12578,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -8522,7 +12617,7 @@ export interface operations {
             };
             cookie?: never;
         };
-        /** @description A natural-language `prompt` edit (optional `emailVersionId` source pin, optional `contentUrls`) and/or the envelope fields `title`, `subjectLine` and `groupId` — at least one of the four. Identity lives on the path. */
+        /** @description A natural-language `prompt` edit (optional `emailVersionId` source pin, optional `contentUrls`) and/or the envelope fields `title`, `subjectLine`, `lang` and `groupId` — at least one of the five. Identity lives on the path. */
         requestBody: {
             content: {
                 "application/json": components["schemas"]["EmailEditRequest"];
@@ -8538,7 +12633,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -8549,7 +12644,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -8578,7 +12673,11 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed. */
+            /**
+             * @description `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed.
+             *
+             *     `NO_ACTIVE_PLAN`: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
+             */
             402: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -8627,7 +12726,11 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `EMAIL_IN_PROGRESS`: The design is being generated and cannot be edited or cloned yet. */
+            /**
+             * @description `EMAIL_IN_PROGRESS`: The design is being generated and cannot be edited or cloned yet.
+             *
+             *     `EMAIL_RESULT_UNAVAILABLE`: The email was saved, but its completed result could not be read for this response.
+             */
             409: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -8649,7 +12752,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -8658,7 +12761,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -8738,7 +12841,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -8765,7 +12868,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -8869,7 +12972,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -8878,7 +12981,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -8890,6 +12993,17 @@ export interface operations {
             };
             /** @description `INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it. */
             500: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `EMAIL_IMPORT_PERSISTENCE_FAILED`: The markup converted, but the design could not be stored; nothing was created. */
+            502: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
                     "x-request-id": string;
@@ -8934,7 +13048,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -8960,7 +13074,7 @@ export interface operations {
              *
              *     `FIGMA_URL_INVALID`: The Figma link is not a frame link with a node-id.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -9072,7 +13186,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -9081,7 +13195,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -9152,7 +13266,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -9172,7 +13286,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -9267,7 +13381,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -9276,7 +13390,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -9291,6 +13405,19 @@ export interface operations {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
                     "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `WRITE_CONFLICT`: Other writes to the same records kept conflicting with this one, so nothing was saved. */
+            503: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
                     [name: string]: unknown;
                 };
                 content: {
@@ -9340,7 +13467,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -9360,7 +13487,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -9440,7 +13567,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -9449,7 +13576,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -9514,7 +13641,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -9540,7 +13667,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -9563,7 +13690,7 @@ export interface operations {
              *
              *     `INTEGRATION_NOT_CONNECTED`: The export target is not connected to this brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -9652,7 +13779,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -9661,7 +13788,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -9736,7 +13863,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Credits charged for this completed operation. */
                     "X-Credit-Cost": number;
@@ -9748,7 +13875,7 @@ export interface operations {
                     /**
                      * @example {
                      *       "schemaVersion": 1,
-                     *       "rulesetVersion": "2026-10-02.1",
+                     *       "rulesetVersion": "2026-10-09.1",
                      *       "auditId": "00000000-0000-4000-8000-000000000001",
                      *       "contentHash": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
                      *       "auditedAt": "2026-08-23T00:00:00.000Z",
@@ -9818,7 +13945,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -9847,7 +13974,11 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed. */
+            /**
+             * @description `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed.
+             *
+             *     `NO_ACTIVE_PLAN`: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
+             */
             402: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -9895,7 +14026,7 @@ export interface operations {
                 };
             };
             /**
-             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body, or, on a fixed-price operation, for a request it already paid for whose stored response is gone.
              *
              *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
              */
@@ -9931,7 +14062,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -9940,7 +14071,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -10012,7 +14143,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -10065,7 +14196,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -10076,7 +14207,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -10105,7 +14236,11 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed. */
+            /**
+             * @description `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed.
+             *
+             *     `NO_ACTIVE_PLAN`: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
+             */
             402: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -10151,7 +14286,7 @@ export interface operations {
                 };
             };
             /**
-             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body, or, on a fixed-price operation, for a request it already paid for whose stored response is gone.
              *
              *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
              */
@@ -10176,7 +14311,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -10185,7 +14320,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -10255,7 +14390,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -10299,7 +14434,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -10358,7 +14493,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -10367,7 +14502,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -10426,7 +14561,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -10450,7 +14585,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -10482,7 +14617,7 @@ export interface operations {
             /**
              * @description `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed.
              *
-             *     `SEND_QUOTA_EXCEEDED`: The send or manual-audience run would exceed the plan’s monthly email volume (`details` carries `used`, `limit`, `planKey` and `requested` when known); the window resets with the billing period.
+             *     `NO_ACTIVE_PLAN`: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
              */
             402: {
                 headers: {
@@ -10531,7 +14666,7 @@ export interface operations {
                 };
             };
             /**
-             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body, or, on a fixed-price operation, for a request it already paid for whose stored response is gone.
              *
              *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
              */
@@ -10562,7 +14697,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -10571,7 +14706,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -10635,7 +14770,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -10703,7 +14838,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -10766,7 +14901,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -10775,7 +14910,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -10831,7 +14966,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -10998,7 +15133,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -11061,7 +15196,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -11070,7 +15205,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -11119,7 +15254,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -11166,7 +15301,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -11229,7 +15364,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -11238,7 +15373,413 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it. */
+            500: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+        };
+    };
+    createCanvasSession: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+                 * @example kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+                 */
+                "X-Brand-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    target: {
+                        /** @enum {string} */
+                        type: "group";
+                        groupId: string;
+                    } | {
+                        /** @enum {string} */
+                        type: "email";
+                        emailId: string;
+                    };
+                    user: {
+                        externalId: string;
+                        name: string;
+                    };
+                    parentOrigin: string;
+                    /**
+                     * @default [
+                     *       "read",
+                     *       "edit",
+                     *       "presence"
+                     *     ]
+                     */
+                    permissions?: ("read" | "edit" | "presence")[];
+                };
+            };
+        };
+        responses: {
+            /** @description A scoped session and single-use bootstrap credential. */
+            201: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CanvasSession"];
+                };
+            };
+            /**
+             * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+             *
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
+             */
+            400: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `API_KEY_REVOKED`: The API key was revoked.
+             *
+             *     `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+             *
+             *     `INVALID_API_KEY`: The API key is malformed or unknown.
+             */
+            401: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+             *
+             *     `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+             *
+             *     `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+             *
+             *     `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+             */
+            403: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+             *
+             *     `NOT_FOUND`: No v1 resource lives at this path.
+             */
+            404: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
+            429: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it. */
+            500: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+        };
+    };
+    refreshCanvasSession: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+                 * @example kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+                 */
+                "X-Brand-Id"?: string;
+            };
+            path: {
+                sessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The same scoped session with a new bootstrap credential. */
+            200: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CanvasSession"];
+                };
+            };
+            /**
+             * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+             *
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
+             */
+            400: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `API_KEY_REVOKED`: The API key was revoked.
+             *
+             *     `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+             *
+             *     `INVALID_API_KEY`: The API key is malformed or unknown.
+             */
+            401: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+             *
+             *     `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+             *
+             *     `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+             *
+             *     `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+             */
+            403: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+             *
+             *     `NOT_FOUND`: No v1 resource lives at this path.
+             */
+            404: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
+            429: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it. */
+            500: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+        };
+    };
+    revokeCanvasSession: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+                 * @example kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+                 */
+                "X-Brand-Id"?: string;
+            };
+            path: {
+                sessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The session is revoked. */
+            200: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {boolean} */
+                        revoked: true;
+                    };
+                };
+            };
+            /**
+             * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+             *
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
+             */
+            400: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `API_KEY_REVOKED`: The API key was revoked.
+             *
+             *     `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+             *
+             *     `INVALID_API_KEY`: The API key is malformed or unknown.
+             */
+            401: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+             *
+             *     `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+             *
+             *     `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+             *
+             *     `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+             */
+            403: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+             *
+             *     `NOT_FOUND`: No v1 resource lives at this path.
+             */
+            404: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
+            429: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -11292,7 +15833,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -11326,7 +15867,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -11385,7 +15926,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -11394,7 +15935,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -11459,7 +16000,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -11479,7 +16020,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -11561,7 +16102,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -11570,7 +16111,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -11620,7 +16161,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -11640,7 +16181,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -11703,7 +16244,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -11712,7 +16253,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -11762,7 +16303,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -11779,7 +16320,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -11855,7 +16396,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -11864,7 +16405,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -11923,7 +16464,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -11941,7 +16482,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -12017,7 +16558,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -12026,7 +16567,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -12093,7 +16634,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -12138,7 +16679,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -12203,7 +16744,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -12212,7 +16753,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -12268,7 +16809,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -12291,7 +16832,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -12308,7 +16849,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -12337,7 +16878,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `SEND_QUOTA_EXCEEDED`: The send or manual-audience run would exceed the plan’s monthly email volume (`details` carries `used`, `limit`, `planKey` and `requested` when known); the window resets with the billing period. */
+            /** @description `SEND_QUOTA_EXCEEDED`: The send or manual-audience run would exceed the plan’s monthly email volume. A send must fit at launch and draws from the allowance chunk by chunk as it delivers; `reserved` is only the batch going out right now (`details` carries `used`, `reserved`, `remaining`, `limit`, `planKey` and `requested`, and `periodEnd` when known). The window resets with the billing period. */
             402: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -12428,6 +16969,8 @@ export interface operations {
              *     `NO_ELIGIBLE_RECIPIENTS`: Every contact the send targets is unsubscribed, suppressed or undeliverable (or there are none), so an immediate send would deliver nothing; `details.eligibility` carries the counts.
              *
              *     `RECIPIENT_UNSUBSCRIBED`: An inline recipient is an existing contact who unsubscribed from marketing email; details.recipients lists the addresses and Brew never re-subscribes an opt-out.
+             *
+             *     `TEST_RECIPIENT_NOT_ALLOWED`: A test email can reach only a teammate with access to the brand, an address on a verified sending domain of the brand, or, for a signed-in person (not an API key), their own address or one on their company domain; details.recipients lists the refused addresses.
              */
             422: {
                 headers: {
@@ -12439,7 +16982,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -12448,7 +16991,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -12514,7 +17057,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -12550,7 +17093,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -12613,7 +17156,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -12622,7 +17165,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -12677,7 +17220,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -12694,7 +17237,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -12774,7 +17317,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -12783,7 +17326,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -12838,7 +17381,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -12855,7 +17398,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -12935,7 +17478,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -12944,7 +17487,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -12999,7 +17542,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -13016,7 +17559,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -13096,7 +17639,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -13105,7 +17648,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -13169,7 +17712,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -13226,7 +17769,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -13285,7 +17828,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -13294,7 +17837,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -13350,7 +17893,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -13402,7 +17945,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -13461,7 +18004,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -13470,7 +18013,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -13513,8 +18056,10 @@ export interface operations {
                 to?: string;
                 /** @description CSV of recipient rules (max 10) matching who RECEIVED the email: a full address matches exactly, `@domain` matches the domain, any other text matches as a substring; prefix `!` to exclude (e.g. `@clay.com,!ceo@clay.com`). Includes OR together; excludes always apply. Narrows the feed to email events. */
                 recipient?: string;
-                eventType?: string;
+                /** @description One event type, spelled exactly (`opened`, not `open`; `clicked`, not `click`). */
+                eventType?: "sent" | "delivered" | "delivery_delayed" | "opened" | "clicked" | "bounced" | "complained" | "failed" | "provider_suppressed" | "suppressed" | "quota_skipped" | "received" | "unsubscribed" | "automation_started" | "automation_completed" | "automation_failed" | "automation_skipped_suppressed" | "automation_step_succeeded" | "automation_step_failed" | "trigger_success" | "trigger_failure" | "trigger_received" | "trigger_deduplicated" | "trigger_signature_failed" | "trigger_rejected" | "trigger_dead_letter";
                 automationId?: string;
+                /** @description One send's events. Not windowed unless `from`/`to` are given: the read is bounded by the send itself. */
                 sendId?: string;
                 /** @description One automation run’s events across every domain, newest first. Not windowed unless `from`/`to` are given; only `eventType` combines with it. */
                 automationRunId?: string;
@@ -13566,7 +18111,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -13577,7 +18122,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -13636,7 +18181,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -13645,7 +18190,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -13701,7 +18246,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -13735,7 +18280,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -13794,7 +18339,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -13803,7 +18348,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -13859,7 +18404,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -13895,7 +18440,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -13957,7 +18502,7 @@ export interface operations {
              *
              *     `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -14035,7 +18580,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -14044,7 +18589,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -14097,7 +18642,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -14122,7 +18667,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -14185,7 +18730,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -14194,7 +18739,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -14244,7 +18789,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -14261,7 +18806,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -14309,11 +18854,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /**
-             * @description `AUTOMATION_NOT_FOUND`: No automation with that id exists in the brand.
-             *
-             *     `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
-             */
+            /** @description `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization). */
             404: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -14324,7 +18865,18 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `AUTOMATION_IN_PROGRESS`: The automation is still being generated, so it cannot be deleted, tested or run yet. */
+            409: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -14333,7 +18885,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -14387,7 +18939,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -14400,7 +18952,7 @@ export interface operations {
              *
              *     `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -14481,7 +19033,7 @@ export interface operations {
             /**
              * @description `AUTOMATION_NOT_PAUSABLE`: The automation runs against a manual audience, so it is paused through its runs, not the automation.
              *
-             *     `AUTOMATION_NOT_PUBLISHED`: The automation is not live, so there is nothing to unpublish.
+             *     `AUTOMATION_NOT_PUBLISHED`: The automation is not live, so there is nothing to unpublish; with `stopInFlight: true` it also has no contacts in flight to stop.
              *
              *     `PUBLISH_VALIDATION_FAILED`: The saved graph cannot go live; `details.blockers[]` lists what publish requires.
              */
@@ -14495,7 +19047,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -14504,7 +19056,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -14572,7 +19124,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -14594,7 +19146,7 @@ export interface operations {
              *
              *     `INVALID_PAYLOAD`: The test payload does not match the trigger’s payload schema.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -14658,7 +19210,9 @@ export interface operations {
                 };
             };
             /**
-             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+             * @description `AUTOMATION_IN_PROGRESS`: The automation is still being generated, so it cannot be deleted, tested or run yet.
+             *
+             *     `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
              *
              *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
              */
@@ -14672,7 +19226,22 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /**
+             * @description `AUTOMATION_NOT_READY`: The saved automation cannot run as it is: generation failed, a step is incomplete or invalid, or a send step’s sender or the bound audience cannot be used; the message names the problem.
+             *
+             *     `TEST_RECIPIENT_NOT_ALLOWED`: A test email can reach only a teammate with access to the brand, an address on a verified sending domain of the brand, or, for a signed-in person (not an API key), their own address or one on their company domain; details.recipients lists the refused addresses.
+             */
+            422: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -14681,7 +19250,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -14696,6 +19265,19 @@ export interface operations {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
                     "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `SERVICE_UNAVAILABLE`: A dependency the operation must consult (billing, the idempotency store) is temporarily unavailable, so the request was refused rather than run unmetered. */
+            503: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
                     [name: string]: unknown;
                 };
                 content: {
@@ -14736,7 +19318,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Dry-run preview (no run started). */
+            /** @description Dry-run preview (no run started). recipientCount is who will receive the email. warnings carries RECIPIENTS_EXCLUDED when unsubscribed, suppressed or undeliverable contacts are skipped. */
             200: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -14745,7 +19327,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -14772,7 +19354,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -14792,7 +19374,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -14821,7 +19403,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `SEND_QUOTA_EXCEEDED`: The send or manual-audience run would exceed the plan’s monthly email volume (`details` carries `used`, `limit`, `planKey` and `requested` when known); the window resets with the billing period. */
+            /** @description `SEND_QUOTA_EXCEEDED`: The send or manual-audience run would exceed the plan’s monthly email volume. A send must fit at launch and draws from the allowance chunk by chunk as it delivers; `reserved` is only the batch going out right now (`details` carries `used`, `reserved`, `remaining`, `limit`, `planKey` and `requested`, and `periodEnd` when known). The window resets with the billing period. */
             402: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -14869,7 +19451,9 @@ export interface operations {
                 };
             };
             /**
-             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+             * @description `AUTOMATION_IN_PROGRESS`: The automation is still being generated, so it cannot be deleted, tested or run yet.
+             *
+             *     `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
              *
              *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
              *
@@ -14885,7 +19469,13 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `EMAIL_IMAGES_MISSING`: The email shows an image on cdn.brew.new that does not exist, so it was not sent; `details.missingImages[]` lists each URL and the email it is in. */
+            /**
+             * @description `AUTOMATION_NOT_READY`: The saved automation cannot run as it is: generation failed, a step is incomplete or invalid, or a send step’s sender or the bound audience cannot be used; the message names the problem.
+             *
+             *     `AUTOMATION_NOT_RUNNABLE`: The automation is triggered by an event, so it runs when its trigger fires and cannot be run against an audience.
+             *
+             *     `EMAIL_IMAGES_MISSING`: The email shows an image on cdn.brew.new that does not exist, so it was not sent; `details.missingImages[]` lists each URL and the email it is in.
+             */
             422: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -14896,7 +19486,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -14905,7 +19495,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -14980,7 +19570,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -15015,7 +19605,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -15074,7 +19664,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -15083,7 +19673,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -15117,7 +19707,7 @@ export interface operations {
                 "X-Brand-Id"?: string;
             };
             path: {
-                /** @description The audience run id (from `POST /v1/automations/{automationId}/run` or `GET /v1/automations/audience-runs`). */
+                /** @description The audience run id (from `POST /v1/automations/{automationId}/run` or `GET /v1/automations/audience-runs`), passed exactly as returned. A launch with an `Idempotency-Key` returns a longer id (`arun_` plus 64 hex characters). */
                 audienceRunId: string;
             };
             cookie?: never;
@@ -15133,7 +19723,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -15159,7 +19749,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -15222,7 +19812,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -15231,7 +19821,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -15265,7 +19855,7 @@ export interface operations {
                 "X-Brand-Id"?: string;
             };
             path: {
-                /** @description The audience run id (from `POST /v1/automations/{automationId}/run` or `GET /v1/automations/audience-runs`). */
+                /** @description The audience run id (from `POST /v1/automations/{automationId}/run` or `GET /v1/automations/audience-runs`), passed exactly as returned. A launch with an `Idempotency-Key` returns a longer id (`arun_` plus 64 hex characters). */
                 audienceRunId: string;
             };
             cookie?: never;
@@ -15281,7 +19871,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -15298,7 +19888,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -15366,7 +19956,7 @@ export interface operations {
              *
              *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
              *
-             *     `RUN_NOT_PAUSABLE`: Only a running manual-audience run can be paused.
+             *     `RUN_NOT_PAUSABLE`: A manual-audience run that is scheduled, completed, failed, canceled or held at the plan limit cannot be paused. Pausing a run its operator already paused returns 200.
              */
             409: {
                 headers: {
@@ -15378,7 +19968,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -15387,7 +19977,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -15421,7 +20011,7 @@ export interface operations {
                 "X-Brand-Id"?: string;
             };
             path: {
-                /** @description The audience run id (from `POST /v1/automations/{automationId}/run` or `GET /v1/automations/audience-runs`). */
+                /** @description The audience run id (from `POST /v1/automations/{automationId}/run` or `GET /v1/automations/audience-runs`), passed exactly as returned. A launch with an `Idempotency-Key` returns a longer id (`arun_` plus 64 hex characters). */
                 audienceRunId: string;
             };
             cookie?: never;
@@ -15437,7 +20027,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -15455,7 +20045,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -15484,7 +20074,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `SEND_QUOTA_EXCEEDED`: The send or manual-audience run would exceed the plan’s monthly email volume (`details` carries `used`, `limit`, `planKey` and `requested` when known); the window resets with the billing period. */
+            /** @description `SEND_QUOTA_EXCEEDED`: The send or manual-audience run would exceed the plan’s monthly email volume. A send must fit at launch and draws from the allowance chunk by chunk as it delivers; `reserved` is only the batch going out right now (`details` carries `used`, `reserved`, `remaining`, `limit`, `planKey` and `requested`, and `periodEnd` when known). The window resets with the billing period. */
             402: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -15536,7 +20126,7 @@ export interface operations {
              *
              *     `RUN_IN_PROGRESS`: A manual-audience run is already in progress for this automation.
              *
-             *     `RUN_NOT_PAUSED`: Only a paused manual-audience run can be resumed.
+             *     `RUN_NOT_PAUSED`: Only a paused or failed manual-audience run can be resumed; this one is scheduled, queued, running, completed or canceled.
              *
              *     `RUN_NOT_RESUMABLE`: The run cannot be resumed: a failed run needs an undelivered send step, and a run held at the plan limit resumes on its own.
              */
@@ -15550,7 +20140,18 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `AUTOMATION_NOT_READY`: The saved automation cannot run as it is: generation failed, a step is incomplete or invalid, or a send step’s sender or the bound audience cannot be used; the message names the problem. */
+            422: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -15559,7 +20160,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -15608,7 +20209,7 @@ export interface operations {
                 "X-Brand-Id"?: string;
             };
             path: {
-                /** @description The audience run id (from `POST /v1/automations/{automationId}/run` or `GET /v1/automations/audience-runs`). */
+                /** @description The audience run id (from `POST /v1/automations/{automationId}/run` or `GET /v1/automations/audience-runs`), passed exactly as returned. A launch with an `Idempotency-Key` returns a longer id (`arun_` plus 64 hex characters). */
                 audienceRunId: string;
             };
             cookie?: never;
@@ -15624,7 +20225,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -15641,7 +20242,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -15721,7 +20322,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -15730,7 +20331,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -15751,17 +20352,6 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RUN_STOP_FAILED`: The previous run of this cohort could not be stopped. */
-            503: {
-                headers: {
-                    /** @description Unique request identifier. Share this with support when debugging a request. */
-                    "x-request-id": string;
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiErrorEnvelope"];
-                };
-            };
         };
     };
     listAutomationRuns: {
@@ -15770,7 +20360,7 @@ export interface operations {
                 automationId?: string;
                 triggerEventId?: string;
                 triggerInstanceId?: string;
-                /** @description Only runs for this recipient, matched case-insensitively against each run's stored `recipientEmail` column. A run written before that column existed carries the address only inside its trigger payload: the row still REPORTS `recipientEmail` (the projection reads the payload as a fallback), but the filter cannot reach it until `migration_mutations:backfillRecipientEmail` has run on the deployment. */
+                /** @description Only runs for this recipient, matched case-insensitively. */
                 recipientEmail?: string;
                 status?: "queued" | "running" | "completed" | "failed" | "canceled";
                 mode?: "live" | "test";
@@ -15804,7 +20394,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -15838,7 +20428,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -15897,7 +20487,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -15906,7 +20496,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -15932,7 +20522,7 @@ export interface operations {
     getAutomationRun: {
         parameters: {
             query?: {
-                /** @description Expansions: `logs` inlines the newest 100 per-node execution logs and reports `logsTruncated`. */
+                /** @description Expansions: `logs` inlines the newest 100 execution log rows, one per node status change (a node's outcome is its last row by `orderIndex`), and reports `logsTruncated`. */
                 include?: string;
             };
             header?: {
@@ -15958,7 +20548,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -15996,7 +20586,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -16059,7 +20649,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -16068,7 +20658,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -16126,7 +20716,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -16144,7 +20734,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -16224,7 +20814,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -16233,7 +20823,584 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it. */
+            500: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+        };
+    };
+    ensureBrewEventTrigger: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Optional idempotency key for safe retries. Reusing the same key with the same request body returns the original response for 24 hours.
+                 * @example api-request-2026-04-08-001
+                 */
+                "Idempotency-Key"?: string;
+                /**
+                 * @description The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+                 * @example kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+                 */
+                "X-Brand-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "event": "contact.unsubscribed",
+                 *       "scope": "domain",
+                 *       "domainId": "jd7f0c2a8w1x9m4n6p3q5r8s2t"
+                 *     }
+                 */
+                "application/json": components["schemas"]["BrewEventTriggersPostRequest"];
+            };
+        };
+        responses: {
+            /** @description The trigger already existed for this scope. */
+            200: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "triggerEventId": "k57abc123unsub",
+                     *       "title": "Unsubscribed from news.acme.com",
+                     *       "description": "Starts when a contact unsubscribes from emails sent from news.acme.com, from an email's unsubscribe link or the mail app's unsubscribe button. Unsubscribing from all emails in one of those emails starts it too.",
+                     *       "provider": "brew_event",
+                     *       "providerEventKey": "contact.unsubscribed",
+                     *       "brewEvent": {
+                     *         "event": "contact.unsubscribed",
+                     *         "scope": "domain",
+                     *         "domainHost": "news.acme.com"
+                     *       },
+                     *       "payloadSchema": {
+                     *         "fields": [
+                     *           {
+                     *             "key": "email",
+                     *             "required": true,
+                     *             "type": "string"
+                     *           },
+                     *           {
+                     *             "children": [
+                     *               {
+                     *                 "key": "scope",
+                     *                 "required": true,
+                     *                 "type": "string"
+                     *               },
+                     *               {
+                     *                 "key": "domain",
+                     *                 "required": false,
+                     *                 "type": "string"
+                     *               },
+                     *               {
+                     *                 "key": "method",
+                     *                 "required": true,
+                     *                 "type": "string"
+                     *               },
+                     *               {
+                     *                 "key": "reasons",
+                     *                 "required": true,
+                     *                 "type": "array",
+                     *                 "itemType": "string"
+                     *               },
+                     *               {
+                     *                 "key": "reasonText",
+                     *                 "required": false,
+                     *                 "type": "string"
+                     *               },
+                     *               {
+                     *                 "key": "emailId",
+                     *                 "required": false,
+                     *                 "type": "string"
+                     *               },
+                     *               {
+                     *                 "key": "emailTitle",
+                     *                 "required": false,
+                     *                 "type": "string"
+                     *               },
+                     *               {
+                     *                 "key": "sendId",
+                     *                 "required": false,
+                     *                 "type": "string"
+                     *               },
+                     *               {
+                     *                 "key": "at",
+                     *                 "required": true,
+                     *                 "type": "string"
+                     *               }
+                     *             ],
+                     *             "key": "unsubscribe",
+                     *             "required": true,
+                     *             "type": "object"
+                     *           }
+                     *         ],
+                     *         "type": "object"
+                     *       },
+                     *       "createdAt": "2026-10-13T12:00:00.000Z",
+                     *       "updatedAt": "2026-10-13T12:00:00.000Z",
+                     *       "created": false
+                     *     }
+                     */
+                    "application/json": components["schemas"]["BrewEventTriggerSaved"];
+                };
+            };
+            /** @description Created. */
+            201: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "triggerEventId": "k57abc123unsub",
+                     *       "title": "Unsubscribed from news.acme.com",
+                     *       "description": "Starts when a contact unsubscribes from emails sent from news.acme.com, from an email's unsubscribe link or the mail app's unsubscribe button. Unsubscribing from all emails in one of those emails starts it too.",
+                     *       "provider": "brew_event",
+                     *       "providerEventKey": "contact.unsubscribed",
+                     *       "brewEvent": {
+                     *         "event": "contact.unsubscribed",
+                     *         "scope": "domain",
+                     *         "domainHost": "news.acme.com"
+                     *       },
+                     *       "payloadSchema": {
+                     *         "fields": [
+                     *           {
+                     *             "key": "email",
+                     *             "required": true,
+                     *             "type": "string"
+                     *           },
+                     *           {
+                     *             "children": [
+                     *               {
+                     *                 "key": "scope",
+                     *                 "required": true,
+                     *                 "type": "string"
+                     *               },
+                     *               {
+                     *                 "key": "domain",
+                     *                 "required": false,
+                     *                 "type": "string"
+                     *               },
+                     *               {
+                     *                 "key": "method",
+                     *                 "required": true,
+                     *                 "type": "string"
+                     *               },
+                     *               {
+                     *                 "key": "reasons",
+                     *                 "required": true,
+                     *                 "type": "array",
+                     *                 "itemType": "string"
+                     *               },
+                     *               {
+                     *                 "key": "reasonText",
+                     *                 "required": false,
+                     *                 "type": "string"
+                     *               },
+                     *               {
+                     *                 "key": "emailId",
+                     *                 "required": false,
+                     *                 "type": "string"
+                     *               },
+                     *               {
+                     *                 "key": "emailTitle",
+                     *                 "required": false,
+                     *                 "type": "string"
+                     *               },
+                     *               {
+                     *                 "key": "sendId",
+                     *                 "required": false,
+                     *                 "type": "string"
+                     *               },
+                     *               {
+                     *                 "key": "at",
+                     *                 "required": true,
+                     *                 "type": "string"
+                     *               }
+                     *             ],
+                     *             "key": "unsubscribe",
+                     *             "required": true,
+                     *             "type": "object"
+                     *           }
+                     *         ],
+                     *         "type": "object"
+                     *       },
+                     *       "createdAt": "2026-10-13T12:00:00.000Z",
+                     *       "updatedAt": "2026-10-13T12:00:00.000Z",
+                     *       "created": true
+                     *     }
+                     */
+                    "application/json": components["schemas"]["BrewEventTriggerSaved"];
+                };
+            };
+            /**
+             * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+             *
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
+             */
+            400: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `API_KEY_REVOKED`: The API key was revoked.
+             *
+             *     `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+             *
+             *     `INVALID_API_KEY`: The API key is malformed or unknown.
+             */
+            401: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+             *
+             *     `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+             *
+             *     `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+             *
+             *     `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+             */
+            403: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+             *
+             *     `DOMAIN_NOT_FOUND`: No domain with that id exists in the brand.
+             */
+            404: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+             *
+             *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
+             *
+             *     `TRIGGER_LIMIT_REACHED`: The brand already holds the maximum number of trigger events.
+             */
+            409: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `DOMAIN_PURPOSE_NOT_ALLOWED`: The sending domain is admitted for a different purpose than this send (marketing vs transactional). */
+            422: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
+            429: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it. */
+            500: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+        };
+    };
+    ensureIntegrationEventTrigger: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Optional idempotency key for safe retries. Reusing the same key with the same request body returns the original response for 24 hours.
+                 * @example api-request-2026-04-08-001
+                 */
+                "Idempotency-Key"?: string;
+                /**
+                 * @description The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+                 * @example kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+                 */
+                "X-Brand-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "eventId": "k5714pq3vm8x2n6c9d0b7f1h4j6g2r8t"
+                 *     }
+                 */
+                "application/json": components["schemas"]["IntegrationEventTriggersPostRequest"];
+            };
+        };
+        responses: {
+            /** @description The trigger already existed for this event. */
+            200: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "triggerEventId": "posthog:org_2abc:brand_9xyz:ev_3f1c9b2e7a4d8c06b5e1f2a3",
+                     *       "title": "created_project",
+                     *       "provider": "posthog",
+                     *       "providerEventKey": "created_project",
+                     *       "payloadSchema": {
+                     *         "type": "object",
+                     *         "fields": [
+                     *           {
+                     *             "key": "email",
+                     *             "type": "string",
+                     *             "required": true
+                     *           }
+                     *         ]
+                     *       },
+                     *       "createdAt": "2026-10-26T12:00:00.000Z",
+                     *       "updatedAt": "2026-10-26T12:00:00.000Z",
+                     *       "propertiesStatus": "current",
+                     *       "created": false
+                     *     }
+                     */
+                    "application/json": components["schemas"]["IntegrationEventTriggerSaved"];
+                };
+            };
+            /** @description Created. */
+            201: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "triggerEventId": "posthog:org_2abc:brand_9xyz:ev_3f1c9b2e7a4d8c06b5e1f2a3",
+                     *       "title": "created_project",
+                     *       "provider": "posthog",
+                     *       "providerEventKey": "created_project",
+                     *       "payloadSchema": {
+                     *         "type": "object",
+                     *         "fields": [
+                     *           {
+                     *             "key": "email",
+                     *             "type": "string",
+                     *             "required": true
+                     *           }
+                     *         ]
+                     *       },
+                     *       "createdAt": "2026-10-26T12:00:00.000Z",
+                     *       "updatedAt": "2026-10-26T12:00:00.000Z",
+                     *       "propertiesStatus": "current",
+                     *       "created": true
+                     *     }
+                     */
+                    "application/json": components["schemas"]["IntegrationEventTriggerSaved"];
+                };
+            };
+            /**
+             * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+             *
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
+             */
+            400: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `API_KEY_REVOKED`: The API key was revoked.
+             *
+             *     `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+             *
+             *     `INVALID_API_KEY`: The API key is malformed or unknown.
+             */
+            401: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+             *
+             *     `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+             *
+             *     `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+             *
+             *     `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+             */
+            403: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+             *
+             *     `INTEGRATION_EVENT_NOT_FOUND`: No live integration event with that id exists in the brand.
+             *
+             *     `NOT_FOUND`: No v1 resource lives at this path.
+             */
+            404: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+             *
+             *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
+             *
+             *     `INTEGRATION_RECONNECT_REQUIRED`: This catalog event’s trigger comes from its integration’s connection, which no longer holds it.
+             *
+             *     `TRIGGER_LIMIT_REACHED`: The brand already holds the maximum number of trigger events.
+             */
+            409: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
+            429: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -16287,7 +21454,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -16332,7 +21499,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -16391,7 +21558,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -16400,7 +21567,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -16477,7 +21644,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -16513,7 +21680,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              *
              *     `PAYLOAD_SCHEMA_EMAIL_REQUIRED`: A trigger payload schema must declare a required string `email` field.
              */
@@ -16604,7 +21771,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -16613,7 +21780,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -16666,7 +21833,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -16702,7 +21869,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -16765,7 +21932,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -16774,7 +21941,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -16824,7 +21991,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -16841,7 +22008,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -16915,7 +22082,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -16924,7 +22091,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -16983,7 +22150,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -17019,7 +22186,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -17093,7 +22260,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `TRIGGER_IMMUTABLE`: Integration-provisioned triggers cannot be changed through the API. */
+            /** @description `TRIGGER_IMMUTABLE`: Integration-provisioned and Brew-event triggers cannot be changed through the API. */
             422: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -17104,7 +22271,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -17113,7 +22280,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -17163,7 +22330,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -17209,7 +22376,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -17272,7 +22439,18 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `TRIGGER_NOT_FIREABLE`: Brew starts this trigger itself when its event happens, so it cannot be fired over the API. */
+            409: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -17281,7 +22459,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -17309,7 +22487,7 @@ export interface operations {
             query?: never;
             header?: {
                 /**
-                 * @description Optional idempotency key for safe retries. Reusing the same key with the same request body returns the original response for 24 hours.
+                 * @description Optional idempotency key for safe retries of the same trigger fire and request body. The shared response cache defaults to 24 hours; the trigger receipt replays the original run ids for as long as it is stored (90 days). Use one key per business action and never reuse it for a different fire.
                  * @example api-request-2026-04-08-001
                  */
                 "Idempotency-Key"?: string;
@@ -17348,7 +22526,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -17387,7 +22565,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -17422,7 +22600,7 @@ export interface operations {
              *
              *     `INVALID_PAYLOAD`: The test payload does not match the trigger’s payload schema.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -17489,6 +22667,8 @@ export interface operations {
              * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
              *
              *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
+             *
+             *     `TRIGGER_NOT_FIREABLE`: Brew starts this trigger itself when its event happens, so it cannot be fired over the API.
              */
             409: {
                 headers: {
@@ -17511,7 +22691,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -17520,7 +22700,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -17586,7 +22766,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -17638,7 +22818,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -17701,7 +22881,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -17710,7 +22890,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -17798,7 +22978,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -17856,7 +23036,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -17930,7 +23110,18 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `TRIGGER_IMMUTABLE`: Integration-provisioned and Brew-event triggers cannot be changed through the API. */
+            422: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -17939,7 +23130,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -18001,7 +23192,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -18034,7 +23225,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -18097,7 +23288,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -18106,7 +23297,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -18168,7 +23359,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -18208,7 +23399,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -18265,7 +23456,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -18274,7 +23465,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -18329,7 +23520,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -18367,7 +23558,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -18426,7 +23617,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -18435,7 +23626,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -18484,7 +23675,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -18513,7 +23704,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -18576,7 +23767,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -18585,7 +23776,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -18645,7 +23836,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -18710,7 +23901,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -18769,7 +23960,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -18778,7 +23969,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -18834,7 +24025,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -18863,7 +24054,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -18940,7 +24131,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -18969,7 +24160,11 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed. */
+            /**
+             * @description `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed.
+             *
+             *     `NO_ACTIVE_PLAN`: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
+             */
             402: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -19013,7 +24208,7 @@ export interface operations {
             /**
              * @description `FIELD_TYPE_MISMATCH`: A value does not match the declared type of its custom field.
              *
-             *     `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+             *     `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body, or, on a fixed-price operation, for a request it already paid for whose stored response is gone.
              *
              *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
              */
@@ -19032,6 +24227,10 @@ export interface operations {
              *
              *     `CORE_FIELD_IMMUTABLE`: The field is a core contact column and cannot be created, changed, or deleted as a custom field.
              *
+             *     `FIELD_NAME_COLLISION`: Two keys in one request name the same contact field (`plan` and `Plan`, `team_size` and `Team Size`), so one value would be lost.
+             *
+             *     `FIELD_NAME_INVALID`: A custom-field name has no ASCII letter or digit (`名前`, `#`), so it cannot become a field key and its value would be lost. A blank name is dropped with a `BLANK_FIELD_NAME_IGNORED` warning instead.
+             *
              *     `INVALID_EMAIL`: A contact email is not a deliverable address shape.
              *
              *     `MISSING_EMAIL`: A contact row has no `email`, the primary key.
@@ -19048,7 +24247,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -19057,7 +24256,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -19095,7 +24294,10 @@ export interface operations {
     };
     getContact: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Expansions: `openProfile` attaches the contact's smart-send open-time profile (needs the `emails` permission as well). */
+                include?: string;
+            };
             header?: {
                 /**
                  * @description The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
@@ -19111,7 +24313,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description The contact row. */
+            /** @description The contact row, with `openProfile` when `include=openProfile`. */
             200: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -19120,7 +24322,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -19149,13 +24351,13 @@ export interface operations {
                      *       }
                      *     }
                      */
-                    "application/json": components["schemas"]["Contact"];
+                    "application/json": components["schemas"]["ContactWithOpenProfile"];
                 };
             };
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -19218,7 +24420,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -19227,7 +24429,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -19277,7 +24479,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -19294,7 +24496,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -19353,7 +24555,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -19362,7 +24564,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -19416,7 +24618,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -19449,7 +24651,8 @@ export interface operations {
                      *         "firstName",
                      *         "plan",
                      *         "consent"
-                     *       ]
+                     *       ],
+                     *       "warnings": []
                      *     }
                      */
                     "application/json": components["schemas"]["ContactsPatchResponse"];
@@ -19458,7 +24661,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -19539,6 +24742,8 @@ export interface operations {
              *
              *     `CORE_FIELD_IMMUTABLE`: The field is a core contact column and cannot be created, changed, or deleted as a custom field.
              *
+             *     `FIELD_NAME_COLLISION`: Two keys in one request name the same contact field (`plan` and `Plan`, `team_size` and `Team Size`), so one value would be lost.
+             *
              *     `RESUBSCRIBE_NOT_ALLOWED`: The write set `subscribed` to true on a contact who unsubscribed, and Brew never re-subscribes an opt-out through the API, MCP or an import; `details.email` names the contact.
              */
             422: {
@@ -19551,7 +24756,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -19560,7 +24765,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -19611,7 +24816,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -19622,7 +24827,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -19707,7 +24912,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -19716,7 +24921,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -19776,7 +24981,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -19787,18 +24992,21 @@ export interface operations {
                      *         {
                      *           "email": "ada@gmail.com",
                      *           "valid": true,
-                     *           "status": "valid"
+                     *           "status": "valid",
+                     *           "checkOutcome": "completed"
                      *         },
                      *         {
                      *           "email": "temp@mailinator.com",
                      *           "valid": false,
                      *           "status": "invalid",
+                     *           "checkOutcome": "completed",
                      *           "reason": "undeliverable"
                      *         },
                      *         {
                      *           "email": "ada@gmial.com",
                      *           "valid": false,
                      *           "status": "risky",
+                     *           "checkOutcome": "completed",
                      *           "reason": "unknown",
                      *           "didYouMean": "ada@gmail.com"
                      *         },
@@ -19806,9 +25014,15 @@ export interface operations {
                      *           "email": "admin@stripe.com",
                      *           "valid": false,
                      *           "status": "risky",
+                     *           "checkOutcome": "completed",
                      *           "reason": "role_address"
                      *         }
-                     *       ]
+                     *       ],
+                     *       "persistence": {
+                     *         "matched": 4,
+                     *         "modified": 4,
+                     *         "failed": 0
+                     *       }
                      *     }
                      */
                     "application/json": components["schemas"]["ContactsValidateResponse"];
@@ -19817,7 +25031,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -19846,7 +25060,11 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed. */
+            /**
+             * @description `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed.
+             *
+             *     `NO_ACTIVE_PLAN`: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
+             */
             402: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -19888,7 +25106,7 @@ export interface operations {
                 };
             };
             /**
-             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body, or, on a fixed-price operation, for a request it already paid for whose stored response is gone.
              *
              *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
              */
@@ -19902,7 +25120,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -19911,7 +25129,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -19969,7 +25187,8 @@ export interface operations {
                  *         "email": "email",
                  *         "firstName": "firstName",
                  *         "lastName": "lastName"
-                 *       }
+                 *       },
+                 *       "fileName": "customers.csv"
                  *     }
                  */
                 "application/json": components["schemas"]["ContactsImportCsvRequest"];
@@ -19985,7 +25204,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -19996,14 +25215,16 @@ export interface operations {
                      *         "inserted": 2,
                      *         "updated": 0,
                      *         "failed": 0,
-                     *         "skipped": 0
+                     *         "skipped": 0,
+                     *         "total": 2
                      *       },
                      *       "fieldsCreated": [],
                      *       "errors": [],
-                     *       "warnings": []
+                     *       "warnings": [],
+                     *       "importId": "imp_01JABCDEF0123456789XYZ"
                      *     }
                      */
-                    "application/json": components["schemas"]["ContactsImportCsvResponse"];
+                    "application/json": components["schemas"]["ContactsImportResponse"];
                 };
             };
             /** @description Partial success — some rows failed validation. */
@@ -20015,7 +25236,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -20026,58 +25247,42 @@ export interface operations {
                      *         "inserted": 1,
                      *         "updated": 0,
                      *         "failed": 1,
-                     *         "skipped": 2
+                     *         "skipped": 2,
+                     *         "total": 4
                      *       },
                      *       "fieldsCreated": [],
                      *       "errors": [
                      *         {
                      *           "email": "john@example.com",
+                     *           "row": 2,
                      *           "code": "FIELD_TYPE_MISMATCH",
                      *           "field": "customFields.plan",
                      *           "message": "Field 'customFields.plan' is type 'number' but received string '$49'."
                      *         }
                      *       ],
-                     *       "warnings": []
+                     *       "warnings": [
+                     *         {
+                     *           "code": "CSV_ROW_SKIPPED",
+                     *           "row": 3,
+                     *           "message": "Row 3 has no email address, so it was skipped."
+                     *         },
+                     *         {
+                     *           "code": "CSV_ROW_SKIPPED",
+                     *           "row": 4,
+                     *           "email": "not-an-email",
+                     *           "message": "Row 4 holds 'not-an-email', which is not a valid email address, so it was skipped."
+                     *         }
+                     *       ],
+                     *       "importId": "imp_01JABCDEF0123456789XYZ"
                      *     }
                      */
-                    "application/json": {
-                        summary: {
-                            inserted: number;
-                            updated: number;
-                            failed: number;
-                            skipped: number;
-                        };
-                        fieldsCreated: string[];
-                        errors: {
-                            email: string;
-                            code: string;
-                            field?: string;
-                            message: string;
-                        }[];
-                        warnings: {
-                            code: string;
-                            email?: string;
-                            field?: string;
-                            message: string;
-                            from?: string;
-                            to?: string;
-                            original?: string;
-                            normalized?: string;
-                        }[];
-                        validation?: {
-                            valid: number;
-                            risky: number;
-                            invalid: number;
-                            unscored: number;
-                        };
-                        validationJobId?: string;
-                    };
+                    "application/json": components["schemas"]["ContactsImportResponse"];
                 };
             };
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -20106,7 +25311,11 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed. */
+            /**
+             * @description `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed.
+             *
+             *     `NO_ACTIVE_PLAN`: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
+             */
             402: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -20148,7 +25357,7 @@ export interface operations {
                 };
             };
             /**
-             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body, or, on a fixed-price operation, for a request it already paid for whose stored response is gone.
              *
              *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
              */
@@ -20162,7 +25371,22 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /**
+             * @description `FIELD_NAME_AMBIGUOUS`: A CSV column named with no ASCII letter or digit (`名前`, `#`) matches several existing fields labeled with that name, so the import cannot tell which one holds it; `details.columns` lists the candidate keys.
+             *
+             *     `FIELD_NAME_COLLISION`: Two keys in one request name the same contact field (`plan` and `Plan`, `team_size` and `Team Size`), so one value would be lost.
+             */
+            422: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -20171,7 +25395,257 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it. */
+            500: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `SERVICE_UNAVAILABLE`: A dependency the operation must consult (billing, the idempotency store) is temporarily unavailable, so the request was refused rather than run unmetered. */
+            503: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+        };
+    };
+    importContacts: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+                 * @example kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+                 */
+                "X-Brand-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "contacts": [
+                 *         {
+                 *           "email": "ada@example.com",
+                 *           "firstName": "Ada"
+                 *         },
+                 *         {
+                 *           "email": "grace@example.com",
+                 *           "firstName": "Grace",
+                 *           "customFields": {
+                 *             "plan": "pro"
+                 *           }
+                 *         }
+                 *       ],
+                 *       "consent": {
+                 *         "source": "import"
+                 *       },
+                 *       "fileName": "crm-export.json"
+                 *     }
+                 */
+                "application/json": components["schemas"]["ContactsImportRequest"];
+            };
+        };
+        responses: {
+            /** @description Import summary (all rows valid). */
+            200: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "summary": {
+                     *         "inserted": 2,
+                     *         "updated": 0,
+                     *         "failed": 0,
+                     *         "skipped": 0,
+                     *         "total": 2
+                     *       },
+                     *       "fieldsCreated": [
+                     *         "plan"
+                     *       ],
+                     *       "errors": [],
+                     *       "warnings": [],
+                     *       "importId": "imp_01JABCDEF0123456789XYZ"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ContactsImportResponse"];
+                };
+            };
+            /** @description Partial success — some rows failed validation. */
+            207: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "summary": {
+                     *         "inserted": 1,
+                     *         "updated": 0,
+                     *         "failed": 1,
+                     *         "skipped": 0,
+                     *         "total": 2
+                     *       },
+                     *       "fieldsCreated": [],
+                     *       "errors": [
+                     *         {
+                     *           "email": "not-an-email",
+                     *           "row": 2,
+                     *           "code": "INVALID_EMAIL",
+                     *           "message": "'not-an-email' is not a valid email address."
+                     *         }
+                     *       ],
+                     *       "warnings": [],
+                     *       "importId": "imp_01JABCDEF0123456789XYZ"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ContactsImportResponse"];
+                };
+            };
+            /**
+             * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+             *
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
+             */
+            400: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `API_KEY_REVOKED`: The API key was revoked.
+             *
+             *     `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+             *
+             *     `INVALID_API_KEY`: The API key is malformed or unknown.
+             */
+            401: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed.
+             *
+             *     `NO_ACTIVE_PLAN`: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
+             */
+            402: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+             *
+             *     `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+             *
+             *     `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+             *
+             *     `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+             */
+            403: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization). */
+            404: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body, or, on a fixed-price operation, for a request it already paid for whose stored response is gone.
+             *
+             *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
+             */
+            409: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
+            429: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -20248,7 +25722,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -20267,7 +25741,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -20352,7 +25826,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -20361,7 +25835,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -20420,7 +25894,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -20477,7 +25951,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -20540,7 +26014,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -20549,7 +26023,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -20611,7 +26085,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -20633,7 +26107,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -20718,7 +26192,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -20727,7 +26201,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -20777,7 +26251,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -20794,7 +26268,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -20857,7 +26331,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -20866,7 +26340,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -20916,7 +26390,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -20933,7 +26407,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -20992,6 +26466,17 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
+            /** @description `AUDIENCE_BUILD_ACTIVE`: The audience is being built, so neither it nor the hidden field its build stamps can be changed, copied, or deleted yet. */
+            409: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
             /** @description `CORE_FIELD_IMMUTABLE`: The field is a core contact column and cannot be created, changed, or deleted as a custom field. */
             422: {
                 headers: {
@@ -21003,7 +26488,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -21012,7 +26497,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -21068,7 +26553,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -21107,7 +26592,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -21166,7 +26651,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -21175,7 +26660,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -21246,7 +26731,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -21276,7 +26761,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -21363,7 +26848,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -21372,7 +26857,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -21425,7 +26910,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -21455,7 +26940,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -21518,7 +27003,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -21527,7 +27012,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -21577,7 +27062,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -21594,7 +27079,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -21653,7 +27138,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `AUDIENCE_BUILD_ACTIVE`: The audience is being built, so it cannot be changed, copied, or deleted yet. */
+            /** @description `AUDIENCE_BUILD_ACTIVE`: The audience is being built, so neither it nor the hidden field its build stamps can be changed, copied, or deleted yet. */
             409: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -21664,7 +27149,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -21673,7 +27158,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -21732,7 +27217,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -21762,7 +27247,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -21826,7 +27311,7 @@ export interface operations {
                 };
             };
             /**
-             * @description `AUDIENCE_BUILD_ACTIVE`: The audience is being built, so it cannot be changed, copied, or deleted yet.
+             * @description `AUDIENCE_BUILD_ACTIVE`: The audience is being built, so neither it nor the hidden field its build stamps can be changed, copied, or deleted yet.
              *
              *     `AUDIENCE_EDIT_CONFLICT`: The audience changed since it was read; the update was not applied.
              *
@@ -21855,7 +27340,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -21864,7 +27349,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -21931,7 +27416,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -21982,7 +27467,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -22058,7 +27543,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -22067,7 +27552,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -22122,7 +27607,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -22152,7 +27637,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -22216,7 +27701,7 @@ export interface operations {
                 };
             };
             /**
-             * @description `AUDIENCE_BUILD_ACTIVE`: The audience is being built, so it cannot be changed, copied, or deleted yet.
+             * @description `AUDIENCE_BUILD_ACTIVE`: The audience is being built, so neither it nor the hidden field its build stamps can be changed, copied, or deleted yet.
              *
              *     `AUDIENCE_EDIT_CONFLICT`: The audience changed since it was read; the update was not applied.
              *
@@ -22234,7 +27719,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -22243,7 +27728,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -22301,7 +27786,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -22345,7 +27830,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -22404,7 +27889,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -22413,7 +27898,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -22474,7 +27959,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -22509,7 +27994,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -22610,7 +28095,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -22619,7 +28104,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -22669,7 +28154,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -22704,7 +28189,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -22767,7 +28252,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -22776,7 +28261,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -22826,7 +28311,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -22843,7 +28328,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -22940,7 +28425,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -22949,7 +28434,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -23009,7 +28494,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -23044,7 +28529,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -23141,7 +28626,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -23150,7 +28635,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -23205,7 +28690,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -23241,7 +28726,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -23342,7 +28827,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -23351,7 +28836,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -23413,7 +28898,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -23444,7 +28929,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -23518,7 +29003,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -23527,7 +29012,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -23594,7 +29079,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -23619,7 +29104,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -23708,7 +29193,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -23717,7 +29202,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -23769,7 +29254,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -23789,7 +29274,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -23863,7 +29348,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -23872,7 +29357,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -23936,7 +29421,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -23963,7 +29448,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -24063,7 +29548,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -24072,7 +29557,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -24125,7 +29610,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -24145,7 +29630,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -24219,7 +29704,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -24228,7 +29713,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -24253,7 +29738,10 @@ export interface operations {
     };
     getDomainHealth: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Expansions: `scoreHistory` attaches up to 50 saved score snapshots, newest first; `scoreRuns` the last 5 automated domain score runs. */
+                include?: string;
+            };
             header?: {
                 /**
                  * @description The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
@@ -24278,7 +29766,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -24389,7 +29877,7 @@ export interface operations {
                      *           "id": "dmarc_missing",
                      *           "severity": "warning",
                      *           "summary": "No DMARC record is configured for this domain.",
-                     *           "suggestion": "Add a TXT record: _dmarc TXT \"v=DMARC1; p=reject; rua=mailto:dmarc@send.example.com\" — Gmail/Yahoo bulk-sender rules require DMARC, and it blocks spoofing."
+                     *           "suggestion": "Add a TXT record: _dmarc.send.example.com TXT \"v=DMARC1; p=reject; rua=mailto:dmarc@send.example.com\" — Gmail/Yahoo bulk-sender rules require DMARC. This policy blocks spoofing. Then re-verify the domain to pick it up."
                      *         }
                      *       ],
                      *       "checkedAt": "2026-07-13T18:00:00.000Z"
@@ -24401,7 +29889,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -24464,7 +29952,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -24473,7 +29961,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -24501,14 +29989,20 @@ export interface operations {
             query?: {
                 /** @description Only this brand's templates, by domain (e.g. `brew.new`); case-insensitive. */
                 brand?: string;
-                /** @description Email category, matched case-insensitively (unknown → empty page): welcome, newsletter, promotional, product-launch, product-update, order-confirmation, shipping-update, receipt, cart-abandonment, subscription, password-reset, verification, security-alert, account-update, event-invitation, event-reminder, feedback-request, re-engagement, referral, support, business, internal, notification, general. */
+                /** @description Email category, matched case-insensitively (unknown → empty page): welcome, onboarding, newsletter, content, event-invitation, event-reminder, event-recap, product-launch, product-update, product-pitch, promotional, cart-abandonment, re-engagement, subscription, feedback-request, referral, company-news, fundraising, order-confirmation, shipping-update, receipt, password-reset, verification, security-alert, account-update, notification, support, internal, business, general. */
                 category?: string;
+                /** @description A browse group: every category in it (e.g. `events` = invitations, reminders and recaps). */
+                group?: "welcome-onboarding" | "newsletter" | "content" | "events" | "product-news" | "sales" | "retention" | "company" | "transactional" | "internal" | "other";
                 /** @description Rank by relevance to this text instead of newest first (top 200; `brand`/`category` still narrow). */
                 semantic?: string;
                 /** @description Case-insensitive title substring or exact public template identifier. Applied within semantic results when semantic is supplied. */
                 query?: string;
                 /** @description Full rows include HTML. Summary rows include selection metadata and links only. */
                 representation?: "full" | "summary";
+                /** @description Return `{ count }`, the number of templates matching `brand`/`category`/`group`, instead of rows. Not with `semantic` or `query`. */
+                count?: boolean | ("true" | "false");
+                /** @description With `count: true`: also count per brand, category or group, largest first, 100 groups a page; continue with `cursor`. */
+                groupBy?: "brand" | "category" | "group";
                 /**
                  * @description Page size, 1–100 (default 50: each row carries its full HTML).
                  * @example 50
@@ -24522,7 +30016,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description A page of templates matching the filters. */
+            /** @description A page of templates matching the filters, or their counts when count=true. */
             200: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -24531,7 +30025,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -24575,10 +30069,32 @@ export interface operations {
                             cursor: string | null;
                             hasMore: boolean;
                         };
+                    } | {
+                        /** @description Templates matching `brand`/`category`. */
+                        count: number;
+                        /** @enum {string} */
+                        groupBy?: "brand" | "category" | "group";
+                        /** @description With `groupBy`: up to 100 groups, largest first. */
+                        groups?: {
+                            /** @description The brand domain, category or group; pass it back as the filter of the same name (`brand`, `category` or `group`). */
+                            value: string;
+                            /** @description The brand's curated display name, when it has one. */
+                            name?: string;
+                            count: number;
+                        }[];
+                        /** @description Distinct brands or categories across every page. */
+                        groupCount?: number;
+                        /** @description Matching templates with no brand (or no category), so in no group. */
+                        ungroupedCount?: number;
+                        pagination?: {
+                            limit: number;
+                            cursor: string | null;
+                            hasMore: boolean;
+                        };
                     };
                 };
             };
-            /** @description `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender. */
+            /** @description `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20). */
             400: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -24617,7 +30133,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -24626,7 +30142,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -24672,7 +30188,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -24701,7 +30217,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender. */
+            /** @description `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20). */
             400: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -24751,7 +30267,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -24760,7 +30276,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -24792,6 +30308,8 @@ export interface operations {
                 category?: "verification" | "transactional" | "direct_sales" | "welcome" | "promotion" | "newsletter" | "education" | "abandoned_cart" | "winback" | "other";
                 /** @description Filter LIST by how the sequence starts: `signup` (after creating an account) or `newsletter` (after subscribing). */
                 type?: "newsletter" | "signup";
+                /** @description Filter LIST by the flow’s kind: what the sequence is for. */
+                kind?: "onboarding" | "trial" | "events" | "product_updates" | "promotions";
                 /** @description Semantic search over what the sequences are about — “developer onboarding drip”, “trial expiry win-back”. Results come back in relevance order and `sort` is ignored. */
                 semantic?: string;
                 /** @description LIST order: `newest` (default), `emails` (longest sequences first), `span` (sequences that run the longest first), `remixes` (most remixed first). */
@@ -24818,7 +30336,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -24860,7 +30378,7 @@ export interface operations {
                     "application/json": components["schemas"]["FlowsListResponse"];
                 };
             };
-            /** @description `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender. */
+            /** @description `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20). */
             400: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -24899,7 +30417,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -24908,7 +30426,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -24947,12 +30465,14 @@ export interface operations {
     getFlow: {
         parameters: {
             query?: {
+                /** @description The flow's kind for a bare-domain `slug`, hyphenated: `onboarding`, `trial`, `events`, `product-updates`, `promotions`, optionally followed by `-2`, `-3`… for a brand's later flow of that kind. */
+                kind?: string;
                 /** @description Detail-only expansions, comma-separated. `html` adds each step’s rendered HTML. Rendered email is bulky — over MCP only the first step or two fit one response; the rest arrive without `html` and the summary says how many were kept. A step’s `emailId` is already a valid `referenceEmailId`, so reuse needs no body; for the bodies themselves call `GET /v1/flows/{slug}?include=html` over REST, which has no cap. Best-effort per step: a step whose body is no longer servable comes back without `html` rather than failing the flow. */
                 include?: string;
             };
             header?: never;
             path: {
-                /** @description The flow’s brand domain, as returned in every `GET /v1/flows` row. Case-insensitive. */
+                /** @description The flow’s brand domain. A bare domain returns the brand’s primary flow; one send stream’s flow is `?kind=` on it (or the path `/v1/flows/{domain}/{kind}`), as each `GET /v1/flows` row’s `slug` (`<domain>/<kind>`) names it. Case-insensitive. */
                 slug: string;
             };
             cookie?: never;
@@ -24968,7 +30488,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -25023,7 +30543,7 @@ export interface operations {
                     "application/json": components["schemas"]["Flow"];
                 };
             };
-            /** @description `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender. */
+            /** @description `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20). */
             400: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -25073,7 +30593,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -25082,7 +30602,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -25108,7 +30628,7 @@ export interface operations {
     getBrand: {
         parameters: {
             query?: {
-                /** @description Comma-separated sub-resources to embed: `identity`, `emailDesign`, `imageStyle`, `logos`. */
+                /** @description Comma-separated sub-resources to embed: `emailDesign`, `imageStyle`, `logos`. `identity` (saved name, tagline, description, links) is always returned; naming it is accepted and changes nothing. */
                 include?: string;
             };
             header?: {
@@ -25123,7 +30643,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description The brand bound to this API key, plus any sub-resources named in `?include=`. */
+            /** @description The brand bound to this API key with its saved `identity`, plus any sub-resources named in `?include=`. */
             200: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -25132,7 +30652,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -25157,7 +30677,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -25214,7 +30734,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -25223,7 +30743,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -25265,7 +30785,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description The updated brand (only the touched fields are echoed). */
+            /** @description The updated brand with its `identity`, plus the markdown documents the call wrote. */
             200: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -25274,7 +30794,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -25297,7 +30817,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -25356,7 +30876,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -25365,7 +30885,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -25391,7 +30911,7 @@ export interface operations {
     getBrandImages: {
         parameters: {
             query?: {
-                /** @description Semantic search over what the images show. Costs 1 credit per new search; results come back in relevance order and `sort` is ignored. Logos are not searchable. */
+                /** @description Semantic search over what the images show. Results come back in relevance order and `sort` is ignored. Logos are not searchable. */
                 q?: string;
                 /** @description `logo`, `brand` (images from the site or uploaded, including the social preview and site screenshot) or `generated` (made with Brew). Omit for every kind. */
                 kind?: "logo" | "brand" | "generated";
@@ -25425,7 +30945,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -25467,7 +30987,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -25487,17 +31007,6 @@ export interface operations {
              *     `INVALID_API_KEY`: The API key is malformed or unknown.
              */
             401: {
-                headers: {
-                    /** @description Unique request identifier. Share this with support when debugging a request. */
-                    "x-request-id": string;
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiErrorEnvelope"];
-                };
-            };
-            /** @description `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed. */
-            402: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
                     "x-request-id": string;
@@ -25537,7 +31046,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -25546,7 +31055,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -25567,13 +31076,135 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `SERVICE_UNAVAILABLE`: A dependency the operation must consult (billing, the idempotency store) is temporarily unavailable, so the request was refused rather than run unmetered. */
-            503: {
+        };
+    };
+    deleteBrandImage: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+                 * @example kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+                 */
+                "X-Brand-Id"?: string;
+            };
+            path: {
+                /** @description The image to delete: the `assetId` that `GET /v1/brand/images` returns. */
+                assetId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted (or not in the library). */
+            200: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
                     "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "assetId": "5bc912f9",
+                     *       "deleted": true
+                     *     }
+                     */
+                    "application/json": components["schemas"]["BrandImageDeleteResponse"];
+                };
+            };
+            /**
+             * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+             *
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
+             */
+            400: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `API_KEY_REVOKED`: The API key was revoked.
+             *
+             *     `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+             *
+             *     `INVALID_API_KEY`: The API key is malformed or unknown.
+             */
+            401: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+             *
+             *     `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+             *
+             *     `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+             *
+             *     `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+             */
+            403: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization). */
+            404: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
+            429: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it. */
+            500: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
                     [name: string]: unknown;
                 };
                 content: {
@@ -25608,7 +31239,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -25645,7 +31276,7 @@ export interface operations {
                     "application/json": components["schemas"]["BrandsListResponse"];
                 };
             };
-            /** @description `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender. */
+            /** @description `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20). */
             400: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -25684,7 +31315,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -25693,7 +31324,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -25750,7 +31381,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -25774,7 +31405,7 @@ export interface operations {
                     "application/json": components["schemas"]["BrandsCreateResponse"];
                 };
             };
-            /** @description `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender. */
+            /** @description `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20). */
             400: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -25806,6 +31437,8 @@ export interface operations {
              * @description `BRAND_LIMIT_REACHED`: The plan allows no more brands.
              *
              *     `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed.
+             *
+             *     `NO_ACTIVE_PLAN`: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
              */
             402: {
                 headers: {
@@ -25853,7 +31486,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -25862,7 +31495,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -25919,7 +31552,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -25939,7 +31572,7 @@ export interface operations {
                     "application/json": components["schemas"]["BrandGetByIdResponse"];
                 };
             };
-            /** @description `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender. */
+            /** @description `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20). */
             400: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -25989,7 +31622,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -25998,7 +31631,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -26055,7 +31688,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -26066,7 +31699,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -26095,7 +31728,11 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed. */
+            /**
+             * @description `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed.
+             *
+             *     `NO_ACTIVE_PLAN`: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
+             */
             402: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -26137,7 +31774,7 @@ export interface operations {
                 };
             };
             /**
-             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body, or, on a fixed-price operation, for a request it already paid for whose stored response is gone.
              *
              *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
              */
@@ -26162,7 +31799,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -26171,7 +31808,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -26241,7 +31878,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -26252,7 +31889,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -26281,7 +31918,11 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed. */
+            /**
+             * @description `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed.
+             *
+             *     `NO_ACTIVE_PLAN`: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
+             */
             402: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -26323,7 +31964,7 @@ export interface operations {
                 };
             };
             /**
-             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body, or, on a fixed-price operation, for a request it already paid for whose stored response is gone.
              *
              *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
              */
@@ -26348,7 +31989,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -26357,7 +31998,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -26427,7 +32068,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -26438,7 +32079,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -26467,7 +32108,11 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed. */
+            /**
+             * @description `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed.
+             *
+             *     `NO_ACTIVE_PLAN`: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
+             */
             402: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -26509,7 +32154,7 @@ export interface operations {
                 };
             };
             /**
-             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body, or, on a fixed-price operation, for a request it already paid for whose stored response is gone.
              *
              *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
              */
@@ -26534,7 +32179,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -26543,7 +32188,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -26613,7 +32258,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -26624,7 +32269,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -26653,7 +32298,11 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed. */
+            /**
+             * @description `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed.
+             *
+             *     `NO_ACTIVE_PLAN`: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
+             */
             402: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -26695,7 +32344,7 @@ export interface operations {
                 };
             };
             /**
-             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body, or, on a fixed-price operation, for a request it already paid for whose stored response is gone.
              *
              *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
              */
@@ -26720,7 +32369,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -26729,7 +32378,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -26783,7 +32432,7 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        /** @description Pass one public `imageUrl` for a synchronous import, or `imageUrls` with 1–100 public URLs for a durable batch import. */
+        /** @description Pass one public `imageUrl` for a synchronous import, `imageUrls` with 1 to 100 public URLs for a durable batch import, or the `uploadId` of a local file sent through `POST /v1/content/image-uploads`. */
         requestBody: {
             content: {
                 "application/json": components["schemas"]["ContentAddImageRequest"];
@@ -26799,17 +32448,18 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
                 content: {
                     /**
                      * @example {
-                     *       "url": "https://cdn.brew.new/api-host-3f2c8d9a-1b4e-4c7a-9e21-7d6f0a5b1c34.png",
+                     *       "url": "https://cdn.brew.new/cnt/1d943539cbe0cc60.png",
                      *       "width": 1200,
                      *       "height": 675,
-                     *       "aspectRatio": "wide"
+                     *       "aspectRatio": "wide",
+                     *       "assetId": "5f750e5f"
                      *     }
                      */
                     "application/json": components["schemas"]["ContentAddImageResponse"];
@@ -26824,7 +32474,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -26842,7 +32492,191 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
+             */
+            400: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `API_KEY_REVOKED`: The API key was revoked.
+             *
+             *     `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+             *
+             *     `INVALID_API_KEY`: The API key is malformed or unknown.
+             */
+            401: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+             *
+             *     `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+             *
+             *     `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+             *
+             *     `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+             */
+            403: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+             *
+             *     `UPLOAD_NOT_FOUND`: The image upload is unknown, expired, or belongs to another brand.
+             */
+            404: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
+             *
+             *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
+             *
+             *     `UPLOAD_IN_PROGRESS`: Another request is still adding this uploaded image.
+             *
+             *     `UPLOAD_NOT_RECEIVED`: The image upload has not received its file yet.
+             */
+            409: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `PAYLOAD_TOO_LARGE`: The request body exceeds the route cap. */
+            413: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `CONTENT_OPERATION_FAILED`: The media operation could not be completed for the given input. */
+            422: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
+            429: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it. */
+            500: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+        };
+    };
+    createImageUpload: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+                 * @example kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+                 */
+                "X-Brand-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        /** @description The file to upload: its name, type and size in bytes. */
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ContentImageUploadCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description The upload is open. POST the raw file bytes to `uploadUrl`, then call `POST /v1/content/add-image` with `uploadId`. */
+            201: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "uploadId": "imgup_V1StGXR8_Z5jdHi6B-myT",
+                     *       "uploadUrl": "https://example-deployment-123.convex.site/uploads/brand-image?uploadId=imgup_V1StGXR8_Z5jdHi6B-myT&token=9b1c4f6e2a7d8e3f0a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f",
+                     *       "expiresAt": "2026-10-01T18:15:00.000Z",
+                     *       "maxBytes": 20000000
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ContentImageUploadCreateResponse"];
+                };
+            };
+            /**
+             * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+             *
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -26901,33 +32735,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /**
-             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
-             *
-             *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
-             */
-            409: {
-                headers: {
-                    /** @description Unique request identifier. Share this with support when debugging a request. */
-                    "x-request-id": string;
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiErrorEnvelope"];
-                };
-            };
-            /** @description `CONTENT_OPERATION_FAILED`: The media operation could not be completed for the given input. */
-            422: {
-                headers: {
-                    /** @description Unique request identifier. Share this with support when debugging a request. */
-                    "x-request-id": string;
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiErrorEnvelope"];
-                };
-            };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -26936,7 +32744,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -26977,7 +32785,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -26995,8 +32803,9 @@ export interface operations {
                      *       },
                      *       "emailSends": {
                      *         "limit": 200000,
-                     *         "used": 0,
-                     *         "remaining": 200000
+                     *         "used": 911,
+                     *         "reserved": 27880,
+                     *         "remaining": 171209
                      *       },
                      *       "period": {
                      *         "start": "2026-05-28T18:10:35.000Z",
@@ -27007,7 +32816,7 @@ export interface operations {
                     "application/json": components["schemas"]["UsageGetResponse"];
                 };
             };
-            /** @description `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender. */
+            /** @description `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20). */
             400: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -27046,7 +32855,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -27055,165 +32864,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
-                    "X-RateLimit-Reset": number;
-                    /** @description Seconds to wait before retrying the request. */
-                    "Retry-After": number;
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiErrorEnvelope"];
-                };
-            };
-            /** @description `INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it. */
-            500: {
-                headers: {
-                    /** @description Unique request identifier. Share this with support when debugging a request. */
-                    "x-request-id": string;
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiErrorEnvelope"];
-                };
-            };
-        };
-    };
-    runDataCommand: {
-        parameters: {
-            query?: never;
-            header?: {
-                /**
-                 * @description The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
-                 * @example kx7b3s7fapqz8mjm12ekz1kxdx87yceg
-                 */
-                "X-Brand-Id"?: string;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                /**
-                 * @example {
-                 *       "command": "db find audiences --fields name,cachedCount --limit 10 | jq -r '.name'"
-                 *     }
-                 */
-                "application/json": {
-                    /** @description Bash command line, e.g.: db find audiences name=vip --fields name | jq -r '.name' */
-                    command: string;
-                };
-            };
-        };
-        responses: {
-            /** @description Command result. `exitCode` 0 = success; non-zero = the command failed (message in `output`). */
-            200: {
-                headers: {
-                    /** @description Unique request identifier. Share this with support when debugging a request. */
-                    "x-request-id": string;
-                    /** @description Requests allowed in the current rolling rate limit window. */
-                    "X-RateLimit-Limit": number;
-                    /** @description Requests remaining in the current rolling rate limit window. */
-                    "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
-                    "X-RateLimit-Reset": number;
-                    [name: string]: unknown;
-                };
-                content: {
-                    /**
-                     * @example {
-                     *       "exitCode": 0,
-                     *       "output": "Newsletter VIPs\nChurn risks\n\n[stderr]\n# 2 row(s)",
-                     *       "truncated": false
-                     *     }
-                     */
-                    "application/json": components["schemas"]["DataCommandResponse"];
-                };
-            };
-            /**
-             * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
-             *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
-             */
-            400: {
-                headers: {
-                    /** @description Unique request identifier. Share this with support when debugging a request. */
-                    "x-request-id": string;
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiErrorEnvelope"];
-                };
-            };
-            /**
-             * @description `API_KEY_REVOKED`: The API key was revoked.
-             *
-             *     `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
-             *
-             *     `INVALID_API_KEY`: The API key is malformed or unknown.
-             */
-            401: {
-                headers: {
-                    /** @description Unique request identifier. Share this with support when debugging a request. */
-                    "x-request-id": string;
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiErrorEnvelope"];
-                };
-            };
-            /**
-             * @description `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
-             *
-             *     `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
-             *
-             *     `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
-             */
-            403: {
-                headers: {
-                    /** @description Unique request identifier. Share this with support when debugging a request. */
-                    "x-request-id": string;
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiErrorEnvelope"];
-                };
-            };
-            /** @description `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization). */
-            404: {
-                headers: {
-                    /** @description Unique request identifier. Share this with support when debugging a request. */
-                    "x-request-id": string;
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiErrorEnvelope"];
-                };
-            };
-            /**
-             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body.
-             *
-             *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
-             */
-            409: {
-                headers: {
-                    /** @description Unique request identifier. Share this with support when debugging a request. */
-                    "x-request-id": string;
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiErrorEnvelope"];
-                };
-            };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
-            429: {
-                headers: {
-                    /** @description Unique request identifier. Share this with support when debugging a request. */
-                    "x-request-id": string;
-                    /** @description Requests allowed in the current rolling rate limit window. */
-                    "X-RateLimit-Limit": number;
-                    /** @description Requests remaining in the current rolling rate limit window. */
-                    "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -27267,7 +32918,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -27276,15 +32927,36 @@ export interface operations {
                      * @example {
                      *       "data": [
                      *         {
+                     *           "provider": "hubspot",
+                     *           "name": "HubSpot",
+                     *           "category": "data_out",
+                     *           "connected": true,
+                     *           "installationCount": 1,
+                     *           "capabilities": [
+                     *             {
+                     *               "capabilityId": "contacts_import",
+                     *               "isReady": true
+                     *             },
+                     *             {
+                     *               "capabilityId": "crm_context",
+                     *               "isReady": true
+                     *             },
+                     *             {
+                     *               "capabilityId": "export_template",
+                     *               "isReady": true
+                     *             }
+                     *           ]
+                     *         },
+                     *         {
                      *           "provider": "klaviyo",
                      *           "name": "Klaviyo",
                      *           "category": "data_out",
                      *           "connected": true
                      *         },
                      *         {
-                     *           "provider": "slack",
-                     *           "name": "Slack",
-                     *           "category": "data_in",
+                     *           "provider": "customerio",
+                     *           "name": "Customer.io",
+                     *           "category": "data_out",
                      *           "connected": false,
                      *           "comingSoon": true
                      *         }
@@ -27302,7 +32974,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -27365,7 +33037,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -27374,7 +33046,361 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it. */
+            500: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listIntegrationEvents: {
+        parameters: {
+            query?: {
+                /**
+                 * @description Page size (1-100). Defaults to 100.
+                 * @example 50
+                 */
+                limit?: number;
+                cursor?: string;
+                /** @description Only this provider’s events, e.g. `posthog`. */
+                provider?: string;
+                /** @description Search event names, titles and categories. Without it, the busiest events come first. */
+                query?: string;
+                /** @description `custom`, `standard`, `action` (a saved provider action), `derived` (Brew computes it from another event) or `observed` (seen in deliveries only). */
+                kind?: "standard" | "custom" | "action" | "derived" | "observed";
+            };
+            header?: {
+                /**
+                 * @description The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+                 * @example kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+                 */
+                "X-Brand-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Live integration events, source by source. */
+            200: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": [
+                     *         {
+                     *           "eventId": "k5714pq3vm8x2n6c9d0b7f1h4j6g2r8t",
+                     *           "provider": "posthog",
+                     *           "sourceId": "cgr_4f2a9c",
+                     *           "eventKey": "created_project",
+                     *           "title": "created_project",
+                     *           "label": "Created a project",
+                     *           "kind": "custom",
+                     *           "stage": "activation",
+                     *           "modelRoles": [
+                     *             "activation",
+                     *             "key_event"
+                     *           ],
+                     *           "volume30d": 8100,
+                     *           "lastSeenAt": "2026-10-26T09:12:00.000Z"
+                     *         }
+                     *       ],
+                     *       "sources": [
+                     *         {
+                     *           "sourceId": "cgr_4f2a9c",
+                     *           "provider": "posthog",
+                     *           "mode": "tenant_catalog",
+                     *           "definitionCount": 214,
+                     *           "isTruncated": false,
+                     *           "lastSyncedAt": "2026-10-26T06:00:00.000Z"
+                     *         }
+                     *       ],
+                     *       "pagination": {
+                     *         "limit": 100,
+                     *         "cursor": null,
+                     *         "hasMore": false
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["IntegrationEventsListResponse"];
+                };
+            };
+            /**
+             * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+             *
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
+             */
+            400: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `API_KEY_REVOKED`: The API key was revoked.
+             *
+             *     `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+             *
+             *     `INVALID_API_KEY`: The API key is malformed or unknown.
+             */
+            401: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+             *
+             *     `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+             *
+             *     `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+             *
+             *     `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+             */
+            403: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+             *
+             *     `NOT_FOUND`: No v1 resource lives at this path.
+             */
+            404: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
+            429: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it. */
+            500: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+        };
+    };
+    describeIntegrationEvent: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+                 * @example kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+                 */
+                "X-Brand-Id"?: string;
+            };
+            path: {
+                /** @description The live event id from `GET /v1/integrations/events`. Never compose one. */
+                eventId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The live integration event. */
+            200: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "eventId": "k5714pq3vm8x2n6c9d0b7f1h4j6g2r8t",
+                     *       "provider": "posthog",
+                     *       "sourceId": "cgr_4f2a9c",
+                     *       "eventKey": "created_project",
+                     *       "title": "created_project",
+                     *       "label": "Created a project",
+                     *       "kind": "custom",
+                     *       "stage": "activation",
+                     *       "modelRoles": [
+                     *         "activation",
+                     *         "key_event"
+                     *       ],
+                     *       "volume30d": 8100,
+                     *       "lastSeenAt": "2026-10-26T09:12:00.000Z",
+                     *       "description": "A person created a project.",
+                     *       "propertiesStatus": "current",
+                     *       "properties": [
+                     *         {
+                     *           "key": "project_name",
+                     *           "variable": "properties.project_name",
+                     *           "scope": "event",
+                     *           "type": "string",
+                     *           "description": "The name of the new project",
+                     *           "isPersonal": false,
+                     *           "isPersonalization": true
+                     *         },
+                     *         {
+                     *           "key": "first_name",
+                     *           "variable": "person.first_name",
+                     *           "scope": "person",
+                     *           "type": "string",
+                     *           "isPersonal": true,
+                     *           "isPersonalization": false
+                     *         }
+                     *       ]
+                     *     }
+                     */
+                    "application/json": components["schemas"]["IntegrationEventDetailResponse"];
+                };
+            };
+            /**
+             * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+             *
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
+             */
+            400: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `API_KEY_REVOKED`: The API key was revoked.
+             *
+             *     `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+             *
+             *     `INVALID_API_KEY`: The API key is malformed or unknown.
+             */
+            401: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+             *
+             *     `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+             *
+             *     `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+             *
+             *     `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+             */
+            403: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+             *
+             *     `INTEGRATION_EVENT_NOT_FOUND`: No live integration event with that id exists in the brand.
+             *
+             *     `NOT_FOUND`: No v1 resource lives at this path.
+             */
+            404: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
+            429: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -27423,7 +33449,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -27452,7 +33478,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiKeysListResponse"];
                 };
             };
-            /** @description `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender. */
+            /** @description `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20). */
             400: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -27508,7 +33534,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -27517,7 +33543,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -27572,7 +33598,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -27587,7 +33613,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiKeysCreateResponse"];
                 };
             };
-            /** @description `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender. */
+            /** @description `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20). */
             400: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -27643,7 +33669,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -27652,7 +33678,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -27696,7 +33722,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -27711,7 +33737,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiKeysDeleteResponse"];
                 };
             };
-            /** @description `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender. */
+            /** @description `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20). */
             400: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -27767,7 +33793,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -27776,7 +33802,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -27849,6 +33875,160 @@ export interface operations {
             };
         };
     };
+    listChats: {
+        parameters: {
+            query?: {
+                /**
+                 * @description Page size (1-100). Defaults to 100.
+                 * @example 50
+                 */
+                limit?: number;
+                cursor?: string;
+            };
+            header?: {
+                /**
+                 * @description The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+                 * @example kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+                 */
+                "X-Brand-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page of chats. */
+            200: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": [
+                     *         {
+                     *           "chatId": "Hk2mZ8t9QbY3sW1vR0pLd",
+                     *           "title": "Spring launch campaign",
+                     *           "firstUserPrompt": "Draft a launch email for the spring collection",
+                     *           "lastAssistantPreview": "Updated the hero and added a \"Shop now\" button.",
+                     *           "status": "completed",
+                     *           "origin": null,
+                     *           "updatedAt": "2026-06-30T12:34:56.789Z",
+                     *           "url": "https://brew.new/chat/Hk2mZ8t9QbY3sW1vR0pLd"
+                     *         }
+                     *       ],
+                     *       "pagination": {
+                     *         "limit": 100,
+                     *         "cursor": null,
+                     *         "hasMore": false
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ChatList"];
+                };
+            };
+            /**
+             * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+             *
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
+             */
+            400: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `API_KEY_REVOKED`: The API key was revoked.
+             *
+             *     `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+             *
+             *     `INVALID_API_KEY`: The API key is malformed or unknown.
+             */
+            401: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+             *
+             *     `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+             *
+             *     `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+             *
+             *     `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+             */
+            403: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization). */
+            404: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
+            429: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it. */
+            500: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+        };
+    };
     getChatContext: {
         parameters: {
             query?: never;
@@ -27876,7 +34056,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     [name: string]: unknown;
                 };
@@ -27942,7 +34122,7 @@ export interface operations {
             /**
              * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
              *
-             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the offender.
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
              */
             400: {
                 headers: {
@@ -28005,7 +34185,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorEnvelope"];
                 };
             };
-            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After says when it reopens. */
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
             429: {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
@@ -28014,7 +34194,7 @@ export interface operations {
                     "X-RateLimit-Limit": number;
                     /** @description Requests remaining in the current rolling rate limit window. */
                     "X-RateLimit-Remaining": number;
-                    /** @description Unix timestamp in seconds for when the rolling window fully resets. */
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
                     "X-RateLimit-Reset": number;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
@@ -28042,6 +34222,778 @@ export interface operations {
                     "x-request-id": string;
                     /** @description Seconds to wait before retrying the request. */
                     "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listInsights: {
+        parameters: {
+            query?: {
+                /** @description `open` (default) lists active findings and snoozes that have ended. `all` adds resolved, cleared, dismissed and stale findings and snoozes still in effect. */
+                state?: "open" | "all";
+                /** @description Only findings of this severity: `critical`, `warning`, `opportunity` or `info`, up to 200 of its own. */
+                severity?: "critical" | "warning" | "opportunity" | "info";
+                /** @description Comma-separated expansions: `pulse` adds the weekly pulse, `report` the latest intelligence report, `suggestions` its open suggestions (up to 25), `memo` the analysis agent’s memo. */
+                include?: string;
+                /**
+                 * @description Page size (1-100). Defaults to 100.
+                 * @example 50
+                 */
+                limit?: number;
+                cursor?: string;
+            };
+            header?: {
+                /**
+                 * @description The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+                 * @example kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+                 */
+                "X-Brand-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page of findings, the engine’s freshness and any expansions asked for. */
+            200: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": [
+                     *         {
+                     *           "insightId": "k17a8m2v4w5x6y7z8a9b0c1d2e3f4g5h",
+                     *           "title": "Spring sale",
+                     *           "description": "Spring sale bounced 6.2% of sends, above the 6% line.",
+                     *           "severity": "critical",
+                     *           "confidence": "high",
+                     *           "kind": "insight",
+                     *           "category": "deliverability",
+                     *           "detectorId": "deliv.bounce_rate_breach",
+                     *           "state": "active",
+                     *           "firstSeenAt": "2026-10-01T12:00:00.000Z",
+                     *           "lastSeenAt": "2026-10-02T06:04:12.000Z",
+                     *           "recurrenceCount": 1,
+                     *           "action": {
+                     *             "kind": "navigate",
+                     *             "label": "Open campaign analytics",
+                     *             "url": "https://brew.new/analytics/sends/Vx2mZ8t9QbY3sW1vR0pLd"
+                     *           },
+                     *           "url": "https://brew.new/insights/k17a8m2v4w5x6y7z8a9b0c1d2e3f4g5h"
+                     *         }
+                     *       ],
+                     *       "pagination": {
+                     *         "limit": 100,
+                     *         "cursor": null,
+                     *         "hasMore": false
+                     *       },
+                     *       "freshness": {
+                     *         "dataAsOf": "2026-10-02T06:00:00.000Z",
+                     *         "lastSuccessfulRunAt": "2026-10-02T06:04:12.000Z",
+                     *         "latestAttempt": {
+                     *           "status": "succeeded",
+                     *           "at": "2026-10-02T06:04:12.000Z"
+                     *         }
+                     *       },
+                     *       "pulse": {
+                     *         "windowEnd": "2026-10-02T00:00:00.000Z",
+                     *         "delivered": 12400,
+                     *         "priorDelivered": 11900,
+                     *         "uniqueOpens": 4960,
+                     *         "priorUniqueOpens": 4400,
+                     *         "uniqueClicks": 620,
+                     *         "priorUniqueClicks": 590,
+                     *         "unsubscribed": 18,
+                     *         "priorUnsubscribed": 21,
+                     *         "openRatePct": 40,
+                     *         "priorOpenRatePct": 37,
+                     *         "clickRatePct": 5,
+                     *         "priorClickRatePct": 5,
+                     *         "openDirection": "up",
+                     *         "clickDirection": "steady",
+                     *         "countsOnly": false,
+                     *         "measured": true
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["InsightList"];
+                };
+            };
+            /**
+             * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+             *
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
+             */
+            400: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `API_KEY_REVOKED`: The API key was revoked.
+             *
+             *     `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+             *
+             *     `INVALID_API_KEY`: The API key is malformed or unknown.
+             */
+            401: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+             *
+             *     `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+             *
+             *     `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+             *
+             *     `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+             */
+            403: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization). */
+            404: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
+            429: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it. */
+            500: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getInsight: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+                 * @example kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+                 */
+                "X-Brand-Id"?: string;
+            };
+            path: {
+                /** @description The `insightId` a `GET /v1/insights` row carries. */
+                insightId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The finding. */
+            200: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "insightId": "k17a8m2v4w5x6y7z8a9b0c1d2e3f4g5h",
+                     *       "title": "Spring sale",
+                     *       "description": "Spring sale bounced 6.2% of sends, above the 6% line.",
+                     *       "severity": "critical",
+                     *       "confidence": "high",
+                     *       "kind": "insight",
+                     *       "category": "deliverability",
+                     *       "detectorId": "deliv.bounce_rate_breach",
+                     *       "state": "active",
+                     *       "firstSeenAt": "2026-10-01T12:00:00.000Z",
+                     *       "lastSeenAt": "2026-10-02T06:04:12.000Z",
+                     *       "recurrenceCount": 1,
+                     *       "action": {
+                     *         "kind": "navigate",
+                     *         "label": "Open campaign analytics",
+                     *         "url": "https://brew.new/analytics/sends/Vx2mZ8t9QbY3sW1vR0pLd"
+                     *       },
+                     *       "url": "https://brew.new/insights/k17a8m2v4w5x6y7z8a9b0c1d2e3f4g5h",
+                     *       "rationale": "Mailbox providers start filtering a sender whose campaigns bounce above 6%.",
+                     *       "closedReason": null,
+                     *       "closedAt": null,
+                     *       "lastActedAt": null,
+                     *       "churnCount": 0,
+                     *       "metrics": {
+                     *         "bounceRate": {
+                     *           "kind": "rate",
+                     *           "value": 0.062,
+                     *           "numerator": 62,
+                     *           "denominator": 1000,
+                     *           "basis": "sent"
+                     *         },
+                     *         "bounced": {
+                     *           "kind": "count",
+                     *           "value": 62,
+                     *           "noun": "bounces"
+                     *         }
+                     *       },
+                     *       "evidence": [
+                     *         {
+                     *           "label": "62 bounced, 3 unsubscribed"
+                     *         }
+                     *       ],
+                     *       "subject": {
+                     *         "kind": "campaign",
+                     *         "id": "Vx2mZ8t9QbY3sW1vR0pLd",
+                     *         "label": "Spring sale"
+                     *       },
+                     *       "method": {
+                     *         "what": "A campaign whose bounce rate crosses the level mailbox providers act on.",
+                     *         "how": "Bounced ÷ sent, compared against fixed thresholds: 3% is a warning, 6% is critical.",
+                     *         "comparedAgainst": "Absolute industry thresholds, not your own history: providers do not grade on a curve.",
+                     *         "resolvesWhen": "A later send of the same campaign stays under 3%, usually after cleaning the list."
+                     *       },
+                     *       "generatedBy": {
+                     *         "trigger": "send_settled",
+                     *         "startedAt": "2026-10-02T06:00:03.000Z",
+                     *         "completedAt": "2026-10-02T06:04:12.000Z",
+                     *         "blindSpots": []
+                     *       },
+                     *       "freshness": {
+                     *         "dataAsOf": "2026-10-02T06:00:00.000Z",
+                     *         "lastSuccessfulRunAt": "2026-10-02T06:04:12.000Z",
+                     *         "latestAttempt": {
+                     *           "status": "succeeded",
+                     *           "at": "2026-10-02T06:04:12.000Z"
+                     *         }
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["Insight"];
+                };
+            };
+            /**
+             * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+             *
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
+             */
+            400: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `API_KEY_REVOKED`: The API key was revoked.
+             *
+             *     `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+             *
+             *     `INVALID_API_KEY`: The API key is malformed or unknown.
+             */
+            401: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+             *
+             *     `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+             *
+             *     `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+             *
+             *     `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+             */
+            403: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+             *
+             *     `INSIGHT_NOT_FOUND`: No insight with that id is visible to this credential’s brand.
+             */
+            404: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
+            429: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it. */
+            500: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listNotifications: {
+        parameters: {
+            query?: {
+                /** @description Only notifications of this type. A type this credential cannot see (its scopes, or a person-only or admin-only type) is an empty page. */
+                type?: "webhook_attention" | "chat_stream" | "import_job" | "brand_image_import" | "validation_job" | "email_sent" | "email_scheduled" | "preview_email" | "brand_extracted" | "domain_status" | "domain_score_run" | "api_key_created" | "email_send_failed" | "gradual_send_paused" | "gradual_send_completed" | "send_limit_reached" | "trial_ending" | "trial_expired" | "payment_failed" | "automation_pause_window_closed" | "send_review_rejected" | "comment_mention" | "comment_reply" | "integration_attention";
+                /**
+                 * @description Page size (1-100). Defaults to 100.
+                 * @example 50
+                 */
+                limit?: number;
+                cursor?: string;
+            };
+            header?: {
+                /**
+                 * @description The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+                 * @example kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+                 */
+                "X-Brand-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page of notifications. */
+            200: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": [
+                     *         {
+                     *           "notificationId": "ntf_4b8f0c2e91d7a3f65e10",
+                     *           "type": "email_sent",
+                     *           "status": "completed",
+                     *           "title": "Spring launch sent",
+                     *           "subtitle": "12,480 recipients",
+                     *           "url": "https://brew.new/emails?emailIds=2SmZOWV3ZQ7W5x6g3m4pA",
+                     *           "emailId": "2SmZOWV3ZQ7W5x6g3m4pA",
+                     *           "isPersonal": false,
+                     *           "createdAt": "2026-10-01T12:00:00.000Z",
+                     *           "updatedAt": "2026-10-01T12:20:00.000Z",
+                     *           "completedAt": "2026-10-01T12:20:00.000Z"
+                     *         }
+                     *       ],
+                     *       "pagination": {
+                     *         "limit": 100,
+                     *         "cursor": null,
+                     *         "hasMore": false
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["NotificationList"];
+                };
+            };
+            /**
+             * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+             *
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
+             */
+            400: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `API_KEY_REVOKED`: The API key was revoked.
+             *
+             *     `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+             *
+             *     `INVALID_API_KEY`: The API key is malformed or unknown.
+             */
+            401: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+             *
+             *     `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+             *
+             *     `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+             */
+            403: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization). */
+            404: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
+            429: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it. */
+            500: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listEmailComments: {
+        parameters: {
+            query?: {
+                /** @description Comma-separated expansions: `messages` adds each thread's newest messages (author, body, mentions), oldest first, with a `messagesCursor` for older ones, and caps the page at 3 threads. */
+                include?: string;
+                /** @description Read this one thread (`cmt_…`) instead of the page; not with `cursor`. */
+                commentId?: string;
+                /** @description A thread's `messagesCursor` from a previous response, with that thread's `commentId`: returns the thread with its next older messages and the next `messagesCursor`. Implies `include=messages`. */
+                messagesCursor?: string;
+                /**
+                 * @description Page size (1-100). Defaults to 100.
+                 * @example 50
+                 */
+                limit?: number;
+                cursor?: string;
+            };
+            header?: {
+                /**
+                 * @description The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+                 * @example kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+                 */
+                "X-Brand-Id"?: string;
+            };
+            path: {
+                /** @description Design id returned by `POST /v1/emails` and listed by `GET /v1/emails`. */
+                emailId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page of the design's open comment threads. */
+            200: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": [
+                     *         {
+                     *           "commentId": "cmt_V1StGXR8_Z5jdHi6B-myT",
+                     *           "emailId": "2SmZOWV3ZQ7W5x6g3m4pA",
+                     *           "status": "open",
+                     *           "target": {
+                     *             "kind": "element",
+                     *             "elementId": "elm_4f9Kq",
+                     *             "nodeType": "button"
+                     *           },
+                     *           "participants": [
+                     *             {
+                     *               "userId": "user_2xK9mPq4Rt7Vw1Yb",
+                     *               "name": "Grace Hopper"
+                     *             },
+                     *             {
+                     *               "userId": "user_2abcQ8sLm3Nd5Tz",
+                     *               "name": "Ada Lovelace"
+                     *             }
+                     *           ],
+                     *           "participantCount": 2,
+                     *           "messageCount": 3,
+                     *           "lastMessageAt": "2026-10-01T12:05:00.000Z",
+                     *           "lastMessagePreview": "Bolder works. Shipping it.",
+                     *           "url": "https://brew.new/emails/ungrouped?emailIds=2SmZOWV3ZQ7W5x6g3m4pA&focusEmailIds=2SmZOWV3ZQ7W5x6g3m4pA&commentId=cmt_V1StGXR8_Z5jdHi6B-myT",
+                     *           "messages": [
+                     *             {
+                     *               "messageId": "cmm_9pQ2wErT5yU8iO1aSdF3g",
+                     *               "author": {
+                     *                 "userId": "user_2xK9mPq4Rt7Vw1Yb",
+                     *                 "name": "Grace Hopper"
+                     *               },
+                     *               "body": "@Ada Lovelace can the CTA be bolder?",
+                     *               "mentions": [
+                     *                 {
+                     *                   "userId": "user_2abcQ8sLm3Nd5Tz",
+                     *                   "name": "Ada Lovelace"
+                     *                 }
+                     *               ],
+                     *               "createdAt": "2026-10-01T12:00:00.000Z",
+                     *               "updatedAt": "2026-10-01T12:00:00.000Z"
+                     *             },
+                     *             {
+                     *               "messageId": "cmm_3hJ6kL9zX2cV5bN8mQ1wE",
+                     *               "author": {
+                     *                 "userId": "user_2abcQ8sLm3Nd5Tz",
+                     *                 "name": "Ada Lovelace"
+                     *               },
+                     *               "body": "Bolder works. Shipping it.",
+                     *               "mentions": [],
+                     *               "createdAt": "2026-10-01T12:05:00.000Z",
+                     *               "updatedAt": "2026-10-01T12:05:00.000Z"
+                     *             }
+                     *           ],
+                     *           "messagesCursor": "eyJ2IjoxLCJjIjoiY210X1YxU3RHWFI4X1o1amRIaTZCLW15VCIsImEiOiIyMDI2LTEwLTAxVDEyOjAwOjAwLjAwMFoiLCJtIjoiY21tXzlwUTJ3RXJUNXlVOGlPMWFTZEYzZyJ9"
+                     *         }
+                     *       ],
+                     *       "pagination": {
+                     *         "limit": 3,
+                     *         "cursor": null,
+                     *         "hasMore": false
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["EmailCommentThreadList"];
+                };
+            };
+            /**
+             * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+             *
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
+             */
+            400: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `API_KEY_REVOKED`: The API key was revoked.
+             *
+             *     `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+             *
+             *     `INVALID_API_KEY`: The API key is malformed or unknown.
+             */
+            401: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+             *
+             *     `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+             *
+             *     `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+             *
+             *     `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+             */
+            403: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+             *
+             *     `COMMENT_NOT_FOUND`: The design has no open comment thread with that id (resolving a thread deletes it).
+             *
+             *     `EMAIL_NOT_FOUND`: No email design with that id exists in the brand (cross-brand ids surface as 404).
+             */
+            404: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
+            429: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it. */
+            500: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
                     [name: string]: unknown;
                 };
                 content: {

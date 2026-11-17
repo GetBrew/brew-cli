@@ -23,6 +23,8 @@ export const audiencesListCommand = defineCommand({
   sdkMethod: 'audiences.list',
   route: { method: 'GET', path: '/v1/audiences' },
   commandClass: 'read',
+  // The detail read's keys, which `run` takes from --input to switch to it.
+  inputKeys: { extra: ['include'] },
   flags: [
     {
       flag: '--include <tokens>',
@@ -57,13 +59,16 @@ export const audiencesListCommand = defineCommand({
     })
     const audiences = ctx.client().audiences
     if (flags.all === true) {
-      const rows = await collectAll(ctx, (cursor) =>
-        audiences.list(
-          asSdkInput<ListAudiencesInput>({
-            ...input,
-            ...(cursor === undefined ? {} : { cursor }),
-          })
-        )
+      const rows = await collectAll(
+        ctx,
+        (cursor) =>
+          audiences.list(
+            asSdkInput<ListAudiencesInput>({
+              ...input,
+              ...(cursor === undefined ? {} : { cursor }),
+            })
+          ),
+        { cursor: flagString(input.cursor) }
       )
       return {
         data: { data: rows, pagination: { cursor: null, hasMore: false } },

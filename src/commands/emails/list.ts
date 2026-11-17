@@ -101,13 +101,16 @@ export const emailsListCommand = defineCommand({
     })
     const emails = ctx.client().emails
     if (flags.all === true) {
-      const rows = await collectAll(ctx, (cursor) =>
-        emails.list(
-          asSdkInput<ListEmailsInput>({
-            ...input,
-            ...(cursor === undefined ? {} : { cursor }),
-          })
-        )
+      const rows = await collectAll(
+        ctx,
+        (cursor) =>
+          emails.list(
+            asSdkInput<ListEmailsInput>({
+              ...input,
+              ...(cursor === undefined ? {} : { cursor }),
+            })
+          ),
+        { cursor: flagString(input.cursor) }
       )
       return {
         data: { data: rows, pagination: { cursor: null, hasMore: false } },
@@ -173,11 +176,25 @@ function renderEmails(rows: ReadonlyArray<unknown>): string {
   if (rows.length === 0) {
     return 'No email designs found.'
   }
-  return renderTable(rows as ReadonlyArray<Record<string, unknown>>, [
-    { key: 'emailId', header: 'EMAIL ID' },
-    { key: 'title', header: 'TITLE' },
-    { key: 'status', header: 'STATUS' },
-    { key: 'groupName', header: 'GROUP' },
-    { key: 'updatedAt', header: 'UPDATED' },
-  ])
+  return renderTable(
+    (rows as ReadonlyArray<Record<string, unknown>>).map((row) => ({
+      ...row,
+      group: groupName(row.group),
+    })),
+    [
+      { key: 'emailId', header: 'EMAIL ID' },
+      { key: 'title', header: 'TITLE' },
+      { key: 'status', header: 'STATUS' },
+      { key: 'group', header: 'GROUP' },
+      { key: 'updatedAt', header: 'UPDATED' },
+    ]
+  )
+}
+
+/** Rows carry `group: { groupId, groupName }`, or `null` when Ungrouped. */
+function groupName(group: unknown): string {
+  if (typeof group === 'object' && group !== null && 'groupName' in group) {
+    return String(group.groupName)
+  }
+  return 'Ungrouped'
 }

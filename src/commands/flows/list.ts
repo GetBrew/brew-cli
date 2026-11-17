@@ -8,6 +8,7 @@ import { defineCommand } from '../../lib/define-command'
 import {
   asSdkInput,
   flagInt,
+  flagNonEmptyString,
   flagString,
   INPUT_FLAG,
   mergeInput,
@@ -35,6 +36,8 @@ export const flowsListCommand = defineCommand({
   sdkMethod: 'flows.list',
   route: { method: 'GET', path: '/v1/flows' },
   commandClass: 'read',
+  // The detail read's keys, which `run` takes from --input to switch to it.
+  inputKeys: { extra: ['slug', 'include'] },
   flags: [
     {
       // --brand is taken by the global brand-selection flag.
@@ -80,7 +83,8 @@ export const flowsListCommand = defineCommand({
   run: async ({ ctx, flags }) => {
     const flows = ctx.client().flows
     const base = await readJsonFlag(ctx, flags.input, '--input')
-    const slug = flagString(flags.slug) ?? inputField(base, 'slug')
+    const slug =
+      flagNonEmptyString(flags.slug, '--slug') ?? inputField(base, 'slug')
     const include = flagString(flags.include) ?? inputField(base, 'include')
     if (slug !== undefined) {
       const flow = await flows.get(
@@ -107,16 +111,20 @@ export const flowsListCommand = defineCommand({
     const isSemantic = 'semantic' in input && input.semantic !== undefined
     if (flags.all === true) {
       let count: FlowCount = {}
-      const rows = await collectAll(ctx, async (cursor) => {
-        const page = await flows.list(
-          asSdkInput<ListFlowsInput>({
-            ...input,
-            ...(cursor === undefined ? {} : { cursor }),
-          })
-        )
-        count = readCount(page)
-        return page
-      })
+      const rows = await collectAll(
+        ctx,
+        async (cursor) => {
+          const page = await flows.list(
+            asSdkInput<ListFlowsInput>({
+              ...input,
+              ...(cursor === undefined ? {} : { cursor }),
+            })
+          )
+          count = readCount(page)
+          return page
+        },
+        { cursor: flagString(input.cursor) }
+      )
       return {
         data: {
           data: rows,

@@ -46,6 +46,9 @@ describe('long-running command deadlines', () => {
 
   it('looks a concrete path up by its route template', () => {
     expect(
+      longRunningTimeoutMs({ method: 'POST', path: '/v1/emails/eml_1/export' })
+    ).toBe(800_000)
+    expect(
       longRunningTimeoutMs({ method: 'PATCH', path: '/v1/emails/eml_1?x=1' })
     ).toBe(240_000)
     expect(

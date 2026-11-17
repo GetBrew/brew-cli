@@ -1,5 +1,6 @@
 import type { EventsAnalyticsInput } from '@brew.new/sdk'
 import { defineCommand } from '../../lib/define-command'
+import { CliUsageError } from '../../lib/errors'
 import {
   asSdkInput,
   flagInt,
@@ -16,6 +17,13 @@ import {
   LIMIT_FLAG,
 } from '../../lib/paginate'
 
+/**
+ * Keys the same route takes for a grouped COUNT, which this row read does
+ * not send. The SDK drops them, so they are refused here rather than
+ * silently returning rows to a caller who asked for counts.
+ */
+const COUNT_ONLY_KEYS = ['groupBy', 'bucket'] as const
+
 export const analyticsEventsCommand = defineCommand({
   path: ['analytics', 'events'],
   summary: 'Unified event explorer (email, automation, trigger, inbound)',
@@ -23,7 +31,11 @@ export const analyticsEventsCommand = defineCommand({
   route: { method: 'GET', path: '/v1/analytics/events' },
   commandClass: 'read',
   flags: [
-    { flag: '--since <datetime>', summary: 'Window start (ISO-8601)' },
+    {
+      flag: '--since <datetime>',
+      summary:
+        'Window start (ISO-8601); default 7 days ago, or the whole send with --send',
+    },
     { flag: '--until <datetime>', summary: 'Window end (ISO-8601)' },
     {
       flag: '--recipient <rules>',
@@ -32,7 +44,8 @@ export const analyticsEventsCommand = defineCommand({
     },
     {
       flag: '--event-type <type>',
-      summary: 'Filter by event type (e.g. opened, clicked)',
+      summary:
+        'Filter by one event type, spelled exactly (e.g. opened, not open; clicked)',
     },
     { flag: '--automation <automationId>', summary: 'Filter by automation' },
     { flag: '--send <sendId>', summary: 'Filter by campaign send' },
@@ -42,7 +55,7 @@ export const analyticsEventsCommand = defineCommand({
     INPUT_FLAG,
   ],
   examples: [
-    'brew-cli analytics events --since 2026-08-01 --event-type clicked',
+    'brew-cli analytics events --since 2026-08-01T00:00:00Z --event-type clicked',
     'brew-cli analytics events --recipient jane@example.com --all --json',
   ],
   run: async ({ ctx, flags }) => {
@@ -57,15 +70,25 @@ export const analyticsEventsCommand = defineCommand({
       limit: flagInt(flags.limit, '--limit'),
       cursor: flagString(flags.cursor),
     })
+    for (const key of COUNT_ONLY_KEYS) {
+      if (input[key] !== undefined) {
+        throw new CliUsageError(
+          `\`${key}\` counts events instead of listing them; run \`analytics event-counts\` with the same input.`
+        )
+      }
+    }
     const analytics = ctx.client().analytics
     if (flags.all === true) {
-      const rows = await collectAll(ctx, (cursor) =>
-        analytics.events(
-          asSdkInput<EventsAnalyticsInput>({
-            ...input,
-            ...(cursor === undefined ? {} : { cursor }),
-          })
-        )
+      const rows = await collectAll(
+        ctx,
+        (cursor) =>
+          analytics.events(
+            asSdkInput<EventsAnalyticsInput>({
+              ...input,
+              ...(cursor === undefined ? {} : { cursor }),
+            })
+          ),
+        { cursor: flagString(input.cursor) }
       )
       return {
         data: { data: rows, pagination: { cursor: null, hasMore: false } },

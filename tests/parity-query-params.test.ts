@@ -45,10 +45,7 @@ const RENAMED: Readonly<Record<string, Readonly<Record<string, string>>>> = {
 }
 
 /** Commands that deliberately leave query parameters unflagged. */
-const EXEMPT: Readonly<Record<string, string>> = {
-  types:
-    'follows the trigger-events cursor itself and prints every payload type',
-}
+const EXEMPT: Readonly<Record<string, string>> = {}
 
 type Command = (typeof ALL_COMMANDS)[number]
 

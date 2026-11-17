@@ -39,11 +39,13 @@ export const brandGetImagesCommand = defineCommand({
   sdkMethod: 'brand.getImages',
   route: { method: 'GET', path: '/v1/brand/images' },
   commandClass: 'read',
+  // Retired filters reach `run`, which refuses them with the way forward.
+  inputKeys: { extra: Object.keys(RETIRED_FILTERS) },
   flags: [
     {
       flag: '--query <text>',
       summary:
-        'Semantic search over what the images show (1 credit per new search; logos are not searchable)',
+        'Semantic search over what the images show (free; logos are not searchable)',
     },
     {
       flag: '--kind <kind>',
@@ -100,7 +102,9 @@ export const brandGetImagesCommand = defineCommand({
           )
         )
     if (flags.all === true) {
-      const rows = await collectAll(ctx, page)
+      const rows = await collectAll(ctx, page, {
+        cursor: flagString(input.cursor),
+      })
       return {
         data: { data: rows, pagination: { cursor: null, hasMore: false } },
         human: renderAssets(rows),

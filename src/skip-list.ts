@@ -37,8 +37,26 @@ export const SDK_SKIP_LIST: readonly SdkSkip[] = [
     reason: 'auto-pager covered by `automations trigger-instances list --all`',
   },
   {
+    sdkPath: 'chats.listAll',
+    reason: 'auto-pager covered by `chats list --all`',
+  },
+  {
+    sdkPath: 'emails.comments.listAllMessages',
+    reason:
+      'auto-pager covered by `emails comments list <emailId> --comment-id <id> --all`',
+  },
+  {
+    sdkPath: 'notifications.listAll',
+    reason: 'auto-pager covered by `notifications list --all`',
+  },
+  {
     sdkPath: 'brand.update',
     reason: 'SDK alias of brand.patch, exposed as `brand update`',
+  },
+  {
+    sdkPath: 'brands.waitForExtraction',
+    reason:
+      'read-only SDK polling helper over brands.get; lifecycle reads are exposed by `brands get`',
   },
   {
     sdkPath: 'withBrand',

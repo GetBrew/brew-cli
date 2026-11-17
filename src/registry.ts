@@ -42,6 +42,8 @@ import {
 } from './commands/automations/triggers/contract'
 import { automationsTriggersCreateCommand } from './commands/automations/triggers/create'
 import { automationsTriggersDeleteCommand } from './commands/automations/triggers/delete'
+import { automationsTriggersEnsureBrewEventCommand } from './commands/automations/triggers/ensure-brew-event'
+import { automationsTriggersEnsureIntegrationEventCommand } from './commands/automations/triggers/ensure-integration-event'
 import { automationsTriggersFireCommand } from './commands/automations/triggers/fire'
 import { automationsTriggersGetCommand } from './commands/automations/triggers/get'
 import { automationsTriggersListCommand } from './commands/automations/triggers/list'
@@ -49,13 +51,18 @@ import { automationsTriggersReadyCommand } from './commands/automations/triggers
 import { automationsTriggersUpdateCommand } from './commands/automations/triggers/update'
 import { automationsUnpublishCommand } from './commands/automations/unpublish'
 import { automationsUpdateCommand } from './commands/automations/update'
+import { brandDeleteImageCommand } from './commands/brand/delete-image'
 import { brandGetCommand } from './commands/brand/get'
 import { brandGetImagesCommand } from './commands/brand/get-images'
 import { brandUpdateCommand } from './commands/brand/update'
 import { brandsCreateCommand } from './commands/brands/create'
 import { brandsGetCommand } from './commands/brands/get'
 import { brandsListCommand } from './commands/brands/list'
+import { canvasSessionsCreateCommand } from './commands/canvas/sessions/create'
+import { canvasSessionsRefreshCommand } from './commands/canvas/sessions/refresh'
+import { canvasSessionsRevokeCommand } from './commands/canvas/sessions/revoke'
 import { chatsGetCommand } from './commands/chats/get'
+import { chatsListCommand } from './commands/chats/list'
 import {
   configGetCommand,
   configListCommand,
@@ -67,6 +74,7 @@ import { contactsCountByCommand } from './commands/contacts/count-by'
 import { contactsDeleteCommand } from './commands/contacts/delete'
 import { contactsDeleteManyCommand } from './commands/contacts/delete-many'
 import { contactsGetCommand } from './commands/contacts/get'
+import { contactsImportCommand } from './commands/contacts/import'
 import { contactsImportCsvCommand } from './commands/contacts/import-csv'
 import { contactsListCommand } from './commands/contacts/list'
 import { contactsSearchCommand } from './commands/contacts/search'
@@ -75,12 +83,13 @@ import { contactsUpsertCommand } from './commands/contacts/upsert'
 import { contactsUpsertManyCommand } from './commands/contacts/upsert-many'
 import { contactsValidateCommand } from './commands/contacts/validate'
 import { contentAddImageCommand } from './commands/content/add-image'
+import { contentCreateImageUploadCommand } from './commands/content/create-image-upload'
 import { contentGenerateImageCommand } from './commands/content/generate-image'
 import { contentGifCommand } from './commands/content/gif'
 import { contentHtmlToPngCommand } from './commands/content/html-to-png'
 import { contentTransformCommand } from './commands/content/transform'
+import { contentUploadImageCommand } from './commands/content/upload-image'
 import { contractsInferCommand } from './commands/contracts/infer'
-import { dataRunCommand } from './commands/data/run'
 import { docsApiCommand, docsCommand } from './commands/docs'
 import { doctorCommand } from './commands/doctor'
 import { domainsAddCommand } from './commands/domains/add'
@@ -97,6 +106,7 @@ import { domainsUpdateCommand } from './commands/domains/update'
 import { domainsVerifyCommand } from './commands/domains/verify'
 import { emailsAuditCommand } from './commands/emails/audit'
 import { emailsCloneCommand } from './commands/emails/clone'
+import { emailsCommentsListCommand } from './commands/emails/comments/list'
 import { emailsCreateInboxPlacementTestCommand } from './commands/emails/create-inbox-placement-test'
 import { emailsDeleteCommand } from './commands/emails/delete'
 import { emailsEditCommand } from './commands/emails/edit'
@@ -125,9 +135,14 @@ import { fieldsListCommand } from './commands/fields/list'
 import { flowsGetCommand } from './commands/flows/get'
 import { flowsListCommand } from './commands/flows/list'
 import { healthCommand } from './commands/health'
+import { insightsGetCommand } from './commands/insights/get'
+import { insightsListCommand } from './commands/insights/list'
+import { integrationsEventsGetCommand } from './commands/integrations/events/get'
+import { integrationsEventsListCommand } from './commands/integrations/events/list'
 import { integrationsListCommand } from './commands/integrations/list'
 import { loginCommand } from './commands/login'
 import { logoutCommand } from './commands/logout'
+import { notificationsListCommand } from './commands/notifications/list'
 import { sendsCancelCommand } from './commands/sends/cancel'
 import { sendsGetCommand } from './commands/sends/get'
 import { sendsListCommand } from './commands/sends/list'
@@ -137,6 +152,16 @@ import { templatesGetCommand } from './commands/templates/get'
 import { templatesListCommand } from './commands/templates/list'
 import { typesCommand } from './commands/types'
 import { usageCommand } from './commands/usage'
+import { webhooksAttemptsCommand } from './commands/webhooks/attempts'
+import { webhooksCreateCommand } from './commands/webhooks/create'
+import { webhooksDeleteCommand } from './commands/webhooks/delete'
+import { webhooksEventsCommand } from './commands/webhooks/events'
+import { webhooksGetCommand } from './commands/webhooks/get'
+import { webhooksListCommand } from './commands/webhooks/list'
+import { webhooksReplayCommand } from './commands/webhooks/replay'
+import { webhooksRotateSecretCommand } from './commands/webhooks/rotate-secret'
+import { webhooksTestCommand } from './commands/webhooks/test'
+import { webhooksUpdateCommand } from './commands/webhooks/update'
 import { whoamiCommand } from './commands/whoami'
 import type { CommandSpec } from './lib/define-command'
 
@@ -146,6 +171,17 @@ import type { CommandSpec } from './lib/define-command'
  * the vendored OpenAPI spec.
  */
 export const ALL_COMMANDS: readonly CommandSpec[] = [
+  webhooksListCommand,
+  webhooksCreateCommand,
+  webhooksGetCommand,
+  webhooksUpdateCommand,
+  webhooksDeleteCommand,
+  webhooksRotateSecretCommand,
+  webhooksEventsCommand,
+  webhooksAttemptsCommand,
+  webhooksReplayCommand,
+  webhooksTestCommand,
+
   loginCommand,
   logoutCommand,
   whoamiCommand,
@@ -164,6 +200,7 @@ export const ALL_COMMANDS: readonly CommandSpec[] = [
   contactsDeleteCommand,
   contactsDeleteManyCommand,
   contactsValidateCommand,
+  contactsImportCommand,
   contactsImportCsvCommand,
   fieldsListCommand,
   fieldsGetCommand,
@@ -176,6 +213,7 @@ export const ALL_COMMANDS: readonly CommandSpec[] = [
   emailsGroupsUpdateCommand,
   emailsGroupsDeleteCommand,
   emailsGetCommand,
+  emailsCommentsListCommand,
   emailsGenerateCommand,
   emailsImportCommand,
   emailsImportFigmaCommand,
@@ -221,8 +259,9 @@ export const ALL_COMMANDS: readonly CommandSpec[] = [
   automationsTriggersContractPutCommand,
   automationsTriggersContractValidateCommand,
   contractsInferCommand,
-  dataRunCommand,
   automationsTriggersCreateCommand,
+  automationsTriggersEnsureBrewEventCommand,
+  automationsTriggersEnsureIntegrationEventCommand,
   automationsTriggersUpdateCommand,
   automationsTriggersDeleteCommand,
   automationsTriggersFireCommand,
@@ -245,9 +284,12 @@ export const ALL_COMMANDS: readonly CommandSpec[] = [
   analyticsSendsListCommand,
   analyticsSendsGetCommand,
   analyticsTriggerInstancesListCommand,
+  insightsListCommand,
+  insightsGetCommand,
   brandGetCommand,
   brandUpdateCommand,
   brandGetImagesCommand,
+  brandDeleteImageCommand,
   brandsListCommand,
   brandsGetCommand,
   brandsCreateCommand,
@@ -271,12 +313,21 @@ export const ALL_COMMANDS: readonly CommandSpec[] = [
   contentTransformCommand,
   contentHtmlToPngCommand,
   contentAddImageCommand,
+  contentCreateImageUploadCommand,
+  contentUploadImageCommand,
   templatesListCommand,
   templatesGetCommand,
   flowsListCommand,
   flowsGetCommand,
   integrationsListCommand,
+  integrationsEventsListCommand,
+  integrationsEventsGetCommand,
+  chatsListCommand,
   chatsGetCommand,
+  canvasSessionsCreateCommand,
+  canvasSessionsRefreshCommand,
+  canvasSessionsRevokeCommand,
+  notificationsListCommand,
   healthCommand,
   usageCommand,
   doctorCommand,

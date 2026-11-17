@@ -4,6 +4,7 @@ import { defineCommand } from '../../../lib/define-command'
 import {
   asSdkInput,
   flagInt,
+  flagNonEmptyString,
   flagString,
   INPUT_FLAG,
   mergeInput,
@@ -24,6 +25,8 @@ export const automationsTriggersListCommand = defineCommand({
   sdkMethod: 'automations.triggers.list',
   route: { method: 'GET', path: '/v1/automations/triggers' },
   commandClass: 'read',
+  // The detail read's keys, which `run` takes from --input to switch to it.
+  inputKeys: { extra: ['triggerEventId'] },
   flags: [
     {
       flag: '--trigger <triggerEventId>',
@@ -43,7 +46,8 @@ export const automationsTriggersListCommand = defineCommand({
     const triggers = ctx.client().automations.triggers
     const base = await readJsonFlag(ctx, flags.input, '--input')
     const triggerEventId =
-      flagString(flags.trigger) ?? inputField(base, 'triggerEventId')
+      flagNonEmptyString(flags.trigger, '--trigger') ??
+      inputField(base, 'triggerEventId')
     if (triggerEventId !== undefined) {
       const row = await triggers.get(triggerEventId)
       return { data: singleRowPage(row), human: renderTriggers([row]) }
@@ -53,13 +57,16 @@ export const automationsTriggersListCommand = defineCommand({
       cursor: flagString(flags.cursor),
     })
     if (flags.all === true) {
-      const rows = await collectAll(ctx, (cursor) =>
-        triggers.list(
-          asSdkInput<ListTriggersInput>({
-            ...input,
-            ...(cursor === undefined ? {} : { cursor }),
-          })
-        )
+      const rows = await collectAll(
+        ctx,
+        (cursor) =>
+          triggers.list(
+            asSdkInput<ListTriggersInput>({
+              ...input,
+              ...(cursor === undefined ? {} : { cursor }),
+            })
+          ),
+        { cursor: flagString(input.cursor) }
       )
       return {
         data: { data: rows, pagination: { cursor: null, hasMore: false } },

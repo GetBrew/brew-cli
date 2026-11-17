@@ -1,4 +1,5 @@
 import { defineCommand } from '../../lib/define-command'
+import { flagString } from '../../lib/input'
 
 export const domainsHealthCommand = defineCommand({
   path: ['domains', 'health'],
@@ -9,10 +10,24 @@ export const domainsHealthCommand = defineCommand({
   args: [
     { name: 'domainId', summary: 'Domain id to inspect', isRequired: true },
   ],
-  examples: ['brew-cli domains health kx7bkh53hasmfeh5kd7sqgykt187g8ww'],
-  run: async ({ ctx, args }) => ({
-    data: await ctx.client().domains.health({
-      domainId: args.domainId ?? '',
-    }),
-  }),
+  flags: [
+    {
+      flag: '--include <tokens>',
+      summary:
+        'Comma-separated expansions: scoreHistory (up to 50 saved score snapshots, newest first), scoreRuns (the last 5 automated domain score runs)',
+    },
+  ],
+  examples: [
+    'brew-cli domains health kx7bkh53hasmfeh5kd7sqgykt187g8ww',
+    'brew-cli domains health kx7bkh53hasmfeh5kd7sqgykt187g8ww --include scoreHistory,scoreRuns --json',
+  ],
+  run: async ({ ctx, args, flags }) => {
+    const include = flagString(flags.include)
+    return {
+      data: await ctx.client().domains.health({
+        domainId: args.domainId ?? '',
+        ...(include === undefined ? {} : { include }),
+      }),
+    }
+  },
 })

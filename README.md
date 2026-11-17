@@ -34,6 +34,7 @@ brew-cli whoami
 brew-cli contacts search --filter email:equals:jane@example.com
 brew-cli emails list --limit 10
 brew-cli emails send em_123 --test --to you@company.com
+brew-cli content upload-image ./logo.png   # a local image into the brand library
 ```
 
 Every command supports `--json` (automatic when stdout is piped), prints
@@ -78,10 +79,10 @@ Designed for AI agents as first-class users:
   a request wherever it is.
 - **Replay, don't repeat** — the API keeps working after the CLI
   disconnects, so a write that timed out, lost its connection or was
-  interrupted may still complete. Its envelope carries the
-  `idempotencyKey` it was sent with and a `retryCommand` that replays it
-  (the first attempt's result, not a second write) instead of running it
-  twice. The replay needs the API's idempotency store: while it is
+  interrupted may still complete. When replay is supported, its envelope
+  carries the original `idempotencyKey` and a `retryCommand` that recovers
+  the first attempt's result. Use that command when present. The replay
+  needs the API's idempotency store: while it is
   degraded, writes other than sends run without it, so for a write that
   must not happen twice (creating a brand, say) pass `--max-retries 0` and
   check whether it landed before you re-run it.
@@ -90,6 +91,17 @@ Designed for AI agents as first-class users:
   get exit `4` plus a JSON envelope containing a ready-to-run
   `confirmCommand`; pass `--yes` to proceed. Humans on a TTY get a y/N
   prompt. Test sends (`emails send --test`) skip the gate.
+- **Saved email recovery** — `409 EMAIL_RESULT_UNAVAILABLE` means the
+  generation or edit committed. Do not repeat the write. Read the exact
+  saved result using `error.details.emailId` and `emailVersionId`:
+  `brew-cli emails get <emailId> --email-version-id <emailVersionId> --include html`.
+  The error preserves these identifiers and the API's recovery guidance.
+- **Image upload recovery** — if `content upload-image` fails during
+  finalization, its error preserves `uploadId` and `idempotencyKey`. The
+  recovery command calls `content add-image --upload-id <original-id>`
+  with the original key and brand; it never repeats the file helper.
+  This also covers finalization timeouts and interrupts. An earlier
+  upload-opening or byte-upload failure has no finalization recovery command.
 - **No fuzzy matching** — unknown commands fail hard with exit 2.
 - **Machine-readable discovery** — `brew-cli docs --agent` prints the
   full manifest (commands, flags, classes, routes, env, exit codes);
@@ -99,25 +111,52 @@ Designed for AI agents as first-class users:
 - **Pipes and stdin** — `--input <json|->` and `--file <path|->`
   everywhere bodies or files are needed; `--all` drains cursor
   pagination; `--idempotency-key` makes retries safe across process
-  restarts.
+  restarts. Files and stdin are read as UTF-8; bytes that are not UTF-8
+  (such as Excel's default Windows-1252 "CSV") exit 2 before anything is
+  sent, instead of reaching Brew as `�`.
+
+Filtered list pages can be empty while more pages remain. Follow their cursor
+or use `--all`. When `--all` receives a repeated or cyclic cursor, it exits with code 1 and
+`CLI_PAGINATION` on stderr. It emits no truncated success payload. Error details
+include the fetched page and item counts; a cyclic cursor is not offered as a
+resume point. This also covers resumed lists and a comment thread's older
+message slices. Empty pages with an advancing cursor continue normally.
 
 ## Command reference
 
 The full generated reference lives in
 [`docs/commands/README.md`](./docs/commands/README.md). Resource groups:
-`contacts`, `fields`, `emails`, `sends`, `audiences`, `automations`
-(+ `triggers`, `runs`, `audience-runs`, `trigger-instances`), `analytics`,
-`brand`, `content`, `templates`, `flows`, plus
-`login`/`logout`/`whoami`/`config`/`usage`/`health`/`docs`/`api`.
+`contacts`, `fields`, `emails` (+ `groups`, `comments`), `sends`,
+`audiences`, `automations` (+ `triggers`, `runs`, `audience-runs`,
+`trigger-instances`), `analytics`, `insights`, `brand`, `brands`, `content`,
+`templates`, `flows`, `chats`, `notifications`, `integrations` (+ `events`), plus
+`canvas sessions` and `login`/`logout`/`whoami`/`config`/`usage`/`health`/`docs`/`api`.
 
-Every collection has a real detail read — `<group> get <id>` returns the
-bare row, and an unknown id surfaces the API's own typed `404`.
+For an embedded editor, create brands with an organization-scoped key,
+poll `brands get <brandId>` until `ready: true`, then use `--brand <brandId>`
+to generate or import emails and create scoped `canvas sessions` grants.
+Keep API keys on the host's backend; pass only the scoped session credentials
+to the browser. See the [white-label integration guide](https://docs.brew.new/sdks/typescript/white-label-email-editor)
+for the complete SDK and host authorization flow. Imports accept HTML, MJML,
+JSX, and saved EML messages; JSON output includes the import's `assetReport`
+with asset counts and warnings.
+
+`emails generate --lang <code>` names the language of the copy (ISO 639-1, or
+`zh-Hans` / `zh-Hant`); omit it and Brew detects it. `emails edit <emailId>
+--lang <code>` sets it without an AI run, and Brew keeps that value from then
+on; `--clear-lang` clears it so Brew reads the language again. `emails get`
+returns it as `lang`.
+
+Every collection with ids to look up has a real detail read — `<group> get
+<id>` returns the bare row, and an unknown id surfaces the API's own typed
+`404`. `notifications list` and `emails comments list` are list-only (one
+comment thread is `emails comments list <emailId> --comment-id <id>`).
 
 ## How this repo stays in sync with the API, MCP, and SDK
 
 The app repo's Zod contracts generate the OpenAPI spec, which is mirrored
-byte-identically into this repo (`openapi/public-api-v1.yaml`) and the
-SDK. Two parity tests gate CI here:
+into this repo (`openapi/public-api-v1.yaml`) and the SDK byte for byte.
+Two parity tests gate CI here:
 
 - **SDK parity** walks the installed `@brew.new/sdk` client and fails if
   any method lacks a command or a reviewed skip entry — so an SDK upgrade
@@ -136,6 +175,10 @@ SDK. Two parity tests gate CI here:
 
 Contributor guide: [`AGENTS.md`](./AGENTS.md) · Release process:
 [`RELEASING.md`](./RELEASING.md).
+
+Development and release checks use Bun 1.3.10, pinned in every workflow.
+Command metadata is supplied by CLI composition to `docs` and `doctor`; these
+handlers do not import the live registry.
 
 ## License
 

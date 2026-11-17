@@ -175,6 +175,34 @@ describe('audiences create', () => {
     expect(body).toEqual({ name: 'VIP', filters: FILTERS })
   })
 
+  it('sends a list operator value as the array it was given', async () => {
+    // The API refuses a comma-joined string for in/not_in/contains_any.
+    const listFilters = {
+      filters: [{ field: 'plan', operator: 'in', value: ['pro', 'team'] }],
+      logicalOperator: 'and',
+    }
+    let body: unknown
+    server.use(
+      http.post(AUDIENCES_URL, async ({ request }) => {
+        body = await request.json()
+        return HttpResponse.json({ audienceId: 'aud_new' }, { status: 201 })
+      })
+    )
+    const result = await runCli(
+      [
+        'audiences',
+        'create',
+        '--name',
+        'Paid plans',
+        '--input',
+        JSON.stringify({ filters: listFilters }),
+      ],
+      { env: env(), extraCommands: EXTRA }
+    )
+    expect(result.code).toBe(0)
+    expect(body).toEqual({ name: 'Paid plans', filters: listFilters })
+  })
+
   it('requires a name', async () => {
     const result = await runCli(
       ['audiences', 'create', '--input', JSON.stringify({ filters: FILTERS })],

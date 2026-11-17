@@ -67,13 +67,16 @@ export async function listTriggerInstances(
 ): Promise<{ data: unknown; human: string }> {
   const triggerInstances = ctx.client().automations.triggerInstances
   if (followCursor) {
-    const rows = await collectAll(ctx, (cursor) =>
-      triggerInstances.list(
-        asSdkInput<ListTriggerInstancesInput>({
-          ...input,
-          ...(cursor === undefined ? {} : { cursor }),
-        })
-      )
+    const rows = await collectAll(
+      ctx,
+      (cursor) =>
+        triggerInstances.list(
+          asSdkInput<ListTriggerInstancesInput>({
+            ...input,
+            ...(cursor === undefined ? {} : { cursor }),
+          })
+        ),
+      { cursor: flagString(input.cursor) }
     )
     return {
       data: { data: rows, pagination: { cursor: null, hasMore: false } },

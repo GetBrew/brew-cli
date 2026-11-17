@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { renderTable, resolveOutputMode } from '../../src/lib/output'
+import { runCli } from '../helpers/run-cli'
 
 describe('resolveOutputMode', () => {
   it('is human only on a TTY without --json', () => {
@@ -17,6 +18,58 @@ describe('resolveOutputMode', () => {
 })
 
 describe('renderTable', () => {
+  it('handles exports larger than the function argument limit', () => {
+    const rows = Array.from({ length: 150_000 }, () => ({ name: 'test' }))
+    const result = renderTable(rows, [{ key: 'name', header: 'NAME' }])
+    expect(result.split('\n')).toHaveLength(rows.length + 1)
+  })
+
+  it('does not evaluate human rendering in JSON mode', async () => {
+    const result = await runCli(['lazy-output', '--json'], {
+      extraCommands: [
+        {
+          path: ['lazy-output'],
+          summary: 'Test lazy output',
+          commandClass: 'read',
+          sdkMethod: null,
+          examples: ['brew-cli lazy-output'],
+          run: async () => ({
+            data: { ok: true },
+            human: () => {
+              throw new Error('human output evaluated')
+            },
+          }),
+        },
+      ],
+    })
+    expect(result.code).toBe(0)
+    expect(result.json).toEqual({ ok: true })
+  })
+  it('evaluates human rendering exactly once on a terminal', async () => {
+    let calls = 0
+    const result = await runCli(['lazy-output'], {
+      ttyOut: true,
+      extraCommands: [
+        {
+          path: ['lazy-output'],
+          summary: 'Test lazy output',
+          commandClass: 'read',
+          sdkMethod: null,
+          examples: ['brew-cli lazy-output'],
+          run: async () => ({
+            data: { ok: true },
+            human: () => {
+              calls += 1
+              return 'Rendered table'
+            },
+          }),
+        },
+      ],
+    })
+    expect(result.code).toBe(0)
+    expect(result.stdout).toBe('Rendered table\n')
+    expect(calls).toBe(1)
+  })
   it('aligns columns and stringifies non-scalar cells', () => {
     const table = renderTable(
       [

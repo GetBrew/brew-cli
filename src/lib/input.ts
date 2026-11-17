@@ -1,6 +1,8 @@
 import { readFileSync } from 'node:fs'
 import { CliUsageError } from './errors'
+import { assertKnownInputKeys } from './input-keys'
 import type { CliContext } from './types'
+import { decodeUtf8Text, type TextKind } from './utf8'
 
 /**
  * The single deliberate boundary cast from user-supplied JSON to an SDK
@@ -21,33 +23,44 @@ export async function readJsonFlag(
   if (typeof value !== 'string') {
     return
   }
-  const raw = value === '-' ? await ctx.io.readStdin() : value
+  const raw = value === '-' ? await ctx.io.readStdin(ctx.signal) : value
+  let parsed: unknown
   try {
-    return JSON.parse(raw) as unknown
+    parsed = JSON.parse(raw) as unknown
   } catch {
     throw new CliUsageError(
       `${flagName} must be valid JSON (or - to read stdin)`
     )
   }
+  if (flagName === '--input') {
+    assertKnownInputKeys(ctx.traits, parsed)
+  }
+  return parsed
 }
 
-/** Reads `--file <path|->`; `-` consumes stdin. */
+/**
+ * Reads `--file <path|->` as UTF-8 text; `-` consumes stdin. `kind` tailors
+ * the advice when the bytes are not UTF-8.
+ */
 export async function readTextFlag(
   ctx: CliContext,
   value: unknown,
-  flagName: string
+  flagName: string,
+  kind?: TextKind
 ): Promise<string | undefined> {
   if (typeof value !== 'string') {
     return
   }
   if (value === '-') {
-    return await ctx.io.readStdin()
+    return await ctx.io.readStdin(ctx.signal, kind)
   }
+  let bytes: Buffer
   try {
-    return readFileSync(value, 'utf8')
+    bytes = readFileSync(value)
   } catch {
     throw new CliUsageError(`${flagName}: cannot read file "${value}"`)
   }
+  return decodeUtf8Text(bytes, { flag: flagName, path: value }, { kind })
 }
 
 /** Parses repeatable `key=value` flag values into a record. */
@@ -117,8 +130,33 @@ export function mergeInput(
   return merged
 }
 
+/** Preserve supplied strings, including empty values that clear API fields. */
 export function flagString(value: unknown): string | undefined {
-  return typeof value === 'string' && value !== '' ? value : undefined
+  return typeof value === 'string' ? value : undefined
+}
+
+/** Resource selectors must not turn an empty id into a collection read. */
+export function flagNonEmptyString(
+  value: unknown,
+  flagName: string
+): string | undefined {
+  const parsed = flagString(value)
+  if (parsed === '') {
+    throw new CliUsageError(`${flagName} must not be empty.`)
+  }
+  return parsed
+}
+
+/** Exhaustive SDK request keys distinguish envelopes from shorthand data. */
+export function isInputEnvelope<T extends object>(
+  input: Readonly<Record<string, unknown>>,
+  requiredKey: keyof T & string,
+  allowedKeys: Readonly<Record<keyof T, true>>
+): boolean {
+  return (
+    Object.hasOwn(input, requiredKey) &&
+    Object.keys(input).every((key) => Object.hasOwn(allowedKeys, key))
+  )
 }
 
 export function flagInt(value: unknown, flagName: string): number | undefined {
@@ -146,8 +184,25 @@ export function toStringArray(value: unknown): readonly string[] | undefined {
 export function requestOptions(
   flags: Readonly<Record<string, unknown>>
 ): { idempotencyKey: string } | undefined {
-  const key = flagString(flags.idempotencyKey)
-  return key === undefined ? undefined : { idempotencyKey: key }
+  if (flags.idempotencyKey === undefined) return undefined
+  const raw = flagString(flags.idempotencyKey)
+  let key: string | undefined
+  try {
+    key =
+      raw === undefined
+        ? undefined
+        : new Headers({ 'Idempotency-Key': raw }).get('Idempotency-Key')?.trim()
+  } catch {
+    throw new CliUsageError(
+      '--idempotency-key must be a valid HTTP header value.'
+    )
+  }
+  if (!key || key.length > 100) {
+    throw new CliUsageError(
+      '--idempotency-key must contain 1–100 characters after trimming.'
+    )
+  }
+  return { idempotencyKey: key }
 }
 
 export const IDEMPOTENCY_FLAG = {

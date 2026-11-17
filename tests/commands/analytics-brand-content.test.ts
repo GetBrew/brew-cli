@@ -43,13 +43,17 @@ const EXTRA = [
   templatesGetCommand,
 ]
 
-function cli(argv: readonly string[]): Promise<RunCliResult> {
+function cli(
+  argv: readonly string[],
+  options: { readonly ttyOut?: boolean } = {}
+): Promise<RunCliResult> {
   return runCli(argv, {
     env: {
       BREW_CLI_CONFIG_DIR: mkdtempSync(join(tmpdir(), 'brew-cli-test-')),
       BREW_API_KEY: KEY,
     },
     extraCommands: EXTRA,
+    ...options,
   })
 }
 
@@ -94,16 +98,68 @@ describe('analytics automations', () => {
       'analytics',
       'automations',
       '--since',
-      '2026-07-01',
+      '2026-07-01T00:00:00Z',
       '--until',
-      '2026-08-01',
+      '2026-08-01T00:00:00Z',
       '--automation',
       'am_1',
     ])
     expect(result.code).toBe(0)
-    expect(query?.get('from')).toBe('2026-07-01')
-    expect(query?.get('to')).toBe('2026-08-01')
+    expect(query?.get('from')).toBe('2026-07-01T00:00:00Z')
+    expect(query?.get('to')).toBe('2026-08-01T00:00:00Z')
     expect(query?.get('automationId')).toBe('am_1')
+  })
+
+  it.each([true, false])(
+    'reports partial metrics with hasRows=%s, even when quiet',
+    async (hasRows) => {
+      const body = {
+        data: hasRows
+          ? [{ automationId: 'am_1', name: 'Welcome', runs: 1, completed: 1 }]
+          : [],
+        totals: { runs: 1 },
+        range: RANGE,
+        truncated: true,
+      }
+      server.use(
+        http.get(`${API}/v1/analytics/automations`, () =>
+          HttpResponse.json(body)
+        )
+      )
+      const human = await cli(['analytics', 'automations', '--quiet'], {
+        ttyOut: true,
+      })
+      expect(human.code).toBe(0)
+      expect(human.stdout).toContain(
+        'Partial results: scan budgets clipped the requested window.'
+      )
+      expect(human.stdout).toContain(
+        hasRows ? 'Welcome' : 'No automation analytics rows.'
+      )
+      expect(human.stderr).toBe('')
+
+      const json = await cli(['analytics', 'automations', '--json'], {
+        ttyOut: true,
+      })
+      expect(json.code).toBe(0)
+      expect(json.json).toEqual(body)
+    }
+  )
+
+  it('does not mark complete metrics as partial', async () => {
+    server.use(
+      http.get(`${API}/v1/analytics/automations`, () =>
+        HttpResponse.json({
+          data: [],
+          totals: { runs: 0 },
+          range: RANGE,
+          truncated: false,
+        })
+      )
+    )
+    const result = await cli(['analytics', 'automations'], { ttyOut: true })
+    expect(result.code).toBe(0)
+    expect(result.stdout).toBe('No automation analytics rows.\n')
   })
 })
 
@@ -124,9 +180,9 @@ describe('analytics events', () => {
       'analytics',
       'events',
       '--since',
-      '2026-08-01',
+      '2026-08-01T00:00:00Z',
       '--until',
-      '2026-08-10',
+      '2026-08-10T00:00:00Z',
       '--recipient',
       'jane@example.com',
       '--event-type',
@@ -135,8 +191,8 @@ describe('analytics events', () => {
       'snd_1',
     ])
     expect(result.code).toBe(0)
-    expect(query?.get('from')).toBe('2026-08-01')
-    expect(query?.get('to')).toBe('2026-08-10')
+    expect(query?.get('from')).toBe('2026-08-01T00:00:00Z')
+    expect(query?.get('to')).toBe('2026-08-10T00:00:00Z')
     expect(query?.get('recipient')).toBe('jane@example.com')
     expect(query?.get('eventType')).toBe('clicked')
     expect(query?.get('sendId')).toBe('snd_1')
@@ -167,6 +223,28 @@ describe('analytics events', () => {
     expect(cursors).toEqual([null, 'c1'])
     const data = result.json as { data: unknown[] }
     expect(data.data).toHaveLength(2)
+  })
+
+  // The SDK's row read does not send `groupBy` or `bucket`, so they are
+  // refused rather than dropped (rows back to a caller who asked for
+  // counts). No handler is registered: exit 2 also proves no request went out.
+  it.each([
+    ['groupBy', { from: '2026-10-15T00:00:00Z', groupBy: 'eventType' }],
+    ['bucket', { eventType: 'delivered', bucket: 'day' }],
+    ['groupBy', { groupBy: 'eventType', bucket: 'day' }],
+  ])('refuses %s in --input and points at event-counts', async (key, body) => {
+    for (const extra of [[], ['--all']]) {
+      const result = await cli([
+        'analytics',
+        'events',
+        '--input',
+        JSON.stringify(body),
+        ...extra,
+      ])
+      expect(result.code).toBe(2)
+      expect(result.stderr).toContain(`\`${key}\``)
+      expect(result.stderr).toContain('analytics event-counts')
+    }
   })
 })
 
@@ -385,6 +463,14 @@ describe('brand get-images', () => {
     expect(result.code).toBe(2)
     expect(result.stderr).toContain('--kind')
   })
+
+  it('is free, search included: no credits note in its help', async () => {
+    expect(brandGetImagesCommand.isCredited).not.toBe(true)
+    const result = await cli(['brand', 'get-images', '--help'])
+    expect(result.code).toBe(0)
+    expect(result.stdout).not.toContain('Brew credits')
+    expect(result.stdout).not.toContain('1 credit')
+  })
 })
 
 describe('content generate-image', () => {
@@ -437,6 +523,57 @@ describe('content gif', () => {
       from: 'prompt',
       prompt: 'steam rising from a coffee cup',
     })
+  })
+
+  it('sends --frame-count and --fps for a generated GIF', async () => {
+    let body: unknown
+    server.use(
+      http.post(`${API}/v1/content/gif`, async ({ request }) => {
+        body = await request.json()
+        return HttpResponse.json({ gifUrl: 'https://cdn.brew.new/out.gif' })
+      })
+    )
+    const result = await cli([
+      'content',
+      'gif',
+      '--image-url',
+      'https://cdn.example.com/mug.png',
+      '--prompt',
+      'steam rises',
+      '--frame-count',
+      '12',
+      '--fps',
+      '8',
+    ])
+    expect(result.code).toBe(0)
+    expect(body).toEqual({
+      from: 'image',
+      imageUrl: 'https://cdn.example.com/mug.png',
+      prompt: 'steam rises',
+      frameCount: 12,
+      fps: 8,
+    })
+  })
+
+  it('has no --duration flag: frame count and fps set the length', async () => {
+    let called = false
+    server.use(
+      http.post(`${API}/v1/content/gif`, () => {
+        called = true
+        return HttpResponse.json({ url: 'https://cdn.brew.new/out.gif' })
+      })
+    )
+    const result = await cli([
+      'content',
+      'gif',
+      '--prompt',
+      'steam rising from a coffee cup',
+      '--duration',
+      '2',
+    ])
+    expect(result.code).not.toBe(0)
+    expect(result.stderr).toContain('--duration')
+    expect(called).toBe(false)
   })
 })
 
@@ -496,7 +633,7 @@ describe('content html-to-png', () => {
 })
 
 describe('content add-image', () => {
-  it('mirrors the image URL', async () => {
+  it('adds the image URL to the brand library', async () => {
     let body: unknown
     server.use(
       http.post(`${API}/v1/content/add-image`, async ({ request }) => {
@@ -506,6 +643,7 @@ describe('content add-image', () => {
           width: 800,
           height: 600,
           aspectRatio: '4:3',
+          assetId: '5bc912f9',
         })
       })
     )
@@ -546,8 +684,80 @@ describe('templates list', () => {
     expect(query?.get('brand')).toBe('Brew')
     expect(query?.get('category')).toBe('welcome')
     expect(query?.get('semantic')).toBe('minimal launch')
+    expect(query?.has('limit')).toBe(false)
     const data = result.json as { data: Array<{ emailId: string }> }
     expect(data.data[0]?.emailId).toBe('em_1')
+  })
+})
+
+describe('templates list count mode (brew-v2#1821)', () => {
+  it('prints { count } verbatim, and "N templates" on a TTY', async () => {
+    let query: URLSearchParams | undefined
+    server.use(
+      http.get(`${API}/v1/templates`, ({ request }) => {
+        query = new URL(request.url).searchParams
+        return HttpResponse.json({ count: 167 })
+      })
+    )
+    const json = await cli(['templates', 'list', '--input', '{"count":true}'])
+    expect(json.code).toBe(0)
+    expect(query?.get('count')).toBe('true')
+    expect(json.json).toEqual({ count: 167 })
+
+    const human = await cli(
+      ['templates', 'list', '--input', '{"count":true}'],
+      {
+        ttyOut: true,
+      }
+    )
+    expect(human.code).toBe(0)
+    expect(human.stdout).toBe('167 templates\n')
+  })
+
+  it('prints a groupBy count as value/count lines, and refuses --all', async () => {
+    let query: URLSearchParams | undefined
+    server.use(
+      http.get(`${API}/v1/templates`, ({ request }) => {
+        query = new URL(request.url).searchParams
+        return HttpResponse.json({
+          count: 167,
+          groupBy: 'brand',
+          groups: [
+            { value: 'vercel.com', name: 'Vercel', count: 12 },
+            { value: 'linear.app', count: 9 },
+          ],
+          groupCount: 40,
+          ungroupedCount: 3,
+          pagination: { limit: 100, cursor: 'grp_2', hasMore: true },
+        })
+      })
+    )
+    const result = await cli(
+      ['templates', 'list', '--input', '{"count":true,"groupBy":"brand"}'],
+      { ttyOut: true }
+    )
+    expect(result.code).toBe(0)
+    expect(query?.get('groupBy')).toBe('brand')
+    expect(result.stdout).toBe(
+      [
+        'BRAND       NAME    COUNT',
+        'vercel.com  Vercel  12',
+        'linear.app          9',
+        '167 templates in total · 40 brands · 3 with no brand · more groups: --cursor grp_2',
+        '',
+      ].join('\n')
+    )
+
+    // --all drains rows; a count has none, so it is refused before sending.
+    const all = await cli([
+      'templates',
+      'list',
+      '--all',
+      '--input',
+      '{"count":true}',
+    ])
+    expect(all.code).toBe(2)
+    expect(String(JSON.parse(all.stderr).error.message)).toContain('--all')
   })
 })
 

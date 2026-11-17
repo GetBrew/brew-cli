@@ -11,10 +11,12 @@ import {
 
 export const contactsUpsertManyCommand = defineCommand({
   path: ['contacts', 'upsert-many'],
-  summary: 'Create or update a batch of contacts (up to 100 per call)',
+  summary:
+    'Create or update up to 1000 contacts per call, with no Import History entry (for syncs; use contacts import for a batch you want listed)',
   sdkMethod: 'contacts.upsertMany',
   route: { method: 'POST', path: '/v1/contacts' },
   commandClass: 'write',
+  isCredited: true,
   flags: [INPUT_FLAG, IDEMPOTENCY_FLAG],
   examples: [
     `brew-cli contacts upsert-many --input '{"contacts":[{"email":"a@x.com"}]}'`,

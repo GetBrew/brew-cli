@@ -126,6 +126,31 @@ describe('analytics event-counts', () => {
     expect(url?.searchParams.get('groupBy')).toBe('eventType,link')
     expect(url?.searchParams.has('limit')).toBe(false)
   })
+
+  it('shows recipients beside count in the human table when groups carry them', async () => {
+    server.use(
+      http.get(`${API}/v1/analytics/events`, () =>
+        HttpResponse.json({
+          count: 12,
+          groups: [
+            { key: { eventType: 'opened' }, count: 9, recipients: 4 },
+            { key: { eventType: 'bounced' }, count: 3 },
+          ],
+          otherCount: 0,
+          range: { from: 'a', to: 'b' },
+          truncated: false,
+        })
+      )
+    )
+    const result = await runCli(
+      ['analytics', 'event-counts', '--group-by', 'eventType'],
+      { env: env(), extraCommands: EXTRA, ttyOut: true }
+    )
+    expect(result.code).toBe(0)
+    const [header, opened] = result.stdout.split('\n')
+    expect(header).toMatch(/GROUP\s+COUNT\s+RECIPIENTS/)
+    expect(opened).toMatch(/eventType=opened\s+9\s+4/)
+  })
 })
 
 describe('domains unsubscribes', () => {
@@ -276,5 +301,23 @@ describe('domains unsubscribes', () => {
     )
     expect(result.code).toBe(0)
     expect(url?.searchParams.get('scope')).toBe('all')
+    expect((result.json as { csv: string }).csv).toBe(
+      'email\nada@example.com\n'
+    )
+
+    const human = await runCli(['domains', 'unsubscribes', 'export', 'dom_1'], {
+      env: env(),
+      extraCommands: EXTRA,
+      ttyOut: true,
+    })
+    expect(human.code).toBe(0)
+    expect(human.stdout).toBe('email\nada@example.com\n\n')
+
+    const json = await runCli(
+      ['domains', 'unsubscribes', 'export', 'dom_1', '--json'],
+      { env: env(), extraCommands: EXTRA, ttyOut: true }
+    )
+    expect(json.code).toBe(0)
+    expect((json.json as { csv: string }).csv).toBe('email\nada@example.com\n')
   })
 })

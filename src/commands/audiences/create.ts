@@ -19,11 +19,16 @@ export const audiencesCreateCommand = defineCommand({
   commandClass: 'write',
   flags: [
     { flag: '--name <name>', summary: 'Audience name' },
-    INPUT_FLAG,
+    {
+      ...INPUT_FLAG,
+      summary: `${INPUT_FLAG.summary}. Omitted filter types use the brand field registry.`,
+    },
     IDEMPOTENCY_FLAG,
   ],
   examples: [
     `brew-cli audiences create --name VIP --input '{"filters":{"filters":[{"field":"plan","operator":"equals","value":"vip"}],"logicalOperator":"and"}}'`,
+    `brew-cli audiences create --name "Except tier 10" --input '{"filters":{"filters":[{"field":"tier","operator":"not_equals","value":10,"type":"number"}],"logicalOperator":"and"}}'`,
+    `brew-cli audiences create --name "Paid plans" --input '{"filters":{"filters":[{"field":"plan","operator":"in","value":["pro","team"]}],"logicalOperator":"and"}}'`,
   ],
   run: async ({ ctx, flags }) => {
     const base = await readJsonFlag(ctx, flags.input, '--input')

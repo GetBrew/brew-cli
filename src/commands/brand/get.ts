@@ -3,7 +3,8 @@ import { flagString } from '../../lib/input'
 
 export const brandGetCommand = defineCommand({
   path: ['brand', 'get'],
-  summary: "Fetch the key's brand + extraction readiness (`ready` flag)",
+  summary:
+    "Fetch the key's brand: saved name, tagline and links, plus extraction readiness (`ready` flag)",
   sdkMethod: 'brand.get',
   route: { method: 'GET', path: '/v1/brand' },
   commandClass: 'read',
@@ -11,12 +12,12 @@ export const brandGetCommand = defineCommand({
     {
       flag: '--include <tokens>',
       summary:
-        'Comma-separated embeds: identity | emailDesign | imageStyle | logos',
+        'Comma-separated embeds: identity | emailDesign | imageStyle | logos (identity is always returned; naming it changes nothing)',
     },
   ],
   examples: [
     'brew-cli brand get',
-    'brew-cli brand get --include identity,logos',
+    'brew-cli brand get --include emailDesign,logos',
   ],
   run: async ({ ctx, flags }) => {
     const include = flagString(flags.include)

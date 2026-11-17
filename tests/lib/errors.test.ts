@@ -51,7 +51,7 @@ describe('toExitCode', () => {
           confirmationRequired: true,
           command: 'brew-cli contacts delete',
           summary: 'Delete jane@example.com.',
-          confirmCommand: 'brew-cli contacts delete jane@example.com --yes',
+          confirmCommand: 'brew-cli contacts delete --yes -- jane@example.com',
         })
       )
     ).toBe(EXIT_CONFIRM)

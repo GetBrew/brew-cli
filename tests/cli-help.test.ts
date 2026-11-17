@@ -57,7 +57,7 @@ describe('cli basics', () => {
     expect(result.stdout).not.toContain(secret)
     const envelope = result.json as { confirmCommand: string }
     expect(envelope.confirmCommand).toBe(
-      'brew-cli contacts delete jane@example.com --yes'
+      'brew-cli contacts delete --yes -- jane@example.com'
     )
   })
 
@@ -81,7 +81,7 @@ describe('cli basics', () => {
     expect(result.stdout).not.toMatch(/secret-\d/)
     const envelope = result.json as { confirmCommand: string }
     expect(envelope.confirmCommand).toBe(
-      "brew-cli api DELETE /v1/audiences/aud_1 --header 'X-Trace: t1' 'Idempotency-Key: k1' --yes"
+      "brew-cli api '--header=X-Trace: t1' '--header=Idempotency-Key: k1' --yes -- DELETE /v1/audiences/aud_1"
     )
   })
 
@@ -107,5 +107,34 @@ describe('cli basics', () => {
     expect(result.stdout).toContain('Examples:')
     expect(result.stdout).toContain('brew-cli usage --json')
     expect(result.stdout).toContain('--json')
+  })
+
+  it.each([
+    ['contacts', 'search', 50],
+    ['templates', 'list', 50],
+    ['analytics', 'events', 100],
+  ] as const)(
+    'documents the API page size for %s %s',
+    async (group, verb, size) => {
+      const result = await runCli([group, verb, '--help'])
+      expect(result.code).toBe(0)
+      expect(result.stdout).toContain(`Page size, 1-100 (default ${size})`)
+    }
+  )
+
+  it.each([
+    [
+      ['analytics', 'automations'],
+      '--since 2026-07-01T00:00:00Z --until 2026-08-01T00:00:00Z',
+    ],
+    [['analytics', 'events'], '--since 2026-08-01T00:00:00Z'],
+    [
+      ['domains', 'unsubscribes', 'export'],
+      "--json | jq -j '.csv' > optouts.csv",
+    ],
+  ] as const)('documents a usable example for %j', async (path, example) => {
+    const result = await runCli([...path, '--help'])
+    expect(result.code).toBe(0)
+    expect(result.stdout).toContain(example)
   })
 })

@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process'
 import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -119,6 +120,44 @@ describe('emails list', () => {
     expect(data.data).toHaveLength(2)
     expect(data.pagination).toEqual({ cursor: null, hasMore: false })
   })
+
+  it('shows the folder name in the GROUP column of the terminal table', async () => {
+    server.use(
+      http.get(EMAILS_URL, () =>
+        HttpResponse.json({
+          data: [
+            {
+              emailId: 'eml_1',
+              title: 'Weekly',
+              status: 'ready',
+              group: { groupId: 'grp_weekly', groupName: 'Weekly update' },
+              updatedAt: '2026-10-14T14:00:29.319Z',
+            },
+            {
+              emailId: 'eml_2',
+              title: 'Loose',
+              status: 'draft',
+              group: null,
+              updatedAt: '2026-10-13T00:00:00Z',
+            },
+          ],
+          pagination: PAGE,
+        })
+      )
+    )
+    const result = await runCli(['emails', 'list'], {
+      env: env(),
+      extraCommands: EXTRA,
+      ttyOut: true,
+    })
+    expect(result.code).toBe(0)
+    const lines = result.stdout.trimEnd().split('\n')
+    expect(lines[0]).toMatch(/GROUP/)
+    expect(lines[1]).toMatch(
+      /^eml_1\s+Weekly\s+ready\s+Weekly update\s+2026-10-14/
+    )
+    expect(lines[2]).toMatch(/^eml_2\s+Loose\s+draft\s+Ungrouped\s+2026-10-13/)
+  })
 })
 
 describe('emails groups list', () => {
@@ -183,6 +222,25 @@ describe('emails get', () => {
     expect(url?.pathname).toBe('/api/v1/emails/eml_1')
     expect(url?.searchParams.get('include')).toBe('html,versions')
     expect((result.json as { emailId: string }).emailId).toBe('eml_1')
+  })
+
+  it('shows the lang the API returns on the detail row', async () => {
+    server.use(
+      http.get(`${EMAILS_URL}/eml_1`, () =>
+        HttpResponse.json({
+          emailId: 'eml_1',
+          title: 'Herbstverkauf',
+          status: 'ready',
+          lang: 'de',
+        })
+      )
+    )
+    const result = await runCli(['emails', 'get', 'eml_1'], {
+      env: env(),
+      extraCommands: EXTRA,
+    })
+    expect(result.code).toBe(0)
+    expect((result.json as { lang: string }).lang).toBe('de')
   })
 
   it("surfaces the API's own 404 instead of a hand-built one", async () => {
@@ -272,6 +330,57 @@ describe('emails generate', () => {
     })
   })
 
+  it('sends --title as title, the canvas name', async () => {
+    let body: unknown
+    server.use(
+      http.post(EMAILS_URL, async ({ request }) => {
+        body = await request.json()
+        return HttpResponse.json(
+          { emailId: 'eml_new', status: 'ready', title: 'Newsletter Welcome' },
+          { status: 201 }
+        )
+      })
+    )
+    const result = await runCli(
+      [
+        'emails',
+        'generate',
+        '--prompt',
+        'Welcome email',
+        '--title',
+        'Newsletter Welcome',
+        '--subject-line',
+        'Welcome to Brew',
+      ],
+      { env: env(), extraCommands: EXTRA }
+    )
+    expect(result.code).toBe(0)
+    expect(body).toEqual({
+      prompt: 'Welcome email',
+      title: 'Newsletter Welcome',
+      subjectLine: 'Welcome to Brew',
+    })
+  })
+
+  it('sends --lang as lang', async () => {
+    let body: unknown
+    server.use(
+      http.post(EMAILS_URL, async ({ request }) => {
+        body = await request.json()
+        return HttpResponse.json(
+          { emailId: 'eml_new', status: 'ready' },
+          { status: 201 }
+        )
+      })
+    )
+    const result = await runCli(
+      ['emails', 'generate', '--prompt', 'Willkommens-E-Mail', '--lang', 'de'],
+      { env: env(), extraCommands: EXTRA }
+    )
+    expect(result.code).toBe(0)
+    expect(body).toEqual({ prompt: 'Willkommens-E-Mail', lang: 'de' })
+  })
+
   it('requires a prompt', async () => {
     const result = await runCli(['emails', 'generate'], {
       env: env(),
@@ -282,6 +391,51 @@ describe('emails generate', () => {
 })
 
 describe('emails import', () => {
+  it('refuses an 8-bit Windows-1252 .eml on stdin without suggesting iconv', async () => {
+    let requests = 0
+    server.use(
+      http.post(`${EMAILS_URL}/import`, () => {
+        requests += 1
+        return HttpResponse.json({ emailId: 'eml_imp' }, { status: 201 })
+      })
+    )
+    const eml = Buffer.concat([
+      Buffer.from(
+        'Subject: Hi\r\nContent-Type: text/html; charset=windows-1252\r\n' +
+          'Content-Transfer-Encoding: 8bit\r\n\r\n<p>Jos'
+      ),
+      Buffer.from([0xe9]),
+      Buffer.from('</p>\r\n'),
+    ])
+    const result = await runCli(
+      ['emails', 'import', '--file', '-', '--format', 'eml', '--json'],
+      { env: env(), stdin: eml, extraCommands: EXTRA }
+    )
+    expect(result.code).toBe(2)
+    expect(requests).toBe(0)
+    const { error } = JSON.parse(result.stderr) as {
+      error: { code: string; message: string }
+    }
+    expect(error.code).toBe('CLI_USAGE')
+    expect(error.message).toContain(
+      'stdin is not UTF-8 (line 5 has byte 0xE9), so nothing was sent. An .eml must be UTF-8'
+    )
+    expect(error.message).not.toContain('iconv')
+  })
+
+  it('takes the eml format from --input when the flag is absent', async () => {
+    const result = await runCli(
+      ['emails', 'import', '--input', '{"format":"eml"}', '--file', '-'],
+      {
+        env: env(),
+        stdin: Buffer.from([0x4a, 0x6f, 0x73, 0xe9]),
+        extraCommands: EXTRA,
+      }
+    )
+    expect(result.code).toBe(2)
+    expect(result.stderr).toContain('An .eml must be UTF-8')
+  })
+
   it('reads --file and posts the typed body', async () => {
     let body: unknown
     server.use(
@@ -381,6 +535,55 @@ describe('emails edit', () => {
     expect(result.stderr).not.toContain('Editing email')
   })
 
+  it('patches lang-only without an AI prompt (no generation heartbeat)', async () => {
+    let body: unknown
+    server.use(
+      http.patch(`${EMAILS_URL}/eml_1`, async ({ request }) => {
+        body = await request.json()
+        return HttpResponse.json({ emailId: 'eml_1', status: 'ready' })
+      })
+    )
+    const result = await runCli(
+      ['emails', 'edit', 'eml_1', '--lang', 'zh-Hant'],
+      {
+        env: env(),
+        extraCommands: EXTRA,
+      }
+    )
+    expect(result.code).toBe(0)
+    expect(body).toEqual({ lang: 'zh-Hant' })
+    expect(result.stderr).toContain('Setting the language')
+    expect(result.stderr).not.toContain('Editing email')
+  })
+
+  it('sends both when a prompt and a lang are given', async () => {
+    let body: unknown
+    server.use(
+      http.patch(`${EMAILS_URL}/eml_1`, async ({ request }) => {
+        body = await request.json()
+        return HttpResponse.json({ emailId: 'eml_1', status: 'ready' })
+      })
+    )
+    const result = await runCli(
+      [
+        'emails',
+        'edit',
+        'eml_1',
+        '--prompt',
+        'Translate the copy into French',
+        '--lang',
+        'fr',
+      ],
+      { env: env(), extraCommands: EXTRA }
+    )
+    expect(result.code).toBe(0)
+    expect(body).toEqual({
+      prompt: 'Translate the copy into French',
+      lang: 'fr',
+    })
+    expect(result.stderr).toContain('Editing email')
+  })
+
   it('sends both when a prompt and a subject line are given', async () => {
     let body: unknown
     server.use(
@@ -409,7 +612,7 @@ describe('emails edit', () => {
     expect(result.stderr).toContain('Editing email')
   })
 
-  // The API takes any of prompt, title, subjectLine and groupId; without a
+  // The API takes any of prompt, title, subjectLine, lang and groupId; without a
   // prompt it is one free in-place patch of the design's envelope.
   it('renames through --input without a prompt (no AI run)', async () => {
     let body: unknown
@@ -492,6 +695,33 @@ describe('emails edit', () => {
     expect(result.stderr).toContain('conflict')
   })
 
+  it('clears a named language with --clear-lang (lang: null, no AI run)', async () => {
+    let body: unknown
+    server.use(
+      http.patch(`${EMAILS_URL}/eml_1`, async ({ request }) => {
+        body = await request.json()
+        return HttpResponse.json({ emailId: 'eml_1', status: 'ready' })
+      })
+    )
+    const result = await runCli(['emails', 'edit', 'eml_1', '--clear-lang'], {
+      env: env(),
+      extraCommands: EXTRA,
+    })
+    expect(result.code).toBe(0)
+    expect(body).toEqual({ lang: null })
+    expect(result.stderr).toContain('Setting the language')
+    expect(result.stderr).not.toContain('Editing email')
+  })
+
+  it('refuses --lang with --clear-lang before any request', async () => {
+    const result = await runCli(
+      ['emails', 'edit', 'eml_1', '--lang', 'fr', '--clear-lang'],
+      { env: env(), extraCommands: EXTRA }
+    )
+    expect(result.code).toBe(2)
+    expect(result.stderr).toContain('conflict')
+  })
+
   it('requires a prompt or one envelope field (or --input)', async () => {
     const result = await runCli(['emails', 'edit', 'eml_1'], {
       env: env(),
@@ -541,7 +771,9 @@ describe('emails delete (confirmation protocol)', () => {
     const envelope = result.json as Record<string, unknown>
     expect(envelope.confirmationRequired).toBe(true)
     expect(envelope.summary).toContain('eml_1')
-    expect(envelope.confirmCommand).toBe('brew-cli emails delete eml_1 --yes')
+    expect(envelope.confirmCommand).toBe(
+      'brew-cli emails delete --yes -- eml_1'
+    )
   })
 
   it('deletes with --yes', async () => {
@@ -665,7 +897,124 @@ describe('emails send', () => {
   })
 })
 
+describe('stdin confirmation after reading to EOF', () => {
+  it('returns a replayable confirmation instead of prompting on exhausted stdin', async () => {
+    let dispatches = 0
+    server.use(
+      http.post(`https://brew.new/api/v1/sends`, () => {
+        dispatches += 1
+        return HttpResponse.json({ sendId: 'send_1' })
+      })
+    )
+    const input = {
+      subject: 'Confirmed campaign',
+      domainId: 'dom_1',
+      to: 'qa@example.com',
+    }
+    const result = await runCli(['emails', 'send', 'eml_1', '--input', '-'], {
+      env: env(),
+      stdin: JSON.stringify(input),
+      ttyIn: true,
+      ttyOut: true,
+      promptAnswer: 'yes',
+    })
+    expect(result.code).toBe(4)
+    expect(result.json).toMatchObject({ confirmationRequired: true })
+    expect(dispatches).toBe(0)
+    expect(
+      (result.json as { confirmCommand: string }).confirmCommand
+    ).toContain('Confirmed campaign')
+  })
+})
+
 describe('emails send with --input bodies (gate awareness)', () => {
+  it.each([['--input', '-'], ['--input=-']])(
+    'sends a stdin test request without the campaign confirmation gate (%j)',
+    async (...inputArgs) => {
+      const input = {
+        test: true,
+        subject: 'Preview',
+        to: 'qa@example.com',
+      }
+      const bodies: unknown[] = []
+      server.use(
+        http.post(SENDS_URL, async ({ request }) => {
+          bodies.push(await request.json())
+          return HttpResponse.json({ status: 'completed', recipient: input.to })
+        })
+      )
+      const result = await runCli(['emails', 'send', 'eml_1', ...inputArgs], {
+        env: env(),
+        stdin: JSON.stringify(input),
+        extraCommands: EXTRA,
+      })
+      expect(result.code).toBe(0)
+      expect(bodies).toEqual([{ ...input, emailId: 'eml_1' }])
+      expect(result.json).toEqual({ status: 'completed', recipient: input.to })
+    }
+  )
+
+  it.each([['--input', '-'], ['--input=-']])(
+    'confirms the scoped stdin campaign and replays its body without stdin (%j)',
+    async (...inputArgs) => {
+      const input = {
+        emailId: 'eml_other',
+        subject: "Operator's launch",
+        domainId: 'dom_1',
+        audienceId: 'aud_9',
+        scheduledAt: '2099-01-01T00:00:00Z',
+      }
+      const bodies: unknown[] = []
+      let key: string | null | undefined
+      server.use(
+        http.post(SENDS_URL, async ({ request }) => {
+          bodies.push(await request.json())
+          key = request.headers.get('Idempotency-Key')
+          return HttpResponse.json(
+            { status: 'scheduled', sendId: 'snd_1' },
+            { status: 202 }
+          )
+        })
+      )
+      const environment = env()
+      const result = await runCli(
+        [
+          'emails',
+          'send',
+          'eml_1',
+          ...inputArgs,
+          '--idempotency-key',
+          'send-stdin-retry',
+        ],
+        { env: environment, stdin: JSON.stringify(input), extraCommands: EXTRA }
+      )
+      expect(result.code).toBe(4)
+      expect(bodies).toEqual([])
+      const { summary, confirmCommand } = result.json as {
+        summary: string
+        confirmCommand: string
+      }
+      expect(summary).toContain('email eml_1')
+      expect(summary).toContain('audience aud_9')
+      expect(summary).toContain('at 2099-01-01T00:00:00Z')
+      const argv = execFileSync(
+        'sh',
+        ['-c', `set -- ${confirmCommand}; printf '%s\\0' "$@"`],
+        { encoding: 'utf8' }
+      )
+        .split('\0')
+        .slice(0, -1)
+      expect(argv[0]).toBe('brew-cli')
+      const confirmed = await runCli(argv.slice(1), {
+        env: environment,
+        extraCommands: EXTRA,
+      })
+      expect(confirmed.code).toBe(0)
+      expect(bodies).toEqual([{ ...input, emailId: 'eml_1' }])
+      expect(key).toBe('send-stdin-retry')
+    }
+  )
+
   it('skips the gate when --input carries test:true, and it reaches the wire', async () => {
     let body: Record<string, unknown> | undefined
     server.use(

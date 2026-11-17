@@ -26,20 +26,26 @@ export const contentGifCommand = defineCommand({
     { flag: '--prompt <text>', summary: 'What to animate' },
     { flag: '--image-url <url>', summary: 'Source image (from: image)' },
     { flag: '--video-url <url>', summary: 'Source video (from: video)' },
-    { flag: '--duration <seconds>', summary: 'Clip duration in seconds' },
-    { flag: '--fps <n>', summary: 'Frames per second' },
+    {
+      flag: '--frame-count <n>',
+      summary: 'Frames in the loop, 2-16 (default 9; from: prompt | image)',
+    },
+    {
+      flag: '--fps <n>',
+      summary: 'Frames per second, 1-24 (default 5 for prompt | image)',
+    },
     {
       flag: '--aspect-ratio <ratio>',
-      summary: 'e.g. 16:9, 1:1, 9:16',
+      summary: '16:9 (default), 9:16 or 1:1 (from: prompt | image)',
     },
-    { flag: '--loop <bool>', summary: 'Loop the GIF: true | false' },
+    { flag: '--loop <bool>', summary: 'Loop the GIF: true (default) | false' },
     { flag: '--width <n>', summary: 'Output width (from: video)' },
     INPUT_FLAG,
     IDEMPOTENCY_FLAG,
   ],
   examples: [
     'brew-cli content gif --prompt "steam rising from a coffee cup"',
-    'brew-cli content gif --image-url https://cdn.example.com/mug.png --prompt "gentle zoom"',
+    'brew-cli content gif --image-url https://cdn.example.com/mug.png --prompt "steam rises" --frame-count 12 --fps 8',
   ],
   run: async ({ ctx, flags }) => {
     const base = await readJsonFlag(ctx, flags.input, '--input')
@@ -48,7 +54,7 @@ export const contentGifCommand = defineCommand({
       prompt: flagString(flags.prompt),
       imageUrl: flagString(flags.imageUrl),
       videoUrl: flagString(flags.videoUrl),
-      duration: flagNumber(flags.duration, '--duration'),
+      frameCount: flagInt(flags.frameCount, '--frame-count'),
       fps: flagInt(flags.fps, '--fps'),
       aspectRatio: flagString(flags.aspectRatio),
       loop: parseBool(flags.loop),
@@ -88,15 +94,4 @@ function parseBool(value: unknown): boolean | undefined {
     return
   }
   throw new CliUsageError('--loop must be true or false')
-}
-
-function flagNumber(value: unknown, flagName: string): number | undefined {
-  if (value === undefined) {
-    return
-  }
-  const parsed = Number(value)
-  if (!Number.isFinite(parsed) || parsed <= 0) {
-    throw new CliUsageError(`${flagName} must be a positive number`)
-  }
-  return parsed
 }

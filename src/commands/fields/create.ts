@@ -23,7 +23,7 @@ export const fieldsCreateCommand = defineCommand({
   run: async ({ ctx, flags }) => {
     const fieldName = flagString(flags.name)
     const fieldType = flagString(flags.type)
-    if (fieldName === undefined || fieldType === undefined) {
+    if (!fieldName || !fieldType) {
       throw new CliUsageError('--name and --type are required.')
     }
     if (!(FIELD_TYPES as readonly string[]).includes(fieldType)) {

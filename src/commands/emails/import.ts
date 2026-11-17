@@ -15,7 +15,7 @@ import {
 
 export const emailsImportCommand = defineCommand({
   path: ['emails', 'import'],
-  summary: 'Import existing HTML, MJML, or JSX as a new editable design',
+  summary: 'Import existing HTML, MJML, JSX, or EML as a new editable design',
   sdkMethod: 'emails.import',
   route: { method: 'POST', path: '/v1/emails/import' },
   commandClass: 'write',
@@ -25,7 +25,10 @@ export const emailsImportCommand = defineCommand({
       flag: '--file <path>',
       summary: 'Source file to import, or - for stdin',
     },
-    { flag: '--format <format>', summary: 'Source format: html | mjml | jsx' },
+    {
+      flag: '--format <format>',
+      summary: 'Source format: html | mjml | jsx | eml',
+    },
     { flag: '--title <title>', summary: 'Design title' },
     {
       flag: '--base-url <url>',
@@ -42,13 +45,24 @@ export const emailsImportCommand = defineCommand({
     'brew-cli emails import --file newsletter.html --format html --title "Legacy newsletter"',
     'brew-cli emails import --file newsletter.html --format html --subject-line "This month at Brew"',
     'cat email.html | brew-cli emails import --file - --format html',
+    'brew-cli emails import --file saved-message.eml --format eml',
   ],
   run: async ({ ctx, flags }) => {
     const base = await readJsonFlag(ctx, flags.input, '--input')
-    const content = await readTextFlag(ctx, flags.file, '--file')
+    const format =
+      flagString(flags.format) ??
+      (typeof base === 'object' && base !== null && 'format' in base
+        ? flagString(base.format)
+        : undefined)
+    const content = await readTextFlag(
+      ctx,
+      flags.file,
+      '--file',
+      format === 'eml' ? 'eml' : undefined
+    )
     const input = mergeInput(base, {
       content,
-      format: flagString(flags.format),
+      format,
       title: flagString(flags.title),
       baseUrl: flagString(flags.baseUrl),
       subjectLine: flagString(flags.subjectLine),
@@ -58,8 +72,8 @@ export const emailsImportCommand = defineCommand({
         '--file is required (a path, or - for stdin), or content via --input.'
       )
     }
-    if (typeof input.format !== 'string') {
-      throw new CliUsageError('--format is required: html | mjml | jsx.')
+    if (typeof input.format !== 'string' || input.format === '') {
+      throw new CliUsageError('--format is required: html | mjml | jsx | eml.')
     }
     const result = await ctx
       .client()

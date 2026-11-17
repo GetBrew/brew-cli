@@ -1,5 +1,7 @@
-import type { ListTemplatesInput } from '@brew.new/sdk'
+import type { ListTemplateRowsInput, ListTemplatesInput } from '@brew.new/sdk'
+import type { operations } from '../../generated/openapi-types'
 import { defineCommand } from '../../lib/define-command'
+import { CliUsageError } from '../../lib/errors'
 import {
   asSdkInput,
   flagInt,
@@ -13,8 +15,19 @@ import {
   ALL_FLAG,
   CURSOR_FLAG,
   collectAll,
-  LIMIT_FLAG,
+  limitFlag,
 } from '../../lib/paginate'
+
+type TemplatesCountResponse = Extract<
+  operations['listTemplates']['responses'][200]['content']['application/json'],
+  { count: number }
+>
+
+const GROUP_LABELS = {
+  brand: { header: 'BRAND', noun: 'brands', singular: 'brand' },
+  category: { header: 'CATEGORY', noun: 'categories', singular: 'category' },
+  group: { header: 'GROUP', noun: 'groups', singular: 'group' },
+} as const
 
 export const templatesListCommand = defineCommand({
   path: ['templates', 'list'],
@@ -29,17 +42,28 @@ export const templatesListCommand = defineCommand({
       summary: 'Filter by gallery brand name',
     },
     { flag: '--category <category>', summary: 'Filter by category' },
+    { flag: '--group <group>', summary: 'Filter by category browse group' },
     {
       flag: '--semantic <text>',
       summary: 'Semantic search over the gallery',
     },
-    LIMIT_FLAG,
+    {
+      flag: '--count',
+      summary: 'Return matching template counts instead of rows',
+    },
+    {
+      flag: '--group-by <field>',
+      summary: 'Group counts by brand, category or group (requires --count)',
+    },
+    limitFlag(50),
     CURSOR_FLAG,
     ALL_FLAG,
     INPUT_FLAG,
   ],
   examples: [
     'brew-cli templates list --category welcome',
+    'brew-cli templates list --count --group-by category --json',
+    'brew-cli templates list --group events --count --group-by group --json',
     'brew-cli templates list --semantic "minimal product launch" --json',
   ],
   run: async ({ ctx, flags }) => {
@@ -47,17 +71,29 @@ export const templatesListCommand = defineCommand({
     const input = mergeInput(base, {
       brand: flagString(flags.brandName),
       category: flagString(flags.category),
+      group: flagString(flags.group),
       semantic: flagString(flags.semantic),
+      count: flags.count === true ? true : undefined,
+      groupBy: flagString(flags.groupBy),
       limit: flagInt(flags.limit, '--limit'),
       cursor: flagString(flags.cursor),
     })
     const templates = ctx.client().templates
+    const isCount =
+      input.count === true ||
+      input.count === 'true' ||
+      input.groupBy !== undefined
+    if (flags.all === true && isCount) {
+      throw new CliUsageError(
+        '--all pages through rows; a count has none. Page its groups with --cursor.'
+      )
+    }
     if (flags.all === true) {
       // `representation` may arrive through --input, so the SDK's return
       // type is the full-or-summary union; rows pass through verbatim.
       const rows = await collectAll<unknown>(ctx, (cursor) =>
         templates.list(
-          asSdkInput<ListTemplatesInput>({
+          asSdkInput<ListTemplateRowsInput>({
             ...input,
             ...(cursor === undefined ? {} : { cursor }),
           })
@@ -68,10 +104,52 @@ export const templatesListCommand = defineCommand({
         human: renderTemplates(rows),
       }
     }
-    const result = await templates.list(asSdkInput<ListTemplatesInput>(input))
-    return { data: result, human: renderTemplates(result.data) }
+    const result: unknown = await templates.list(
+      asSdkInput<ListTemplatesInput>(input)
+    )
+    // A count answers `{ count, groups? }`, not rows: the table would throw.
+    const page = result as { data?: unknown }
+    return {
+      data: result,
+      human: Array.isArray(page.data)
+        ? renderTemplates(page.data)
+        : renderCount(result as TemplatesCountResponse),
+    }
   },
 })
+
+function renderCount(body: TemplatesCountResponse): string {
+  const total = `${body.count} template${body.count === 1 ? '' : 's'}`
+  const groups = body.groups ?? []
+  if (body.groupBy === undefined && groups.length === 0) {
+    return total
+  }
+  const { header, noun, singular } = GROUP_LABELS[body.groupBy ?? 'brand']
+  const table = renderTable(
+    groups.map((group) => ({ ...group })),
+    [
+      {
+        key: 'value',
+        header,
+      },
+      ...(groups.some((group) => group.name !== undefined)
+        ? [{ key: 'name', header: 'NAME' }]
+        : []),
+      { key: 'count', header: 'COUNT' },
+    ]
+  )
+  const cursor = body.pagination?.hasMore ? body.pagination.cursor : null
+  const groupNoun = body.groupCount === 1 ? singular : noun
+  const footer = [
+    `${total} in total`,
+    body.groupCount === undefined ? '' : `${body.groupCount} ${groupNoun}`,
+    body.ungroupedCount ? `${body.ungroupedCount} with no ${singular}` : '',
+    cursor === null ? '' : `more groups: --cursor ${cursor}`,
+  ]
+    .filter(Boolean)
+    .join(' · ')
+  return groups.length === 0 ? footer : `${table}\n${footer}`
+}
 
 function renderTemplates(rows: ReadonlyArray<unknown>): string {
   if (rows.length === 0) {

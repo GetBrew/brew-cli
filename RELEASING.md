@@ -5,6 +5,46 @@ standalone binaries, the GitHub Release, and the Homebrew tap.
 
 ## Ship a version
 
+### Canvas SDK Migration Gate
+
+The canvas session commands now use `brew.canvas.sessions.create`, `refresh`,
+and `revoke`. This change requires the SDK fix that preserves the revocation
+JSON response. Do not release these commands with an SDK version that discards
+that response.
+
+SDK 13.0.0 preserves the revocation JSON response and is the minimum supported
+SDK release for these commands. CLI 0.17.0 consumes that published registry
+artifact.
+
+For future upgrades, release the SDK first, then update the dependency and
+regenerate `bun.lock` from its actual published artifact. Run frozen
+installation, the full checks, and command-doc freshness before releasing the
+CLI. A locally packed SDK must not hide dependency failures, and future
+lockfile checksums must never be invented. The canvas tests must preserve
+`{ revoked: true }`, the `--yes` gate, and one-attempt create/refresh requests.
+
+### Contact Import SDK Minimum
+
+`contacts import` and the `contacts import-csv` naming and row results use
+`contacts.import` and the import response from SDK 13.3.0, the minimum this
+CLI depends on (`^13.3.0`).
+
+### Integration Events SDK Gate
+
+`integrations events list`, `integrations events get` and
+`automations triggers ensure-integration-event` call `integrations.events.list`,
+`integrations.events.get` and `automations.triggers.ensureIntegrationEvent`,
+which the published SDK 13.4.0 does not expose. Until an SDK release has
+them, the CLI pins reviewed SDK source commit
+`9fbe435d9b135791861739d322fa648c521bdb98` (GetBrew/typescript-sdk#88). It
+preserves SDK 13.4.0's features and version while adding those methods.
+
+A fresh frozen install must build that source dependency without relying on
+a locally packed SDK. Do not release the CLI with this temporary source pin.
+Deploy the API contract (GetBrew/brew-v2#2411) and release the SDK first, then
+replace the pin with the actual published SDK version and regenerate
+`bun.lock` before releasing the CLI.
+
 ```bash
 # on a clean main with CI green
 npm version <patch|minor|major> --no-git-tag-version
@@ -30,6 +70,10 @@ The workflow then:
 
 The user-visible version comes from `package.json` at build time (tsup
 `__CLI_VERSION__` define) — never hand-edit a version constant.
+
+The release job uses GitHub-hosted `ubuntu-latest`: npm rejects provenance
+from self-hosted runners. `CI_RUNNER_SMALL` controls CI and the spec sentinel;
+it must not select the publishing runner.
 
 ## Install channels (what users get)
 

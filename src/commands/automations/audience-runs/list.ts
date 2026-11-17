@@ -1,9 +1,11 @@
 import type { ListAudienceRunsInput } from '@brew.new/sdk'
 import { inputField, singleRowPage } from '../../../lib/compat'
+import { shellQuote } from '../../../lib/confirm'
 import { defineCommand } from '../../../lib/define-command'
 import {
   asSdkInput,
   flagInt,
+  flagNonEmptyString,
   flagString,
   INPUT_FLAG,
   mergeInput,
@@ -24,6 +26,8 @@ export const automationsAudienceRunsListCommand = defineCommand({
   sdkMethod: 'automations.audienceRuns.list',
   route: { method: 'GET', path: '/v1/automations/audience-runs' },
   commandClass: 'read',
+  // The detail read's keys, which `run` takes from --input to switch to it.
+  inputKeys: { extra: ['audienceRunId'] },
   flags: [
     {
       flag: '--automation <automationId>',
@@ -56,7 +60,8 @@ export const automationsAudienceRunsListCommand = defineCommand({
     const audienceRuns = ctx.client().automations.audienceRuns
     const base = await readJsonFlag(ctx, flags.input, '--input')
     const audienceRunId =
-      flagString(flags.audienceRunId) ?? inputField(base, 'audienceRunId')
+      flagNonEmptyString(flags.audienceRunId, '--audience-run-id') ??
+      inputField(base, 'audienceRunId')
     if (audienceRunId !== undefined) {
       const row = await audienceRuns.get(audienceRunId)
       return { data: singleRowPage(row), human: renderAudienceRuns([row]) }
@@ -69,13 +74,16 @@ export const automationsAudienceRunsListCommand = defineCommand({
       cursor: flagString(flags.cursor),
     })
     if (flags.all === true) {
-      const rows = await collectAll(ctx, (cursor) =>
-        audienceRuns.list(
-          asSdkInput<ListAudienceRunsInput>({
-            ...input,
-            ...(cursor === undefined ? {} : { cursor }),
-          })
-        )
+      const rows = await collectAll(
+        ctx,
+        (cursor) =>
+          audienceRuns.list(
+            asSdkInput<ListAudienceRunsInput>({
+              ...input,
+              ...(cursor === undefined ? {} : { cursor }),
+            })
+          ),
+        { cursor: flagString(input.cursor) }
       )
       return {
         data: { data: rows, pagination: { cursor: null, hasMore: false } },
@@ -85,7 +93,13 @@ export const automationsAudienceRunsListCommand = defineCommand({
     const result = await audienceRuns.list(
       asSdkInput<ListAudienceRunsInput>(input)
     )
-    return { data: result, human: renderAudienceRuns(result.data) }
+    const human =
+      result.data.length === 0 &&
+      result.pagination.hasMore &&
+      result.pagination.cursor !== null
+        ? `No matching audience runs on this page. Continue with --cursor ${shellQuote(result.pagination.cursor)} or --all.`
+        : renderAudienceRuns(result.data)
+    return { data: result, human }
   },
 })
 

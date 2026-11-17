@@ -12,10 +12,11 @@ the SDK carries transport + types, and this repo owns the command surface.
 `src/commands/`). `src/cli.ts` mounts them into commander with global
 flags, the confirmation gate, and the output/error contracts applied by
 construction. `src/lib/` holds the shared behavior: `client.ts` (SDK
-client factory + auth resolution + the temporary X-Brand-Id fetch bridge),
+client factory + auth resolution + native SDK brand scoping),
 `output.ts` (stdout=data, stderr=progress, `--json` + auto-JSON on
 non-TTY), `errors.ts` (exit codes 0/1/2/3/4 + envelopes), `confirm.ts`
-(exit-4 protocol), `input.ts` (`--input <json|->`, `--file <path|->`,
+(exit-4 protocol), `rerun.ts` (serialize parsed invocations for confirmation
+and retry; never reparse argv), `input.ts` (`--input <json|->`, `--file <path|->`,
 `k=v`, the single `asSdkInput` boundary cast), `paginate.ts` (`--all`),
 `manifest.ts` (`docs --agent`).
 
@@ -64,9 +65,15 @@ of leaving a hole:
    dispatcher fans out to), `route` (exact OpenAPI path with `{braces}`; a
    fan-out over several routes declares none), `commandClass`, ≥1 realistic
    example. `destructive` ⇔ `confirmSummary`.
-3. Ergonomic flags for scalars; `INPUT_FLAG` for deep JSON;
-   `IDEMPOTENCY_FLAG` on POST mutations (and pass `requestOptions(flags)`
-   to the SDK call so a `retryCommand` replays); reuse
+3. Ergonomic flags for scalars; `INPUT_FLAG` for deep JSON, whose
+   top-level keys must be the route's (`src/generated/input-keys.ts`);
+   declare `inputKeys` for keys `run` reads itself or for shorthand input;
+   `IDEMPOTENCY_FLAG` on POST mutations whose route replays a keyed
+   request (`x-brew-idempotency`: `replay` or `fail_closed`), and pass
+   `requestOptions(flags)` to the SDK call so a `retryCommand` replays. A
+   new command on a route that never replays (`none`, `disabled`, e.g.
+   `content create-image-upload`) declares no key flag: the flag's help
+   promises a safe retry (`tests/idempotency-flags.test.ts`). Reuse
    `ALL_FLAG`/`LIMIT_FLAG`/`CURSOR_FLAG` for pagination. A command whose
    server work routinely outlasts 30 s declares `defaultTimeoutMs` from the
    SDK's per-call constant, via `lib/long-running.ts`.
@@ -79,15 +86,24 @@ of leaving a hole:
    method+path+body and, for destructive commands, the exit-4 envelope.
 7. `bun run docs:commands` to refresh the generated reference.
 
-## Validation (all must pass before handing work back)
+## Validation
+
+Run checks appropriate to the change; CI runs the full gate set. For code
+changes, check lint and relevant tests; typecheck when types or contracts change.
+For command changes, regenerate the reference and run its freshness check.
+Report checks run and anything deferred to CI.
 
 ```bash
 bun install          # only when deps changed
 bun run tsc          # strict typecheck
 bun run lint         # biome check (also formatting)
-bun run test         # vitest + MSW, includes both parity suites
+bun run test -- tests/<file>.test.ts  # relevant vitest + MSW tests
 bun run docs:commands:check
+bun run build && bun run smoke:regressions  # built Node CLI against loopback
 ```
+
+The regression smoke uses dummy credentials and no live API. It executes the
+CSV recipe with `jq`; Linux terminal checks use the `script` utility.
 
 `bun run fix` applies formatting + safe lint fixes. Never `bun test`
 (Bun's own runner bypasses the vitest/MSW setup) — always `bun run test`.
