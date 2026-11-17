@@ -63,7 +63,11 @@ export const defaultSpawn: SpawnFn = (command, args, options = {}) =>
       {
         cwd: options.cwd,
         shell: windows,
-        stdio: ['pipe', 'pipe', 'pipe'],
+        stdio: [
+          options.input === undefined ? 'ignore' : 'pipe',
+          'pipe',
+          'pipe',
+        ],
         windowsHide: true,
         ...(options.signal === undefined ? {} : { signal: options.signal }),
       }
