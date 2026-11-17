@@ -20,7 +20,10 @@ import {
   readClerkSecret,
   setClerkDelivery,
 } from './clerk'
-import { getOrCreateHostedHookSecret } from './hosted-hook-secret'
+import {
+  getOrCreateHostedHookSecret,
+  hostedHookSecretExists,
+} from './hosted-hook-secret'
 import {
   backupHookSecret,
   detectSupabaseRef,
@@ -406,7 +409,10 @@ async function supabaseStep(
       providerConfig: input.providerConfig,
     }
   }
-  if (connection?.status === 'active') {
+  if (
+    connection?.status === 'active' &&
+    !hostedHookSecretExists(input.writer, ref)
+  ) {
     // A hook that is not this project's verifies with the connection's
     // secret: a new one would stop that hook's emails.
     nextSteps.push({
@@ -520,6 +526,9 @@ async function supabaseStep(
   // From here every result keeps the saved settings with their secret.
   const withSaved = { ...input, providerConfig }
 
+  // Rollback leaves Brew's connection active. A saved setup can reconnect
+  // only through the same create-only credential/settings replay below;
+  // the server refuses any replacement before Supabase is changed.
   let connected: Awaited<ReturnType<BrewClient['integrations']['connect']>>
   let signingSecret: string
   try {

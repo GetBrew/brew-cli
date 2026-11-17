@@ -1,4 +1,4 @@
-import { chmodSync, readFileSync, writeFileSync } from 'node:fs'
+import { chmodSync, existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { CliUsageError } from '../../errors'
 import { type ProjectWriter, resolveWriteTarget } from '../../project/fs-writer'
@@ -11,6 +11,14 @@ export function hostedHookSecretPath(ref: string): string {
     throw new CliUsageError('A valid Supabase project reference is required.')
   }
   return `.env.brew-supabase-${ref}`
+}
+
+/** Presence permits attempting a create-only replay; Brew proves it matches. */
+export function hostedHookSecretExists(
+  writer: ProjectWriter,
+  ref: string
+): boolean {
+  return existsSync(join(writer.root, hostedHookSecretPath(ref)))
 }
 
 /**
