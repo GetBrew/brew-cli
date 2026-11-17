@@ -31,17 +31,19 @@ CLI depends on (`^13.3.0`).
 
 ### App email SDK gate
 
-`send`, `app-emails` and the `types` key registry call `brew.send` and
-`brew.appEmails`, which no published SDK has yet:
-GetBrew/typescript-sdk#55 (`send`, `automations.triggers.fireByKey`) and
-GetBrew/typescript-sdk#64 (`appEmails`, the auth adapters), planned as 13.5.0
-and 13.6.0, after the published 13.4.0 (email `lang`). Until 13.6.0 is on
-npm, the dependency and `bun.lock` stay on the
-published `^13.3.0`, and typecheck and parity fail in CI on these commands.
-Publish the SDK first, then
-`bun add @brew.new/sdk@^13.6.0` (it regenerates `bun.lock` from the
-registry; never hand-write a lockfile entry), run a frozen install, the full
-checks and `docs:commands:check`, and release the CLI.
+The unreleased CLI stack needs the keyed-send, app-email and auth-adapter
+SDK APIs in GetBrew/typescript-sdk#55 and #64. Development branches pin an
+immutable commit of the public SDK repository. Its supported source-install
+prepare step builds the actual distribution and declarations, so CI checks
+the artifact these branches install rather than substituting a local pack.
+The exact source revision is recorded in package.json and bun.lock.
+
+This is a prerelease source dependency, not published-registry support.
+Before tagging a CLI release, publish the SDK APIs first, replace the source
+pin with the appropriate published version (at least 13.6.0 for app email,
+13.7.0 for hosted auth hooks), and regenerate bun.lock with bun add. Run a
+frozen install, the full checks and docs:commands:check against that actual
+registry artifact. Never invent a lockfile checksum or release a source pin.
 
 The API side must be live first: GetBrew/brew-v2#2169 deployed (the by-key
 fire, `/v1/app-emails`, the team sandbox), and the live spec
