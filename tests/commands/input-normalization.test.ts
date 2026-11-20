@@ -147,6 +147,7 @@ describe('required string values', () => {
       '--yes',
     ],
     ['emails', 'import-figma', '--url', '', '--yes'],
+    ['emails', 'import-image', '--url', '', '--yes'],
     ['emails', 'create-inbox-placement-test', 'eml_1', '--domain', ''],
     ['emails', 'export', 'eml_1', '--provider', ''],
     ['automations', 'triggers', 'ensure-brew-event', '--scope', ''],

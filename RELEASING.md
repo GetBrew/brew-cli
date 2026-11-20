@@ -45,6 +45,16 @@ Deploy the API contract (GetBrew/brew-v2#2411) and release the SDK first, then
 replace the pin with the actual published SDK version and regenerate
 `bun.lock` before releasing the CLI.
 
+### Image Import SDK Gate
+
+`emails import-image` calls `emails.importImage` and imports
+`IMPORT_IMAGE_DEFAULT_TIMEOUT_MS`, which no published SDK exposes yet. The
+pin is now SDK source commit `ce17a70fafd0cf499649a5498dee30c88c9fc64e`
+(GetBrew/typescript-sdk#110), which also contains the integration events
+commit above. The API contract is live (GetBrew/brew-v2#3119). Release the
+SDK with both, then replace the pin with that published version and
+regenerate `bun.lock` before releasing the CLI.
+
 ```bash
 # on a clean main with CI green
 npm version <patch|minor|major> --no-git-tag-version

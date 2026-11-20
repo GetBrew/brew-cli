@@ -21,6 +21,61 @@ export type SpecSkip = {
 /** SDK methods that intentionally have no dedicated CLI command. */
 export const SDK_SKIP_LIST: readonly SdkSkip[] = [
   {
+    sdkPath: 'webhooks.attempts',
+    reason:
+      'the `webhooks` commands send raw requests (they predate the SDK resource); bind them when the CLI moves to a released SDK',
+  },
+  {
+    sdkPath: 'webhooks.create',
+    reason:
+      'the `webhooks` commands send raw requests (they predate the SDK resource); bind them when the CLI moves to a released SDK',
+  },
+  {
+    sdkPath: 'webhooks.delete',
+    reason:
+      'the `webhooks` commands send raw requests (they predate the SDK resource); bind them when the CLI moves to a released SDK',
+  },
+  {
+    sdkPath: 'webhooks.events',
+    reason:
+      'the `webhooks` commands send raw requests (they predate the SDK resource); bind them when the CLI moves to a released SDK',
+  },
+  {
+    sdkPath: 'webhooks.get',
+    reason:
+      'the `webhooks` commands send raw requests (they predate the SDK resource); bind them when the CLI moves to a released SDK',
+  },
+  {
+    sdkPath: 'webhooks.list',
+    reason:
+      'the `webhooks` commands send raw requests (they predate the SDK resource); bind them when the CLI moves to a released SDK',
+  },
+  {
+    sdkPath: 'webhooks.replay',
+    reason:
+      'the `webhooks` commands send raw requests (they predate the SDK resource); bind them when the CLI moves to a released SDK',
+  },
+  {
+    sdkPath: 'webhooks.rotateSecret',
+    reason:
+      'the `webhooks` commands send raw requests (they predate the SDK resource); bind them when the CLI moves to a released SDK',
+  },
+  {
+    sdkPath: 'webhooks.test',
+    reason:
+      'the `webhooks` commands send raw requests (they predate the SDK resource); bind them when the CLI moves to a released SDK',
+  },
+  {
+    sdkPath: 'webhooks.update',
+    reason:
+      'the `webhooks` commands send raw requests (they predate the SDK resource); bind them when the CLI moves to a released SDK',
+  },
+  {
+    sdkPath: 'webhooks.verify',
+    reason:
+      'local signature check for webhook receivers; the CLI does not receive webhooks',
+  },
+  {
     sdkPath: 'contacts.searchAll',
     reason: 'auto-pager covered by `contacts search --all`',
   },

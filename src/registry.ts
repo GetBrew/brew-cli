@@ -123,6 +123,7 @@ import { emailsGroupsListCommand } from './commands/emails/groups/list'
 import { emailsGroupsUpdateCommand } from './commands/emails/groups/update'
 import { emailsImportCommand } from './commands/emails/import'
 import { emailsImportFigmaCommand } from './commands/emails/import-figma'
+import { emailsImportImageCommand } from './commands/emails/import-image'
 import { emailsInboxPlacementTestsGetCommand } from './commands/emails/inbox-placement-tests/get'
 import { emailsListCommand } from './commands/emails/list'
 import { emailsPreviewClientsCommand } from './commands/emails/preview-clients'
@@ -217,6 +218,7 @@ export const ALL_COMMANDS: readonly CommandSpec[] = [
   emailsGenerateCommand,
   emailsImportCommand,
   emailsImportFigmaCommand,
+  emailsImportImageCommand,
   emailsEditCommand,
   emailsCloneCommand,
   emailsRestoreCommand,

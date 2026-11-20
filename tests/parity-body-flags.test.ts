@@ -106,6 +106,7 @@ const MAPPED: Readonly<
   'fields create': { '--name': 'fieldName', '--type': 'fieldType' },
   'emails import': { '--file': 'content' },
   'emails import-figma': { '--url': 'figmaUrl' },
+  'emails import-image': { '--url': 'imageUrl' },
   'emails edit': { '--clear-lang': 'lang', '--ungroup': 'groupId' },
   'emails restore': { '--to-version': 'emailVersionId' },
   'emails audit': {
