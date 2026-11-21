@@ -2950,6 +2950,17 @@ brew-cli api GET /v1/llms.txt
 
 SDK methods intentionally without a dedicated command:
 
+- `webhooks.attempts` — the `webhooks` commands send raw requests (they predate the SDK resource); bind them when the CLI moves to a released SDK
+- `webhooks.create` — the `webhooks` commands send raw requests (they predate the SDK resource); bind them when the CLI moves to a released SDK
+- `webhooks.delete` — the `webhooks` commands send raw requests (they predate the SDK resource); bind them when the CLI moves to a released SDK
+- `webhooks.events` — the `webhooks` commands send raw requests (they predate the SDK resource); bind them when the CLI moves to a released SDK
+- `webhooks.get` — the `webhooks` commands send raw requests (they predate the SDK resource); bind them when the CLI moves to a released SDK
+- `webhooks.list` — the `webhooks` commands send raw requests (they predate the SDK resource); bind them when the CLI moves to a released SDK
+- `webhooks.replay` — the `webhooks` commands send raw requests (they predate the SDK resource); bind them when the CLI moves to a released SDK
+- `webhooks.rotateSecret` — the `webhooks` commands send raw requests (they predate the SDK resource); bind them when the CLI moves to a released SDK
+- `webhooks.test` — the `webhooks` commands send raw requests (they predate the SDK resource); bind them when the CLI moves to a released SDK
+- `webhooks.update` — the `webhooks` commands send raw requests (they predate the SDK resource); bind them when the CLI moves to a released SDK
+- `webhooks.verify` — local signature check for webhook receivers; the CLI does not receive webhooks
 - `contacts.searchAll` — auto-pager covered by `contacts search --all`
 - `analytics.eventsAll` — auto-pager covered by `analytics events --all`
 - `sends.listAll` — auto-pager covered by `sends list --all`
