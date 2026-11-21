@@ -2,7 +2,7 @@
 
 <!-- GENERATED FILE — do not edit. Regenerate with `bun run docs:commands`. -->
 
-162 commands. Classes: read (always safe), write
+163 commands. Classes: read (always safe), write
 (mutating, retry-safe), destructive (irreversible — the confirmation
 protocol applies: interactive y/N on a TTY, exit 4 + JSON envelope with
 a `confirmCommand` otherwise, `--yes` to proceed).
@@ -67,6 +67,7 @@ a `confirmCommand` otherwise, `--yes` to proceed).
 | `brew-cli emails generate` | write ($) | `POST /v1/emails` | Generate a new on-brand email design from a prompt |
 | `brew-cli emails import` | write | `POST /v1/emails/import` | Import existing HTML, MJML, JSX, or EML as a new editable design |
 | `brew-cli emails import-figma` | write | `POST /v1/emails/figma` | Convert one Figma frame into an editable design (deterministic, free) |
+| `brew-cli emails import-image` | write ($) | `POST /v1/emails/image` | Convert a picture of an email into an editable design (takes 1 to 6 minutes; costs credits) |
 | `brew-cli emails edit` | write ($) | `PATCH /v1/emails/{emailId}` | AI-edit an email design, and/or set its subject line, title, language or group (free without a prompt) |
 | `brew-cli emails clone` | write | `POST /v1/emails/{emailId}/clone` | Clone a design into a new one (exact snapshot copy, no AI) |
 | `brew-cli emails restore` | write | `POST /v1/emails/{emailId}/restore` | Restore a previous version as the new latest (non-destructive) |
@@ -941,6 +942,28 @@ Convert one Figma frame into an editable design (deterministic, free)
 ```bash
 brew-cli emails import-figma --url "https://www.figma.com/design/abc123/Launch?node-id=1-2"
 brew-cli emails import-figma --url "https://www.figma.com/design/abc123/Launch?node-id=1-2" --subject-line "Launch day is here"
+```
+
+### brew-cli emails import-image
+
+Convert a picture of an email into an editable design (takes 1 to 6 minutes; costs credits)
+
+- Route: `POST /v1/emails/image`
+- Class: write
+- Can consume Brew credits
+- SDK: `brew.emails.importImage(...)`
+- `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
+- `--url <imageUrl>` — Public http(s) URL of a PNG, JPEG or WebP picture of one email, at most 2048 px wide
+- `--title <title>` — Design title (default: Image Email)
+- `--format <format>` — Representation returned in content: jsx (default) or html
+- `--subject-line <text>` — The design's default inbox subject line
+- `--group-id <groupId>` — File the design under an existing group (grp_…), or ungrouped
+- `--group-name <name>` — File the design under a group found (or created) by this name; not with --group-id
+- `--idempotency-key <key>` — Idempotency-Key for safe retries (auto-generated otherwise)
+
+```bash
+brew-cli emails import-image --url "https://example.com/launch-email.png"
+brew-cli emails import-image --url "https://example.com/launch-email.png" --format html --group-name "Launch"
 ```
 
 ### brew-cli emails edit
@@ -2927,6 +2950,17 @@ brew-cli api GET /v1/llms.txt
 
 SDK methods intentionally without a dedicated command:
 
+- `webhooks.attempts` — the `webhooks` commands send raw requests (they predate the SDK resource); bind them when the CLI moves to a released SDK
+- `webhooks.create` — the `webhooks` commands send raw requests (they predate the SDK resource); bind them when the CLI moves to a released SDK
+- `webhooks.delete` — the `webhooks` commands send raw requests (they predate the SDK resource); bind them when the CLI moves to a released SDK
+- `webhooks.events` — the `webhooks` commands send raw requests (they predate the SDK resource); bind them when the CLI moves to a released SDK
+- `webhooks.get` — the `webhooks` commands send raw requests (they predate the SDK resource); bind them when the CLI moves to a released SDK
+- `webhooks.list` — the `webhooks` commands send raw requests (they predate the SDK resource); bind them when the CLI moves to a released SDK
+- `webhooks.replay` — the `webhooks` commands send raw requests (they predate the SDK resource); bind them when the CLI moves to a released SDK
+- `webhooks.rotateSecret` — the `webhooks` commands send raw requests (they predate the SDK resource); bind them when the CLI moves to a released SDK
+- `webhooks.test` — the `webhooks` commands send raw requests (they predate the SDK resource); bind them when the CLI moves to a released SDK
+- `webhooks.update` — the `webhooks` commands send raw requests (they predate the SDK resource); bind them when the CLI moves to a released SDK
+- `webhooks.verify` — local signature check for webhook receivers; the CLI does not receive webhooks
 - `contacts.searchAll` — auto-pager covered by `contacts search --all`
 - `analytics.eventsAll` — auto-pager covered by `analytics events --all`
 - `sends.listAll` — auto-pager covered by `sends list --all`

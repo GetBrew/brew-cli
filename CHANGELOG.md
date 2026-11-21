@@ -8,8 +8,22 @@ The live integration event commands require an SDK release exposing
 Until that release, the CLI pins that PR's immutable source commit. Follow
 the integration events SDK gate in `RELEASING.md` before release.
 
+`emails import-image` likewise requires an SDK release exposing
+`emails.importImage` (GetBrew/typescript-sdk#110); the pin is now that PR's
+commit, which contains both. See the image import SDK gate in `RELEASING.md`.
+
 ### Added
 
+- `emails import-image` (`POST /v1/emails/image`) turns a picture of an email
+  (a screenshot or an export) into a new editable design, with `--url`,
+  `--title`, `--format`, `--subject-line`, `--group-id`, `--group-name` and
+  `--input`. The picture is split into its own layers and laid out
+  deterministically: every text is live and every button a button. The
+  command waits 1 to 6 minutes; the same image converted again within three
+  weeks returns in seconds with the same design. `conversion` in the result
+  is `layers` (flat credit price) or `model` (the fallback recreation,
+  metered by model usage). Needs an SDK release exposing
+  `emails.importImage`.
 - Live integration events (GetBrew/brew-v2#2411): the events a brand's
   connected live sources send, such as a PostHog project's own events or the
   Stripe and Shopify app catalogs. All three commands need the
@@ -119,12 +133,12 @@ the integration events SDK gate in `RELEASING.md` before release.
   `contacts update` returns `warnings[]`, and `updated` is empty when nothing
   changed (#2488); automation warnings include `NODE_ID_REPLACED` (#2486);
   `stopInFlight` on a draft with nobody in flight is a `422
-  AUTOMATION_NOT_PUBLISHED` (#2489); a date written to a `date` field no
+AUTOMATION_NOT_PUBLISHED` (#2489); a date written to a `date` field no
   longer warns `FIELD_TYPE_COERCED` (#2490); `emails import` lists markup it
   could not keep as `element_dropped` asset warnings (#2471); `sends pause`
   on a send you already paused returns `200` and changes nothing, while a
   send held at the plan limit or for its domain is still `409
-  SEND_NOT_PAUSABLE` (#2492). No command's flags changed.
+SEND_NOT_PAUSABLE` (#2492). No command's flags changed.
 - A contact write with a JSON number past 9007199254740991 (2^53 - 1) is now
   refused with `409 FIELD_TYPE_MISMATCH` instead of being stored rounded; send
   large ids as strings to a `string` field (#2488). This applies to
@@ -160,9 +174,9 @@ the integration events SDK gate in `RELEASING.md` before release.
   opened, clicked or delivered events carry `recipients`, each recipient counted
   once per message, and the human table shows it as RECIPIENTS (#2582). Because
   the CLI authenticates with an API key, `emails send --test` and `automations
-  test` with `testRecipient` reach only a teammate with access to the brand or
+test` with `testRecipient` reach only a teammate with access to the brand or
   an address on a verified sending domain of the brand; anyone else is `422
-  TEST_RECIPIENT_NOT_ALLOWED` with `details.recipients` (#2578).
+TEST_RECIPIENT_NOT_ALLOWED` with `details.recipients` (#2578).
 
 ## 0.19.0
 
@@ -286,7 +300,6 @@ These import changes require `@brew.new/sdk` 13.3.0 or newer, which adds
 - `contacts upsert-many` says what it is for: up to 1000 contacts per call
   (its summary said 100) with no Import History entry, for recurring syncs.
 
-
 ### Fixed
 
 - `flows get` takes a `<domain>/<kind>` slug from `flows list` (one send
@@ -318,7 +331,7 @@ canvas commands: the published npm `0.16.0` artifact (`gitHead`
 - EML import help now lists the supported saved-message format. Import output
   preserves the complete asset report, including warnings.
 - Email recovery guidance distinguishes a committed `409
-  EMAIL_RESULT_UNAVAILABLE` from an unknown outcome. Read the saved version
+EMAIL_RESULT_UNAVAILABLE` from an unknown outcome. Read the saved version
   instead of repeating generation or editing.
 - List drains reject repeated or cyclic cursors with `CLI_PAGINATION` and
   preserve safe resume information; advancing empty pages remain supported.
@@ -407,7 +420,7 @@ and 0.8.0 did, and a `^0.13.0` range never resolves to it.
   cursor again, was refused again, and failed after a wasted walk. A walk
   begun at `--cursor` now does not restart (reading from the first page
   would return rows it was not asked for). It exits 1 with the API's `400
-  INVALID_REQUEST` (`param: cursor`), and its suggestion gives the command
+INVALID_REQUEST` (`param: cursor`), and its suggestion gives the command
   that reads the same list again without `--cursor`: the same `--state`,
   `--severity` and `--include` (from flags or `--input`), and the `--brand`
   and `--api-url` it was given (never the API key). A cursor given in
@@ -440,7 +453,7 @@ answer from its tables. `data run` itself is unchanged in this release.
   page only and keeps them, with `freshness`, beside the merged rows. The list
   is ranked live: when a finding a walk already returned leaves the list or
   moves, or a new one ranks among them, the API refuses the next cursor (`400
-  INVALID_REQUEST`, `param: cursor`; GetBrew/brew-v2#1860) rather than skip or
+INVALID_REQUEST`, `param: cursor`; GetBrew/brew-v2#1860) rather than skip or
   repeat rows, so `--all` reads the list again from where it started, once,
   and a second refusal is the error. A TTY
   leads with how current the findings are, says when the latest run failed
@@ -458,16 +471,16 @@ answer from its tables. `data run` itself is unchanged in this release.
   `--include messages` adds each thread's newest messages (author, body with
   each mention as `@Name`, mentions; at most 3 threads a page). `--comment-id <cmt_…>` reads one
   thread, `--messages-cursor` its next older messages, and `--comment-id …
-  --all` follows that cursor to the first message and prints the whole thread,
+--all` follows that cursor to the first message and prints the whole thread,
   oldest first. A stop mid-walk, a thread resolved under it included (`404
-  COMMENT_NOT_FOUND`), prints nothing and reports the `--messages-cursor` it
+COMMENT_NOT_FOUND`), prints nothing and reports the `--messages-cursor` it
   stopped at in `progress.resumeCursor`, and in `progress.resumeWith` the flags
   that resume it (`--comment-id <id> --messages-cursor <cursor> --all`, which a
   TTY prints). `--messages-cursor` without
   `--comment-id`, or `--cursor` with it, exits 2 before sending. A design
   with no open threads is an empty page; one the brand does not have is `404
-  EMAIL_NOT_FOUND`, and a `--comment-id` that is not an open thread `404
-  COMMENT_NOT_FOUND`. Free.
+EMAIL_NOT_FOUND`, and a `--comment-id` that is not an open thread `404
+COMMENT_NOT_FOUND`. Free.
 - **`chats list`**: the brand's Brew chats, most recently active first, with
   title (an untitled chat shows its opening prompt on a TTY), status, origin
   and link; `chats get <chatId>` reads one (GetBrew/brew-v2#1831). `--limit`,
@@ -490,11 +503,11 @@ answer from its tables. `data run` itself is unchanged in this release.
   score snapshots, newest first (`scoreHistory`), and the last 5 automated
   domain score runs (`scoreRuns`) (GetBrew/brew-v2#1830).
 - **`contacts get --include openProfile`** and **`contacts search --include
-  openProfile`** attach the smart-send open-time profile: 48 UTC half-hour
+openProfile`** attach the smart-send open-time profile: 48 UTC half-hour
   open counts, `totalOpens`, `lastOpenedAt`, and once there is enough history
   the best open and send minute (`null` before any opens)
   (GetBrew/brew-v2#1830). The key needs the `emails` scope as well (`403
-  INSUFFICIENT_PERMISSIONS` without it). `contacts search` sends it as the
+INSUFFICIENT_PERMISSIONS` without it). `contacts search` sends it as the
   body's `include` array; a page then holds at most 10 contacts, and a TTY adds
   `OPENS` and `BEST SEND (UTC)` columns.
 
@@ -555,7 +568,7 @@ Needs `@brew.new/sdk` `^11.5.0` (`brand.deleteImage`, `content.uploadImage`,
   shows as lines instead of raw JSON.
 - `content add-image --input '{"imageUrls":[...]}'` exited 2 ("An image URL is
   required"): a batch import is accepted now and answers the API's `202
-  { accepted, skipped, runId }`.
+{ accepted, skipped, runId }`.
 - `content add-image` gives an attempt the SDK's 300 s (the route's own
   limit) instead of 30 s, inside a 300 s whole-command deadline like the
   other long-running commands, so converting a large animation no longer
@@ -571,7 +584,7 @@ Needs `@brew.new/sdk` `^11.5.0` (`brand.deleteImage`, `content.uploadImage`,
   crashes** with `CLI_UNEXPECTED`: the API's count mode (GetBrew/brew-v2#1821)
   answers `{ count, groups? }`, and the command drew its row table from it in
   every mode. `--json` prints the answer verbatim; a TTY shows `167
-  templates`, or one `value  name  count` line per group with the total, the
+templates`, or one `value  name  count` line per group with the total, the
   group count, the ungrouped count and the `--cursor` for more groups. `--all`
   with a count exits 2 (it pages rows; a count has none).
 
@@ -598,8 +611,8 @@ Moves to `@brew.new/sdk` `^11.4.0` (typed `total` / `isTotalExact` on
   "how many" in one call. When `isTotalExact` is false — the read was cut at
   500 flows — the line says
   `at least …`, and an empty partial read says why instead of `No flows
-  found.`, and `--all` counts what it listed (`3 flows in total; 2
-  listed`), never "on this page": the API reads at most 500 flows (the newest, or the 500 nearest
+found.`, and `--all` counts what it listed (`3 flows in total; 2
+listed`), never "on this page": the API reads at most 500 flows (the newest, or the 500 nearest
   your `--semantic` query) before the filters apply, so matches past those
   are not listed. `--json` passes `total` and `isTotalExact` through, and `--all`
   keeps them on its merged envelope (GetBrew/brew-v2#1805). Against a
@@ -618,9 +631,9 @@ Moves to `@brew.new/sdk` `^11.4.0` (typed `total` / `isTotalExact` on
 
 - The vendored OpenAPI spec and generated types catch up with the API:
   `total` / `isTotalExact` and the `503` on the flows list, `pauseReason:
-  'domain_unsendable'`, the `EMAIL_IMAGES_MISSING` error code (`422` on an
+'domain_unsendable'`, the `EMAIL_IMAGES_MISSING` error code (`422` on an
   automation run), the trigger update's `409
-  CONTRACT_LOCKED_BY_PUBLISHED_AUTOMATIONS`, the payload issue code
+CONTRACT_LOCKED_BY_PUBLISHED_AUTOMATIONS`, the payload issue code
   `invalid_email`, and creator attribution on emails, email groups and
   automations (`createdBy` / `createdByUserId`, `publishedBy` /
   `publishedByUserId`; GetBrew/brew-v2#1816).
@@ -651,7 +664,7 @@ request.
   Bad values exit 2.
 - **Replay advice.** A write whose outcome is unknown — `CLI_TIMEOUT`, the
   new `CLI_CONNECTION`, `CLI_INTERRUPTED`, a 5xx, or `409
-  IDEMPOTENCY_IN_PROGRESS` — carries the `idempotencyKey` it was sent with
+IDEMPOTENCY_IN_PROGRESS` — carries the `idempotencyKey` it was sent with
   and a `retryCommand` that replays it (the API returns the first
   attempt's result) instead of running it twice. A read says nothing
   changed; a route that does not replay says to check state first. An
@@ -661,11 +674,11 @@ request.
   a failed raw POST can be replayed too.
 - `contacts count-by`: exact contact counts per field value, per email
   domain (`--group-by emailDomain`) or per signup period (`--bucket
-  day|week|month`), largest group first. `contacts count` gives only the
+day|week|month`), largest group first. `contacts count` gives only the
   total.
 - The flags 0.8.1 said would come with SDK 11: `--search` on `emails list`,
   `automations list` and `audiences list`, and `audiences update
-  --add-email/--remove-email` (membership by address).
+--add-email/--remove-email` (membership by address).
 
 ### Fixed
 
@@ -696,7 +709,7 @@ request.
 - Moved from the raw transport onto SDK methods: `analytics event-counts`,
   `domains unsubscribes list|add|remove|import|export`, `emails get-audit`,
   `emails get-client-preview`, `templates get`, `emails get
-  --email-version-id|--run-id`, `brand get-images`, `contracts infer`, and
+--email-version-id|--run-id`, `brand get-images`, `contracts infer`, and
   `automations triggers contract get|put|validate`. Reads, PUTs and DELETEs
   among them now retry a transient failure; a POST retries with the same
   idempotency key. Five `SDK_SKIP_LIST` entries that existed only because
@@ -733,7 +746,7 @@ which was never tagged.
   over 12 in the column wins; without it such a column reads month-first
   with a `DATE_ORDER_ASSUMED` warning. The command also gains `--validate`
   (deliverability check, 2 credits per address), `--consent-source
-  api|form|import` (a consent record on every row) and `--input` for the
+api|form|import` (a consent record on every row) and `--input` for the
   full body: the CSV itself, or a consent record with `evidence`, whose
   other fields `--consent-source` keeps. Flags override it.
 - `emails clone --title`, `--group-id` and `--group-name`, and
@@ -838,7 +851,7 @@ it.
   blocks for screenshots. It answers `202` with the admitted job, or `200`
   with the existing job for the same version and clients, and the command
   prints that job: `previewId`, `status` (`queued | running | completed |
-  partially_completed | failed`), per-client `status`, `reason` and
+partially_completed | failed`), per-client `status`, `reason` and
   `retryable`, `pending`, `nextPollAfterMs`, `expiresAt` and `credits`. The
   `ready`, `partial` and `processing` values are gone. Poll the job with
   `emails get-client-preview` for the screenshots; while it is `queued` or
@@ -931,16 +944,16 @@ Spec parity is back to zero uncovered operations and zero phantom routes.
   SDK call again rather than raw transport. The three audience-run actions
   are `automations audience-runs pause|resume|cancel <audienceRunId>`, one
   command per route; only `cancel` is confirm-gated. `automations
-  audience-runs control --action <verb>` stays as sugar over them (command
+audience-runs control --action <verb>` stays as sugar over them (command
   names are additive-only after release).
 - **Trigger readiness has its own route.** `automations triggers ready` calls
   `GET /v1/automations/triggers/{triggerEventId}/readiness` (was
   `GET …/fire`) and returns the bare
   `{ ready, blockers[], payloadSchema, endpoint, publishedAutomations,
-  counts }` body.
+counts }` body.
 - **One status vocabulary** across runs, sends, audience builds and
   inbox-placement tests: `queued | scheduled | running | paused | completed |
-  partially_completed | failed | canceled`. A step or node reports
+partially_completed | failed | canceled`. A step or node reports
   `running | completed | failed | skipped`; an email design reports
   `generating | ready | failed`. Status FILTERS accept only these, so
   `emails list --status complete` becomes `--status ready`, and
@@ -956,8 +969,8 @@ Spec parity is back to zero uncovered operations and zero phantom routes.
 - **List filters that faked a detail read are shims now, not `400`s.** Every
   resource has a real detail read (`… get <id>`). The 0.6 id flags on the
   lists — `automations runs list --run`, `automations triggers list
-  --trigger`, `automations audience-runs list --audience-run-id`, `analytics
-  sends list --send`, `analytics trigger-instances list --trigger-instance`,
+--trigger`, `automations audience-runs list --audience-run-id`, `analytics
+sends list --send`, `analytics trigger-instances list --trigger-instance`,
   `flows list --slug` — perform it (also when the id rides `--input`) and
   answer as 0.6 did: that row as a single-row page. `--include` on those lists is accepted only next to its id
   flag; alone (and on `audiences list`) it exits 2 naming the `get` command
@@ -983,13 +996,13 @@ Spec parity is back to zero uncovered operations and zero phantom routes.
   `--search`, `--audience`, `--sort`, `--order` and `--all`. Typed filter
   clauses and counts stay on `contacts search`.
 - Detail reads for every collection that gained one: `fields get
-  <fieldName>`, `emails groups get <groupId>`, `automations runs get
-  <automationRunId> [--include logs]`, `automations audience-runs get
-  <audienceRunId>`, `automations triggers get <triggerEventId>
-  [--include skill]`, and `emails inbox-placement-tests get <emailId>
-  <testId>`.
+<fieldName>`, `emails groups get <groupId>`, `automations runs get
+<automationRunId> [--include logs]`, `automations audience-runs get
+<audienceRunId>`, `automations triggers get <triggerEventId>
+[--include skill]`, and `emails inbox-placement-tests get <emailId>
+<testId>`.
 - `automations trigger-instances list` and `automations trigger-instances
-  get <triggerInstanceId>` — trigger instances moved under automations.
+get <triggerInstanceId>` — trigger instances moved under automations.
 - `emails get-inbox-placement-results --test-id` reads the real detail route
   instead of filtering the list, and the list side gains `--limit` /
   `--cursor`. All three inbox-placement commands bind the nested
@@ -1009,7 +1022,7 @@ Spec parity is back to zero uncovered operations and zero phantom routes.
   now starts `queued` and joins the same vocabulary; `collecting` is gone.
 - Trigger-instance rows carry a lifecycle `state` enum rather than a bare
   string: `received | verified | matched | partially_fired | fired |
-  rejected | dead_letter`. `fired` means every matched automation started,
+rejected | dead_letter`. `fired` means every matched automation started,
   `partially_fired` that some starts are still being retried, and `rejected`
   carries a `rejectionReason`. The `automations trigger-instances` commands
   document it so agents can branch on it.
@@ -1128,8 +1141,8 @@ command (spec skip-list is empty).
 
 - New typed raw-transport commands closed every published-SDK gap, including:
   `brands list/get/create`, `emails clone/export/import-figma/
-  preview-clients/create-inbox-placement-test/
-  get-inbox-placement-results`, `sends pause/resume`,
+preview-clients/create-inbox-placement-test/
+get-inbox-placement-results`, `sends pause/resume`,
   `audiences duplicate/from-events`, `automations run` +
   `audience-runs list/control`, `analytics overview`, `domains health`,
   `chats get`. Marked `transport: raw` in the manifest; each swaps to the

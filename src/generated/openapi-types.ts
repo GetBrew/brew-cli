@@ -241,7 +241,7 @@ export interface paths {
          * Generate an email design
          * @description Generates a new design through the Brew email agent. Designs are pure: no send state, no type. Sending happens later with `createSend`, or a `sendEmail` node in an automation references the returned `emailId` and `emailVersionId`. Usage-metered: the agent's actual token usage is billed.
          *
-         *     **Use when** you have a brief and want Brew to author on brand. For existing markup use `importEmail`; for a Figma frame use `importFigmaDesign`.
+         *     **Use when** you have a brief and want Brew to author on brand. For existing markup use `importEmail`; for a Figma frame use `importFigmaDesign`; for a picture of an email use `importEmailImage`.
          *
          *     **Input** `prompt`; optional `category` (steers the design treatment only: transactional categories get receipt or reset conventions, while delivery for those flows is a triggered automation on a transactional-purpose domain), `contentUrls`, `referenceEmailId`, `title` (the canvas name, 1 to 200 characters; omit and Brew derives one from the subject line or the prompt), `subjectLine` (the design-default inbox subject; `createSend` still takes a per-send `subject`), `lang` (the language of the copy, ISO 639-1; omit and Brew detects it from the finished body), and `groupId` (`grp_…` or `ungrouped`) or `groupName` (resolve or create), not both; omit to land Ungrouped. Supports `Idempotency-Key`.
          *
@@ -356,6 +356,32 @@ export interface paths {
          *     Set `format` to `jsx` (default) for React Email JSX or `html` for rendered email HTML. The requested representation is returned in `content`; the persisted design is identified by `emailId` and `emailVersionId`. Optional `groupId` (`grp_…` or `ungrouped`) or `groupName` (resolve-or-create) — not both; omit to land Ungrouped. Unknown `groupId` → `404 EMAIL_GROUP_NOT_FOUND`.
          */
         post: operations["importFigmaDesign"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/emails/image": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Import a picture of an email
+         * @description Converts a picture of an email (a screenshot or an export) into a new editable Brew email design. The picture is split into its own text, shape and image layers and laid out deterministically: every text is live text and every button a button. No model writes the email.
+         *
+         *     `imageUrl` must be a publicly reachable PNG, JPEG or WebP at most 2048 px wide. The request blocks until the design is saved, which takes **1 to 6 minutes** depending on the height of the picture; set your client timeout accordingly. Converting the same image again within three weeks reuses its stored layers, returns in seconds and gives the same email.
+         *
+         *     `conversion` reports how the design was made. `layers` is the deterministic conversion and costs 90 credits. When the picture cannot be split into layers, or is taller than about 6,000 px, a model recreates it instead: `conversion` is `model`, the flat price is waived and the run is metered by model usage like `generateEmail`.
+         *
+         *     A picture carries no links, so every button and link in the result points to `#`. Set `format` to `jsx` (default) for React Email JSX or `html` for rendered email HTML. Optional `groupId` (`grp_…` or `ungrouped`) or `groupName` (resolve-or-create) — not both; omit to land Ungrouped.
+         */
+        post: operations["importEmailImage"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1673,7 +1699,7 @@ export interface paths {
          * Create or update contacts
          * @description Upserts a single contact OR a batch (`{ contacts: [...] }`, up to 1000 rows). Unknown custom fields auto-create field definitions on the brand, typed from the batch (native booleans/numbers, ISO-date strings → `date`, anything else `string`). `fieldsCreated` names only the definitions this request created: when two requests create the same new field at once, the first definition wins and the values in the other request are coerced or refused against it, exactly as if it had been sent second. Create the field first with `POST /v1/fields` to pin its type.
          *
-         *     Custom-field names are folded to one key: words split at spaces, `_`, `-` and a lower-to-upper letter change, then joined camelCase (`Plan`, `PLAN` and `plan` are the field `plan`; `team_size` and `Team Size` are `teamSize`). A key written under its folded name adds a `FIELD_NAME_NORMALIZED` warning (`original`, `normalized`). Two keys that fold to one field (`plan` and `Plan`) would lose one value, so they are a `422 FIELD_NAME_COLLISION` on a single upsert (nothing written) and a per-row `errors[]` entry (`code: FIELD_NAME_COLLISION`) in a batch. A key with no ASCII letter or digit (`名前`, `#`) folds to no field, so it is a `422 FIELD_NAME_INVALID` on a single upsert (nothing written, valid keys beside it included) and a per-row `errors[]` entry (`code: FIELD_NAME_INVALID`, `field`) in a batch; send such a value under an ASCII name. A blank key (`""` or only spaces) is not stored either, but the contact is still written and a `warnings[]` entry (`code: BLANK_FIELD_NAME_IGNORED`, `field`) names it. Values may be any text.
+         *     Custom-field names are folded to one key: words split at spaces, `_`, `-` and a lower-to-upper letter change, then joined camelCase (`Plan`, `PLAN` and `plan` are the field `plan`; `team_size` and `Team Size` are `teamSize`). A key written under its folded name adds a `FIELD_NAME_NORMALIZED` warning (`original`, `normalized`). Two keys that fold to one field (`plan` and `Plan`) would lose one value, so they are a `422 FIELD_NAME_COLLISION` on a single upsert (nothing written) and a per-row `errors[]` entry (`code: FIELD_NAME_COLLISION`) in a batch. A name may contain letters and digits from A-Z, a-z and 0-9 only, plus the spaces and punctuation that separate its words. A key with any other letter, digit or accent (`größe`, `énergie`, `名前`), or with no letter or digit at all (`#`), is a `422 FIELD_NAME_INVALID` on a single upsert (nothing written, valid keys beside it included) and a per-row `errors[]` entry (`code: FIELD_NAME_INVALID`, `field`) in a batch: folded, it would lose those letters and could share a key with another name (`größe` and `grüße`). Send such a value under an ASCII name (`groesse`). A blank key (`""` or only spaces) is not stored either, but the contact is still written and a `warnings[]` entry (`code: BLANK_FIELD_NAME_IGNORED`, `field`) names it. Values may be any text.
          *
          *     Custom-field values are coerced to the definition's type (dates → epoch ms, `"1,234"` → 1234, `yes`/`no` → booleans). A value that cannot be coerced (`"$49"` in a number field) is a `409 FIELD_TYPE_MISMATCH` on a single upsert and a per-row `errors[]` entry (`code: FIELD_TYPE_MISMATCH`, `field`) in a batch — the other rows still land. A value that was converted adds one `warnings[]` entry per field (`code: FIELD_TYPE_COERCED`, `field`, `from`, `to`); a date written to a `date` field is not reported. A `customFields` key is never stored under a core field name. One whose loss would change the contact (`subscribed`, `First Name`, `consent`, a suppression flag or domain opt-out, or an `email` naming another address) is a `422 CORE_FIELD_IMMUTABLE` on a single upsert (nothing written) and a per-row `errors[]` entry (`code: CORE_FIELD_IMMUTABLE`, `field`) in a batch; send `firstName`, `lastName`, `subscribed` and `consent` at the top level. A key naming a field Brew manages (`createdAt`, `validationStatus`) is dropped with a `warnings[]` entry (`code: CORE_FIELD_IGNORED`, `field`) and the contact is still written, and an `email` key repeating the contact address is ignored.
          *
@@ -1725,7 +1751,7 @@ export interface paths {
         head?: never;
         /**
          * Update a contact
-         * @description Patches fields on the contact (`{ fields: { <name>: <value> } }` — core columns or custom fields) and/or records marketing consent provenance (`{ consent: { source, capturedAt?, policyVersion?, evidence? } }`, never re-subscribing an opt-out). Send one or both. Returns `{ contact, updated, warnings }`: `updated` lists the fields whose stored value changed (`consent` included), and is empty when every value sent matched what was stored (nothing is written then). `warnings` carries the same `DATE_ORDER_ASSUMED` and `FIELD_TYPE_COERCED` caveats a single upsert reports: an ambiguous date such as `03/04/2026` reads month/day, so send `YYYY-MM-DD`. A JSON number past 9007199254740991 (2^53 - 1) arrives already rounded, so a `number` or `string` field refuses it with `409 FIELD_TYPE_MISMATCH`; send large ids as JSON strings to a `string` field. `fields.subscribed: false` unsubscribes; `true` on a contact who opted out is a `422 RESUBSCRIBE_NOT_ALLOWED` (they re-subscribe through their own action, or from their contact page in the Brew app). Two `fields` keys that name one field (`plan` and `Plan`, `customFields.plan` and `plan`) are a `422 FIELD_NAME_COLLISION`, nothing written.
+         * @description Patches fields on the contact (`{ fields: { <name>: <value> } }` — core columns or custom fields) and/or records marketing consent provenance (`{ consent: { source, capturedAt?, policyVersion?, evidence? } }`, never re-subscribing an opt-out). Send one or both. Returns `{ contact, updated, warnings }`: `updated` lists the fields whose stored value changed (`consent` included), and is empty when every value sent matched what was stored (nothing is written then). `warnings` carries the same `DATE_ORDER_ASSUMED` and `FIELD_TYPE_COERCED` caveats a single upsert reports: an ambiguous date such as `03/04/2026` reads month/day, so send `YYYY-MM-DD`. A JSON number past 9007199254740991 (2^53 - 1) arrives already rounded, so a `number` or `string` field refuses it with `409 FIELD_TYPE_MISMATCH`; send large ids as JSON strings to a `string` field. `fields.subscribed: false` unsubscribes; `true` on a contact who opted out is a `422 RESUBSCRIBE_NOT_ALLOWED` (they re-subscribe through their own action, or from their contact page in the Brew app). Two `fields` keys that name one field (`plan` and `Plan`, `customFields.plan` and `plan`) are a `422 FIELD_NAME_COLLISION`, nothing written. A custom-field name with a letter, digit or accent outside A-Z, a-z and 0-9 (`größe`) is a `422 FIELD_NAME_INVALID`, as on `POST /v1/contacts`: send the key that `GET /v1/fields` lists for the field. When a field exists under the name’s folded key (`grE`), where earlier writes under the name landed, `details.existingFieldKeys` names it (`{ "größe": "grE" }`).
          */
         patch: operations["updateContact"];
         trace?: never;
@@ -1789,7 +1815,7 @@ export interface paths {
         put?: never;
         /**
          * Bulk-import contacts from CSV
-         * @description Parse a raw CSV string and upsert the rows as contacts (≤ 1000). By default each column header maps to the custom field its name folds to, the same camelCase name `POST /v1/contacts` stores (`Plan` → `plan`, `Team Size` → `teamSize`); `email` is required. A header that spells a core field, ignoring case, spaces, `_` and `-`, or whose field key equals it (`First.Name`), maps to it: `Email`, `First Name`, `Last Name` and `Subscribed` fill `email`, `firstName`, `lastName` and `subscribed`. Pass `mapping` to remap single columns; the columns it leaves out keep their default mapping, `""` leaves a column out, and a key that names no column is a `400`. Two columns that land on one field (`plan,Plan`: names fold as on `POST /v1/contacts`; `First Name,firstName`; `email,Email`) are a `422 FIELD_NAME_COLLISION` before any row is read: map one to another name or leave it out with `""`. `mapping` applies first: a core field it fills is read only from the columns it maps there, and an unlisted column whose default would fill the same field is left out with a `CSV_COLUMN_IGNORED` warning (with `mapping: { Consent: "subscribed" }`, a row whose `Subscribed` is `false` and `Consent` is `true` follows `Consent`). Then every column still filling `subscribed` is read, and an opt-out in any of them wins (`Subscribed,Subscribed?`). A column whose name (its header, or the name `mapping` gives it) has no ASCII letter or digit (`名前`, `#`) lands on the existing field labeled with that name, else on a new `column<N>` field labeled with it, N its 1-based column position (`column2v2` when another field or column already holds `column2`). Two columns given one such name are a `422 FIELD_NAME_COLLISION`, and a blank name leaves its column out, as `""` does. Landing on an existing field adds a `CSV_COLUMN_MATCHED_FIELD` warning naming the column and the field key. A name that labels several existing fields is a `422 FIELD_NAME_AMBIGUOUS` (`details.columns` lists the candidate keys) before anything is written, dry run included: map such a column in `mapping`. Rows with a missing/invalid email are SKIPPED (counted in `summary.skipped`), not errored; disposable-domain rows are imported with `validationStatus: "risky"` (deliverable but flagged). Returns the same `{ summary, fieldsCreated, errors, warnings }` as batch-create plus `importId` — `207` when some rows fail. The batch is listed in Import History under `fileName` (optional), and each contact it writes carries `importId` until a later import touches it (filter on it to list them; deleting the import in the app removes the contacts it created). For rows you already hold as JSON, use `POST /v1/contacts/import`.
+         * @description Parse a raw CSV string and upsert the rows as contacts (≤ 1000). By default each column header maps to the custom field its name folds to, the same camelCase name `POST /v1/contacts` stores (`Plan` → `plan`, `Team Size` → `teamSize`); `email` is required. A header that spells a core field, ignoring case, spaces, `_` and `-`, or whose field key equals it (`First.Name`), maps to it: `Email`, `First Name`, `Last Name` and `Subscribed` fill `email`, `firstName`, `lastName` and `subscribed`. Pass `mapping` to remap single columns; the columns it leaves out keep their default mapping, `""` leaves a column out, and a key that names no column is a `400`. Two columns that land on one field (`plan,Plan`: names fold as on `POST /v1/contacts`; `First Name,firstName`; `email,Email`) are a `422 FIELD_NAME_COLLISION` before any row is read: map one to another name or leave it out with `""`. `mapping` applies first: a core field it fills is read only from the columns it maps there, and an unlisted column whose default would fill the same field is left out with a `CSV_COLUMN_IGNORED` warning (with `mapping: { Consent: "subscribed" }`, a row whose `Subscribed` is `false` and `Consent` is `true` follows `Consent`). Then every column still filling `subscribed` is read, and an opt-out in any of them wins (`Subscribed,Subscribed?`). A column whose name (its header, or the name `mapping` gives it) has a letter, digit or accent outside A-Z, a-z and 0-9 (`名前`, `größe`), or no letter or digit at all (`#`), is not folded, because the fold would drop those letters and two such names could share one field. It lands on the existing field labeled with that name, whatever the case and separators (`größe_x` and `Größe X`), else on a new `column<N>` field labeled with it, N its 1-based column position (`column2v2` when another field or column already holds `column2`). Two columns given one such name are a `422 FIELD_NAME_COLLISION`, and a blank name leaves its column out, as `""` does. Landing on an existing field adds a `CSV_COLUMN_MATCHED_FIELD` warning naming the column and the field key. A name that labels several existing fields is a `422 FIELD_NAME_AMBIGUOUS` (`details.columns` lists the candidate keys) before anything is written, dry run included: map such a column in `mapping`. Rows with a missing/invalid email are SKIPPED (counted in `summary.skipped`), not errored; disposable-domain rows are imported with `validationStatus: "risky"` (deliverable but flagged). Returns the same `{ summary, fieldsCreated, errors, warnings }` as batch-create plus `importId` — `207` when some rows fail. The batch is listed in Import History under `fileName` (optional), and each contact it writes carries `importId` until a later import touches it (filter on it to list them; deleting the import in the app removes the contacts it created). For rows you already hold as JSON, use `POST /v1/contacts/import`.
          *
          *     CSV cells are text: a column mapped onto an EXISTING field is coerced to that field's type (dates → epoch ms, `1,234` → 1234, `yes`/`no` → booleans), and a cell that cannot be coerced (`$49` in a number column) fails ITS row with a per-row `errors[]` entry (`code: FIELD_TYPE_MISMATCH`, `field`) while the other rows still land. A converted cell adds a `warnings[]` entry (`code: FIELD_TYPE_COERCED`, `field`, `from`, `to`); a date written to a `date` field is not reported. An undeclared column is created as a `string` field unless every value is an ISO date (→ `date`); predeclare `number` / `bool` columns with `POST /v1/fields`. A column whose field Brew manages (`Created At`, `Validation Status`) is not imported and adds a `warnings[]` entry (`code: CSV_COLUMN_IGNORED`, `field` names the column).
          *
@@ -1817,7 +1843,7 @@ export interface paths {
         put?: never;
         /**
          * Bulk-import contacts from JSON
-         * @description Create or update up to 1000 contacts from JSON rows and record them as one Import History batch: the JSON twin of `POST /v1/contacts/import-csv`. Rows take the batch-create shape (`email`, `firstName`, `lastName`, `subscribed`, `customFields`, `consent`) and follow its rules: a missing or invalid email, an address repeated in the batch, or a `customFields` key with no ASCII letter or digit (`名前`, `#`: `FIELD_NAME_INVALID`), fails its row (`errors[]`, `207`) while the others land. A blank `customFields` key is dropped from its row with a `BLANK_FIELD_NAME_IGNORED` warning. New contacts are subscribed unless the row says `subscribed: false`; re-subscribing a contact who opted out keeps its other fields and adds a `RESUBSCRIBE_SKIPPED` warning.
+         * @description Create or update up to 1000 contacts from JSON rows and record them as one Import History batch: the JSON twin of `POST /v1/contacts/import-csv`. Rows take the batch-create shape (`email`, `firstName`, `lastName`, `subscribed`, `customFields`, `consent`) and follow its rules: a missing or invalid email, an address repeated in the batch, or a `customFields` key with a letter, digit or accent outside A-Z, a-z and 0-9, or with no letter or digit at all (`größe`, `名前`, `#`: `FIELD_NAME_INVALID`), fails its row (`errors[]`, `207`) while the others land. A blank `customFields` key is dropped from its row with a `BLANK_FIELD_NAME_IGNORED` warning. New contacts are subscribed unless the row says `subscribed: false`; re-subscribing a contact who opted out keeps its other fields and adds a `RESUBSCRIBE_SKIPPED` warning.
          *
          *     The batch is listed in Import History under `fileName` (optional), and each contact it writes carries the returned `importId` until a later import touches it (filter on it to list them; deleting the import in the app removes the contacts it created). `POST /v1/contacts` with `contacts[]` writes the same rows without an Import History entry, for recurring syncs.
          *
@@ -1865,7 +1891,7 @@ export interface paths {
         put?: never;
         /**
          * Create a contact field
-         * @description Creates a custom field definition (`{ fieldName, fieldType: "string" | "number" | "date" | "bool" }`). A `number` field holds values up to 9007199254740991 (2^53 - 1) in magnitude, the largest integer it stores exactly; a contact write with a larger JSON number is refused (in a `string` field too, since it arrives already rounded), so send 64-bit ids and counters as JSON strings to a `string` field. Returns `201` with the bare definition. (Contact upserts also auto-create unknown fields — explicit creation is for pinning the type up front.)
+         * @description Creates a custom field definition (`{ fieldName, fieldType: "string" | "number" | "date" | "bool" }`). A `number` field holds values up to 9007199254740991 (2^53 - 1) in magnitude, the largest integer it stores exactly; a contact write with a larger JSON number is refused (in a `string` field too, since it arrives already rounded), so send 64-bit ids and counters as JSON strings to a `string` field. `fieldName` may contain letters and digits from A-Z, a-z and 0-9 only, plus the spaces and punctuation that separate its words; it is folded to a camelCase key (`Team Size` is `teamSize`), and a name with any other letter, digit or accent (`größe`, `名前`) is a `400`. Returns `201` with the bare definition. (Contact upserts also auto-create unknown fields — explicit creation is for pinning the type up front.)
          */
         post: operations["createContactField"];
         delete?: never;
@@ -1908,7 +1934,7 @@ export interface paths {
          *
          *     **Returns** `200` with `{ fieldName, deleted }`. A name with no custom field resolves `deleted: false` and clears nothing, so repeating the call is safe. The three legacy consent fields (`marketingConsentSource`, `marketingConsentCapturedAt`, `marketingConsentPolicyVersion`) lose only the definition: their values stay, because they still serve as consent evidence.
          *
-         *     **Errors** `422 CORE_FIELD_IMMUTABLE` for a core column. `409 AUDIENCE_BUILD_ACTIVE` for the hidden field of an event-derived audience that is still building; retry once the build finishes.
+         *     **Errors** `422 CORE_FIELD_IMMUTABLE` for a core column. `409 AUDIENCE_BUILD_ACTIVE` for the hidden field of an event-derived audience that is still building; retry once the build finishes. `400` for a name with a letter, digit or accent outside A-Z, a-z and 0-9 (`größe`), which is no field key: pass the key `listContactFields` returns.
          *
          *     **See also** `listContactFields`, `getContactField`, `createContactField`.
          */
@@ -4964,7 +4990,7 @@ export interface components {
             };
         };
         /** @enum {string} */
-        ApiErrorCode: "ACCOUNT_SUSPENDED" | "API_KEY_REVOKED" | "AUDIENCE_BUILD_ACTIVE" | "AUDIENCE_BUILD_ALREADY_ACTIVE" | "AUDIENCE_EDIT_CONFLICT" | "AUDIENCE_MEMBERSHIP_NOT_EXPRESSIBLE" | "AUDIENCE_NOT_FOUND" | "AUDIENCE_RUN_NOT_FOUND" | "AUDIT_NOT_FOUND" | "AUTHENTICATION_REQUIRED" | "AUTOMATION_GRAPH_INVALID" | "AUTOMATION_IN_PROGRESS" | "AUTOMATION_NOT_FOUND" | "AUTOMATION_NOT_PAUSABLE" | "AUTOMATION_NOT_PUBLISHED" | "AUTOMATION_NOT_READY" | "AUTOMATION_NOT_RUNNABLE" | "AUTOMATION_RUN_NOT_FOUND" | "AUTOMATION_VERSION_CONFLICT" | "AUTOMATION_VERSION_NOT_FOUND" | "BATCH_TOO_LARGE" | "BRAND_DOMAIN_CONFLICT" | "BRAND_ID_REQUIRED" | "BRAND_LIMIT_REACHED" | "BRAND_NOT_FOUND" | "BRAND_NOT_READY" | "BRAND_SCOPE_MISMATCH" | "CHAT_NOT_FOUND" | "COMMENT_NOT_FOUND" | "CONSENT_REQUIRED" | "CONTACT_NOT_FOUND" | "CONTENT_OPERATION_FAILED" | "CONTRACT_LOCKED_BY_PUBLISHED_AUTOMATIONS" | "CORE_FIELD_IMMUTABLE" | "DOMAIN_ALREADY_EXISTS" | "DOMAIN_CLAIMED_ELSEWHERE" | "DOMAIN_NOT_FOUND" | "DOMAIN_NOT_READY" | "DOMAIN_OTHER_BRAND" | "DOMAIN_PROVIDER_ERROR" | "DOMAIN_PURPOSE_NOT_ALLOWED" | "DOMAIN_VERIFICATION_FAILED" | "DOMAIN_VERIFIED_ELSEWHERE" | "EMAIL_GENERATION_FAILED" | "EMAIL_GROUP_NAME_CONFLICT" | "EMAIL_GROUP_NOT_FOUND" | "EMAIL_IMAGES_MISSING" | "EMAIL_IMPORT_FAILED" | "EMAIL_IMPORT_PERSISTENCE_FAILED" | "EMAIL_IN_PROGRESS" | "EMAIL_IN_USE_BY_AUTOMATION" | "EMAIL_NOT_FOUND" | "EMAIL_NOT_READY" | "EMAIL_RESULT_UNAVAILABLE" | "EMAIL_RUN_AMBIGUOUS" | "EMAIL_TEMPLATE_INVALID" | "EMAIL_VERSION_NOT_FOUND" | "EXPORT_PROVIDER_ERROR" | "EXPORT_UNSUPPORTED" | "FIELD_NAME_AMBIGUOUS" | "FIELD_NAME_COLLISION" | "FIELD_NAME_INVALID" | "FIELD_NOT_FOUND" | "FIELD_TYPE_MISMATCH" | "FIGMA_ACCESS_DENIED" | "FIGMA_CONVERSION_FAILED" | "FIGMA_FRAME_NOT_FOUND" | "FIGMA_NOT_CONNECTED" | "FIGMA_UNAVAILABLE" | "FIGMA_URL_INVALID" | "FLOW_NOT_FOUND" | "IDEMPOTENCY_CONFLICT" | "IDEMPOTENCY_IN_PROGRESS" | "INSIGHT_NOT_FOUND" | "INSUFFICIENT_CREDITS" | "INSUFFICIENT_PERMISSIONS" | "INSUFFICIENT_ROLE" | "INTEGRATION_EVENT_NOT_FOUND" | "INTEGRATION_NOT_CONNECTED" | "INTEGRATION_RECONNECT_REQUIRED" | "INTERNAL_ERROR" | "INVALID_API_KEY" | "INVALID_EMAIL" | "INVALID_PAYLOAD" | "INVALID_REQUEST" | "LIQUID_RENDER_ERROR" | "METHOD_NOT_ALLOWED" | "MISSING_EMAIL" | "NO_ACTIVE_PLAN" | "NO_ELIGIBLE_RECIPIENTS" | "NO_PUBLISHED_AUTOMATION" | "NOT_FOUND" | "NOT_IMPLEMENTED" | "ORG_SCOPE_REQUIRED" | "PAYLOAD_SCHEMA_EMAIL_REQUIRED" | "PAYLOAD_TOO_LARGE" | "PREVIEW_NOT_FOUND" | "PUBLISH_VALIDATION_FAILED" | "RATE_LIMITED" | "RECIPIENT_UNSUBSCRIBED" | "REFERENCE_EMAIL_NOT_FOUND" | "RESUBSCRIBE_NOT_ALLOWED" | "RUN_IN_PROGRESS" | "RUN_NOT_CANCELLABLE" | "RUN_NOT_PAUSABLE" | "RUN_NOT_PAUSED" | "RUN_NOT_RESUMABLE" | "RUN_START_FAILED" | "RUN_STOP_FAILED" | "SEND_NOT_CANCELLABLE" | "SEND_NOT_FOUND" | "SEND_NOT_PAUSABLE" | "SEND_NOT_RESUMABLE" | "SEND_QUOTA_EXCEEDED" | "SERVICE_UNAVAILABLE" | "TEMPLATE_NOT_FOUND" | "TEST_RECIPIENT_NOT_ALLOWED" | "TRIGGER_ALREADY_EXISTS" | "TRIGGER_EVENT_NOT_FOUND" | "TRIGGER_HAS_DEPENDENT_AUTOMATIONS" | "TRIGGER_IMMUTABLE" | "TRIGGER_INSTANCE_NOT_FOUND" | "TRIGGER_LIMIT_REACHED" | "TRIGGER_NOT_FIREABLE" | "UPLOAD_IN_PROGRESS" | "UPLOAD_NOT_FOUND" | "UPLOAD_NOT_RECEIVED" | "WRITE_CONFLICT";
+        ApiErrorCode: "ACCOUNT_SUSPENDED" | "API_KEY_REVOKED" | "AUDIENCE_BUILD_ACTIVE" | "AUDIENCE_BUILD_ALREADY_ACTIVE" | "AUDIENCE_EDIT_CONFLICT" | "AUDIENCE_MEMBERSHIP_NOT_EXPRESSIBLE" | "AUDIENCE_NOT_FOUND" | "AUDIENCE_RUN_NOT_FOUND" | "AUDIT_NOT_FOUND" | "AUTHENTICATION_REQUIRED" | "AUTOMATION_GRAPH_INVALID" | "AUTOMATION_IN_PROGRESS" | "AUTOMATION_NOT_FOUND" | "AUTOMATION_NOT_PAUSABLE" | "AUTOMATION_NOT_PUBLISHED" | "AUTOMATION_NOT_READY" | "AUTOMATION_NOT_RUNNABLE" | "AUTOMATION_RUN_NOT_FOUND" | "AUTOMATION_VERSION_CONFLICT" | "AUTOMATION_VERSION_NOT_FOUND" | "BATCH_TOO_LARGE" | "BRAND_DOMAIN_CONFLICT" | "BRAND_ID_REQUIRED" | "BRAND_LIMIT_REACHED" | "BRAND_NOT_FOUND" | "BRAND_NOT_READY" | "BRAND_SCOPE_MISMATCH" | "CHAT_NOT_FOUND" | "COMMENT_NOT_FOUND" | "CONSENT_REQUIRED" | "CONTACT_NOT_FOUND" | "CONTENT_OPERATION_FAILED" | "CONTRACT_LOCKED_BY_PUBLISHED_AUTOMATIONS" | "CORE_FIELD_IMMUTABLE" | "DOMAIN_ALREADY_EXISTS" | "DOMAIN_CLAIMED_ELSEWHERE" | "DOMAIN_NOT_FOUND" | "DOMAIN_NOT_READY" | "DOMAIN_OTHER_BRAND" | "DOMAIN_PROVIDER_ERROR" | "DOMAIN_PURPOSE_NOT_ALLOWED" | "DOMAIN_VERIFICATION_FAILED" | "DOMAIN_VERIFIED_ELSEWHERE" | "EMAIL_GENERATION_FAILED" | "EMAIL_GROUP_NAME_CONFLICT" | "EMAIL_GROUP_NOT_FOUND" | "EMAIL_IMAGES_MISSING" | "EMAIL_IMPORT_FAILED" | "EMAIL_IMPORT_PERSISTENCE_FAILED" | "EMAIL_IN_PROGRESS" | "EMAIL_IN_USE_BY_AUTOMATION" | "EMAIL_NOT_FOUND" | "EMAIL_NOT_READY" | "EMAIL_RESULT_UNAVAILABLE" | "EMAIL_RUN_AMBIGUOUS" | "EMAIL_TEMPLATE_INVALID" | "EMAIL_VERSION_NOT_FOUND" | "EXPORT_PROVIDER_ERROR" | "EXPORT_UNSUPPORTED" | "FIELD_NAME_AMBIGUOUS" | "FIELD_NAME_COLLISION" | "FIELD_NAME_INVALID" | "FIELD_NOT_FOUND" | "FIELD_TYPE_MISMATCH" | "FIGMA_ACCESS_DENIED" | "FIGMA_CONVERSION_FAILED" | "FIGMA_FRAME_NOT_FOUND" | "FIGMA_NOT_CONNECTED" | "FIGMA_UNAVAILABLE" | "FIGMA_URL_INVALID" | "FLOW_NOT_FOUND" | "IDEMPOTENCY_CONFLICT" | "IDEMPOTENCY_IN_PROGRESS" | "IMAGE_CONVERSION_FAILED" | "IMAGE_URL_INVALID" | "INSIGHT_NOT_FOUND" | "INSUFFICIENT_CREDITS" | "INSUFFICIENT_PERMISSIONS" | "INSUFFICIENT_ROLE" | "INTEGRATION_EVENT_NOT_FOUND" | "INTEGRATION_NOT_CONNECTED" | "INTEGRATION_RECONNECT_REQUIRED" | "INTERNAL_ERROR" | "INVALID_API_KEY" | "INVALID_EMAIL" | "INVALID_PAYLOAD" | "INVALID_REQUEST" | "LIQUID_RENDER_ERROR" | "METHOD_NOT_ALLOWED" | "MISSING_EMAIL" | "NO_ACTIVE_PLAN" | "NO_ELIGIBLE_RECIPIENTS" | "NO_PUBLISHED_AUTOMATION" | "NOT_FOUND" | "NOT_IMPLEMENTED" | "ORG_SCOPE_REQUIRED" | "PAYLOAD_SCHEMA_EMAIL_REQUIRED" | "PAYLOAD_TOO_LARGE" | "PREVIEW_NOT_FOUND" | "PUBLISH_VALIDATION_FAILED" | "RATE_LIMITED" | "RECIPIENT_UNSUBSCRIBED" | "REFERENCE_EMAIL_NOT_FOUND" | "RESUBSCRIBE_NOT_ALLOWED" | "RUN_IN_PROGRESS" | "RUN_NOT_CANCELLABLE" | "RUN_NOT_PAUSABLE" | "RUN_NOT_PAUSED" | "RUN_NOT_RESUMABLE" | "RUN_START_FAILED" | "RUN_STOP_FAILED" | "SEND_NOT_CANCELLABLE" | "SEND_NOT_FOUND" | "SEND_NOT_PAUSABLE" | "SEND_NOT_RESUMABLE" | "SEND_QUOTA_EXCEEDED" | "SERVICE_UNAVAILABLE" | "TEMPLATE_NOT_FOUND" | "TEST_RECIPIENT_NOT_ALLOWED" | "TRIGGER_ALREADY_EXISTS" | "TRIGGER_EVENT_NOT_FOUND" | "TRIGGER_HAS_DEPENDENT_AUTOMATIONS" | "TRIGGER_IMMUTABLE" | "TRIGGER_INSTANCE_NOT_FOUND" | "TRIGGER_LIMIT_REACHED" | "TRIGGER_NOT_FIREABLE" | "UPLOAD_IN_PROGRESS" | "UPLOAD_NOT_FOUND" | "UPLOAD_NOT_RECEIVED" | "WRITE_CONFLICT";
         EmailsListResponse: {
             data: {
                 emailId: string;
@@ -5023,6 +5049,15 @@ export interface components {
             } | null;
             subjectLine?: string;
             title?: string;
+            /** @description Changes Brew made to the design while saving an edit, after the agent wrote it. */
+            saveAdjustments?: {
+                /** @description The rule that made the change, e.g. `baked-heading`. */
+                kind: string;
+                /** @description How many elements it changed. */
+                count: number;
+                /** @description What it changed, in plain words. */
+                message: string;
+            }[];
         };
         EmailGenerateRequest: {
             /** @description What the email is about — campaign goal, key content, offer, tone. The more specific (product names, dates, discount, audience), the better the design. */
@@ -5062,6 +5097,15 @@ export interface components {
             } | null;
             subjectLine?: string;
             title?: string;
+            /** @description Changes Brew made to the design while saving an edit, after the agent wrote it. */
+            saveAdjustments?: {
+                /** @description The rule that made the change, e.g. `baked-heading`. */
+                kind: string;
+                /** @description How many elements it changed. */
+                count: number;
+                /** @description What it changed, in plain words. */
+                message: string;
+            }[];
             assetReport: {
                 discovered: number;
                 rehosted: number;
@@ -5137,6 +5181,47 @@ export interface components {
              */
             format?: "jsx" | "html";
         };
+        ImageToEmailResponse: {
+            emailId: string;
+            emailVersionId: string;
+            title: string;
+            /** @enum {string} */
+            format: "jsx" | "html";
+            content: string;
+            /**
+             * @description `layers`: converted deterministically from the picture's own layers, every text and button live. `model`: the layer conversion was not possible for this picture and a model recreated it instead; metered as model usage, not the flat import price.
+             * @enum {string}
+             */
+            conversion: "layers" | "model";
+            /** Format: uri */
+            previewImage?: string;
+            group: {
+                groupId: string;
+                groupName: string;
+            } | null;
+            subjectLine?: string;
+        };
+        ImageToEmailRequest: {
+            /**
+             * Format: uri
+             * @description A publicly reachable http(s) URL of a PNG, JPEG or WebP picture of an email (a screenshot or an export), at most 2048 px wide.
+             */
+            imageUrl: string;
+            /** @description Optional design title; defaults to "Image Email". */
+            title?: string;
+            /** @description File the design under an existing group (`grp_…`), or `ungrouped`. Mutually exclusive with `groupName`. */
+            groupId?: string;
+            /** @description File the design under a group resolved (or created) by this name. Mutually exclusive with `groupId`. */
+            groupName?: string;
+            /** @description Inbox subject line to set on the design (`subjectLine` — distinct from `title`, the canvas name). Sends still take an explicit per-send `subject`; this is the design's default, seeded into the send dialog and returned by `GET /v1/emails/{emailId}`. */
+            subjectLine?: string;
+            /**
+             * @description Source representation returned in `content`: React Email JSX by default, or rendered email-safe HTML.
+             * @default jsx
+             * @enum {string}
+             */
+            format?: "jsx" | "html";
+        };
         EmailGenerateResponse: {
             emailId: string;
             emailVersionId: string;
@@ -5149,6 +5234,15 @@ export interface components {
             } | null;
             subjectLine?: string;
             title?: string;
+            /** @description Changes Brew made to the design while saving an edit, after the agent wrote it. */
+            saveAdjustments?: {
+                /** @description The rule that made the change, e.g. `baked-heading`. */
+                kind: string;
+                /** @description How many elements it changed. */
+                count: number;
+                /** @description What it changed, in plain words. */
+                message: string;
+            }[];
         } | {
             response: string;
         };
@@ -13248,6 +13342,230 @@ export interface operations {
                 headers: {
                     /** @description Unique request identifier. Share this with support when debugging a request. */
                     "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+        };
+    };
+    importEmailImage: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Optional idempotency key for safe retries. Reusing the same key with the same request body returns the original response for 24 hours.
+                 * @example api-request-2026-04-08-001
+                 */
+                "Idempotency-Key"?: string;
+                /**
+                 * @description The brand this request acts on. REQUIRED for organization-scoped credentials (otherwise `400 BRAND_ID_REQUIRED` — there is no default brand); list ids with `GET /v1/brands`. Brand-scoped credentials may omit it, and sending a different brand returns `403 BRAND_SCOPE_MISMATCH`. A brand outside your organization returns `404 BRAND_NOT_FOUND`.
+                 * @example kx7b3s7fapqz8mjm12ekz1kxdx87yceg
+                 */
+                "X-Brand-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ImageToEmailRequest"];
+            };
+        };
+        responses: {
+            /** @description The converted design was persisted and the requested source representation is returned in `content`. */
+            201: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "emailId": "dP4xLm9Nq2Rs7Tv1WbYzK",
+                     *       "emailVersionId": "Tv1WbYzKdP4xLm9Nq2Rs7",
+                     *       "title": "Launch email",
+                     *       "format": "jsx",
+                     *       "content": "<Html><Body><Container><Heading>Launch day</Heading></Container></Body></Html>",
+                     *       "conversion": "layers",
+                     *       "previewImage": "https://cdn.brew.new/p/dP4xLm9Nq2Rs7Tv1WbYzK.png",
+                     *       "group": null
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ImageToEmailResponse"];
+                };
+            };
+            /**
+             * @description `BRAND_ID_REQUIRED`: An organization-scoped credential called a brand-scoped operation without naming the brand.
+             *
+             *     `IMAGE_URL_INVALID`: The image URL is not a publicly reachable picture.
+             *
+             *     `INVALID_REQUEST`: The body or query failed validation: an unknown key, a wrong type, or a missing required field. `param` names the first offender; with more than one problem, `details.issues[]` lists each one (`{ param?, message }`, at most 20).
+             */
+            400: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `API_KEY_REVOKED`: The API key was revoked.
+             *
+             *     `AUTHENTICATION_REQUIRED`: No API key or session accompanied the request.
+             *
+             *     `INVALID_API_KEY`: The API key is malformed or unknown.
+             */
+            401: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `INSUFFICIENT_CREDITS`: The credit balance is below what this operation requires; `details.cost` is the amount needed.
+             *
+             *     `NO_ACTIVE_PLAN`: Nothing entitles the organization because the trial ended, the plan was cancelled, or the last charge failed; `details.reason` is `NO_PLAN` or `PAYMENT_BLOCKED`, and no top up fixes it.
+             */
+            402: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `ACCOUNT_SUSPENDED`: The organization behind the credential is suspended.
+             *
+             *     `BRAND_SCOPE_MISMATCH`: A brand-scoped credential named a brand other than the one it is bound to.
+             *
+             *     `INSUFFICIENT_PERMISSIONS`: The credential lacks the permission scope the operation needs.
+             *
+             *     `INSUFFICIENT_ROLE`: The caller lacks the access the operation needs: `param` names `member` (access to the brand) or `org_admin` (the organization role).
+             */
+            403: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `BRAND_NOT_FOUND`: The named or bound brand does not exist in this organization (unknown, deleting, or another organization).
+             *
+             *     `EMAIL_GROUP_NOT_FOUND`: No email group with that id exists in the brand.
+             *
+             *     `EMAIL_NOT_FOUND`: No email design with that id exists in the brand (cross-brand ids surface as 404).
+             */
+            404: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `IDEMPOTENCY_CONFLICT`: The same Idempotency-Key was reused with a different request body, or, on a fixed-price operation, for a request it already paid for whose stored response is gone.
+             *
+             *     `IDEMPOTENCY_IN_PROGRESS`: A request with this Idempotency-Key is still executing.
+             */
+            409: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `PAYLOAD_TOO_LARGE`: The request body exceeds the route cap. */
+            413: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /**
+             * @description `BRAND_NOT_READY`: The brand is still extracting and cannot generate email yet.
+             *
+             *     `IMAGE_CONVERSION_FAILED`: The picture could not be converted into an email design; `details.emailId` references the partial design.
+             */
+            422: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `RATE_LIMITED`: The credential exhausted the rolling window for this route policy; Retry-After is when the oldest recorded request leaves, and the refused request does not take a slot. */
+            429: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Requests allowed in the current rolling rate limit window. */
+                    "X-RateLimit-Limit": number;
+                    /** @description Requests remaining in the current rolling rate limit window. */
+                    "X-RateLimit-Remaining": number;
+                    /** @description Unix timestamp in seconds when the oldest recorded request leaves the rolling window. */
+                    "X-RateLimit-Reset": number;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `INTERNAL_ERROR`: An unexpected failure; the x-request-id header identifies it. */
+            500: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorEnvelope"];
+                };
+            };
+            /** @description `SERVICE_UNAVAILABLE`: A dependency the operation must consult (billing, the idempotency store) is temporarily unavailable, so the request was refused rather than run unmetered. */
+            503: {
+                headers: {
+                    /** @description Unique request identifier. Share this with support when debugging a request. */
+                    "x-request-id": string;
+                    /** @description Seconds to wait before retrying the request. */
+                    "Retry-After": number;
                     [name: string]: unknown;
                 };
                 content: {
@@ -24256,7 +24574,7 @@ export interface operations {
              *
              *     `FIELD_NAME_COLLISION`: Two keys in one request name the same contact field (`plan` and `Plan`, `team_size` and `Team Size`), so one value would be lost.
              *
-             *     `FIELD_NAME_INVALID`: A custom-field name has no ASCII letter or digit (`名前`, `#`), so it cannot become a field key and its value would be lost. A blank name is dropped with a `BLANK_FIELD_NAME_IGNORED` warning instead.
+             *     `FIELD_NAME_INVALID`: A custom-field name may contain letters and digits from A-Z, a-z and 0-9 only, plus the spaces and punctuation that separate its words. A name with any other letter, digit or accent (`größe`, `énergie`, `名前`), or with no letter or digit at all (`#`), cannot become a field key, so its value would be lost or stored over the field of another name. A blank name is dropped with a `BLANK_FIELD_NAME_IGNORED` warning instead.
              *
              *     `INVALID_EMAIL`: A contact email is not a deliverable address shape.
              *
@@ -24770,6 +25088,8 @@ export interface operations {
              *     `CORE_FIELD_IMMUTABLE`: The field is a core contact column and cannot be created, changed, or deleted as a custom field.
              *
              *     `FIELD_NAME_COLLISION`: Two keys in one request name the same contact field (`plan` and `Plan`, `team_size` and `Team Size`), so one value would be lost.
+             *
+             *     `FIELD_NAME_INVALID`: A custom-field name may contain letters and digits from A-Z, a-z and 0-9 only, plus the spaces and punctuation that separate its words. A name with any other letter, digit or accent (`größe`, `énergie`, `名前`), or with no letter or digit at all (`#`), cannot become a field key, so its value would be lost or stored over the field of another name. A blank name is dropped with a `BLANK_FIELD_NAME_IGNORED` warning instead.
              *
              *     `RESUBSCRIBE_NOT_ALLOWED`: The write set `subscribed` to true on a contact who unsubscribed, and Brew never re-subscribes an opt-out through the API, MCP or an import; `details.email` names the contact.
              */
@@ -25399,7 +25719,7 @@ export interface operations {
                 };
             };
             /**
-             * @description `FIELD_NAME_AMBIGUOUS`: A CSV column named with no ASCII letter or digit (`名前`, `#`) matches several existing fields labeled with that name, so the import cannot tell which one holds it; `details.columns` lists the candidate keys.
+             * @description `FIELD_NAME_AMBIGUOUS`: A CSV column whose name cannot be a field key (`名前`, `größe`, `#`: a letter, digit or accent outside A-Z, a-z and 0-9, or no letter or digit at all) matches several existing fields labeled with that name, so the import cannot tell which one holds it; `details.columns` lists the candidate keys.
              *
              *     `FIELD_NAME_COLLISION`: Two keys in one request name the same contact field (`plan` and `Plan`, `team_size` and `Team Size`), so one value would be lost.
              */

@@ -10,6 +10,7 @@ import { emailsGetAuditCommand } from '../../src/commands/emails/get-audit'
 import { emailsGetClientPreviewCommand } from '../../src/commands/emails/get-client-preview'
 import { emailsGetInboxPlacementResultsCommand } from '../../src/commands/emails/get-inbox-placement-results'
 import { emailsImportFigmaCommand } from '../../src/commands/emails/import-figma'
+import { emailsImportImageCommand } from '../../src/commands/emails/import-image'
 import { emailsPreviewClientsCommand } from '../../src/commands/emails/preview-clients'
 import { sendsPauseCommand } from '../../src/commands/sends/pause'
 import { sendsResumeCommand } from '../../src/commands/sends/resume'
@@ -22,6 +23,7 @@ const EXTRA = [
   emailsCloneCommand,
   emailsExportCommand,
   emailsImportFigmaCommand,
+  emailsImportImageCommand,
   emailsPreviewClientsCommand,
   emailsGetClientPreviewCommand,
   emailsGetAuditCommand,
@@ -162,7 +164,10 @@ describe('emails clone', () => {
       { env: env(), extraCommands: EXTRA }
     )
     expect(result.code).toBe(0)
-    expect(body).toEqual({ title: 'Fall sale (B)', groupName: 'Fall campaign' })
+    expect(body).toEqual({
+      title: 'Fall sale (B)',
+      groupName: 'Fall campaign',
+    })
   })
 
   it('refuses --group-id with --group-name', async () => {
@@ -324,6 +329,98 @@ describe('emails import-figma', () => {
     )
     expect(result.code).toBe(0)
     expect(body).toEqual({ figmaUrl: url, groupId: 'grp_launch' })
+  })
+})
+
+describe('emails import-image', () => {
+  const url = 'https://example.com/launch-email.png'
+
+  function answer(bodies: Array<unknown>) {
+    server.use(
+      http.post(`${API}/v1/emails/image`, async ({ request }) => {
+        bodies.push(await request.json())
+        return HttpResponse.json(
+          {
+            emailId: 'eml_image',
+            emailVersionId: 'emv_1',
+            format: 'jsx',
+            conversion: 'layers',
+          },
+          { status: 201 }
+        )
+      })
+    )
+  }
+
+  it('sends the image url, format and group in the body', async () => {
+    const bodies: Array<unknown> = []
+    answer(bodies)
+    const result = await runCli(
+      [
+        'emails',
+        'import-image',
+        '--url',
+        url,
+        '--format',
+        'html',
+        '--group-id',
+        'grp_launch',
+      ],
+      { env: env(), extraCommands: EXTRA }
+    )
+    expect(result.code).toBe(0)
+    expect(bodies).toEqual([
+      { imageUrl: url, format: 'html', groupId: 'grp_launch' },
+    ])
+  })
+
+  it('takes the full JSON contract, with scalar flags overriding it', async () => {
+    const bodies: Array<unknown> = []
+    answer(bodies)
+    const result = await runCli(
+      [
+        'emails',
+        'import-image',
+        '--input',
+        JSON.stringify({
+          imageUrl: url,
+          title: 'Original',
+          subjectLine: 'Launch day is here',
+        }),
+        '--title',
+        'Override',
+      ],
+      { env: env(), extraCommands: EXTRA }
+    )
+    expect(result.code).toBe(0)
+    expect(bodies).toEqual([
+      { imageUrl: url, title: 'Override', subjectLine: 'Launch day is here' },
+    ])
+  })
+
+  it('refuses a call with no picture, and both group flags, before any request', async () => {
+    const bodies: Array<unknown> = []
+    answer(bodies)
+    const missing = await runCli(['emails', 'import-image'], {
+      env: env(),
+      extraCommands: EXTRA,
+    })
+    const both = await runCli(
+      [
+        'emails',
+        'import-image',
+        '--url',
+        url,
+        '--group-id',
+        'grp_launch',
+        '--group-name',
+        'Launch',
+      ],
+      { env: env(), extraCommands: EXTRA }
+    )
+    expect(missing.code).not.toBe(0)
+    expect(both.code).not.toBe(0)
+    expect(bodies).toEqual([])
   })
 })
 

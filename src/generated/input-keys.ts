@@ -696,6 +696,14 @@ export const INPUT_KEYS: Readonly<Record<string, readonly string[]>> = {
     "subjectLine",
     "title"
   ],
+  "POST /v1/emails/image": [
+    "format",
+    "groupId",
+    "groupName",
+    "imageUrl",
+    "subjectLine",
+    "title"
+  ],
   "POST /v1/emails/import": [
     "baseUrl",
     "content",

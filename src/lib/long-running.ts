@@ -60,6 +60,11 @@ export const LONG_RUNNING_ROUTES: ReadonlyArray<{
   },
   {
     method: 'POST',
+    path: '/v1/emails/image',
+    timeoutMs: sdk.IMPORT_IMAGE_DEFAULT_TIMEOUT_MS,
+  },
+  {
+    method: 'POST',
     path: '/v1/content/gif',
     timeoutMs: sdk.GIF_DEFAULT_TIMEOUT_MS,
   },
