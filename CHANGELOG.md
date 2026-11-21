@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+### Changed
+
+- Vendored spec and generated API types follow app revision `8faea94168`
+  (GetBrew/brew-v2#2579, one template language for email variables; not
+  merged yet). `emails send --test --input` accepts `"strict": true`, which
+  answers `422 LIQUID_RENDER_ERROR` instead of sending when the template
+  reads a value that is missing. A `sendEmail` node in `automations create`
+  / `update` input takes `strict` and a `replyTo` that is an address or a
+  Liquid template rendering one, and publish findings can name the
+  `fromAddress`, `recipients` and `variables` surfaces. No command's flags
+  changed.
+
 The live integration event commands require an SDK release exposing
 `integrations.events` and `automations.triggers.ensureIntegrationEvent`
 (GetBrew/typescript-sdk#88). The published SDK 13.4.0 does not provide them.
