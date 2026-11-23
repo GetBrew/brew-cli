@@ -1087,6 +1087,33 @@ describe('emails send with --input bodies (gate awareness)', () => {
     expect(body?.test).toBe(true)
   })
 
+  it('forwards strict test rendering from input through the installed SDK to HTTP', async () => {
+    let body: Record<string, unknown> | undefined
+    server.use(
+      http.post(SENDS_URL, async ({ request }) => {
+        body = (await request.json()) as Record<string, unknown>
+        return HttpResponse.json({ status: 'completed', recipient: 'qa@x.com' })
+      })
+    )
+    const result = await runCli(
+      [
+        'emails',
+        'send',
+        'eml_1',
+        '--test',
+        '--to',
+        'qa@x.com',
+        '--subject',
+        'Preview',
+        '--input',
+        '{"strict":true}',
+      ],
+      { env: env(), extraCommands: EXTRA }
+    )
+    expect(result.code).toBe(0)
+    expect(body).toMatchObject({ strict: true, test: true, to: 'qa@x.com' })
+  })
+
   it('requires --to for a --test send', async () => {
     const result = await runCli(
       ['emails', 'send', 'eml_1', '--test', '--subject', 'Preview'],

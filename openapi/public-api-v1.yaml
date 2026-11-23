@@ -1587,14 +1587,16 @@ components:
                   description: Sender display name; resolved from the domain default when unset.
                 replyTo:
                   type: string
-                  format: email
-                  description: Reply-to address; resolved from the domain default when unset.
+                  description: Reply-to address, or a Liquid template that renders one; resolved from the domain default when unset.
                 emailTitle:
                   type: string
                   description: Informational email title mirror; tolerated for round-trips.
                 fromAddress:
                   type: string
                   description: Sender address on domainId's own domain; resolved from the domain default when unset.
+                strict:
+                  type: boolean
+                  description: Skip a recipient whose template reads a missing value instead of sending blanks.
               required:
                 - emailId
                 - emailVersionId
@@ -2570,6 +2572,8 @@ components:
                         type: string
                       replyTo:
                         type: string
+                      strict:
+                        type: boolean
                       to: {}
                       html:
                         type: string
@@ -3023,6 +3027,9 @@ components:
                   - previewText
                   - fromName
                   - replyTo
+                  - fromAddress
+                  - recipients
+                  - variables
                   - emailBody
                   - filterCondition
                   - splitCondition
@@ -8561,38 +8568,43 @@ components:
           additionalProperties: false
     SendEmailRequest:
       anyOf:
-        - type: object
+        - required:
+            - test
+            - emailId
+            - subject
+            - to
+          type: object
           properties:
-            test:
-              type: boolean
-              enum:
-                - true
-            emailId:
-              type: string
-              minLength: 1
             emailVersionId:
               type: string
               minLength: 1
-            subject:
+            replyTo:
               type: string
-              minLength: 1
-            previewText:
-              type: string
-              maxLength: 200
-              description: Inbox preheader for this test send — overrides the design's JSX <Preview>. Omit to deliver the design's own preview line.
+              maxLength: 254
+              pattern: ^[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+)*@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$
             to:
               type: string
               maxLength: 254
               pattern: ^[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+)*@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$
               description: The one address that receives this test. It must be a teammate with access to the brand, an address on a verified sending domain of the brand, or, for a signed-in person (not an API key), their own address or one on their company domain.
-            replyTo:
-              type: string
-              maxLength: 254
-              pattern: ^[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+)*@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$
+            variables:
+              type: object
+              additionalProperties:
+                type: string
+                maxLength: 256
+              description: Example values for {{ var | fallback }} merge tags in the subject, previewText, and body. A supplied value wins over contact fields and the declared fallback; undefined variables render their fallback (or empty). Max 25 entries; keys are tag paths (firstName, first-name, trigger.items[0].sku; max 64 chars); values max 256 chars.
+            payload:
+              type: object
+              additionalProperties:
+                $ref: "#/components/schemas/SendPayloadValue"
+              description: Nested JSON template data, exposed to the ONE Liquid engine as trigger.* / payload.* and as top-level keys. Nested values are always legal and resolve via dotted access ({{ plan.name }}) and {% for %}. Flat `variables` resolve {{ tag | fallback }} merge tags at higher precedence; send both if a design mixes syntaxes.
             domainId:
               type: string
               minLength: 1
               description: OPTIONAL verified sending domain for this test. Omit for the Brew default sender (hello@email.brew.new). Must be a verified domain owned by this org/brand — an unverified or foreign domain is rejected (404/422), never silently downgraded to the Brew default.
+            emailId:
+              type: string
+              minLength: 1
             from:
               type: object
               properties:
@@ -8609,22 +8621,20 @@ components:
                 - email
               additionalProperties: false
               description: Sender override `{ email, name? }`; the address must be on the send domain. Omit to use the domain defaults.
-            variables:
-              type: object
-              additionalProperties:
-                type: string
-                maxLength: 256
-              description: Example values for {{ var | fallback }} merge tags in the subject, previewText, and body. A supplied value wins over contact fields and the declared fallback; undefined variables render their fallback (or empty). Max 25 entries; keys must match the merge-tag grammar (letter/_/$ start, then word chars/dots/$, max 64 chars); values max 256 chars.
-            payload:
-              type: object
-              additionalProperties:
-                $ref: "#/components/schemas/SendPayloadValue"
-              description: Nested JSON template data, exposed to the ONE Liquid engine as trigger.* / payload.* and as top-level keys. Nested values are always legal and resolve via dotted access ({{ plan.name }}) and {% for %}. Flat `variables` resolve {{ tag | fallback }} merge tags at higher precedence; send both if a design mixes syntaxes.
-          required:
-            - test
-            - emailId
-            - subject
-            - to
+            strict:
+              type: boolean
+              description: Fail the test (422 LIQUID_RENDER_ERROR) when the template reads a value that is missing, instead of rendering it blank.
+            subject:
+              type: string
+              minLength: 1
+            previewText:
+              type: string
+              maxLength: 200
+              description: Inbox preheader for this test send — overrides the design's JSX <Preview>. Omit to deliver the design's own preview line.
+            test:
+              type: boolean
+              enum:
+                - true
           additionalProperties: false
         - type: object
           properties:
@@ -9489,14 +9499,16 @@ components:
                         description: Sender display name; resolved from the domain default when unset.
                       replyTo:
                         type: string
-                        format: email
-                        description: Reply-to address; resolved from the domain default when unset.
+                        description: Reply-to address, or a Liquid template that renders one; resolved from the domain default when unset.
                       emailTitle:
                         type: string
                         description: Informational email title mirror; tolerated for round-trips.
                       fromAddress:
                         type: string
                         description: Sender address on domainId's own domain; resolved from the domain default when unset.
+                      strict:
+                        type: boolean
+                        description: Skip a recipient whose template reads a missing value instead of sending blanks.
                     required:
                       - emailId
                       - emailVersionId
@@ -10489,6 +10501,8 @@ components:
                               type: string
                             replyTo:
                               type: string
+                            strict:
+                              type: boolean
                             to: {}
                             html:
                               type: string
@@ -10970,14 +10984,16 @@ components:
                         description: Sender display name; resolved from the domain default when unset.
                       replyTo:
                         type: string
-                        format: email
-                        description: Reply-to address; resolved from the domain default when unset.
+                        description: Reply-to address, or a Liquid template that renders one; resolved from the domain default when unset.
                       emailTitle:
                         type: string
                         description: Informational email title mirror; tolerated for round-trips.
                       fromAddress:
                         type: string
                         description: Sender address on domainId's own domain; resolved from the domain default when unset.
+                      strict:
+                        type: boolean
+                        description: Skip a recipient whose template reads a missing value instead of sending blanks.
                     required:
                       - emailId
                       - emailVersionId
@@ -38161,7 +38177,7 @@ paths:
                       code: LIQUID_RENDER_ERROR
                       type: invalid_request
                       message: A Liquid template failed to parse or render.
-                      suggestion: "Fix the template syntax, or supply the payload data the template references. Strict-mode fires fail on any unresolved variable; | default: is the sanctioned fallback."
+                      suggestion: 'Fix the template syntax, or supply the payload data the template references. With strict values on (the send step’s `strict`, or `strict: true` on a test send) a missing value fails the recipient; add | default: "…" right after the value where a blank is fine.'
                       docs: https://docs.brew.new/api-reference/api/errors
                 noEligibleRecipients:
                   summary: NO_ELIGIBLE_RECIPIENTS
