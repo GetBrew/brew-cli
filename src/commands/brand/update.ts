@@ -14,7 +14,13 @@ export const brandUpdateCommand = defineCommand({
   sdkMethod: 'brand.patch',
   route: { method: 'PATCH', path: '/v1/brand' },
   commandClass: 'write',
-  flags: [INPUT_FLAG],
+  flags: [
+    {
+      ...INPUT_FLAG,
+      summary:
+        'JSON patch or - for stdin; emailDesign: 18,000 characters max, imageStyle: 4,000. Oversized files are rejected.',
+    },
+  ],
   examples: [
     `brew-cli brand update --input '{"identity":{"tagline":"Brew better email"}}'`,
     'cat brand-patch.json | brew-cli brand update --input -',
