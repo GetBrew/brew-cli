@@ -377,7 +377,9 @@ export interface paths {
          *
          *     `imageUrl` must be a publicly reachable PNG, JPEG or WebP at most 2048 px wide. The request blocks until the design is saved, which takes **1 to 6 minutes** depending on the height of the picture; set your client timeout accordingly. Converting the same image again within three weeks reuses its stored layers, returns in seconds and gives the same email.
          *
-         *     `conversion` reports how the design was made. `layers` is the deterministic conversion and costs 90 credits. When the picture cannot be split into layers, or is taller than about 6,000 px, a model recreates it instead: `conversion` is `model`, the flat price is waived and the run is metered by model usage like `generateEmail`.
+         *     `conversion` reports how the design was made. `layers` is the deterministic conversion and costs 90 credits. If the layer service is unavailable, times out, cannot split the picture, or the picture is taller than about 6,000 px, a model recreates the layout instead: `conversion` is `model`, the flat price is waived and the run is metered by model usage like `generateEmail`. Only successful layer conversions reuse stored layers.
+         *
+         *     A model fallback returns `fallbackReason` and `warnings`. It cannot recover the original pictures: image blocks are left empty, without invented pictures or third-party placeholders. Add the original pictures and review the design before sending.
          *
          *     A picture carries no links, so every button and link in the result points to `#`. Set `format` to `jsx` (default) for React Email JSX or `html` for rendered email HTML. Optional `groupId` (`grp_…` or `ungrouped`) or `groupName` (resolve-or-create) — not both; omit to land Ungrouped.
          */
@@ -441,7 +443,7 @@ export interface paths {
         put?: never;
         /**
          * Export a design to an ESP
-         * @description Export a finished email DESIGN to a connected third-party ESP (Braze, Brevo, HubSpot, Klaviyo, Loops, Mailchimp, Mailjet, Iterable, Postmark, OneSignal, Mailgun, SendGrid) as a reusable TEMPLATE. This is NOT a Brew send — it creates a template in the destination platform and does NOT deliver to recipients, and is unrelated to Brew sending domains or audiences. The `provider` must already be connected for the brand (connect ESPs in the Brew app). The exported HTML is automatically made ESP-portable; Loops converts supported content to LMX and creates an editable campaign draft to review before sending. Brevo and Mailjet need `senderEmail` when the account has more than one active sender (with exactly one, it is selected automatically). Pass `dryRun: true` to validate the design, brand ownership, and ESP connection without creating a template. Free (no credits).
+         * @description Export a finished email DESIGN to a connected third-party ESP (Braze, Brevo, HubSpot, Klaviyo, Loops, Mailchimp, Mailjet, Iterable, Postmark, OneSignal, Mailgun, SendGrid, Campaign Monitor) as a reusable TEMPLATE. This is NOT a Brew send — it creates a template in the destination platform and does NOT deliver to recipients, and is unrelated to Brew sending domains or audiences. The `provider` must already be connected for the brand (connect ESPs in the Brew app). The exported HTML is automatically made ESP-portable; Loops converts supported content to LMX and creates an editable campaign draft to review before sending. Brevo and Mailjet need `senderEmail` when the account has more than one active sender (with exactly one, it is selected automatically). Pass `dryRun: true` to validate the design, brand ownership, and ESP connection without creating a template. Free (no credits).
          */
         post: operations["exportEmailDesign"];
         delete?: never;
@@ -4021,7 +4023,7 @@ export interface components {
         };
         ApiWarning: {
             /** @enum {string} */
-            code: "DRAFT_SAVED_NOT_LIVE" | "NODE_ID_REPLACED" | "TRIGGER_EVENT_NOT_RECEIVED" | "ENFORCEMENT_LOOSENED_WHILE_PUBLISHED" | "REQUIRED_FIELD_SATISFIED_BY_FALLBACK" | "RESUBSCRIBE_SKIPPED" | "CORE_FIELD_IGNORED" | "BLANK_FIELD_NAME_IGNORED" | "DATE_ORDER_ASSUMED" | "FIELD_TYPE_COERCED" | "CSV_ROW_SKIPPED" | "CONTACT_EXISTS_SKIPPED" | "CSV_COLUMN_IGNORED" | "CSV_COLUMN_MATCHED_FIELD" | "VALIDATION_SKIPPED" | "RECIPIENTS_EXCLUDED" | "CONSENT_RECORD_MISSING";
+            code: "IMAGE_LAYER_FALLBACK" | "IMAGE_ASSETS_NOT_RECOVERED" | "DRAFT_SAVED_NOT_LIVE" | "NODE_ID_REPLACED" | "TRIGGER_EVENT_NOT_RECEIVED" | "ENFORCEMENT_LOOSENED_WHILE_PUBLISHED" | "REQUIRED_FIELD_SATISFIED_BY_FALLBACK" | "RESUBSCRIBE_SKIPPED" | "CORE_FIELD_IGNORED" | "BLANK_FIELD_NAME_IGNORED" | "DATE_ORDER_ASSUMED" | "FIELD_TYPE_COERCED" | "CSV_ROW_SKIPPED" | "CONTACT_EXISTS_SKIPPED" | "CSV_COLUMN_IGNORED" | "CSV_COLUMN_MATCHED_FIELD" | "VALIDATION_SKIPPED" | "RECIPIENTS_EXCLUDED" | "CONSENT_RECORD_MISSING";
             message: string;
             field?: string;
         };
@@ -5195,6 +5197,13 @@ export interface components {
             conversion: "layers" | "model";
             /** Format: uri */
             previewImage?: string;
+            /**
+             * @description Why layer conversion could not run. Present when conversion is model; no provider internals are exposed.
+             * @enum {string}
+             */
+            fallbackReason?: "layer_service_unavailable" | "layer_conversion_timeout" | "layer_conversion_failed";
+            /** @description Review notes for model recreation. Original pictures are not recovered; picture blocks are empty and must be filled before sending. */
+            warnings?: components["schemas"]["ApiWarning"][];
             group: {
                 groupId: string;
                 groupName: string;
@@ -5296,7 +5305,7 @@ export interface components {
         EmailExportResponse: {
             emailId: string;
             /** @enum {string} */
-            provider: "braze" | "brevo" | "hubspot" | "klaviyo" | "mailchimp" | "mailjet" | "iterable" | "postmark" | "onesignal" | "mailgun" | "sendgrid" | "loops";
+            provider: "braze" | "brevo" | "hubspot" | "klaviyo" | "mailchimp" | "mailjet" | "iterable" | "postmark" | "onesignal" | "mailgun" | "sendgrid" | "loops" | "campaignmonitor";
             providerName: string;
             templateName: string;
             templateId?: string;
@@ -5307,8 +5316,8 @@ export interface components {
              * @description The connected ESP to export the design to as a template.
              * @enum {string}
              */
-            provider: "braze" | "brevo" | "hubspot" | "klaviyo" | "mailchimp" | "mailjet" | "iterable" | "postmark" | "onesignal" | "mailgun" | "sendgrid" | "loops";
-            /** @description Template name in the ESP. Defaults to the email title. */
+            provider: "braze" | "brevo" | "hubspot" | "klaviyo" | "mailchimp" | "mailjet" | "iterable" | "postmark" | "onesignal" | "mailgun" | "sendgrid" | "loops" | "campaignmonitor";
+            /** @description Template name in the ESP. Defaults to the email title. Campaign Monitor stores at most 30 characters; Brew shortens longer names and returns the stored name. */
             templateName?: string;
             /**
              * Format: email
@@ -9421,7 +9430,9 @@ export interface components {
                 /** @description The brand’s postal address, for email footers. */
                 address?: string;
             };
+            /** @description Full replacement of email-design.md. Oversized files are refused without changing the saved document. */
             emailDesign?: string;
+            /** @description Full replacement of image-style.md. Oversized files are refused without changing the saved document. */
             imageStyle?: string;
         };
         BrandImagesResponse: {
@@ -9742,7 +9753,7 @@ export interface components {
         IntegrationsListResponse: {
             data: {
                 /** @enum {string} */
-                provider: "braze" | "brevo" | "clerk" | "customerio" | "figma" | "framer" | "slack" | "hubspot" | "typeform" | "klaviyo" | "iterable" | "postmark" | "onesignal" | "mailgun" | "sendgrid" | "mailjet" | "mailchimp" | "loops" | "stripe" | "stytch" | "supabase" | "workos" | "shopify" | "revenuecat" | "notion" | "posthog" | "webflow";
+                provider: "braze" | "brevo" | "clerk" | "customerio" | "figma" | "framer" | "slack" | "hubspot" | "typeform" | "klaviyo" | "iterable" | "postmark" | "onesignal" | "mailgun" | "sendgrid" | "mailjet" | "mailchimp" | "loops" | "stripe" | "stytch" | "supabase" | "workos" | "shopify" | "revenuecat" | "notion" | "posthog" | "webflow" | "campaignmonitor";
                 name: string;
                 /** @enum {string} */
                 category: "data_in" | "data_out";

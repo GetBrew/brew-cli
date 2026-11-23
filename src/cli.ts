@@ -242,7 +242,7 @@ function inputKeysOf(spec: CommandSpec): ReadonlySet<string> | undefined {
   if (
     spec.inputKeys === 'unchecked' ||
     spec.route === undefined ||
-    !(spec.flags ?? []).includes(INPUT_FLAG)
+    !(spec.flags ?? []).some((flag) => flag.flag === INPUT_FLAG.flag)
   ) {
     return
   }

@@ -2180,7 +2180,7 @@ Update brand identity and/or design-system markdown (PATCH)
 - Route: `PATCH /v1/brand`
 - Class: write
 - SDK: `brew.brand.patch(...)`
-- `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
+- `--input <json>` — JSON patch or - for stdin; emailDesign: 18,000 characters max, imageStyle: 4,000. Oversized files are rejected.
 
 ```bash
 brew-cli brand update --input '{"identity":{"tagline":"Brew better email"}}'
