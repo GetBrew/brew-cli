@@ -1,6 +1,7 @@
 import { defineCommand } from '../../lib/define-command'
 import { CliUsageError } from '../../lib/errors'
 import { flagString, IDEMPOTENCY_FLAG, requestOptions } from '../../lib/input'
+import { getInvocationPrefix } from '../../lib/invocation'
 
 export const emailsRestoreCommand = defineCommand({
   path: ['emails', 'restore'],
@@ -27,7 +28,7 @@ export const emailsRestoreCommand = defineCommand({
     const emailVersionId = flagString(flags.toVersion)
     if (!emailVersionId) {
       throw new CliUsageError(
-        '--to-version is required (a version id; see `brew-cli emails get <emailId> --include versions`).'
+        `--to-version is required (a version id; see \`${getInvocationPrefix(ctx.io.env)} emails get <emailId> --include versions\`).`
       )
     }
     const result = await ctx

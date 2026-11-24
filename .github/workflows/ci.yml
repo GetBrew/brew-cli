@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
+  workflow_dispatch:
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -40,6 +40,7 @@ jobs:
       - run: bun run lint
       - run: bun run test
       - run: bun run docs:commands:check
+      - run: bun run generate:skills:check
       - run: bun run build
       - name: Bin smoke
         run: |

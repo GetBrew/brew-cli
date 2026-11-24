@@ -10,6 +10,7 @@ import {
   parseFilterFlags,
   readJsonFlag,
 } from '../../lib/input'
+import { getInvocationPrefix } from '../../lib/invocation'
 import { renderTable } from '../../lib/output'
 import {
   ALL_FLAG,
@@ -63,7 +64,7 @@ export const contactsSearchCommand = defineCommand({
       limit: flagInt(flags.limit, '--limit'),
       cursor: flagString(flags.cursor),
     })
-    refuseCountMode(input)
+    refuseCountMode(input, getInvocationPrefix(ctx.io.env))
     const contacts = ctx.client().contacts
     if (flags.all === true) {
       const rows = await collectAll(
@@ -93,13 +94,16 @@ export const contactsSearchCommand = defineCommand({
  * riding --input was dropped and the command printed a page of rows as if it
  * had counted; `groupBy` / `bucket` only mean anything beside it.
  */
-function refuseCountMode(input: Readonly<Record<string, unknown>>): void {
+function refuseCountMode(
+  input: Readonly<Record<string, unknown>>,
+  prefix: string
+): void {
   const keys = ['count', 'groupBy', 'bucket'].filter(
     (key) => input[key] !== undefined && input[key] !== false
   )
   if (keys.length > 0) {
     throw new CliUsageError(
-      `contacts search returns rows; --input ${keys.join(', ')} asks for a count. Use \`brew-cli contacts count\` for the total or \`brew-cli contacts count-by --group-by <fields> | --bucket <period>\` for groups.`
+      `contacts search returns rows; --input ${keys.join(', ')} asks for a count. Use \`${prefix} contacts count\` for the total or \`${prefix} contacts count-by --group-by <fields> | --bucket <period>\` for groups.`
     )
   }
 }
