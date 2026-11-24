@@ -22,6 +22,10 @@ and retry; never reparse argv), `input.ts` (`--input <json|->`, `--file <path|->
 
 ## The parity system (how this repo stays in lockstep with API + MCP + SDK)
 
+Import reviewed server artifacts with `bun run contract:import -- --artifact
+<directory> --digest <sha256>`; it pins the spec and regenerates types.
+`bun run contract:check` checks local pin integrity, not deployed freshness.
+
 - `tests/parity-sdk.test.ts` walks the installed SDK client surface. Every
   method must map to exactly one command, an entry in `src/skip-list.ts`
   (`SDK_SKIP_LIST`, reviewed reasons), or the shrinking in-test

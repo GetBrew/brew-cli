@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "artifactSha256": "7b03a711eb70946eab54eae42c6775285138f889d6d700e2424dd869819f13fb",
+  "source": {
+    "repository": "GetBrew/brew-v2",
+    "revision": "f617e73d978247362a7b82d02bec4533ace261f0",
+    "dirty": false
+  }
+}

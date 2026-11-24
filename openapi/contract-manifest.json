@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "repository": "GetBrew/brew-v2",
+    "revision": "f617e73d978247362a7b82d02bec4533ace261f0",
+    "dirty": false
+  },
+  "files": {
+    "docs/snippets/generated/data-model-mermaid.mdx": "80140dc8038de607f9e71823aebdf9cca12f2815a40b6cb6639f025bb2806588",
+    "docs/snippets/generated/error-codes.mdx": "f2dd7ba96e0eb288dcbfcad72d41796ae9412bb9c9019e4072fa8e2bd7d3f936",
+    "docs/snippets/generated/identifier-table.mdx": "4762717310fc3b8c78250f97aecf158f6b948db0e377a46d8595c31f06478492",
+    "docs/snippets/generated/mcp-api-key-setup.mdx": "f8e672acd262126b9b6d67e928ed3d2569610ade2d4d5272c27d5a337217d653",
+    "docs/snippets/generated/mcp-client-setup.mdx": "a81ae14303839a807d1fd8a5fb236d619215bd4b067d0c69baff338f8cfba2e4",
+    "docs/snippets/generated/mcp-tools.mdx": "d784972cfb39bcf2c4c9d4080254ace204169a5cc99353853f0f5010e785ec93",
+    "docs/snippets/generated/v1-surface.mdx": "67f699baf7ac1cf2e80bd265993b76023ee161a28a9798c5c439a70cce030584",
+    "docs/snippets/generated/warning-codes.mdx": "1da42fca98a0b933f33e7ae58c90534f14bdb2568d9b4b627096097479ac3bbf",
+    "openapi/public-api-v1.yaml": "bdbe9bbb3ccbaa23142f9a5b9cd6d13f70f238d82a1cafe43057e95e2fb8c3a7",
+    "tools/contract-artifact.mjs": "f51b4c00167a5582b9363a4fe0d4c4fd4b0e822c4b156823ddef9d9618439c4b"
+  }
+}

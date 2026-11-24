@@ -65,7 +65,6 @@ export type CommandSpec = {
     readonly method: HttpMethod
     readonly path: string
   }
-  readonly commandClass: CommandClass
   /** True when the operation can consume Brew credits, including optional modes. */
   readonly isCredited?: boolean
   /**
@@ -97,17 +96,22 @@ export type CommandSpec = {
   readonly prepareInput?: (
     invocation: CommandInvocation
   ) => Promise<Readonly<Record<string, unknown>>>
-  /**
-   * Destructive commands describe what is about to happen. Returning
-   * undefined skips the gate for the given invocation (e.g. a dry run).
-   */
-  readonly confirmSummary?: (
-    invocation: Omit<CommandInvocation, 'ctx'>
-  ) => string | undefined
   readonly run: (
     invocation: CommandInvocation
   ) => Promise<CommandOutcome | undefined>
-}
+} & (
+  | {
+      readonly commandClass: 'destructive'
+      /** Returning undefined skips the gate for this invocation (e.g. a dry run). */
+      readonly confirmSummary: (
+        invocation: Omit<CommandInvocation, 'ctx'>
+      ) => string | undefined
+    }
+  | {
+      readonly commandClass: 'read' | 'write'
+      readonly confirmSummary?: never
+    }
+)
 
 /** Identity helper that pins the spec type at the definition site. */
 export function defineCommand(spec: CommandSpec): CommandSpec {
