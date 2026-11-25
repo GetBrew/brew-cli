@@ -1,8 +1,13 @@
 import { execFileSync, spawnSync } from 'node:child_process'
-import { lstatSync, readFileSync } from 'node:fs'
+import { closeSync, lstatSync, openSync, readFileSync, readSync } from 'node:fs'
 import { basename, delimiter, extname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import {
+  dotenvCommentRanges,
+  shebangLanguage,
+} from './lib/comment-file-languages.mjs'
 import { loadCommentScope } from './lib/comment-scope.mjs'
+import { gritCommentRanges } from './lib/grit-comments.mjs'
 import { markdownComments } from './lib/markdown-comments.mjs'
 import { findComments, isRequiredComment } from './lib/source-comments.mjs'
 import { workflowSources } from './lib/workflow-sources.mjs'
@@ -37,6 +42,7 @@ const languages = {
   '.py': 'python',
   '.pyi': 'python',
   '.rs': 'rust',
+  '.wgsl': 'wgsl',
   '.html': 'html',
   '.svg': 'html',
   '.sql': 'sql',
@@ -60,21 +66,51 @@ for (const file of new Set(files)) {
     continue
   }
   const extension = extname(file).toLowerCase()
-  const javascript =
+  let javascript =
     /\.(?:[cm]?[jt]sx?|jsonc?)$/.test(file) || file === 'bun.lock'
-  const markdown = /\.mdx?$/.test(file)
+  const markdown = /\.(?:mdx?|mdc)$/.test(file)
   const name = basename(file).toLowerCase()
   const ignore =
-    /^(?:\.gitignore|\.mintignore|\.npmignore|\.dockerignore|\.prettierignore|\.eslintignore|\.gitattributes)$/.test(
+    /^(?:\.gitignore|\.mintignore|\.npmignore|\.dockerignore|\.prettierignore|\.eslintignore|\.gitattributes|\.git-blame-ignore-revs)$/.test(
       name
     )
-  let language =
-    languages[extension] ?? (name === '.env.example' ? 'bash' : undefined)
-  if (/^(?:dockerfile|.+\.dockerfile)$/.test(name)) language = 'dockerfile'
-  else if (/^(?:makefile|gnumakefile)$/.test(name)) language = 'make'
-  else if (name === '.editorconfig') language = 'ini'
+  let language = languages[extension]
+  if (!language && !javascript && /^\.env(?:\.|$)/.test(name)) {
+    language = 'dotenv'
+  } else if (!language && extension === '.grit') {
+    language = 'grit'
+  }
+  if (/^(?:dockerfile|.+\.dockerfile)$/.test(name)) {
+    language = 'dockerfile'
+  } else if (/^(?:makefile|gnumakefile)$/.test(name)) {
+    language = 'make'
+  } else if (name === '.editorconfig') {
+    language = 'ini'
+  }
   if (!javascript && !markdown && !language && !ignore) {
-    continue
+    let descriptor
+    try {
+      if (!lstatSync(join(root, file)).isFile()) {
+        continue
+      }
+      descriptor = openSync(join(root, file), 'r')
+      const prefix = Buffer.alloc(512)
+      const length = readSync(descriptor, prefix, 0, prefix.length, 0)
+      language = shebangLanguage(prefix.toString('utf8', 0, length))
+    } catch (error) {
+      if (error.code === 'ENOENT') {
+        continue
+      }
+      throw error
+    } finally {
+      if (descriptor !== undefined) {
+        closeSync(descriptor)
+      }
+    }
+    javascript = language === 'javascript'
+    if (!language) {
+      continue
+    }
   }
   let source
   try {
@@ -91,7 +127,9 @@ for (const file of new Set(files)) {
   checked++
   try {
     if (ignore) {
-      for (const match of source.matchAll(/^#[^\r\n]*/gm)) {
+      const pattern =
+        name === '.git-blame-ignore-revs' ? /#[^\r\n]*/gm : /^#[^\r\n]*/gm
+      for (const match of source.matchAll(pattern)) {
         record({
           file,
           value: match[0],
@@ -99,9 +137,23 @@ for (const file of new Set(files)) {
           line: source.slice(0, match.index).split('\n').length,
         })
       }
+    } else if (language === 'grit' || language === 'dotenv') {
+      const ranges =
+        language === 'grit'
+          ? gritCommentRanges(source)
+          : dotenvCommentRanges(source)
+      for (const range of ranges) {
+        record({
+          file,
+          value: source.slice(range.pos, range.end),
+          language,
+          line: source.slice(0, range.pos).split(/\r\n|[\r\n]/).length,
+        })
+      }
     } else if (javascript) {
+      const filename = file === 'bun.lock' ? 'bun.jsonc' : file
       for (const range of findComments(
-        file === 'bun.lock' ? 'bun.jsonc' : file,
+        language === 'javascript' ? 'shebang.js' : filename,
         source
       )) {
         failures.push(
@@ -114,7 +166,9 @@ for (const file of new Set(files)) {
       payloads.push(...result.payloads)
     } else {
       payloads.push({ file, source, language })
-      if (language === 'yaml') payloads.push(...workflowSources(file, source))
+      if (language === 'yaml') {
+        payloads.push(...workflowSources(file, source))
+      }
     }
   } catch (error) {
     failures.push(`${file}: unable to inspect comments: ${error.message}`)

@@ -19,7 +19,9 @@ function inspect(files, policy = {}) {
       'scripts/comment-ownership.json',
       JSON.stringify({ fixtures: [], generated: [], markers: {}, ...policy })
     )
-    for (const [file, value] of Object.entries(files)) put(file, value)
+    for (const [file, value] of Object.entries(files)) {
+      put(file, value)
+    }
     return spawnSync(process.execPath, [checker, '--root', root], {
       cwd: tmpdir(),
       encoding: 'utf8',
@@ -58,8 +60,9 @@ test('checks owned languages, Markdown examples and MDX expressions', () => {
   }
   const result = inspect(files)
   assert.equal(result.status, 1, result.stderr)
-  for (const file of Object.keys(files))
+  for (const file of Object.keys(files)) {
     assert.ok(result.stderr.includes(`${file}:`), result.stderr)
+  }
 })
 
 test('keeps literals, executable metadata and SQL COMMENT statements', () => {
@@ -75,7 +78,7 @@ test('keeps literals, executable metadata and SQL COMMENT statements', () => {
     'module.py': 'value = "# literal"',
     'ci.yml': 'value: "# literal"',
     'query.sql':
-      "COMMENT ON TABLE example IS 'a description'; SELECT '-- literal';",
+      "COMMENT ON TABLE example IS 'a description'; SELECT /*+ INDEX(example) */ '-- literal';",
     'README.md':
       'Use `<!-- literal -->` and `// literal`.\n\n```ts\nconst x="/* literal */"\n```',
     'page.mdx': 'A page\n\n{"{/* literal */}"}',
@@ -105,8 +108,9 @@ test('only reviewed ownership paths and exact managed markers are excluded', () 
     'src/example.generated.ts',
     '.agents/skills/local/SKILL.md',
     'README.md',
-  ])
+  ]) {
     assert.ok(result.stderr.includes(`${file}:`), result.stderr)
+  }
   assert.ok(
     !result.stderr.includes('tests/fixtures/evidence.ts:'),
     result.stderr
@@ -157,8 +161,9 @@ test('checks executable GitHub workflow and composite action run scripts', () =>
   }
   const result = inspect(files)
   assert.equal(result.status, 1, result.stderr)
-  for (const file of Object.keys(files))
+  for (const file of Object.keys(files)) {
     assert.ok(result.stderr.includes(`${file}:`), result.stderr)
+  }
 })
 
 test('keeps GitHub run literals, directives, unsupported shells and ordinary YAML data', () => {
@@ -186,4 +191,120 @@ test('keeps GitHub run literals, directives, unsupported shells and ordinary YAM
       'runs:\n  using: node20\n  main: main.js\nexample:\n  run: |\n    # literal YAML data\n',
   })
   assert.equal(result.status, 0, result.stderr)
+})
+
+test('checks WGSL nested comments in owned shaders and fenced examples', () => {
+  const files = {
+    'shader.wgsl': 'fn main() { let ratio = 4.0 / 2.0; } // stale',
+    'nested.wgsl': '/* outer // text /* nested */ stale */\nfn main() {}',
+    'README.md': '```wgsl\nfn main() {} /* outer /* nested */ stale */\n```',
+  }
+  const result = inspect(files)
+  assert.equal(result.status, 1, result.stderr)
+  for (const file of Object.keys(files)) {
+    assert.ok(result.stderr.includes(`${file}:`), result.stderr)
+  }
+  const valid = inspect(
+    {
+      'shader.wgsl':
+        '/* SPDX-License-Identifier: MIT */\nfn main() { let ratio = 4.0 / 2.0; let marker = 0x2fu; }',
+      'generated/shader.wgsl': '// generated prose',
+      'tests/fixtures/shader.wgsl': '// recorded evidence',
+      'README.md':
+        'Use `// literal` and `/* literal */`.\n\n```wgsl\nfn main() { let ratio = 4.0 / 2.0; }\n```',
+    },
+    { generated: ['generated/'], fixtures: ['tests/fixtures/'] }
+  )
+  assert.equal(valid.status, 0, valid.stderr)
+})
+
+test('ends WGSL line comments at every WGSL line break', () => {
+  const files = Object.fromEntries(
+    ['\n', '\r\n', '\r', '\u000b', '\u000c', '\u0085', '\u2028', '\u2029'].map(
+      (newline, index) => [
+        `newline-${index}.wgsl`,
+        `// SPDX-License-Identifier: MIT${newline}// stale${newline}fn main() {}`,
+      ]
+    )
+  )
+  const result = inspect(files)
+  assert.equal(result.status, 1, result.stderr)
+  for (const file of Object.keys(files)) {
+    assert.ok(result.stderr.includes(`${file}:2:`), result.stderr)
+  }
+})
+
+test('checks GritQL, Cursor rules, dotenv variants, blame ignores and shebang scripts', () => {
+  const files = {
+    'rule.grit': 'language js;\n// stale\n`const x = 1`',
+    'rules.mdc': '---\nalwaysApply: true # stale\n---\n\n<!-- stale -->',
+    '.env.test': 'VALUE=1 # stale',
+    '.env.test.local.example': 'VALUE=1#stale',
+    '.git-blame-ignore-revs':
+      '# stale\n0123456789012345678901234567890123456789',
+    'bin/python-command': '#!/usr/bin/env python3\nvalue = 1 # stale',
+    'bin/shell.command': '#!/usr/bin/env -S bash -e\necho ok # stale',
+    'bin/node-command': '#!/usr/bin/node\nconst value = 1 // stale',
+    'README.md': '```gritql\nlanguage js;\n/* stale */\n`const x = 1`\n```',
+  }
+  const result = inspect(files)
+  assert.equal(result.status, 1, result.stderr)
+  for (const file of Object.keys(files)) {
+    assert.ok(result.stderr.includes(`${file}:`), result.stderr)
+  }
+})
+
+test('keeps GritQL patterns, dotenv quoted values and shebang metadata', () => {
+  const result = inspect({
+    'rule.grit': [
+      'language js;',
+      '`// matched source comment`',
+      'raw`/* matched source comment */`',
+      'r`https?://.+`',
+      'r"https?://.+"',
+      '"literal // and /* text */"',
+    ].join('\n'),
+    '.env.production.example':
+      'VALUE="one\n# literal\ntwo"\nOTHER=\'# literal\'\nTHIRD=`# literal`',
+    '.git-blame-ignore-revs': '0123456789012345678901234567890123456789',
+    'bin/python-command':
+      '#!/usr/bin/env -S python3 -u\n"""Help: # literal"""\nvalue = "# literal"',
+    'bin/node-command': '#!/usr/bin/env node\nconst value = "// literal"',
+    'rules.mdc':
+      '---\nalwaysApply: true\n---\n\nUse `<!-- literal -->`.\n\n```grit\n`// matched source comment`\n```',
+  })
+  assert.equal(result.status, 0, result.stderr)
+})
+
+test('fails closed for unterminated GritQL literals and comments', () => {
+  for (const source of ['"unterminated', '`unterminated', '/* unterminated']) {
+    const result = inspect({ 'rule.grit': source })
+    assert.equal(result.status, 1, result.stderr)
+    assert.ok(
+      result.stderr.includes('unable to inspect comments'),
+      result.stderr
+    )
+  }
+})
+
+test('rejects prose mixed with compiler JSDoc in source, Markdown and embedded scripts', () => {
+  const bad =
+    '/** Summary prose.\n * @param {string} value Parameter prose.\n * @returns {string} Return prose.\n */\nfunction identity(value) { return value }'
+  const files = {
+    'sample.js': bad,
+    'README.md': `\`\`\`js\n${bad}\n\`\`\``,
+    'page.html': `<script>${bad}</script>`,
+  }
+  const result = inspect(files)
+  assert.equal(result.status, 1, result.stderr)
+  for (const file of Object.keys(files))
+    assert.ok(result.stderr.includes(`${file}:`), result.stderr)
+  const clean =
+    '/** @param {string} value\n * @returns {string}\n */\nfunction identity(value) { return value }'
+  const valid = inspect({
+    'sample.js': clean,
+    'README.md': `\`\`\`js\n${clean}\n\`\`\``,
+    'page.html': `<script>${clean}</script>`,
+  })
+  assert.equal(valid.status, 0, valid.stderr)
 })
