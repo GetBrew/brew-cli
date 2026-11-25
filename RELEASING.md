@@ -5,6 +5,9 @@ standalone binaries, the GitHub Release, and the Homebrew tap.
 
 ## Ship a version
 
+After `bun install --frozen-lockfile`, run `bun run comments:setup` with Python
+3.10+ and pip before the release checks.
+
 ### Canvas SDK Migration Gate
 
 The canvas session commands now use `brew.canvas.sessions.create`, `refresh`,

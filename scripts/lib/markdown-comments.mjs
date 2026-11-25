@@ -1,16 +1,11 @@
 import remarkGfm from 'remark-gfm'
-import remarkMath from 'remark-math'
 import remarkMdx from 'remark-mdx'
 import remarkParse from 'remark-parse'
 import { unified } from 'unified'
 import { commentRanges } from './source-comments.mjs'
 
-const markdown = unified().use(remarkParse).use(remarkGfm).use(remarkMath)
-const mdx = unified()
-  .use(remarkParse)
-  .use(remarkGfm)
-  .use(remarkMath)
-  .use(remarkMdx)
+const markdown = unified().use(remarkParse).use(remarkGfm)
+const mdx = unified().use(remarkParse).use(remarkGfm).use(remarkMdx)
 const JS = {
   js: 'javascript',
   javascript: 'javascript',

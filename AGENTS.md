@@ -95,6 +95,7 @@ Report checks run and anything deferred to CI.
 
 ```bash
 bun install
+bun run comments:setup
 bun run tsc
 bun run lint
 bun run test -- tests/<file>.test.ts

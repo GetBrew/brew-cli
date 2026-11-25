@@ -34,6 +34,7 @@ test('checks owned languages, Markdown examples and MDX expressions', () => {
     'src/example.ts': 'const x=1 // stale',
     'style.css': 'a { color: red; /* stale */ }',
     'ci.yml': 'name: example # stale',
+    'nested/.env.example': 'SETTING=value # stale',
     Dockerfile: 'FROM node:22\n# stale',
     Makefile: '# stale\nall: ; echo ok',
     '.gitignore': '# stale\nnode_modules/',
@@ -70,6 +71,7 @@ test('keeps literals, executable metadata and SQL COMMENT statements', () => {
     '.gitignore': '\\#literal\nnode_modules/',
     Dockerfile: '# syntax=docker/dockerfile:1\nFROM node:22',
     'run.sh': '#!/usr/bin/env bash\nprintf "%s" "# literal"',
+    'nested/.env.example': 'SETTING="# literal"',
     'module.py': 'value = "# literal"',
     'ci.yml': 'value: "# literal"',
     'query.sql':
@@ -123,4 +125,65 @@ test('fails closed for invalid arguments and malformed MDX', () => {
   const result = inspect({ 'page.mdx': '<Component broken={' })
   assert.equal(result.status, 1)
   assert.ok(result.stderr.includes('unable to inspect comments'), result.stderr)
+})
+
+function githubWorkflow(script, shell = '') {
+  return [
+    'jobs:',
+    '  test:',
+    '    runs-on: ubuntu-latest',
+    '    steps:',
+    ...(shell
+      ? [`      - shell: ${shell}`, '        run: |']
+      : ['      - run: |']),
+    ...script.split('\n').map((line) => `          ${line}`),
+    '',
+  ].join('\n')
+}
+
+test('checks executable GitHub workflow and composite action run scripts', () => {
+  const files = {
+    '.github/workflows/bash.yml': githubWorkflow('echo ok # stale'),
+    '.github/workflows/sh.yml':
+      'jobs:\n  test:\n    runs-on: ubuntu-latest\n    defaults:\n      run:\n        shell: sh\n    steps:\n      - run: |\n          echo ok # stale\n',
+    '.github/workflows/python.yml':
+      'defaults:\n  run:\n    shell: python\njobs:\n  test:\n    runs-on: windows-latest\n    steps:\n      - run: |\n          value = 1 # stale\n',
+    '.github/workflows/node.yml': githubWorkflow(
+      'const value = 1 // stale',
+      'node {0}'
+    ),
+    '.github/actions/example/action.yml':
+      'runs:\n  using: composite\n  steps:\n    - shell: bash\n      run: |\n        echo ok # stale\n',
+  }
+  const result = inspect(files)
+  assert.equal(result.status, 1, result.stderr)
+  for (const file of Object.keys(files))
+    assert.ok(result.stderr.includes(`${file}:`), result.stderr)
+})
+
+test('keeps GitHub run literals, directives, unsupported shells and ordinary YAML data', () => {
+  const result = inspect({
+    '.github/workflows/bash.yml': githubWorkflow(
+      '# shellcheck disable=SC2034\nprintf "%s" "# literal"\ncat <<\'EOF\'\n# heredoc literal\nEOF'
+    ),
+    '.github/workflows/python.yml': githubWorkflow(
+      'value = """\n# literal\n"""\nvalue = 1 # type: ignore',
+      'python'
+    ),
+    '.github/workflows/node.yml': githubWorkflow(
+      '/** @type {number} */\nconst value = 1; const text = "// literal"',
+      'node {0}'
+    ),
+    '.github/workflows/pwsh.yml': githubWorkflow(
+      "$text = @'\n# literal\n'@",
+      'pwsh'
+    ),
+    '.github/workflows/windows.yml':
+      "jobs:\n  test:\n    runs-on: windows-latest\n    steps:\n      - run: |\n          $text = @'\n          # literal\n          '@\n",
+    '.github/settings.yml': 'run: |\n  # literal YAML data\n',
+    '.github/workflows/nested/data.yml': 'run: |\n  # literal YAML data\n',
+    '.github/actions/node/action.yml':
+      'runs:\n  using: node20\n  main: main.js\nexample:\n  run: |\n    # literal YAML data\n',
+  })
+  assert.equal(result.status, 0, result.stderr)
 })

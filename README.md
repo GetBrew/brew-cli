@@ -176,7 +176,9 @@ Two parity tests gate CI here:
 Contributor guide: [`AGENTS.md`](./AGENTS.md) · Release process:
 [`RELEASING.md`](./RELEASING.md).
 
-Development and release checks use Bun 1.3.10, pinned in every workflow.
+Development and release checks use Bun from `package.json#packageManager`.
+With Python 3.10+ and pip installed, run `bun install` followed by
+`bun run comments:setup` before lint or release validation.
 Command metadata is supplied by CLI composition to `docs` and `doctor`; these
 handlers do not import the live registry.
 
