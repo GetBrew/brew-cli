@@ -22,6 +22,8 @@ def walk(root):
 
 
 def collect(source, language, offset=0):
+    if language == "wgsl":
+        source = source.replace("\r\n", "\n").translate(str.maketrans("\r\v\f\u0085\u2028\u2029", "\n" * 6))
     if language not in parsers:
         parsers[language] = get_parser(language)
     data = source.encode("utf-8")

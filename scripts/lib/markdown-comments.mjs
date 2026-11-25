@@ -2,6 +2,7 @@ import remarkGfm from 'remark-gfm'
 import remarkMdx from 'remark-mdx'
 import remarkParse from 'remark-parse'
 import { unified } from 'unified'
+import { gritCommentRanges } from './grit-comments.mjs'
 import { commentRanges } from './source-comments.mjs'
 
 const markdown = unified().use(remarkParse).use(remarkGfm)
@@ -19,6 +20,8 @@ const JS = {
   cjs: 'javascript',
 }
 const OTHER = {
+  grit: 'grit',
+  gritql: 'grit',
   bash: 'bash',
   sh: 'bash',
   shell: 'bash',
@@ -30,6 +33,7 @@ const OTHER = {
   py: 'python',
   rust: 'rust',
   rs: 'rust',
+  wgsl: 'wgsl',
   yaml: 'yaml',
   yml: 'yaml',
   sql: 'sql',
@@ -56,7 +60,18 @@ export function markdownComments(file, source) {
         return
       }
       const offset = node.position.start.line
-      if (JS[node.lang]) {
+      if (language === 'grit') {
+        for (const range of gritCommentRanges(node.value)) {
+          comments.push({
+            file,
+            value: node.value.slice(range.pos, range.end),
+            language,
+            line:
+              offset +
+              node.value.slice(0, range.pos).split(/\r\n|[\r\n]/).length,
+          })
+        }
+      } else if (JS[node.lang]) {
         try {
           const extension = {
             typescript: 'ts',

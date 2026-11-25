@@ -2,6 +2,11 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import ts from 'typescript'
 import {
+  dotenvCommentRanges,
+  shebangLanguage,
+} from './lib/comment-file-languages.mjs'
+import { gritCommentRanges } from './lib/grit-comments.mjs'
+import {
   findComments,
   isRequiredComment,
   withoutComments,
@@ -201,13 +206,257 @@ test('recognizes executable lint declarations and rejects prose annotations', ()
     '/* global service:readonly, other:writable */',
     '/* exported exposed */',
     '// billing-exempt: internal lab',
-  ])
+  ]) {
     assert.ok(isRequiredComment(value))
+  }
   for (const value of [
     '// global state is shared',
     '// exported from the `sends` block above',
     '/* exported from the block above */',
     '/** @throws {Error} Something failed */',
-  ])
+  ]) {
     assert.ok(!isRequiredComment(value))
+  }
+})
+
+test('dotenv comments distinguish bare hashes from all quoted value forms', () => {
+  const cases = [
+    'KEY=bare# explanation',
+    'KEY=prefix"quoted# explanation',
+    "KEY=prefix'quoted# explanation",
+    'KEY=prefix`quoted# explanation',
+    'KEY="literal # value" # explanation',
+    "KEY='literal # value' # explanation",
+    'KEY=`literal # value` # explanation',
+    'KEY="multiline\n# literal\nvalue"# explanation',
+    'export KEY: "literal # value" # explanation',
+  ]
+  for (const source of cases) {
+    const ranges = dotenvCommentRanges(source)
+    assert.equal(ranges.length, 1, source)
+    assert.equal(source.slice(ranges[0].pos, ranges[0].end), '# explanation')
+    const cleaned = source.slice(0, ranges[0].pos) + source.slice(ranges[0].end)
+    assert.equal(cleaned, source.replace(/# explanation$/, ''))
+  }
+})
+
+test('GritQL skips escaped literals and retains comment patterns', () => {
+  const escapedBacktick = String.fromCharCode(92, 96)
+  const source = [
+    'language js;',
+    '`const text = ' + escapedBacktick + '// literal' + escapedBacktick + '`',
+    'raw`/* matched comment */`',
+    'r`// matched comment`',
+    'r"https?://.*"',
+    '"literal /* text */"',
+    '// explanation',
+    '/* explanation */',
+  ].join('\n')
+  assert.deepEqual(
+    gritCommentRanges(source).map(({ pos, end }) => source.slice(pos, end)),
+    ['// explanation', '/* explanation */']
+  )
+})
+
+test('rejects prose inside compiler JSDoc and retains its exact metadata', () => {
+  const source =
+    '/** Summary.\n * @param {string} [name="[default]"] Parameter prose.\n * @returns {string} Return prose.\n */\nfunction identity(name) { return name }'
+  assert.equal(findComments('sample.js', source).length, 1)
+  const cleaned = withoutComments('sample.js', source)
+  assert.ok(cleaned.includes('@param {string} [name="[default]"]'))
+  assert.ok(cleaned.includes('@returns {string}'))
+  assert.ok(!/Summary|Parameter prose|Return prose/.test(cleaned))
+  assert.deepEqual(findComments('sample.js', cleaned), [])
+})
+
+test('preserves typedef, property, template, callback and overload signatures while removing prose', () => {
+  const sources = [
+    '/** Options prose.\n * @typedef {Object} Options\n * @property {string} name Name prose.\n * @property {number} [count=1] Count prose.\n */\n/** Identity prose.\n * @template {Options} T Generic prose.\n * @param {T} options Value prose.\n * @returns {T} Value prose.\n */\nexport function identity(options) { return options }',
+    '/** Work prose.\n * @callback Work\n * @param {number} value Value prose.\n * @returns {number} Result prose.\n */\n/** Apply prose.\n * @param {Work} work Callback prose.\n * @returns {number} Result prose.\n */\nexport function apply(work) { return work(1) }',
+    '/** @overload\n * @param {number} value Number prose.\n * @returns {number} Result prose.\n */\n/** @overload\n * @param {string} value String prose.\n * @returns {string} Result prose.\n */\n/** Implementation prose.\n * @param {string|number} value Value prose.\n */\nexport function echo(value) { return value }',
+  ]
+  const declaration = (source) => {
+    const options = {
+      allowJs: true,
+      checkJs: true,
+      noLib: true,
+      declaration: true,
+      emitDeclarationOnly: true,
+      removeComments: true,
+    }
+    const host = ts.createCompilerHost(options)
+    host.getSourceFile = (file) =>
+      file === 'sample.js'
+        ? ts.createSourceFile(
+            file,
+            source,
+            ts.ScriptTarget.Latest,
+            true,
+            ts.ScriptKind.JS
+          )
+        : undefined
+    let output = ''
+    host.writeFile = (_file, text) => {
+      output += text
+    }
+    const program = ts.createProgram(['sample.js'], options, host)
+    const diagnostics = program
+      .getSemanticDiagnostics()
+      .map((diagnostic) => diagnostic.code)
+    program.emit()
+    return { output, diagnostics }
+  }
+  for (const source of sources) {
+    const cleaned = withoutComments('sample.js', source)
+    assert.ok(!cleaned.includes('prose.'))
+    assert.deepEqual(declaration(cleaned), declaration(source))
+    assert.deepEqual(findComments('sample.js', cleaned), [])
+  }
+})
+
+test('keeps compiler JSDoc removal on the same side of automatic semicolon insertion', () => {
+  const singleLine =
+    'function value() { return /** @type {number} prose */ (1) }'
+  assert.equal(
+    new Function(
+      `${withoutComments('sample.js', singleLine)}; return value()`
+    )(),
+    1
+  )
+  for (const newline of ['\n', '\r', '\u2028', '\u2029']) {
+    const source = `function value() { return /** @type {number} prose${newline} */ (1) }`
+    assert.equal(
+      new Function(`${withoutComments('sample.js', source)}; return value()`)(),
+      undefined
+    )
+  }
+})
+
+test('keeps legal notices, tool reasons, raw internal markers and compiler pragma arguments byte-for-byte', () => {
+  for (const value of [
+    '/** @license MIT Legal notice. */',
+    '/** @vitest-environment jsdom */',
+    '/** biome-ignore lint/suspicious/noExplicitAny: external contract */',
+    '/** @ts-expect-error deliberate invalid input */',
+    '/** @jsx h */',
+    '/** @jsxFrag Fragment */',
+    '/** @jsxImportSource preact */',
+    '/** @jsxRuntime automatic */',
+    '/** @nosideeffects */',
+    '/** @noSideEffects */',
+    '// @internal',
+  ]) {
+    const source = `${value}\nconst value = 1`
+    assert.ok(isRequiredComment(value), value)
+    assert.equal(withoutComments('sample.js', source), source)
+  }
+})
+
+test('normalizes generated mixed JSDoc without blank star remnants or lost indentation', () => {
+  const source = [
+    'export interface Example {',
+    '            /**',
+    "             * @description The language the email's copy is written in (ISO 639-1, or zh-Hans / zh-Hant), read by Brew's language model after each content change unless a caller set it. Rendered as the HTML document's lang. Detail-only; absent until it has been read.",
+    '             * @enum {string}',
+    '             */',
+    '            language?: "en";',
+    '}',
+  ].join('\n')
+  const expected = source.replace(/^.*@description.*\n/m, '')
+  const cleaned = withoutComments('generated.ts', source)
+  assert.equal(cleaned, expected)
+  assert.deepEqual(findComments('generated.ts', cleaned), [])
+  assert.equal(withoutComments('generated.ts', cleaned), cleaned)
+})
+
+test('keeps source indentation and metadata content for every removed prose range', () => {
+  const sources = [
+    [
+      '    /**',
+      '     * @description Old explanation.',
+      '     * @type {{',
+      '     *   name: string;',
+      '     *   count: number;',
+      '     * }}',
+      '     */',
+      '    let value;',
+    ].join('\n'),
+    [
+      '    /** Old summary.',
+      '     * @param {string} name Old parameter explanation.',
+      '     * @returns {string} Old result explanation.',
+      '     */',
+      '    function identity(name) { return name }',
+    ].join('\n'),
+  ]
+  const expected = [
+    sources[0].replace(/^.*@description.*\n/m, ''),
+    sources[1]
+      .replace(' Old summary.', '')
+      .replace(' Old parameter explanation.', '')
+      .replace(' Old result explanation.', ''),
+  ]
+  sources.forEach((source, index) => {
+    const cleaned = withoutComments('sample.js', source)
+    assert.equal(cleaned, expected[index])
+    assert.deepEqual(findComments('sample.js', cleaned), [])
+    assert.equal(withoutComments('sample.js', cleaned), cleaned)
+  })
+})
+
+test('recognizes env split-string options and quoted interpreter names', () => {
+  for (const [header, language] of [
+    ['#!/usr/bin/env --split-string=node', 'javascript'],
+    ['#!/usr/bin/env -Snode', 'javascript'],
+    ['#!/usr/bin/env -S "python3" -u', 'python'],
+    ["#!/usr/bin/env -S 'python3' -u", 'python'],
+    ['#!/usr/bin/env -S"python3" -u', 'python'],
+    ["#!/usr/bin/env --split-string='python3' -u", 'python'],
+    ['#!/usr/bin/env --split-string /usr/bin/python3.12 -u', 'python'],
+    [
+      '#!/usr/bin/env -u IGNORE NODE_ENV=test --split-string=node',
+      'javascript',
+    ],
+    ['#!/usr/bin/env -- /usr/bin/node', 'javascript'],
+    ['#!/bin/bash -e', 'bash'],
+  ]) {
+    assert.equal(shebangLanguage(`${header}\n`), language, header)
+  }
+})
+
+test('removes multiline JSDoc prose that shares the closing delimiter line', () => {
+  for (const newline of ['\n', '\r\n', '\r', '\u2028', '\u2029']) {
+    const cases = [
+      [
+        `/** @param {string} value${newline} * Parameter explanation. */`,
+        `/** @param {string} value${newline} */`,
+      ],
+      [
+        `/** @param {string} value${newline} * First explanation.${newline} * Last explanation. */`,
+        `/** @param {string} value${newline} */`,
+      ],
+      [
+        `/** @type {string}${newline} * @description Old explanation. */`,
+        `/** @type {string}${newline} */`,
+      ],
+      [
+        `/**${newline}     * @type {string}${newline}     * @description Old explanation.${newline}     * Last explanation. */`,
+        `/**${newline}     * @type {string}${newline}     */`,
+      ],
+    ]
+    for (const [comment, expectedComment] of cases) {
+      const source = `    ${comment}${newline}    function identity(value) { return value }`
+      const expected = `    ${expectedComment}${newline}    function identity(value) { return value }`
+      assert.equal(findComments('sample.js', source).length, 1, comment)
+      const cleaned = withoutComments('sample.js', source)
+      assert.equal(cleaned, expected)
+      assert.deepEqual(findComments('sample.js', cleaned), [])
+      assert.equal(withoutComments('sample.js', cleaned), cleaned)
+    }
+    const source = `function value() { return /** @type {number}${newline} * Explanation. */ (1) }`
+    assert.equal(
+      new Function(`${withoutComments('sample.js', source)}; return value()`)(),
+      undefined
+    )
+  }
 })
