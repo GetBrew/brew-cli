@@ -46003,6 +46003,8 @@ paths:
             `RUN_START_FAILED`: The workflow engine could not start the run right now.
 
             `RUN_STOP_FAILED`: The previous run of this cohort could not be stopped.
+
+            `SERVICE_UNAVAILABLE`: A dependency the operation must consult (billing, the idempotency store) is temporarily unavailable, so the request was refused rather than run unmetered.
           headers:
             x-request-id:
               schema:
@@ -46011,6 +46013,13 @@ paths:
                 example: req_8cac13fd94e6420cacdd75a1aa403a28
               required: true
               description: Unique request identifier. Share this with support when debugging a request.
+            Retry-After:
+              schema:
+                type: integer
+                description: Seconds to wait before retrying the request.
+                example: 42
+              required: true
+              description: Seconds to wait before retrying the request.
           content:
             application/json:
               schema:
@@ -46033,6 +46042,15 @@ paths:
                       type: service_unavailable
                       message: The previous run of this cohort could not be stopped.
                       suggestion: Retry the resume in a few seconds, or cancel the previous run first.
+                      docs: https://docs.brew.new/api-reference/api/errors
+                serviceUnavailable:
+                  summary: SERVICE_UNAVAILABLE
+                  value:
+                    error:
+                      code: SERVICE_UNAVAILABLE
+                      type: service_unavailable
+                      message: A dependency the operation must consult (billing, the idempotency store) is temporarily unavailable, so the request was refused rather than run unmetered.
+                      suggestion: Retry the request after a short delay.
                       docs: https://docs.brew.new/api-reference/api/errors
       x-brew-scope: automations
       x-brew-brand-scope: brand

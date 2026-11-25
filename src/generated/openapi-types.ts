@@ -14113,6 +14113,7 @@ export interface operations {
             503: {
                 headers: {
                     "x-request-id": string;
+                    "Retry-After": number;
                     [name: string]: unknown;
                 };
                 content: {
