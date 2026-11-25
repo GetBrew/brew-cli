@@ -113,15 +113,35 @@ function compilerCommentWithoutProse(value) {
       ? comment.trim().length > 0
       : Boolean(comment?.length)
   const edits = []
+  const lineStart = (position) => {
+    while (position > 0 && !/[\r\n\u2028\u2029]/.test(value[position - 1])) {
+      position--
+    }
+    return position
+  }
   const add = (start, end) => {
     end = Math.min(end, doc.end - 2)
     if (start >= end) {
       return
     }
-    const multiline = /[\r\n\u2028\u2029]/.test(value.slice(start, end))
+    const prefixStart = lineStart(start)
+    const prefix = value.slice(prefixStart, start)
+    const nextLine = lineStart(end)
+    const newline = value
+      .slice(start, end)
+      .match(/\r\n|[\r\n\u2028\u2029]/)?.[0]
     let replacement = ' '
-    if (multiline) {
-      replacement = end === doc.end - 2 ? '\n ' : '\n * '
+    if (/^[\t ]*(?:\*[\t ]*)?$/.test(prefix)) {
+      start = prefixStart
+      if (newline) {
+        end = nextLine
+        replacement = ''
+      } else {
+        replacement = prefix
+      }
+    } else if (newline) {
+      end = nextLine
+      replacement = newline
     }
     edits.push({ start, end, replacement })
   }

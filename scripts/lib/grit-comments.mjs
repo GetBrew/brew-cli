@@ -5,13 +5,13 @@ export function gritCommentRanges(source) {
     const quote = source[cursor]
     if (quote === '"' || quote === "'" || quote === '`') {
       const start = cursor++
-      let closed = false
+      let isClosed = false
       while (cursor < source.length) {
         if (source[cursor] === '\\') {
           cursor += 2
         } else if (source[cursor] === quote) {
           cursor++
-          closed = true
+          isClosed = true
           break
         } else if (quote !== '`' && /[\r\n]/.test(source[cursor])) {
           break
@@ -19,7 +19,7 @@ export function gritCommentRanges(source) {
           cursor++
         }
       }
-      if (!closed) {
+      if (!isClosed) {
         throw new Error(`Unterminated GritQL literal at offset ${start}`)
       }
     } else if (source.startsWith('//', cursor)) {

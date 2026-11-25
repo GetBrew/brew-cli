@@ -1958,7 +1958,6 @@ export interface components {
             subjectLine?: string;
             previewText?: string;
             /**
-             * @description The language the email's copy is written in (ISO 639-1, or zh-Hans / zh-Hant), read by Brew's language model after each content change unless a caller set it. Rendered as the HTML document's lang. Detail-only; absent until it has been read.
              * @enum {string}
              */
             lang?: "en" | "de" | "fr" | "es" | "pt" | "it" | "nl" | "pl" | "sv" | "da" | "no" | "fi" | "cs" | "sk" | "hu" | "ro" | "bg" | "el" | "tr" | "ru" | "uk" | "hr" | "sr" | "sl" | "lt" | "lv" | "et" | "ca" | "ar" | "he" | "fa" | "ur" | "hi" | "bn" | "th" | "vi" | "id" | "ms" | "tl" | "ja" | "ko" | "zh-Hans" | "zh-Hant" | "sw" | "af";
@@ -1985,7 +1984,6 @@ export interface components {
             subjectLine?: string;
             previewText?: string;
             /**
-             * @description The language the email's copy is written in (ISO 639-1, or zh-Hans / zh-Hant), read by Brew's language model after each content change unless a caller set it. Rendered as the HTML document's lang. Detail-only; absent until it has been read.
              * @enum {string}
              */
             lang?: "en" | "de" | "fr" | "es" | "pt" | "it" | "nl" | "pl" | "sv" | "da" | "no" | "fi" | "cs" | "sk" | "hu" | "ro" | "bg" | "el" | "tr" | "ru" | "uk" | "hr" | "sr" | "sl" | "lt" | "lv" | "et" | "ca" | "ar" | "he" | "fa" | "ur" | "hi" | "bn" | "th" | "vi" | "id" | "ms" | "tl" | "ja" | "ko" | "zh-Hans" | "zh-Hant" | "sw" | "af";
@@ -2003,7 +2001,6 @@ export interface components {
             version?: number | "latest";
             runId?: string;
             /**
-             * @description `available` when `previewImage` is set; `unavailable` when a ready design has no saved screenshot; `not_ready` while generating or after a failure.
              * @enum {string}
              */
             previewStatus: "available" | "unavailable" | "not_ready";
@@ -2057,7 +2054,6 @@ export interface components {
             notMoved?: {
                 emailId: string;
                 /**
-                 * @description `not_found`: no such design in this brand. `generating`: a generation is still running; move it after. `not_movable`: an older design stored in a format the folder move does not support. `folder_full`: the folder holds the 200 designs a move can place. `retry`: this call reached its read budget (large designs fit fewer per call); send these ids again.
                  * @enum {string}
                  */
                 reason: "not_found" | "generating" | "not_movable" | "folder_full" | "retry";
@@ -2081,7 +2077,6 @@ export interface components {
             /** @enum {string} */
             approvalState?: "pending" | "approved" | "rejected";
             /**
-             * @description Why a paused send is held. `plan_limit`: the plan has too few sends left this period. `domain_unsendable`: its sending domain stopped passing DNS; fails after 7 days. Both resume on their own and can be canceled. `manual`: its operator paused the gradual ramp; resume it to continue. `bounce_rate`: at least 4% of its recipients hard-bounced or 0.3% marked it as spam; check the list, then resume or cancel it.
              * @enum {string}
              */
             pauseReason?: "manual" | "plan_limit" | "domain_unsendable" | "bounce_rate";
@@ -2292,7 +2287,6 @@ export interface components {
                     /** @enum {string} */
                     type: "string";
                     /**
-                     * @description Unary empty check; do not provide a value.
                      * @enum {string}
                      */
                     operator: "is_empty" | "is_not_empty";
@@ -2301,7 +2295,6 @@ export interface components {
                     /** @enum {string} */
                     type: "number";
                     /**
-                     * @description Unary empty check; do not provide a value.
                      * @enum {string}
                      */
                     operator: "is_empty" | "is_not_empty";
@@ -2310,7 +2303,6 @@ export interface components {
                     /** @enum {string} */
                     type: "date";
                     /**
-                     * @description Unary empty check; do not provide a value.
                      * @enum {string}
                      */
                     operator: "is_empty" | "is_not_empty";
@@ -2319,7 +2311,6 @@ export interface components {
                     /** @enum {string} */
                     type: "bool";
                     /**
-                     * @description Unary boolean check; do not provide a value.
                      * @enum {string}
                      */
                     operator: "is_true" | "is_false";
@@ -2430,7 +2421,6 @@ export interface components {
                     /** @enum {string} */
                     type: "string";
                     /**
-                     * @description Unary empty check; do not provide a value.
                      * @enum {string}
                      */
                     operator: "is_empty" | "is_not_empty";
@@ -2439,7 +2429,6 @@ export interface components {
                     /** @enum {string} */
                     type: "number";
                     /**
-                     * @description Unary empty check; do not provide a value.
                      * @enum {string}
                      */
                     operator: "is_empty" | "is_not_empty";
@@ -2448,7 +2437,6 @@ export interface components {
                     /** @enum {string} */
                     type: "date";
                     /**
-                     * @description Unary empty check; do not provide a value.
                      * @enum {string}
                      */
                     operator: "is_empty" | "is_not_empty";
@@ -2457,7 +2445,6 @@ export interface components {
                     /** @enum {string} */
                     type: "bool";
                     /**
-                     * @description Unary boolean check; do not provide a value.
                      * @enum {string}
                      */
                     operator: "is_true" | "is_false";
@@ -2655,7 +2642,6 @@ export interface components {
                 nodeId: string;
                 nodeLabel: string;
                 /**
-                 * @description Where on the node the orphaned reference lives.
                  * @enum {string}
                  */
                 surface: "triggerBinding" | "subject" | "previewText" | "fromName" | "replyTo" | "emailBody" | "filterCondition" | "splitCondition";
@@ -2682,7 +2668,6 @@ export interface components {
             /** @enum {string} */
             approvalState?: "pending" | "approved" | "rejected";
             /**
-             * @description Why a paused run is held. `plan_limit` means the plan has too few sends left this period; the run resumes on its own once the allowance has room (`resumeAudienceRun` refuses it), or you can cancel it. `manual` means an operator paused it; resume it to continue.
              * @enum {string}
              */
             pauseReason?: "manual" | "plan_limit";
@@ -2773,12 +2758,10 @@ export interface components {
             providerEventKey?: string;
             brewEvent?: {
                 /**
-                 * @description The Brew event this trigger starts on.
                  * @enum {string}
                  */
                 event: "contact.unsubscribed";
                 /**
-                 * @description `domain`: unsubscribes from one marketing sending domain (its list). `all`: unsubscribes from every email the brand sends.
                  * @enum {string}
                  */
                 scope: "domain" | "all";
@@ -2800,14 +2783,12 @@ export interface components {
             required: boolean;
             fallbackValue?: string | number | boolean;
             /**
-             * @description PII classification for redaction. "high" auto-redacts the value in execution logs and the inbound log. "low" (default when omitted) preserves the value. "none" is an explicit marker that the field is non-personal. On a container, "high" redacts the whole subtree.
              * @enum {string}
              */
             pii?: "none" | "low" | "high";
             secret?: boolean;
             children?: components["schemas"]["TriggerPayloadField"][];
             /**
-             * @description Element type for a type "array" of scalars. Omit when the array carries objects (declare `children` instead).
              * @enum {string}
              */
             itemType?: "string" | "int" | "boolean";
@@ -2834,7 +2815,6 @@ export interface components {
             subscribed?: boolean;
             consent?: {
                 /**
-                 * @description Who captured it: `api` (an API caller asserted it), `form` (a signup form), `import` (a bulk import), `app` (the in-app CSV wizard checkbox), `integration` (an integration sync such as Stripe created the contact; provenance only, not an opt-in).
                  * @enum {string}
                  */
                 source: "api" | "form" | "import" | "app" | "integration";
@@ -2843,7 +2823,6 @@ export interface components {
                 evidence?: string;
             };
             /**
-             * @description The latest verdict. `valid` only ever comes from a deliverability check (`validate: true` on ingest, or POST /v1/contacts/validate), which also sets `lastValidatedAt`. Without a check the free format check on ingest stores `risky` (disposable or role address) or `invalid`, and leaves the field unset otherwise: not validated.
              * @enum {string}
              */
             validationStatus?: "valid" | "risky" | "invalid";
@@ -2982,7 +2961,6 @@ export interface components {
             sendingEnabled: boolean;
             sendable: boolean;
             /**
-             * @description marketing (default) or transactional. Transactional domains skip unsubscribe and send via automation sendEmail nodes (or a test send).
              * @enum {string}
              */
             sendingPurpose: "marketing" | "transactional";
@@ -3071,12 +3049,10 @@ export interface components {
             firstUserPrompt: string | null;
             lastAssistantPreview: string | null;
             /**
-             * @description `streaming` or `background_finalizing` while a run is still going; null before the first run.
              * @enum {string|null}
              */
             status: "idle" | "streaming" | "background_finalizing" | "completed" | "failed" | "interrupted" | "stopped" | "persistence_failed" | null;
             /**
-             * @description The chat app the conversation started in; null for the Brew web app.
              * @enum {string|null}
              */
             origin: "slack" | "teams" | "google-chat" | "telegram" | null;
@@ -3092,14 +3068,12 @@ export interface components {
             /** @enum {string} */
             confidence: "high" | "medium" | "low";
             /**
-             * @description `answer` reports what happened, `insight` a change that passed its statistical test, `strategy` a recommended next step.
              * @enum {string}
              */
             kind: "answer" | "insight" | "strategy";
             category: string;
             detectorId: string;
             /**
-             * @description A snooze that has ended reads as `active`.
              * @enum {string}
              */
             state: "active" | "snoozed" | "cleared" | "dismissed" | "resolved" | "stale";
@@ -3152,7 +3126,6 @@ export interface components {
                 clickRatePct: number | null;
                 priorClickRatePct: number | null;
                 /**
-                 * @description `up` or `down` only when the change is statistically real.
                  * @enum {string}
                  */
                 openDirection: "up" | "down" | "steady";
@@ -3207,14 +3180,12 @@ export interface components {
             /** @enum {string} */
             confidence: "high" | "medium" | "low";
             /**
-             * @description `answer` reports what happened, `insight` a change that passed its statistical test, `strategy` a recommended next step.
              * @enum {string}
              */
             kind: "answer" | "insight" | "strategy";
             category: string;
             detectorId: string;
             /**
-             * @description A snooze that has ended reads as `active`.
              * @enum {string}
              */
             state: "active" | "snoozed" | "cleared" | "dismissed" | "resolved" | "stale";
@@ -3436,7 +3407,6 @@ export interface components {
                 subjectLine?: string;
                 previewText?: string;
                 /**
-                 * @description The language the email's copy is written in (ISO 639-1, or zh-Hans / zh-Hant), read by Brew's language model after each content change unless a caller set it. Rendered as the HTML document's lang. Detail-only; absent until it has been read.
                  * @enum {string}
                  */
                 lang?: "en" | "de" | "fr" | "es" | "pt" | "it" | "nl" | "pl" | "sv" | "da" | "no" | "fi" | "cs" | "sk" | "hu" | "ro" | "bg" | "el" | "tr" | "ru" | "uk" | "hr" | "sr" | "sl" | "lt" | "lv" | "et" | "ca" | "ar" | "he" | "fa" | "ur" | "hi" | "bn" | "th" | "vi" | "id" | "ms" | "tl" | "ja" | "ko" | "zh-Hans" | "zh-Hant" | "sw" | "af";
@@ -3483,14 +3453,12 @@ export interface components {
             contentUrls?: string[];
             referenceEmailId?: string;
             /**
-             * @description Email category that steers the design treatment (exemplars, hero recipe, personalization) — mirrors what the in-app agent infers per request. One of: welcome, onboarding, newsletter, content, event-invitation, event-reminder, event-recap, product-launch, product-update, product-pitch, promotional, cart-abandonment, re-engagement, subscription, feedback-request, referral, company-news, fundraising, order-confirmation, shipping-update, receipt, password-reset, verification, security-alert, account-update, notification, support, internal, business, general. Omit for a general treatment. Transactional categories (receipt, password-reset, order-confirmation, …) steer receipt/reset design conventions; to DELIVER those emails, wire the design into an automation with a trigger and a transactional-purpose sending domain, then fire the trigger.
              * @enum {string}
              */
             category?: "welcome" | "onboarding" | "newsletter" | "content" | "event-invitation" | "event-reminder" | "event-recap" | "product-launch" | "product-update" | "product-pitch" | "promotional" | "cart-abandonment" | "re-engagement" | "subscription" | "feedback-request" | "referral" | "company-news" | "fundraising" | "order-confirmation" | "shipping-update" | "receipt" | "password-reset" | "verification" | "security-alert" | "account-update" | "notification" | "support" | "internal" | "business" | "general";
             title?: string;
             subjectLine?: string;
             /**
-             * @description ISO 639-1 language code of the email's copy (or zh-Hans / zh-Hant). Omit and Brew's language model reads it from the finished body; a value you set is kept and never re-detected. Becomes the HTML document's lang (and dir for right-to-left languages) on every send and export. One of: en, de, fr, es, pt, it, nl, pl, sv, da, no, fi, cs, sk, hu, ro, bg, el, tr, ru, uk, hr, sr, sl, lt, lv, et, ca, ar, he, fa, ur, hi, bn, th, vi, id, ms, tl, ja, ko, zh-Hans, zh-Hant, sw, af.
              * @enum {string}
              */
             lang?: "en" | "de" | "fr" | "es" | "pt" | "it" | "nl" | "pl" | "sv" | "da" | "no" | "fi" | "cs" | "sk" | "hu" | "ro" | "bg" | "el" | "tr" | "ru" | "uk" | "hr" | "sr" | "sl" | "lt" | "lv" | "et" | "ca" | "ar" | "he" | "fa" | "ur" | "hi" | "bn" | "th" | "vi" | "id" | "ms" | "tl" | "ja" | "ko" | "zh-Hans" | "zh-Hant" | "sw" | "af";
@@ -3530,7 +3498,6 @@ export interface components {
         };
         EmailImportRequest: {
             /**
-             * @description `html`: an HTML email document or fragment · `mjml`: MJML markup · `jsx`: React Email — a module with a default-exported component, or a bare `<Html>` element · `eml`: a saved RFC 822 message
              * @enum {string}
              */
             format: "html" | "mjml" | "jsx" | "eml";
@@ -3567,8 +3534,6 @@ export interface components {
             groupName?: string;
             subjectLine?: string;
             /**
-             * @description Source representation returned in `content`: React Email JSX by default, or rendered email-safe HTML.
-             * @default jsx
              * @enum {string}
              */
             format?: "jsx" | "html";
@@ -3581,13 +3546,11 @@ export interface components {
             format: "jsx" | "html";
             content: string;
             /**
-             * @description `layers`: converted deterministically from the picture's own layers, every text and button live. `model`: the layer conversion was not possible for this picture and a model recreated it instead; metered as model usage, not the flat import price.
              * @enum {string}
              */
             conversion: "layers" | "model";
             previewImage?: string;
             /**
-             * @description Why layer conversion could not run. Present when conversion is model; no provider internals are exposed.
              * @enum {string}
              */
             fallbackReason?: "layer_service_unavailable" | "layer_conversion_timeout" | "layer_conversion_failed";
@@ -3605,8 +3568,6 @@ export interface components {
             groupName?: string;
             subjectLine?: string;
             /**
-             * @description Source representation returned in `content`: React Email JSX by default, or rendered email-safe HTML.
-             * @default jsx
              * @enum {string}
              */
             format?: "jsx" | "html";
@@ -3637,7 +3598,6 @@ export interface components {
             title?: string;
             subjectLine?: string;
             /**
-             * @description Set the language of the email (ISO 639-1, or zh-Hans / zh-Hant). Part of the free envelope patch: no AI run, no new version. Once set it is kept: Brew no longer re-detects it after edits. null clears a language you set, and Brew reads it again from the email.
              * @enum {string|null}
              */
             lang?: "en" | "de" | "fr" | "es" | "pt" | "it" | "nl" | "pl" | "sv" | "da" | "no" | "fi" | "cs" | "sk" | "hu" | "ro" | "bg" | "el" | "tr" | "ru" | "uk" | "hr" | "sr" | "sl" | "lt" | "lv" | "et" | "ca" | "ar" | "he" | "fa" | "ur" | "hi" | "bn" | "th" | "vi" | "id" | "ms" | "tl" | "ja" | "ko" | "zh-Hans" | "zh-Hant" | "sw" | "af" | null;
@@ -3647,7 +3607,6 @@ export interface components {
             emailId: string;
             deleted: boolean;
             /**
-             * @description Present when `deleted` is false: `already_deleted` means this design was hard-deleted earlier (see `deletedAt`) — it is gone, do not retry; `not_found` means no design with this id exists on this brand.
              * @enum {string}
              */
             reason?: "already_deleted" | "not_found";
@@ -3673,7 +3632,6 @@ export interface components {
         };
         EmailExportRequest: {
             /**
-             * @description The connected ESP to export the design to as a template.
              * @enum {string}
              */
             provider: "braze" | "brevo" | "hubspot" | "klaviyo" | "mailchimp" | "mailjet" | "iterable" | "postmark" | "onesignal" | "mailgun" | "sendgrid" | "loops" | "campaignmonitor";
@@ -3833,7 +3791,6 @@ export interface components {
             subject?: string;
             previewText?: string;
             /**
-             * @description marketing (unsubscribe link and postal address required) or transactional. Omit it and the audit infers the purpose from the content.
              * @enum {string}
              */
             sendingPurpose?: "marketing" | "transactional";
@@ -3842,7 +3799,6 @@ export interface components {
             subject?: string;
             previewText?: string;
             /**
-             * @description marketing (unsubscribe link and postal address required) or transactional. Omit it and the audit infers the purpose from the content.
              * @enum {string}
              */
             sendingPurpose?: "marketing" | "transactional";
@@ -3852,7 +3808,6 @@ export interface components {
             subject?: string;
             previewText?: string;
             /**
-             * @description marketing (unsubscribe link and postal address required) or transactional. Omit it and the audit infers the purpose from the content.
              * @enum {string}
              */
             sendingPurpose?: "marketing" | "transactional";
@@ -3862,7 +3817,6 @@ export interface components {
             emailId: string;
             emailVersionId?: string;
             /**
-             * @description The job: `queued` or `running` until every client settles, then `completed`, `partially_completed` (some screenshots failed) or `failed`.
              * @enum {string}
              */
             status: "queued" | "running" | "completed" | "partially_completed" | "failed";
@@ -4088,7 +4042,6 @@ export interface components {
                 /** @enum {string} */
                 approvalState?: "pending" | "approved" | "rejected";
                 /**
-                 * @description Why a paused send is held. `plan_limit`: the plan has too few sends left this period. `domain_unsendable`: its sending domain stopped passing DNS; fails after 7 days. Both resume on their own and can be canceled. `manual`: its operator paused the gradual ramp; resume it to continue. `bounce_rate`: at least 4% of its recipients hard-bounced or 0.3% marked it as spam; check the list, then resume or cancel it.
                  * @enum {string}
                  */
                 pauseReason?: "manual" | "plan_limit" | "domain_unsendable" | "bounce_rate";
@@ -4227,7 +4180,6 @@ export interface components {
             };
             consent?: {
                 /**
-                 * @description Who captured it: `api`, `form`, or `import`. (`app` is reserved for the in-app CSV wizard.)
                  * @enum {string}
                  */
                 source: "api" | "form" | "import";
@@ -4551,7 +4503,6 @@ export interface components {
                         /** @enum {string} */
                         type: "string";
                         /**
-                         * @description Unary empty check; do not provide a value.
                          * @enum {string}
                          */
                         operator: "is_empty" | "is_not_empty";
@@ -4560,7 +4511,6 @@ export interface components {
                         /** @enum {string} */
                         type: "number";
                         /**
-                         * @description Unary empty check; do not provide a value.
                          * @enum {string}
                          */
                         operator: "is_empty" | "is_not_empty";
@@ -4569,7 +4519,6 @@ export interface components {
                         /** @enum {string} */
                         type: "date";
                         /**
-                         * @description Unary empty check; do not provide a value.
                          * @enum {string}
                          */
                         operator: "is_empty" | "is_not_empty";
@@ -4578,7 +4527,6 @@ export interface components {
                         /** @enum {string} */
                         type: "bool";
                         /**
-                         * @description Unary boolean check; do not provide a value.
                          * @enum {string}
                          */
                         operator: "is_true" | "is_false";
@@ -4689,7 +4637,6 @@ export interface components {
                         /** @enum {string} */
                         type: "string";
                         /**
-                         * @description Unary empty check; do not provide a value.
                          * @enum {string}
                          */
                         operator: "is_empty" | "is_not_empty";
@@ -4698,7 +4645,6 @@ export interface components {
                         /** @enum {string} */
                         type: "number";
                         /**
-                         * @description Unary empty check; do not provide a value.
                          * @enum {string}
                          */
                         operator: "is_empty" | "is_not_empty";
@@ -4707,7 +4653,6 @@ export interface components {
                         /** @enum {string} */
                         type: "date";
                         /**
-                         * @description Unary empty check; do not provide a value.
                          * @enum {string}
                          */
                         operator: "is_empty" | "is_not_empty";
@@ -4716,7 +4661,6 @@ export interface components {
                         /** @enum {string} */
                         type: "bool";
                         /**
-                         * @description Unary boolean check; do not provide a value.
                          * @enum {string}
                          */
                         operator: "is_true" | "is_false";
@@ -5021,7 +4965,6 @@ export interface components {
                         /** @enum {string} */
                         type: "string";
                         /**
-                         * @description Unary empty check; do not provide a value.
                          * @enum {string}
                          */
                         operator: "is_empty" | "is_not_empty";
@@ -5030,7 +4973,6 @@ export interface components {
                         /** @enum {string} */
                         type: "number";
                         /**
-                         * @description Unary empty check; do not provide a value.
                          * @enum {string}
                          */
                         operator: "is_empty" | "is_not_empty";
@@ -5039,7 +4981,6 @@ export interface components {
                         /** @enum {string} */
                         type: "date";
                         /**
-                         * @description Unary empty check; do not provide a value.
                          * @enum {string}
                          */
                         operator: "is_empty" | "is_not_empty";
@@ -5048,7 +4989,6 @@ export interface components {
                         /** @enum {string} */
                         type: "bool";
                         /**
-                         * @description Unary boolean check; do not provide a value.
                          * @enum {string}
                          */
                         operator: "is_true" | "is_false";
@@ -5159,7 +5099,6 @@ export interface components {
                         /** @enum {string} */
                         type: "string";
                         /**
-                         * @description Unary empty check; do not provide a value.
                          * @enum {string}
                          */
                         operator: "is_empty" | "is_not_empty";
@@ -5168,7 +5107,6 @@ export interface components {
                         /** @enum {string} */
                         type: "number";
                         /**
-                         * @description Unary empty check; do not provide a value.
                          * @enum {string}
                          */
                         operator: "is_empty" | "is_not_empty";
@@ -5177,7 +5115,6 @@ export interface components {
                         /** @enum {string} */
                         type: "date";
                         /**
-                         * @description Unary empty check; do not provide a value.
                          * @enum {string}
                          */
                         operator: "is_empty" | "is_not_empty";
@@ -5186,7 +5123,6 @@ export interface components {
                         /** @enum {string} */
                         type: "bool";
                         /**
-                         * @description Unary boolean check; do not provide a value.
                          * @enum {string}
                          */
                         operator: "is_true" | "is_false";
@@ -5333,7 +5269,6 @@ export interface components {
             warnings?: components["schemas"]["ApiWarning"][];
             workflowRunId?: string;
             /**
-             * @description Present when org-level send approval holds the run for admin review: no workflow starts until an admin approves; rejection cancels the run with zero deliveries.
              * @enum {string}
              */
             approvalState?: "pending";
@@ -5369,7 +5304,6 @@ export interface components {
                 /** @enum {string} */
                 approvalState?: "pending" | "approved" | "rejected";
                 /**
-                 * @description Why a paused run is held. `plan_limit` means the plan has too few sends left this period; the run resumes on its own once the allowance has room (`resumeAudienceRun` refuses it), or you can cancel it. `manual` means an operator paused it; resume it to continue.
                  * @enum {string}
                  */
                 pauseReason?: "manual" | "plan_limit";
@@ -5570,12 +5504,10 @@ export interface components {
             providerEventKey?: string;
             brewEvent?: {
                 /**
-                 * @description The Brew event this trigger starts on.
                  * @enum {string}
                  */
                 event: "contact.unsubscribed";
                 /**
-                 * @description `domain`: unsubscribes from one marketing sending domain (its list). `all`: unsubscribes from every email the brand sends.
                  * @enum {string}
                  */
                 scope: "domain" | "all";
@@ -5593,12 +5525,10 @@ export interface components {
         };
         BrewEventTriggersPostRequest: {
             /**
-             * @description The Brew event. `contact.unsubscribed`: a contact unsubscribed with an email unsubscribe link or their mail app’s unsubscribe button.
              * @enum {string}
              */
             event: "contact.unsubscribed";
             /**
-             * @description `domain`: unsubscribes from one marketing sending domain (pass `domainId`). `all`: unsubscribes from every email the brand sends.
              * @enum {string}
              */
             scope: "domain" | "all";
@@ -5620,7 +5550,6 @@ export interface components {
             updatedAt: string;
             created: boolean;
             /**
-             * @description `current`: listed with the event or read in the last day. `stored`: the provider could not be read now; these are its last description. `rate_limited`: its read budget is spent; these are what Brew stored, possibly none (read again after `retryAfterSeconds`). `unavailable`: not read, and none stored.
              * @enum {string}
              */
             propertiesStatus: "current" | "stored" | "rate_limited" | "unavailable";
@@ -5648,12 +5577,10 @@ export interface components {
                 providerEventKey?: string;
                 brewEvent?: {
                     /**
-                     * @description The Brew event this trigger starts on.
                      * @enum {string}
                      */
                     event: "contact.unsubscribed";
                     /**
-                     * @description `domain`: unsubscribes from one marketing sending domain (its list). `all`: unsubscribes from every email the brand sends.
                      * @enum {string}
                      */
                     scope: "domain" | "all";
@@ -5728,7 +5655,6 @@ export interface components {
             triggerInstanceId: string;
             triggerEventId: string;
             /**
-             * @description `triggered` = this call accepted and matched the event; `automationRunIds` lists the runs it started and `notStarted` any it could not. `replayed` = the same `Idempotency-Key` already fired; nothing ran twice.
              * @enum {string}
              */
             status: "triggered" | "replayed";
@@ -5836,7 +5762,6 @@ export interface components {
             fields?: components["schemas"]["PayloadContractFieldNode"][];
             name?: string;
             /**
-             * @description How live fires use the contract. `off`: advisory only. `prune`: a fire that breaks a declared field is refused and undeclared keys are dropped. `strict`: undeclared keys are refused too. Omit to keep the current setting.
              * @enum {string}
              */
             enforcement?: "off" | "prune" | "strict";
@@ -5889,7 +5814,6 @@ export interface components {
                 [key: string]: unknown;
             };
             /**
-             * @description Check as this mode instead of the stored one: `prune` drops undeclared keys, `strict` reports them as errors. Omit for the stored mode (`prune` when enforcement is off).
              * @enum {string}
              */
             enforcement?: "prune" | "strict";
@@ -5975,7 +5899,6 @@ export interface components {
                 subscribed?: boolean;
                 consent?: {
                     /**
-                     * @description Who captured it: `api` (an API caller asserted it), `form` (a signup form), `import` (a bulk import), `app` (the in-app CSV wizard checkbox), `integration` (an integration sync such as Stripe created the contact; provenance only, not an opt-in).
                      * @enum {string}
                      */
                     source: "api" | "form" | "import" | "app" | "integration";
@@ -5984,7 +5907,6 @@ export interface components {
                     evidence?: string;
                 };
                 /**
-                 * @description The latest verdict. `valid` only ever comes from a deliverability check (`validate: true` on ingest, or POST /v1/contacts/validate), which also sets `lastValidatedAt`. Without a check the free format check on ingest stores `risky` (disposable or role address) or `invalid`, and leaves the field unset otherwise: not validated.
                  * @enum {string}
                  */
                 validationStatus?: "valid" | "risky" | "invalid";
@@ -6045,7 +5967,6 @@ export interface components {
             };
             consent?: {
                 /**
-                 * @description Who captured it: `api`, `form`, or `import`. (`app` is reserved for the in-app CSV wizard.)
                  * @enum {string}
                  */
                 source: "api" | "form" | "import";
@@ -6066,7 +5987,6 @@ export interface components {
                 };
                 consent?: {
                     /**
-                     * @description Who captured it: `api`, `form`, or `import`. (`app` is reserved for the in-app CSV wizard.)
                      * @enum {string}
                      */
                     source: "api" | "form" | "import";
@@ -6078,7 +5998,6 @@ export interface components {
             validate?: boolean;
             consent?: {
                 /**
-                 * @description Who captured it: `api`, `form`, or `import`. (`app` is reserved for the in-app CSV wizard.)
                  * @enum {string}
                  */
                 source: "api" | "form" | "import";
@@ -6095,7 +6014,6 @@ export interface components {
                 subscribed?: boolean;
                 consent?: {
                     /**
-                     * @description Who captured it: `api` (an API caller asserted it), `form` (a signup form), `import` (a bulk import), `app` (the in-app CSV wizard checkbox), `integration` (an integration sync such as Stripe created the contact; provenance only, not an opt-in).
                      * @enum {string}
                      */
                     source: "api" | "form" | "import" | "app" | "integration";
@@ -6104,7 +6022,6 @@ export interface components {
                     evidence?: string;
                 };
                 /**
-                 * @description The latest verdict. `valid` only ever comes from a deliverability check (`validate: true` on ingest, or POST /v1/contacts/validate), which also sets `lastValidatedAt`. Without a check the free format check on ingest stores `risky` (disposable or role address) or `invalid`, and leaves the field unset otherwise: not validated.
                  * @enum {string}
                  */
                 validationStatus?: "valid" | "risky" | "invalid";
@@ -6148,7 +6065,6 @@ export interface components {
             };
             consent?: {
                 /**
-                 * @description Who captured it: `api`, `form`, or `import`. (`app` is reserved for the in-app CSV wizard.)
                  * @enum {string}
                  */
                 source: "api" | "form" | "import";
@@ -6169,7 +6085,6 @@ export interface components {
                 subscribed?: boolean;
                 consent?: {
                     /**
-                     * @description Who captured it: `api` (an API caller asserted it), `form` (a signup form), `import` (a bulk import), `app` (the in-app CSV wizard checkbox), `integration` (an integration sync such as Stripe created the contact; provenance only, not an opt-in).
                      * @enum {string}
                      */
                     source: "api" | "form" | "import" | "app" | "integration";
@@ -6178,7 +6093,6 @@ export interface components {
                     evidence?: string;
                 };
                 /**
-                 * @description The latest verdict. `valid` only ever comes from a deliverability check (`validate: true` on ingest, or POST /v1/contacts/validate), which also sets `lastValidatedAt`. Without a check the free format check on ingest stores `risky` (disposable or role address) or `invalid`, and leaves the field unset otherwise: not validated.
                  * @enum {string}
                  */
                 validationStatus?: "valid" | "risky" | "invalid";
@@ -6216,7 +6130,6 @@ export interface components {
             subscribed?: boolean;
             consent?: {
                 /**
-                 * @description Who captured it: `api` (an API caller asserted it), `form` (a signup form), `import` (a bulk import), `app` (the in-app CSV wizard checkbox), `integration` (an integration sync such as Stripe created the contact; provenance only, not an opt-in).
                  * @enum {string}
                  */
                 source: "api" | "form" | "import" | "app" | "integration";
@@ -6225,7 +6138,6 @@ export interface components {
                 evidence?: string;
             };
             /**
-             * @description The latest verdict. `valid` only ever comes from a deliverability check (`validate: true` on ingest, or POST /v1/contacts/validate), which also sets `lastValidatedAt`. Without a check the free format check on ingest stores `risky` (disposable or role address) or `invalid`, and leaves the field unset otherwise: not validated.
              * @enum {string}
              */
             validationStatus?: "valid" | "risky" | "invalid";
@@ -6267,7 +6179,6 @@ export interface components {
                 subscribed?: boolean;
                 consent?: {
                     /**
-                     * @description Who captured it: `api` (an API caller asserted it), `form` (a signup form), `import` (a bulk import), `app` (the in-app CSV wizard checkbox), `integration` (an integration sync such as Stripe created the contact; provenance only, not an opt-in).
                      * @enum {string}
                      */
                     source: "api" | "form" | "import" | "app" | "integration";
@@ -6276,7 +6187,6 @@ export interface components {
                     evidence?: string;
                 };
                 /**
-                 * @description The latest verdict. `valid` only ever comes from a deliverability check (`validate: true` on ingest, or POST /v1/contacts/validate), which also sets `lastValidatedAt`. Without a check the free format check on ingest stores `risky` (disposable or role address) or `invalid`, and leaves the field unset otherwise: not validated.
                  * @enum {string}
                  */
                 validationStatus?: "valid" | "risky" | "invalid";
@@ -6335,20 +6245,17 @@ export interface components {
             }[];
             audienceId?: string;
             /**
-             * @default and
              * @enum {string}
              */
             logic?: "and" | "or" | "none";
             sort?: string;
             /**
-             * @default desc
              * @enum {string}
              */
             order?: "asc" | "desc";
             count?: boolean;
             groupBy?: string[];
             /**
-             * @description With `count: true`: also count per UTC `createdAt` day, week (Monday start) or month.
              * @enum {string}
              */
             bucket?: "day" | "week" | "month";
@@ -6430,7 +6337,6 @@ export interface components {
             validationJobId?: string;
             importId?: string;
             /**
-             * @description Present on a dry run: the counts say what the import would do, and nothing was written.
              * @enum {boolean}
              */
             dryRun?: true;
@@ -6443,7 +6349,6 @@ export interface components {
             validate?: boolean;
             consent?: {
                 /**
-                 * @description Who captured it: `api`, `form`, or `import`. (`app` is reserved for the in-app CSV wizard.)
                  * @enum {string}
                  */
                 source: "api" | "form" | "import";
@@ -6452,14 +6357,12 @@ export interface components {
                 evidence?: string;
             };
             /**
-             * @description Order for a date column whose dates read either way (`03/04/2026`): `day_first` is 3 April, `month_first` 4 March. A day over 12 in the column overrides it. Default month-first, with a DATE_ORDER_ASSUMED warning.
              * @enum {string}
              */
             dateOrder?: "month_first" | "day_first";
             fileName?: string;
             dryRun?: boolean;
             /**
-             * @description `upsert` (default) updates existing contacts; `skip` only creates missing ones, leaving each existing contact unchanged (counted in `summary.skipped`, with a `CONTACT_EXISTS_SKIPPED` warning).
              * @enum {string}
              */
             onConflict?: "upsert" | "skip";
@@ -6475,7 +6378,6 @@ export interface components {
                 };
                 consent?: {
                     /**
-                     * @description Who captured it: `api`, `form`, or `import`. (`app` is reserved for the in-app CSV wizard.)
                      * @enum {string}
                      */
                     source: "api" | "form" | "import";
@@ -6487,7 +6389,6 @@ export interface components {
             validate?: boolean;
             consent?: {
                 /**
-                 * @description Who captured it: `api`, `form`, or `import`. (`app` is reserved for the in-app CSV wizard.)
                  * @enum {string}
                  */
                 source: "api" | "form" | "import";
@@ -6498,7 +6399,6 @@ export interface components {
             fileName?: string;
             dryRun?: boolean;
             /**
-             * @description `upsert` (default) updates existing contacts; `skip` only creates missing ones, leaving each existing contact unchanged (counted in `summary.skipped`, with a `CONTACT_EXISTS_SKIPPED` warning).
              * @enum {string}
              */
             onConflict?: "upsert" | "skip";
@@ -6786,7 +6686,6 @@ export interface components {
                 sendingEnabled: boolean;
                 sendable: boolean;
                 /**
-                 * @description marketing (default) or transactional. Transactional domains skip unsubscribe and send via automation sendEmail nodes (or a test send).
                  * @enum {string}
                  */
                 sendingPurpose: "marketing" | "transactional";
@@ -6817,8 +6716,6 @@ export interface components {
             region?: "us-east-1";
             customReturnPath?: string;
             /**
-             * @description marketing (default) for campaigns and audience sends, or transactional for event-triggered automation mail (no unsubscribe requirement).
-             * @default marketing
              * @enum {string}
              */
             sendingPurpose?: "marketing" | "transactional";
@@ -6828,7 +6725,6 @@ export interface components {
             defaultFromEmail?: string;
             defaultReplyToEmail?: string;
             /**
-             * @description Change the domain purpose. Live gates fail closed if a campaign still points at a transactional domain; automation sends re-derive their class from the new purpose, so after a flip to transactional, published automations send with no unsubscribe link and to unsubscribed contacts.
              * @enum {string}
              */
             sendingPurpose?: "marketing" | "transactional";
@@ -7354,7 +7250,6 @@ export interface components {
             frameCount?: number;
             fps?: number;
             /**
-             * @description The GIF's shape (default 16:9): 768×432, 432×768 or 640×640.
              * @enum {string}
              */
             aspectRatio?: "16:9" | "9:16" | "1:1";
@@ -7367,7 +7262,6 @@ export interface components {
             frameCount?: number;
             fps?: number;
             /**
-             * @description The GIF's shape (default 16:9): 768×432, 432×768 or 640×640.
              * @enum {string}
              */
             aspectRatio?: "16:9" | "9:16" | "1:1";
@@ -7444,7 +7338,6 @@ export interface components {
         ContentImageUploadCreateRequest: {
             fileName: string;
             /**
-             * @description The file type: image/png, image/jpeg, image/gif, image/webp, image/avif, image/tiff or image/svg+xml. It sets the size cap (2 MB for SVG). The bytes decide what is converted: a declared type that differs is ignored, and bytes that are none of these formats are refused when the image is added.
              * @enum {string}
              */
             contentType: "image/jpeg" | "image/png" | "image/gif" | "image/webp" | "image/avif" | "image/tiff" | "image/svg+xml";
@@ -7518,7 +7411,6 @@ export interface components {
                 kind: "standard" | "custom" | "action" | "derived" | "observed";
                 category?: string;
                 /**
-                 * @description The lifecycle stage Brew inferred (a brand member’s correction wins).
                  * @enum {string}
                  */
                 stage?: "signup" | "activation" | "engagement" | "conversion" | "retention" | "churn_risk" | "none";
@@ -7553,7 +7445,6 @@ export interface components {
             kind: "standard" | "custom" | "action" | "derived" | "observed";
             category?: string;
             /**
-             * @description The lifecycle stage Brew inferred (a brand member’s correction wins).
              * @enum {string}
              */
             stage?: "signup" | "activation" | "engagement" | "conversion" | "retention" | "churn_risk" | "none";
@@ -7567,7 +7458,6 @@ export interface components {
                 key: string;
                 variable: string;
                 /**
-                 * @description `event`: a value the event carried. `person`: the person’s value when it fired.
                  * @enum {string}
                  */
                 scope: "event" | "person";
@@ -7577,7 +7467,6 @@ export interface components {
                 isPersonalization: boolean;
             }[];
             /**
-             * @description `current`: listed with the event or read in the last day. `stored`: the provider could not be read now; these are its last description. `rate_limited`: its read budget is spent; these are what Brew stored, possibly none (read again after `retryAfterSeconds`). `unavailable`: not read, and none stored.
              * @enum {string}
              */
             propertiesStatus: "current" | "stored" | "rate_limited" | "unavailable";
@@ -7632,12 +7521,10 @@ export interface components {
                 firstUserPrompt: string | null;
                 lastAssistantPreview: string | null;
                 /**
-                 * @description `streaming` or `background_finalizing` while a run is still going; null before the first run.
                  * @enum {string|null}
                  */
                 status: "idle" | "streaming" | "background_finalizing" | "completed" | "failed" | "interrupted" | "stopped" | "persistence_failed" | null;
                 /**
-                 * @description The chat app the conversation started in; null for the Brew web app.
                  * @enum {string|null}
                  */
                 origin: "slack" | "teams" | "google-chat" | "telegram" | null;
@@ -10560,7 +10447,6 @@ export interface operations {
                         emailId: string;
                         emailVersionId?: string;
                         /**
-                         * @description The job: `queued` or `running` until every client settles, then `completed`, `partially_completed` (some screenshots failed) or `failed`.
                          * @enum {string}
                          */
                         status: "queued" | "running" | "completed" | "partially_completed" | "failed";
@@ -11267,7 +11153,6 @@ export interface operations {
                         emailId: string;
                         emailVersionId?: string;
                         /**
-                         * @description The job: `queued` or `running` until every client settles, then `completed`, `partially_completed` (some screenshots failed) or `failed`.
                          * @enum {string}
                          */
                         status: "queued" | "running" | "completed" | "partially_completed" | "failed";

@@ -66,16 +66,16 @@ for (const file of new Set(files)) {
     continue
   }
   const extension = extname(file).toLowerCase()
-  let javascript =
+  let isJavascript =
     /\.(?:[cm]?[jt]sx?|jsonc?)$/.test(file) || file === 'bun.lock'
-  const markdown = /\.(?:mdx?|mdc)$/.test(file)
+  const isMarkdown = /\.(?:mdx?|mdc)$/.test(file)
   const name = basename(file).toLowerCase()
-  const ignore =
+  const isIgnore =
     /^(?:\.gitignore|\.mintignore|\.npmignore|\.dockerignore|\.prettierignore|\.eslintignore|\.gitattributes|\.git-blame-ignore-revs)$/.test(
       name
     )
   let language = languages[extension]
-  if (!language && !javascript && /^\.env(?:\.|$)/.test(name)) {
+  if (!language && !isJavascript && /^\.env(?:\.|$)/.test(name)) {
     language = 'dotenv'
   } else if (!language && extension === '.grit') {
     language = 'grit'
@@ -87,8 +87,9 @@ for (const file of new Set(files)) {
   } else if (name === '.editorconfig') {
     language = 'ini'
   }
-  if (!javascript && !markdown && !language && !ignore) {
+  if (!isJavascript && !isMarkdown && !language && !isIgnore) {
     let descriptor
+    let hasShebang = false
     try {
       if (!lstatSync(join(root, file)).isFile()) {
         continue
@@ -96,19 +97,27 @@ for (const file of new Set(files)) {
       descriptor = openSync(join(root, file), 'r')
       const prefix = Buffer.alloc(512)
       const length = readSync(descriptor, prefix, 0, prefix.length, 0)
-      language = shebangLanguage(prefix.toString('utf8', 0, length))
+      const header = prefix.toString('utf8', 0, length)
+      hasShebang = header.startsWith('#!')
+      language = shebangLanguage(header)
     } catch (error) {
       if (error.code === 'ENOENT') {
         continue
       }
-      throw error
+      failures.push(`${file}: unable to inspect shebang: ${error.message}`)
+      continue
     } finally {
       if (descriptor !== undefined) {
         closeSync(descriptor)
       }
     }
-    javascript = language === 'javascript'
+    isJavascript = language === 'javascript'
     if (!language) {
+      if (hasShebang) {
+        failures.push(
+          `${file}: unable to inspect comments: unsupported shebang interpreter`
+        )
+      }
       continue
     }
   }
@@ -126,7 +135,7 @@ for (const file of new Set(files)) {
   }
   checked++
   try {
-    if (ignore) {
+    if (isIgnore) {
       const pattern =
         name === '.git-blame-ignore-revs' ? /#[^\r\n]*/gm : /^#[^\r\n]*/gm
       for (const match of source.matchAll(pattern)) {
@@ -150,7 +159,7 @@ for (const file of new Set(files)) {
           line: source.slice(0, range.pos).split(/\r\n|[\r\n]/).length,
         })
       }
-    } else if (javascript) {
+    } else if (isJavascript) {
       const filename = file === 'bun.lock' ? 'bun.jsonc' : file
       for (const range of findComments(
         language === 'javascript' ? 'shebang.js' : filename,
@@ -160,7 +169,7 @@ for (const file of new Set(files)) {
           `${file}:${source.slice(0, range.pos).split(/\r\n|[\r\n\u2028\u2029]/).length}: remove explanatory source comment`
         )
       }
-    } else if (markdown) {
+    } else if (isMarkdown) {
       const result = markdownComments(file, source)
       result.comments.forEach(record)
       payloads.push(...result.payloads)

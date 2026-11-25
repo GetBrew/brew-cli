@@ -308,3 +308,33 @@ test('rejects prose mixed with compiler JSDoc in source, Markdown and embedded s
   })
   assert.equal(valid.status, 0, valid.stderr)
 })
+
+test('checks source comments after attached split-string and quoted env interpreters', () => {
+  const files = {
+    'bin/attached-long':
+      '#!/usr/bin/env --split-string=node\nconst value = 1 // stale',
+    'bin/attached-short': '#!/usr/bin/env -Snode\nconst value = 1 // stale',
+    'bin/quoted-python': '#!/usr/bin/env -S "python3" -u\nvalue = 1 # stale',
+  }
+  const result = inspect(files)
+  assert.equal(result.status, 1, result.stderr)
+  for (const file of Object.keys(files)) {
+    assert.ok(result.stderr.includes(`${file}:2:`), result.stderr)
+  }
+})
+
+test('fails closed with the filename for unknown or malformed shebangs', () => {
+  for (const source of [
+    '#!/usr/bin/env ruby\nputs "ok"',
+    '#!/usr/bin/env --split-string=unknown\nvalue',
+    '#!/usr/bin/env -S "python3\nvalue',
+    '#!\nvalue',
+  ]) {
+    const result = inspect({ 'bin/unclassified': source })
+    assert.equal(result.status, 1, source)
+    assert.ok(result.stderr.includes('bin/unclassified:'), result.stderr)
+    assert.ok(result.stderr.includes('shebang'), result.stderr)
+  }
+  const result = inspect({ data: 'ordinary unclassified data\n' })
+  assert.equal(result.status, 0, result.stderr)
+})

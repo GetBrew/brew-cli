@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import ts from 'typescript'
-import { dotenvCommentRanges } from './lib/comment-file-languages.mjs'
+import {
+  dotenvCommentRanges,
+  shebangLanguage,
+} from './lib/comment-file-languages.mjs'
 import { gritCommentRanges } from './lib/grit-comments.mjs'
 import {
   findComments,
@@ -346,5 +349,77 @@ test('keeps legal notices, tool reasons, raw internal markers and compiler pragm
     const source = `${value}\nconst value = 1`
     assert.ok(isRequiredComment(value), value)
     assert.equal(withoutComments('sample.js', source), source)
+  }
+})
+
+test('normalizes generated mixed JSDoc without blank star remnants or lost indentation', () => {
+  const source = [
+    'export interface Example {',
+    '            /**',
+    "             * @description The language the email's copy is written in (ISO 639-1, or zh-Hans / zh-Hant), read by Brew's language model after each content change unless a caller set it. Rendered as the HTML document's lang. Detail-only; absent until it has been read.",
+    '             * @enum {string}',
+    '             */',
+    '            language?: "en";',
+    '}',
+  ].join('\n')
+  const expected = source.replace(/^.*@description.*\n/m, '')
+  const cleaned = withoutComments('generated.ts', source)
+  assert.equal(cleaned, expected)
+  assert.deepEqual(findComments('generated.ts', cleaned), [])
+  assert.equal(withoutComments('generated.ts', cleaned), cleaned)
+})
+
+test('keeps source indentation and metadata content for every removed prose range', () => {
+  const sources = [
+    [
+      '    /**',
+      '     * @description Old explanation.',
+      '     * @type {{',
+      '     *   name: string;',
+      '     *   count: number;',
+      '     * }}',
+      '     */',
+      '    let value;',
+    ].join('\n'),
+    [
+      '    /** Old summary.',
+      '     * @param {string} name Old parameter explanation.',
+      '     * @returns {string} Old result explanation.',
+      '     */',
+      '    function identity(name) { return name }',
+    ].join('\n'),
+  ]
+  const expected = [
+    sources[0].replace(/^.*@description.*\n/m, ''),
+    sources[1]
+      .replace(' Old summary.', '')
+      .replace(' Old parameter explanation.', '')
+      .replace(' Old result explanation.', ''),
+  ]
+  sources.forEach((source, index) => {
+    const cleaned = withoutComments('sample.js', source)
+    assert.equal(cleaned, expected[index])
+    assert.deepEqual(findComments('sample.js', cleaned), [])
+    assert.equal(withoutComments('sample.js', cleaned), cleaned)
+  })
+})
+
+test('recognizes env split-string options and quoted interpreter names', () => {
+  for (const [header, language] of [
+    ['#!/usr/bin/env --split-string=node', 'javascript'],
+    ['#!/usr/bin/env -Snode', 'javascript'],
+    ['#!/usr/bin/env -S "python3" -u', 'python'],
+    ["#!/usr/bin/env -S 'python3' -u", 'python'],
+    ['#!/usr/bin/env -S"python3" -u', 'python'],
+    ["#!/usr/bin/env --split-string='python3' -u", 'python'],
+    ['#!/usr/bin/env --split-string /usr/bin/python3.12 -u', 'python'],
+    [
+      '#!/usr/bin/env -u IGNORE NODE_ENV=test --split-string=node',
+      'javascript',
+    ],
+    ['#!/usr/bin/env -- /usr/bin/node', 'javascript'],
+    ['#!/bin/bash -e', 'bash'],
+  ]) {
+    assert.equal(shebangLanguage(`${header}\n`), language, header)
   }
 })
