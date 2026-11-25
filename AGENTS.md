@@ -94,12 +94,13 @@ For command changes, regenerate the reference and run its freshness check.
 Report checks run and anything deferred to CI.
 
 ```bash
-bun install          # only when deps changed
-bun run tsc          # strict typecheck
-bun run lint         # biome check (also formatting)
-bun run test -- tests/<file>.test.ts  # relevant vitest + MSW tests
+bun install
+bun run comments:setup
+bun run tsc
+bun run lint
+bun run test -- tests/<file>.test.ts
 bun run docs:commands:check
-bun run build && bun run smoke:regressions  # built Node CLI against loopback
+bun run build && bun run smoke:regressions
 ```
 
 The regression smoke uses dummy credentials and no live API. It executes the
@@ -131,3 +132,15 @@ CSV recipe with `jq`; Linux terminal checks use the `script` utility.
 
 See [`RELEASING.md`](./RELEASING.md) — tag-driven npm publish with
 provenance, compiled binaries on the GitHub Release, Homebrew tap bump.
+
+## Source comments and Markdown
+
+Do not add explanatory source comments. Code, types and tests own behavior.
+Preserve legal notices and executable compiler, lint, coverage and type directives.
+Keep Markdown for supported usage and necessary operating procedures. Verify
+claims against code, link to generated owners and remove completed plans.
+Run `bun run comments:check` to check the owned source surface.
+
+With Python 3.10+, run `bun run comments:setup` after dependency installation.
+Checks run offline. `scripts/comment-ownership.json` owns exclusions for
+fixtures, generated outputs, pinned upstream files and managed markers.

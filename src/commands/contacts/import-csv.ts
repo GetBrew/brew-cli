@@ -91,8 +91,6 @@ export const contactsImportCsvCommand = defineCommand({
       )
     }
     if (consentSource !== undefined) {
-      // --consent-source sets the source; a record from --input keeps its
-      // capturedAt, policyVersion and evidence.
       const record = input.consent
       input.consent = {
         ...(typeof record === 'object' && record !== null ? record : {}),
@@ -116,11 +114,6 @@ export const contactsImportCsvCommand = defineCommand({
   },
 })
 
-/**
- * The Import History name: `--file-name`, else a `fileName` the JSON body
- * already carries, else the file's own name (stdin has none, so the batch is
- * named by its source in Brew). `undefined` leaves the body's value alone.
- */
 export function importFileName(
   flags: { readonly fileName?: unknown; readonly file?: unknown },
   body: Readonly<Record<string, unknown>> = {}

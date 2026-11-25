@@ -60,8 +60,6 @@ export const contentGifCommand = defineCommand({
       loop: parseBool(flags.loop),
       width: flagInt(flags.width, '--width'),
     })
-    // The API requires the `from` discriminator; infer it from the source
-    // that was provided so the obvious invocations just work.
     if (input.from === undefined) {
       if (typeof input.videoUrl === 'string') {
         input.from = 'video'

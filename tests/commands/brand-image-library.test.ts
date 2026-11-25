@@ -14,17 +14,10 @@ import {
   runCli,
 } from '../helpers/run-cli'
 
-/**
- * The brand image library writes (brew-v2#1817, brew-v2#1819): delete one
- * image, add one from a URL / a batch / an upload, open an upload, and the
- * one-call local-file upload.
- */
-
 const KEY = 'brew_abcdefghijklmnopqrstuvwxyz012345'
 const API = 'https://brew.new/api'
 const ASSET_ID = '5bc912f9'
 const UPLOAD_ID = 'imgup_V1StGXR8_Z5jdHi6B-myT'
-/** The credential an upload URL carries in its query: never printed. */
 const UPLOAD_TOKEN = 's3cr3t-upload-token-9b1c4f6e'
 const UPLOAD_ENDPOINT = 'https://uploads.brew.test/uploads/brand-image'
 const UPLOAD_URL = `${UPLOAD_ENDPOINT}?uploadId=${UPLOAD_ID}&token=${UPLOAD_TOKEN}`
@@ -67,7 +60,6 @@ function cli(
   })
 }
 
-/** The JSON error envelope: the last stderr line (progress lines come first). */
 function errorOf(result: RunCliResult): Record<string, unknown> {
   const line = result.stderr.trim().split('\n').at(-1) ?? ''
   return (JSON.parse(line) as { error: Record<string, unknown> }).error
@@ -80,14 +72,12 @@ function apiError(status: number, code: string, message: string): Response {
   )
 }
 
-/** A file in a fresh temp directory; returns its path. */
 function tempFile(name: string, bytes: Uint8Array = PNG): string {
   const path = join(mkdtempSync(join(tmpdir(), 'brew-cli-upload-')), name)
   writeFileSync(path, bytes)
   return path
 }
 
-/** A sparse file of `size` bytes: cheap to create at 20 MB. */
 function sparseFile(name: string, size: number): string {
   const path = tempFile(name, new Uint8Array())
   truncateSync(path, size)
@@ -96,7 +86,6 @@ function sparseFile(name: string, size: number): string {
 
 describe('brand delete-image', () => {
   it('exits 4 with a confirmCommand when unconfirmed and non-interactive', async () => {
-    // No handler: MSW fails the run if a request goes out.
     const result = await cli(['brand', 'delete-image', ASSET_ID])
     expect(result.code).toBe(4)
     const envelope = result.json as Record<string, unknown>
@@ -433,8 +422,6 @@ describe('content create-image-upload', () => {
     expect(result.stdout).toContain(
       `brew-cli content add-image --upload-id ${UPLOAD_ID}`
     )
-    // The bytes may be sent from another machine, where the file has its
-    // own path: the step says to point @ at it.
     expect(result.stdout).toContain("point @ at the file's path there")
   })
 
@@ -461,8 +448,6 @@ describe('content create-image-upload', () => {
       { ttyOut: true }
     )
     expect(result.code).toBe(0)
-    // An organization key needs the brand on the second call too, or it
-    // answers BRAND_ID_REQUIRED.
     expect(result.stdout).toContain(
       `brew-cli content add-image --upload-id ${UPLOAD_ID} --brand brand_42 --api-url ${staging}`
     )
@@ -470,7 +455,6 @@ describe('content create-image-upload', () => {
 })
 
 describe('content upload-image', () => {
-  /** The three requests of one upload, in the order they arrived. */
   function uploadHandlers(
     seen: Array<string>,
     captured: {

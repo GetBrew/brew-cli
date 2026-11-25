@@ -1,56 +1,32 @@
 import { CliUsageError } from './errors'
 import { imageUploadRequestContext } from './image-upload-recovery'
 
-/**
- * Transport plumbing shared by every command: the whole-command deadline,
- * the `--timeout` / `--max-retries` parsing, and a record of the request in
- * flight so an interrupted or timed-out write can name the idempotency key
- * that replays it.
- */
-
-/**
- * A request's path as the API's routes name it — from `/v1/` on, query
- * included — whatever prefix the base URL adds (`/api`, a tunnel's path).
- */
 export function apiPathOf(url: URL): string {
   const index = url.pathname.indexOf('/v1/')
   const path = index === -1 ? url.pathname : url.pathname.slice(index)
   return `${path}${url.search}`
 }
 
-/** The one request an envelope can talk about: the latest one sent. */
 export type RecordedRequest = {
   readonly method: string
-  /** Path and query, never the origin (the API URL can carry a port or tunnel). */
   readonly path: string
   readonly idempotencyKey: string | undefined
-  /** Only a final `add-image` request whose body names one original upload. */
   readonly uploadId?: string
-  /** The effective brand header for that finalization, including raw overrides. */
   readonly brandId?: string
 }
 
-/** How far an `--all` drain got before it was stopped. */
 export type DrainProgress = {
   readonly rowsFetched: number
   readonly pagesFetched: number
   readonly resumeCursor?: string
-  /**
-   * The flags that resume the drain when they are not `--cursor
-   * <resumeCursor> --all`: a comment-thread walk resumes with
-   * `--comment-id <id> --messages-cursor <cursor> --all`.
-   */
   readonly resumeWith?: string
 }
 
 export type TransportState = {
-  /** The latest request sent (SDK or raw), for error envelopes. */
   readonly lastRequest: () => RecordedRequest | undefined
-  /** How many HTTP attempts this command made. */
   readonly attempts: () => number
   readonly record: (request: RecordedRequest) => void
   readonly drain: () => DrainProgress | undefined
-  /** Records how far a drain got; `undefined` clears it (a restarted walk). */
   readonly setDrain: (progress: DrainProgress | undefined) => void
 }
 
@@ -72,15 +48,8 @@ export function createTransportState(): TransportState {
   }
 }
 
-/**
- * The SDK's public `fetch` hook, recording each attempt before sending it.
- * `globalThis.fetch` is resolved at CALL time, as the SDK's own default is,
- * so test interceptors installed after the client was built still apply.
- */
 export function recordingFetch(state: TransportState): typeof globalThis.fetch {
   return (input, init) => {
-    // An already-aborted fetch rejects without sending anything: it is not
-    // a request the error envelope should say was in flight.
     if (init?.signal?.aborted === true) {
       return globalThis.fetch(input, init)
     }
@@ -100,10 +69,6 @@ export function recordingFetch(state: TransportState): typeof globalThis.fetch {
   }
 }
 
-/**
- * `AbortSignal.any`, which landed in Node 20.3; `engines` says `>=20`, so
- * 20.0–20.2 get a listener-based equivalent (and a `release` to detach it).
- */
 export function anySignal(signals: ReadonlyArray<AbortSignal | undefined>): {
   readonly signal: AbortSignal
   readonly release: () => void
@@ -145,10 +110,6 @@ const DURATION = /^(\d+(?:\.\d+)?)(ms|s|m|h)?$/
 const UNIT_MS = { ms: 1, s: 1000, m: 60_000, h: 3_600_000 } as const
 const MAX_TIMEOUT_MS = 24 * 3_600_000
 
-/**
- * `--timeout 90`, `90s`, `1500ms`, `5m` or `1h`; a bare number is seconds.
- * Anything else, zero, or over a day is a usage error (exit 2).
- */
 export function parseTimeoutFlag(value: unknown): number | undefined {
   if (value === undefined) {
     return
@@ -165,7 +126,6 @@ export function parseTimeoutFlag(value: unknown): number | undefined {
   return ms
 }
 
-/** `--max-retries` is a whole number from 0 to 10. */
 export function parseMaxRetriesFlag(value: unknown): number | undefined {
   if (value === undefined) {
     return
@@ -182,21 +142,6 @@ export function parseMaxRetriesFlag(value: unknown): number | undefined {
   return parsed
 }
 
-/**
- * The deadlines one command runs under.
- *
- * - `deadlineMs` bounds the WHOLE command — every attempt, retry, backoff,
- *   `--all` page and response body — from the moment it starts (after any
- *   confirmation prompt).
- * - `attemptMs` is the per-attempt `timeoutMs` handed to the SDK and the
- *   raw transport.
- *
- * An explicit `--timeout` sets both and always wins, longer or shorter than
- * the command's own default. A long-running command's default sets the
- * deadline alone (the SDK already gives the call that long per attempt).
- * Neither: no command deadline, and the SDK's per-attempt default and retry
- * policy apply.
- */
 export type Budget = {
   readonly deadlineMs: number | undefined
   readonly attemptMs: number | undefined

@@ -10,8 +10,6 @@ const KEY = 'brew_abcdefghijklmnopqrstuvwxyz012345'
 const API = 'https://brew.new/api'
 const ONE_ROW = { cursor: null, hasMore: false }
 const EMPTY_PAGE = { data: [], pagination: { limit: 100, ...ONE_ROW } }
-// The detail row is the card plus `anchor` and `steps`; the human renderer
-// reads the card fields, so the fixture carries them.
 const FLOW = {
   slug: 'notion.com',
   brand: { name: 'Notion' },
@@ -34,13 +32,6 @@ function cli(argv: readonly string[]): Promise<RunCliResult> {
   })
 }
 
-/**
- * Flags and command names are additive-only after release (AGENTS.md).
- * Where the API moved under a released flag, the flag answers the way 0.6
- * did: an id flag on a list performs the detail read and pages that one
- * row; `--include` without its id flag is a usage error naming the command
- * that takes it.
- */
 describe('0.6 compatibility shims', () => {
   it('`runs list --run <id> --include logs` performs the detail read and pages the one row', async () => {
     let url: URL | undefined

@@ -42,12 +42,9 @@ export const automationsRunCommand = defineCommand({
     'brew-cli automations run auto_abc --schedule-at 2026-09-01T09:00:00Z --input \'{"gradualSend":{"startingPercentage":10,"incrementPercentage":20,"interval":{"value":1,"unit":"day"},"timeZone":"America/New_York"}}\' --yes',
   ],
   confirmSummary: ({ args, flags }) => {
-    // Stdin is checked in run after its body and flag overrides are merged.
     if (flags.input === '-') {
       return
     }
-    // The gate must reflect the MERGED request — an inline --input body can
-    // carry dryRun/scheduledAt on its own. A dry run never gates.
     const inline = parseInlineInput(flags.input)
     if (flags.dryRun === true || inline?.dryRun === true) {
       return
@@ -80,7 +77,6 @@ export const automationsRunCommand = defineCommand({
   },
 })
 
-/** Best-effort parse of an inline --input body (stdin `-` stays opaque). */
 function parseInlineInput(value: unknown): Record<string, unknown> | undefined {
   if (typeof value !== 'string' || value === '-') {
     return

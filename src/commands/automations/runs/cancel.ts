@@ -5,12 +5,6 @@ import {
   requestOptions,
 } from '../../../lib/input'
 
-/**
- * Operator cancel of ONE run of an event-triggered automation (or a test
- * run), by `automationRunId` — the same flat identity `runs list` uses.
- * Manual-audience launches are controlled with
- * `automations audience-runs pause|resume|cancel` instead.
- */
 export const automationsRunsCancelCommand = defineCommand({
   path: ['automations', 'runs', 'cancel'],
   summary:

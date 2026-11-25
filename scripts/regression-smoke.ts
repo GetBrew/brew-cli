@@ -1,12 +1,3 @@
-/**
- * End-to-end regressions for the BUILT Node CLI (`bun run build` first):
- *
- *   bun run scripts/regression-smoke.ts
- *
- * Real child processes talk only to a disposable loopback API with a dummy
- * key. Unix shell reruns and the documented CSV pipeline are executed as
- * printed. Linux's `script` utility also exercises genuine terminal output.
- */
 import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
 import {
@@ -77,8 +68,6 @@ await new Promise<void>((resolve, reject) => {
 })
 const { port } = server.address() as AddressInfo
 
-// The shim lets returned `brew-cli ...` strings run verbatim without an
-// installed CLI, while keeping both configuration and credentials isolated.
 writeFileSync(
   join(directory, 'brew-cli'),
   '#!/bin/sh\nexec node "$BREW_SMOKE_BIN" "$@"\n',
@@ -298,7 +287,6 @@ try {
     async () => {
       reset(({ path, body }) => {
         if (path.endsWith('/contract/validate')) {
-          // This fixture's stored contract requires email/code; prune drops extras.
           const request = object(body)
           const payload = object(request.payload)
           const isPruning = request.enforcement === 'prune'

@@ -176,7 +176,6 @@ describe('audiences create', () => {
   })
 
   it('sends a list operator value as the array it was given', async () => {
-    // The API refuses a comma-joined string for in/not_in/contains_any.
     const listFilters = {
       filters: [{ field: 'plan', operator: 'in', value: ['pro', 'team'] }],
       logicalOperator: 'and',

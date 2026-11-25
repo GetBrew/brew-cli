@@ -6,12 +6,6 @@ import { describe, expect, it } from 'vitest'
 import { server } from '../helpers/msw-server'
 import { runCli } from '../helpers/run-cli'
 
-/**
- * Flags 0.8.1 promised "when the CLI adopts SDK 11": the list `search`
- * filter and the audience membership edit by address. SDK 10 could not send
- * them.
- */
-
 const KEY = 'brew_abcdefghijklmnopqrstuvwxyz012345'
 const API = 'https://brew.new/api'
 const EMPTY_PAGE = {

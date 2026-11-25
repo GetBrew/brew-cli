@@ -11,19 +11,12 @@ import {
 } from '../../lib/input'
 import { renderTable } from '../../lib/output'
 
-/**
- * Keys the events read takes for a page of ROWS that a grouped count
- * refuses, with the API's own reason. The SDK does not send them, so they
- * are refused here rather than silently dropped. (`limit` only sizes a page
- * and a count ignores it, as the API does.)
- */
 const ROW_ONLY_KEYS: Readonly<Record<string, string>> = {
   cursor: 'A grouped count is not paged; drop `cursor`.',
   automationRunId:
     '`groupBy` and `bucket` count email events and do not combine with `automationRunId`.',
 }
 
-/** Grouped counts of the email events `analytics events` lists. */
 export const analyticsEventCountsCommand = defineCommand({
   path: ['analytics', 'event-counts'],
   summary:
@@ -101,11 +94,6 @@ export const analyticsEventCountsCommand = defineCommand({
   },
 })
 
-/**
- * `--group-by eventType,link` (or a `groupBy` string in --input) becomes the
- * field list the SDK sends; an array from --input passes through. The API
- * validates the fields and how many.
- */
 function toFieldList(value: unknown): unknown {
   if (typeof value !== 'string') {
     return value
@@ -116,11 +104,6 @@ function toFieldList(value: unknown): unknown {
     .filter((field) => field !== '')
 }
 
-/**
- * The breakdown body as the vendored spec types it: groups of opened,
- * clicked or delivered events also carry `recipients`, which the SDK's own
- * response type may not declare yet.
- */
 type EventCounts = components['schemas']['EventsBreakdownResponse']
 
 function renderCounts(body: EventCounts): string {
@@ -135,7 +118,6 @@ function renderCounts(body: EventCounts): string {
     count: group.count,
     ...(group.recipients === undefined ? {} : { recipients: group.recipients }),
   }))
-  // A --bucket-only count has no grouped fields: leave out an all-blank column.
   const table = renderTable(rows, [
     ...(rows.some((row) => row.group !== '')
       ? [{ key: 'group', header: 'GROUP' }]
@@ -144,7 +126,6 @@ function renderCounts(body: EventCounts): string {
       ? [{ key: 'bucket', header: 'PERIOD' }]
       : []),
     { key: 'count', header: 'COUNT' },
-    // Each recipient once per message: shown when any group carries it.
     ...(rows.some((row) => 'recipients' in row)
       ? [{ key: 'recipients', header: 'RECIPIENTS' }]
       : []),

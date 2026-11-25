@@ -5,20 +5,8 @@ import { parse } from 'yaml'
 import { ALL_COMMANDS } from '../src/registry'
 import { SPEC_SKIP_LIST } from '../src/skip-list'
 
-/**
- * Spec operations whose commands are still being built, phase by phase.
- * This list must ONLY shrink; it must be empty before 0.1.0 ships.
- */
 const PENDING_BUILD_ROUTES: readonly string[] = []
 
-/**
- * Commands built AHEAD of the platform: the payload-contract wave-2 API
- * routes are not in the live published spec yet (the platform PRs are
- * still open), so the vendored spec cannot list them. Keep this fact in
- * the parity test, not in production command metadata. Every entry
- * becomes stale — and the guard below fails — the moment the refreshed
- * spec publishes the route; delete it then.
- */
 const PENDING_SPEC_ROUTES: readonly string[] = []
 
 function specOperations(): ReadonlyMap<
@@ -99,7 +87,6 @@ describe('parity: vendored OpenAPI spec ↔ CLI commands', () => {
     const opSet = new Set(ops)
     const stale = PENDING_SPEC_ROUTES.filter((route) => opSet.has(route))
     expect(stale).toEqual([])
-    // Each entry must back a real registered command, or it is dead weight.
     const unbacked = PENDING_SPEC_ROUTES.filter(
       (route) => !commandRoutes.has(route)
     )

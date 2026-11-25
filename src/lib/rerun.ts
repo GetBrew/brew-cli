@@ -5,7 +5,6 @@ import { GLOBAL_FLAGS } from './define-command'
 export type RerunInvocation = Pick<CommandInvocation, 'args' | 'flags'>
 type RerunCommand = Pick<CommandSpec, 'path' | 'flags' | 'args'>
 
-/** Serialize the parser's effective invocation instead of parsing argv again. */
 export function buildRerunCommand(
   command: RerunCommand,
   invocation: RerunInvocation,
@@ -56,8 +55,6 @@ export function buildRerunCommand(
       ) {
         continue
       }
-      // Attached values cannot become ancestor options or extend a variadic
-      // option into the next flag or positional argument.
       tokens.push(`${spelling}=${String(item)}`)
     }
   }
@@ -71,14 +68,12 @@ export function buildRerunCommand(
   return tokens.map(shellQuote).join(' ')
 }
 
-/** Only effective parsed input flags can require stdin on a retry. */
 export function readsStdin(invocation: RerunInvocation): boolean {
   return ['input', 'file', 'jsxFile', 'jsx', 'data'].some(
     (name) => invocation.flags[name] === '-'
   )
 }
 
-/** Credential headers must not reach confirmation/retry envelopes or transcripts. */
 const CREDENTIAL_HEADER_NAME =
   /authorization|cookie|api-?key|auth|token|secret|passw(or)?d|session|signature|credential/i
 
@@ -87,7 +82,6 @@ function isCredentialHeader(header: string): boolean {
   return name !== undefined && CREDENTIAL_HEADER_NAME.test(name)
 }
 
-/** `token` as one shell word: as-is when safe, else single-quoted. */
 export function shellQuote(token: string): string {
   if (/^[A-Za-z0-9@%+=:,./_-]+$/.test(token)) {
     return token

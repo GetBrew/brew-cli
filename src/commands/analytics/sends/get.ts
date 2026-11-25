@@ -1,7 +1,6 @@
 import { defineCommand } from '../../../lib/define-command'
 import { flagString } from '../../../lib/input'
 
-/** The name agents already know, now reading the real send detail row. */
 export const analyticsSendsGetCommand = defineCommand({
   path: ['analytics', 'sends', 'get'],
   summary: 'Fetch one send by id — the bare row (`sends get`)',

@@ -47,12 +47,9 @@ export const emailsSendCommand = defineCommand({
     'brew-cli emails send eml_1 --subject "Fall sale" --domain dom_1 --audience aud_1 --schedule-at 2026-09-01T09:00:00Z --yes',
   ],
   confirmSummary: ({ args, flags }) => {
-    // Stdin is checked in run after its body and flag overrides are merged.
     if (flags.input === '-') {
       return
     }
-    // The gate must describe the MERGED send, not just the flags — an
-    // --input body can carry test/audienceId/to/scheduledAt on its own.
     const inline = parseInlineInput(flags.input)
     const isTest = flags.test === true || inline?.test === true
     if (isTest) {
@@ -120,7 +117,6 @@ function collapseRecipients(
   return values.length === 1 && first !== undefined ? first : values
 }
 
-/** Best-effort parse of an inline --input body (stdin `-` stays opaque). */
 function parseInlineInput(value: unknown): Record<string, unknown> | undefined {
   if (typeof value !== 'string' || value === '-') {
     return

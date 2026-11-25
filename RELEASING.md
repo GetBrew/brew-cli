@@ -5,6 +5,9 @@ standalone binaries, the GitHub Release, and the Homebrew tap.
 
 ## Ship a version
 
+After `bun install --frozen-lockfile`, run `bun run comments:setup` with Python
+3.10+ and pip before the release checks.
+
 ### Canvas SDK Migration Gate
 
 The canvas session commands now use `brew.canvas.sessions.create`, `refresh`,
@@ -26,42 +29,27 @@ lockfile checksums must never be invented. The canvas tests must preserve
 ### Contact Import SDK Minimum
 
 `contacts import` and the `contacts import-csv` naming and row results use
-`contacts.import` and the import response from SDK 13.3.0, the minimum this
-CLI depends on (`^13.3.0`).
+`contacts.import` and the import response introduced in SDK 13.3.0. The
+installed SDK dependency is declared in `package.json`.
 
-### Integration Events SDK Gate
+### SDK Source Dependency Gate
 
-`integrations events list`, `integrations events get` and
-`automations triggers ensure-integration-event` call `integrations.events.list`,
-`integrations.events.get` and `automations.triggers.ensureIntegrationEvent`,
-which the published SDK 13.4.0 does not expose. Until an SDK release has
-them, the CLI pins reviewed SDK source commit
-`9fbe435d9b135791861739d322fa648c521bdb98` (GetBrew/typescript-sdk#88). It
-preserves SDK 13.4.0's features and version while adding those methods.
+The integration-event commands and `emails import-image` depend on SDK methods
+in the immutable source dependency declared by `package.json`. That manifest
+and `bun.lock` own the current pin; do not copy it into release instructions.
 
-A fresh frozen install must build that source dependency without relying on
-a locally packed SDK. Do not release the CLI with this temporary source pin.
-Deploy the API contract (GetBrew/brew-v2#2411) and release the SDK first, then
-replace the pin with the actual published SDK version and regenerate
-`bun.lock` before releasing the CLI.
-
-### Image Import SDK Gate
-
-`emails import-image` calls `emails.importImage` and imports
-`IMPORT_IMAGE_DEFAULT_TIMEOUT_MS`, which no published SDK exposes yet. The
-pin is now SDK source commit `ce17a70fafd0cf499649a5498dee30c88c9fc64e`
-(GetBrew/typescript-sdk#110), which also contains the integration events
-commit above. The API contract is live (GetBrew/brew-v2#3119). Release the
-SDK with both, then replace the pin with that published version and
-regenerate `bun.lock` before releasing the CLI.
+A fresh frozen install must build that source dependency without a locally
+packed SDK. Before publishing the CLI, publish an SDK version containing those
+methods, replace the source dependency with the actual registry version and
+regenerate `bun.lock`. Run the parity suites, full release checks and generated
+command-reference freshness check against that installed artifact.
 
 ```bash
-# on a clean main with CI green
 npm version <patch|minor|major> --no-git-tag-version
 git add package.json && git commit -m "Release vX.Y.Z"
 git push origin main
 git tag vX.Y.Z
-git push origin vX.Y.Z        # <-- triggers .github/workflows/release.yml
+git push origin vX.Y.Z
 ```
 
 The workflow then:
@@ -88,9 +76,9 @@ it must not select the publishing runner.
 ## Install channels (what users get)
 
 ```bash
-npm install -g @brew.new/cli     # or: npx @brew.new/cli …
+npm install -g @brew.new/cli
 brew install getbrew/tap/brew-cli
-# or download a binary from the GitHub Release
+
 ```
 
 ## One-time setup

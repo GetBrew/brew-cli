@@ -12,10 +12,6 @@ import {
 } from '../../lib/input'
 import { progress } from '../../lib/output'
 
-/**
- * What a PATCH without a prompt changes in place: no AI run, no new version,
- * no credits. The API needs a prompt or at least one of these.
- */
 const ENVELOPE_FIELDS = ['title', 'subjectLine', 'lang', 'groupId'] as const
 
 function isText(value: unknown): boolean {
@@ -104,8 +100,6 @@ export const emailsEditCommand = defineCommand({
       groupId: flags.ungroup === true ? null : groupId,
     })
     const isPromptEdit = isText(input.prompt)
-    // `null` is a real value for `groupId` (moves the design to Ungrouped)
-    // and `lang` (clears a named language so Brew reads it again).
     const envelope = ENVELOPE_FIELDS.filter(
       (field) =>
         isText(input[field]) ||
@@ -116,8 +110,6 @@ export const emailsEditCommand = defineCommand({
         'Pass --prompt, or at least one of --subject-line, --lang, --clear-lang, --title, --group-id or --ungroup (or those fields via --input).'
       )
     }
-    // Without a prompt the patch is deterministic server-side: no AI run, no
-    // new version, and no credits, so it returns immediately.
     progress(
       ctx,
       isPromptEdit

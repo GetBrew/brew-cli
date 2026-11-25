@@ -17,7 +17,6 @@ import {
 } from '../../lib/paginate'
 import type { CliContext } from '../../lib/types'
 
-/** The one status vocabulary every send, run and build reports. */
 export const SEND_STATUS_SUMMARY =
   'scheduled | queued | running | paused | completed | partially_completed | failed | canceled'
 
@@ -87,10 +86,6 @@ export const sendsListCommand = defineCommand({
   },
 })
 
-/**
- * The shared read behind `sends list` and the `analytics sends list` /
- * `analytics campaigns` aliases, so every name renders the same rows.
- */
 export async function listSends(
   ctx: CliContext,
   input: Record<string, unknown>,

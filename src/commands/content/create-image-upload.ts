@@ -19,13 +19,6 @@ import {
   unknownTypeError,
 } from './image-library'
 
-/**
- * The first step of the two-step upload, for bytes this CLI does not send
- * itself (another machine, a pipeline): `content upload-image <file>` runs
- * all three steps in one call. No `--idempotency-key`: the route never
- * replays its answer (it carries a bearer URL), so a retry opens a second
- * upload, which expires unused.
- */
 export const contentCreateImageUploadCommand = defineCommand({
   path: ['content', 'create-image-upload'],
   summary:
@@ -67,8 +60,6 @@ export const contentCreateImageUploadCommand = defineCommand({
         'The file size is required (--size or size in --input).'
       )
     }
-    // An explicit type goes to the API as given (it validates it); a
-    // missing one is read from the name, as `content upload-image` does.
     if (input.contentType === undefined) {
       const inferred = contentTypeOfName(fileName)
       if (inferred === undefined) {
@@ -91,12 +82,6 @@ export const contentCreateImageUploadCommand = defineCommand({
   },
 })
 
-/**
- * The two steps that finish the upload. The bytes may go from another
- * machine, where the file has its own path; the add-image step keeps the
- * `--brand` and `--api-url` this call was given, since an organization key
- * answers BRAND_ID_REQUIRED without the brand.
- */
 function renderTicket(
   ticket: ContentImageUploadCreateResponse,
   fileName: string,

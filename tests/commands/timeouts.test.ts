@@ -6,13 +6,6 @@ import { describe, expect, it, vi } from 'vitest'
 import { server } from '../helpers/msw-server'
 import { runCli } from '../helpers/run-cli'
 
-/**
- * `--timeout`, `--max-retries`, the raw transport's deadline, and how
- * timeouts and failed connections are reported. Every stall here would hang
- * the suite on a transport that stops bounding the request at the headers,
- * so each carries an explicit test timeout.
- */
-
 const KEY = 'brew_abcdefghijklmnopqrstuvwxyz012345'
 const API = 'https://brew.new/api'
 const STALL = { timeout: 5000 }
@@ -26,7 +19,6 @@ function env(): Record<string, string | undefined> {
 
 type Envelope = { error: Record<string, unknown> }
 
-/** The JSON error envelope: the last stderr line (progress lines come first). */
 function envelopeOf(stderr: string): Record<string, unknown> {
   const line = stderr.trim().split('\n').at(-1) ?? ''
   return (JSON.parse(line) as Envelope).error
@@ -35,7 +27,6 @@ function envelopeOf(stderr: string): Record<string, unknown> {
 const neverAnswers = (): Promise<Response> =>
   new Promise<Response>(() => undefined)
 
-/** Headers and part of the JSON body, then nothing, ever. */
 function stalledBody(): Response {
   return new HttpResponse(
     new ReadableStream<Uint8Array>({
@@ -170,7 +161,6 @@ describe('--timeout', () => {
       expect(result.code).toBe(1)
       const error = envelopeOf(result.stderr)
       expect(error.code).toBe('CLI_TIMEOUT')
-      // A timed-out keyed write names the key that replays it.
       expect(error.idempotencyKey).toEqual(expect.any(String))
       expect(String(error.retryCommand)).toContain('--idempotency-key')
       expect(performance.now() - started).toBeLessThan(3000)
@@ -287,8 +277,6 @@ describe('failed connections', () => {
     expect(sentKey).toMatch(/^[0-9a-f-]{36}$/)
     const error = envelopeOf(result.stderr)
     expect(error.code).toBe('CLI_CONNECTION')
-    // POST /v1/emails replays a keyed request (its command declares the
-    // replaying --idempotency-key), so the raw call gets the replay advice.
     expect(error.idempotencyKey).toBe(sentKey)
     expect(String(error.retryCommand)).toBe(
       `brew-cli api '--data={"prompt":"Hi"}' --idempotency-key=${String(sentKey)} --yes -- POST /v1/emails`

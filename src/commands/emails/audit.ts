@@ -86,7 +86,6 @@ export const emailsAuditCommand = defineCommand({
       )
     }
     const base = mergeInput(await readJsonFlag(ctx, flags.input, '--input'), {})
-    // Source flags replace the exclusive source group; other JSON fields stay.
     if (flaggedSources.length === 1) {
       for (const field of AUDIT_SOURCE_FIELDS) {
         delete base[field]
@@ -139,8 +138,6 @@ export const emailsAuditCommand = defineCommand({
     ) {
       throw new CliUsageError('emailVersionId must be a non-empty string.')
     }
-    // The 65 s audit deadline is the command's `defaultTimeoutMs`: the
-    // whole command, body read included, and `--timeout` overrides it.
     const result = await ctx
       .client()
       .emails.auditEmail(

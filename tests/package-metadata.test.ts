@@ -13,7 +13,6 @@ const manifest = JSON.parse(
 
 describe('npm package metadata', () => {
   it('ships the compiled brew-cli executable', () => {
-    // npm 11 strips a bin path prefixed with `./` during publish packing.
     expect(manifest.bin).toEqual({ 'brew-cli': 'dist/bin.js' })
     expect(manifest.files).toContain('dist')
   })

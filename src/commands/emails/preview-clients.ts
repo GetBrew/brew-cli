@@ -39,15 +39,9 @@ export const emailsPreviewClientsCommand = defineCommand({
     'brew-cli emails preview-clients eml_2SmZOWV3ZQ7W5x6g3m4p --clients applemail16 outlook2021_win11_lm_dt',
     'PREVIEW_ID=$(brew-cli emails preview-clients eml_2SmZOWV3ZQ7W5x6g3m4p --json | jq -r .previewId) && brew-cli emails get-client-preview "$PREVIEW_ID"',
   ],
-  // The API answers 202 with the admitted job (or 200 with the existing job
-  // for the same version and clients): `previewId`, its `status` and
-  // per-client progress. Screenshots arrive on the job once it settles, so
-  // `emails get-client-preview <previewId>` is how they are read.
   run: async ({ ctx, args, flags }) => {
     const clients = toStringArray(flags.clients)
     const emailVersionId = flagString(flags.emailVersionId)
-    // SDK 10 posts every field but `emailId` as the body, so the version
-    // reaches the API before the SDK 11 input type names it.
     const job = await ctx.client().emails.previewClients(
       asSdkInput<PreviewEmailClientsInput>({
         emailId: args.emailId ?? '',
@@ -64,11 +58,6 @@ export const emailsPreviewClientsCommand = defineCommand({
   },
 })
 
-/**
- * `@brew.new/sdk` 10 still types this response as the old blocking batch
- * (no `previewId`, `ready | partial`), so the job fields are read
- * defensively until the CLI adopts SDK 11.
- */
 function pollHint(job: unknown): string | undefined {
   if (
     typeof job !== 'object' ||

@@ -16,11 +16,6 @@ import {
 type CohortEventType =
   components['schemas']['AudiencesFromEventsRequest']['cohort']['eventTypes'][number]
 
-/**
- * The cohort's event types, in the vendored spec's order. `satisfies` makes
- * `tsc` refuse a type the spec lacks and miss none it declares, so a spec sync
- * that changes the enum fails until this help text follows it.
- */
 const COHORT_EVENT_TYPES = Object.keys({
   sent: true,
   delivered: true,
@@ -73,7 +68,6 @@ export const audiencesFromEventsCommand = defineCommand({
   run: async ({ ctx, flags }) => {
     const base = await readJsonFlag(ctx, flags.input, '--input')
     const input = mergeInput(base, { name: flagString(flags.name) })
-    // Scalar flags override the cohort inside an --input body key-by-key.
     const cohort = mergeInput(input.cohort, {
       eventTypes: toStringArray(flags.eventTypes),
       from: flagString(flags.since),

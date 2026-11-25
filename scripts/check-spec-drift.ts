@@ -2,13 +2,6 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { parse } from 'yaml'
 
-/**
- * Compares the vendored OpenAPI spec against the LIVE published spec
- * (https://brew.new/openapi/public-api-v1.yaml, passed as argv[2] after
- * download). Exit 1 on any drift so the scheduled workflow can alert.
- *   bun run scripts/check-spec-drift.ts /tmp/live-spec.yaml
- */
-
 const livePath = process.argv[2]
 if (livePath === undefined) {
   console.error('usage: check-spec-drift.ts <downloaded-live-spec.yaml>')

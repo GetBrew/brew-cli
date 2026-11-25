@@ -29,7 +29,6 @@ function context(io: Partial<CliIo> = {}): CliContext {
   })
 }
 
-/** A 200 whose body sends a few bytes and then never ends. */
 function stalledResponse(): Response {
   return new Response(
     new ReadableStream<Uint8Array>({
@@ -169,9 +168,6 @@ describe('responseToApiError', () => {
   })
 
   it('maps the legacy fire envelope: real code, status-derived type, details kept, no retry advice', () => {
-    // `POST /v1/automations/triggers/{id}/fire` is the ONE endpoint outside
-    // the `{ error }` convention. `details.errors[]` names the offending
-    // fields — the part a caller needs, and the part this mapper dropped.
     const body = {
       success: false,
       status: 'payload_mismatch',
@@ -214,7 +210,6 @@ describe('responseToApiError', () => {
     })
     expect(error.details).toEqual(body.details)
     expect(error.body).toBe(body)
-    // The same body fails the same way on retry — never advise one.
     expect(error.suggestion).toBeDefined()
     expect(error.suggestion).not.toMatch(/retry/i)
   })
@@ -223,8 +218,6 @@ describe('responseToApiError', () => {
     [404, 'not_found'],
     [403, 'authorization_error'],
     [422, 'invalid_request'],
-    // Unlisted client errors are still the caller's problem, never a
-    // server fault.
     [405, 'invalid_request'],
     [415, 'invalid_request'],
     [429, 'rate_limit'],

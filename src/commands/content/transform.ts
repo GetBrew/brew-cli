@@ -54,9 +54,6 @@ export const contentTransformCommand = defineCommand({
     if (typeof input.imageUrl !== 'string' || input.imageUrl === '') {
       throw new CliUsageError('An image URL is required (--url or --input).')
     }
-    // The API requires the `operation` discriminator. Resize knobs imply
-    // resize; the bare-URL case defaults to optimize (which accepts no
-    // other fields on the strict schema).
     if (input.operation === undefined) {
       const hasResizeKnobs = [
         input.width,

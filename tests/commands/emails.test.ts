@@ -529,8 +529,6 @@ describe('emails edit', () => {
     )
     expect(result.code).toBe(0)
     expect(body).toEqual({ subjectLine: 'Your September roundup' })
-    // Subject-only skips the agent server-side, so promising a 30-90s edit
-    // would be a lie.
     expect(result.stderr).toContain('Setting the subject line')
     expect(result.stderr).not.toContain('Editing email')
   })
@@ -612,8 +610,6 @@ describe('emails edit', () => {
     expect(result.stderr).toContain('Editing email')
   })
 
-  // The API takes any of prompt, title, subjectLine, lang and groupId; without a
-  // prompt it is one free in-place patch of the design's envelope.
   it('renames through --input without a prompt (no AI run)', async () => {
     let body: unknown
     server.use(

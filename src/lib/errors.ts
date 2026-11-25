@@ -14,12 +14,9 @@ export const EXIT_RUNTIME = 1
 export const EXIT_USAGE = 2
 export const EXIT_AUTH = 3
 export const EXIT_CONFIRM = 4
-/** 128 + SIGINT, as a shell reports a Ctrl-C'd process. */
 export const EXIT_INTERRUPTED = 130
-/** 128 + SIGTERM, as a shell reports a terminated process. */
 export const EXIT_TERMINATED = 143
 
-/** A server pagination cycle is a failed drain, never a complete list. */
 export class CliPaginationError extends Error {
   readonly cursor: string
 
@@ -36,10 +33,6 @@ export function exitCodeForSignal(signal: InterruptSignal): number {
   return signal === 'SIGINT' ? EXIT_INTERRUPTED : EXIT_TERMINATED
 }
 
-/**
- * The process received SIGINT or SIGTERM. It is the abort REASON of the
- * command's signal, so the SDK and the raw transport rethrow it as-is.
- */
 export class CliInterruptError extends Error {
   readonly signal: InterruptSignal
 
@@ -50,11 +43,6 @@ export class CliInterruptError extends Error {
   }
 }
 
-/**
- * A deadline the CLI owns ran out: the command's `--timeout` (or its
- * default), or one raw attempt's. Named `TimeoutError` like the platform's
- * and the SDK's, so every timeout check agrees.
- */
 export class CliTimeoutError extends Error {
   readonly timeoutMs: number
 
@@ -65,7 +53,6 @@ export class CliTimeoutError extends Error {
   }
 }
 
-/** A raw request's connection failed or dropped before the body arrived. */
 export class CliConnectionError extends Error {
   constructor(cause: unknown) {
     super('The connection failed before a complete response arrived.', {
@@ -75,10 +62,8 @@ export class CliConnectionError extends Error {
   }
 }
 
-/** Bad invocation: malformed input, unusable flag combinations. */
 export class CliUsageError extends Error {}
 
-/** Missing or unusable credentials, detected before any request is sent. */
 export class CliAuthError extends Error {
   readonly suggestion: string
 
@@ -88,14 +73,8 @@ export class CliAuthError extends Error {
   }
 }
 
-/** The user declined an interactive confirmation prompt. */
 export class CommandAbortedError extends Error {}
 
-/**
- * Error raised by the `api` escape hatch and the raw transport, mirroring
- * the public API error envelope so it renders and exits exactly like a
- * `BrewApiError`.
- */
 export class CliApiError extends Error {
   readonly status: number
   readonly code: string
@@ -104,13 +83,7 @@ export class CliApiError extends Error {
   readonly suggestion: string | undefined
   readonly docs: string | undefined
   readonly requestId: string | undefined
-  /**
-   * The envelope's `details` object when the API sent one — for a
-   * trigger-fire `payload_mismatch` that is `{ errors[], warnings[],
-   * payloadSchema, … }`, naming every field the payload got wrong.
-   */
   readonly details: Record<string, unknown> | undefined
-  /** The parsed response body exactly as received (`undefined` if not JSON). */
   readonly body: unknown
 
   constructor(input: {
@@ -138,12 +111,6 @@ export class CliApiError extends Error {
   }
 }
 
-/**
- * The closest API error `type` for a response that did not carry one — the
- * legacy fire envelope never does, and neither does a non-JSON body. Every
- * 4xx is a client-side problem (an unlisted one, `405` or `415` say, is
- * still `invalid_request`); only a 5xx is an `internal_error`.
- */
 export function errorTypeForStatus(status: number): string {
   switch (status) {
     case 401:
@@ -169,12 +136,6 @@ export function errorTypeForStatus(status: number): string {
   }
 }
 
-/**
- * Retry advice is only honest for the statuses the SDK's retry policy
- * retries — `408`, `429` and 5xx — so a raw call (single-attempt) and a
- * typed call give the same guidance for the same status. Any other 4xx
- * fails the same way on every retry.
- */
 export function suggestionForStatus(status: number): string {
   if (status === 408 || status === 429 || status >= 500) {
     return 'Retry the request. If it keeps failing, contact support.'
@@ -189,11 +150,6 @@ export type ConfirmationEnvelope = {
   readonly confirmCommand: string
 }
 
-/**
- * A destructive command ran without --yes in a non-interactive session.
- * The envelope is the command's machine-readable response: the caller
- * shows `summary` to a human and re-runs `confirmCommand` to proceed.
- */
 export class ConfirmationRequiredError extends Error {
   readonly envelope: ConfirmationEnvelope
 
@@ -231,40 +187,23 @@ export type CliErrorEnvelope = {
   readonly suggestion?: string
   readonly docs?: string
   readonly requestId?: string
-  /** The API's `details` object, verbatim, when the refusal carried one. */
   readonly details?: Record<string, unknown>
   readonly status?: number
-  /**
-   * When the outcome of a replaying write is unknown (a timeout, a dropped
-   * connection, an interrupt, a 5xx): the key its request carried, and the
-   * command that replays it instead of running it twice.
-   */
   readonly idempotencyKey?: string
-  /** The original upload to finalize, never a credential-bearing upload URL. */
   readonly uploadId?: string
   readonly retryCommand?: string
-  /** How far an interrupted `--all` drain got, and the cursor to resume at. */
   readonly progress?: DrainProgress
 }
 
-/**
- * What the CLI knows about the command that failed, for advice an error
- * alone cannot give: which request it was, whether it only read, whether its
- * route replays a keyed request, and the command line that would replay it.
- */
 export type ErrorContext = {
   readonly request?: RecordedRequest
   readonly isRead?: boolean
-  /** `true` when the route replays a request carrying the same key. */
   readonly replays?: boolean
-  /** Builds the re-run command line for a key. */
   readonly retryCommand?: (idempotencyKey: string) => string
-  /** Finalization uses another command when the failed call was a file helper. */
   readonly retryUploadCommand?: (
     uploadId: string,
     idempotencyKey: string
   ) => string
-  /** The command read its body from stdin: the re-run needs it again. */
   readonly readsStdin?: boolean
   readonly drain?: DrainProgress
 }
@@ -392,12 +331,6 @@ function baseEnvelope(error: unknown, context: ErrorContext): CliErrorEnvelope {
 
 const IN_PROGRESS_CODE = 'IDEMPOTENCY_IN_PROGRESS'
 
-/**
- * The final request is independently replayable even when its enclosing
- * command is not. SDK metadata works after the SDK upgrade; the recorder
- * also covers older SDKs and CLI deadlines/interrupts without changing the
- * original abort reason. Definite refusals retain their API guidance.
- */
 function withUploadReplayAdvice(
   envelope: CliErrorEnvelope,
   error: unknown,
@@ -438,14 +371,6 @@ function withUploadReplayAdvice(
   }
 }
 
-/**
- * Advice for an UNKNOWN outcome — a timeout, a dropped connection, an
- * interrupt, a 5xx, or the API saying the first attempt is still running.
- * The server keeps working after the CLI disconnects, so a write may still
- * complete: the only safe re-run is one that replays it with the same key.
- * A definite answer (any other 4xx, a conflict that needs a NEW key) gets
- * no key: replaying it would fail the same way.
- */
 function withReplayAdvice(
   envelope: CliErrorEnvelope,
   error: unknown,
@@ -530,7 +455,6 @@ function timeoutMessage(error: unknown, context: ErrorContext): string {
   return 'The request timed out before the API responded.'
 }
 
-/** Drop the query string: it can carry an email address. */
 function pathOnly(path: string): string {
   return path.split('?')[0] ?? path
 }
@@ -593,22 +517,11 @@ export function printError(
   ctx.io.stderr.write(`${lines.join('\n')}\n`)
 }
 
-/**
- * `details` read structurally off either error class. `BrewApiError`
- * exposes it from `@brew.new/sdk` 9.3 on; older SDKs simply have none, so
- * the typed commands light up on the SDK bump with no CLI change.
- */
 function readErrorDetails(error: object): Record<string, unknown> | undefined {
   const details = (error as { details?: unknown }).details
   return isRecord(details) ? details : undefined
 }
 
-/**
- * Human-mode rendering of `details`. A field-error list (the trigger-fire
- * `payload_mismatch` shape, `errors: [{ field, message, expectedType?,
- * actualType? }]`) becomes one line per field; any other shape is one JSON
- * line, so nothing the API said is hidden.
- */
 function formatDetailLines(
   details: Record<string, unknown> | undefined
 ): string[] {
@@ -650,11 +563,6 @@ function apiErrorStatus(error: unknown): number | undefined {
   }
 }
 
-/**
- * The SDK's `BrewTimeoutError`, the CLI's own `CliTimeoutError`, and the
- * platform's `AbortSignal.timeout` DOMException all name themselves
- * `TimeoutError`.
- */
 export function isTimeoutError(error: unknown): boolean {
   return (
     error instanceof BrewTimeoutError ||

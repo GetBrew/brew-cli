@@ -8,12 +8,6 @@ import { emailsGroupsUpdateCommand } from '../../src/commands/emails/groups/upda
 import { server } from '../helpers/msw-server'
 import { runCli } from '../helpers/run-cli'
 
-/**
- * Group writes move designs in (GetBrew/brew-v2#1814): `--email-ids` (up to
- * 50, comma-separated) on create and update, and an update may move designs
- * without renaming the folder.
- */
-
 const KEY = 'brew_abcdefghijklmnopqrstuvwxyz012345'
 const EMAIL_GROUPS_URL = 'https://brew.new/api/v1/email-groups'
 const EXTRA = [emailsGroupsCreateCommand, emailsGroupsUpdateCommand]
@@ -126,8 +120,6 @@ describe('emails groups update', () => {
     )
     expect(update.code).toBe(2)
     expect(update.stderr).toContain('--email-ids')
-    // Beside a valid rename, an empty list still fails locally rather than
-    // turning the rename into an API validation error.
     const rename = await runCli(
       [
         'emails',

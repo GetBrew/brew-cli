@@ -35,7 +35,6 @@ export const loginCommand = defineCommand({
       globals: { ...ctx.globals, apiKey: candidate },
       env: ctx.io.env,
     })
-    // Throws a 401 BrewApiError (exit 3) when the key is invalid.
     await buildSdkClient(auth, sdkTransportFor(ctx)).usage.get()
     const path = updateConfig(ctx.io.env, { apiKey: candidate })
     progress(ctx, `Logged in. Key stored in ${path} (0600).`)

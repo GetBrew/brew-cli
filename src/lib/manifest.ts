@@ -2,11 +2,6 @@ import { SDK_SKIP_LIST, SPEC_SKIP_LIST } from '../skip-list'
 import { CLI_NAME, CLI_VERSION } from '../version'
 import { type CommandMetadata, GLOBAL_FLAGS } from './define-command'
 
-/**
- * The machine-readable surface contract printed by `brew-cli docs --agent`.
- * Additive-only: tests snapshot this shape, so removals or renames are
- * breaking changes by construction.
- */
 export function buildManifest({
   commands,
 }: {

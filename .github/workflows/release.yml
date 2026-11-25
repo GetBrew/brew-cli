@@ -8,15 +8,12 @@ permissions:
   contents: write
   id-token: write
 
-# Let the active release finish before a duplicate tag run starts.
 concurrency:
   group: release-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
   release:
-    # npm rejects provenance from self-hosted runners, including Blacksmith.
-    # Keep publishing independent of CI_RUNNER_SMALL.
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -29,6 +26,8 @@ jobs:
           node-version: 22
           registry-url: https://registry.npmjs.org
       - run: bun install --frozen-lockfile
+      - name: Install comment parsers
+        run: bun run comments:setup
       - name: Verify tag matches package.json
         run: |
           PKG_V=$(node -p "require('./package.json').version")

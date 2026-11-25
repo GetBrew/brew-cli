@@ -40,8 +40,6 @@ describe('registry invariants', () => {
       if (typeof spec.derivedFrom === 'string') {
         expect(spec.route, name).toBeDefined()
       } else {
-        // A verb-flag dispatcher spans several routes; declaring one would
-        // misfile it in the spec parity, so it declares none.
         expect(spec.derivedFrom.length, name).toBeGreaterThan(1)
         expect(spec.route, name).toBeUndefined()
       }

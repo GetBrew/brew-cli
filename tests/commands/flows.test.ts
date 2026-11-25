@@ -33,8 +33,6 @@ function cli(
 
 const CARD = {
   slug: 'notion.com',
-  // `brand` is `{ name, logo? }` since SDK 9.2.0; `domain` duplicated `slug`
-  // and was dropped from the API row.
   brand: { name: 'Notion' },
   title: 'Notion onboarding flow',
   type: 'signup',
@@ -110,7 +108,6 @@ describe('flows list', () => {
     expect(url?.searchParams.get('limit')).toBe('5')
     expect(url?.searchParams.has('slug')).toBe(false)
     expect(url?.searchParams.has('include')).toBe(false)
-    // The gallery is organization-wide: the brand binding never rides along.
     expect(brandHeader).toBeNull()
     const data = result.json as { data: Array<{ slug: string }> }
     expect(data.data[0]?.slug).toBe('notion.com')
@@ -222,7 +219,6 @@ describe('flows list, counting', () => {
     expect(result.code).toBe(0)
     expect(result.stdout).toContain('not a definitive none')
     expect(result.stdout).toContain('500 flows nearest your --semantic query')
-    // The search ran; it was cut. No "unavailable" or retry advice.
     expect(result.stdout).not.toContain('unavailable')
     expect(result.stdout).not.toContain('No flows found.')
   })
@@ -355,7 +351,6 @@ describe('flows list, paging', () => {
       { ttyOut: true }
     )
     expect(result.code).toBe(0)
-    // Two pages merged: "2 on this page" would misstate what was fetched.
     expect(result.stdout).toContain('3 flows in total; 2 listed')
     expect(result.stdout).not.toContain('on this page')
   })
@@ -393,10 +388,6 @@ describe('flows list, paging', () => {
       http.get(`${API}/v1/flows/nobody.example`, () =>
         HttpResponse.json(
           {
-            // `suggestion` and `docs` are REQUIRED on the error object by the
-            // spec, and the SDK's envelope parser enforces that: an envelope
-            // missing either degrades to `code: 'unknown_error'`. Keep this
-            // fixture shaped like the real 404 the API sends.
             error: {
               code: 'FLOW_NOT_FOUND',
               type: 'not_found',

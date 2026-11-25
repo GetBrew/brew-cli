@@ -14,10 +14,6 @@ import {
   renderInstances,
 } from '../../automations/trigger-instances/list'
 
-/**
- * The name agents already know. Trigger instances moved under automations;
- * one instance by id is `automations trigger-instances get`.
- */
 export const analyticsTriggerInstancesListCommand = defineCommand({
   path: ['analytics', 'trigger-instances', 'list'],
   summary:
@@ -26,7 +22,6 @@ export const analyticsTriggerInstancesListCommand = defineCommand({
   derivedFrom: 'automations.triggerInstances.list',
   route: { method: 'GET', path: '/v1/automations/trigger-instances' },
   commandClass: 'read',
-  // The detail read's keys, which `run` takes from --input to switch to it.
   inputKeys: { extra: ['triggerInstanceId'] },
   flags: [
     {

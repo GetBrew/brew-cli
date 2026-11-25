@@ -1,13 +1,6 @@
 import type { HttpMethod } from './lib/define-command'
 
-/**
- * The two parity sentinels read these lists. Every entry is a deliberate,
- * reviewed decision — parity tests fail on anything unaccounted for, and
- * on entries that go stale (e.g. after an SDK upgrade closes a gap).
- */
-
 export type SdkSkip = {
-  /** Dotted SDK client path, e.g. `contacts.searchAll`. */
   readonly sdkPath: string
   readonly reason: string
 }
@@ -18,7 +11,6 @@ export type SpecSkip = {
   readonly reason: string
 }
 
-/** SDK methods that intentionally have no dedicated CLI command. */
 export const SDK_SKIP_LIST: readonly SdkSkip[] = [
   {
     sdkPath: 'webhooks.attempts',
@@ -120,14 +112,4 @@ export const SDK_SKIP_LIST: readonly SdkSkip[] = [
   },
 ]
 
-/**
- * Spec operations with no CLI command yet. Kept exact: the parity test
- * fails if one of these gains SDK support without gaining a command.
- *
- * Empty as of 0.7.0: every v1 operation is bound, including the detail
- * reads, the sends root, trigger instances, trigger readiness, and the
- * run/audience-run lifecycle actions. Since 0.10.0 (SDK 11.2) every one of
- * them goes through an SDK method except the paged `api-keys list` and
- * `integrations list` reads and the `api` escape hatch.
- */
 export const SPEC_SKIP_LIST: readonly SpecSkip[] = []

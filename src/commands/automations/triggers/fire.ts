@@ -18,7 +18,6 @@ export const automationsTriggersFireCommand = defineCommand({
     path: '/v1/automations/triggers/{triggerEventId}/fire',
   },
   commandClass: 'destructive',
-  // The input keys are the user's own data: a bare object is shorthand for the { payload } envelope.
   inputKeys: 'unchecked',
   args: [
     {
@@ -38,7 +37,6 @@ export const automationsTriggersFireCommand = defineCommand({
     if (base === undefined) {
       throw new CliUsageError('--input is required — the trigger payload JSON.')
     }
-    // A bare object is sugar for the { payload } envelope the API takes.
     const body =
       typeof base === 'object' && base !== null && 'payload' in base
         ? (base as Record<string, unknown>)

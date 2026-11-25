@@ -21,13 +21,6 @@ export const automationsTriggersReadyCommand = defineCommand({
     'brew-cli automations triggers ready tri_signup',
     'brew-cli automations triggers ready shopify:customers/update --json',
   ],
-  // 200 `ready: true` means the exact credential in use can fire this
-  // trigger. A `NO_PUBLISHED_AUTOMATION` blocker with `ready: false` means
-  // fires are refused with 422 NO_PUBLISHED_AUTOMATION until a wired
-  // automation is published. The readiness probe returns 200 with the blocker.
-  // An integration trigger may also carry `delivery` (received |
-  // never_received | none_recent | waiting_for_test_event + what to set up at
-  // the source); it never changes `ready`.
   run: async ({ ctx, args }) => ({
     data: await ctx
       .client()

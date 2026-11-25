@@ -1,11 +1,5 @@
 import { defineCommand } from '../../../lib/define-command'
 
-/**
- * `state` is `received | verified | matched | partially_fired | fired |
- * rejected | dead_letter`: `fired` means every matched automation started,
- * `partially_fired` that some starts are still being retried, and
- * `rejected` carries a `rejectionReason`.
- */
 export const automationsTriggerInstancesGetCommand = defineCommand({
   path: ['automations', 'trigger-instances', 'get'],
   summary:

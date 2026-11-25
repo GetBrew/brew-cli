@@ -95,8 +95,6 @@ describe('cli basics', () => {
         env: { BREW_CLI_CONFIG_DIR: '/nonexistent-config-dir' },
       }
     )
-    // --yes before the subcommand must reach the confirmation gate (the
-    // command then fails on auth, not on confirmation).
     expect(before.code).toBe(3)
   })
 

@@ -31,8 +31,6 @@ export const apiKeysCreateCommand = defineCommand({
         'Bind the NEW key to this brand id (omit for an organization-wide key); not the acting --brand',
     },
     INPUT_FLAG,
-    // The route never replays (a replay would disclose the plaintext key
-    // again): a retry mints a second key, whatever the key says.
     NON_REPLAYING_IDEMPOTENCY_FLAG,
   ],
   examples: [
@@ -46,9 +44,6 @@ export const apiKeysCreateCommand = defineCommand({
       permissions: toStringArray(flags.permissions),
       brandId: flagString(flags.brandId),
     })
-    // The plaintext `key` is never shown again after this call — pass the
-    // API response through verbatim (no masking) or the command loses its
-    // only purpose.
     return {
       data: await ctx
         .client()

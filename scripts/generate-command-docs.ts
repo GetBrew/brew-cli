@@ -4,19 +4,13 @@ import { GLOBAL_FLAGS } from '../src/lib/define-command'
 import { ALL_COMMANDS } from '../src/registry'
 import { SDK_SKIP_LIST, SPEC_SKIP_LIST } from '../src/skip-list'
 
-/**
- * Generates docs/commands/README.md from the command registry.
- *   bun run docs:commands          — write the file
- *   bun run docs:commands:check    — fail when the committed file is stale
- */
-
 const OUTPUT_PATH = join(import.meta.dirname, '../docs/commands/README.md')
 
 function generate(): string {
   const lines: string[] = [
     '# brew-cli command reference',
     '',
-    '<!-- GENERATED FILE — do not edit. Regenerate with `bun run docs:commands`. -->',
+    'Generated from the command registry with `bun run docs:commands`.',
     '',
     `${ALL_COMMANDS.length} commands. Classes: read (always safe), write`,
     '(mutating, retry-safe), destructive (irreversible — the confirmation',

@@ -15,7 +15,6 @@ import {
 } from '../../lib/input'
 import { renderAddedImage } from './image-library'
 
-/** The request body's three branches; the API takes exactly one. */
 const IMAGE_SOURCES = ['imageUrl', 'imageUrls', 'uploadId'] as const
 
 export const contentAddImageCommand = defineCommand({

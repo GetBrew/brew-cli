@@ -159,7 +159,6 @@ describe('automation test delivery boundary', () => {
       const { confirmCommand } = unconfirmed.json as {
         confirmCommand: string
       }
-      // Let the shell parse its quoting without executing the CLI or an API call.
       const argv = execFileSync(
         'sh',
         ['-c', `set -- ${confirmCommand}; printf '%s\\0' "$@"`],

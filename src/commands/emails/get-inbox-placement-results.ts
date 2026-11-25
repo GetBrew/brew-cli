@@ -27,8 +27,6 @@ export const emailsGetInboxPlacementResultsCommand = defineCommand({
   ],
   flags: [
     {
-      // The list no longer filters by test id: --test-id reads the real
-      // detail route, the same one `emails inbox-placement-tests get` binds.
       flag: '--test-id <id>',
       summary:
         'One test: live status + per-provider placement (re-poll ~30s until completed)',

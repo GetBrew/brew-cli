@@ -1,15 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
-/**
- * Rewrites Formula/brew-cli.rb in GetBrew/homebrew-tap after a release,
- * using the GitHub contents API (no clone needed). Requires:
- *   TAP_GITHUB_TOKEN — a token with repo write on GetBrew/homebrew-tap
- *   dist-bin/checksums.txt — produced by scripts/build-binaries.ts
- * Runs as the final release.yml step; exits 0 with a notice when the
- * token is absent so releases still succeed before the tap is wired.
- */
-
 const token = process.env.TAP_GITHUB_TOKEN
 if (token === undefined || token === '') {
   console.log('TAP_GITHUB_TOKEN not set — skipping Homebrew tap bump.')

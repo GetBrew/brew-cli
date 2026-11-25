@@ -166,11 +166,6 @@ import { webhooksUpdateCommand } from './commands/webhooks/update'
 import { whoamiCommand } from './commands/whoami'
 import type { CommandSpec } from './lib/define-command'
 
-/**
- * Every command the CLI exposes, in help-display order. One entry per
- * command file; the parity tests hold this list to the SDK surface and
- * the vendored OpenAPI spec.
- */
 export const ALL_COMMANDS: readonly CommandSpec[] = [
   webhooksListCommand,
   webhooksCreateCommand,

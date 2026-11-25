@@ -4,13 +4,6 @@ import { describe, expect, it } from 'vitest'
 import { parse } from 'yaml'
 import { ALL_COMMANDS } from '../src/registry'
 
-/**
- * Every `--include` flag's help names exactly the tokens the spec publishes
- * for its route (`x-brew-include-tokens`, generated from the tuples the API
- * parses with). SDK 11.0.0's typed include unions drifted from the API
- * (`automations` where the API takes `skill`); help text can drift the same
- * way, and a re-vendored spec now makes that a test failure.
- */
 function publishedIncludeTokens(): Map<string, ReadonlyArray<string>> {
   const doc = parse(
     readFileSync(
@@ -47,11 +40,6 @@ function publishedIncludeTokens(): Map<string, ReadonlyArray<string>> {
   return tokens
 }
 
-/**
- * The tokens a help line names after its colon, e.g. "Comma-separated
- * expansions: count, build", "Expansions: skill (a SKILL.md-shaped wiring
- * brief)" or "Comma-separated embeds: identity | emailDesign".
- */
 function namedTokens(summary: string): Array<string> {
   return summary
     .slice(summary.indexOf(':') + 1)
@@ -75,8 +63,6 @@ describe('--include flags', () => {
       const tokens = command.route
         ? published.get(`${command.route.method} ${command.route.path}`)
         : undefined
-      // A list command's `--include` is a compat flag that points at the
-      // detail read; its route takes no include.
       if (!(flag && tokens)) {
         continue
       }

@@ -87,12 +87,6 @@ export const contactsSearchCommand = defineCommand({
   },
 })
 
-/**
- * The search route's count mode belongs to `contacts count` and `contacts
- * count-by`. The SDK's `search` always sends `count: false`, so a `count`
- * riding --input was dropped and the command printed a page of rows as if it
- * had counted; `groupBy` / `bucket` only mean anything beside it.
- */
 function refuseCountMode(input: Readonly<Record<string, unknown>>): void {
   const keys = ['count', 'groupBy', 'bucket'].filter(
     (key) => input[key] !== undefined && input[key] !== false
@@ -104,7 +98,6 @@ function refuseCountMode(input: Readonly<Record<string, unknown>>): void {
   }
 }
 
-/** The body takes `include` as an array; the flag is comma-separated. */
 function includeTokens(value: unknown): readonly string[] | undefined {
   const tokens = (flagString(value) ?? '')
     .split(',')
@@ -132,7 +125,6 @@ function renderContacts(rows: ReadonlyArray<unknown>): string {
   if (!contacts.some((row) => 'openProfile' in row)) {
     return renderTable(contacts, columns)
   }
-  // `--include openProfile`: null until the contact's opens are folded in.
   return renderTable(
     contacts.map((row) => {
       const profile = (row.openProfile ?? null) as OpenProfile | null
@@ -150,7 +142,6 @@ function renderContacts(rows: ReadonlyArray<unknown>): string {
   )
 }
 
-/** Minute of the UTC day as HH:MM. */
 function utcClock(minute: number | undefined): string | undefined {
   if (minute === undefined) {
     return undefined

@@ -6,7 +6,6 @@ import {
   toStringArray,
 } from '../../../lib/input'
 
-/** Suppress addresses from ONE marketing domain's mail. */
 export const domainsUnsubscribesAddCommand = defineCommand({
   path: ['domains', 'unsubscribes', 'add'],
   summary:

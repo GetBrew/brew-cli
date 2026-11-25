@@ -6,13 +6,6 @@ import { describe, expect, it } from 'vitest'
 import { server } from '../helpers/msw-server'
 import { type RunCliResult, runCli } from '../helpers/run-cli'
 
-/**
- * The v1 cleanup's new bindings: the per-collection detail reads, the sends
- * root, the contact list, trigger instances, and the audience-run resume
- * action. Each asserts the exact route the command must hit — these are the
- * routes that replaced the old list-with-an-id-filter trick.
- */
-
 const KEY = 'brew_abcdefghijklmnopqrstuvwxyz012345'
 const API = 'https://brew.new/api'
 

@@ -9,7 +9,6 @@ permissions:
   contents: read
   issues: write
 
-# Keep comparisons and issue reconciliation from running simultaneously.
 concurrency:
   group: spec-drift-${{ github.workflow }}
   cancel-in-progress: false

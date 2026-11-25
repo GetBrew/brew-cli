@@ -1,15 +1,8 @@
 import type { ImportContactsResponse } from '@brew.new/sdk'
 import { renderTable } from '../../lib/output'
 
-/** Rows of each table a terminal shows before pointing at `--json`. */
 export const MAX_TERMINAL_ROWS = 20
 
-/**
- * The terminal rendering of `contacts import` and `contacts import-csv`: one
- * line of counts, then the failures and warnings returned by the API.
- * `--json` prints the full envelope. A dry run (`--dry-run`) says so first
- * and counts what the import would do.
- */
 export function renderImportResult(
   result: ImportContactsResponse,
   fileName: string | undefined

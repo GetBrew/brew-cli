@@ -661,7 +661,6 @@ describe('contacts import-csv', () => {
     )
     const dir = mkdtempSync(join(tmpdir(), 'brew-cli-csv-'))
     const csvPath = join(dir, 'names-1252.csv')
-    // Excel's default "CSV" on Western Windows: é = 0xE9, “ = 0x93.
     writeFileSync(
       csvPath,
       Buffer.from(
@@ -803,7 +802,6 @@ describe('contacts import', () => {
       { env: env(), ttyOut: true }
     )
     expect(result.code).toBe(0)
-    // The preview the body asked for is still a preview on the wire.
     expect(body).toEqual({
       contacts: [{ email: 'a@example.com' }],
       dryRun: true,

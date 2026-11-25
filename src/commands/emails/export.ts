@@ -62,13 +62,10 @@ export const emailsExportCommand = defineCommand({
           provider,
           ...(templateName === undefined ? {} : { templateName }),
           ...(senderEmail === undefined ? {} : { senderEmail }),
-          // The spec field is snake_case, unlike the rest of the API surface.
           ...(flags.dryRun === true ? { dryRun: true } : {}),
         }),
         {
           ...requestOptions(flags),
-          // Also raise the per-request budget for SDK versions predating
-          // export's own timeout floor. The explicit CLI timeout still wins.
           timeoutMs: ctx.budget.attemptMs ?? EXPORT_EMAIL_DEFAULT_TIMEOUT_MS,
         }
       ),

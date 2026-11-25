@@ -11,12 +11,6 @@ import {
 const BREW_EVENTS: ReadonlySet<string> = new Set(['contact.unsubscribed'])
 const SCOPES: ReadonlySet<string> = new Set(['domain', 'all'])
 
-/**
- * Brew starts these triggers itself (the first is a contact unsubscribing),
- * so there is nothing to author: the scope names the trigger, and the same
- * scope always returns the same row (`created` says whether this call made
- * it). `fire` refuses them with `409 TRIGGER_NOT_FIREABLE`.
- */
 export const automationsTriggersEnsureBrewEventCommand = defineCommand({
   path: ['automations', 'triggers', 'ensure-brew-event'],
   summary:

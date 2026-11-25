@@ -261,7 +261,6 @@ describe('emails audit', () => {
       sendingPurpose: 'marketing',
     })
     expect(idempotencyKey).toBe('audit-1')
-    // The 65 s audit deadline is the command's own whole-command default.
     expect(AUDIT_EMAIL_DEFAULT_TIMEOUT_MS).toBe(65_000)
     expect(emailsAuditCommand.defaultTimeoutMs).toBe(
       AUDIT_EMAIL_DEFAULT_TIMEOUT_MS

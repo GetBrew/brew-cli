@@ -2,10 +2,6 @@ import type { TemplatesIncludeToken } from '@brew.new/sdk'
 import { defineCommand } from '../../lib/define-command'
 import { asSdkInput, flagString } from '../../lib/input'
 
-/**
- * One public gallery template. Organization-wide like `templates list`, so no
- * brand binding is sent (the SDK omits X-Brand-Id for templates).
- */
 export const templatesGetCommand = defineCommand({
   path: ['templates', 'get'],
   summary:
@@ -33,8 +29,6 @@ export const templatesGetCommand = defineCommand({
   ],
   run: async ({ ctx, args, flags }) => {
     const include = flagString(flags.include)
-    // The token passes through unchecked: the API validates it and names
-    // the ones it takes.
     const body = await ctx
       .client()
       .templates.get(

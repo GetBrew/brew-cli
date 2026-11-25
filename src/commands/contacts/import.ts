@@ -64,9 +64,6 @@ export const contactsImportCommand = defineCommand({
       await readTextFlag(ctx, flags.file, '--file')
     )
     const base = await readJsonFlag(ctx, flags.input, '--input')
-    // The file's body (an array, or an object that may carry `validate`,
-    // `consent` or `fileName`) layers over --input; flags apply only when
-    // given, so a value the body set is never replaced by an absent flag.
     const body = mergeInput(
       Array.isArray(base) ? { contacts: base } : base,
       asBody(fromFile)

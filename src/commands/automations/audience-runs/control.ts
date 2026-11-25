@@ -6,14 +6,6 @@ import {
   requestOptions,
 } from '../../../lib/input'
 
-/**
- * The 0.6 verb-flag form of `automations audience-runs pause|resume|cancel`.
- * `POST …/control { action }` left the API in the v1 cleanup, and command
- * names are additive-only after release (AGENTS.md), so this stays as CLI
- * sugar dispatching to the three action commands' SDK methods, which
- * `derivedFrom` names. No `route`: the spec has none for it, and the three
- * it fans out to belong to the three commands.
- */
 export const automationsAudienceRunsControlCommand = defineCommand({
   path: ['automations', 'audience-runs', 'control'],
   summary:
@@ -43,7 +35,6 @@ export const automationsAudienceRunsControlCommand = defineCommand({
     'brew-cli automations audience-runs control arun_01HZ --action pause',
     'brew-cli automations audience-runs control arun_01HZ --action cancel --yes',
   ],
-  // Only cancel is irreversible; pause and resume proceed ungated.
   confirmSummary: ({ args, flags }) =>
     flagString(flags.action) === 'cancel'
       ? `Cancel audience run ${args.audienceRunId ?? ''} for good. Emails already sent are not recalled, and a canceled run cannot be resumed.`

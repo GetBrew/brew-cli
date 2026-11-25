@@ -58,7 +58,6 @@ export function readConfig(
   }
 }
 
-/** Writes the config file with owner-only permissions (0600 / dir 0700). */
 export function writeConfig(
   env: Readonly<Record<string, string | undefined>>,
   config: StoredConfig

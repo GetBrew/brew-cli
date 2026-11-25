@@ -17,11 +17,6 @@ import {
   LIMIT_FLAG,
 } from '../../lib/paginate'
 
-/**
- * Keys the same route takes for a grouped COUNT, which this row read does
- * not send. The SDK drops them, so they are refused here rather than
- * silently returning rows to a caller who asked for counts.
- */
 const COUNT_ONLY_KEYS = ['groupBy', 'bucket'] as const
 
 export const analyticsEventsCommand = defineCommand({

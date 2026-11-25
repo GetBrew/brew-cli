@@ -1,12 +1,6 @@
 import { CliUsageError } from './errors'
 import type { CommandTraits } from './types'
 
-/**
- * Refuses `--input` keys the command would not send. The SDK builds each
- * request from the fields it knows, so an unknown key (a typo, or a field
- * of another operation) would be dropped and the command would still exit 0.
- * Only a top-level JSON object is checked: arrays and nested values pass.
- */
 export function assertKnownInputKeys(
   traits: CommandTraits | undefined,
   input: unknown
@@ -37,7 +31,6 @@ export function assertKnownInputKeys(
   )
 }
 
-/** A case-insensitive match, else the nearest key within two edits. */
 function closestKey(
   key: string,
   allowed: ReadonlySet<string>

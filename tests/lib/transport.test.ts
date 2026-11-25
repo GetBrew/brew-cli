@@ -77,9 +77,6 @@ describe('anySignal', () => {
     second.abort('second')
 
     expect(signal.aborted).toBe(true)
-    // (Which reason wins when BOTH abort is not asserted: Node's native
-    // AbortSignal.any reports a listener-less composite's reason in source
-    // order, not abort order.)
     expect(signal.reason).toBe('second')
   })
 

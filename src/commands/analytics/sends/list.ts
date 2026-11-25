@@ -15,11 +15,6 @@ import {
 import { ALL_FLAG, CURSOR_FLAG, LIMIT_FLAG } from '../../../lib/paginate'
 import { listSends, renderSends, SEND_STATUS_SUMMARY } from '../../sends/list'
 
-/**
- * The name agents already know, now reading the sends root. Analytics keeps
- * only reports (`overview`, `events`, `automations`); a send and its
- * lifetime `stats` live on the send row itself.
- */
 export const analyticsSendsListCommand = defineCommand({
   path: ['analytics', 'sends', 'list'],
   summary: 'List campaign/automation sends with delivery stats (`sends list`)',
@@ -27,7 +22,6 @@ export const analyticsSendsListCommand = defineCommand({
   derivedFrom: 'sends.list',
   route: { method: 'GET', path: '/v1/sends' },
   commandClass: 'read',
-  // The detail read's keys, which `run` takes from --input to switch to it.
   inputKeys: { extra: ['sendId', 'include'] },
   flags: [
     {

@@ -138,11 +138,6 @@ export function makeContext(input: {
   return ctx
 }
 
-/**
- * The transport every SDK client of this command shares: the command's
- * signal (interrupt + deadline), the request recorder, and the per-attempt
- * `--timeout` / `--max-retries` when given.
- */
 export function sdkTransportFor(ctx: CliContext): SdkTransport {
   return {
     signal: ctx.signal,
@@ -152,10 +147,6 @@ export function sdkTransportFor(ctx: CliContext): SdkTransport {
   }
 }
 
-/**
- * Fallback context for failures that happen before a command action runs
- * (usage errors, help). Only argv can tell us whether --json was intended.
- */
 export function makeFallbackContext(
   io: CliIo,
   rawArgv: readonly string[]

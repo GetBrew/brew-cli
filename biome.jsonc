@@ -1,5 +1,3 @@
-// Biome config for @brew.new/cli. Style matches the Brew monorepo and
-// typescript-sdk output: single quotes, no semicolons, 80 cols, 2-space.
 {
   "$schema": "https://biomejs.dev/schemas/2.5.7/schema.json",
   "root": true,

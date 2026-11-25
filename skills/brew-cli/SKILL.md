@@ -5,8 +5,9 @@ description: Drive the Brew email platform from the terminal with brew-cli — e
 
 # brew-cli for agents
 
-One typed command per public-API operation (162 commands, generated docs in
-`docs/commands/README.md`). JSON output is automatic when stdout is piped.
+Use the typed command surface in the generated
+[command reference](../../docs/commands/README.md). JSON output is automatic
+when stdout is piped.
 
 ## Start every session with the trust check
 
@@ -14,8 +15,9 @@ One typed command per public-API operation (162 commands, generated docs in
 brew-cli doctor
 ```
 
-Exit 0 = API reachable, auth valid, and this CLI covers every live
-operation. Exit 1 = read the report: `DRIFT` lines list live operations
+Exit 0 means the API is reachable and the CLI covers its live operations.
+When a key is supplied, authentication must also pass; without a key the
+report has `authValid: null`. Exit 1 means read the report: `DRIFT` lines list live operations
 this build lacks (update the CLI); auth/reachability failures name the fix.
 
 ## Auth and targeting
@@ -33,11 +35,12 @@ this build lacks (update the CLI); auth/reachability failures name the fix.
   required · 130/143 interrupted by SIGINT/SIGTERM. Errors are JSON
   envelopes on stderr with stable `code`s and `requestId`.
 - A write that ends `CLI_TIMEOUT`, `CLI_CONNECTION` or `CLI_INTERRUPTED`
-  (or a 5xx) may still complete on the server. Re-run the envelope's
-  `retryCommand` — it carries the same `--idempotency-key`, so the API
-  replays the first attempt instead of running it twice. Never re-run the
-  original command with a fresh key. A `409 IDEMPOTENCY_IN_PROGRESS` means
-  the first attempt is still running: wait, then re-run `retryCommand`.
+  (or a 5xx) may still complete on the server. Check the command's replay
+  contract in its help or manifest. For replay-protected writes, use the
+  envelope's `retryCommand` with the same idempotency key. A
+  `409 IDEMPOTENCY_IN_PROGRESS` means wait before retrying. For non-replaying
+  writes, reconcile the outcome before repeating the operation; an
+  `--idempotency-key` flag alone does not guarantee replay protection.
   While the API's idempotency store is degraded, writes other than sends
   run without the replay guarantee: for a write that must not happen
   twice, pass `--max-retries 0` and check whether it landed before re-running.
@@ -54,8 +57,8 @@ this build lacks (update the CLI); auth/reachability failures name the fix.
   `details.recipients`.
 - `--input '<json>'` (or `-` for stdin) carries full request bodies;
   positional ids always win over `--input`. `--all` drains pagination.
-  `--idempotency-key` makes POST retries safe (except `api-keys create`,
-  whose route never replays).
+  Replay safety follows the command contract, including for commands that
+  accept `--idempotency-key`.
 - Every collection with ids to look up has a real detail read (`<group> get
   <id>`) returning the BARE row; list routes reject id filters
   (`notifications list` and `emails comments list` are list-only). Runs, sends, audience builds and
@@ -65,25 +68,25 @@ this build lacks (update the CLI); auth/reachability failures name the fix.
 ## Recipes
 
 ```bash
-brew-cli docs --agent                  # machine-readable manifest of every command
-brew-cli docs api                      # the live API catalog (/v1/help)
+brew-cli docs --agent
+brew-cli docs api
 brew-cli contacts search --filter email:contains:@acme.com --json
 brew-cli emails get <emailId> --include html,versions
-brew-cli emails get <emailId> --email-version-id <id>   # a saved version (ids from --include versions)
-brew-cli emails preview-clients <emailId>        # starts a rendering job (10 credits)
-brew-cli emails get-client-preview <previewId>   # poll it; screenshots are previews[].imageUrl
+brew-cli emails get <emailId> --email-version-id <id>
+brew-cli emails preview-clients <emailId>
+brew-cli emails get-client-preview <previewId>
 brew-cli sends get <sendId> --include events
-brew-cli insights list --severity critical       # what Brew Insights found; insights get <id> for one in full
+brew-cli insights list --severity critical
 brew-cli insights list --include pulse,report,suggestions,memo --json
-brew-cli emails comments list <emailId> --include messages   # teammates' comment threads on a design
-brew-cli emails comments list <emailId> --comment-id <cmt_…> --all --json   # one thread, every message
-brew-cli chats list                              # recent Brew chats; chats get <chatId> to resume one
-brew-cli notifications list --type email_send_failed   # what finished or failed (reading marks nothing read)
+brew-cli emails comments list <emailId> --include messages
+brew-cli emails comments list <emailId> --comment-id <cmt_…> --all --json
+brew-cli chats list
+brew-cli notifications list --type email_send_failed
 brew-cli domains health <domainId> --include scoreHistory,scoreRuns
-brew-cli contacts get <email> --include openProfile     # smart-send open-time profile (needs the emails scope)
-brew-cli content upload-image ./logo.png         # a local file into the brand library (free); prints its assetId
-brew-cli brand delete-image <assetId> --yes      # remove one library image (destructive; its URL keeps working)
-brew-cli api GET '/v1/sends?kind=campaign'   # raw escape hatch for anything else
+brew-cli contacts get <email> --include openProfile
+brew-cli content upload-image ./logo.png
+brew-cli brand delete-image <assetId> --yes
+brew-cli api GET '/v1/sends?kind=campaign'
 ```
 
 To verify an API change you just made in the Brew repo: start the dev
