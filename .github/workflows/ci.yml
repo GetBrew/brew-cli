@@ -32,6 +32,8 @@ jobs:
           assert len(source) <= 8192 and len(source.splitlines()) <= 300, 'Keep root AGENTS.md below 300 lines and 8 KiB'
           PYCODE
       - run: bun install --frozen-lockfile
+      - name: Install comment parsers
+        run: bun run comments:setup
       - name: Generated types freshness
         run: |
           bun run generate:types

@@ -2925,6 +2925,8 @@ components:
         code:
           type: string
           enum:
+            - IMAGE_LAYER_FALLBACK
+            - IMAGE_ASSETS_NOT_RECOVERED
             - DRAFT_SAVED_NOT_LIVE
             - NODE_ID_REPLACED
             - TRIGGER_EVENT_NOT_RECEIVED
@@ -5735,6 +5737,15 @@ components:
         - FIGMA_UNAVAILABLE
         - FIGMA_URL_INVALID
         - FLOW_NOT_FOUND
+        - GATEWAY_CAPABILITY_UNSUPPORTED
+        - GATEWAY_DNS_ACTION_REQUIRED
+        - GATEWAY_DOMAIN_NOT_FOUND
+        - GATEWAY_NOT_ENABLED
+        - GATEWAY_NOT_READY
+        - GATEWAY_PROVIDER_NOT_AVAILABLE
+        - GATEWAY_RECIPIENT_INELIGIBLE
+        - GATEWAY_RECIPIENT_SUPPRESSED
+        - GATEWAY_STATE_CONFLICT
         - IDEMPOTENCY_CONFLICT
         - IDEMPOTENCY_IN_PROGRESS
         - IMAGE_CONVERSION_FAILED
@@ -6453,6 +6464,18 @@ components:
         previewImage:
           type: string
           format: uri
+        fallbackReason:
+          type: string
+          enum:
+            - layer_service_unavailable
+            - layer_conversion_timeout
+            - layer_conversion_failed
+          description: Why layer conversion could not run. Present when conversion is model; no provider internals are exposed.
+        warnings:
+          type: array
+          items:
+            $ref: "#/components/schemas/ApiWarning"
+          description: Review notes for model recreation. Original pictures are not recovered; picture blocks are empty and must be filled before sending.
         group:
           type:
             - object
@@ -6796,7 +6819,7 @@ components:
           type: string
           minLength: 1
           maxLength: 100
-          description: Template name in the ESP. Defaults to the email title.
+          description: Template name in the ESP. Defaults to the email title. Campaign Monitor stores at most 30 characters; Brew shortens longer names and returns the stored name.
         senderEmail:
           type: string
           maxLength: 320
@@ -18479,10 +18502,12 @@ components:
           description: Saved identity fields to change; fields left out keep their value.
         emailDesign:
           type: string
-          maxLength: 200000
+          maxLength: 18000
+          description: Full replacement of email-design.md. Oversized files are refused without changing the saved document.
         imageStyle:
           type: string
-          maxLength: 200000
+          maxLength: 4000
+          description: Full replacement of image-style.md. Oversized files are refused without changing the saved document.
       additionalProperties: false
     BrandImagesResponse:
       type: object
@@ -28532,7 +28557,9 @@ paths:
 
         `imageUrl` must be a publicly reachable PNG, JPEG or WebP at most 2048 px wide. The request blocks until the design is saved, which takes **1 to 6 minutes** depending on the height of the picture; set your client timeout accordingly. Converting the same image again within three weeks reuses its stored layers, returns in seconds and gives the same email.
 
-        `conversion` reports how the design was made. `layers` is the deterministic conversion and costs 90 credits. When the picture cannot be split into layers, or is taller than about 6,000 px, a model recreates it instead: `conversion` is `model`, the flat price is waived and the run is metered by model usage like `generateEmail`.
+        `conversion` reports how the design was made. `layers` is the deterministic conversion and costs 90 credits. If the layer service is unavailable, times out, cannot split the picture, or the picture is taller than about 6,000 px, a model recreates the layout instead: `conversion` is `model`, the flat price is waived and the run is metered by model usage like `generateEmail`. Only successful layer conversions reuse stored layers.
+
+        A model fallback returns `fallbackReason` and `warnings`. It cannot recover the original pictures: image blocks are left empty, without invented pictures or third-party placeholders. Add the original pictures and review the design before sending.
 
         A picture carries no links, so every button and link in the result points to `#`. Set `format` to `jsx` (default) for React Email JSX or `html` for rendered email HTML. Optional `groupId` (`grp_…` or `ungrouped`) or `groupName` (resolve-or-create) — not both; omit to land Ungrouped.
       parameters:
@@ -72156,7 +72183,7 @@ paths:
       tags:
         - Content
       summary: Transform an image
-      description: "Deterministic image transform routed by the `operation` discriminator: `optimize` rehosts a palette PNG (resize ≤1200px), `resize` produces exact dimensions via the vision-guided fal pipeline (Sharp cover-crop fallback), `remove_background` returns a transparent PNG cutout (Bria RMBG 2.0). Returns the CDN-hosted `url` + dimensions. Credit-metered (fixed cost: optimize 1, resize 2, remove_background 1)."
+      description: "Deterministic image transform routed by the `operation` discriminator: `optimize` rehosts a palette PNG (resize ≤1200px), `resize` produces exact dimensions via the vision-guided fal pipeline (Sharp cover-crop fallback), `remove_background` returns a transparent PNG cutout. Returns the CDN-hosted `url` + dimensions. Credit-metered (fixed cost: optimize 1, resize 2, remove_background 1)."
       parameters:
         - name: Idempotency-Key
           in: header

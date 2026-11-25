@@ -139,3 +139,7 @@ Preserve legal notices and executable compiler, lint, coverage and type directiv
 Keep Markdown for supported usage and necessary operating procedures. Verify
 claims against code, link to generated owners and remove completed plans.
 Run `bun run comments:check` to check the owned source surface.
+
+With Python 3.10+, run `bun run comments:setup` after dependency installation.
+Checks run offline. `scripts/comment-ownership.json` owns exclusions for
+fixtures, generated outputs, pinned upstream files and managed markers.

@@ -1719,6 +1719,7 @@ export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
         EmailWebhookEvent: {
+            /** @enum {string} */
             type: "email.sent";
             created_at: string;
             data: {
@@ -1732,16 +1733,19 @@ export interface components {
                 };
                 brew: {
                     event_id: string;
+                    /** @enum {number} */
                     schema_version: 1;
                     recipient?: string;
                     send_id?: string;
                     design_id?: string;
                     automation_id?: string;
                     provider_message_id?: string;
+                    /** @enum {boolean} */
                     test?: true;
                 };
             };
         } | {
+            /** @enum {string} */
             type: "email.delivered";
             created_at: string;
             data: {
@@ -1755,16 +1759,19 @@ export interface components {
                 };
                 brew: {
                     event_id: string;
+                    /** @enum {number} */
                     schema_version: 1;
                     recipient?: string;
                     send_id?: string;
                     design_id?: string;
                     automation_id?: string;
                     provider_message_id?: string;
+                    /** @enum {boolean} */
                     test?: true;
                 };
             };
         } | {
+            /** @enum {string} */
             type: "email.delivery_delayed";
             created_at: string;
             data: {
@@ -1778,16 +1785,19 @@ export interface components {
                 };
                 brew: {
                     event_id: string;
+                    /** @enum {number} */
                     schema_version: 1;
                     recipient?: string;
                     send_id?: string;
                     design_id?: string;
                     automation_id?: string;
                     provider_message_id?: string;
+                    /** @enum {boolean} */
                     test?: true;
                 };
             };
         } | {
+            /** @enum {string} */
             type: "email.complained";
             created_at: string;
             data: {
@@ -1801,16 +1811,19 @@ export interface components {
                 };
                 brew: {
                     event_id: string;
+                    /** @enum {number} */
                     schema_version: 1;
                     recipient?: string;
                     send_id?: string;
                     design_id?: string;
                     automation_id?: string;
                     provider_message_id?: string;
+                    /** @enum {boolean} */
                     test?: true;
                 };
             };
         } | {
+            /** @enum {string} */
             type: "email.bounced";
             created_at: string;
             data: {
@@ -1824,12 +1837,14 @@ export interface components {
                 };
                 brew: {
                     event_id: string;
+                    /** @enum {number} */
                     schema_version: 1;
                     recipient?: string;
                     send_id?: string;
                     design_id?: string;
                     automation_id?: string;
                     provider_message_id?: string;
+                    /** @enum {boolean} */
                     test?: true;
                 };
                 bounce?: {
@@ -1840,6 +1855,7 @@ export interface components {
                 };
             };
         } | {
+            /** @enum {string} */
             type: "email.failed";
             created_at: string;
             data: {
@@ -1853,12 +1869,14 @@ export interface components {
                 };
                 brew: {
                     event_id: string;
+                    /** @enum {number} */
                     schema_version: 1;
                     recipient?: string;
                     send_id?: string;
                     design_id?: string;
                     automation_id?: string;
                     provider_message_id?: string;
+                    /** @enum {boolean} */
                     test?: true;
                 };
                 failed?: {
@@ -1866,6 +1884,7 @@ export interface components {
                 };
             };
         } | {
+            /** @enum {string} */
             type: "email.opened";
             created_at: string;
             data: {
@@ -1879,12 +1898,14 @@ export interface components {
                 };
                 brew: {
                     event_id: string;
+                    /** @enum {number} */
                     schema_version: 1;
                     recipient?: string;
                     send_id?: string;
                     design_id?: string;
                     automation_id?: string;
                     provider_message_id?: string;
+                    /** @enum {boolean} */
                     test?: true;
                 };
                 open?: {
@@ -1894,6 +1915,7 @@ export interface components {
                 };
             };
         } | {
+            /** @enum {string} */
             type: "email.clicked";
             created_at: string;
             data: {
@@ -1907,12 +1929,14 @@ export interface components {
                 };
                 brew: {
                     event_id: string;
+                    /** @enum {number} */
                     schema_version: 1;
                     recipient?: string;
                     send_id?: string;
                     design_id?: string;
                     automation_id?: string;
                     provider_message_id?: string;
+                    /** @enum {boolean} */
                     test?: true;
                 };
                 click?: {
@@ -1927,11 +1951,16 @@ export interface components {
             emailId: string;
             emailVersionId?: string;
             title: string;
+            /** @enum {string} */
             status: "generating" | "ready" | "failed";
             previewImage?: string;
             updatedAt: string;
             subjectLine?: string;
             previewText?: string;
+            /**
+             * @description The language the email's copy is written in (ISO 639-1, or zh-Hans / zh-Hant), read by Brew's language model after each content change unless a caller set it. Rendered as the HTML document's lang. Detail-only; absent until it has been read.
+             * @enum {string}
+             */
             lang?: "en" | "de" | "fr" | "es" | "pt" | "it" | "nl" | "pl" | "sv" | "da" | "no" | "fi" | "cs" | "sk" | "hu" | "ro" | "bg" | "el" | "tr" | "ru" | "uk" | "hr" | "sr" | "sl" | "lt" | "lv" | "et" | "ca" | "ar" | "he" | "fa" | "ur" | "hi" | "bn" | "th" | "vi" | "id" | "ms" | "tl" | "ja" | "ko" | "zh-Hans" | "zh-Hant" | "sw" | "af";
             html?: string;
             versions?: {
@@ -1949,11 +1978,16 @@ export interface components {
             emailId: string;
             emailVersionId?: string;
             title: string;
+            /** @enum {string} */
             status: "generating" | "ready" | "failed";
             previewImage?: string;
             updatedAt: string;
             subjectLine?: string;
             previewText?: string;
+            /**
+             * @description The language the email's copy is written in (ISO 639-1, or zh-Hans / zh-Hant), read by Brew's language model after each content change unless a caller set it. Rendered as the HTML document's lang. Detail-only; absent until it has been read.
+             * @enum {string}
+             */
             lang?: "en" | "de" | "fr" | "es" | "pt" | "it" | "nl" | "pl" | "sv" | "da" | "no" | "fi" | "cs" | "sk" | "hu" | "ro" | "bg" | "el" | "tr" | "ru" | "uk" | "hr" | "sr" | "sl" | "lt" | "lv" | "et" | "ca" | "ar" | "he" | "fa" | "ur" | "hi" | "bn" | "th" | "vi" | "id" | "ms" | "tl" | "ja" | "ko" | "zh-Hans" | "zh-Hant" | "sw" | "af";
             html?: string;
             versions?: {
@@ -1968,9 +2002,14 @@ export interface components {
             createdByUserId?: string;
             version?: number | "latest";
             runId?: string;
+            /**
+             * @description `available` when `previewImage` is set; `unavailable` when a ready design has no saved screenshot; `not_ready` while generating or after a failure.
+             * @enum {string}
+             */
             previewStatus: "available" | "unavailable" | "not_ready";
             content?: {
                 url: string;
+                /** @enum {string} */
                 mimeType: "text/html";
                 bytes: number;
                 expiresAt: string;
@@ -1992,9 +2031,11 @@ export interface components {
             bootstrapToken: string;
             expiresAt: string;
             target: {
+                /** @enum {string} */
                 type: "group";
                 groupId: string;
             } | {
+                /** @enum {string} */
                 type: "email";
                 emailId: string;
             };
@@ -2015,12 +2056,18 @@ export interface components {
             moved?: number;
             notMoved?: {
                 emailId: string;
+                /**
+                 * @description `not_found`: no such design in this brand. `generating`: a generation is still running; move it after. `not_movable`: an older design stored in a format the folder move does not support. `folder_full`: the folder holds the 200 designs a move can place. `retry`: this call reached its read budget (large designs fit fewer per call); send these ids again.
+                 * @enum {string}
+                 */
                 reason: "not_found" | "generating" | "not_movable" | "folder_full" | "retry";
             }[];
         };
         Send: {
             sendId: string;
+            /** @enum {string} */
             kind: "campaign" | "automation";
+            /** @enum {string} */
             messageClass?: "marketing" | "transactional";
             automationId?: string;
             nodeId?: string;
@@ -2029,8 +2076,14 @@ export interface components {
             triggerInstanceId?: string;
             emailId: string;
             emailVersionId?: string;
+            /** @enum {string} */
             status: "scheduled" | "queued" | "running" | "paused" | "completed" | "partially_completed" | "failed" | "canceled";
+            /** @enum {string} */
             approvalState?: "pending" | "approved" | "rejected";
+            /**
+             * @description Why a paused send is held. `plan_limit`: the plan has too few sends left this period. `domain_unsendable`: its sending domain stopped passing DNS; fails after 7 days. Both resume on their own and can be canceled. `manual`: its operator paused the gradual ramp; resume it to continue. `bounce_rate`: at least 4% of its recipients hard-bounced or 0.3% marked it as spam; check the list, then resume or cancel it.
+             * @enum {string}
+             */
             pauseReason?: "manual" | "plan_limit" | "domain_unsendable" | "bounce_rate";
             subject?: string;
             previewText?: string;
@@ -2075,9 +2128,11 @@ export interface components {
                 incrementPercentage: number;
                 interval: {
                     value: number;
+                    /** @enum {string} */
                     unit: "hour";
                 } | {
                     value: number;
+                    /** @enum {string} */
                     unit: "day";
                 };
                 timeZone: string;
@@ -2085,6 +2140,7 @@ export interface components {
                 currentTranche?: number;
                 sentSoFar?: number;
                 pausedAt?: string;
+                /** @enum {string} */
                 pauseReason?: "manual";
                 resumedAt?: string;
             };
@@ -2097,6 +2153,7 @@ export interface components {
             createdAt: string;
             updatedAt: string;
             events?: {
+                /** @enum {string} */
                 eventType: "sent" | "delivered" | "delivery_delayed" | "opened" | "clicked" | "bounced" | "complained" | "failed" | "provider_suppressed" | "suppressed" | "quota_skipped" | "received" | "unsubscribed";
                 occurredAt: string;
                 recipientEmail?: string;
@@ -2106,6 +2163,7 @@ export interface components {
             }[];
         };
         SendEvent: {
+            /** @enum {string} */
             eventType: "sent" | "delivered" | "delivery_delayed" | "opened" | "clicked" | "bounced" | "complained" | "failed" | "provider_suppressed" | "suppressed" | "quota_skipped" | "received" | "unsubscribed";
             occurredAt: string;
             recipientEmail?: string;
@@ -2117,15 +2175,18 @@ export interface components {
             id: string;
             label: string;
             description?: string;
+            /** @enum {string} */
             type: "trigger";
             config: {
                 actionType?: string;
                 eventName?: string;
+                /** @enum {string} */
                 mode?: "event";
                 triggerEventId?: string;
             } | {
                 actionType?: string;
                 eventName?: string;
+                /** @enum {string} */
                 mode: "manualAudience";
                 audienceId: string;
             };
@@ -2133,6 +2194,7 @@ export interface components {
             id: string;
             label: string;
             description?: string;
+            /** @enum {string} */
             type: "sendEmail";
             config: {
                 actionType?: string;
@@ -2150,49 +2212,66 @@ export interface components {
             id: string;
             label: string;
             description?: string;
+            /** @enum {string} */
             type: "wait";
             config: {
                 actionType?: string;
                 duration: number;
+                /** @enum {string} */
                 unit: "ms" | "seconds" | "minutes" | "hours" | "days" | "weeks";
             };
         } | {
             id: string;
             label: string;
             description?: string;
+            /** @enum {string} */
             type: "filter";
             config: {
                 actionType?: string;
+                /** @enum {string} */
                 mode?: "payload";
+                /** @enum {string} */
                 logicalOperator: "AND" | "OR";
                 conditions: ({
                     field: string;
+                    /** @enum {string} */
                     type: "string";
+                    /** @enum {string} */
                     operator: "equals" | "not_equals" | "contains" | "not_contains" | "starts_with" | "ends_with";
                     value: string;
                 } | {
                     field: string;
+                    /** @enum {string} */
                     type: "number";
+                    /** @enum {string} */
                     operator: "equals" | "not_equals" | "gt" | "gte" | "lt" | "lte";
                     value: number;
                 } | {
                     field: string;
+                    /** @enum {string} */
                     type: "date";
+                    /** @enum {string} */
                     operator: "equals" | "not_equals" | "gt" | "gte" | "lt" | "lte";
                     value: string | number;
                 } | {
                     field: string;
+                    /** @enum {string} */
                     type: "string";
+                    /** @enum {string} */
                     operator: "in" | "not_in" | "contains_any" | "not_contains_any";
                     value: string[];
                 } | {
                     field: string;
+                    /** @enum {string} */
                     type: "number";
+                    /** @enum {string} */
                     operator: "in" | "not_in";
                     value: number[];
                 } | {
                     field: string;
+                    /** @enum {string} */
                     type: "number";
+                    /** @enum {string} */
                     operator: "between";
                     value: [
                         number,
@@ -2200,7 +2279,9 @@ export interface components {
                     ];
                 } | {
                     field: string;
+                    /** @enum {string} */
                     type: "date";
+                    /** @enum {string} */
                     operator: "between";
                     value: [
                         string | number,
@@ -2208,36 +2289,61 @@ export interface components {
                     ];
                 } | {
                     field: string;
+                    /** @enum {string} */
                     type: "string";
+                    /**
+                     * @description Unary empty check; do not provide a value.
+                     * @enum {string}
+                     */
                     operator: "is_empty" | "is_not_empty";
                 } | {
                     field: string;
+                    /** @enum {string} */
                     type: "number";
+                    /**
+                     * @description Unary empty check; do not provide a value.
+                     * @enum {string}
+                     */
                     operator: "is_empty" | "is_not_empty";
                 } | {
                     field: string;
+                    /** @enum {string} */
                     type: "date";
+                    /**
+                     * @description Unary empty check; do not provide a value.
+                     * @enum {string}
+                     */
                     operator: "is_empty" | "is_not_empty";
                 } | {
                     field: string;
+                    /** @enum {string} */
                     type: "bool";
+                    /**
+                     * @description Unary boolean check; do not provide a value.
+                     * @enum {string}
+                     */
                     operator: "is_true" | "is_false";
                 })[];
             } | {
                 actionType?: string;
+                /** @enum {string} */
                 mode: "engagement";
                 sourceNodeId: string;
                 window: {
                     duration: number;
+                    /** @enum {string} */
                     unit: "ms" | "seconds" | "minutes" | "hours" | "days" | "weeks";
                 };
                 branches: {
                     id: string;
                     label?: string;
                     condition: {
+                        /** @enum {string} */
                         kind: "engaged" | "not_engaged" | "clicked_link";
+                        /** @enum {string} */
                         events?: "opened" | "clicked" | "opened_or_clicked";
                         url?: string;
+                        /** @enum {string} */
                         position?: "any" | "first" | "last";
                     };
                 }[];
@@ -2246,9 +2352,11 @@ export interface components {
             id: string;
             label: string;
             description?: string;
+            /** @enum {string} */
             type: "split";
             config: {
                 actionType?: string;
+                /** @enum {string} */
                 mode: "percentage";
                 leftLabel: string;
                 rightLabel: string;
@@ -2256,38 +2364,52 @@ export interface components {
                 seed?: string;
             } | {
                 actionType?: string;
+                /** @enum {string} */
                 mode: "condition";
                 leftLabel: string;
                 rightLabel: string;
+                /** @enum {string} */
                 logicalOperator: "AND" | "OR";
                 conditions: ({
                     field: string;
+                    /** @enum {string} */
                     type: "string";
+                    /** @enum {string} */
                     operator: "equals" | "not_equals" | "contains" | "not_contains" | "starts_with" | "ends_with";
                     value: string;
                 } | {
                     field: string;
+                    /** @enum {string} */
                     type: "number";
+                    /** @enum {string} */
                     operator: "equals" | "not_equals" | "gt" | "gte" | "lt" | "lte";
                     value: number;
                 } | {
                     field: string;
+                    /** @enum {string} */
                     type: "date";
+                    /** @enum {string} */
                     operator: "equals" | "not_equals" | "gt" | "gte" | "lt" | "lte";
                     value: string | number;
                 } | {
                     field: string;
+                    /** @enum {string} */
                     type: "string";
+                    /** @enum {string} */
                     operator: "in" | "not_in" | "contains_any" | "not_contains_any";
                     value: string[];
                 } | {
                     field: string;
+                    /** @enum {string} */
                     type: "number";
+                    /** @enum {string} */
                     operator: "in" | "not_in";
                     value: number[];
                 } | {
                     field: string;
+                    /** @enum {string} */
                     type: "number";
+                    /** @enum {string} */
                     operator: "between";
                     value: [
                         number,
@@ -2295,7 +2417,9 @@ export interface components {
                     ];
                 } | {
                     field: string;
+                    /** @enum {string} */
                     type: "date";
+                    /** @enum {string} */
                     operator: "between";
                     value: [
                         string | number,
@@ -2303,19 +2427,39 @@ export interface components {
                     ];
                 } | {
                     field: string;
+                    /** @enum {string} */
                     type: "string";
+                    /**
+                     * @description Unary empty check; do not provide a value.
+                     * @enum {string}
+                     */
                     operator: "is_empty" | "is_not_empty";
                 } | {
                     field: string;
+                    /** @enum {string} */
                     type: "number";
+                    /**
+                     * @description Unary empty check; do not provide a value.
+                     * @enum {string}
+                     */
                     operator: "is_empty" | "is_not_empty";
                 } | {
                     field: string;
+                    /** @enum {string} */
                     type: "date";
+                    /**
+                     * @description Unary empty check; do not provide a value.
+                     * @enum {string}
+                     */
                     operator: "is_empty" | "is_not_empty";
                 } | {
                     field: string;
+                    /** @enum {string} */
                     type: "bool";
+                    /**
+                     * @description Unary boolean check; do not provide a value.
+                     * @enum {string}
+                     */
                     operator: "is_true" | "is_false";
                 })[];
             };
@@ -2343,15 +2487,18 @@ export interface components {
                 id: string;
                 label: string;
                 description?: string;
+                /** @enum {string} */
                 type: "trigger";
                 config: {
                     actionType?: string;
                     eventName?: string;
+                    /** @enum {string} */
                     mode?: "event";
                     triggerEventId?: string;
                 } | {
                     actionType?: string;
                     eventName?: string;
+                    /** @enum {string} */
                     mode: "manualAudience";
                     audienceId: string;
                 };
@@ -2359,6 +2506,7 @@ export interface components {
                 id: string;
                 label: string;
                 description?: string;
+                /** @enum {string} */
                 type: "sendEmail";
                 config: {
                     actionType?: string;
@@ -2381,42 +2529,53 @@ export interface components {
                 id: string;
                 label: string;
                 description?: string;
+                /** @enum {string} */
                 type: "wait";
                 config: {
                     actionType?: string;
                     duration: number;
+                    /** @enum {string} */
                     unit: "ms" | "seconds" | "minutes" | "hours" | "days" | "weeks";
                 };
             } | {
                 id: string;
                 label: string;
                 description?: string;
+                /** @enum {string} */
                 type: "filter";
                 config: {
                     actionType?: string;
+                    /** @enum {string} */
                     mode?: "payload";
+                    /** @enum {string} */
                     logicalOperator: "AND" | "OR";
                     conditions: {
                         field: string;
                         operator: string;
                         value?: string | number | boolean | (string | number)[];
+                        /** @enum {string} */
                         type?: "string" | "number" | "date" | "bool";
                     }[];
                 } | {
                     actionType?: string;
+                    /** @enum {string} */
                     mode: "engagement";
                     sourceNodeId: string;
                     window: {
                         duration: number;
+                        /** @enum {string} */
                         unit: "ms" | "seconds" | "minutes" | "hours" | "days" | "weeks";
                     };
                     branches: {
                         id: string;
                         label?: string;
                         condition: {
+                            /** @enum {string} */
                             kind: "engaged" | "not_engaged" | "clicked_link";
+                            /** @enum {string} */
                             events?: "opened" | "clicked" | "opened_or_clicked";
                             url?: string;
+                            /** @enum {string} */
                             position?: "any" | "first" | "last";
                         };
                     }[];
@@ -2425,9 +2584,11 @@ export interface components {
                 id: string;
                 label: string;
                 description?: string;
+                /** @enum {string} */
                 type: "split";
                 config: {
                     actionType?: string;
+                    /** @enum {string} */
                     mode: "percentage";
                     leftLabel: string;
                     rightLabel: string;
@@ -2435,14 +2596,17 @@ export interface components {
                     seed?: string;
                 } | {
                     actionType?: string;
+                    /** @enum {string} */
                     mode: "condition";
                     leftLabel: string;
                     rightLabel: string;
+                    /** @enum {string} */
                     logicalOperator: "AND" | "OR";
                     conditions: {
                         field: string;
                         operator: string;
                         value?: string | number | boolean | (string | number)[];
+                        /** @enum {string} */
                         type?: "string" | "number" | "date" | "bool";
                     }[];
                 };
@@ -2466,7 +2630,8 @@ export interface components {
             }[];
         };
         ApiWarning: {
-            code: "DRAFT_SAVED_NOT_LIVE" | "NODE_ID_REPLACED" | "TRIGGER_EVENT_NOT_RECEIVED" | "ENFORCEMENT_LOOSENED_WHILE_PUBLISHED" | "REQUIRED_FIELD_SATISFIED_BY_FALLBACK" | "RESUBSCRIBE_SKIPPED" | "CORE_FIELD_IGNORED" | "BLANK_FIELD_NAME_IGNORED" | "DATE_ORDER_ASSUMED" | "FIELD_TYPE_COERCED" | "CSV_ROW_SKIPPED" | "CONTACT_EXISTS_SKIPPED" | "CSV_COLUMN_IGNORED" | "CSV_COLUMN_MATCHED_FIELD" | "VALIDATION_SKIPPED" | "RECIPIENTS_EXCLUDED" | "CONSENT_RECORD_MISSING";
+            /** @enum {string} */
+            code: "IMAGE_LAYER_FALLBACK" | "IMAGE_ASSETS_NOT_RECOVERED" | "DRAFT_SAVED_NOT_LIVE" | "NODE_ID_REPLACED" | "TRIGGER_EVENT_NOT_RECEIVED" | "ENFORCEMENT_LOOSENED_WHILE_PUBLISHED" | "REQUIRED_FIELD_SATISFIED_BY_FALLBACK" | "RESUBSCRIBE_SKIPPED" | "CORE_FIELD_IGNORED" | "BLANK_FIELD_NAME_IGNORED" | "DATE_ORDER_ASSUMED" | "FIELD_TYPE_COERCED" | "CSV_ROW_SKIPPED" | "CONTACT_EXISTS_SKIPPED" | "CSV_COLUMN_IGNORED" | "CSV_COLUMN_MATCHED_FIELD" | "VALIDATION_SKIPPED" | "RECIPIENTS_EXCLUDED" | "CONSENT_RECORD_MISSING";
             message: string;
             field?: string;
         };
@@ -2475,18 +2640,24 @@ export interface components {
             blockers: {
                 nodeId?: string;
                 nodeLabel?: string;
+                /** @enum {string} */
                 severity: "error" | "warning";
                 message: string;
             }[];
             warnings: {
                 nodeId?: string;
                 nodeLabel?: string;
+                /** @enum {string} */
                 severity: "error" | "warning";
                 message: string;
             }[];
             blockingIssues?: {
                 nodeId: string;
                 nodeLabel: string;
+                /**
+                 * @description Where on the node the orphaned reference lives.
+                 * @enum {string}
+                 */
                 surface: "triggerBinding" | "subject" | "previewText" | "fromName" | "replyTo" | "emailBody" | "filterCondition" | "splitCondition";
                 variable: string;
                 reason: string;
@@ -2506,8 +2677,14 @@ export interface components {
             automationName?: string;
             audienceId: string;
             audienceName?: string;
+            /** @enum {string} */
             status: "queued" | "scheduled" | "running" | "paused" | "completed" | "failed" | "canceled";
+            /** @enum {string} */
             approvalState?: "pending" | "approved" | "rejected";
+            /**
+             * @description Why a paused run is held. `plan_limit` means the plan has too few sends left this period; the run resumes on its own once the allowance has room (`resumeAudienceRun` refuses it), or you can cancel it. `manual` means an operator paused it; resume it to continue.
+             * @enum {string}
+             */
             pauseReason?: "manual" | "plan_limit";
             scheduledAt?: string;
             totalRecipients?: number;
@@ -2517,6 +2694,7 @@ export interface components {
             nodeStats?: {
                 nodeId: string;
                 nodeType: string;
+                /** @enum {string} */
                 status?: "running" | "completed" | "failed";
                 entered?: number;
                 sent?: number;
@@ -2531,9 +2709,11 @@ export interface components {
                 incrementPercentage: number;
                 interval: {
                     value: number;
+                    /** @enum {string} */
                     unit: "hour";
                 } | {
                     value: number;
+                    /** @enum {string} */
                     unit: "day";
                 };
                 timeZone: string;
@@ -2541,6 +2721,7 @@ export interface components {
                 currentTranche?: number;
                 sentSoFar?: number;
                 pausedAt?: string;
+                /** @enum {string} */
                 pauseReason?: "manual";
                 resumedAt?: string;
             };
@@ -2559,7 +2740,9 @@ export interface components {
             automationVersionId?: string;
             definitionHash?: string;
             triggerInstanceId?: string;
+            /** @enum {string} */
             mode: "live" | "test";
+            /** @enum {string} */
             status: "queued" | "running" | "completed" | "failed" | "canceled";
             recipientEmail?: string;
             startedAt?: string;
@@ -2570,7 +2753,9 @@ export interface components {
             automationRunId: string;
             nodeId: string;
             nodeName: string;
+            /** @enum {string} */
             nodeType: "trigger" | "wait" | "filter" | "split" | "sendEmail";
+            /** @enum {string} */
             status: "running" | "completed" | "failed" | "skipped";
             orderIndex: number;
             branch?: string;
@@ -2583,14 +2768,24 @@ export interface components {
             triggerEventId: string;
             title: string;
             description?: string;
+            /** @enum {string} */
             provider: "brew_api" | "custom" | "brew_event" | "clerk" | "stytch" | "supabase" | "workos" | "stripe" | "shopify" | "revenuecat" | "framer" | "posthog" | "typeform" | "webflow" | "hubspot";
             providerEventKey?: string;
             brewEvent?: {
+                /**
+                 * @description The Brew event this trigger starts on.
+                 * @enum {string}
+                 */
                 event: "contact.unsubscribed";
+                /**
+                 * @description `domain`: unsubscribes from one marketing sending domain (its list). `all`: unsubscribes from every email the brand sends.
+                 * @enum {string}
+                 */
                 scope: "domain" | "all";
                 domainHost?: string;
             };
             payloadSchema: {
+                /** @enum {string} */
                 type: "object";
                 fields: components["schemas"]["TriggerPayloadField"][];
             };
@@ -2600,19 +2795,30 @@ export interface components {
         };
         TriggerPayloadField: {
             key: string;
+            /** @enum {string} */
             type: "string" | "int" | "boolean" | "object" | "array";
             required: boolean;
             fallbackValue?: string | number | boolean;
+            /**
+             * @description PII classification for redaction. "high" auto-redacts the value in execution logs and the inbound log. "low" (default when omitted) preserves the value. "none" is an explicit marker that the field is non-personal. On a container, "high" redacts the whole subtree.
+             * @enum {string}
+             */
             pii?: "none" | "low" | "high";
             secret?: boolean;
             children?: components["schemas"]["TriggerPayloadField"][];
+            /**
+             * @description Element type for a type "array" of scalars. Omit when the array carries objects (declare `children` instead).
+             * @enum {string}
+             */
             itemType?: "string" | "int" | "boolean";
         };
         TriggerInstance: {
             triggerInstanceId: string;
+            /** @enum {string} */
             source: "api" | "integration" | "brew_event";
             provider?: string;
             triggerEventId?: string;
+            /** @enum {string} */
             state: "received" | "verified" | "matched" | "partially_fired" | "fired" | "rejected" | "dead_letter";
             matchedAutomationIds: string[];
             automationRunIds: string[];
@@ -2627,17 +2833,26 @@ export interface components {
             lastName?: string;
             subscribed?: boolean;
             consent?: {
+                /**
+                 * @description Who captured it: `api` (an API caller asserted it), `form` (a signup form), `import` (a bulk import), `app` (the in-app CSV wizard checkbox), `integration` (an integration sync such as Stripe created the contact; provenance only, not an opt-in).
+                 * @enum {string}
+                 */
                 source: "api" | "form" | "import" | "app" | "integration";
                 capturedAt: string;
                 policyVersion?: string;
                 evidence?: string;
             };
+            /**
+             * @description The latest verdict. `valid` only ever comes from a deliverability check (`validate: true` on ingest, or POST /v1/contacts/validate), which also sets `lastValidatedAt`. Without a check the free format check on ingest stores `risky` (disposable or role address) or `invalid`, and leaves the field unset otherwise: not validated.
+             * @enum {string}
+             */
             validationStatus?: "valid" | "risky" | "invalid";
             suppressed?: boolean;
             suppressedReason?: string | null;
             unsubscribedDomains?: string[];
             lastValidatedAt?: string;
             validationDetails?: {
+                /** @enum {string} */
                 provider: "brew";
                 reason?: string;
                 didYouMean?: string;
@@ -2655,6 +2870,7 @@ export interface components {
         };
         ContactFieldDefinition: {
             fieldName: string;
+            /** @enum {string} */
             fieldType: "string" | "number" | "date" | "bool";
             label?: string;
             isCore?: boolean;
@@ -2678,18 +2894,22 @@ export interface components {
             filters: {
                 filters: {
                     field: string;
+                    /** @enum {string} */
                     operator: "equals" | "not_equals" | "contains" | "not_contains" | "contains_any" | "not_contains_any" | "starts_with" | "ends_with" | "gt" | "gte" | "lt" | "lte" | "between" | "is_true" | "is_false" | "in" | "not_in" | "is_empty" | "not_exists" | "is_not_empty" | "exists" | "is_set" | "before" | "after" | "on_date";
                     value?: unknown;
                     type?: string;
                 }[];
+                /** @enum {string} */
                 logicalOperator: "and" | "or";
             };
             count: number;
+            /** @enum {string} */
             materializationStatus?: "pending" | "running" | "ready" | "failed";
             createdAt: string;
             updatedAt: string;
             build?: {
                 jobId: string;
+                /** @enum {string} */
                 status: "queued" | "running" | "completed" | "partially_completed" | "failed";
                 cohort: {
                     eventTypes: ("sent" | "delivered" | "delivery_delayed" | "opened" | "clicked" | "bounced" | "complained" | "failed" | "skipped" | "unsubscribed")[];
@@ -2708,6 +2928,7 @@ export interface components {
                 field: {
                     key: string;
                     label: string;
+                    /** @enum {string} */
                     type: "date";
                 };
                 counts: {
@@ -2721,6 +2942,7 @@ export interface components {
         };
         AudienceBuild: {
             jobId: string;
+            /** @enum {string} */
             status: "queued" | "running" | "completed" | "partially_completed" | "failed";
             cohort: {
                 eventTypes: ("sent" | "delivered" | "delivery_delayed" | "opened" | "clicked" | "bounced" | "complained" | "failed" | "skipped" | "unsubscribed")[];
@@ -2739,6 +2961,7 @@ export interface components {
             field: {
                 key: string;
                 label: string;
+                /** @enum {string} */
                 type: "date";
             };
             counts: {
@@ -2754,9 +2977,14 @@ export interface components {
             domainUrl: string;
             name: string;
             region: string;
+            /** @enum {string} */
             status: "not_started" | "pending" | "verified" | "failed" | "temporary_failure" | "partially_verified" | "partially_failed";
             sendingEnabled: boolean;
             sendable: boolean;
+            /**
+             * @description marketing (default) or transactional. Transactional domains skip unsubscribe and send via automation sendEmail nodes (or a test send).
+             * @enum {string}
+             */
             sendingPurpose: "marketing" | "transactional";
             records: {
                 record: string;
@@ -2775,8 +3003,10 @@ export interface components {
         };
         DomainUnsubscribeRow: {
             email: string;
+            /** @enum {string} */
             scope: "domain" | "all" | "both";
             unsubscribedAt?: string;
+            /** @enum {string} */
             source?: "link" | "one_click" | "api" | "import" | "manual";
             sendId?: string;
         };
@@ -2796,7 +3026,9 @@ export interface components {
                 logo?: string;
             };
             title: string;
+            /** @enum {string} */
             type: "newsletter" | "signup";
+            /** @enum {string} */
             kind?: "onboarding" | "trial" | "events" | "product_updates" | "promotions";
             category: string;
             categoryLabel: string;
@@ -2806,6 +3038,7 @@ export interface components {
             previewImages: string[];
             publishedAt: string;
             updatedAt: string;
+            /** @enum {string} */
             anchor?: "submittedAt" | "signedUpAt" | "verifiedAt" | "firstEmail";
             steps?: {
                 order: number;
@@ -2837,7 +3070,15 @@ export interface components {
             title: string | null;
             firstUserPrompt: string | null;
             lastAssistantPreview: string | null;
+            /**
+             * @description `streaming` or `background_finalizing` while a run is still going; null before the first run.
+             * @enum {string|null}
+             */
             status: "idle" | "streaming" | "background_finalizing" | "completed" | "failed" | "interrupted" | "stopped" | "persistence_failed" | null;
+            /**
+             * @description The chat app the conversation started in; null for the Brew web app.
+             * @enum {string|null}
+             */
             origin: "slack" | "teams" | "google-chat" | "telegram" | null;
             updatedAt: string;
             url: string;
@@ -2846,22 +3087,35 @@ export interface components {
             insightId: string;
             title: string;
             description: string;
+            /** @enum {string} */
             severity: "critical" | "warning" | "opportunity" | "info";
+            /** @enum {string} */
             confidence: "high" | "medium" | "low";
+            /**
+             * @description `answer` reports what happened, `insight` a change that passed its statistical test, `strategy` a recommended next step.
+             * @enum {string}
+             */
             kind: "answer" | "insight" | "strategy";
             category: string;
             detectorId: string;
+            /**
+             * @description A snooze that has ended reads as `active`.
+             * @enum {string}
+             */
             state: "active" | "snoozed" | "cleared" | "dismissed" | "resolved" | "stale";
             firstSeenAt: string;
             lastSeenAt: string;
             recurrenceCount: number;
             action?: {
+                /** @enum {string} */
                 kind: "navigate";
                 label: string;
                 url: string;
             } | {
+                /** @enum {string} */
                 kind: "assistant";
                 label: string;
+                /** @enum {string} */
                 intent: "review_domain_health" | "validate_contacts" | "create_campaign" | "repeat_campaign" | "draft_automation" | "review_recommendation";
                 prompt: string;
             };
@@ -2878,6 +3132,7 @@ export interface components {
                 dataAsOf: string | null;
                 lastSuccessfulRunAt: string | null;
                 latestAttempt: {
+                    /** @enum {string} */
                     status: "succeeded" | "failed" | "running" | "unknown";
                     at: string;
                 } | null;
@@ -2896,7 +3151,12 @@ export interface components {
                 priorOpenRatePct: number | null;
                 clickRatePct: number | null;
                 priorClickRatePct: number | null;
+                /**
+                 * @description `up` or `down` only when the change is statistically real.
+                 * @enum {string}
+                 */
                 openDirection: "up" | "down" | "steady";
+                /** @enum {string} */
                 clickDirection: "up" | "down" | "steady";
                 countsOnly: boolean;
                 measured: boolean;
@@ -2904,10 +3164,12 @@ export interface components {
             report?: {
                 reportId: string;
                 chatId: string;
+                /** @enum {string} */
                 runTrigger: "manual" | "scheduled";
                 createdAt: string;
                 insights: {
                     key: string;
+                    /** @enum {string} */
                     kind: "performance" | "audience" | "trend" | "risk" | "content" | "setup";
                     title: string;
                     body: string;
@@ -2919,7 +3181,9 @@ export interface components {
                 suggestionId: string;
                 title: string;
                 prompt: string;
+                /** @enum {string} */
                 kind: "audience" | "campaign" | "automation" | "deliverability" | "schedule";
+                /** @enum {string} */
                 status: "proposed" | "launched" | "dismissed" | "concluded";
                 rationale: string | null;
                 sourceInsightKeys: string[];
@@ -2938,22 +3202,35 @@ export interface components {
             insightId: string;
             title: string;
             description: string;
+            /** @enum {string} */
             severity: "critical" | "warning" | "opportunity" | "info";
+            /** @enum {string} */
             confidence: "high" | "medium" | "low";
+            /**
+             * @description `answer` reports what happened, `insight` a change that passed its statistical test, `strategy` a recommended next step.
+             * @enum {string}
+             */
             kind: "answer" | "insight" | "strategy";
             category: string;
             detectorId: string;
+            /**
+             * @description A snooze that has ended reads as `active`.
+             * @enum {string}
+             */
             state: "active" | "snoozed" | "cleared" | "dismissed" | "resolved" | "stale";
             firstSeenAt: string;
             lastSeenAt: string;
             recurrenceCount: number;
             action?: {
+                /** @enum {string} */
                 kind: "navigate";
                 label: string;
                 url: string;
             } | {
+                /** @enum {string} */
                 kind: "assistant";
                 label: string;
+                /** @enum {string} */
                 intent: "review_domain_health" | "validate_contacts" | "create_campaign" | "repeat_campaign" | "draft_automation" | "review_recommendation";
                 prompt: string;
             };
@@ -2965,53 +3242,67 @@ export interface components {
             churnCount: number;
             metrics: {
                 [key: string]: {
+                    /** @enum {string} */
                     kind: "count";
                     value: number;
                     noun: string;
                 } | {
+                    /** @enum {string} */
                     kind: "rate";
                     value: number | null;
                     numerator: number;
                     denominator: number;
+                    /** @enum {string} */
                     basis: "delivered" | "sent" | "uniqueOpened" | "recipients";
                     anomalous?: boolean;
                 } | {
+                    /** @enum {string} */
                     kind: "share";
                     value: number | null;
                     part: number;
                     whole: number;
                     wholeNoun: string;
                 } | {
+                    /** @enum {string} */
                     kind: "duration";
                     ms: number;
                     bucketIndex?: number;
                 } | {
+                    /** @enum {string} */
                     kind: "delta";
                     value: number;
+                    /** @enum {string} */
                     unit: "pp" | "pct" | "abs";
                     from: number;
                     to: number;
                 } | {
+                    /** @enum {string} */
                     kind: "hourOfDay";
                     hour: number;
                     slot?: number;
+                    /** @enum {string} */
                     basis: "utc" | "brand_zone";
                     timeZone?: string;
                 } | {
+                    /** @enum {string} */
                     kind: "multiple";
                     value: number;
                     referenceLabel: string;
                 } | {
+                    /** @enum {string} */
                     kind: "rank";
                     position: number;
                     outOf: number;
                 } | {
+                    /** @enum {string} */
                     kind: "interval";
                     lo: number;
                     hi: number;
                     confidenceLevel: 0.9 | 0.95;
+                    /** @enum {string} */
                     as: "rate" | "delta" | "count";
                 } | {
+                    /** @enum {string} */
                     kind: "label";
                     text: string;
                 };
@@ -3033,6 +3324,7 @@ export interface components {
                 caveat?: string;
             } | null;
             generatedBy: {
+                /** @enum {string} */
                 trigger: "cron_daily" | "send_settled" | "lifecycle_event" | "manual_refresh";
                 startedAt: string;
                 completedAt: string | null;
@@ -3042,6 +3334,7 @@ export interface components {
                 dataAsOf: string | null;
                 lastSuccessfulRunAt: string | null;
                 latestAttempt: {
+                    /** @enum {string} */
                     status: "succeeded" | "failed" | "running" | "unknown";
                     at: string;
                 } | null;
@@ -3049,7 +3342,9 @@ export interface components {
         };
         Notification: {
             notificationId: string;
+            /** @enum {string} */
             type: "webhook_attention" | "chat_stream" | "import_job" | "brand_image_import" | "validation_job" | "email_sent" | "email_scheduled" | "preview_email" | "brand_extracted" | "domain_status" | "domain_score_run" | "api_key_created" | "email_send_failed" | "gradual_send_paused" | "gradual_send_completed" | "send_limit_reached" | "trial_ending" | "trial_expired" | "payment_failed" | "automation_pause_window_closed" | "send_review_rejected" | "comment_mention" | "comment_reply" | "integration_attention";
+            /** @enum {string} */
             status: "uploading" | "preparing" | "processing" | "finalizing" | "streaming" | "background_finalizing" | "completed" | "partial" | "failed" | "interrupted" | "stopped" | "persistence_failed";
             title: string;
             subtitle: string;
@@ -3067,10 +3362,13 @@ export interface components {
         EmailCommentThread: {
             commentId: string;
             emailId: string;
+            /** @enum {string} */
             status: "open";
             target: {
+                /** @enum {string} */
                 kind: "email";
             } | {
+                /** @enum {string} */
                 kind: "element";
                 elementId?: string;
                 nodeType?: string;
@@ -3105,12 +3403,14 @@ export interface components {
             endpoint: string;
             events: ("email.sent" | "email.delivered" | "email.delivery_delayed" | "email.bounced" | "email.complained" | "email.failed" | "email.opened" | "email.clicked")[];
             description: string;
+            /** @enum {string} */
             status: "enabled" | "disabled";
             created_at: string;
         };
         ApiErrorEnvelope: {
             error: {
                 code: components["schemas"]["ApiErrorCode"];
+                /** @enum {string} */
                 type: "authentication_error" | "authorization_error" | "invalid_request" | "not_found" | "not_implemented" | "conflict" | "rate_limit" | "payment_required" | "service_unavailable" | "internal_error";
                 message: string;
                 param?: string;
@@ -3122,17 +3422,23 @@ export interface components {
                 };
             };
         };
-        ApiErrorCode: "ACCOUNT_SUSPENDED" | "API_KEY_REVOKED" | "AUDIENCE_BUILD_ACTIVE" | "AUDIENCE_BUILD_ALREADY_ACTIVE" | "AUDIENCE_EDIT_CONFLICT" | "AUDIENCE_MEMBERSHIP_NOT_EXPRESSIBLE" | "AUDIENCE_NOT_FOUND" | "AUDIENCE_RUN_NOT_FOUND" | "AUDIT_NOT_FOUND" | "AUTHENTICATION_REQUIRED" | "AUTOMATION_GRAPH_INVALID" | "AUTOMATION_IN_PROGRESS" | "AUTOMATION_NOT_FOUND" | "AUTOMATION_NOT_PAUSABLE" | "AUTOMATION_NOT_PUBLISHED" | "AUTOMATION_NOT_READY" | "AUTOMATION_NOT_RUNNABLE" | "AUTOMATION_RUN_NOT_FOUND" | "AUTOMATION_VERSION_CONFLICT" | "AUTOMATION_VERSION_NOT_FOUND" | "BATCH_TOO_LARGE" | "BRAND_DOMAIN_CONFLICT" | "BRAND_ID_REQUIRED" | "BRAND_LIMIT_REACHED" | "BRAND_NOT_FOUND" | "BRAND_NOT_READY" | "BRAND_SCOPE_MISMATCH" | "CHAT_NOT_FOUND" | "COMMENT_NOT_FOUND" | "CONSENT_REQUIRED" | "CONTACT_NOT_FOUND" | "CONTENT_OPERATION_FAILED" | "CONTRACT_LOCKED_BY_PUBLISHED_AUTOMATIONS" | "CORE_FIELD_IMMUTABLE" | "DOMAIN_ALREADY_EXISTS" | "DOMAIN_CLAIMED_ELSEWHERE" | "DOMAIN_NOT_FOUND" | "DOMAIN_NOT_READY" | "DOMAIN_OTHER_BRAND" | "DOMAIN_PROVIDER_ERROR" | "DOMAIN_PURPOSE_NOT_ALLOWED" | "DOMAIN_VERIFICATION_FAILED" | "DOMAIN_VERIFIED_ELSEWHERE" | "EMAIL_GENERATION_FAILED" | "EMAIL_GROUP_NAME_CONFLICT" | "EMAIL_GROUP_NOT_FOUND" | "EMAIL_IMAGES_MISSING" | "EMAIL_IMPORT_FAILED" | "EMAIL_IMPORT_PERSISTENCE_FAILED" | "EMAIL_IN_PROGRESS" | "EMAIL_IN_USE_BY_AUTOMATION" | "EMAIL_NOT_FOUND" | "EMAIL_NOT_READY" | "EMAIL_RESULT_UNAVAILABLE" | "EMAIL_RUN_AMBIGUOUS" | "EMAIL_TEMPLATE_INVALID" | "EMAIL_VERSION_NOT_FOUND" | "EXPORT_PROVIDER_ERROR" | "EXPORT_UNSUPPORTED" | "FIELD_NAME_AMBIGUOUS" | "FIELD_NAME_COLLISION" | "FIELD_NAME_INVALID" | "FIELD_NOT_FOUND" | "FIELD_TYPE_MISMATCH" | "FIGMA_ACCESS_DENIED" | "FIGMA_CONVERSION_FAILED" | "FIGMA_FRAME_NOT_FOUND" | "FIGMA_NOT_CONNECTED" | "FIGMA_UNAVAILABLE" | "FIGMA_URL_INVALID" | "FLOW_NOT_FOUND" | "IDEMPOTENCY_CONFLICT" | "IDEMPOTENCY_IN_PROGRESS" | "IMAGE_CONVERSION_FAILED" | "IMAGE_URL_INVALID" | "INSIGHT_NOT_FOUND" | "INSUFFICIENT_CREDITS" | "INSUFFICIENT_PERMISSIONS" | "INSUFFICIENT_ROLE" | "INTEGRATION_EVENT_NOT_FOUND" | "INTEGRATION_NOT_CONNECTED" | "INTEGRATION_RECONNECT_REQUIRED" | "INTERNAL_ERROR" | "INVALID_API_KEY" | "INVALID_EMAIL" | "INVALID_PAYLOAD" | "INVALID_REQUEST" | "LIQUID_RENDER_ERROR" | "METHOD_NOT_ALLOWED" | "MISSING_EMAIL" | "NO_ACTIVE_PLAN" | "NO_ELIGIBLE_RECIPIENTS" | "NO_PUBLISHED_AUTOMATION" | "NOT_FOUND" | "NOT_IMPLEMENTED" | "ORG_SCOPE_REQUIRED" | "PAYLOAD_SCHEMA_EMAIL_REQUIRED" | "PAYLOAD_TOO_LARGE" | "PREVIEW_NOT_FOUND" | "PUBLISH_VALIDATION_FAILED" | "RATE_LIMITED" | "RECIPIENT_UNSUBSCRIBED" | "REFERENCE_EMAIL_NOT_FOUND" | "RESUBSCRIBE_NOT_ALLOWED" | "RUN_IN_PROGRESS" | "RUN_NOT_CANCELLABLE" | "RUN_NOT_PAUSABLE" | "RUN_NOT_PAUSED" | "RUN_NOT_RESUMABLE" | "RUN_START_FAILED" | "RUN_STOP_FAILED" | "SEND_NOT_CANCELLABLE" | "SEND_NOT_FOUND" | "SEND_NOT_PAUSABLE" | "SEND_NOT_RESUMABLE" | "SEND_QUOTA_EXCEEDED" | "SERVICE_UNAVAILABLE" | "TEMPLATE_NOT_FOUND" | "TEST_RECIPIENT_NOT_ALLOWED" | "TRIGGER_ALREADY_EXISTS" | "TRIGGER_EVENT_NOT_FOUND" | "TRIGGER_HAS_DEPENDENT_AUTOMATIONS" | "TRIGGER_IMMUTABLE" | "TRIGGER_INSTANCE_NOT_FOUND" | "TRIGGER_LIMIT_REACHED" | "TRIGGER_NOT_FIREABLE" | "UPLOAD_IN_PROGRESS" | "UPLOAD_NOT_FOUND" | "UPLOAD_NOT_RECEIVED" | "WRITE_CONFLICT";
+        /** @enum {string} */
+        ApiErrorCode: "ACCOUNT_SUSPENDED" | "API_KEY_REVOKED" | "AUDIENCE_BUILD_ACTIVE" | "AUDIENCE_BUILD_ALREADY_ACTIVE" | "AUDIENCE_EDIT_CONFLICT" | "AUDIENCE_MEMBERSHIP_NOT_EXPRESSIBLE" | "AUDIENCE_NOT_FOUND" | "AUDIENCE_RUN_NOT_FOUND" | "AUDIT_NOT_FOUND" | "AUTHENTICATION_REQUIRED" | "AUTOMATION_GRAPH_INVALID" | "AUTOMATION_IN_PROGRESS" | "AUTOMATION_NOT_FOUND" | "AUTOMATION_NOT_PAUSABLE" | "AUTOMATION_NOT_PUBLISHED" | "AUTOMATION_NOT_READY" | "AUTOMATION_NOT_RUNNABLE" | "AUTOMATION_RUN_NOT_FOUND" | "AUTOMATION_VERSION_CONFLICT" | "AUTOMATION_VERSION_NOT_FOUND" | "BATCH_TOO_LARGE" | "BRAND_DOMAIN_CONFLICT" | "BRAND_ID_REQUIRED" | "BRAND_LIMIT_REACHED" | "BRAND_NOT_FOUND" | "BRAND_NOT_READY" | "BRAND_SCOPE_MISMATCH" | "CHAT_NOT_FOUND" | "COMMENT_NOT_FOUND" | "CONSENT_REQUIRED" | "CONTACT_NOT_FOUND" | "CONTENT_OPERATION_FAILED" | "CONTRACT_LOCKED_BY_PUBLISHED_AUTOMATIONS" | "CORE_FIELD_IMMUTABLE" | "DOMAIN_ALREADY_EXISTS" | "DOMAIN_CLAIMED_ELSEWHERE" | "DOMAIN_NOT_FOUND" | "DOMAIN_NOT_READY" | "DOMAIN_OTHER_BRAND" | "DOMAIN_PROVIDER_ERROR" | "DOMAIN_PURPOSE_NOT_ALLOWED" | "DOMAIN_VERIFICATION_FAILED" | "DOMAIN_VERIFIED_ELSEWHERE" | "EMAIL_GENERATION_FAILED" | "EMAIL_GROUP_NAME_CONFLICT" | "EMAIL_GROUP_NOT_FOUND" | "EMAIL_IMAGES_MISSING" | "EMAIL_IMPORT_FAILED" | "EMAIL_IMPORT_PERSISTENCE_FAILED" | "EMAIL_IN_PROGRESS" | "EMAIL_IN_USE_BY_AUTOMATION" | "EMAIL_NOT_FOUND" | "EMAIL_NOT_READY" | "EMAIL_RESULT_UNAVAILABLE" | "EMAIL_RUN_AMBIGUOUS" | "EMAIL_TEMPLATE_INVALID" | "EMAIL_VERSION_NOT_FOUND" | "EXPORT_PROVIDER_ERROR" | "EXPORT_UNSUPPORTED" | "FIELD_NAME_AMBIGUOUS" | "FIELD_NAME_COLLISION" | "FIELD_NAME_INVALID" | "FIELD_NOT_FOUND" | "FIELD_TYPE_MISMATCH" | "FIGMA_ACCESS_DENIED" | "FIGMA_CONVERSION_FAILED" | "FIGMA_FRAME_NOT_FOUND" | "FIGMA_NOT_CONNECTED" | "FIGMA_UNAVAILABLE" | "FIGMA_URL_INVALID" | "FLOW_NOT_FOUND" | "GATEWAY_CAPABILITY_UNSUPPORTED" | "GATEWAY_DNS_ACTION_REQUIRED" | "GATEWAY_DOMAIN_NOT_FOUND" | "GATEWAY_NOT_ENABLED" | "GATEWAY_NOT_READY" | "GATEWAY_PROVIDER_NOT_AVAILABLE" | "GATEWAY_RECIPIENT_INELIGIBLE" | "GATEWAY_RECIPIENT_SUPPRESSED" | "GATEWAY_STATE_CONFLICT" | "IDEMPOTENCY_CONFLICT" | "IDEMPOTENCY_IN_PROGRESS" | "IMAGE_CONVERSION_FAILED" | "IMAGE_URL_INVALID" | "INSIGHT_NOT_FOUND" | "INSUFFICIENT_CREDITS" | "INSUFFICIENT_PERMISSIONS" | "INSUFFICIENT_ROLE" | "INTEGRATION_EVENT_NOT_FOUND" | "INTEGRATION_NOT_CONNECTED" | "INTEGRATION_RECONNECT_REQUIRED" | "INTERNAL_ERROR" | "INVALID_API_KEY" | "INVALID_EMAIL" | "INVALID_PAYLOAD" | "INVALID_REQUEST" | "LIQUID_RENDER_ERROR" | "METHOD_NOT_ALLOWED" | "MISSING_EMAIL" | "NO_ACTIVE_PLAN" | "NO_ELIGIBLE_RECIPIENTS" | "NO_PUBLISHED_AUTOMATION" | "NOT_FOUND" | "NOT_IMPLEMENTED" | "ORG_SCOPE_REQUIRED" | "PAYLOAD_SCHEMA_EMAIL_REQUIRED" | "PAYLOAD_TOO_LARGE" | "PREVIEW_NOT_FOUND" | "PUBLISH_VALIDATION_FAILED" | "RATE_LIMITED" | "RECIPIENT_UNSUBSCRIBED" | "REFERENCE_EMAIL_NOT_FOUND" | "RESUBSCRIBE_NOT_ALLOWED" | "RUN_IN_PROGRESS" | "RUN_NOT_CANCELLABLE" | "RUN_NOT_PAUSABLE" | "RUN_NOT_PAUSED" | "RUN_NOT_RESUMABLE" | "RUN_START_FAILED" | "RUN_STOP_FAILED" | "SEND_NOT_CANCELLABLE" | "SEND_NOT_FOUND" | "SEND_NOT_PAUSABLE" | "SEND_NOT_RESUMABLE" | "SEND_QUOTA_EXCEEDED" | "SERVICE_UNAVAILABLE" | "TEMPLATE_NOT_FOUND" | "TEST_RECIPIENT_NOT_ALLOWED" | "TRIGGER_ALREADY_EXISTS" | "TRIGGER_EVENT_NOT_FOUND" | "TRIGGER_HAS_DEPENDENT_AUTOMATIONS" | "TRIGGER_IMMUTABLE" | "TRIGGER_INSTANCE_NOT_FOUND" | "TRIGGER_LIMIT_REACHED" | "TRIGGER_NOT_FIREABLE" | "UPLOAD_IN_PROGRESS" | "UPLOAD_NOT_FOUND" | "UPLOAD_NOT_RECEIVED" | "WRITE_CONFLICT";
         EmailsListResponse: {
             data: {
                 emailId: string;
                 emailVersionId?: string;
                 title: string;
+                /** @enum {string} */
                 status: "generating" | "ready" | "failed";
                 previewImage?: string;
                 updatedAt: string;
                 subjectLine?: string;
                 previewText?: string;
+                /**
+                 * @description The language the email's copy is written in (ISO 639-1, or zh-Hans / zh-Hant), read by Brew's language model after each content change unless a caller set it. Rendered as the HTML document's lang. Detail-only; absent until it has been read.
+                 * @enum {string}
+                 */
                 lang?: "en" | "de" | "fr" | "es" | "pt" | "it" | "nl" | "pl" | "sv" | "da" | "no" | "fi" | "cs" | "sk" | "hu" | "ro" | "bg" | "el" | "tr" | "ru" | "uk" | "hr" | "sr" | "sl" | "lt" | "lv" | "et" | "ca" | "ar" | "he" | "fa" | "ur" | "hi" | "bn" | "th" | "vi" | "id" | "ms" | "tl" | "ja" | "ko" | "zh-Hans" | "zh-Hant" | "sw" | "af";
                 html?: string;
                 versions?: {
@@ -3176,9 +3482,17 @@ export interface components {
             prompt: string;
             contentUrls?: string[];
             referenceEmailId?: string;
+            /**
+             * @description Email category that steers the design treatment (exemplars, hero recipe, personalization) — mirrors what the in-app agent infers per request. One of: welcome, onboarding, newsletter, content, event-invitation, event-reminder, event-recap, product-launch, product-update, product-pitch, promotional, cart-abandonment, re-engagement, subscription, feedback-request, referral, company-news, fundraising, order-confirmation, shipping-update, receipt, password-reset, verification, security-alert, account-update, notification, support, internal, business, general. Omit for a general treatment. Transactional categories (receipt, password-reset, order-confirmation, …) steer receipt/reset design conventions; to DELIVER those emails, wire the design into an automation with a trigger and a transactional-purpose sending domain, then fire the trigger.
+             * @enum {string}
+             */
             category?: "welcome" | "onboarding" | "newsletter" | "content" | "event-invitation" | "event-reminder" | "event-recap" | "product-launch" | "product-update" | "product-pitch" | "promotional" | "cart-abandonment" | "re-engagement" | "subscription" | "feedback-request" | "referral" | "company-news" | "fundraising" | "order-confirmation" | "shipping-update" | "receipt" | "password-reset" | "verification" | "security-alert" | "account-update" | "notification" | "support" | "internal" | "business" | "general";
             title?: string;
             subjectLine?: string;
+            /**
+             * @description ISO 639-1 language code of the email's copy (or zh-Hans / zh-Hant). Omit and Brew's language model reads it from the finished body; a value you set is kept and never re-detected. Becomes the HTML document's lang (and dir for right-to-left languages) on every send and export. One of: en, de, fr, es, pt, it, nl, pl, sv, da, no, fi, cs, sk, hu, ro, bg, el, tr, ru, uk, hr, sr, sl, lt, lv, et, ca, ar, he, fa, ur, hi, bn, th, vi, id, ms, tl, ja, ko, zh-Hans, zh-Hant, sw, af.
+             * @enum {string}
+             */
             lang?: "en" | "de" | "fr" | "es" | "pt" | "it" | "nl" | "pl" | "sv" | "da" | "no" | "fi" | "cs" | "sk" | "hu" | "ro" | "bg" | "el" | "tr" | "ru" | "uk" | "hr" | "sr" | "sl" | "lt" | "lv" | "et" | "ca" | "ar" | "he" | "fa" | "ur" | "hi" | "bn" | "th" | "vi" | "id" | "ms" | "tl" | "ja" | "ko" | "zh-Hans" | "zh-Hant" | "sw" | "af";
             groupId?: string;
             groupName?: string;
@@ -3206,13 +3520,19 @@ export interface components {
                 stripped: number;
                 dropped?: number;
                 warnings: {
+                    /** @enum {string} */
                     code: "fetch_failed_retained" | "non_image_resource_retained" | "social_icon_substituted" | "tracking_pixel_dropped" | "unsafe_url_stripped" | "unsupported_resource_retained" | "upload_failed_retained" | "inline_asset_retained" | "attachment_dropped" | "embedded_reference_unresolved" | "tailwind_config_unresolved" | "tailwind_class_dropped" | "foreign_component_dropped" | "current_time_frozen" | "element_dropped" | "text_dropped";
+                    /** @enum {string} */
                     location: "background" | "css-url" | "data-src" | "data-srcset" | "markup" | "module" | "preload" | "src" | "srcset" | "stylesheet" | "vml-src";
                     host?: string;
                 }[];
             };
         };
         EmailImportRequest: {
+            /**
+             * @description `html`: an HTML email document or fragment · `mjml`: MJML markup · `jsx`: React Email — a module with a default-exported component, or a bare `<Html>` element · `eml`: a saved RFC 822 message
+             * @enum {string}
+             */
             format: "html" | "mjml" | "jsx" | "eml";
             content: string;
             title?: string;
@@ -3225,6 +3545,7 @@ export interface components {
             emailId: string;
             emailVersionId: string;
             title: string;
+            /** @enum {string} */
             format: "jsx" | "html";
             content: string;
             warningCount: number;
@@ -3245,16 +3566,32 @@ export interface components {
             groupId?: string;
             groupName?: string;
             subjectLine?: string;
+            /**
+             * @description Source representation returned in `content`: React Email JSX by default, or rendered email-safe HTML.
+             * @default jsx
+             * @enum {string}
+             */
             format?: "jsx" | "html";
         };
         ImageToEmailResponse: {
             emailId: string;
             emailVersionId: string;
             title: string;
+            /** @enum {string} */
             format: "jsx" | "html";
             content: string;
+            /**
+             * @description `layers`: converted deterministically from the picture's own layers, every text and button live. `model`: the layer conversion was not possible for this picture and a model recreated it instead; metered as model usage, not the flat import price.
+             * @enum {string}
+             */
             conversion: "layers" | "model";
             previewImage?: string;
+            /**
+             * @description Why layer conversion could not run. Present when conversion is model; no provider internals are exposed.
+             * @enum {string}
+             */
+            fallbackReason?: "layer_service_unavailable" | "layer_conversion_timeout" | "layer_conversion_failed";
+            warnings?: components["schemas"]["ApiWarning"][];
             group: {
                 groupId: string;
                 groupName: string;
@@ -3267,6 +3604,11 @@ export interface components {
             groupId?: string;
             groupName?: string;
             subjectLine?: string;
+            /**
+             * @description Source representation returned in `content`: React Email JSX by default, or rendered email-safe HTML.
+             * @default jsx
+             * @enum {string}
+             */
             format?: "jsx" | "html";
         };
         EmailGenerateResponse: {
@@ -3294,12 +3636,20 @@ export interface components {
             contentUrls?: string[];
             title?: string;
             subjectLine?: string;
+            /**
+             * @description Set the language of the email (ISO 639-1, or zh-Hans / zh-Hant). Part of the free envelope patch: no AI run, no new version. Once set it is kept: Brew no longer re-detects it after edits. null clears a language you set, and Brew reads it again from the email.
+             * @enum {string|null}
+             */
             lang?: "en" | "de" | "fr" | "es" | "pt" | "it" | "nl" | "pl" | "sv" | "da" | "no" | "fi" | "cs" | "sk" | "hu" | "ro" | "bg" | "el" | "tr" | "ru" | "uk" | "hr" | "sr" | "sl" | "lt" | "lv" | "et" | "ca" | "ar" | "he" | "fa" | "ur" | "hi" | "bn" | "th" | "vi" | "id" | "ms" | "tl" | "ja" | "ko" | "zh-Hans" | "zh-Hant" | "sw" | "af" | null;
             groupId?: string | null;
         };
         EmailsDeleteResponse: {
             emailId: string;
             deleted: boolean;
+            /**
+             * @description Present when `deleted` is false: `already_deleted` means this design was hard-deleted earlier (see `deletedAt`) — it is gone, do not retry; `not_found` means no design with this id exists on this brand.
+             * @enum {string}
+             */
             reason?: "already_deleted" | "not_found";
             deletedAt?: string;
         };
@@ -3314,6 +3664,7 @@ export interface components {
         };
         EmailExportResponse: {
             emailId: string;
+            /** @enum {string} */
             provider: "braze" | "brevo" | "hubspot" | "klaviyo" | "mailchimp" | "mailjet" | "iterable" | "postmark" | "onesignal" | "mailgun" | "sendgrid" | "loops" | "campaignmonitor";
             providerName: string;
             templateName: string;
@@ -3321,12 +3672,17 @@ export interface components {
             dryRun: boolean;
         };
         EmailExportRequest: {
+            /**
+             * @description The connected ESP to export the design to as a template.
+             * @enum {string}
+             */
             provider: "braze" | "brevo" | "hubspot" | "klaviyo" | "mailchimp" | "mailjet" | "iterable" | "postmark" | "onesignal" | "mailgun" | "sendgrid" | "loops" | "campaignmonitor";
             templateName?: string;
             senderEmail?: string;
             dryRun?: boolean;
         };
         EmailAuditResponse: {
+            /** @enum {number} */
             schemaVersion: 1;
             rulesetVersion: string;
             auditId: string;
@@ -3334,9 +3690,12 @@ export interface components {
             auditedAt: string;
             expiresAt: string;
             policy: {
+                /** @enum {string} */
                 purpose: "marketing" | "transactional" | "unknown";
+                /** @enum {string} */
                 source: "provided" | "defaulted" | "trusted_adapter" | "inferred";
                 confidence?: number;
+                /** @enum {string} */
                 unsubscribe: "required" | "not_required" | "not_evaluated";
             };
             summary: {
@@ -3348,21 +3707,28 @@ export interface components {
             };
             checks: ({
                 id: string;
+                /** @enum {string} */
                 status: "passed";
                 durationMs: number;
+                /** @enum {number} */
                 findingCount: 0;
             } | {
                 id: string;
+                /** @enum {string} */
                 status: "issues";
                 durationMs: number;
                 findingCount: number;
             } | {
                 id: string;
+                /** @enum {string} */
                 status: "not_applicable";
+                /** @enum {string} */
                 reason: "no_remote_links" | "no_remote_images" | "no_remote_assets" | "missing_copy" | "requires_sending_domain" | "send_transport_owned" | "requires_audience_context" | "separate_deliverability_test" | "transactional_purpose" | "unknown_purpose";
             } | {
                 id: string;
+                /** @enum {string} */
                 status: "unavailable";
+                /** @enum {string} */
                 reason: "timeout" | "upstream" | "invalid_response";
                 retryable: boolean;
                 durationMs: number;
@@ -3373,12 +3739,14 @@ export interface components {
                 imageCount: number;
                 gifCount: number;
                 loadedSize: {
+                    /** @enum {string} */
                     status: "exact";
                     htmlBytes: number;
                     remoteAssetBytes: number;
                     totalBytes: number;
                     assetCount: number;
                 } | {
+                    /** @enum {string} */
                     status: "lower_bound";
                     htmlBytes: number;
                     knownRemoteAssetBytes: number;
@@ -3389,8 +3757,11 @@ export interface components {
             findings: {
                 id: string;
                 ruleId: string;
+                /** @enum {string} */
                 category: "compliance" | "links" | "images" | "accessibility" | "compatibility" | "copy" | "size" | "markup";
+                /** @enum {string} */
                 severity: "blocker" | "error" | "warning" | "info";
+                /** @enum {string} */
                 impact: "block" | "confirm" | "advisory";
                 message: string;
                 remediation: string;
@@ -3401,32 +3772,42 @@ export interface components {
                     url?: string;
                 }[];
                 evidence?: {
+                    /** @enum {string} */
                     kind: "http";
                     status: number | null;
+                    /** @enum {string} */
                     failure?: "dns" | "tls" | "connect" | "timeout" | "private_host" | "redirects";
                 } | {
+                    /** @enum {string} */
                     kind: "clients";
                     unsupported: string[];
                 } | {
+                    /** @enum {string} */
                     kind: "judgment";
                     question: string;
                     probability: number;
                 };
                 target: {
+                    /** @enum {string} */
                     kind: "email";
                 } | {
+                    /** @enum {string} */
                     kind: "subject";
                 } | {
+                    /** @enum {string} */
                     kind: "preview_text";
                 } | {
+                    /** @enum {string} */
                     kind: "link";
                     index: number;
                     displayUrl: string;
                 } | {
+                    /** @enum {string} */
                     kind: "image";
                     index: number;
                     displayUrl: string;
                 } | {
+                    /** @enum {string} */
                     kind: "element";
                     selector: string;
                 };
@@ -3434,11 +3815,15 @@ export interface components {
             totalFindings: number;
             findingsTruncated: boolean;
             completion: {
+                /** @enum {string} */
                 status: "complete";
+                /** @enum {string} */
                 readiness: "ready" | "needs_review" | "not_ready";
                 score: number;
             } | {
+                /** @enum {string} */
                 status: "partial";
+                /** @enum {string} */
                 readiness: "unknown" | "not_ready";
                 score: null;
             };
@@ -3447,32 +3832,51 @@ export interface components {
             emailHtml: string;
             subject?: string;
             previewText?: string;
+            /**
+             * @description marketing (unsubscribe link and postal address required) or transactional. Omit it and the audit infers the purpose from the content.
+             * @enum {string}
+             */
             sendingPurpose?: "marketing" | "transactional";
         } | {
             emailJsx: string;
             subject?: string;
             previewText?: string;
+            /**
+             * @description marketing (unsubscribe link and postal address required) or transactional. Omit it and the audit infers the purpose from the content.
+             * @enum {string}
+             */
             sendingPurpose?: "marketing" | "transactional";
         } | {
             emailId: string;
             emailVersionId?: string;
             subject?: string;
             previewText?: string;
+            /**
+             * @description marketing (unsubscribe link and postal address required) or transactional. Omit it and the audit infers the purpose from the content.
+             * @enum {string}
+             */
             sendingPurpose?: "marketing" | "transactional";
         };
         EmailClientPreviewResponse: {
             previewId: string;
             emailId: string;
             emailVersionId?: string;
+            /**
+             * @description The job: `queued` or `running` until every client settles, then `completed`, `partially_completed` (some screenshots failed) or `failed`.
+             * @enum {string}
+             */
             status: "queued" | "running" | "completed" | "partially_completed" | "failed";
             previews: {
                 id: string;
                 label: string;
+                /** @enum {string} */
                 category: "gmail" | "outlook" | "apple" | "yahoo" | "other";
                 os: string;
                 dark: boolean;
+                /** @enum {string} */
                 status: "running" | "completed" | "failed";
                 imageUrl: string | null;
+                /** @enum {string} */
                 reason?: "pending" | "upstream_unavailable" | "unsupported_client" | "render_failed" | "rehost_failed" | "expired" | "submission_unknown" | "authorization_changed" | "snapshot_unavailable";
                 retryable: boolean;
             }[];
@@ -3482,6 +3886,7 @@ export interface components {
             nextPollAfterMs: number;
             credits: {
                 cost: number;
+                /** @enum {string} */
                 status: "reserved" | "settled" | "released";
             };
         };
@@ -3492,7 +3897,9 @@ export interface components {
         EmailInboxPlacementTest: {
             testId: string;
             emailId: string;
+            /** @enum {string} */
             status: "queued" | "running" | "completed" | "partially_completed" | "failed";
+            /** @enum {string} */
             phase?: "sending" | "collecting";
             domainId: string;
             subject?: string;
@@ -3514,8 +3921,11 @@ export interface components {
                         [key: string]: number;
                     };
                     authentication?: {
+                        /** @enum {string} */
                         spf?: "pass" | "fail" | "mixed";
+                        /** @enum {string} */
                         dkim?: "pass" | "fail" | "mixed";
+                        /** @enum {string} */
                         dmarc?: "pass" | "fail" | "mixed";
                     };
                 };
@@ -3533,8 +3943,11 @@ export interface components {
                         [key: string]: number;
                     };
                     authentication?: {
+                        /** @enum {string} */
                         spf?: "pass" | "fail" | "mixed";
+                        /** @enum {string} */
                         dkim?: "pass" | "fail" | "mixed";
+                        /** @enum {string} */
                         dmarc?: "pass" | "fail" | "mixed";
                     };
                 }[];
@@ -3568,7 +3981,9 @@ export interface components {
                 };
             } | null;
             diagnosis?: {
+                /** @enum {string} */
                 id: "spoofing_detected" | "aggregate_auth_failure" | "provider_auth_failure" | "microsoft_junk_filtering" | "provider_spam_placement" | "promotions_tab_placement" | "bulk_folder_placement" | "content_filter_flagged" | "content_rule" | "missing_list_unsubscribe" | "missing_plain_text_part" | "seed_delivery_blocked";
+                /** @enum {string} */
                 severity: "critical" | "warning" | "info";
                 provider?: string;
                 summary: string;
@@ -3588,7 +4003,9 @@ export interface components {
         EmailInboxPlacementTestList: {
             data: {
                 testId: string;
+                /** @enum {string} */
                 status: "queued" | "running" | "completed" | "partially_completed" | "failed";
+                /** @enum {string} */
                 phase?: "sending" | "collecting";
                 domainId: string;
                 subject: string;
@@ -3609,8 +4026,11 @@ export interface components {
                         [key: string]: number;
                     };
                     authentication?: {
+                        /** @enum {string} */
                         spf?: "pass" | "fail" | "mixed";
+                        /** @enum {string} */
                         dkim?: "pass" | "fail" | "mixed";
+                        /** @enum {string} */
                         dmarc?: "pass" | "fail" | "mixed";
                     };
                 } | null;
@@ -3652,7 +4072,9 @@ export interface components {
         SendsListResponse: {
             data: {
                 sendId: string;
+                /** @enum {string} */
                 kind: "campaign" | "automation";
+                /** @enum {string} */
                 messageClass?: "marketing" | "transactional";
                 automationId?: string;
                 nodeId?: string;
@@ -3661,8 +4083,14 @@ export interface components {
                 triggerInstanceId?: string;
                 emailId: string;
                 emailVersionId?: string;
+                /** @enum {string} */
                 status: "scheduled" | "queued" | "running" | "paused" | "completed" | "partially_completed" | "failed" | "canceled";
+                /** @enum {string} */
                 approvalState?: "pending" | "approved" | "rejected";
+                /**
+                 * @description Why a paused send is held. `plan_limit`: the plan has too few sends left this period. `domain_unsendable`: its sending domain stopped passing DNS; fails after 7 days. Both resume on their own and can be canceled. `manual`: its operator paused the gradual ramp; resume it to continue. `bounce_rate`: at least 4% of its recipients hard-bounced or 0.3% marked it as spam; check the list, then resume or cancel it.
+                 * @enum {string}
+                 */
                 pauseReason?: "manual" | "plan_limit" | "domain_unsendable" | "bounce_rate";
                 subject?: string;
                 previewText?: string;
@@ -3707,9 +4135,11 @@ export interface components {
                     incrementPercentage: number;
                     interval: {
                         value: number;
+                        /** @enum {string} */
                         unit: "hour";
                     } | {
                         value: number;
+                        /** @enum {string} */
                         unit: "day";
                     };
                     timeZone: string;
@@ -3717,6 +4147,7 @@ export interface components {
                     currentTranche?: number;
                     sentSoFar?: number;
                     pausedAt?: string;
+                    /** @enum {string} */
                     pauseReason?: "manual";
                     resumedAt?: string;
                 };
@@ -3729,6 +4160,7 @@ export interface components {
                 createdAt: string;
                 updatedAt: string;
                 events?: {
+                    /** @enum {string} */
                     eventType: "sent" | "delivered" | "delivery_delayed" | "opened" | "clicked" | "bounced" | "complained" | "failed" | "provider_suppressed" | "suppressed" | "quota_skipped" | "received" | "unsubscribed";
                     occurredAt: string;
                     recipientEmail?: string;
@@ -3744,21 +4176,25 @@ export interface components {
             };
         };
         SendEmailTestResponse: {
+            /** @enum {string} */
             status: "completed";
             recipient: string;
         };
         SendsPostResponse: {
+            /** @enum {string} */
             status: "queued" | "scheduled";
             sendId: string;
             scheduledAt?: string;
             warnings?: components["schemas"]["ApiWarning"][];
         } | {
+            /** @enum {string} */
             status: "pending_approval";
             sendId: string;
             scheduledAt?: string;
             warnings?: components["schemas"]["ApiWarning"][];
         };
         SendEmailRequest: {
+            /** @enum {boolean} */
             test: true;
             emailId: string;
             emailVersionId?: string;
@@ -3778,6 +4214,7 @@ export interface components {
                 [key: string]: components["schemas"]["SendPayloadValue"];
             };
         } | {
+            /** @enum {boolean} */
             test?: false;
             emailId: string;
             emailVersionId?: string;
@@ -3789,6 +4226,10 @@ export interface components {
                 name?: string;
             };
             consent?: {
+                /**
+                 * @description Who captured it: `api`, `form`, or `import`. (`app` is reserved for the in-app CSV wizard.)
+                 * @enum {string}
+                 */
                 source: "api" | "form" | "import";
                 capturedAt?: string;
                 policyVersion?: string;
@@ -3803,9 +4244,11 @@ export interface components {
                 incrementPercentage: number;
                 interval: {
                     value: number;
+                    /** @enum {string} */
                     unit: "hour";
                 } | {
                     value: number;
+                    /** @enum {string} */
                     unit: "day";
                 };
                 timeZone: string;
@@ -3815,14 +4258,17 @@ export interface components {
         SendPayloadValue: SendPayloadValue;
         SendCancelResponse: {
             sendId: string;
+            /** @enum {string} */
             status: "canceled";
         };
         SendPauseResponse: {
             sendId: string;
+            /** @enum {string} */
             status: "paused";
         };
         SendResumeResponse: {
             sendId: string;
+            /** @enum {string} */
             status: "running";
         };
         AnalyticsOverviewResponse: {
@@ -3866,6 +4312,7 @@ export interface components {
                 quotaSkipped?: number;
                 unsubscribed: number;
             }[];
+            /** @enum {string} */
             granularity: "5m" | "1h" | "1d";
             timeZone: string;
             range: {
@@ -3921,6 +4368,7 @@ export interface components {
             data: {
                 id: string;
                 occurredAt: string;
+                /** @enum {string} */
                 domain: "email" | "automation" | "trigger" | "inbound";
                 eventType: string;
                 recipientEmail?: string;
@@ -3939,9 +4387,12 @@ export interface components {
                 clickBotReason?: string;
                 openBotReason?: string;
                 openFetchSource?: string;
+                /** @enum {string} */
                 mode?: "live" | "test";
                 summary?: string;
+                /** @enum {string} */
                 sendSource?: "audience" | "api" | "automation_manual" | "automation_integration" | "automation_custom";
+                /** @enum {string} */
                 messageClass?: "marketing" | "transactional";
                 sendContext?: string;
                 triggerProvider?: string;
@@ -3983,15 +4434,18 @@ export interface components {
                 id: string;
                 label: string;
                 description?: string;
+                /** @enum {string} */
                 type: "trigger";
                 config: {
                     actionType?: string;
                     eventName?: string;
+                    /** @enum {string} */
                     mode?: "event";
                     triggerEventId?: string;
                 } | {
                     actionType?: string;
                     eventName?: string;
+                    /** @enum {string} */
                     mode: "manualAudience";
                     audienceId: string;
                 };
@@ -3999,6 +4453,7 @@ export interface components {
                 id: string;
                 label: string;
                 description?: string;
+                /** @enum {string} */
                 type: "sendEmail";
                 config: {
                     actionType?: string;
@@ -4016,49 +4471,66 @@ export interface components {
                 id: string;
                 label: string;
                 description?: string;
+                /** @enum {string} */
                 type: "wait";
                 config: {
                     actionType?: string;
                     duration: number;
+                    /** @enum {string} */
                     unit: "ms" | "seconds" | "minutes" | "hours" | "days" | "weeks";
                 };
             } | {
                 id: string;
                 label: string;
                 description?: string;
+                /** @enum {string} */
                 type: "filter";
                 config: {
                     actionType?: string;
+                    /** @enum {string} */
                     mode?: "payload";
+                    /** @enum {string} */
                     logicalOperator: "AND" | "OR";
                     conditions: ({
                         field: string;
+                        /** @enum {string} */
                         type: "string";
+                        /** @enum {string} */
                         operator: "equals" | "not_equals" | "contains" | "not_contains" | "starts_with" | "ends_with";
                         value: string;
                     } | {
                         field: string;
+                        /** @enum {string} */
                         type: "number";
+                        /** @enum {string} */
                         operator: "equals" | "not_equals" | "gt" | "gte" | "lt" | "lte";
                         value: number;
                     } | {
                         field: string;
+                        /** @enum {string} */
                         type: "date";
+                        /** @enum {string} */
                         operator: "equals" | "not_equals" | "gt" | "gte" | "lt" | "lte";
                         value: string | number;
                     } | {
                         field: string;
+                        /** @enum {string} */
                         type: "string";
+                        /** @enum {string} */
                         operator: "in" | "not_in" | "contains_any" | "not_contains_any";
                         value: string[];
                     } | {
                         field: string;
+                        /** @enum {string} */
                         type: "number";
+                        /** @enum {string} */
                         operator: "in" | "not_in";
                         value: number[];
                     } | {
                         field: string;
+                        /** @enum {string} */
                         type: "number";
+                        /** @enum {string} */
                         operator: "between";
                         value: [
                             number,
@@ -4066,7 +4538,9 @@ export interface components {
                         ];
                     } | {
                         field: string;
+                        /** @enum {string} */
                         type: "date";
+                        /** @enum {string} */
                         operator: "between";
                         value: [
                             string | number,
@@ -4074,36 +4548,61 @@ export interface components {
                         ];
                     } | {
                         field: string;
+                        /** @enum {string} */
                         type: "string";
+                        /**
+                         * @description Unary empty check; do not provide a value.
+                         * @enum {string}
+                         */
                         operator: "is_empty" | "is_not_empty";
                     } | {
                         field: string;
+                        /** @enum {string} */
                         type: "number";
+                        /**
+                         * @description Unary empty check; do not provide a value.
+                         * @enum {string}
+                         */
                         operator: "is_empty" | "is_not_empty";
                     } | {
                         field: string;
+                        /** @enum {string} */
                         type: "date";
+                        /**
+                         * @description Unary empty check; do not provide a value.
+                         * @enum {string}
+                         */
                         operator: "is_empty" | "is_not_empty";
                     } | {
                         field: string;
+                        /** @enum {string} */
                         type: "bool";
+                        /**
+                         * @description Unary boolean check; do not provide a value.
+                         * @enum {string}
+                         */
                         operator: "is_true" | "is_false";
                     })[];
                 } | {
                     actionType?: string;
+                    /** @enum {string} */
                     mode: "engagement";
                     sourceNodeId: string;
                     window: {
                         duration: number;
+                        /** @enum {string} */
                         unit: "ms" | "seconds" | "minutes" | "hours" | "days" | "weeks";
                     };
                     branches: {
                         id: string;
                         label?: string;
                         condition: {
+                            /** @enum {string} */
                             kind: "engaged" | "not_engaged" | "clicked_link";
+                            /** @enum {string} */
                             events?: "opened" | "clicked" | "opened_or_clicked";
                             url?: string;
+                            /** @enum {string} */
                             position?: "any" | "first" | "last";
                         };
                     }[];
@@ -4112,9 +4611,11 @@ export interface components {
                 id: string;
                 label: string;
                 description?: string;
+                /** @enum {string} */
                 type: "split";
                 config: {
                     actionType?: string;
+                    /** @enum {string} */
                     mode: "percentage";
                     leftLabel: string;
                     rightLabel: string;
@@ -4122,38 +4623,52 @@ export interface components {
                     seed?: string;
                 } | {
                     actionType?: string;
+                    /** @enum {string} */
                     mode: "condition";
                     leftLabel: string;
                     rightLabel: string;
+                    /** @enum {string} */
                     logicalOperator: "AND" | "OR";
                     conditions: ({
                         field: string;
+                        /** @enum {string} */
                         type: "string";
+                        /** @enum {string} */
                         operator: "equals" | "not_equals" | "contains" | "not_contains" | "starts_with" | "ends_with";
                         value: string;
                     } | {
                         field: string;
+                        /** @enum {string} */
                         type: "number";
+                        /** @enum {string} */
                         operator: "equals" | "not_equals" | "gt" | "gte" | "lt" | "lte";
                         value: number;
                     } | {
                         field: string;
+                        /** @enum {string} */
                         type: "date";
+                        /** @enum {string} */
                         operator: "equals" | "not_equals" | "gt" | "gte" | "lt" | "lte";
                         value: string | number;
                     } | {
                         field: string;
+                        /** @enum {string} */
                         type: "string";
+                        /** @enum {string} */
                         operator: "in" | "not_in" | "contains_any" | "not_contains_any";
                         value: string[];
                     } | {
                         field: string;
+                        /** @enum {string} */
                         type: "number";
+                        /** @enum {string} */
                         operator: "in" | "not_in";
                         value: number[];
                     } | {
                         field: string;
+                        /** @enum {string} */
                         type: "number";
+                        /** @enum {string} */
                         operator: "between";
                         value: [
                             number,
@@ -4161,7 +4676,9 @@ export interface components {
                         ];
                     } | {
                         field: string;
+                        /** @enum {string} */
                         type: "date";
+                        /** @enum {string} */
                         operator: "between";
                         value: [
                             string | number,
@@ -4169,19 +4686,39 @@ export interface components {
                         ];
                     } | {
                         field: string;
+                        /** @enum {string} */
                         type: "string";
+                        /**
+                         * @description Unary empty check; do not provide a value.
+                         * @enum {string}
+                         */
                         operator: "is_empty" | "is_not_empty";
                     } | {
                         field: string;
+                        /** @enum {string} */
                         type: "number";
+                        /**
+                         * @description Unary empty check; do not provide a value.
+                         * @enum {string}
+                         */
                         operator: "is_empty" | "is_not_empty";
                     } | {
                         field: string;
+                        /** @enum {string} */
                         type: "date";
+                        /**
+                         * @description Unary empty check; do not provide a value.
+                         * @enum {string}
+                         */
                         operator: "is_empty" | "is_not_empty";
                     } | {
                         field: string;
+                        /** @enum {string} */
                         type: "bool";
+                        /**
+                         * @description Unary boolean check; do not provide a value.
+                         * @enum {string}
+                         */
                         operator: "is_true" | "is_false";
                     })[];
                 };
@@ -4212,15 +4749,18 @@ export interface components {
                     id: string;
                     label: string;
                     description?: string;
+                    /** @enum {string} */
                     type: "trigger";
                     config: {
                         actionType?: string;
                         eventName?: string;
+                        /** @enum {string} */
                         mode?: "event";
                         triggerEventId?: string;
                     } | {
                         actionType?: string;
                         eventName?: string;
+                        /** @enum {string} */
                         mode: "manualAudience";
                         audienceId: string;
                     };
@@ -4228,6 +4768,7 @@ export interface components {
                     id: string;
                     label: string;
                     description?: string;
+                    /** @enum {string} */
                     type: "sendEmail";
                     config: {
                         actionType?: string;
@@ -4250,42 +4791,53 @@ export interface components {
                     id: string;
                     label: string;
                     description?: string;
+                    /** @enum {string} */
                     type: "wait";
                     config: {
                         actionType?: string;
                         duration: number;
+                        /** @enum {string} */
                         unit: "ms" | "seconds" | "minutes" | "hours" | "days" | "weeks";
                     };
                 } | {
                     id: string;
                     label: string;
                     description?: string;
+                    /** @enum {string} */
                     type: "filter";
                     config: {
                         actionType?: string;
+                        /** @enum {string} */
                         mode?: "payload";
+                        /** @enum {string} */
                         logicalOperator: "AND" | "OR";
                         conditions: {
                             field: string;
                             operator: string;
                             value?: string | number | boolean | (string | number)[];
+                            /** @enum {string} */
                             type?: "string" | "number" | "date" | "bool";
                         }[];
                     } | {
                         actionType?: string;
+                        /** @enum {string} */
                         mode: "engagement";
                         sourceNodeId: string;
                         window: {
                             duration: number;
+                            /** @enum {string} */
                             unit: "ms" | "seconds" | "minutes" | "hours" | "days" | "weeks";
                         };
                         branches: {
                             id: string;
                             label?: string;
                             condition: {
+                                /** @enum {string} */
                                 kind: "engaged" | "not_engaged" | "clicked_link";
+                                /** @enum {string} */
                                 events?: "opened" | "clicked" | "opened_or_clicked";
                                 url?: string;
+                                /** @enum {string} */
                                 position?: "any" | "first" | "last";
                             };
                         }[];
@@ -4294,9 +4846,11 @@ export interface components {
                     id: string;
                     label: string;
                     description?: string;
+                    /** @enum {string} */
                     type: "split";
                     config: {
                         actionType?: string;
+                        /** @enum {string} */
                         mode: "percentage";
                         leftLabel: string;
                         rightLabel: string;
@@ -4304,14 +4858,17 @@ export interface components {
                         seed?: string;
                     } | {
                         actionType?: string;
+                        /** @enum {string} */
                         mode: "condition";
                         leftLabel: string;
                         rightLabel: string;
+                        /** @enum {string} */
                         logicalOperator: "AND" | "OR";
                         conditions: {
                             field: string;
                             operator: string;
                             value?: string | number | boolean | (string | number)[];
+                            /** @enum {string} */
                             type?: "string" | "number" | "date" | "bool";
                         }[];
                     };
@@ -4347,15 +4904,18 @@ export interface components {
                 id: string;
                 label: string;
                 description?: string;
+                /** @enum {string} */
                 type: "trigger";
                 config: {
                     actionType?: string;
                     eventName?: string;
+                    /** @enum {string} */
                     mode?: "event";
                     triggerEventId?: string;
                 } | {
                     actionType?: string;
                     eventName?: string;
+                    /** @enum {string} */
                     mode: "manualAudience";
                     audienceId: string;
                 };
@@ -4363,6 +4923,7 @@ export interface components {
                 id: string;
                 label: string;
                 description?: string;
+                /** @enum {string} */
                 type: "sendEmail";
                 config: {
                     actionType?: string;
@@ -4380,49 +4941,66 @@ export interface components {
                 id: string;
                 label: string;
                 description?: string;
+                /** @enum {string} */
                 type: "wait";
                 config: {
                     actionType?: string;
                     duration: number;
+                    /** @enum {string} */
                     unit: "ms" | "seconds" | "minutes" | "hours" | "days" | "weeks";
                 };
             } | {
                 id: string;
                 label: string;
                 description?: string;
+                /** @enum {string} */
                 type: "filter";
                 config: {
                     actionType?: string;
+                    /** @enum {string} */
                     mode?: "payload";
+                    /** @enum {string} */
                     logicalOperator: "AND" | "OR";
                     conditions: ({
                         field: string;
+                        /** @enum {string} */
                         type: "string";
+                        /** @enum {string} */
                         operator: "equals" | "not_equals" | "contains" | "not_contains" | "starts_with" | "ends_with";
                         value: string;
                     } | {
                         field: string;
+                        /** @enum {string} */
                         type: "number";
+                        /** @enum {string} */
                         operator: "equals" | "not_equals" | "gt" | "gte" | "lt" | "lte";
                         value: number;
                     } | {
                         field: string;
+                        /** @enum {string} */
                         type: "date";
+                        /** @enum {string} */
                         operator: "equals" | "not_equals" | "gt" | "gte" | "lt" | "lte";
                         value: string | number;
                     } | {
                         field: string;
+                        /** @enum {string} */
                         type: "string";
+                        /** @enum {string} */
                         operator: "in" | "not_in" | "contains_any" | "not_contains_any";
                         value: string[];
                     } | {
                         field: string;
+                        /** @enum {string} */
                         type: "number";
+                        /** @enum {string} */
                         operator: "in" | "not_in";
                         value: number[];
                     } | {
                         field: string;
+                        /** @enum {string} */
                         type: "number";
+                        /** @enum {string} */
                         operator: "between";
                         value: [
                             number,
@@ -4430,7 +5008,9 @@ export interface components {
                         ];
                     } | {
                         field: string;
+                        /** @enum {string} */
                         type: "date";
+                        /** @enum {string} */
                         operator: "between";
                         value: [
                             string | number,
@@ -4438,36 +5018,61 @@ export interface components {
                         ];
                     } | {
                         field: string;
+                        /** @enum {string} */
                         type: "string";
+                        /**
+                         * @description Unary empty check; do not provide a value.
+                         * @enum {string}
+                         */
                         operator: "is_empty" | "is_not_empty";
                     } | {
                         field: string;
+                        /** @enum {string} */
                         type: "number";
+                        /**
+                         * @description Unary empty check; do not provide a value.
+                         * @enum {string}
+                         */
                         operator: "is_empty" | "is_not_empty";
                     } | {
                         field: string;
+                        /** @enum {string} */
                         type: "date";
+                        /**
+                         * @description Unary empty check; do not provide a value.
+                         * @enum {string}
+                         */
                         operator: "is_empty" | "is_not_empty";
                     } | {
                         field: string;
+                        /** @enum {string} */
                         type: "bool";
+                        /**
+                         * @description Unary boolean check; do not provide a value.
+                         * @enum {string}
+                         */
                         operator: "is_true" | "is_false";
                     })[];
                 } | {
                     actionType?: string;
+                    /** @enum {string} */
                     mode: "engagement";
                     sourceNodeId: string;
                     window: {
                         duration: number;
+                        /** @enum {string} */
                         unit: "ms" | "seconds" | "minutes" | "hours" | "days" | "weeks";
                     };
                     branches: {
                         id: string;
                         label?: string;
                         condition: {
+                            /** @enum {string} */
                             kind: "engaged" | "not_engaged" | "clicked_link";
+                            /** @enum {string} */
                             events?: "opened" | "clicked" | "opened_or_clicked";
                             url?: string;
+                            /** @enum {string} */
                             position?: "any" | "first" | "last";
                         };
                     }[];
@@ -4476,9 +5081,11 @@ export interface components {
                 id: string;
                 label: string;
                 description?: string;
+                /** @enum {string} */
                 type: "split";
                 config: {
                     actionType?: string;
+                    /** @enum {string} */
                     mode: "percentage";
                     leftLabel: string;
                     rightLabel: string;
@@ -4486,38 +5093,52 @@ export interface components {
                     seed?: string;
                 } | {
                     actionType?: string;
+                    /** @enum {string} */
                     mode: "condition";
                     leftLabel: string;
                     rightLabel: string;
+                    /** @enum {string} */
                     logicalOperator: "AND" | "OR";
                     conditions: ({
                         field: string;
+                        /** @enum {string} */
                         type: "string";
+                        /** @enum {string} */
                         operator: "equals" | "not_equals" | "contains" | "not_contains" | "starts_with" | "ends_with";
                         value: string;
                     } | {
                         field: string;
+                        /** @enum {string} */
                         type: "number";
+                        /** @enum {string} */
                         operator: "equals" | "not_equals" | "gt" | "gte" | "lt" | "lte";
                         value: number;
                     } | {
                         field: string;
+                        /** @enum {string} */
                         type: "date";
+                        /** @enum {string} */
                         operator: "equals" | "not_equals" | "gt" | "gte" | "lt" | "lte";
                         value: string | number;
                     } | {
                         field: string;
+                        /** @enum {string} */
                         type: "string";
+                        /** @enum {string} */
                         operator: "in" | "not_in" | "contains_any" | "not_contains_any";
                         value: string[];
                     } | {
                         field: string;
+                        /** @enum {string} */
                         type: "number";
+                        /** @enum {string} */
                         operator: "in" | "not_in";
                         value: number[];
                     } | {
                         field: string;
+                        /** @enum {string} */
                         type: "number";
+                        /** @enum {string} */
                         operator: "between";
                         value: [
                             number,
@@ -4525,7 +5146,9 @@ export interface components {
                         ];
                     } | {
                         field: string;
+                        /** @enum {string} */
                         type: "date";
+                        /** @enum {string} */
                         operator: "between";
                         value: [
                             string | number,
@@ -4533,19 +5156,39 @@ export interface components {
                         ];
                     } | {
                         field: string;
+                        /** @enum {string} */
                         type: "string";
+                        /**
+                         * @description Unary empty check; do not provide a value.
+                         * @enum {string}
+                         */
                         operator: "is_empty" | "is_not_empty";
                     } | {
                         field: string;
+                        /** @enum {string} */
                         type: "number";
+                        /**
+                         * @description Unary empty check; do not provide a value.
+                         * @enum {string}
+                         */
                         operator: "is_empty" | "is_not_empty";
                     } | {
                         field: string;
+                        /** @enum {string} */
                         type: "date";
+                        /**
+                         * @description Unary empty check; do not provide a value.
+                         * @enum {string}
+                         */
                         operator: "is_empty" | "is_not_empty";
                     } | {
                         field: string;
+                        /** @enum {string} */
                         type: "bool";
+                        /**
+                         * @description Unary boolean check; do not provide a value.
+                         * @enum {string}
+                         */
                         operator: "is_true" | "is_false";
                     })[];
                 };
@@ -4571,7 +5214,9 @@ export interface components {
         AutomationRunStartedResponse: {
             triggerInstanceId?: string;
             automationRunIds: string[];
+            /** @enum {string} */
             testMode?: "smoke" | "scenario";
+            /** @enum {string} */
             status: "triggered" | "idempotent_replay" | "test_started" | "replay_started";
             counts?: {
                 automations: number;
@@ -4592,13 +5237,16 @@ export interface components {
                 automationVersionId?: string;
                 definitionHash?: string;
                 triggerInstanceId?: string;
+                /** @enum {string} */
                 mode: "live" | "test";
+                /** @enum {string} */
                 status: "queued" | "running" | "completed" | "failed" | "canceled";
                 recipientEmail?: string;
                 startedAt?: string;
                 completedAt?: string;
                 error?: string;
                 testCoverage?: {
+                    /** @enum {string} */
                     mode: "smoke" | "scenario";
                     complete: boolean;
                     visitedNodes: string[];
@@ -4616,6 +5264,7 @@ export interface components {
                     decisions: {
                         nodeId: string;
                         branch: string;
+                        /** @enum {string} */
                         source: "simulated" | "forced" | "deterministic" | "payload" | "smoke" | "upstream_not_delivered";
                     }[];
                     limitations: string[];
@@ -4624,7 +5273,9 @@ export interface components {
                     automationRunId: string;
                     nodeId: string;
                     nodeName: string;
+                    /** @enum {string} */
                     nodeType: "trigger" | "wait" | "filter" | "split" | "sendEmail";
+                    /** @enum {string} */
                     status: "running" | "completed" | "failed" | "skipped";
                     orderIndex: number;
                     branch?: string;
@@ -4645,9 +5296,11 @@ export interface components {
                 engagement?: {
                     nodeId: string;
                     events: ({
+                        /** @enum {string} */
                         type: "opened";
                         afterMs: number;
                     } | {
+                        /** @enum {string} */
                         type: "clicked";
                         afterMs: number;
                         url: string;
@@ -4655,11 +5308,13 @@ export interface components {
                 }[];
                 splits?: {
                     nodeId: string;
+                    /** @enum {string} */
                     branch: "left" | "right";
                 }[];
             };
         };
         AutomationRunDryRunResponse: {
+            /** @enum {boolean} */
             dryRun: true;
             automationId: string;
             audienceId: string;
@@ -4672,10 +5327,15 @@ export interface components {
         AudienceAutomationRunStartedResponse: {
             audienceRunId: string;
             automationId: string;
+            /** @enum {string} */
             status: "queued" | "scheduled";
             totalRecipients: number;
             warnings?: components["schemas"]["ApiWarning"][];
             workflowRunId?: string;
+            /**
+             * @description Present when org-level send approval holds the run for admin review: no workflow starts until an admin approves; rejection cancels the run with zero deliveries.
+             * @enum {string}
+             */
             approvalState?: "pending";
             receivedAt: string;
         };
@@ -4687,9 +5347,11 @@ export interface components {
                 incrementPercentage: number;
                 interval: {
                     value: number;
+                    /** @enum {string} */
                     unit: "hour";
                 } | {
                     value: number;
+                    /** @enum {string} */
                     unit: "day";
                 };
                 timeZone: string;
@@ -4702,8 +5364,14 @@ export interface components {
                 automationName?: string;
                 audienceId: string;
                 audienceName?: string;
+                /** @enum {string} */
                 status: "queued" | "scheduled" | "running" | "paused" | "completed" | "failed" | "canceled";
+                /** @enum {string} */
                 approvalState?: "pending" | "approved" | "rejected";
+                /**
+                 * @description Why a paused run is held. `plan_limit` means the plan has too few sends left this period; the run resumes on its own once the allowance has room (`resumeAudienceRun` refuses it), or you can cancel it. `manual` means an operator paused it; resume it to continue.
+                 * @enum {string}
+                 */
                 pauseReason?: "manual" | "plan_limit";
                 scheduledAt?: string;
                 totalRecipients?: number;
@@ -4713,6 +5381,7 @@ export interface components {
                 nodeStats?: {
                     nodeId: string;
                     nodeType: string;
+                    /** @enum {string} */
                     status?: "running" | "completed" | "failed";
                     entered?: number;
                     sent?: number;
@@ -4727,9 +5396,11 @@ export interface components {
                     incrementPercentage: number;
                     interval: {
                         value: number;
+                        /** @enum {string} */
                         unit: "hour";
                     } | {
                         value: number;
+                        /** @enum {string} */
                         unit: "day";
                     };
                     timeZone: string;
@@ -4737,6 +5408,7 @@ export interface components {
                     currentTranche?: number;
                     sentSoFar?: number;
                     pausedAt?: string;
+                    /** @enum {string} */
                     pauseReason?: "manual";
                     resumedAt?: string;
                 };
@@ -4757,7 +5429,9 @@ export interface components {
         };
         AudienceRunActionResponse: {
             audienceRunId: string;
+            /** @enum {string} */
             status: "paused" | "running" | "canceled";
+            /** @enum {string} */
             resumedFrom?: "paused" | "failed";
         };
         AutomationRunsListResponse: {
@@ -4767,13 +5441,16 @@ export interface components {
                 automationVersionId?: string;
                 definitionHash?: string;
                 triggerInstanceId?: string;
+                /** @enum {string} */
                 mode: "live" | "test";
+                /** @enum {string} */
                 status: "queued" | "running" | "completed" | "failed" | "canceled";
                 recipientEmail?: string;
                 startedAt?: string;
                 completedAt?: string;
                 error?: string;
                 testCoverage?: {
+                    /** @enum {string} */
                     mode: "smoke" | "scenario";
                     complete: boolean;
                     visitedNodes: string[];
@@ -4791,6 +5468,7 @@ export interface components {
                     decisions: {
                         nodeId: string;
                         branch: string;
+                        /** @enum {string} */
                         source: "simulated" | "forced" | "deterministic" | "payload" | "smoke" | "upstream_not_delivered";
                     }[];
                     limitations: string[];
@@ -4799,7 +5477,9 @@ export interface components {
                     automationRunId: string;
                     nodeId: string;
                     nodeName: string;
+                    /** @enum {string} */
                     nodeType: "trigger" | "wait" | "filter" | "split" | "sendEmail";
+                    /** @enum {string} */
                     status: "running" | "completed" | "failed" | "skipped";
                     orderIndex: number;
                     branch?: string;
@@ -4822,13 +5502,16 @@ export interface components {
             automationVersionId?: string;
             definitionHash?: string;
             triggerInstanceId?: string;
+            /** @enum {string} */
             mode: "live" | "test";
+            /** @enum {string} */
             status: "queued" | "running" | "completed" | "failed" | "canceled";
             recipientEmail?: string;
             startedAt?: string;
             completedAt?: string;
             error?: string;
             testCoverage?: {
+                /** @enum {string} */
                 mode: "smoke" | "scenario";
                 complete: boolean;
                 visitedNodes: string[];
@@ -4846,6 +5529,7 @@ export interface components {
                 decisions: {
                     nodeId: string;
                     branch: string;
+                    /** @enum {string} */
                     source: "simulated" | "forced" | "deterministic" | "payload" | "smoke" | "upstream_not_delivered";
                 }[];
                 limitations: string[];
@@ -4854,7 +5538,9 @@ export interface components {
                 automationRunId: string;
                 nodeId: string;
                 nodeName: string;
+                /** @enum {string} */
                 nodeType: "trigger" | "wait" | "filter" | "split" | "sendEmail";
+                /** @enum {string} */
                 status: "running" | "completed" | "failed" | "skipped";
                 orderIndex: number;
                 branch?: string;
@@ -4867,7 +5553,9 @@ export interface components {
         };
         AutomationRunCancelResponse: {
             automationRunId: string;
+            /** @enum {string} */
             status: "canceled";
+            /** @enum {string} */
             previousStatus: "queued" | "running" | "completed" | "failed" | "canceled";
         };
         AutomationRunCancelRequest: {
@@ -4877,14 +5565,24 @@ export interface components {
             triggerEventId: string;
             title: string;
             description?: string;
+            /** @enum {string} */
             provider: "brew_api" | "custom" | "brew_event" | "clerk" | "stytch" | "supabase" | "workos" | "stripe" | "shopify" | "revenuecat" | "framer" | "posthog" | "typeform" | "webflow" | "hubspot";
             providerEventKey?: string;
             brewEvent?: {
+                /**
+                 * @description The Brew event this trigger starts on.
+                 * @enum {string}
+                 */
                 event: "contact.unsubscribed";
+                /**
+                 * @description `domain`: unsubscribes from one marketing sending domain (its list). `all`: unsubscribes from every email the brand sends.
+                 * @enum {string}
+                 */
                 scope: "domain" | "all";
                 domainHost?: string;
             };
             payloadSchema: {
+                /** @enum {string} */
                 type: "object";
                 fields: components["schemas"]["TriggerPayloadField"][];
             };
@@ -4894,7 +5592,15 @@ export interface components {
             created: boolean;
         };
         BrewEventTriggersPostRequest: {
+            /**
+             * @description The Brew event. `contact.unsubscribed`: a contact unsubscribed with an email unsubscribe link or their mail app’s unsubscribe button.
+             * @enum {string}
+             */
             event: "contact.unsubscribed";
+            /**
+             * @description `domain`: unsubscribes from one marketing sending domain (pass `domainId`). `all`: unsubscribes from every email the brand sends.
+             * @enum {string}
+             */
             scope: "domain" | "all";
             domainId?: string;
         };
@@ -4902,15 +5608,21 @@ export interface components {
             triggerEventId: string;
             title: string;
             description?: string;
+            /** @enum {string} */
             provider: "brew_api" | "custom" | "brew_event" | "clerk" | "stytch" | "supabase" | "workos" | "stripe" | "shopify" | "revenuecat" | "framer" | "posthog" | "typeform" | "webflow" | "hubspot";
             providerEventKey?: string;
             payloadSchema: {
+                /** @enum {string} */
                 type: "object";
                 fields: components["schemas"]["TriggerPayloadField"][];
             };
             createdAt: string;
             updatedAt: string;
             created: boolean;
+            /**
+             * @description `current`: listed with the event or read in the last day. `stored`: the provider could not be read now; these are its last description. `rate_limited`: its read budget is spent; these are what Brew stored, possibly none (read again after `retryAfterSeconds`). `unavailable`: not read, and none stored.
+             * @enum {string}
+             */
             propertiesStatus: "current" | "stored" | "rate_limited" | "unavailable";
             retryAfterSeconds?: number;
         };
@@ -4921,6 +5633,7 @@ export interface components {
             title: string;
             description?: string;
             payloadSchema: {
+                /** @enum {string} */
                 type: "object";
                 fields: components["schemas"]["TriggerPayloadField"][];
             };
@@ -4930,14 +5643,24 @@ export interface components {
                 triggerEventId: string;
                 title: string;
                 description?: string;
+                /** @enum {string} */
                 provider: "brew_api" | "custom" | "brew_event" | "clerk" | "stytch" | "supabase" | "workos" | "stripe" | "shopify" | "revenuecat" | "framer" | "posthog" | "typeform" | "webflow" | "hubspot";
                 providerEventKey?: string;
                 brewEvent?: {
+                    /**
+                     * @description The Brew event this trigger starts on.
+                     * @enum {string}
+                     */
                     event: "contact.unsubscribed";
+                    /**
+                     * @description `domain`: unsubscribes from one marketing sending domain (its list). `all`: unsubscribes from every email the brand sends.
+                     * @enum {string}
+                     */
                     scope: "domain" | "all";
                     domainHost?: string;
                 };
                 payloadSchema: {
+                    /** @enum {string} */
                     type: "object";
                     fields: components["schemas"]["TriggerPayloadField"][];
                 };
@@ -4955,6 +5678,7 @@ export interface components {
             title?: string;
             description?: string;
             payloadSchema?: {
+                /** @enum {string} */
                 type: "object";
                 fields: components["schemas"]["TriggerPayloadField"][];
             };
@@ -4967,6 +5691,7 @@ export interface components {
             triggerEventId: string;
             ready: boolean;
             blockers: {
+                /** @enum {string} */
                 code: "NO_PUBLISHED_AUTOMATION";
                 message: string;
             }[];
@@ -4975,6 +5700,7 @@ export interface components {
             provider?: string;
             providerEventKey?: string;
             payloadSchema?: {
+                /** @enum {string} */
                 type: "object";
                 fields: components["schemas"]["TriggerPayloadField"][];
             };
@@ -4991,6 +5717,7 @@ export interface components {
                 skipped: number;
             };
             delivery?: {
+                /** @enum {string} */
                 status: "received" | "never_received" | "none_recent" | "waiting_for_test_event";
                 lastReceivedAt?: string;
                 sourceEvent?: string;
@@ -5000,6 +5727,10 @@ export interface components {
         TriggerFireAccepted: {
             triggerInstanceId: string;
             triggerEventId: string;
+            /**
+             * @description `triggered` = this call accepted and matched the event; `automationRunIds` lists the runs it started and `notStarted` any it could not. `replayed` = the same `Idempotency-Key` already fired; nothing ran twice.
+             * @enum {string}
+             */
             status: "triggered" | "replayed";
             automationRunIds: string[];
             notStarted?: {
@@ -5034,35 +5765,47 @@ export interface components {
             };
         };
         PayloadContractGetResponse: {
+            /** @enum {string} */
             subjectKind: "trigger";
             subjectId: string;
+            /** @enum {string} */
             source: "stored" | "derived_from_schema" | "derived_from_template";
             typeName: string;
             contractHash?: string;
             version?: number;
+            /** @enum {string} */
             enforcement?: "off" | "prune" | "strict";
+            /** @enum {string} */
             driftStatus?: "fresh" | "stale";
+            /** @enum {string} */
             format: "json";
             fields: components["schemas"]["PayloadContractStoredFieldNode"][];
         } | {
+            /** @enum {string} */
             subjectKind: "trigger";
             subjectId: string;
+            /** @enum {string} */
             source: "stored" | "derived_from_schema" | "derived_from_template";
             typeName: string;
             contractHash?: string;
             version?: number;
+            /** @enum {string} */
             enforcement?: "off" | "prune" | "strict";
+            /** @enum {string} */
             driftStatus?: "fresh" | "stale";
+            /** @enum {string} */
             format: "ts" | "zod" | "jsonschema" | "skill";
             content: string;
         };
         PayloadContractStoredFieldNode: {
             key: string;
+            /** @enum {string} */
             type: "string" | "int" | "float" | "boolean" | "date" | "enum" | "object" | "array" | "unknown";
             required: boolean;
             description?: string;
             exampleValue?: string | number | boolean;
             fallbackValue?: string | number | boolean;
+            /** @enum {string} */
             pii?: "none" | "low" | "high";
             secret?: boolean;
             syncToContact?: boolean;
@@ -5072,14 +5815,19 @@ export interface components {
             children?: components["schemas"]["PayloadContractStoredFieldNode"][];
         };
         PayloadContractPutResponse: {
+            /** @enum {string} */
             subjectKind: "trigger";
             subjectId: string;
+            /** @enum {string} */
             source: "stored" | "derived_from_schema" | "derived_from_template";
             typeName: string;
             contractHash?: string;
             version?: number;
+            /** @enum {string} */
             enforcement?: "off" | "prune" | "strict";
+            /** @enum {string} */
             driftStatus?: "fresh" | "stale";
+            /** @enum {string} */
             format: "json";
             fields: components["schemas"]["PayloadContractStoredFieldNode"][];
             warnings: components["schemas"]["ApiWarning"][];
@@ -5087,15 +5835,21 @@ export interface components {
         PayloadContractPutRequest: {
             fields?: components["schemas"]["PayloadContractFieldNode"][];
             name?: string;
+            /**
+             * @description How live fires use the contract. `off`: advisory only. `prune`: a fire that breaks a declared field is refused and undeclared keys are dropped. `strict`: undeclared keys are refused too. Omit to keep the current setting.
+             * @enum {string}
+             */
             enforcement?: "off" | "prune" | "strict";
         };
         PayloadContractFieldNode: {
             key: string;
+            /** @enum {string} */
             type: "string" | "int" | "float" | "boolean" | "date" | "enum" | "object" | "array" | "unknown";
             required: boolean;
             description?: string;
             exampleValue?: string | number | boolean;
             fallbackValue?: string | number | boolean;
+            /** @enum {string} */
             pii?: "none" | "low" | "high";
             secret?: boolean;
             syncToContact?: boolean;
@@ -5107,6 +5861,7 @@ export interface components {
         PayloadContractValidateResponse: {
             valid: boolean;
             errors: {
+                /** @enum {string} */
                 code: "payload_not_object" | "missing_required" | "invalid_type" | "unexpected_key" | "required_satisfied_by_fallback" | "invalid_email";
                 field: string;
                 message: string;
@@ -5114,6 +5869,7 @@ export interface components {
                 actualType?: string;
             }[];
             warnings: {
+                /** @enum {string} */
                 code: "payload_not_object" | "missing_required" | "invalid_type" | "unexpected_key" | "required_satisfied_by_fallback" | "invalid_email";
                 field: string;
                 message: string;
@@ -5124,6 +5880,7 @@ export interface components {
                 [key: string]: unknown;
             };
             prunedKeys: string[];
+            /** @enum {string} */
             source: "stored" | "derived_from_schema" | "derived_from_template";
             contractHash?: string;
         };
@@ -5131,6 +5888,10 @@ export interface components {
             payload: {
                 [key: string]: unknown;
             };
+            /**
+             * @description Check as this mode instead of the stored one: `prune` drops undeclared keys, `strict` reports them as errors. Omit for the stored mode (`prune` when enforcement is off).
+             * @enum {string}
+             */
             enforcement?: "prune" | "strict";
         };
         PayloadContractInferResponse: {
@@ -5143,14 +5904,17 @@ export interface components {
             example: {
                 [key: string]: unknown;
             };
+            /** @enum {string} */
             subjectKind?: "trigger";
         };
         TriggerInstancesListResponse: {
             data: {
                 triggerInstanceId: string;
+                /** @enum {string} */
                 source: "api" | "integration" | "brew_event";
                 provider?: string;
                 triggerEventId?: string;
+                /** @enum {string} */
                 state: "received" | "verified" | "matched" | "partially_fired" | "fired" | "rejected" | "dead_letter";
                 matchedAutomationIds: string[];
                 automationRunIds: string[];
@@ -5210,17 +5974,26 @@ export interface components {
                 lastName?: string;
                 subscribed?: boolean;
                 consent?: {
+                    /**
+                     * @description Who captured it: `api` (an API caller asserted it), `form` (a signup form), `import` (a bulk import), `app` (the in-app CSV wizard checkbox), `integration` (an integration sync such as Stripe created the contact; provenance only, not an opt-in).
+                     * @enum {string}
+                     */
                     source: "api" | "form" | "import" | "app" | "integration";
                     capturedAt: string;
                     policyVersion?: string;
                     evidence?: string;
                 };
+                /**
+                 * @description The latest verdict. `valid` only ever comes from a deliverability check (`validate: true` on ingest, or POST /v1/contacts/validate), which also sets `lastValidatedAt`. Without a check the free format check on ingest stores `risky` (disposable or role address) or `invalid`, and leaves the field unset otherwise: not validated.
+                 * @enum {string}
+                 */
                 validationStatus?: "valid" | "risky" | "invalid";
                 suppressed?: boolean;
                 suppressedReason?: string | null;
                 unsubscribedDomains?: string[];
                 lastValidatedAt?: string;
                 validationDetails?: {
+                    /** @enum {string} */
                     provider: "brew";
                     reason?: string;
                     didYouMean?: string;
@@ -5271,6 +6044,10 @@ export interface components {
                 [key: string]: unknown;
             };
             consent?: {
+                /**
+                 * @description Who captured it: `api`, `form`, or `import`. (`app` is reserved for the in-app CSV wizard.)
+                 * @enum {string}
+                 */
                 source: "api" | "form" | "import";
                 capturedAt?: string;
                 policyVersion?: string;
@@ -5288,6 +6065,10 @@ export interface components {
                     [key: string]: unknown;
                 };
                 consent?: {
+                    /**
+                     * @description Who captured it: `api`, `form`, or `import`. (`app` is reserved for the in-app CSV wizard.)
+                     * @enum {string}
+                     */
                     source: "api" | "form" | "import";
                     capturedAt?: string;
                     policyVersion?: string;
@@ -5296,6 +6077,10 @@ export interface components {
             }[];
             validate?: boolean;
             consent?: {
+                /**
+                 * @description Who captured it: `api`, `form`, or `import`. (`app` is reserved for the in-app CSV wizard.)
+                 * @enum {string}
+                 */
                 source: "api" | "form" | "import";
                 capturedAt?: string;
                 policyVersion?: string;
@@ -5309,17 +6094,26 @@ export interface components {
                 lastName?: string;
                 subscribed?: boolean;
                 consent?: {
+                    /**
+                     * @description Who captured it: `api` (an API caller asserted it), `form` (a signup form), `import` (a bulk import), `app` (the in-app CSV wizard checkbox), `integration` (an integration sync such as Stripe created the contact; provenance only, not an opt-in).
+                     * @enum {string}
+                     */
                     source: "api" | "form" | "import" | "app" | "integration";
                     capturedAt: string;
                     policyVersion?: string;
                     evidence?: string;
                 };
+                /**
+                 * @description The latest verdict. `valid` only ever comes from a deliverability check (`validate: true` on ingest, or POST /v1/contacts/validate), which also sets `lastValidatedAt`. Without a check the free format check on ingest stores `risky` (disposable or role address) or `invalid`, and leaves the field unset otherwise: not validated.
+                 * @enum {string}
+                 */
                 validationStatus?: "valid" | "risky" | "invalid";
                 suppressed?: boolean;
                 suppressedReason?: string | null;
                 unsubscribedDomains?: string[];
                 lastValidatedAt?: string;
                 validationDetails?: {
+                    /** @enum {string} */
                     provider: "brew";
                     reason?: string;
                     didYouMean?: string;
@@ -5353,6 +6147,10 @@ export interface components {
                 [key: string]: unknown;
             };
             consent?: {
+                /**
+                 * @description Who captured it: `api`, `form`, or `import`. (`app` is reserved for the in-app CSV wizard.)
+                 * @enum {string}
+                 */
                 source: "api" | "form" | "import";
                 capturedAt?: string;
                 policyVersion?: string;
@@ -5370,17 +6168,26 @@ export interface components {
                 lastName?: string;
                 subscribed?: boolean;
                 consent?: {
+                    /**
+                     * @description Who captured it: `api` (an API caller asserted it), `form` (a signup form), `import` (a bulk import), `app` (the in-app CSV wizard checkbox), `integration` (an integration sync such as Stripe created the contact; provenance only, not an opt-in).
+                     * @enum {string}
+                     */
                     source: "api" | "form" | "import" | "app" | "integration";
                     capturedAt: string;
                     policyVersion?: string;
                     evidence?: string;
                 };
+                /**
+                 * @description The latest verdict. `valid` only ever comes from a deliverability check (`validate: true` on ingest, or POST /v1/contacts/validate), which also sets `lastValidatedAt`. Without a check the free format check on ingest stores `risky` (disposable or role address) or `invalid`, and leaves the field unset otherwise: not validated.
+                 * @enum {string}
+                 */
                 validationStatus?: "valid" | "risky" | "invalid";
                 suppressed?: boolean;
                 suppressedReason?: string | null;
                 unsubscribedDomains?: string[];
                 lastValidatedAt?: string;
                 validationDetails?: {
+                    /** @enum {string} */
                     provider: "brew";
                     reason?: string;
                     didYouMean?: string;
@@ -5408,17 +6215,26 @@ export interface components {
             lastName?: string;
             subscribed?: boolean;
             consent?: {
+                /**
+                 * @description Who captured it: `api` (an API caller asserted it), `form` (a signup form), `import` (a bulk import), `app` (the in-app CSV wizard checkbox), `integration` (an integration sync such as Stripe created the contact; provenance only, not an opt-in).
+                 * @enum {string}
+                 */
                 source: "api" | "form" | "import" | "app" | "integration";
                 capturedAt: string;
                 policyVersion?: string;
                 evidence?: string;
             };
+            /**
+             * @description The latest verdict. `valid` only ever comes from a deliverability check (`validate: true` on ingest, or POST /v1/contacts/validate), which also sets `lastValidatedAt`. Without a check the free format check on ingest stores `risky` (disposable or role address) or `invalid`, and leaves the field unset otherwise: not validated.
+             * @enum {string}
+             */
             validationStatus?: "valid" | "risky" | "invalid";
             suppressed?: boolean;
             suppressedReason?: string | null;
             unsubscribedDomains?: string[];
             lastValidatedAt?: string;
             validationDetails?: {
+                /** @enum {string} */
                 provider: "brew";
                 reason?: string;
                 didYouMean?: string;
@@ -5450,17 +6266,26 @@ export interface components {
                 lastName?: string;
                 subscribed?: boolean;
                 consent?: {
+                    /**
+                     * @description Who captured it: `api` (an API caller asserted it), `form` (a signup form), `import` (a bulk import), `app` (the in-app CSV wizard checkbox), `integration` (an integration sync such as Stripe created the contact; provenance only, not an opt-in).
+                     * @enum {string}
+                     */
                     source: "api" | "form" | "import" | "app" | "integration";
                     capturedAt: string;
                     policyVersion?: string;
                     evidence?: string;
                 };
+                /**
+                 * @description The latest verdict. `valid` only ever comes from a deliverability check (`validate: true` on ingest, or POST /v1/contacts/validate), which also sets `lastValidatedAt`. Without a check the free format check on ingest stores `risky` (disposable or role address) or `invalid`, and leaves the field unset otherwise: not validated.
+                 * @enum {string}
+                 */
                 validationStatus?: "valid" | "risky" | "invalid";
                 suppressed?: boolean;
                 suppressedReason?: string | null;
                 unsubscribedDomains?: string[];
                 lastValidatedAt?: string;
                 validationDetails?: {
+                    /** @enum {string} */
                     provider: "brew";
                     reason?: string;
                     didYouMean?: string;
@@ -5509,11 +6334,23 @@ export interface components {
                 value: string;
             }[];
             audienceId?: string;
+            /**
+             * @default and
+             * @enum {string}
+             */
             logic?: "and" | "or" | "none";
             sort?: string;
+            /**
+             * @default desc
+             * @enum {string}
+             */
             order?: "asc" | "desc";
             count?: boolean;
             groupBy?: string[];
+            /**
+             * @description With `count: true`: also count per UTC `createdAt` day, week (Monday start) or month.
+             * @enum {string}
+             */
             bucket?: "day" | "week" | "month";
             limit?: number;
             cursor?: string;
@@ -5523,7 +6360,9 @@ export interface components {
             data: ({
                 email: string;
                 valid: boolean;
+                /** @enum {string} */
                 status: "valid" | "risky" | "invalid";
+                /** @enum {string} */
                 checkOutcome: "completed";
                 reason?: string;
                 didYouMean?: string;
@@ -5532,9 +6371,13 @@ export interface components {
                 isRole?: boolean;
             } | {
                 email: string;
+                /** @enum {boolean} */
                 valid: false;
+                /** @enum {string} */
                 status: "risky";
+                /** @enum {string} */
                 checkOutcome: "unavailable";
+                /** @enum {string} */
                 reason: "validation_unavailable";
             })[];
             persistence: {
@@ -5586,6 +6429,10 @@ export interface components {
             };
             validationJobId?: string;
             importId?: string;
+            /**
+             * @description Present on a dry run: the counts say what the import would do, and nothing was written.
+             * @enum {boolean}
+             */
             dryRun?: true;
         };
         ContactsImportCsvRequest: {
@@ -5595,14 +6442,26 @@ export interface components {
             };
             validate?: boolean;
             consent?: {
+                /**
+                 * @description Who captured it: `api`, `form`, or `import`. (`app` is reserved for the in-app CSV wizard.)
+                 * @enum {string}
+                 */
                 source: "api" | "form" | "import";
                 capturedAt?: string;
                 policyVersion?: string;
                 evidence?: string;
             };
+            /**
+             * @description Order for a date column whose dates read either way (`03/04/2026`): `day_first` is 3 April, `month_first` 4 March. A day over 12 in the column overrides it. Default month-first, with a DATE_ORDER_ASSUMED warning.
+             * @enum {string}
+             */
             dateOrder?: "month_first" | "day_first";
             fileName?: string;
             dryRun?: boolean;
+            /**
+             * @description `upsert` (default) updates existing contacts; `skip` only creates missing ones, leaving each existing contact unchanged (counted in `summary.skipped`, with a `CONTACT_EXISTS_SKIPPED` warning).
+             * @enum {string}
+             */
             onConflict?: "upsert" | "skip";
         };
         ContactsImportRequest: {
@@ -5615,6 +6474,10 @@ export interface components {
                     [key: string]: unknown;
                 };
                 consent?: {
+                    /**
+                     * @description Who captured it: `api`, `form`, or `import`. (`app` is reserved for the in-app CSV wizard.)
+                     * @enum {string}
+                     */
                     source: "api" | "form" | "import";
                     capturedAt?: string;
                     policyVersion?: string;
@@ -5623,6 +6486,10 @@ export interface components {
             }[];
             validate?: boolean;
             consent?: {
+                /**
+                 * @description Who captured it: `api`, `form`, or `import`. (`app` is reserved for the in-app CSV wizard.)
+                 * @enum {string}
+                 */
                 source: "api" | "form" | "import";
                 capturedAt?: string;
                 policyVersion?: string;
@@ -5630,6 +6497,10 @@ export interface components {
             };
             fileName?: string;
             dryRun?: boolean;
+            /**
+             * @description `upsert` (default) updates existing contacts; `skip` only creates missing ones, leaving each existing contact unchanged (counted in `summary.skipped`, with a `CONTACT_EXISTS_SKIPPED` warning).
+             * @enum {string}
+             */
             onConflict?: "upsert" | "skip";
         };
         ContactsBatchDeleteResponse: {
@@ -5642,6 +6513,7 @@ export interface components {
         FieldsGetResponse: {
             data: {
                 fieldName: string;
+                /** @enum {string} */
                 fieldType: "string" | "number" | "date" | "bool";
                 label?: string;
                 isCore?: boolean;
@@ -5667,6 +6539,7 @@ export interface components {
         };
         FieldsPostRequest: {
             fieldName: string;
+            /** @enum {string} */
             fieldType: "string" | "number" | "date" | "bool";
         };
         FieldsDeleteResponse: {
@@ -5680,18 +6553,22 @@ export interface components {
                 filters: {
                     filters: {
                         field: string;
+                        /** @enum {string} */
                         operator: "equals" | "not_equals" | "contains" | "not_contains" | "contains_any" | "not_contains_any" | "starts_with" | "ends_with" | "gt" | "gte" | "lt" | "lte" | "between" | "is_true" | "is_false" | "in" | "not_in" | "is_empty" | "not_exists" | "is_not_empty" | "exists" | "is_set" | "before" | "after" | "on_date";
                         value?: unknown;
                         type?: string;
                     }[];
+                    /** @enum {string} */
                     logicalOperator: "and" | "or";
                 };
                 count: number;
+                /** @enum {string} */
                 materializationStatus?: "pending" | "running" | "ready" | "failed";
                 createdAt: string;
                 updatedAt: string;
                 build?: {
                     jobId: string;
+                    /** @enum {string} */
                     status: "queued" | "running" | "completed" | "partially_completed" | "failed";
                     cohort: {
                         eventTypes: ("sent" | "delivered" | "delivery_delayed" | "opened" | "clicked" | "bounced" | "complained" | "failed" | "skipped" | "unsubscribed")[];
@@ -5710,6 +6587,7 @@ export interface components {
                     field: {
                         key: string;
                         label: string;
+                        /** @enum {string} */
                         type: "date";
                     };
                     counts: {
@@ -5733,18 +6611,22 @@ export interface components {
             filters: {
                 filters: {
                     field: string;
+                    /** @enum {string} */
                     operator: "equals" | "not_equals" | "contains" | "not_contains" | "contains_any" | "not_contains_any" | "starts_with" | "ends_with" | "gt" | "gte" | "lt" | "lte" | "between" | "is_true" | "is_false" | "in" | "not_in" | "is_empty" | "not_exists" | "is_not_empty" | "exists" | "is_set" | "before" | "after" | "on_date";
                     value?: unknown;
                     type?: string;
                 }[];
+                /** @enum {string} */
                 logicalOperator: "and" | "or";
             };
             count: number;
+            /** @enum {string} */
             materializationStatus?: "pending" | "running" | "ready" | "failed";
             createdAt: string;
             updatedAt: string;
             build?: {
                 jobId: string;
+                /** @enum {string} */
                 status: "queued" | "running" | "completed" | "partially_completed" | "failed";
                 cohort: {
                     eventTypes: ("sent" | "delivered" | "delivery_delayed" | "opened" | "clicked" | "bounced" | "complained" | "failed" | "skipped" | "unsubscribed")[];
@@ -5763,6 +6645,7 @@ export interface components {
                 field: {
                     key: string;
                     label: string;
+                    /** @enum {string} */
                     type: "date";
                 };
                 counts: {
@@ -5793,10 +6676,12 @@ export interface components {
             filters: {
                 filters: {
                     field: string;
+                    /** @enum {string} */
                     operator: "equals" | "not_equals" | "contains" | "not_contains" | "contains_any" | "not_contains_any" | "starts_with" | "ends_with" | "gt" | "gte" | "lt" | "lte" | "between" | "is_true" | "is_false" | "in" | "not_in" | "is_empty" | "not_exists" | "is_not_empty" | "exists" | "is_set" | "before" | "after" | "on_date";
                     value?: unknown;
                     type?: string;
                 }[];
+                /** @enum {string} */
                 logicalOperator: "and" | "or";
             };
         };
@@ -5806,18 +6691,22 @@ export interface components {
             filters: {
                 filters: {
                     field: string;
+                    /** @enum {string} */
                     operator: "equals" | "not_equals" | "contains" | "not_contains" | "contains_any" | "not_contains_any" | "starts_with" | "ends_with" | "gt" | "gte" | "lt" | "lte" | "between" | "is_true" | "is_false" | "in" | "not_in" | "is_empty" | "not_exists" | "is_not_empty" | "exists" | "is_set" | "before" | "after" | "on_date";
                     value?: unknown;
                     type?: string;
                 }[];
+                /** @enum {string} */
                 logicalOperator: "and" | "or";
             };
             count: number;
+            /** @enum {string} */
             materializationStatus: "pending" | "running" | "ready" | "failed";
             createdAt: string;
             updatedAt: string;
             build: {
                 jobId: string;
+                /** @enum {string} */
                 status: "queued" | "running" | "completed" | "partially_completed" | "failed";
                 cohort: {
                     eventTypes: ("sent" | "delivered" | "delivery_delayed" | "opened" | "clicked" | "bounced" | "complained" | "failed" | "skipped" | "unsubscribed")[];
@@ -5836,6 +6725,7 @@ export interface components {
                 field: {
                     key: string;
                     label: string;
+                    /** @enum {string} */
                     type: "date";
                 };
                 counts: {
@@ -5869,10 +6759,12 @@ export interface components {
             filters?: {
                 filters: {
                     field: string;
+                    /** @enum {string} */
                     operator: "equals" | "not_equals" | "contains" | "not_contains" | "contains_any" | "not_contains_any" | "starts_with" | "ends_with" | "gt" | "gte" | "lt" | "lte" | "between" | "is_true" | "is_false" | "in" | "not_in" | "is_empty" | "not_exists" | "is_not_empty" | "exists" | "is_set" | "before" | "after" | "on_date";
                     value?: unknown;
                     type?: string;
                 }[];
+                /** @enum {string} */
                 logicalOperator: "and" | "or";
             };
             addEmails?: string[];
@@ -5889,9 +6781,14 @@ export interface components {
                 domainUrl: string;
                 name: string;
                 region: string;
+                /** @enum {string} */
                 status: "not_started" | "pending" | "verified" | "failed" | "temporary_failure" | "partially_verified" | "partially_failed";
                 sendingEnabled: boolean;
                 sendable: boolean;
+                /**
+                 * @description marketing (default) or transactional. Transactional domains skip unsubscribe and send via automation sendEmail nodes (or a test send).
+                 * @enum {string}
+                 */
                 sendingPurpose: "marketing" | "transactional";
                 records: {
                     record: string;
@@ -5916,14 +6813,24 @@ export interface components {
         };
         DomainsPostRequest: {
             name: string;
+            /** @enum {string} */
             region?: "us-east-1";
             customReturnPath?: string;
+            /**
+             * @description marketing (default) for campaigns and audience sends, or transactional for event-triggered automation mail (no unsubscribe requirement).
+             * @default marketing
+             * @enum {string}
+             */
             sendingPurpose?: "marketing" | "transactional";
         };
         DomainsPatchRequest: {
             defaultSenderName?: string;
             defaultFromEmail?: string;
             defaultReplyToEmail?: string;
+            /**
+             * @description Change the domain purpose. Live gates fail closed if a campaign still points at a transactional domain; automation sends re-derive their class from the new purpose, so after a flip to transactional, published automations send with no unsubscribe link and to unsubscribed contacts.
+             * @enum {string}
+             */
             sendingPurpose?: "marketing" | "transactional";
         };
         DomainsDeleteResponse: {
@@ -5935,8 +6842,10 @@ export interface components {
             domainHost: string;
             data: {
                 email: string;
+                /** @enum {string} */
                 scope: "domain" | "all" | "both";
                 unsubscribedAt?: string;
+                /** @enum {string} */
                 source?: "link" | "one_click" | "api" | "import" | "manual";
                 sendId?: string;
             }[];
@@ -5958,6 +6867,7 @@ export interface components {
             };
             invalid: {
                 email: string;
+                /** @enum {string} */
                 code: "INVALID_EMAIL";
             }[];
         };
@@ -5999,14 +6909,19 @@ export interface components {
         DomainHealth: {
             domainId: string;
             name: string;
+            /** @enum {string} */
             status: "not_started" | "pending" | "verified" | "failed" | "temporary_failure" | "partially_verified" | "partially_failed";
             sendable: boolean;
+            /** @enum {string} */
             verdict: "healthy" | "at_risk" | "critical";
+            /** @enum {string} */
             readiness: "ready" | "ready_with_warnings" | "not_ready" | "checking" | "unknown";
             score: {
                 placementMeasured?: boolean;
                 value: number;
+                /** @enum {string} */
                 grade: "excellent" | "good" | "fair" | "poor" | "critical";
+                /** @enum {string} */
                 confidence: "high" | "medium" | "low";
                 components: {
                     placement: {
@@ -6036,17 +6951,22 @@ export interface components {
                     };
                 };
                 trend: {
+                    /** @enum {string} */
                     direction: "up" | "down" | "flat";
                     previousScore: number;
                     previousComputedAt: string;
                 } | null;
             };
             authentication: {
+                /** @enum {string} */
                 spf: "verified" | "pending" | "failed" | "missing";
+                /** @enum {string} */
                 dkim: "verified" | "pending" | "failed" | "missing";
+                /** @enum {string} */
                 dmarc: "verified" | "pending" | "missing";
             };
             tracking: {
+                /** @enum {string} */
                 linksStatus?: "live" | "no_cert" | "unreachable" | "unknown";
                 openTracking?: boolean;
                 clickTracking?: boolean;
@@ -6064,6 +6984,7 @@ export interface components {
                 sent: number;
             }[];
             domainActivity: {
+                /** @enum {boolean} */
                 sampled: true;
                 sampleSendCount: number;
                 sentCount: number;
@@ -6074,6 +6995,7 @@ export interface components {
                 complaintRate: number | null;
             } | null;
             orgReputation: {
+                /** @enum {string} */
                 scope: "org";
                 totalSent: number;
                 bounceRate: number | null;
@@ -6082,7 +7004,9 @@ export interface components {
             recentPlacementTests: {
                 testId: string;
                 emailId: string;
+                /** @enum {string} */
                 status: "queued" | "running" | "completed" | "partially_completed" | "failed";
+                /** @enum {string} */
                 phase?: "sending" | "collecting";
                 overall: {
                     total: number;
@@ -6102,7 +7026,9 @@ export interface components {
                 createdAt: string;
             }[];
             signals: {
+                /** @enum {string} */
                 id: "domain_not_verified" | "dns_record_failed" | "dmarc_missing" | "dmarc_invalid" | "sending_disabled" | "tracking_links_broken" | "high_bounce_rate" | "high_complaint_rate" | "placement_spam_heavy" | "content_spam_filter_flagged" | "auth_failing_in_tests" | "placement_baseline_spam" | "content_image_weight_penalty" | "content_promotional_penalty" | "content_promotions_tab_shift" | "warmup_paused" | "org_reputation_restricted";
+                /** @enum {string} */
                 severity: "critical" | "warning" | "info";
                 summary: string;
                 suggestion: string;
@@ -6114,8 +7040,11 @@ export interface components {
             checkedAt: string;
             scoreHistory?: {
                 score: number;
+                /** @enum {string} */
                 grade: "excellent" | "good" | "fair" | "poor" | "critical";
+                /** @enum {string} */
                 confidence: "high" | "medium" | "low";
+                /** @enum {string} */
                 trigger: "placement_test" | "domain_verified" | "domain_score_run" | "health_read";
                 computedAt: string;
                 components: {
@@ -6143,17 +7072,24 @@ export interface components {
             }[];
             scoreRuns?: {
                 runId: string;
+                /** @enum {string} */
                 trigger: "domain_verified" | "manual";
+                /** @enum {string} */
                 status: "queued" | "running" | "completed" | "partially_completed" | "failed";
+                /** @enum {string} */
                 phase?: "preparing" | "collecting";
                 scoreAfter: {
                     score: number;
+                    /** @enum {string} */
                     grade: "excellent" | "good" | "fair" | "poor" | "critical";
                 } | null;
                 creditsCharged: number;
                 variants: {
+                    /** @enum {string} */
                     variant: "plain_text" | "text_forward" | "balanced" | "image_heavy" | "promotional";
+                    /** @enum {string} */
                     status?: "queued" | "running" | "completed" | "partially_completed" | "failed";
+                    /** @enum {string} */
                     phase?: "sending" | "collecting";
                     testId?: string;
                     emailId?: string;
@@ -6194,7 +7130,9 @@ export interface components {
                     logo?: string;
                 };
                 title: string;
+                /** @enum {string} */
                 type: "newsletter" | "signup";
+                /** @enum {string} */
                 kind?: "onboarding" | "trial" | "events" | "product_updates" | "promotions";
                 category: string;
                 categoryLabel: string;
@@ -6204,6 +7142,7 @@ export interface components {
                 previewImages: string[];
                 publishedAt: string;
                 updatedAt: string;
+                /** @enum {string} */
                 anchor?: "submittedAt" | "signedUpAt" | "verifiedAt" | "firstEmail";
                 steps?: {
                     order: number;
@@ -6229,6 +7168,7 @@ export interface components {
         BrandGetResponse: {
             brandId: string;
             domain: string;
+            /** @enum {string} */
             status: "extracting" | "completed" | "failed" | "deleting";
             ready: boolean;
             progress?: number;
@@ -6276,6 +7216,7 @@ export interface components {
         BrandImagesResponse: {
             data: {
                 assetId: string;
+                /** @enum {string} */
                 kind: "logo" | "brand" | "generated";
                 url: string;
                 description?: string;
@@ -6305,6 +7246,7 @@ export interface components {
             data: {
                 brandId: string;
                 domain: string;
+                /** @enum {string} */
                 status: "extracting" | "completed" | "failed" | "deleting";
                 ready: boolean;
                 progress?: number;
@@ -6322,6 +7264,7 @@ export interface components {
         BrandsCreateResponse: {
             brandId: string;
             domain: string;
+            /** @enum {string} */
             status: "extracting" | "completed" | "failed" | "deleting";
             ready: boolean;
             progress?: number;
@@ -6344,6 +7287,7 @@ export interface components {
         BrandGetByIdResponse: {
             brandId: string;
             domain: string;
+            /** @enum {string} */
             status: "extracting" | "completed" | "failed" | "deleting";
             ready: boolean;
             progress?: number;
@@ -6360,7 +7304,9 @@ export interface components {
         };
         ContentGenerateImageRequest: {
             prompt?: string;
+            /** @enum {string} */
             mode?: "text-to-image" | "image-editing";
+            /** @enum {string} */
             aspectRatio?: "16:9" | "3:2" | "4:3" | "1:1" | "4:5" | "2:3" | "3:4" | "9:16";
             image1?: string;
             image2?: string;
@@ -6368,8 +7314,11 @@ export interface components {
                 brandName: string;
                 headline: string;
                 cta: string;
+                /** @enum {string} */
                 format: "1:1" | "4:5" | "9:16" | "16:9";
+                /** @enum {string} */
                 archetype: "product-ui-card" | "mascot" | "flat-illustration" | "abstract-brand" | "type-led" | "photo-ui-overlay" | "conceptual-3d" | "gradient-field" | "editorial-photo" | "collage" | "isometric-blueprint" | "data-viz";
+                /** @enum {string} */
                 layout?: "split-right" | "split-left" | "stacked-center" | "visual-first" | "type-poster" | "immersive-field" | "layered-collage" | "badge-offer" | "diagonal-stage" | "editorial-grid";
                 eyebrow?: string;
                 subjectImageUrl?: string;
@@ -6399,21 +7348,32 @@ export interface components {
             loop?: boolean;
         };
         ContentGifRequest: {
+            /** @enum {string} */
             from: "prompt";
             prompt: string;
             frameCount?: number;
             fps?: number;
+            /**
+             * @description The GIF's shape (default 16:9): 768×432, 432×768 or 640×640.
+             * @enum {string}
+             */
             aspectRatio?: "16:9" | "9:16" | "1:1";
             loop?: boolean;
         } | {
+            /** @enum {string} */
             from: "image";
             imageUrl: string;
             prompt?: string;
             frameCount?: number;
             fps?: number;
+            /**
+             * @description The GIF's shape (default 16:9): 768×432, 432×768 or 640×640.
+             * @enum {string}
+             */
             aspectRatio?: "16:9" | "9:16" | "1:1";
             loop?: boolean;
         } | {
+            /** @enum {string} */
             from: "video";
             videoUrl: string;
             fps?: number;
@@ -6428,17 +7388,22 @@ export interface components {
             fallbackUsed?: boolean;
         };
         ContentTransformRequest: {
+            /** @enum {string} */
             operation: "optimize";
             imageUrl: string;
         } | {
+            /** @enum {string} */
             operation: "resize";
             imageUrl: string;
             width: number;
             height: number;
             prompt?: string;
+            /** @enum {string} */
             resolution?: "1K" | "2K" | "4K";
+            /** @enum {string} */
             outputFormat?: "png" | "jpeg" | "webp";
         } | {
+            /** @enum {string} */
             operation: "remove_background";
             imageUrl: string;
         };
@@ -6478,6 +7443,10 @@ export interface components {
         };
         ContentImageUploadCreateRequest: {
             fileName: string;
+            /**
+             * @description The file type: image/png, image/jpeg, image/gif, image/webp, image/avif, image/tiff or image/svg+xml. It sets the size cap (2 MB for SVG). The bytes decide what is converted: a declared type that differs is ignored, and bytes that are none of these formats are refused when the image is added.
+             * @enum {string}
+             */
             contentType: "image/jpeg" | "image/png" | "image/gif" | "image/webp" | "image/avif" | "image/tiff" | "image/svg+xml";
             size: number;
         };
@@ -6513,12 +7482,17 @@ export interface components {
         };
         IntegrationsListResponse: {
             data: {
+                /** @enum {string} */
                 provider: "braze" | "brevo" | "clerk" | "customerio" | "figma" | "framer" | "slack" | "hubspot" | "typeform" | "klaviyo" | "iterable" | "postmark" | "onesignal" | "mailgun" | "sendgrid" | "mailjet" | "mailchimp" | "loops" | "stripe" | "stytch" | "supabase" | "workos" | "shopify" | "revenuecat" | "notion" | "posthog" | "webflow" | "campaignmonitor";
                 name: string;
+                /** @enum {string} */
                 category: "data_in" | "data_out";
                 connected: boolean;
+                /** @enum {boolean} */
                 comingSoon?: true;
+                /** @enum {boolean} */
                 inviteOnly?: true;
+                /** @enum {boolean} */
                 paused?: true;
                 installationCount?: number;
                 capabilities?: {
@@ -6540,8 +7514,13 @@ export interface components {
                 eventKey: string;
                 title: string;
                 label?: string;
+                /** @enum {string} */
                 kind: "standard" | "custom" | "action" | "derived" | "observed";
                 category?: string;
+                /**
+                 * @description The lifecycle stage Brew inferred (a brand member’s correction wins).
+                 * @enum {string}
+                 */
                 stage?: "signup" | "activation" | "engagement" | "conversion" | "retention" | "churn_risk" | "none";
                 modelRoles: ("signup" | "activation" | "conversion" | "key_event")[];
                 volume30d?: number;
@@ -6551,6 +7530,7 @@ export interface components {
             sources: {
                 sourceId: string;
                 provider: string;
+                /** @enum {string} */
                 mode: "static_catalog" | "tenant_catalog";
                 definitionCount: number;
                 isTruncated: boolean;
@@ -6569,8 +7549,13 @@ export interface components {
             eventKey: string;
             title: string;
             label?: string;
+            /** @enum {string} */
             kind: "standard" | "custom" | "action" | "derived" | "observed";
             category?: string;
+            /**
+             * @description The lifecycle stage Brew inferred (a brand member’s correction wins).
+             * @enum {string}
+             */
             stage?: "signup" | "activation" | "engagement" | "conversion" | "retention" | "churn_risk" | "none";
             modelRoles: ("signup" | "activation" | "conversion" | "key_event")[];
             volume30d?: number;
@@ -6581,12 +7566,20 @@ export interface components {
             properties: {
                 key: string;
                 variable: string;
+                /**
+                 * @description `event`: a value the event carried. `person`: the person’s value when it fired.
+                 * @enum {string}
+                 */
                 scope: "event" | "person";
                 type: string;
                 description?: string;
                 isPersonal: boolean;
                 isPersonalization: boolean;
             }[];
+            /**
+             * @description `current`: listed with the event or read in the last day. `stored`: the provider could not be read now; these are its last description. `rate_limited`: its read budget is spent; these are what Brew stored, possibly none (read again after `retryAfterSeconds`). `unavailable`: not read, and none stored.
+             * @enum {string}
+             */
             propertiesStatus: "current" | "stored" | "rate_limited" | "unavailable";
             retryAfterSeconds?: number;
         };
@@ -6597,6 +7590,7 @@ export interface components {
                 keyPreview: string;
                 createdAt: string;
                 lastUsedAt?: string;
+                /** @enum {string} */
                 status: "active" | "revoked";
                 brandId?: string;
                 permissions: string[];
@@ -6624,6 +7618,7 @@ export interface components {
             revokedAt?: string;
         };
         HealthResponse: {
+            /** @enum {string} */
             status: "ok";
             version: string;
         };
@@ -6636,7 +7631,15 @@ export interface components {
                 title: string | null;
                 firstUserPrompt: string | null;
                 lastAssistantPreview: string | null;
+                /**
+                 * @description `streaming` or `background_finalizing` while a run is still going; null before the first run.
+                 * @enum {string|null}
+                 */
                 status: "idle" | "streaming" | "background_finalizing" | "completed" | "failed" | "interrupted" | "stopped" | "persistence_failed" | null;
+                /**
+                 * @description The chat app the conversation started in; null for the Brew web app.
+                 * @enum {string|null}
+                 */
                 origin: "slack" | "teams" | "google-chat" | "telegram" | null;
                 updatedAt: string;
                 url: string;
@@ -6650,7 +7653,9 @@ export interface components {
         NotificationList: {
             data: {
                 notificationId: string;
+                /** @enum {string} */
                 type: "webhook_attention" | "chat_stream" | "import_job" | "brand_image_import" | "validation_job" | "email_sent" | "email_scheduled" | "preview_email" | "brand_extracted" | "domain_status" | "domain_score_run" | "api_key_created" | "email_send_failed" | "gradual_send_paused" | "gradual_send_completed" | "send_limit_reached" | "trial_ending" | "trial_expired" | "payment_failed" | "automation_pause_window_closed" | "send_review_rejected" | "comment_mention" | "comment_reply" | "integration_attention";
+                /** @enum {string} */
                 status: "uploading" | "preparing" | "processing" | "finalizing" | "streaming" | "background_finalizing" | "completed" | "partial" | "failed" | "interrupted" | "stopped" | "persistence_failed";
                 title: string;
                 subtitle: string;
@@ -6675,10 +7680,13 @@ export interface components {
             data: {
                 commentId: string;
                 emailId: string;
+                /** @enum {string} */
                 status: "open";
                 target: {
+                    /** @enum {string} */
                     kind: "email";
                 } | {
+                    /** @enum {string} */
                     kind: "element";
                     elementId?: string;
                     nodeType?: string;
@@ -6859,6 +7867,7 @@ export interface operations {
                         endpoint: string;
                         events: ("email.sent" | "email.delivered" | "email.delivery_delayed" | "email.bounced" | "email.complained" | "email.failed" | "email.opened" | "email.clicked")[];
                         description: string;
+                        /** @enum {string} */
                         status: "enabled" | "disabled";
                         created_at: string;
                         signing_secret: string;
@@ -7163,6 +8172,7 @@ export interface operations {
                     endpoint?: string;
                     events?: ("email.sent" | "email.delivered" | "email.delivery_delayed" | "email.bounced" | "email.complained" | "email.failed" | "email.opened" | "email.clicked")[];
                     description?: string;
+                    /** @enum {string} */
                     status?: "enabled" | "disabled";
                 };
             };
@@ -7407,6 +8417,7 @@ export interface operations {
                         data: {
                             id: string;
                             payload: {
+                                /** @enum {string} */
                                 type: "email.sent";
                                 created_at: string;
                                 data: {
@@ -7420,16 +8431,19 @@ export interface operations {
                                     };
                                     brew: {
                                         event_id: string;
+                                        /** @enum {number} */
                                         schema_version: 1;
                                         recipient?: string;
                                         send_id?: string;
                                         design_id?: string;
                                         automation_id?: string;
                                         provider_message_id?: string;
+                                        /** @enum {boolean} */
                                         test?: true;
                                     };
                                 };
                             } | {
+                                /** @enum {string} */
                                 type: "email.delivered";
                                 created_at: string;
                                 data: {
@@ -7443,16 +8457,19 @@ export interface operations {
                                     };
                                     brew: {
                                         event_id: string;
+                                        /** @enum {number} */
                                         schema_version: 1;
                                         recipient?: string;
                                         send_id?: string;
                                         design_id?: string;
                                         automation_id?: string;
                                         provider_message_id?: string;
+                                        /** @enum {boolean} */
                                         test?: true;
                                     };
                                 };
                             } | {
+                                /** @enum {string} */
                                 type: "email.delivery_delayed";
                                 created_at: string;
                                 data: {
@@ -7466,16 +8483,19 @@ export interface operations {
                                     };
                                     brew: {
                                         event_id: string;
+                                        /** @enum {number} */
                                         schema_version: 1;
                                         recipient?: string;
                                         send_id?: string;
                                         design_id?: string;
                                         automation_id?: string;
                                         provider_message_id?: string;
+                                        /** @enum {boolean} */
                                         test?: true;
                                     };
                                 };
                             } | {
+                                /** @enum {string} */
                                 type: "email.complained";
                                 created_at: string;
                                 data: {
@@ -7489,16 +8509,19 @@ export interface operations {
                                     };
                                     brew: {
                                         event_id: string;
+                                        /** @enum {number} */
                                         schema_version: 1;
                                         recipient?: string;
                                         send_id?: string;
                                         design_id?: string;
                                         automation_id?: string;
                                         provider_message_id?: string;
+                                        /** @enum {boolean} */
                                         test?: true;
                                     };
                                 };
                             } | {
+                                /** @enum {string} */
                                 type: "email.bounced";
                                 created_at: string;
                                 data: {
@@ -7512,12 +8535,14 @@ export interface operations {
                                     };
                                     brew: {
                                         event_id: string;
+                                        /** @enum {number} */
                                         schema_version: 1;
                                         recipient?: string;
                                         send_id?: string;
                                         design_id?: string;
                                         automation_id?: string;
                                         provider_message_id?: string;
+                                        /** @enum {boolean} */
                                         test?: true;
                                     };
                                     bounce?: {
@@ -7528,6 +8553,7 @@ export interface operations {
                                     };
                                 };
                             } | {
+                                /** @enum {string} */
                                 type: "email.failed";
                                 created_at: string;
                                 data: {
@@ -7541,12 +8567,14 @@ export interface operations {
                                     };
                                     brew: {
                                         event_id: string;
+                                        /** @enum {number} */
                                         schema_version: 1;
                                         recipient?: string;
                                         send_id?: string;
                                         design_id?: string;
                                         automation_id?: string;
                                         provider_message_id?: string;
+                                        /** @enum {boolean} */
                                         test?: true;
                                     };
                                     failed?: {
@@ -7554,6 +8582,7 @@ export interface operations {
                                     };
                                 };
                             } | {
+                                /** @enum {string} */
                                 type: "email.opened";
                                 created_at: string;
                                 data: {
@@ -7567,12 +8596,14 @@ export interface operations {
                                     };
                                     brew: {
                                         event_id: string;
+                                        /** @enum {number} */
                                         schema_version: 1;
                                         recipient?: string;
                                         send_id?: string;
                                         design_id?: string;
                                         automation_id?: string;
                                         provider_message_id?: string;
+                                        /** @enum {boolean} */
                                         test?: true;
                                     };
                                     open?: {
@@ -7582,6 +8613,7 @@ export interface operations {
                                     };
                                 };
                             } | {
+                                /** @enum {string} */
                                 type: "email.clicked";
                                 created_at: string;
                                 data: {
@@ -7595,12 +8627,14 @@ export interface operations {
                                     };
                                     brew: {
                                         event_id: string;
+                                        /** @enum {number} */
                                         schema_version: 1;
                                         recipient?: string;
                                         send_id?: string;
                                         design_id?: string;
                                         automation_id?: string;
                                         provider_message_id?: string;
+                                        /** @enum {boolean} */
                                         test?: true;
                                     };
                                     click?: {
@@ -7611,6 +8645,7 @@ export interface operations {
                                     };
                                 };
                             } | null;
+                            /** @enum {string} */
                             status: "succeeded" | "pending" | "failed" | "sending" | "canceled";
                             created_at: string;
                             next_attempt_at: string | null;
@@ -7723,6 +8758,7 @@ export interface operations {
                         data: {
                             id: string;
                             event_id: string;
+                            /** @enum {string} */
                             status: "succeeded" | "pending" | "failed" | "sending" | "canceled";
                             response_status: number;
                             response: string;
@@ -7836,6 +8872,7 @@ export interface operations {
                 content: {
                     "application/json": {
                         id: string;
+                        /** @enum {boolean} */
                         accepted: true;
                     };
                 };
@@ -7942,6 +8979,7 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
+                    /** @enum {string} */
                     type: "email.sent" | "email.delivered" | "email.delivery_delayed" | "email.bounced" | "email.complained" | "email.failed" | "email.opened" | "email.clicked";
                 };
             };
@@ -7958,6 +8996,7 @@ export interface operations {
                 content: {
                     "application/json": {
                         id: string;
+                        /** @enum {boolean} */
                         accepted: true;
                     };
                 };
@@ -9520,15 +10559,22 @@ export interface operations {
                         previewId: string;
                         emailId: string;
                         emailVersionId?: string;
+                        /**
+                         * @description The job: `queued` or `running` until every client settles, then `completed`, `partially_completed` (some screenshots failed) or `failed`.
+                         * @enum {string}
+                         */
                         status: "queued" | "running" | "completed" | "partially_completed" | "failed";
                         previews: {
                             id: string;
                             label: string;
+                            /** @enum {string} */
                             category: "gmail" | "outlook" | "apple" | "yahoo" | "other";
                             os: string;
                             dark: boolean;
+                            /** @enum {string} */
                             status: "running" | "completed" | "failed";
                             imageUrl: string | null;
+                            /** @enum {string} */
                             reason?: "pending" | "upstream_unavailable" | "unsupported_client" | "render_failed" | "rehost_failed" | "expired" | "submission_unknown" | "authorization_changed" | "snapshot_unavailable";
                             retryable: boolean;
                         }[];
@@ -9538,6 +10584,7 @@ export interface operations {
                         nextPollAfterMs: number;
                         credits: {
                             cost: number;
+                            /** @enum {string} */
                             status: "reserved" | "settled" | "released";
                         };
                     };
@@ -9979,6 +11026,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
+                        /** @enum {number} */
                         schemaVersion: 1;
                         rulesetVersion: string;
                         auditId: string;
@@ -9986,9 +11034,12 @@ export interface operations {
                         auditedAt: string;
                         expiresAt: string;
                         policy: {
+                            /** @enum {string} */
                             purpose: "marketing" | "transactional" | "unknown";
+                            /** @enum {string} */
                             source: "provided" | "defaulted" | "trusted_adapter" | "inferred";
                             confidence?: number;
+                            /** @enum {string} */
                             unsubscribe: "required" | "not_required" | "not_evaluated";
                         };
                         summary: {
@@ -10000,21 +11051,28 @@ export interface operations {
                         };
                         checks: ({
                             id: string;
+                            /** @enum {string} */
                             status: "passed";
                             durationMs: number;
+                            /** @enum {number} */
                             findingCount: 0;
                         } | {
                             id: string;
+                            /** @enum {string} */
                             status: "issues";
                             durationMs: number;
                             findingCount: number;
                         } | {
                             id: string;
+                            /** @enum {string} */
                             status: "not_applicable";
+                            /** @enum {string} */
                             reason: "no_remote_links" | "no_remote_images" | "no_remote_assets" | "missing_copy" | "requires_sending_domain" | "send_transport_owned" | "requires_audience_context" | "separate_deliverability_test" | "transactional_purpose" | "unknown_purpose";
                         } | {
                             id: string;
+                            /** @enum {string} */
                             status: "unavailable";
+                            /** @enum {string} */
                             reason: "timeout" | "upstream" | "invalid_response";
                             retryable: boolean;
                             durationMs: number;
@@ -10025,12 +11083,14 @@ export interface operations {
                             imageCount: number;
                             gifCount: number;
                             loadedSize: {
+                                /** @enum {string} */
                                 status: "exact";
                                 htmlBytes: number;
                                 remoteAssetBytes: number;
                                 totalBytes: number;
                                 assetCount: number;
                             } | {
+                                /** @enum {string} */
                                 status: "lower_bound";
                                 htmlBytes: number;
                                 knownRemoteAssetBytes: number;
@@ -10041,8 +11101,11 @@ export interface operations {
                         findings: {
                             id: string;
                             ruleId: string;
+                            /** @enum {string} */
                             category: "compliance" | "links" | "images" | "accessibility" | "compatibility" | "copy" | "size" | "markup";
+                            /** @enum {string} */
                             severity: "blocker" | "error" | "warning" | "info";
+                            /** @enum {string} */
                             impact: "block" | "confirm" | "advisory";
                             message: string;
                             remediation: string;
@@ -10053,32 +11116,42 @@ export interface operations {
                                 url?: string;
                             }[];
                             evidence?: {
+                                /** @enum {string} */
                                 kind: "http";
                                 status: number | null;
+                                /** @enum {string} */
                                 failure?: "dns" | "tls" | "connect" | "timeout" | "private_host" | "redirects";
                             } | {
+                                /** @enum {string} */
                                 kind: "clients";
                                 unsupported: string[];
                             } | {
+                                /** @enum {string} */
                                 kind: "judgment";
                                 question: string;
                                 probability: number;
                             };
                             target: {
+                                /** @enum {string} */
                                 kind: "email";
                             } | {
+                                /** @enum {string} */
                                 kind: "subject";
                             } | {
+                                /** @enum {string} */
                                 kind: "preview_text";
                             } | {
+                                /** @enum {string} */
                                 kind: "link";
                                 index: number;
                                 displayUrl: string;
                             } | {
+                                /** @enum {string} */
                                 kind: "image";
                                 index: number;
                                 displayUrl: string;
                             } | {
+                                /** @enum {string} */
                                 kind: "element";
                                 selector: string;
                             };
@@ -10086,11 +11159,15 @@ export interface operations {
                         totalFindings: number;
                         findingsTruncated: boolean;
                         completion: {
+                            /** @enum {string} */
                             status: "complete";
+                            /** @enum {string} */
                             readiness: "ready" | "needs_review" | "not_ready";
                             score: number;
                         } | {
+                            /** @enum {string} */
                             status: "partial";
+                            /** @enum {string} */
                             readiness: "unknown" | "not_ready";
                             score: null;
                         };
@@ -10189,15 +11266,22 @@ export interface operations {
                         previewId: string;
                         emailId: string;
                         emailVersionId?: string;
+                        /**
+                         * @description The job: `queued` or `running` until every client settles, then `completed`, `partially_completed` (some screenshots failed) or `failed`.
+                         * @enum {string}
+                         */
                         status: "queued" | "running" | "completed" | "partially_completed" | "failed";
                         previews: {
                             id: string;
                             label: string;
+                            /** @enum {string} */
                             category: "gmail" | "outlook" | "apple" | "yahoo" | "other";
                             os: string;
                             dark: boolean;
+                            /** @enum {string} */
                             status: "running" | "completed" | "failed";
                             imageUrl: string | null;
+                            /** @enum {string} */
                             reason?: "pending" | "upstream_unavailable" | "unsupported_client" | "render_failed" | "rehost_failed" | "expired" | "submission_unknown" | "authorization_changed" | "snapshot_unavailable";
                             retryable: boolean;
                         }[];
@@ -10207,6 +11291,7 @@ export interface operations {
                         nextPollAfterMs: number;
                         credits: {
                             cost: number;
+                            /** @enum {string} */
                             status: "reserved" | "settled" | "released";
                         };
                     };
@@ -10285,9 +11370,11 @@ export interface operations {
             content: {
                 "application/json": {
                     target: {
+                        /** @enum {string} */
                         type: "group";
                         groupId: string;
                     } | {
+                        /** @enum {string} */
                         type: "email";
                         emailId: string;
                     };
@@ -10472,6 +11559,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
+                        /** @enum {boolean} */
                         revoked: true;
                     };
                 };
@@ -18280,6 +19368,7 @@ export interface operations {
                         };
                     } | {
                         count: number;
+                        /** @enum {string} */
                         groupBy?: "brand" | "category" | "group";
                         groups?: {
                             value: string;
@@ -18382,6 +19471,7 @@ export interface operations {
                         html?: string;
                         content?: {
                             url: string;
+                            /** @enum {string} */
                             mimeType: "text/html";
                             bytes: number;
                         };
@@ -20689,6 +21779,7 @@ export interface operations {
                         updatedAt: string | null;
                         messageCount: number;
                         artifacts: {
+                            /** @enum {string} */
                             type: "email" | "automation";
                             id: string;
                             title: string;
@@ -20696,6 +21787,7 @@ export interface operations {
                         }[];
                         triggerEventIds: string[];
                         recentMessages: {
+                            /** @enum {string} */
                             role: "user" | "assistant" | "system";
                             text: string;
                         }[];

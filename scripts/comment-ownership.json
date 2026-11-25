@@ -1,0 +1,10 @@
+{
+  "fixtures": [],
+  "generated": [
+    "bun.lock",
+    "docs/commands/README.md",
+    "openapi/public-api-v1.yaml",
+    "src/generated/"
+  ],
+  "markers": {}
+}

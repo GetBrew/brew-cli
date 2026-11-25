@@ -26,6 +26,8 @@ jobs:
           node-version: 22
           registry-url: https://registry.npmjs.org
       - run: bun install --frozen-lockfile
+      - name: Install comment parsers
+        run: bun run comments:setup
       - name: Verify tag matches package.json
         run: |
           PKG_V=$(node -p "require('./package.json').version")

@@ -35,11 +35,12 @@ this build lacks (update the CLI); auth/reachability failures name the fix.
   required · 130/143 interrupted by SIGINT/SIGTERM. Errors are JSON
   envelopes on stderr with stable `code`s and `requestId`.
 - A write that ends `CLI_TIMEOUT`, `CLI_CONNECTION` or `CLI_INTERRUPTED`
-  (or a 5xx) may still complete on the server. Re-run the envelope's
-  `retryCommand` — it carries the same `--idempotency-key`, so the API
-  replays the first attempt instead of running it twice. Never re-run the
-  original command with a fresh key. A `409 IDEMPOTENCY_IN_PROGRESS` means
-  the first attempt is still running: wait, then re-run `retryCommand`.
+  (or a 5xx) may still complete on the server. Check the command's replay
+  contract in its help or manifest. For replay-protected writes, use the
+  envelope's `retryCommand` with the same idempotency key. A
+  `409 IDEMPOTENCY_IN_PROGRESS` means wait before retrying. For non-replaying
+  writes, reconcile the outcome before repeating the operation; an
+  `--idempotency-key` flag alone does not guarantee replay protection.
   While the API's idempotency store is degraded, writes other than sends
   run without the replay guarantee: for a write that must not happen
   twice, pass `--max-retries 0` and check whether it landed before re-running.
@@ -56,8 +57,8 @@ this build lacks (update the CLI); auth/reachability failures name the fix.
   `details.recipients`.
 - `--input '<json>'` (or `-` for stdin) carries full request bodies;
   positional ids always win over `--input`. `--all` drains pagination.
-  `--idempotency-key` makes POST retries safe (except `api-keys create`,
-  whose route never replays).
+  Replay safety follows the command contract, including for commands that
+  accept `--idempotency-key`.
 - Every collection with ids to look up has a real detail read (`<group> get
   <id>`) returning the BARE row; list routes reject id filters
   (`notifications list` and `emails comments list` are list-only). Runs, sends, audience builds and

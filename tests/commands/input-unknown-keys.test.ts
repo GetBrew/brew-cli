@@ -26,6 +26,30 @@ function cli(
 }
 
 describe('unknown --input keys', () => {
+  it.each(['inline', 'stdin'])(
+    'keeps customized input help checked: %s',
+    async (mode) => {
+      let sent = false
+      server.use(
+        http.patch(`${API}/v1/brand`, () => {
+          sent = true
+          return HttpResponse.json({ brand: { name: 'Brew' } })
+        })
+      )
+      const input = JSON.stringify({
+        identity: { tagline: 'New tagline' },
+        emailDesgin: 'Design',
+      })
+      const result = await cli(
+        ['brand', 'update', '--input', mode === 'stdin' ? '-' : input],
+        mode === 'stdin' ? { stdin: input } : {}
+      )
+      expect(result.code).toBe(2)
+      expect(result.stderr).toContain('emailDesgin')
+      expect(sent).toBe(false)
+    }
+  )
+
   it('refuses an unknown key on a query read and suggests the near one', async () => {
     const result = await cli([
       'analytics',
@@ -129,7 +153,7 @@ describe('input key coverage', () => {
     (spec) =>
       spec.inputKeys !== 'unchecked' &&
       spec.route !== undefined &&
-      (spec.flags ?? []).includes(INPUT_FLAG)
+      (spec.flags ?? []).some((flag) => flag.flag === INPUT_FLAG.flag)
   )
 
   it('maps every checked --input command to its route’s keys', () => {
