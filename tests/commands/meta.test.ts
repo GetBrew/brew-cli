@@ -1,9 +1,9 @@
-import { mkdtempSync } from 'node:fs'
+import { mkdtempSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { HttpResponse, http } from 'msw'
 import { describe, expect, it } from 'vitest'
-import { readConfig } from '../../src/lib/config-store'
+import { configPath, readConfig, writeConfig } from '../../src/lib/config-store'
 import { CliInterruptError } from '../../src/lib/errors'
 import { server } from '../helpers/msw-server'
 import { runCli } from '../helpers/run-cli'
@@ -244,6 +244,92 @@ describe('login / logout', () => {
     expect(readConfig(env).apiKey).toBeUndefined()
     const parsed = JSON.parse(result.stderr) as { error: { code: string } }
     expect(parsed.error.code).toBe('INVALID_API_KEY')
+  })
+
+  it('keeps a saved key bound to its login origin when the API URL changes', async () => {
+    const env = tempConfigEnv()
+    writeConfig(env, { apiKey: KEY, apiKeyOrigin: 'https://brew.new' })
+    let requests = 0
+    server.use(
+      http.get('https://staging.example/api/v1/usage', () => {
+        requests += 1
+        return HttpResponse.json(USAGE)
+      })
+    )
+    const overridden = await runCli(
+      ['usage', '--api-url', 'https://staging.example/api'],
+      { env }
+    )
+    expect(overridden.code).toBe(3)
+    expect(requests).toBe(0)
+
+    expect(
+      (
+        await runCli(
+          ['config', 'set', 'apiUrl', 'https://staging.example/api'],
+          { env }
+        )
+      ).code
+    ).toBe(0)
+    expect(readConfig(env).apiKeyOrigin).toBe('https://brew.new')
+    expect((await runCli(['usage'], { env })).code).toBe(3)
+    expect(requests).toBe(0)
+
+    expect((await runCli(['usage', '--api-key', KEY], { env })).code).toBe(0)
+    expect(requests).toBe(1)
+  })
+
+  it('requires renewed login when a saved key has no verified origin', async () => {
+    const env = tempConfigEnv()
+    writeConfig(env, { apiKey: KEY })
+    let requests = 0
+    server.use(
+      http.get('https://brew.new/api/v1/usage', () => {
+        requests += 1
+        return HttpResponse.json(USAGE)
+      })
+    )
+    const unverified = await runCli(['usage'], { env })
+    expect(unverified.code).toBe(3)
+    expect(unverified.stderr).toContain('origin was never recorded')
+    expect(requests).toBe(0)
+
+    expect((await runCli(['login', '--api-key', KEY], { env })).code).toBe(0)
+    expect(readConfig(env).apiKeyOrigin).toBe('https://brew.new')
+    expect((await runCli(['usage'], { env })).code).toBe(0)
+    expect(requests).toBe(2)
+  })
+
+  it('lets a user repair an obsolete cleartext URL without reusing its key', async () => {
+    const env = tempConfigEnv()
+    writeConfig(env, { apiKey: KEY, apiUrl: 'http://staging.example/api' })
+    expect((await runCli(['usage'], { env })).code).toBe(2)
+    expect(
+      (
+        await runCli(
+          ['config', 'set', 'apiUrl', 'https://staging.example/api'],
+          { env }
+        )
+      ).code
+    ).toBe(0)
+    expect((await runCli(['usage'], { env })).code).toBe(3)
+  })
+
+  it('discards legacy URL passwords when repairing the API URL', async () => {
+    const env = tempConfigEnv()
+    const oldPassword = 'old-example-password'
+    writeConfig(env, {
+      apiKey: KEY,
+      apiUrl: `https://example:${oldPassword}@staging.example/api`,
+    })
+
+    const result = await runCli(
+      ['config', 'set', 'apiUrl', 'https://staging.example/api'],
+      { env }
+    )
+    expect(result.code).toBe(0)
+    expect(readFileSync(configPath(env), 'utf8')).not.toContain(oldPassword)
+    expect((await runCli(['usage'], { env })).code).toBe(3)
   })
 
   it('exits 2 when non-interactive with no key source', async () => {

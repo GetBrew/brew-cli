@@ -32,8 +32,8 @@ for (const line of readFileSync(join(root, 'dist-bin/checksums.txt'), 'utf8')
 
 function sha(artifact: string): string {
   const digest = checksums.get(artifact)
-  if (digest === undefined) {
-    console.error(`missing checksum for ${artifact}`)
+  if (digest === undefined || !/^[0-9a-f]{64}$/.test(digest)) {
+    console.error(`missing or invalid checksum for ${artifact}`)
     process.exit(1)
   }
   return digest
@@ -89,7 +89,19 @@ const headers = {
 const current = await fetch(apiUrl, { headers })
 let existingSha: string | undefined
 if (current.ok) {
-  const body = (await current.json()) as { sha?: string }
+  const body = (await current.json()) as {
+    sha?: string
+    content?: string
+    encoding?: string
+  }
+  if (
+    body.encoding === 'base64' &&
+    typeof body.content === 'string' &&
+    Buffer.from(body.content, 'base64').toString('utf8') === formula
+  ) {
+    console.log(`Homebrew tap is already on ${version}.`)
+    process.exit(0)
+  }
   existingSha = body.sha
 } else if (current.status !== 404) {
   console.error(`tap lookup failed: ${current.status}`)

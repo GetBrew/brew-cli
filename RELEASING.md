@@ -3,6 +3,13 @@
 Tag-driven, mirroring `@brew.new/sdk`. One command sequence ships npm,
 standalone binaries, the GitHub Release, and the Homebrew tap.
 
+## Release protection
+
+Configure the `npm-release` GitHub environment with approval and a deployment
+rule for release tags. Keep publish credentials in that environment. Protect
+`main` and release tags, grant tag creation to the release operators, and
+verify the release commit is on `main` before tagging.
+
 ## Ship a version
 
 ### Canvas SDK Migration Gate
@@ -56,27 +63,31 @@ SDK with both, then replace the pin with that published version and
 regenerate `bun.lock` before releasing the CLI.
 
 ```bash
-# on a clean main with CI green
+# on a release branch based on main with CI green
 npm version <patch|minor|major> --no-git-tag-version
 git add package.json && git commit -m "Release vX.Y.Z"
-git push origin main
+# Merge the release commit through a reviewed pull request.
+git switch main
+git pull --ff-only
 git tag vX.Y.Z
 git push origin vX.Y.Z        # <-- triggers .github/workflows/release.yml
 ```
 
-The workflow then:
+The build job checks the tag and runs typecheck, lint, tests, docs freshness,
+and the build with read-only repository access. It packages the npm archive
+and compiles binaries for macOS arm64 and x64, Linux arm64 and x64, and
+Windows x64. [Binary build script](./scripts/build-binaries.ts)
 
-1. Asserts `package.json#version` matches the tag.
-2. Runs tsc + lint + tests (incl. both parity suites) + docs freshness +
-   build.
-3. `npm publish --provenance --access public` (`NPM_TOKEN` secret).
-4. Compiles standalone binaries via `bun build --compile` for
-   darwin-arm64/x64, linux-x64/arm64, windows-x64
-   (`scripts/build-binaries.ts`) and attaches them + `checksums.txt` to an
-   auto-generated GitHub Release.
-5. Rewrites `Formula/brew-cli.rb` in `GetBrew/homebrew-tap`
-   (`scripts/update-tap.ts`; skipped with a notice when
-   `TAP_GITHUB_TOKEN` is absent).
+The protected publish job verifies the archive name and version, attaches the
+binaries and `checksums.txt` to a GitHub Release, and publishes the same npm
+archive with lifecycle scripts disabled. It then runs the tap updater from
+the release commit. The updater skips the tap when `TAP_GITHUB_TOKEN` is
+absent. [Homebrew updater](./scripts/update-tap.ts)
+
+On a partial failure, rerun the publish job to reuse its original build
+artifact. The job accepts an existing npm version only when its SHA-512
+integrity matches the archive. It verifies the SHA-256 digests of GitHub
+Release assets before updating Homebrew.
 
 The user-visible version comes from `package.json` at build time (tsup
 `__CLI_VERSION__` define) — never hand-edit a version constant.
@@ -95,11 +106,14 @@ brew install getbrew/tap/brew-cli
 
 ## One-time setup
 
-- **`NPM_TOKEN`** (repo secret): npm Automation token with publish access
-  to the `@brew.new` org — same recipe as
+- Store **`NPM_TOKEN`** in the `npm-release` environment. Use a token with
+  publish access to the CLI package, following
   [typescript-sdk/RELEASING.md](https://github.com/GetBrew/typescript-sdk/blob/main/RELEASING.md).
-- **`TAP_GITHUB_TOKEN`** (repo secret): fine-grained PAT with contents
-  write on `GetBrew/homebrew-tap`.
+- Store **`TAP_GITHUB_TOKEN`** in the same environment. Use a fine-grained PAT
+  with contents write on `GetBrew/homebrew-tap`.
+- Remove repository-level copies after checking their workflow consumers.
+  The release workflow builds and tests before it publishes with npm
+  lifecycle scripts disabled.
 - The tap repo itself: `GetBrew/homebrew-tap` with a `Formula/` directory
   (the release workflow writes `Formula/brew-cli.rb`).
 

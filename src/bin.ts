@@ -1,4 +1,5 @@
 import { createInterface } from 'node:readline/promises'
+import { Writable } from 'node:stream'
 import { run } from './cli'
 import { exitCodeForSignal } from './lib/errors'
 import { createInterrupter, type Interrupter } from './lib/interrupt'
@@ -16,19 +17,32 @@ function realIo(interrupter: Interrupter): CliIo {
     signal,
     readStdin: (readSignal = signal, kind) =>
       readStdinText({ stream: process.stdin, signal: readSignal, kind }),
-    readLine: async (prompt: string) => {
+    readLine: async (prompt, options) => {
+      const secret = options?.secret === true
+      const output = secret
+        ? new Writable({
+            write(_chunk, _encoding, callback) {
+              callback()
+            },
+          })
+        : process.stderr
       const rl = createInterface({
         input: process.stdin,
-        output: process.stderr,
+        output,
+        ...(secret
+          ? { terminal: process.stdin.isTTY === true, historySize: 0 }
+          : {}),
       })
+      if (secret) process.stderr.write(prompt)
       // A prompt sees Ctrl-C as its own SIGINT, not the process's.
       rl.on('SIGINT', () => {
         interrupter.trigger('SIGINT')
       })
       try {
-        return await rl.question(prompt, { signal })
+        return await rl.question(secret ? '' : prompt, { signal })
       } finally {
         rl.close()
+        if (secret) process.stderr.write('\n')
       }
     },
   }

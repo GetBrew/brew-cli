@@ -4,11 +4,13 @@ import { join } from 'node:path'
 
 export type StoredConfig = {
   readonly apiKey?: string
+  readonly apiKeyOrigin?: string
   readonly brandId?: string
   readonly apiUrl?: string
 }
 
 const CONFIG_KEYS = ['apiKey', 'brandId', 'apiUrl'] as const
+const PERSISTED_KEYS = [...CONFIG_KEYS, 'apiKeyOrigin'] as const
 
 export type ConfigKey = (typeof CONFIG_KEYS)[number]
 
@@ -46,7 +48,7 @@ export function readConfig(
     }
     const record = parsed as Record<string, unknown>
     const config: Record<string, string> = {}
-    for (const key of CONFIG_KEYS) {
+    for (const key of PERSISTED_KEYS) {
       const value = record[key]
       if (typeof value === 'string' && value !== '') {
         config[key] = value
@@ -67,7 +69,7 @@ export function writeConfig(
   mkdirSync(dir, { recursive: true, mode: 0o700 })
   const path = configPath(env)
   const compact: Record<string, string> = {}
-  for (const key of CONFIG_KEYS) {
+  for (const key of PERSISTED_KEYS) {
     const value = config[key]
     if (value !== undefined && value !== '') {
       compact[key] = value
@@ -80,13 +82,14 @@ export function writeConfig(
 
 export function updateConfig(
   env: Readonly<Record<string, string | undefined>>,
-  patch: Readonly<Partial<Record<ConfigKey, string | undefined>>>
+  patch: Readonly<Partial<Record<keyof StoredConfig, string | undefined>>>
 ): string {
   const current: Record<string, string | undefined> = { ...readConfig(env) }
-  for (const key of CONFIG_KEYS) {
+  for (const key of PERSISTED_KEYS) {
     if (key in patch) {
       current[key] = patch[key]
     }
   }
+  if (!current.apiKey) delete current.apiKeyOrigin
   return writeConfig(env, current)
 }
