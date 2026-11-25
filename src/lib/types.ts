@@ -18,7 +18,10 @@ export type CliIo = {
    * closes input on interrupt or timeout; `kind` tailors the not-UTF-8 advice.
    */
   readonly readStdin: (signal?: AbortSignal, kind?: TextKind) => Promise<string>
-  readonly readLine: (prompt: string) => Promise<string>
+  readonly readLine: (
+    prompt: string,
+    options?: { readonly secret?: boolean }
+  ) => Promise<string>
   /**
    * Aborts on SIGINT/SIGTERM with a `CliInterruptError` (see
    * `src/lib/interrupt.ts`). Absent in tests that do not exercise cancellation.

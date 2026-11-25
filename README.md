@@ -56,8 +56,11 @@ Keys are created at [brew.new/settings/api](https://brew.new/settings/api).
 A key is scoped either to ONE brand or to the whole organization.
 Organization-scoped keys must name a brand on brand-scoped commands:
 `--brand <brandId>`, `BREW_BRAND_ID`, or `brew-cli config set brandId …`.
-Other environments: `--api-url http://localhost:3000/api` or
-`BREW_API_URL`.
+Set `--api-url` or `BREW_API_URL` for other environments. Remote origins
+require HTTPS. Local development can use `http://localhost:3000/api`.
+A key saved by `brew-cli login` is scoped to the origin used during login.
+If you saved a key with an older CLI that did not record its origin, run
+`brew-cli login` once for the intended API URL to use the saved-key flow again.
 
 ## Agent contract
 

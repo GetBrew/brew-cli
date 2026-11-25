@@ -1,3 +1,4 @@
+import { apiOrigin } from '../lib/api-url'
 import {
   buildSdkClient,
   LOGIN_KEYS_URL,
@@ -37,7 +38,10 @@ export const loginCommand = defineCommand({
     })
     // Throws a 401 BrewApiError (exit 3) when the key is invalid.
     await buildSdkClient(auth, sdkTransportFor(ctx)).usage.get()
-    const path = updateConfig(ctx.io.env, { apiKey: candidate })
+    const path = updateConfig(ctx.io.env, {
+      apiKey: candidate,
+      apiKeyOrigin: apiOrigin(auth.apiUrl),
+    })
     progress(ctx, `Logged in. Key stored in ${path} (0600).`)
     return {
       data: {
@@ -64,7 +68,9 @@ async function readCandidateKey(ctx: CliContext): Promise<string> {
     )
   }
   progress(ctx, `Create an API key at ${LOGIN_KEYS_URL}`)
-  const answer = (await ctx.io.readLine('Paste your API key: ')).trim()
+  const answer = (
+    await ctx.io.readLine('Paste your API key: ', { secret: true })
+  ).trim()
   if (answer === '') {
     throw new CliUsageError('No key entered.')
   }

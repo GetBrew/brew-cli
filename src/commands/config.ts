@@ -1,3 +1,4 @@
+import { apiOrigin } from '../lib/api-url'
 import { maskApiKey } from '../lib/client'
 import {
   configPath,
@@ -52,6 +53,7 @@ export const configSetCommand = defineCommand({
     if (value === '') {
       throw new CliUsageError('A non-empty value is required.')
     }
+    if (key === 'apiUrl') apiOrigin(value)
     const path = updateConfig(ctx.io.env, { [key]: value })
     return { data: { [key]: value, configPath: path } }
   },
@@ -72,12 +74,11 @@ export const configUnsetCommand = defineCommand({
 })
 
 function maskedConfig(ctx: CliContext): Record<string, string | undefined> {
-  const stored = readConfig(ctx.io.env)
+  const { apiKey, apiUrl, brandId } = readConfig(ctx.io.env)
   return {
-    ...stored,
-    ...(stored.apiKey === undefined
-      ? {}
-      : { apiKey: maskApiKey(stored.apiKey) }),
+    ...(apiUrl === undefined ? {} : { apiUrl }),
+    ...(brandId === undefined ? {} : { brandId }),
+    ...(apiKey === undefined ? {} : { apiKey: maskApiKey(apiKey) }),
     configPath: configPath(ctx.io.env),
   }
 }

@@ -1,12 +1,13 @@
 import { createBrewClient } from '@brew.new/sdk'
 import { CLI_NAME, CLI_VERSION } from '../version'
+import { apiOrigin, DEFAULT_API_URL } from './api-url'
 import { readConfig } from './config-store'
 import { CliAuthError } from './errors'
 import type { GlobalFlags } from './types'
 
 export type BrewClient = ReturnType<typeof createBrewClient>
 
-export const DEFAULT_API_URL = 'https://brew.new/api'
+export { DEFAULT_API_URL } from './api-url'
 
 export const LOGIN_KEYS_URL = 'https://brew.new/settings/api'
 
@@ -51,12 +52,15 @@ export function resolveAuth(input: {
   const keyFromFlag = globals.apiKey
   const keyFromEnv = readEnvValue(env.BREW_API_KEY)
   const keyFromConfig = stored.apiKey
-  const apiKey = keyFromFlag ?? keyFromEnv ?? keyFromConfig
   const apiUrl =
     globals.apiUrl ??
     readEnvValue(env.BREW_API_URL) ??
     stored.apiUrl ??
     DEFAULT_API_URL
+  const origin = apiOrigin(apiUrl)
+  const explicitKey = keyFromFlag ?? keyFromEnv
+  const savedKey = stored.apiKeyOrigin === origin ? keyFromConfig : undefined
+  const apiKey = explicitKey ?? savedKey
   const brandId =
     globals.brand ?? readEnvValue(env.BREW_BRAND_ID) ?? stored.brandId
   if (!apiKey) {
@@ -67,6 +71,14 @@ export function resolveAuth(input: {
         brandId,
         apiUrl,
       }
+    }
+    if (keyFromConfig) {
+      throw new CliAuthError(
+        stored.apiKeyOrigin
+          ? 'The stored API key belongs to another API origin.'
+          : 'The stored API key origin was never recorded.',
+        'Log in for this API origin or supply its API key explicitly.'
+      )
     }
     throw new CliAuthError(
       'No API key found.',
