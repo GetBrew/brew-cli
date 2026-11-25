@@ -29,8 +29,6 @@ export const integrationsListCommand = defineCommand({
       const result = await ctx.client().integrations.list()
       return { data: result, human: renderIntegrations(result.data) }
     }
-    // `@brew.new/sdk` 10's `integrations.list(options?)` takes no page input, so a
-    // paged read goes through the raw transport.
     const page = (after: string | undefined) =>
       rawRequest<IntegrationsPage>(ctx, {
         method: 'GET',

@@ -86,9 +86,6 @@ export async function run(
   let activeSpec: CommandSpec | undefined
   let activeInvocation: RerunInvocation | undefined
   let commandExitCode: number | undefined
-  // Commander's own stderr (usage errors, error-mode help) is buffered so
-  // JSON mode can replace it with a structured envelope instead of mixing
-  // free text and JSON on the same stream.
   const commanderStderr: string[] = []
   const program = buildProgram(
     io,
@@ -133,12 +130,6 @@ export async function run(
   }
 }
 
-/**
- * Once the command's signal has aborted — an interrupt or the deadline —
- * its reason is what happened, whatever surfaced first: a prompt that threw
- * its own AbortError, a stream that closed. Only a real HTTP answer that
- * arrived before the abort keeps its own error.
- */
 function reportedError(ctx: CliContext, error: unknown): unknown {
   if (!ctx.signal.aborted) {
     return error
@@ -149,7 +140,6 @@ function reportedError(ctx: CliContext, error: unknown): unknown {
   return ctx.signal.reason
 }
 
-/** What the error envelope needs to know about the command that failed. */
 function errorContextFor(
   ctx: CliContext,
   commands: readonly CommandSpec[],
@@ -158,12 +148,6 @@ function errorContextFor(
 ): ErrorContext {
   const request = ctx.transport.lastRequest()
   const drain = ctx.transport.drain()
-  // The command bound to the route the failed request actually hit — the
-  // `api` escape hatch borrows its class and replay policy from it. A
-  // command with an operation of its own answers for itself: a multi-step
-  // file upload cannot rerun its original argv under its last request's key.
-  // Explicit upload recovery instead builds a finalization-only add-image
-  // command from the recorded identity and key in the shared error renderer.
   const bound =
     request === undefined || ctx.traits?.declaresOperation === true
       ? undefined
@@ -232,12 +216,6 @@ function traitsOf(spec: CommandSpec): CommandTraits {
   }
 }
 
-/**
- * The top-level keys a command's `--input` object may carry: the path and
- * query parameters and JSON body properties of its route, plus the keys it
- * reads itself. Undefined (nothing checked) when the command takes no
- * `--input`, declares no route, opts out, or its route's body is open.
- */
 function inputKeysOf(spec: CommandSpec): ReadonlySet<string> | undefined {
   if (
     spec.inputKeys === 'unchecked' ||
@@ -253,11 +231,6 @@ function inputKeysOf(spec: CommandSpec): ReadonlySet<string> | undefined {
   return new Set([...routeKeys, ...(spec.inputKeys?.extra ?? [])])
 }
 
-/**
- * Inline `--input` is checked before any confirmation prompt, so a typo is
- * not confirmed first and refused after. Stdin and malformed JSON are left
- * to `readJsonFlag` in the command, which reads them once.
- */
 function checkInlineInput(ctx: CliContext, value: unknown): void {
   if (typeof value !== 'string' || value === '-') {
     return
@@ -286,7 +259,6 @@ function handleCommanderError(
     return EXIT_OK
   }
   if (isHelpCode) {
-    // Error-mode help: a group or bare invocation with no subcommand.
     if (ctx.mode === 'json') {
       printError(
         ctx,
@@ -332,9 +304,6 @@ export function buildProgram(
       },
     })
   program.addHelpText('after', AGENT_HELP_FOOTER)
-  // Global flags register on the root as well as every leaf so agents can
-  // place them on either side of the subcommand (`brew-cli --json usage`
-  // and `brew-cli usage --json` both work); optsWithGlobals merges them.
   for (const flag of GLOBAL_FLAGS) {
     program.option(flag.flag, flag.summary)
   }
@@ -378,8 +347,6 @@ function registerCommand(
   leaf.addHelpText('after', buildCommandHelpFooter(spec))
   leaf.action(async (...actionArgs: unknown[]) => {
     const command = actionArgs.at(-1) as Command
-    // optsWithGlobals lets ancestors overwrite the leaf; re-apply the
-    // leaf's own parsed values so the flag nearest the subcommand wins.
     const flags: Record<string, unknown> = {
       ...command.optsWithGlobals<Record<string, unknown>>(),
     }
@@ -394,8 +361,6 @@ function registerCommand(
       (acc, arg, index) => {
         const value = actionArgs[index]
         if (typeof value === 'string') {
-          // An empty required id would otherwise build a malformed API path
-          // (`/v1/x//action`) and surface as a confusing server-side 405.
           if (arg.isRequired && value.trim() === '') {
             throw new CliUsageError(`<${arg.name}> must not be empty.`)
           }
@@ -448,8 +413,6 @@ function resolveGroup(program: Command, path: readonly string[]): Command {
     }
     const summary = GROUP_SUMMARIES[segment] ?? ''
     current = current.command(segment).description(summary)
-    // Groups accept the global flags too, so `brew-cli contacts --json list`
-    // parses instead of failing with a misleading unknown-command error.
     for (const flag of GLOBAL_FLAGS) {
       current.option(flag.flag, flag.summary)
     }

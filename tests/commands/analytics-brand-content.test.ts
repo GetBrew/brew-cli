@@ -225,9 +225,6 @@ describe('analytics events', () => {
     expect(data.data).toHaveLength(2)
   })
 
-  // The SDK's row read does not send `groupBy` or `bucket`, so they are
-  // refused rather than dropped (rows back to a caller who asked for
-  // counts). No handler is registered: exit 2 also proves no request went out.
   it.each([
     ['groupBy', { from: '2026-10-15T00:00:00Z', groupBy: 'eventType' }],
     ['bucket', { eventType: 'delivered', bucket: 'day' }],
@@ -748,7 +745,6 @@ describe('templates list count mode (brew-v2#1821)', () => {
       ].join('\n')
     )
 
-    // --all drains rows; a count has none, so it is refused before sending.
     const all = await cli([
       'templates',
       'list',
@@ -798,7 +794,6 @@ describe('templates get', () => {
     const url = new URL(request?.url ?? '')
     expect(url.pathname).toBe('/api/v1/templates/seed-vercel-newsletter')
     expect(url.searchParams.get('include')).toBe('html')
-    // The gallery is organization-wide: the brand binding never rides along.
     expect(request?.headers.get('x-brand-id')).toBeNull()
     const row = result.json as { referenceEmailId: string; html: string }
     expect(row.referenceEmailId).toBe('seed-vercel-newsletter')

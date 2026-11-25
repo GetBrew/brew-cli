@@ -1,15 +1,9 @@
-/** Upload IDs are public recovery state; upload URLs and their tokens are not. */
 export function readImageUploadId(value: unknown): string | undefined {
   return typeof value === 'string' && /^imgup_[A-Za-z0-9_-]{21}$/.test(value)
     ? value
     : undefined
 }
 
-/**
- * Retain only the identity and effective brand of an explicit finalization.
- * SDK 13.3 errors and verbatim caller-abort reasons have no upload metadata.
- * Never inspect byte-upload URLs, retain their credentials, or store a body.
- */
 export function imageUploadRequestContext(input: {
   readonly method: string
   readonly path: string

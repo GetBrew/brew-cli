@@ -11,8 +11,6 @@ export const whoamiCommand = defineCommand({
   examples: ['brew-cli whoami', 'brew-cli whoami --json'],
   run: async ({ ctx }) => {
     const auth = resolveAuth({ globals: ctx.globals, env: ctx.io.env })
-    // Invalid credentials must surface (exit 3), but a server-side outage
-    // should not hide the local credential state — degrade to usage: null.
     let usage: unknown = null
     try {
       usage = await ctx.client().usage.get()
@@ -23,8 +21,6 @@ export const whoamiCommand = defineCommand({
       ) {
         throw error
       }
-      // Ctrl-C, SIGTERM or the command's own --timeout stops it: none of
-      // them is an outage to degrade around.
       ctx.signal.throwIfAborted()
       progress(
         ctx,

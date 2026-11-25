@@ -9,11 +9,6 @@ import {
 import { ALL_FLAG, CURSOR_FLAG, LIMIT_FLAG } from '../../lib/paginate'
 import { listSends } from '../sends/list'
 
-/**
- * The name agents already know. There is no campaign analytics report any
- * more: a campaign IS a send of `kind: "campaign"`, and each row carries
- * its own lifetime `stats`.
- */
 export const analyticsCampaignsCommand = defineCommand({
   path: ['analytics', 'campaigns'],
   summary:

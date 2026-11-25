@@ -6,28 +6,13 @@ import type { CliIo } from '../../src/lib/types'
 import { ALL_COMMANDS } from '../../src/registry'
 
 export type RunCliOptions = {
-  /** Synthetic environment. Host env NEVER leaks into tests. */
   readonly env?: Readonly<Record<string, string | undefined>>
-  /**
-   * Text or raw bytes on stdin (for `-` inputs and piped login), read through
-   * the real decoder like the binary's stdin.
-   */
   readonly stdin?: string | Uint8Array
-  /** Controlled stdin reader for cancellation and command-deadline tests. */
   readonly readStdin?: CliIo['readStdin']
-  /** Answer returned by interactive prompts (readLine). */
   readonly promptAnswer?: string
   readonly ttyOut?: boolean
   readonly ttyIn?: boolean
-  /**
-   * Extra command specs to mount alongside the registry — lets a command
-   * be tested before it is wired into src/registry.ts.
-   */
   readonly extraCommands?: readonly CommandSpec[]
-  /**
-   * Stands in for the process signal handler: abort it with a
-   * `CliInterruptError` to simulate SIGINT/SIGTERM at an exact moment.
-   */
   readonly signal?: AbortSignal
 }
 
@@ -35,7 +20,6 @@ export type RunCliResult = {
   readonly code: number
   readonly stdout: string
   readonly stderr: string
-  /** stdout parsed as JSON when possible (single-line JSON output). */
   readonly json: unknown
 }
 

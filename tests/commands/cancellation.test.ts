@@ -7,12 +7,6 @@ import { CliInterruptError, type InterruptSignal } from '../../src/lib/errors'
 import { server } from '../helpers/msw-server'
 import { runCli } from '../helpers/run-cli'
 
-/**
- * SIGINT/SIGTERM while a request is in flight. The handler aborts the
- * injected signal exactly when the request arrives and never answers, so
- * the interrupt lands mid-request with no timers.
- */
-
 const KEY = 'brew_abcdefghijklmnopqrstuvwxyz012345'
 const API = 'https://brew.new/api'
 
@@ -25,13 +19,11 @@ function env(): Record<string, string | undefined> {
 
 type Envelope = { error: Record<string, unknown> }
 
-/** The JSON error envelope: the last stderr line (progress lines come first). */
 function envelopeOf(stderr: string): Record<string, unknown> {
   const line = stderr.trim().split('\n').at(-1) ?? ''
   return (JSON.parse(line) as Envelope).error
 }
 
-/** Answer nothing; interrupt the process the moment the request lands. */
 function interruptOnRequest(
   controller: AbortController,
   signal: InterruptSignal = 'SIGINT'
@@ -130,7 +122,6 @@ describe('Ctrl-C / SIGTERM mid-request', () => {
     const controller = new AbortController()
     controller.abort(new CliInterruptError('SIGINT'))
 
-    // No handler: MSW fails the test if any request goes out.
     const result = await runCli(['emails', 'generate', '--prompt', 'Hi'], {
       env: env(),
       signal: controller.signal,

@@ -17,13 +17,6 @@ import {
 } from '../../../lib/paginate'
 import type { CliContext } from '../../../lib/types'
 
-/**
- * `state` on every row, in lifecycle order:
- * `received | verified | matched | partially_fired | fired | rejected |
- * dead_letter`. Branch on it — `fired` means every matched automation
- * started, `partially_fired` means some starts are still being retried,
- * and `rejected` carries a `rejectionReason`.
- */
 export const automationsTriggerInstancesListCommand = defineCommand({
   path: ['automations', 'trigger-instances', 'list'],
   summary:
@@ -56,10 +49,6 @@ export const automationsTriggerInstancesListCommand = defineCommand({
   },
 })
 
-/**
- * The shared read behind `automations trigger-instances list` and the
- * `analytics trigger-instances list` alias.
- */
 export async function listTriggerInstances(
   ctx: CliContext,
   input: Record<string, unknown>,

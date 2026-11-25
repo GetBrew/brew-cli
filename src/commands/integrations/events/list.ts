@@ -19,14 +19,6 @@ import {
   LIMIT_FLAG,
 } from '../../../lib/paginate'
 
-/**
- * The events the brand's connected live sources send (a PostHog project's
- * own events; the Stripe and Shopify app catalogs), source by source. Events
- * a member hid and internal traffic Brew suppressed are left out, so a page
- * can be short, even empty, before the last one: `--all` follows the cursor
- * to the end. Every page lists the same `sources`, so `--all` keeps the
- * first page's.
- */
 export const integrationsEventsListCommand = defineCommand({
   path: ['integrations', 'events', 'list'],
   summary:
@@ -107,11 +99,6 @@ export const integrationsEventsListCommand = defineCommand({
   },
 })
 
-/**
- * A page can hold fewer events than `--limit`, even none, while more follow,
- * so the next cursor is printed whenever there is one: a short page never
- * reads as the end of the list.
- */
 function renderEvents(
   rows: ReadonlyArray<unknown>,
   nextCursor: string | null

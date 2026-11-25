@@ -8,15 +8,6 @@ import {
 } from '../src/lib/input'
 import { ALL_COMMANDS } from '../src/registry'
 
-/**
- * The shared `--idempotency-key` help promises a safe retry, so a command
- * carries it only when its route replays a keyed request
- * (`x-brew-idempotency`: `replay`, or `fail_closed`, which also refuses while
- * the key store is down). A route that never replays (`none`, `disabled`:
- * `createApiKey` would disclose the one-time plaintext key again) runs a
- * retry twice; flags are additive-only, so such a command keeps the flag
- * with the help that says so (`NON_REPLAYING_IDEMPOTENCY_FLAG`).
- */
 function publishedIdempotency(): Map<string, string> {
   const doc = parse(
     readFileSync(
@@ -40,15 +31,10 @@ function publishedIdempotency(): Map<string, string> {
 
 const REPLAYING = new Set(['replay', 'fail_closed'])
 
-/** `brew-cli api` sends a raw request: the caller picks the route. */
 const RAW_REQUEST_COMMANDS = new Set(['api'])
 
 type Command = (typeof ALL_COMMANDS)[number]
 
-/**
- * The routes a command runs: its own, or, for a verb-flag form with no route
- * (`audience-runs control`), those of the commands it `derivedFrom`.
- */
 function routesOf(command: Command): Array<string> {
   if (command.route) {
     return [`${command.route.method} ${command.route.path}`]

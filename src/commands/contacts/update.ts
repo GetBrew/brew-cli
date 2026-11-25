@@ -16,7 +16,6 @@ export const contactsUpdateCommand = defineCommand({
   sdkMethod: 'contacts.patch',
   route: { method: 'PATCH', path: '/v1/contacts/{email}' },
   commandClass: 'write',
-  // The input keys are the user's own data: flat top-level keys are contact fields.
   inputKeys: 'unchecked',
   args: [
     {

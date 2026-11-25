@@ -21,7 +21,6 @@ function realIo(interrupter: Interrupter): CliIo {
         input: process.stdin,
         output: process.stderr,
       })
-      // A prompt sees Ctrl-C as its own SIGINT, not the process's.
       rl.on('SIGINT', () => {
         interrupter.trigger('SIGINT')
       })
@@ -43,16 +42,12 @@ const code = await run(process.argv.slice(2), realIo(interrupter))
 interrupter.settle()
 process.exitCode = code
 
-// Die BY the signal, not merely with 130/143: a shell loop such as
-// `for id in …; do brew-cli …; done` only stops on Ctrl-C when the child
-// was killed by SIGINT.
 const received = interrupter.received()
 if (
   received !== undefined &&
   code === exitCodeForSignal(received) &&
   process.platform !== 'win32'
 ) {
-  // Pipes are asynchronous on macOS: let the envelope reach stderr first.
   await new Promise<void>((resolve) => {
     process.stderr.write('', () => {
       resolve()

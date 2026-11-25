@@ -27,11 +27,6 @@ import type { CliContext } from '../../lib/types'
 type InsightsResource = BrewClient['insights']
 type InsightsPage = ListInsightsResponse
 
-/**
- * What a page says beside its rows: the engine's `freshness` on every page,
- * and each expansion `--include` asked for (`pulse`, `report` and `memo` are
- * `null` until they exist; `suggestions` is `[]` when there are none).
- */
 type PageExtras = Partial<Omit<InsightsPage, 'data' | 'pagination'>>
 
 const EXTRA_KEYS = [
@@ -42,12 +37,6 @@ const EXTRA_KEYS = [
   'memo',
 ] as const
 
-/**
- * Brew Insights: the deterministic findings the insight engine keeps about
- * the brand's email (at most 200 in view), most severe first, as the
- * Insights page ranks them. `--include` adds the intelligence layer the page
- * shows beside them. One finding in full is `insights get`.
- */
 export const insightsListCommand = defineCommand({
   path: ['insights', 'list'],
   summary:
@@ -100,21 +89,6 @@ export const insightsListCommand = defineCommand({
   },
 })
 
-/**
- * `--all`: every finding as one page. The expansions are page-level and the
- * same on every page, so only the first page asks for them; the merged
- * envelope carries that page's `freshness` and expansions beside the rows.
- *
- * The list is ranked live (at most 200 findings): when a finding the walk
- * already returned leaves the list or moves, or a new one ranks among them,
- * the API refuses the next cursor with `400 INVALID_REQUEST` (`param:
- * cursor`) rather than skip or repeat rows. A walk from the first page reads
- * the list again from the first page, once. A walk from the caller's
- * `--cursor` does not: that cursor is the one going stale, and reading from
- * the first page would return rows the caller did not ask for. Either way a
- * refusal that ends the walk says how to read the list again, and offers no
- * `--cursor` to resume at, since the API refuses it.
- */
 async function listEveryInsight(
   ctx: CliContext,
   insights: InsightsResource,
@@ -148,7 +122,6 @@ async function listEveryInsight(
       if (!isStaleCursor(error)) {
         throw error
       }
-      // A refused cursor is no place to resume: drop the walk's progress.
       ctx.transport.setDrain(undefined)
       if (startCursor !== undefined || attempt > 1) {
         throw staleCursorGuidance(ctx, error, input, startCursor !== undefined)
@@ -170,14 +143,6 @@ async function listEveryInsight(
   }
 }
 
-/**
- * The API's refusal, with the way to read the list again. The message stays
- * the API's own (it says whether the findings changed or the cursor belongs
- * to another state or severity); the suggestion names the command. It keeps
- * what chose the list (the state, severity and include, from flags or
- * --input) and its target (the `--brand` and `--api-url` given), so it reads
- * the same list; never the API key, which the re-run resolves itself.
- */
 function staleCursorGuidance(
   ctx: CliContext,
   error: BrewApiError,
@@ -215,7 +180,6 @@ function staleCursorGuidance(
   })
 }
 
-/** The API's refusal of a cursor whose list changed under it. */
 function isStaleCursor(error: unknown): error is BrewApiError {
   return (
     error instanceof BrewApiError &&
@@ -225,7 +189,6 @@ function isStaleCursor(error: unknown): error is BrewApiError {
   )
 }
 
-/** The page-level keys a page carries, verbatim. */
 function readExtras(page: InsightsPage): PageExtras {
   const extras: Record<string, unknown> = {}
   for (const key of EXTRA_KEYS) {
@@ -281,10 +244,6 @@ export function renderInsights(
   return sections.join('\n\n')
 }
 
-/**
- * How current the findings are. A failed latest run means they may be
- * stale; no `dataAsOf` means the engine has not finished a run yet.
- */
 function freshnessLine(freshness: Freshness | undefined): string | undefined {
   if (freshness === undefined) {
     return undefined
@@ -317,8 +276,6 @@ function renderPulse(pulse: Pulse | null): string {
     now === null
       ? undefined
       : `${label} ${now}% (prior ${prior === null ? '-' : `${prior}%`}, ${direction})`
-  // The public response has one conservative flag for both signals.
-  // Unknown measurements must not be shown as numeric activity.
   const opens = pulse.measured
     ? [
         pair('unique opens', pulse.uniqueOpens, pulse.priorUniqueOpens),
@@ -346,7 +303,6 @@ function renderPulse(pulse: Pulse | null): string {
     ...opens,
     ...clicks,
     pair('unsubscribed', pulse.unsubscribed, pulse.priorUnsubscribed),
-    // `countsOnly`: too few deliveries for rates (the API sends them null).
     pulse.countsOnly ? 'too few deliveries for rates; read the counts' : '',
   ].filter((part): part is string => part !== undefined && part !== '')
   return `Pulse, 7 days to ${pulse.windowEnd}:\n  ${parts.join('\n  ')}`

@@ -10,14 +10,6 @@ import {
   runCli,
 } from '../helpers/run-cli'
 
-/**
- * The typed reads that replaced the data command's tables (brew-v2#1828,
- * #1830, #1831): `insights list/get`, `emails comments list`, `chats list`,
- * `notifications list`, and `--include` on `domains health`, `contacts get`
- * and `contacts search`. Each asserts the request the command makes, what it
- * prints, how it pages and how it fails.
- */
-
 const KEY = 'brew_abcdefghijklmnopqrstuvwxyz012345'
 const API = 'https://brew.new/api'
 const BRAND = 'kx7b3s7fapqz8mjm12ekz1kxdx87yceg'
@@ -37,7 +29,6 @@ function cli(
   })
 }
 
-/** An API error shaped like the real envelope (`suggestion`/`docs` required). */
 function apiError(
   status: number,
   code: string,
@@ -364,7 +355,6 @@ describe('insights list', () => {
     expect(unmeasured.stdout).not.toContain('open rate')
     expect(unmeasured.stdout).not.toContain('unique clicks')
     expect(unmeasured.stdout).not.toContain('click rate')
-    // JSON stays the API's answer, verbatim.
     const json = await cli(['insights', 'list', '--include', 'pulse'])
     expect((json.json as { pulse: unknown }).pulse).toEqual(pulses.unmeasured)
 
@@ -538,7 +528,6 @@ describe('insights list', () => {
       null,
       'ofs_1',
     ])
-    // The restart's first page asks for the expansions again; no other does.
     expect(seen.map((params) => params.get('include'))).toEqual([
       'memo',
       null,
@@ -592,7 +581,6 @@ describe('insights list', () => {
     expect(envelope.error.suggestion).toBe(
       'The findings changed again while the list was read a second time. Run it again: brew-cli insights list --all'
     )
-    // ofs_1 is the cursor the API refused: it is no place to resume.
     expect(envelope.error.progress).toBeUndefined()
   })
 
@@ -628,7 +616,6 @@ describe('insights list', () => {
     const result = await cli(argv)
     expect(result.code).toBe(1)
     expect(result.stdout).toBe('')
-    // No restart: neither from ofs_5 (stale too) nor from the first page.
     expect(cursors).toEqual(['ofs_5', 'ofs_10'])
     expect(result.stderr).not.toContain('reading them again')
     const envelope = JSON.parse(
@@ -1157,7 +1144,6 @@ describe('emails comments list', () => {
       error: { code: string; progress?: unknown }
     }
     expect(envelope.error.code).toBe('COMMENT_NOT_FOUND')
-    // Nothing was read yet, so there is no walk to resume.
     expect(envelope.error.progress).toBeUndefined()
   })
 
@@ -1195,7 +1181,6 @@ describe('emails comments list', () => {
     ])
     expect(result.code).toBe(1)
     expect(result.stdout).toBe('')
-    // stderr: the walk's progress line, then the envelope.
     const [progressLine, envelopeLine] = result.stderr.trimEnd().split('\n')
     expect(progressLine).toBe('Fetched 1 messages (page 1)…')
     const envelope = JSON.parse(envelopeLine ?? '') as {
@@ -1656,8 +1641,6 @@ describe('contacts search --include', () => {
   })
 
   it('refuses a count in --input before sending, and names the count commands', async () => {
-    // The SDK's `search` always sends `count: false`, so a count riding
-    // --input used to be dropped and the command printed rows as a count.
     let calls = 0
     server.use(
       http.post(`${API}/v1/contacts/search`, () => {

@@ -6,13 +6,6 @@ import { describe, expect, it } from 'vitest'
 import { server } from '../helpers/msw-server'
 import { runCli } from '../helpers/run-cli'
 
-/**
- * The query parameters these commands could not send before: fields
- * coverage and paging, a saved email version or run, brand status and
- * paging, and api-key / integration paging. Each flag lands on the wire as
- * the spec names it; `--all` follows the cursor.
- */
-
 const KEY = 'brew_abcdefghijklmnopqrstuvwxyz012345'
 const API = 'https://brew.new/api'
 
@@ -23,7 +16,6 @@ function env(): Record<string, string | undefined> {
   }
 }
 
-/** Serves two pages (`c1` → `c2` → end) and records every query seen. */
 function twoPages(
   path: string,
   rows: [unknown, unknown]

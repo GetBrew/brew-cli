@@ -14,12 +14,12 @@ end: Zod contracts → OpenAPI → SDK → CLI, drift-gated at every hop.
 ## Install
 
 ```bash
-npm install -g @brew.new/cli        # or run without installing:
+npm install -g @brew.new/cli
 npx @brew.new/cli --help
 ```
 
 ```bash
-brew install getbrew/tap/brew-cli   # standalone binary (macOS/Linux)
+brew install getbrew/tap/brew-cli
 ```
 
 Prebuilt binaries for macOS (arm64/x64), Linux (x64/arm64), and Windows
@@ -28,13 +28,13 @@ are attached to every [GitHub Release](https://github.com/GetBrew/brew-cli/relea
 ## Quick start
 
 ```bash
-brew-cli login                       # paste an API key from https://brew.new/settings/api
-brew-cli doctor                      # trust check: auth, reachability, CLI-vs-API drift (exit-code gated)
+brew-cli login
+brew-cli doctor
 brew-cli whoami
 brew-cli contacts search --filter email:equals:jane@example.com
 brew-cli emails list --limit 10
 brew-cli emails send em_123 --test --to you@company.com
-brew-cli content upload-image ./logo.png   # a local image into the brand library
+brew-cli content upload-image ./logo.png
 ```
 
 Every command supports `--json` (automatic when stdout is piped), prints

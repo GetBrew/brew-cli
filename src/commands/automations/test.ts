@@ -18,7 +18,6 @@ export const automationsTestCommand = defineCommand({
   sdkMethod: 'automations.test',
   route: { method: 'POST', path: '/v1/automations/{automationId}/test' },
   commandClass: 'destructive',
-  // The input keys are the user's own data: a bare trigger payload is shorthand for the test body.
   inputKeys: 'unchecked',
   args: [
     {
@@ -37,8 +36,6 @@ export const automationsTestCommand = defineCommand({
     if (typeof flags.input !== 'string' || flags.input === '-') {
       return
     }
-    // Stdin is checked after it is read; malformed inline JSON gets the
-    // normal usage error in run rather than a confirmation prompt.
     let base: unknown
     try {
       base = JSON.parse(flags.input)
@@ -70,7 +67,6 @@ export const automationsTestCommand = defineCommand({
   },
 })
 
-/** Preserve API controls; a bare trigger payload remains shorthand. */
 function automationTestBody(base: unknown): Record<string, unknown> {
   if (base === undefined) {
     return {}

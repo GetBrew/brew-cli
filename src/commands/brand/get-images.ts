@@ -21,11 +21,6 @@ import {
 type BrandImagesPage = components['schemas']['BrandImagesResponse']
 type BrandAsset = BrandImagesPage['data'][number]
 
-/**
- * Filters brew-v2#1713 retired (`type` became `kind`; `aspectRatio` went).
- * The SDK does not send them, so they are refused here, naming the way
- * forward, rather than silently dropped.
- */
 const RETIRED_FILTERS: Readonly<Record<string, string>> = {
   type: '--type (type) was retired by the API: use --kind logo|brand|generated.',
   aspectRatio:
@@ -39,7 +34,6 @@ export const brandGetImagesCommand = defineCommand({
   sdkMethod: 'brand.getImages',
   route: { method: 'GET', path: '/v1/brand/images' },
   commandClass: 'read',
-  // Retired filters reach `run`, which refuses them with the way forward.
   inputKeys: { extra: Object.keys(RETIRED_FILTERS) },
   flags: [
     {
@@ -85,14 +79,11 @@ export const brandGetImagesCommand = defineCommand({
       type: flagString(flags.type),
       aspectRatio: flagString(flags.aspectRatio),
     })
-    // A retired filter from a flag or from --input fails here, naming the
-    // way forward, instead of as a 400 from the API.
     for (const [key, message] of Object.entries(RETIRED_FILTERS)) {
       if (input[key] !== undefined) {
         throw new CliUsageError(message)
       }
     }
-    // --kind and --sort pass through unchecked: the API validates them.
     const page = (cursor: string | undefined) =>
       ctx
         .client()

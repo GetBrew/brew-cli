@@ -11,7 +11,6 @@ export const emailsRestoreCommand = defineCommand({
   args: [
     { name: 'emailId', summary: 'Design id to restore', isRequired: true },
   ],
-  // --version is taken by the CLI itself, hence --to-version.
   flags: [
     {
       flag: '--to-version <emailVersionId>',

@@ -14,11 +14,6 @@ import {
 } from '../../lib/input'
 import { renderTable } from '../../lib/output'
 
-/**
- * Exact contact counts per field value, per email domain, or per signup
- * period — the grouped form of `contacts count`, which returns only the
- * total.
- */
 export const contactsCountByCommand = defineCommand({
   path: ['contacts', 'count-by'],
   summary:
@@ -77,11 +72,6 @@ export const contactsCountByCommand = defineCommand({
   },
 })
 
-/**
- * `--group-by country,plan` (or a `groupBy` string in --input) becomes the
- * field list; an array from --input passes through. The API validates the
- * fields and how many.
- */
 function toFieldList(value: unknown): unknown {
   if (typeof value !== 'string') {
     return value
@@ -106,7 +96,6 @@ function renderCounts(body: CountContactsByResponse): string {
       : { bucket: group.bucket }),
     count: group.count,
   }))
-  // A --bucket-only count has no grouped fields: leave out an all-blank column.
   const table = renderTable(rows, [
     ...(rows.some((row) => row.group !== '')
       ? [{ key: 'group', header: 'GROUP' }]

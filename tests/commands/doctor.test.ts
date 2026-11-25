@@ -17,7 +17,6 @@ function env(): Record<string, string | undefined> {
   }
 }
 
-/** The JSON error envelope: the last stderr line (progress lines come first). */
 function envelopeOf(stderr: string): Record<string, unknown> {
   const line = stderr.trim().split('\n').at(-1) ?? ''
   return (JSON.parse(line) as { error: Record<string, unknown> }).error
@@ -275,8 +274,6 @@ describe('doctor', () => {
       env: env(),
     })
 
-    // The caller's own budget ran out: that ends the command, it is not a
-    // finding to report (and never an exit 0 with the auth check skipped).
     expect(result.code).toBe(1)
     expect(result.stdout).toBe('')
     expect(envelopeOf(result.stderr).code).toBe('CLI_TIMEOUT')

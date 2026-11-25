@@ -22,13 +22,6 @@ import {
   LIMIT_FLAG,
 } from '../../lib/paginate'
 
-/**
- * Public email flows: one brand's real onboarding or newsletter sequence,
- * with the day each email landed, as LIST cards. One flow with every step is
- * `flows get <slug>`.
- *
- * The route is organization-wide, so the SDK never sends the brand binding.
- */
 export const flowsListCommand = defineCommand({
   path: ['flows', 'list'],
   summary:
@@ -36,11 +29,9 @@ export const flowsListCommand = defineCommand({
   sdkMethod: 'flows.list',
   route: { method: 'GET', path: '/v1/flows' },
   commandClass: 'read',
-  // The detail read's keys, which `run` takes from --input to switch to it.
   inputKeys: { extra: ['slug', 'include'] },
   flags: [
     {
-      // --brand is taken by the global brand-selection flag.
       flag: '--brand-domain <domain>',
       summary: 'Filter the list by brand domain',
     },
@@ -142,23 +133,11 @@ export const flowsListCommand = defineCommand({
   },
 })
 
-/**
- * What `GET /v1/flows` says about every page: `total` counts the flows the
- * query matches (filters narrow it, `semantic` only orders it), and it is a
- * floor when `isTotalExact` is false. Optional, so the command still reads a
- * deployment that predates the count (brew-v2#1805) and prints no count line.
- */
 type FlowCount = {
   readonly total?: number
   readonly isTotalExact?: boolean
 }
 
-/**
- * The count a page carries, read at runtime: the field is new in the API
- * (and SDK 11.4), so a page from an older deployment simply has none. Only
- * the fields present are returned, so `--all` can spread them onto its
- * merged envelope.
- */
 function readCount(page: object): FlowCount {
   const total =
     'total' in page && typeof page.total === 'number' ? page.total : undefined
@@ -172,23 +151,12 @@ function readCount(page: object): FlowCount {
   }
 }
 
-/**
- * Nothing found in a PARTIAL read is not "no flows match". A partial read has
- * one cause, the API's 500-flow cut, which the filters apply after (a search
- * that cannot run is the API's 503, surfaced as an error). The command knows
- * which 500 were read, so it names them; no retry of the query gets past it.
- */
 function partialEmptyMessage({ isSemantic }: { isSemantic: boolean }): string {
   return isSemantic
     ? 'No flows found among the 500 flows nearest your --semantic query, so that is not a definitive none: matches past those are not listed.'
     : 'No flows found among the newest 500 flows the API reads, so that is not a definitive none: older matches are not listed.'
 }
 
-/**
- * "167 flows in total; 25 on this page", or "at least …" for a floor. `--all`
- * merges every page from its cursor on, so its rows are what it LISTED, never
- * one page.
- */
 function countLine(
   count: FlowCount,
   shown: number,

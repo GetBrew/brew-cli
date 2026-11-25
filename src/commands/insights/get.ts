@@ -1,12 +1,5 @@
 import { defineCommand } from '../../lib/define-command'
 
-/**
- * One finding in full, as its page in Brew reads it: the list row plus the
- * rationale, the frozen `metrics` (the only numbers to quote about it), the
- * evidence links, its subject, the detector's method (what resolves it), the
- * run that produced it and the engine's freshness. Another brand's id is the
- * same `404 INSIGHT_NOT_FOUND` as an unknown one.
- */
 export const insightsGetCommand = defineCommand({
   path: ['insights', 'get'],
   summary:

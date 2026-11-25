@@ -424,7 +424,6 @@ describe('emails import-image', () => {
   })
 })
 
-/** A rendering job as `POST …/client-previews` and `GET …/client-previews/{previewId}` answer it. */
 function renderingJob(
   status: 'queued' | 'completed',
   previews: ReadonlyArray<Record<string, unknown>>
@@ -533,7 +532,6 @@ describe('emails preview-clients', () => {
     const job = result.json as { previewId: string; status: string }
     expect(job.previewId).toBe('prv_1')
     expect(job.status).toBe('queued')
-    // stdout stays the bare job; the next step rides stderr.
     expect(result.stderr).toContain('brew-cli emails get-client-preview prv_1')
     expect(result.stdout).not.toContain('get-client-preview')
   })
@@ -572,7 +570,6 @@ describe('emails get-client-preview', () => {
     expect(new URL(request?.url ?? '').pathname).toBe(
       '/api/v1/emails/client-previews/prv_1'
     )
-    // A brand-scoped read: the brand binding rides along.
     expect(request?.headers.get('x-brand-id')).toBe('kxbrand1')
     const job = result.json as {
       status: string

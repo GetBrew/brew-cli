@@ -37,7 +37,6 @@ export const templatesListCommand = defineCommand({
   commandClass: 'read',
   flags: [
     {
-      // --brand is taken by the global brand-selection flag.
       flag: '--brand-name <name>',
       summary: 'Filter by gallery brand name',
     },
@@ -89,8 +88,6 @@ export const templatesListCommand = defineCommand({
       )
     }
     if (flags.all === true) {
-      // `representation` may arrive through --input, so the SDK's return
-      // type is the full-or-summary union; rows pass through verbatim.
       const rows = await collectAll<unknown>(ctx, (cursor) =>
         templates.list(
           asSdkInput<ListTemplateRowsInput>({
@@ -107,7 +104,6 @@ export const templatesListCommand = defineCommand({
     const result: unknown = await templates.list(
       asSdkInput<ListTemplatesInput>(input)
     )
-    // A count answers `{ count, groups? }`, not rows: the table would throw.
     const page = result as { data?: unknown }
     return {
       data: result,

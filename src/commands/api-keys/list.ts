@@ -29,8 +29,6 @@ export const apiKeysListCommand = defineCommand({
       const result = await ctx.client().apiKeys.list()
       return { data: result, human: renderApiKeys(result.data) }
     }
-    // `@brew.new/sdk` 10's `apiKeys.list(options?)` takes no page input, so a
-    // paged read goes through the raw transport.
     const page = (after: string | undefined) =>
       rawRequest<ApiKeysPage>(ctx, {
         method: 'GET',

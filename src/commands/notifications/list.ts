@@ -9,17 +9,6 @@ import {
   LIMIT_FLAG,
 } from '../../lib/paginate'
 
-/**
- * The brand's notifications, newest first, as the app's bell shows them.
- * Each row is shown only when the key may read its feature: `emails` for chats
- * and previews, `sends` for sends (`emails` implies it), `domains` for domain
- * checks (`emails` implies it), `contacts` for imports and validations,
- * `automations` for pause windows; brand extraction and image imports reach
- * every key, `api_key_created` needs the `all` scope, `send_limit_reached`
- * reaches organization admins only, and a comment mention or reply never
- * reaches an API key. So an empty page can mean this key cannot see that
- * kind of row. Reading marks nothing read.
- */
 export const notificationsListCommand = defineCommand({
   path: ['notifications', 'list'],
   summary:
@@ -79,11 +68,6 @@ export const notificationsListCommand = defineCommand({
   },
 })
 
-/**
- * The API scans a bounded window per page, so a page can hold fewer rows than
- * `--limit` (even none) while more follow: the next cursor is printed
- * whenever there is one, so a short page never reads as the end.
- */
 function renderNotifications(
   rows: ReadonlyArray<NotificationRow>,
   nextCursor: string | null

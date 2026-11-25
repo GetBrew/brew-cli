@@ -15,7 +15,6 @@ const METHODS = ['GET', 'POST', 'PATCH', 'DELETE'] as const
 
 type ApiMethod = (typeof METHODS)[number]
 
-/** Paths the API serves without authentication. */
 const ANONYMOUS_PATHS = ['/v1/health', '/v1/help', '/v1/llms.txt'] as const
 
 export const apiCommand = defineCommand({
@@ -72,10 +71,6 @@ export const apiCommand = defineCommand({
     if (method === 'GET' && body !== undefined) {
       throw new CliUsageError('GET requests cannot carry --data.')
     }
-    // A POST always carries a key — the user's, or one generated for this
-    // invocation — so a timed-out or interrupted POST can be replayed with
-    // it (the envelope prints it) instead of run twice. A key passed with
-    // --header wins; the one reported is whatever was actually sent.
     const headers = buildRawHeaders({
       auth,
       path,
@@ -104,9 +99,6 @@ export const apiCommand = defineCommand({
       url: `${auth.apiUrl}${path}`,
       headers,
       ...(body === undefined ? {} : { body }),
-      // --timeout, else the SDK's own default for this route when it is a
-      // long-running one (`api POST /v1/emails` waits as long as `emails
-      // generate`), else the SDK's 30 s.
       timeoutMs:
         ctx.budget.attemptMs ??
         longRunningTimeoutMs({ method, path: barePath }) ??

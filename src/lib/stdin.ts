@@ -1,10 +1,6 @@
 import type { Readable } from 'node:stream'
 import { decodeUtf8Text, type TextKind } from './utf8'
 
-/**
- * Read through EOF as UTF-8, refusing bytes that are not; an interrupted or
- * timed-out command closes its input.
- */
 export async function readStdinText({
   stream,
   signal,

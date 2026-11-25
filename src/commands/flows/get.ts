@@ -3,11 +3,6 @@ import { defineCommand } from '../../lib/define-command'
 import { flagString } from '../../lib/input'
 import { renderTable } from '../../lib/output'
 
-/**
- * One public flow by its brand domain: the bare row with `anchor` and every
- * step. `flows list` finds the slug; this reads the sequence. Organization-
- * wide, so the SDK never sends the brand binding.
- */
 export const flowsGetCommand = defineCommand({
   path: ['flows', 'get'],
   summary:

@@ -2,7 +2,6 @@ import type { ExportDomainUnsubscribesInput } from '@brew.new/sdk'
 import { defineCommand } from '../../../lib/define-command'
 import { asSdkInput, flagString } from '../../../lib/input'
 
-/** A domain's list as CSV text. */
 export const domainsUnsubscribesExportCommand = defineCommand({
   path: ['domains', 'unsubscribes', 'export'],
   summary: "A domain's unsubscribe list as CSV (truncated when capped)",
@@ -27,7 +26,6 @@ export const domainsUnsubscribesExportCommand = defineCommand({
   ],
   run: async ({ ctx, args, flags }) => {
     const scope = flagString(flags.scope)
-    // --scope passes through unchecked: the API validates it.
     const body = await ctx.client().domains.unsubscribes.export(
       asSdkInput<ExportDomainUnsubscribesInput>({
         domainId: args.domainId ?? '',

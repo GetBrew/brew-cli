@@ -4,16 +4,6 @@ import { describe, expect, it } from 'vitest'
 import { parse } from 'yaml'
 import { ALL_COMMANDS } from '../src/registry'
 
-/**
- * Every flag on a command with a JSON request body lands on a key the spec
- * declares. Request bodies are strict (`additionalProperties: false`), so a
- * flag that writes an undeclared key makes every call that uses it fail with
- * `400 INVALID_REQUEST`: `content gif --duration` and `content generate-image
- * --model` both shipped that way, because `asSdkInput` is a type cast with no
- * runtime check. A flag named after a top-level body key, path parameter or
- * query parameter (in kebab-case) passes on its own; any other flag says in
- * MAPPED which body key it fills.
- */
 type Schema = {
   $ref?: string
   properties?: Record<string, Schema>
@@ -47,7 +37,6 @@ function resolve<T>(node: T & { $ref?: string }): T {
   return resolve(target as T & { $ref?: string })
 }
 
-/** Dotted paths of every property a body schema declares, branches included. */
 function bodyKeys(
   node: Schema | undefined,
   prefix = '',
@@ -71,20 +60,15 @@ function bodyKeys(
   return out
 }
 
-/** CLI-side flags that never become body keys on any command. */
 const CLI_FLAGS = new Set(['--input', '--idempotency-key', '--yes'])
 
-/**
- * Flags named differently from the body key they fill (a dotted path), or
- * `null` for a flag the CLI handles itself and never sends.
- */
 const MAPPED: Readonly<
   Record<string, Readonly<Record<string, string | null>>>
 > = {
   'contacts search': {
     '--filter': 'filters',
     '--audience': 'audienceId',
-    '--all': null, // follows the cursor client-side
+    '--all': null,
   },
   'contacts count': { '--filter': 'filters', '--audience': 'audienceId' },
   'contacts count-by': { '--filter': 'filters', '--audience': 'audienceId' },
@@ -161,7 +145,6 @@ const camel = (flag: string): string =>
 const flagNames = (command: Command): Array<string> =>
   (command.flags ?? []).map((flag) => flag.flag.split(' ')[0] ?? '')
 
-/** The operation's JSON body keys and parameter names, if it takes a body. */
 function contract(
   command: Command
 ): { keys: Set<string>; parameters: Set<string> } | undefined {

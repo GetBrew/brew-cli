@@ -25,9 +25,6 @@ function cli(
   })
 }
 
-// The SDK builds each request from the fields it knows, so an unknown key
-// would be dropped and the command would exit 0. No handler is registered
-// for the refusals: exit 2 also proves no request went out.
 describe('unknown --input keys', () => {
   it('refuses an unknown key on a query read and suggests the near one', async () => {
     const result = await cli([
@@ -67,7 +64,6 @@ describe('unknown --input keys', () => {
       '--input',
       '{"bogus":1}',
     ])
-    // Exit 4 would mean the typo was put up for confirmation first.
     expect(result.code).toBe(2)
     expect(result.stderr).toContain('`bogus`')
   })
@@ -136,8 +132,6 @@ describe('input key coverage', () => {
       (spec.flags ?? []).includes(INPUT_FLAG)
   )
 
-  // A route with an open body has no entry and would go unchecked without
-  // anyone deciding so: opt the command out explicitly instead.
   it('maps every checked --input command to its route’s keys', () => {
     const unmapped = checked
       .filter(

@@ -19,8 +19,6 @@ export const automationsAudienceRunsResumeCommand = defineCommand({
     },
   ],
   flags: [IDEMPOTENCY_FLAG],
-  // `resumedFrom` on the response reports which case ran: `paused` or
-  // `failed`. A failed restart never resends a step the failed run finished.
   examples: ['brew-cli automations audience-runs resume arun_01HZ'],
   run: async ({ ctx, args, flags }) => ({
     data: await ctx

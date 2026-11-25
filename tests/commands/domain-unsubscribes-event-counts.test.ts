@@ -83,10 +83,6 @@ describe('analytics event-counts', () => {
     expect(result.code).not.toBe(0)
   })
 
-  // The API refuses a paged or run-scoped count; the SDK does not send those
-  // keys, so the CLI refuses them up front instead of dropping them and
-  // counting something else. No handler is registered: exit 2 also proves no
-  // request went out.
   it.each([
     ['automationRunId', { groupBy: ['eventType'], automationRunId: 'run_1' }],
     ['cursor', { groupBy: 'eventType', cursor: 'c_1' }],

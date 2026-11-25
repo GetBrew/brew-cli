@@ -13,17 +13,8 @@ import { imageUploadRequestContext } from './image-upload-recovery'
 import { anySignal, apiPathOf } from './transport'
 import type { CliContext } from './types'
 
-/** A raw attempt's deadline when neither `--timeout` nor a route default applies — the SDK's default. */
 export const DEFAULT_ATTEMPT_TIMEOUT_MS = 30_000
 
-/**
- * One raw HTTP attempt, bounded end to end: a deadline that covers the
- * response BODY as well as the headers, the command's signal (interrupt and
- * `--timeout`), and a record of the request for error envelopes. A failure
- * is classified by what aborted, never by the error's name: the command's
- * own reason (interrupt or deadline) is rethrown as-is, this attempt's
- * deadline becomes a `CliTimeoutError`, anything else a `CliConnectionError`.
- */
 export async function rawFetch(
   ctx: CliContext,
   request: {
@@ -76,12 +67,6 @@ export async function rawFetch(
   }
 }
 
-/**
- * Read a body as text, ending the read the moment `signal` aborts. Cancels
- * its own reader rather than trusting the runtime to error the stream on
- * abort — a mocked body, or a runtime that does not, would otherwise hang
- * past the deadline.
- */
 async function readBodyText(
   response: Response,
   signal: AbortSignal
@@ -110,18 +95,6 @@ async function readBodyText(
   }
 }
 
-/**
- * Minimal typed transport for public-API operations the published SDK does
- * not expose yet. Shares auth resolution, the X-Brand-Id policy, and
- * error-envelope mapping with the `api` escape hatch. Each caller swaps to
- * the SDK method when it ships — the parity-sdk sentinel flags the moment
- * that becomes possible. Unlike the SDK transport, raw calls are
- * single-attempt (no retry loop), bounded by `rawFetch`'s deadline. POST
- * calls get an idempotency key automatically unless `idempotency: 'none'`
- * marks a credential-minting operation; a timed-out or interrupted
- * one reports that key (and the command that replays it), and callers can
- * pass their own to replay across process restarts.
- */
 export async function rawRequest<TResponse>(
   ctx: CliContext,
   request: {
@@ -130,7 +103,6 @@ export async function rawRequest<TResponse>(
     readonly body?: unknown
     readonly query?: Readonly<Record<string, string | undefined>>
     readonly idempotencyKey?: string | undefined
-    /** Credential-minting operations cannot replay their response. */
     readonly idempotency?: 'none'
     readonly allowAnonymous?: boolean
   }
@@ -217,10 +189,6 @@ export function responseToApiError(
   parsed: unknown
 ): CliApiError {
   const requestId = response.headers.get('x-request-id') ?? undefined
-  // Standard envelope: { error: {...} }. The trigger-fire endpoints answer
-  // with the legacy fire envelope instead — `code`/`message`/`details` at
-  // the top level and no `type` — so read those rather than discarding the
-  // body, and derive the `type` (and a suggestion) from the HTTP status.
   const record = isRecord(parsed) ? parsed : undefined
   const standard =
     record !== undefined && isRecord(record.error) ? record.error : undefined

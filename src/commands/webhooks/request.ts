@@ -18,7 +18,6 @@ export const WEBHOOK_ENDPOINT_FLAGS = [
   { flag: '--description <text>', summary: 'Endpoint description' },
 ] as const
 
-/** Prepare once so piped input also survives the confirmation protocol. */
 export async function prepareWebhookInput({ ctx, flags }: CommandInvocation) {
   requestOptions(flags)
   const overrides: Record<string, unknown> = Object.fromEntries(
@@ -48,7 +47,6 @@ export async function prepareWebhookInput({ ctx, flags }: CommandInvocation) {
   return input
 }
 
-/** Shared raw transport while the matching SDK resource awaits publication. */
 export function webhookRunner<Output, Input = never>(route: {
   readonly method: HttpMethod
   readonly path: string

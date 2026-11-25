@@ -1,23 +1,9 @@
-/**
- * Signal smoke test for the BUILT binary (`bun run build` first):
- *
- *   bun run scripts/signal-smoke.ts
- *
- * The in-process suite injects an abort signal; only a real process can
- * prove the rest of the contract: that SIGINT/SIGTERM stop a request that
- * is in flight, that the error envelope still reaches stderr, and that the
- * CLI then dies BY the signal (so a calling shell loop stops too).
- *
- * Runs against a loopback server that accepts the request and never answers.
- * No network, no real key.
- */
 import { spawn } from 'node:child_process'
 import { createServer } from 'node:http'
 import type { AddressInfo } from 'node:net'
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => {
-    // Never what keeps the smoke process alive once it has its answer.
     setTimeout(resolve, ms).unref()
   })
 }
@@ -38,7 +24,6 @@ async function interruptMidRequest(
   })
   const server = createServer(() => {
     onRequest()
-    // Hold the request open and never answer.
   })
   await new Promise<void>((resolve) => {
     server.listen(0, '127.0.0.1', resolve)
@@ -79,9 +64,6 @@ async function interruptMidRequest(
     server.closeAllConnections()
     server.close()
   }
-  // The request must arrive before anything is interrupted. A CLI that
-  // fails to start (or never sends) must fail the smoke test promptly, not
-  // leave CI waiting for its job timeout.
   const startup = await Promise.race([
     requested.then(() => 'requested' as const),
     exited.then(() => 'exited' as const),

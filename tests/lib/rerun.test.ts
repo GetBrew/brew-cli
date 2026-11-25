@@ -25,7 +25,6 @@ function env(): Record<string, string> {
   }
 }
 
-/** Exercise the shell quoting users rely on when running an envelope verbatim. */
 function argvOf(command: string): string[] {
   const argv = execFileSync(
     'sh',
@@ -38,7 +37,6 @@ function argvOf(command: string): string[] {
   return argv
 }
 
-/** Capture Commander's real merged invocation before any command handler runs. */
 async function invocationOf(argv: readonly string[]): Promise<RerunInvocation> {
   const captured = new Error('invocation captured')
   let invocation: RerunInvocation | undefined

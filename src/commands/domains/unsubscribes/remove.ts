@@ -1,6 +1,5 @@
 import { defineCommand } from '../../../lib/define-command'
 
-/** Take one address off a domain's list. */
 export const domainsUnsubscribesRemoveCommand = defineCommand({
   path: ['domains', 'unsubscribes', 'remove'],
   summary:

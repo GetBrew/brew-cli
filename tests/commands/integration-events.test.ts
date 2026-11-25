@@ -69,8 +69,6 @@ const DETAIL: components['schemas']['IntegrationEventDetailResponse'] = {
   ],
 }
 
-// Typed as the SDK row (`IntegrationEventTriggerSaved`), which has no
-// `brewEvent` or `skill` and always says how current the properties are.
 const TRIGGER: EnsureIntegrationEventTriggerResponse = {
   triggerEventId: 'posthog:org_2abc:brand_9xyz:ev_3f1c9b2e7a4d8c06b5e1f2a3',
   title: 'created_project',
@@ -159,7 +157,6 @@ describe('integrations events list', () => {
         if (cursor === null) {
           return HttpResponse.json(page([EVENT], 'c2'))
         }
-        // Hidden events leave a page short, even empty, before the end.
         if (cursor === 'c2') {
           return HttpResponse.json(page([], 'c3'))
         }
@@ -275,7 +272,6 @@ describe('integrations events get', () => {
     }
     server.use(http.get(`${EVENTS}/:eventId`, () => HttpResponse.json(stored)))
 
-    // A spent budget is a 200 with what Brew stored, not an error.
     const json = await cli(['integrations', 'events', 'get', EVENT_ID])
     expect(json.code).toBe(0)
     expect(json.json).toEqual(stored)

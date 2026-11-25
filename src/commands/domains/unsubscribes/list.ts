@@ -4,7 +4,6 @@ import { asSdkInput, flagInt, flagString } from '../../../lib/input'
 import { renderTable } from '../../../lib/output'
 import { CURSOR_FLAG, LIMIT_FLAG } from '../../../lib/paginate'
 
-/** One page of a marketing domain's unsubscribe list. */
 export const domainsUnsubscribesListCommand = defineCommand({
   path: ['domains', 'unsubscribes', 'list'],
   summary: "One page of a marketing domain's unsubscribe list, newest first",
@@ -33,7 +32,6 @@ export const domainsUnsubscribesListCommand = defineCommand({
     const q = flagString(flags.q)
     const scope = flagString(flags.scope)
     const cursor = flagString(flags.cursor)
-    // --scope passes through unchecked: the API validates it.
     const body = await ctx.client().domains.unsubscribes.list(
       asSdkInput<ListDomainUnsubscribesInput>({
         domainId: args.domainId ?? '',

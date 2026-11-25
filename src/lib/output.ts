@@ -11,11 +11,6 @@ export function resolveOutputMode(input: {
   return input.isTtyOut ? 'human' : 'json'
 }
 
-/**
- * Command data goes to stdout and nowhere else. JSON mode prints the API
- * payload verbatim (compact, one line) so pipes and agents get the exact
- * SDK envelope; human mode prefers the command's rendering when provided.
- */
 export function printData(
   ctx: CliContext,
   data: unknown,
@@ -31,7 +26,6 @@ export function printData(
   ctx.io.stdout.write(`${text}\n`)
 }
 
-/** Progress and status lines go to stderr and honor --quiet. */
 export function progress(ctx: CliContext, message: string): void {
   if (ctx.globals.quiet) {
     return

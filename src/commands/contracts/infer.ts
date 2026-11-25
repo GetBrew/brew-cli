@@ -16,7 +16,6 @@ export const contractsInferCommand = defineCommand({
   sdkMethod: 'payloadContracts.infer',
   route: { method: 'POST', path: '/v1/payload-contracts/infer' },
   commandClass: 'read',
-  // Bare examples carry application keys rather than request-envelope keys.
   inputKeys: 'unchecked',
   flags: [
     {
@@ -30,8 +29,6 @@ export const contractsInferCommand = defineCommand({
     `brew-cli contracts infer --input '{"email":"jane@example.com","order":{"total":9.5}}'`,
     `brew-cli contracts infer --input '{"example":{"example":{"label":"Demo"}}}'`,
   ],
-  // Only canonical request keys identify an envelope; siblings stay in raw
-  // data. Data containing only reserved keys needs an explicit outer example.
   run: async ({ ctx, flags }) => {
     const input = mergeInput(
       await readJsonFlag(ctx, flags.input, '--input'),
@@ -53,7 +50,6 @@ export const contractsInferCommand = defineCommand({
         '--input with a non-empty example object is required (the JSON your system sends).'
       )
     }
-    // `subjectKind` passes through unchecked: the API validates it.
     const body = await ctx.client().payloadContracts.infer(
       asSdkInput<InferPayloadContractInput>({
         example,

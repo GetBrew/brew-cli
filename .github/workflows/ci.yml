@@ -18,7 +18,7 @@ jobs:
     runs-on: ${{ vars.CI_RUNNER_SMALL || 'ubuntu-latest' }}
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           persist-credentials: false
       - uses: oven-sh/setup-bun@v2
@@ -46,8 +46,6 @@ jobs:
           node dist/bin.js --version
           node dist/bin.js --help > /dev/null
           node dist/bin.js docs --agent > /dev/null
-      # SIGINT/SIGTERM against the built binary: the in-process suite cannot
-      # prove the process dies by the signal after printing its envelope.
       - name: Signal smoke
         run: bun run smoke:signals
       - name: CLI regression smoke

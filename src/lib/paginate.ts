@@ -9,18 +9,6 @@ export type Page<T> = {
   }
 }
 
-/**
- * Drains a cursor-paginated list for `--all`. The API contract keeps
- * `pagination.cursor` string-or-null (never omitted); a repeated cursor
- * aborts the loop as a defense against a server-side pagination bug.
- * Pass the request's starting cursor in `options` so resumed walks also
- * refuse to fetch their first page again.
- *
- * An interrupt or `--timeout` stops the drain between pages as well as
- * mid-page. Rows fetched so far are NOT printed — a partial list would read
- * as the whole list — but the error reports how far it got and the cursor
- * to resume at.
- */
 export async function collectAll<T>(
   ctx: CliContext,
   fetchPage: (cursor: string | undefined) => Promise<Page<T>>,
@@ -64,7 +52,6 @@ export async function collectAll<T>(
   }
 }
 
-/** Lists and nested message walks share the same cycle and error protocol. */
 export function assertPaginationProgress({
   ctx,
   fetchedCursors,
@@ -89,13 +76,11 @@ export function assertPaginationProgress({
   }
 }
 
-/** The `--all` flag shared by paginated list commands. */
 export const ALL_FLAG = {
   flag: '--all',
   summary: 'Follow the cursor and return every page as one result',
 } as const
 
-/** Describes the server default without supplying a default request value. */
 export function limitFlag(defaultSize: number) {
   return {
     flag: '--limit <n>',

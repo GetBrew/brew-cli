@@ -25,11 +25,6 @@ const FORMATS = new Set(['json', 'ts', 'zod', 'jsonschema', 'skill'])
 
 const ENFORCEMENT_MODES = new Set(['off', 'prune', 'strict'])
 
-/**
- * The validate preview knob is the VALIDATOR's enum — it is only ever
- * consulted once a contract is enforcing, so `off` is not representable
- * (platform `ContractEnforcementMode`).
- */
 const VALIDATE_ENFORCEMENT_MODES = new Set(['prune', 'strict'])
 
 function formatOption(value: unknown): string | undefined {
@@ -42,7 +37,6 @@ function formatOption(value: unknown): string | undefined {
   return format
 }
 
-/** Text formats print `content` raw on a TTY; `--json | jq -r .content` for pipes. */
 function contentHuman(body: PayloadContractGetResponse): { human?: string } {
   return body.format !== 'json' && typeof body.content === 'string'
     ? { human: body.content }
@@ -113,22 +107,16 @@ export const automationsTriggersContractPutCommand = defineCommand({
     `brew-cli automations triggers contract put tri_signup --input '{"fields":[{"key":"email","type":"string","required":true}]}'`,
     'brew-cli automations triggers contract put tri_signup --enforcement strict',
   ],
-  // Trigger contracts must keep a top-level required `email` string;
-  // nested object/array fields are supported. The
-  // response is the same body a follow-up `contract get` returns.
   run: async ({ ctx, args, flags }) => {
     const input = mergeInput(
       await readJsonFlag(ctx, flags.input, '--input'),
       {}
     )
-    // The platform PUT takes fields?, name?, enforcement? — each optional,
-    // so an enforcement-only (or rename-only) patch is designed usage.
     if (input.fields !== undefined && !Array.isArray(input.fields)) {
       throw new CliUsageError(
         '--input .fields must be an array of contract field nodes.'
       )
     }
-    // One knob. Omitting it leaves the stored setting alone.
     const enforcement = flagString(flags.enforcement)
     if (enforcement !== undefined && !ENFORCEMENT_MODES.has(enforcement)) {
       throw new CliUsageError(
@@ -144,8 +132,6 @@ export const automationsTriggersContractPutCommand = defineCommand({
         'Empty contract body — pass --input (fields and/or name) or --enforcement <mode>.'
       )
     }
-    // The trigger id is spread LAST: a `triggerEventId` inside --input must
-    // not retarget the call at another trigger.
     const body = await ctx.client().automations.triggers.putContract(
       asSdkInput<PutTriggerContractInput>({
         ...requestBody,
@@ -166,7 +152,6 @@ export const automationsTriggersContractValidateCommand = defineCommand({
     path: '/v1/automations/triggers/{triggerEventId}/contract/validate',
   },
   commandClass: 'read',
-  // The input keys are the user's own data: a bare payload is shorthand for the { payload } envelope.
   inputKeys: 'unchecked',
   args: [
     {
@@ -209,8 +194,6 @@ export const automationsTriggersContractValidateCommand = defineCommand({
         `Unknown --enforcement '${enforcementFlag}' (expected prune | strict).`
       )
     }
-    // Only canonical request keys identify an envelope. Explicit nesting
-    // disambiguates raw data containing only payload/enforcement keys.
     const enforcement =
       enforcementFlag ?? (isEnvelope ? input.enforcement : undefined)
     const body = await ctx.client().automations.triggers.validatePayload(

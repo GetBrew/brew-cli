@@ -3,27 +3,8 @@ import { describe, expect, it } from 'vitest'
 import { ALL_COMMANDS } from '../src/registry'
 import { SDK_SKIP_LIST } from '../src/skip-list'
 
-/**
- * SDK methods that exist but whose commands are still being built, phase by
- * phase. This list must ONLY shrink; it must be empty before 0.1.0 ships.
- */
 const PENDING_BUILD: readonly string[] = []
 
-/**
- * SDK methods the CLI removed AHEAD of the SDK release that deletes them.
- * The list exists for the window between the API dropping a route and the
- * SDK publishing without the method, so a retargeted command does not have
- * to wait on the SDK.
- *
- * Empty since 12.0.0. SDK 10 closed an earlier window: it removed
- * `analytics.campaigns`, `analytics.sends.*`, `analytics.triggerInstances.*`,
- * `automations.triggers.ready` and `automations.audienceRuns.control`, the
- * staleness test below fired on every sentinel, and each was retired. The
- * last was `data.run`: `POST /v1/data` is retired (GetBrew/brew-v2#1825),
- * the CLI dropped `data run` while `@brew.new/sdk` 11.6.0 still had the
- * method, and SDK 12.0.0 (GetBrew/typescript-sdk#45) deleted it — the
- * ratchet working exactly as designed.
- */
 const REMOVED_SDK_LEAVES: readonly string[] = []
 
 function walkSdkLeaves(): readonly string[] {

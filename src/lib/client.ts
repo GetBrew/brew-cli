@@ -10,17 +10,8 @@ export const DEFAULT_API_URL = 'https://brew.new/api'
 
 export const LOGIN_KEYS_URL = 'https://brew.new/settings/api'
 
-/**
- * Placeholder key for the unauthenticated endpoints (health, help,
- * llms.txt). The SDK requires a non-empty key; the server ignores it.
- */
 export const ANONYMOUS_API_KEY = 'brew_anonymous'
 
-/**
- * Organization-level route prefixes. These ride the org transport and must
- * never receive an X-Brand-Id header (the server ignores it there, but the
- * SDK's own withBrand keeps the same discipline).
- */
 const ORG_LEVEL_PATH_PREFIXES = [
   '/v1/brands',
   '/v1/usage',
@@ -81,7 +72,6 @@ export function resolveAuth(input: {
   return { apiKey, apiKeySource, brandId, apiUrl }
 }
 
-/** How a command's SDK client sends: its signal, deadlines and recorder. */
 export type SdkTransport = {
   readonly signal: AbortSignal
   readonly fetch: typeof globalThis.fetch
@@ -98,8 +88,6 @@ export function buildSdkClient(
     baseUrl: auth.apiUrl,
     userAgent: `${CLI_NAME}/${CLI_VERSION}`,
     ...(auth.brandId === undefined ? {} : { brandId: auth.brandId }),
-    // Client-wide, so every call the command makes observes the interrupt
-    // and the deadline without each command file threading a signal.
     signal: transport.signal,
     fetch: transport.fetch,
     ...(transport.timeoutMs === undefined

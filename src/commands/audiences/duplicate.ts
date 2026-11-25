@@ -15,7 +15,6 @@ export const audiencesDuplicateCommand = defineCommand({
       isRequired: true,
     },
   ],
-  // The operation takes no request body — the API names the copy itself.
   flags: [IDEMPOTENCY_FLAG],
   examples: ['brew-cli audiences duplicate aud_3k9sQ'],
   run: async ({ ctx, args, flags }) => ({

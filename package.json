@@ -40,7 +40,7 @@
     "build": "tsup",
     "clean": "rm -rf dist",
     "tsc": "tsc --noEmit",
-    "lint": "biome check .",
+    "lint": "biome check . && node --test scripts/source-comments.test.mjs && node scripts/check-comments.mjs",
     "fix": "biome check --write .",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -51,7 +51,8 @@
     "generate:types": "node scripts/generate-types.mjs",
     "prepublishOnly": "bun run clean && bun run tsc && bun run lint && bun run test && bun run build",
     "smoke:signals": "bun run scripts/signal-smoke.ts",
-    "smoke:regressions": "bun run scripts/regression-smoke.ts"
+    "smoke:regressions": "bun run scripts/regression-smoke.ts",
+    "comments:check": "node --test scripts/source-comments.test.mjs && node scripts/check-comments.mjs"
   },
   "dependencies": {
     "@brew.new/sdk": "git+https://github.com/GetBrew/typescript-sdk.git#ce17a70fafd0cf499649a5498dee30c88c9fc64e",

@@ -4,17 +4,10 @@ import { assertKnownInputKeys } from './input-keys'
 import type { CliContext } from './types'
 import { decodeUtf8Text, type TextKind } from './utf8'
 
-/**
- * The single deliberate boundary cast from user-supplied JSON to an SDK
- * input type. The public API strictly validates every request server-side
- * (the Zod contracts upstream of the OpenAPI spec); the CLI does not
- * duplicate those schemas.
- */
 export function asSdkInput<T>(value: unknown): T {
   return value as T
 }
 
-/** Reads `--input <json|->`; `-` consumes stdin. */
 export async function readJsonFlag(
   ctx: CliContext,
   value: unknown,
@@ -38,10 +31,6 @@ export async function readJsonFlag(
   return parsed
 }
 
-/**
- * Reads `--file <path|->` as UTF-8 text; `-` consumes stdin. `kind` tailors
- * the advice when the bytes are not UTF-8.
- */
 export async function readTextFlag(
   ctx: CliContext,
   value: unknown,
@@ -63,7 +52,6 @@ export async function readTextFlag(
   return decodeUtf8Text(bytes, { flag: flagName, path: value }, { kind })
 }
 
-/** Parses repeatable `key=value` flag values into a record. */
 export function parseKeyValues(
   value: unknown,
   flagName: string
@@ -85,10 +73,6 @@ export function parseKeyValues(
   return record
 }
 
-/**
- * Parses repeatable `--filter field:operator[:value]` values into the
- * API's structured contact filter shape.
- */
 export function parseFilterFlags(
   value: unknown
 ): ReadonlyArray<Record<string, string>> | undefined {
@@ -111,7 +95,6 @@ export function parseFilterFlags(
   })
 }
 
-/** Merges ergonomic flag overrides over a `--input` JSON body. */
 export function mergeInput(
   base: unknown,
   overrides: Readonly<Record<string, unknown>>
@@ -130,12 +113,10 @@ export function mergeInput(
   return merged
 }
 
-/** Preserve supplied strings, including empty values that clear API fields. */
 export function flagString(value: unknown): string | undefined {
   return typeof value === 'string' ? value : undefined
 }
 
-/** Resource selectors must not turn an empty id into a collection read. */
 export function flagNonEmptyString(
   value: unknown,
   flagName: string
@@ -147,7 +128,6 @@ export function flagNonEmptyString(
   return parsed
 }
 
-/** Exhaustive SDK request keys distinguish envelopes from shorthand data. */
 export function isInputEnvelope<T extends object>(
   input: Readonly<Record<string, unknown>>,
   requiredKey: keyof T & string,
@@ -180,7 +160,6 @@ export function toStringArray(value: unknown): readonly string[] | undefined {
   return typeof value === 'string' ? [value] : undefined
 }
 
-/** Per-request SDK options derived from shared mutation flags. */
 export function requestOptions(
   flags: Readonly<Record<string, unknown>>
 ): { idempotencyKey: string } | undefined {
@@ -210,12 +189,6 @@ export const IDEMPOTENCY_FLAG = {
   summary: 'Idempotency-Key for safe retries (auto-generated otherwise)',
 } as const
 
-/**
- * `--idempotency-key` on a route that never replays a request
- * (`x-brew-idempotency: disabled`). Flags are additive-only after release, so
- * the flag stays and is still sent, but its help must not promise a safe
- * retry.
- */
 export const NON_REPLAYING_IDEMPOTENCY_FLAG = {
   flag: '--idempotency-key <key>',
   summary:

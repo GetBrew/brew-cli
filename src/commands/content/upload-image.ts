@@ -13,17 +13,6 @@ import {
   unknownTypeError,
 } from './image-library'
 
-/**
- * One local file into the brand library: `brew.content.uploadImage` opens an
- * upload, POSTs the bytes to its `uploadUrl` (without the API key) and adds
- * it. Three requests, so no route of its own: the spec parity files
- * `content create-image-upload` and `content add-image` under theirs.
- *
- * No `--idempotency-key`: a re-run opens a new upload, so no single key
- * replays the whole command. Finalization failures retain the original
- * upload ID and key; the shared error renderer offers `content add-image`
- * to recover that upload without opening another one.
- */
 export const contentUploadImageCommand = defineCommand({
   path: ['content', 'upload-image'],
   summary:
@@ -60,8 +49,6 @@ export const contentUploadImageCommand = defineCommand({
     if (contentType === undefined) {
       throw unknownTypeError(fileName)
     }
-    // Checked before reading: a file over the cap is refused without being
-    // loaded, and nothing is sent for a file the API would refuse.
     assertUploadSize({ label: `"${path}"`, size, contentType })
     const bytes = await readBytes(path)
     progress(ctx, `Uploading ${fileName} (${bytes.byteLength} bytes)…`)

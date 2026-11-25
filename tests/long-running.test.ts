@@ -6,12 +6,6 @@ import {
 } from '../src/lib/long-running'
 import { ALL_COMMANDS } from '../src/registry'
 
-/**
- * A command bound to a long-running route declares that route's SDK
- * default as its whole-command deadline, and no other command declares
- * one: the CLI and the SDK never disagree about how long a call may take,
- * and a new long-running command cannot ship on the 30 s default.
- */
 describe('long-running command deadlines', () => {
   it('every command on a long-running route declares its SDK default', () => {
     const mismatches = ALL_COMMANDS.flatMap((spec) => {

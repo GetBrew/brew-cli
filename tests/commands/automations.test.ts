@@ -491,9 +491,6 @@ describe('automations triggers fire (confirmation protocol)', () => {
   })
 
   it('reports a payload refusal as itself, with the field errors (SDK legacy-envelope mapping)', async () => {
-    // The typed path goes through @brew.new/sdk. Before 9.3.0 the legacy
-    // fire envelope fell through to `unknown_error` / `internal_error` +
-    // retry advice, and `details.errors[]` was unreachable.
     server.use(
       http.post(`${API}/v1/automations/triggers/tri_signup/fire`, () =>
         HttpResponse.json(
@@ -556,10 +553,6 @@ describe('automations triggers fire (confirmation protocol)', () => {
   })
 
   it('reports a payload refusal in the standard envelope the API sends today, with the field errors', async () => {
-    // Since the v1 cleanup the fire refuses in `{ error: { … } }` like every
-    // other endpoint, with the field errors under `error.details`. This is
-    // the reporter's case against the live shape: which field was wrong,
-    // no retry advice, the server's own suggestion.
     server.use(
       http.post(`${API}/v1/automations/triggers/tri_signup/fire`, () =>
         HttpResponse.json(
@@ -617,8 +610,6 @@ describe('automations triggers fire (confirmation protocol)', () => {
     expect(parsed.error.details.errors.map((issue) => issue.field)).toEqual([
       'code',
     ])
-    // The server's own suggestion passes through verbatim — never a
-    // client-generated one, and never retry advice.
     expect(parsed.error.suggestion).toBe(
       'Send fields and types matching the trigger’s payloadSchema (see GET /v1/automations/triggers/{triggerEventId}).'
     )
@@ -654,7 +645,6 @@ describe('automations triggers contract put', () => {
       'strict',
     ])
     expect(result.code).toBe(0)
-    // The designed one-field patch: exactly { enforcement } on the wire.
     expect(body).toEqual({ enforcement: 'strict' })
   })
 
@@ -860,10 +850,6 @@ describe('automations runs list', () => {
   })
 
   it('forwards --recipient as recipientEmail and --status canceled verbatim', async () => {
-    // `recipientEmail` is the one-contact run history the server honours
-    // since brew-v2 #1621 — a dropped flag would answer with everyone's
-    // runs. The API's status enum spells it `canceled` (one L); the help
-    // text used to say `cancelled`, the one value the server refuses.
     let query: URLSearchParams | undefined
     server.use(
       http.get(`${API}/v1/automations/runs`, ({ request }) => {

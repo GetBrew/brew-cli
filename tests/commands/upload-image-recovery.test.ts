@@ -47,7 +47,6 @@ function errorOf(stderr: string): Record<string, unknown> {
   return parsed.error
 }
 
-/** Parse the exact recovery command users run, including attached quoted values. */
 function argvOf(command: string): string[] {
   return execFileSync('sh', ['-c', `set -- ${command}; printf '%s\\0' "$@"`], {
     encoding: 'utf8',
@@ -406,8 +405,6 @@ describe('newer SDK recovery metadata', () => {
         }),
         parse: new BrewParseError({ status: 200, bodyPreview: '{broken' }),
       }
-      // The published SDK predates these fields. Newer SDKs set them when
-      // constructing errors; the CLI reads the same public shape.
       const error = Object.assign(errors[kind], {
         uploadId: UPLOAD_ID,
         idempotencyKey: 'original-key',

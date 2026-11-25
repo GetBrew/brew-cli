@@ -31,8 +31,6 @@ export const fieldsCreateCommand = defineCommand({
         `--type must be one of: ${FIELD_TYPES.join(', ')}`
       )
     }
-    // Typed literal on purpose — no asSdkInput cast, so the compiler holds
-    // this body to the generated contract (wire names are fieldName/fieldType).
     const input: CreateFieldInput = {
       fieldName,
       fieldType: fieldType as CreateFieldInput['fieldType'],

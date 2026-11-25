@@ -16,7 +16,6 @@ function bytes(...parts: ReadonlyArray<string | readonly number[]>): Buffer {
   )
 }
 
-/** The message a POSIX host prints, unless `options` says otherwise. */
 function refusal(
   input: Uint8Array,
   source: TextSource,
@@ -54,7 +53,6 @@ describe('decodeUtf8Text', () => {
   })
 
   it('refuses Windows-1252 bytes, naming the line and byte', () => {
-    // "José" with é as Windows-1252 0xE9, after a UTF-8 line and a CRLF.
     const input = bytes('Prénom,email\r\n', 'Jos', [0xe9], ',j@x.com\r\n')
     expect(refusal(input, FILE)).toBe(
       '--file names.csv is not UTF-8 (line 2 has byte 0xE9), so nothing was sent. ' +
@@ -119,8 +117,6 @@ describe('decodeUtf8Text', () => {
   })
 
   it('names no source encoding when the bytes cannot be Windows-1252', () => {
-    // "Hélène" in Mac Roman: é = 0x8E, è = 0x8F, which Windows-1252 leaves
-    // undefined. Converting it as Windows-1252 would store "HŽlne".
     const macRoman = bytes('H', [0x8e], 'l', [0x8f], 'ne')
     expect(refusal(macRoman, FILE)).toBe(
       '--file names.csv is not UTF-8 (line 1 has byte 0x8E), so nothing was sent. ' +
@@ -180,7 +176,6 @@ describe('decodeUtf8Text', () => {
   })
 
   it('rethrows a decoder failure on valid UTF-8 instead of blaming the encoding', () => {
-    // Node throws ERR_STRING_TOO_LONG decoding a valid file over ~512 MiB.
     const tooLong = new Error('Cannot create a string longer than 0x1fffffe8')
     vi.spyOn(TextDecoder.prototype, 'decode').mockImplementation(() => {
       throw tooLong

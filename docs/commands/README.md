@@ -1,6 +1,6 @@
 # brew-cli command reference
 
-<!-- GENERATED FILE — do not edit. Regenerate with `bun run docs:commands`. -->
+Generated from the command registry with `bun run docs:commands`.
 
 163 commands. Classes: read (always safe), write
 (mutating, retry-safe), destructive (irreversible — the confirmation

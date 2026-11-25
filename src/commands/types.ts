@@ -6,14 +6,6 @@ import { defineCommand } from '../lib/define-command'
 import { asSdkInput } from '../lib/input'
 import { collectAll } from '../lib/paginate'
 
-/**
- * `brew-cli types` — generate TypeScript payload contracts for this
- * workspace's authoritative trigger contracts. Deterministic output:
- * same inputs → the same bytes, with a content hash in the header so
- * `--check` works as a CI drift gate (exit 1 when the API's contracts no
- * longer match the committed file).
- */
-
 const HEADER_PREFIX = '// brew:contracts sha256:'
 
 type ContractArtifact = {
@@ -24,7 +16,6 @@ type ContractArtifact = {
 
 const IDENTIFIER_RE = /^[A-Za-z_$][A-Za-z0-9_$]*$/
 
-/** Trigger ids supply deterministic suffixes when stored type names collide. */
 function identifierSuffix(value: string): string {
   return value
     .replace(/[^a-zA-Z0-9]+/g, ' ')
@@ -34,7 +25,6 @@ function identifierSuffix(value: string): string {
     .join('')
 }
 
-/** Only declaration identifiers are renamed; field names and literals are untouched. */
 function emitArtifact(artifact: ContractArtifact, name: string): string {
   const escapedName = artifact.typeName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
   const declaration = new RegExp(`^export type ${escapedName} =`, 'm')
@@ -52,7 +42,6 @@ function emitArtifact(artifact: ContractArtifact, name: string): string {
     .trimEnd()
 }
 
-/** Byte-stable ordering — `localeCompare` varies by host locale. */
 function byCodepoint(a: string, b: string): number {
   if (a < b) {
     return -1
@@ -60,11 +49,6 @@ function byCodepoint(a: string, b: string): number {
   return a > b ? 1 : 0
 }
 
-/**
- * Stored type names share one flat namespace and carry no uniqueness
- * constraint — colliding names get the trigger id appended (then a
- * numeric suffix as a last resort) so the generated file always compiles.
- */
 function uniqueNames(
   entries: ReadonlyArray<{ label: string; id: string }>
 ): Array<string> {
@@ -91,7 +75,6 @@ function buildFileText(args: {
   const artifacts = [...args.artifacts].sort((a, b) =>
     byCodepoint(a.triggerEventId, b.triggerEventId)
   )
-  // Type names come from the authoritative contract; only collisions need aliases.
   const names = uniqueNames(
     artifacts.map((artifact) => ({
       id: artifact.triggerEventId,
@@ -141,8 +124,6 @@ export const typesCommand = defineCommand({
     'brew-cli types --check',
   ],
   run: async ({ ctx, flags }) => {
-    // Complete the read before writing or certifying any artifact. Shared
-    // pagination rejects cycles and observes the command's stop signal.
     const triggers = await collectAll(ctx, async (cursor) => {
       const response: ListTriggersResponse = await ctx
         .client()
@@ -194,7 +175,6 @@ export const typesCommand = defineCommand({
       } catch {
         existing = null
       }
-      // CRLF-tolerant: an autocrlf checkout must not read as drift.
       const normalize = (value: string) => value.replaceAll('\r\n', '\n')
       if (existing === null || normalize(existing) !== normalize(text)) {
         return {
@@ -203,7 +183,6 @@ export const typesCommand = defineCommand({
             existing === null
               ? `${outPath} does not exist — run \`brew-cli types\` first.`
               : `${outPath} is stale — the workspace's payload contracts changed. Run \`brew-cli types\` to regenerate.`,
-          // Documented drift contract: exit 1 (not the usage-error 2).
           exitCode: 1,
         }
       }

@@ -58,7 +58,6 @@ describe('resumed pagination', () => {
           requested.push(cursor)
           return HttpResponse.json({
             data: [],
-            // Bound the old walk so a regression cannot hang the test runner.
             pagination: {
               limit: 100,
               cursor: requested.length > 3 ? null : 'repeat',

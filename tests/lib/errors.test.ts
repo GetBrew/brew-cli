@@ -98,8 +98,6 @@ describe('toErrorEnvelope', () => {
   })
 })
 
-// A trigger-fire `payload_mismatch` refusal: the part a caller needs is
-// which field was wrong, and that lives in `details.errors[]`.
 const PAYLOAD_MISMATCH_DETAILS = {
   errors: [
     {
@@ -145,9 +143,6 @@ describe('toErrorEnvelope — details', () => {
   })
 
   it('reads details off a BrewApiError structurally', () => {
-    // The installed SDK predates `details`; a newer one exposes it as a
-    // readonly property. The CLI reads it structurally so the typed
-    // commands light up the moment the SDK bump lands, with no CLI change.
     const error = makeBrewApiError(400)
     Object.assign(error, { details: PAYLOAD_MISMATCH_DETAILS })
 
@@ -171,7 +166,6 @@ describe('printError — details', () => {
         io: {
           stdout: new PassThrough(),
           stderr,
-          // Output mode follows the TTY, as it does for a real command.
           isTtyOut: mode === 'human',
           isTtyIn: false,
           env: {},

@@ -58,8 +58,6 @@ export const emailsCreateInboxPlacementTestCommand = defineCommand({
     const emailVersionId = flagString(flags.emailVersionId)
     const providers = toStringArray(flags.providers)
     return {
-      // The API answers 202 with a pending test (status: "queued"); poll
-      // `emails get-inbox-placement-results --test-id` for the outcome.
       data: await ctx.client().emails.inboxPlacementTests.create(
         asSdkInput<CreateInboxPlacementTestInput>({
           emailId: args.emailId ?? '',

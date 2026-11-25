@@ -111,13 +111,11 @@ describe('types', () => {
     const text = readFileSync(out, 'utf8')
 
     expect(text.startsWith('// brew:contracts sha256:')).toBe(true)
-    // Declared schema, int → number, invalid keys quoted.
     expect(text).toContain('export type UserSignedUpPayload = {')
     expect(text).toContain('  email: string')
     expect(text).toContain('  seats?: number')
     expect(text).toContain('  "kebab-key"?: string')
 
-    // Byte-determinism: a second run writes the identical file.
     const again = await runCli(['types', '--out', out], {
       extraCommands: [typesCommand],
       env: env(),
@@ -147,7 +145,6 @@ describe('types', () => {
       env: testEnv,
       extraCommands: [typesCommand],
     })
-    // Documented drift contract: exit 1 specifically (2 = usage error).
     expect(drifted.code).toBe(1)
     expect(
       (drifted.json as { upToDate: boolean } | null)?.upToDate ?? null
@@ -196,11 +193,6 @@ describe('types — nested contracts', () => {
     createdAt: '2026-08-01T00:00:00.000Z',
     updatedAt: '2026-08-01T00:00:00.000Z',
   }
-
-  // The exact shape the platform codegen (lib/payload-contract/codegen.ts)
-  // emits — and the docs guide's OrderReceiptPayload example: inline
-  // nested object literals, Array<{ … }> members, two-space indent per
-  // level, unions from enumValues.
 
   function mockNestedApi() {
     server.use(

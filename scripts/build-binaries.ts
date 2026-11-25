@@ -3,13 +3,6 @@ import { createHash } from 'node:crypto'
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
-/**
- * Compiles standalone binaries for every supported platform with
- * `bun build --compile`. Run from the repo root under Bun:
- *   bun run scripts/build-binaries.ts
- * Outputs dist-bin/brew-cli-<os>-<arch>[.exe] plus checksums.txt.
- */
-
 const TARGETS = [
   { target: 'bun-darwin-arm64', artifact: 'brew-cli-darwin-arm64' },
   { target: 'bun-darwin-x64', artifact: 'brew-cli-darwin-x64' },

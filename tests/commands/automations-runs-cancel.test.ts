@@ -104,10 +104,6 @@ describe('automations runs cancel', () => {
       http.post(URL, () =>
         HttpResponse.json(
           {
-            // `suggestion` and `docs` are REQUIRED on the error object by the
-            // spec, and the SDK's envelope parser enforces that: an envelope
-            // missing either degrades to `code: 'unknown_error'`. Keep this
-            // fixture shaped like the real 409 the API sends.
             error: {
               code: 'RUN_NOT_CANCELLABLE',
               type: 'conflict',

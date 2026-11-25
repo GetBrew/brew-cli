@@ -122,11 +122,6 @@ export const emailsListCommand = defineCommand({
   },
 })
 
-/**
- * 0.6 took a window per column (`--created-at-from`, `--updated-at-to`, …)
- * plus `--sort`/`--order`; the API now orders by ONE `sortBy` timestamp that
- * `from`/`to` bound, newest first. Fold the released flags onto that.
- */
 function legacyWindow(
   flags: Readonly<Record<string, unknown>>,
   explicitSortBy: string | undefined
@@ -159,9 +154,6 @@ function legacyWindow(
   if (!(hasCreated || hasUpdated)) {
     return { sortBy: undefined, from: undefined, to: undefined }
   }
-  // The bound rides the ordering timestamp, so a window on one column
-  // cannot be paired with an explicit sort on the other: silently moving
-  // the bound would include or drop rows the caller did not ask about.
   const column = hasCreated ? 'createdAt' : 'updatedAt'
   if (explicitSortBy !== undefined && explicitSortBy !== column) {
     const prefix = hasCreated ? '--created-at-*' : '--updated-at-*'
@@ -191,7 +183,6 @@ function renderEmails(rows: ReadonlyArray<unknown>): string {
   )
 }
 
-/** Rows carry `group: { groupId, groupName }`, or `null` when Ungrouped. */
 function groupName(group: unknown): string {
   if (typeof group === 'object' && group !== null && 'groupName' in group) {
     return String(group.groupName)

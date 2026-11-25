@@ -4,7 +4,6 @@ import { defineCommand } from '../lib/define-command'
 import { CliApiError } from '../lib/errors'
 import type { CliContext } from '../lib/types'
 
-/** Discovery endpoints without a dedicated command route. */
 const NON_COMMAND_OPS = new Set(['GET /v1/llms.txt'])
 
 export const doctorCommand = defineCommand({
@@ -57,8 +56,6 @@ export const doctorCommand = defineCommand({
         ) {
           isAuthValid = false
         }
-        // Other failures leave auth unknown: a public health check cannot
-        // establish whether the configured key works.
       }
     }
 
@@ -89,7 +86,6 @@ export const doctorCommand = defineCommand({
         isSurfaceChecked = true
       } catch {
         rethrowIfStopped(ctx)
-        // /v1/help unavailable — surface check stays unperformed.
       }
     }
 
@@ -141,13 +137,6 @@ export const doctorCommand = defineCommand({
   },
 })
 
-/**
- * When the command itself is stopped — Ctrl-C, SIGTERM, or its own
- * `--timeout` running out — doctor stops with that envelope instead of
- * turning it into a "not reachable" finding (or skipping the auth check in
- * a report that still exits 0). A probe that fails on its own, including
- * the SDK's per-attempt timeout, stays a finding.
- */
 function rethrowIfStopped(ctx: CliContext): void {
   ctx.signal.throwIfAborted()
 }

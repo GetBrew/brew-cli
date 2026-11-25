@@ -7,7 +7,6 @@ import {
   requestOptions,
 } from '../../../lib/input'
 
-/** Add every address in a CSV to a domain's list. */
 export const domainsUnsubscribesImportCommand = defineCommand({
   path: ['domains', 'unsubscribes', 'import'],
   summary: "Add every address in a CSV to a domain's unsubscribe list",

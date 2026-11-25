@@ -4,13 +4,6 @@ import { buildRerunCommand, type RerunInvocation } from './rerun'
 
 export { shellQuote } from './rerun'
 
-/**
- * The confirmation protocol for destructive commands:
- * - `--yes` proceeds unconditionally.
- * - An interactive human session gets a y/N prompt.
- * - Everything else (agents, pipes, CI) receives exit code 4 and a JSON
- *   envelope on stdout whose `confirmCommand` re-runs the call with --yes.
- */
 export async function enforceConfirmation(
   spec: CommandSpec,
   invocation: CommandInvocation,
@@ -76,7 +69,6 @@ export function buildConfirmCommand(
   })
 }
 
-/** Confirm stdin requests after parsing, carrying the merged body on a re-run. */
 export async function enforceStdinConfirmation(
   spec: CommandSpec,
   invocation: CommandInvocation,
@@ -95,7 +87,6 @@ export async function enforceStdinConfirmation(
   )
 }
 
-/** Replay the same parsed invocation with the key carried by its request. */
 export function buildRetryCommand(
   invocation: RerunInvocation,
   idempotencyKey: string,
@@ -106,7 +97,6 @@ export function buildRetryCommand(
   })
 }
 
-/** Resume only finalization; repeating the file helper opens a new upload. */
 export function buildUploadRetryCommand(
   input: {
     readonly uploadId: string

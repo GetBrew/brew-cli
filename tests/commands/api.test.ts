@@ -144,10 +144,6 @@ describe('api escape hatch', () => {
   })
 
   it('keeps a legacy fire refusal intact: real code, field errors, no retry advice', async () => {
-    // `POST /v1/automations/triggers/{id}/fire` is the ONE endpoint outside
-    // the `{ error }` convention. Regression pin: `details.errors[]` (which
-    // field was wrong) used to be dropped and the refusal labelled
-    // `type: internal_error`.
     server.use(
       http.post(
         'https://brew.new/api/v1/automations/triggers/tri_signup/fire',
