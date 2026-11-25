@@ -423,3 +423,40 @@ test('recognizes env split-string options and quoted interpreter names', () => {
     assert.equal(shebangLanguage(`${header}\n`), language, header)
   }
 })
+
+test('removes multiline JSDoc prose that shares the closing delimiter line', () => {
+  for (const newline of ['\n', '\r\n', '\r', '\u2028', '\u2029']) {
+    const cases = [
+      [
+        `/** @param {string} value${newline} * Parameter explanation. */`,
+        `/** @param {string} value${newline} */`,
+      ],
+      [
+        `/** @param {string} value${newline} * First explanation.${newline} * Last explanation. */`,
+        `/** @param {string} value${newline} */`,
+      ],
+      [
+        `/** @type {string}${newline} * @description Old explanation. */`,
+        `/** @type {string}${newline} */`,
+      ],
+      [
+        `/**${newline}     * @type {string}${newline}     * @description Old explanation.${newline}     * Last explanation. */`,
+        `/**${newline}     * @type {string}${newline}     */`,
+      ],
+    ]
+    for (const [comment, expectedComment] of cases) {
+      const source = `    ${comment}${newline}    function identity(value) { return value }`
+      const expected = `    ${expectedComment}${newline}    function identity(value) { return value }`
+      assert.equal(findComments('sample.js', source).length, 1, comment)
+      const cleaned = withoutComments('sample.js', source)
+      assert.equal(cleaned, expected)
+      assert.deepEqual(findComments('sample.js', cleaned), [])
+      assert.equal(withoutComments('sample.js', cleaned), cleaned)
+    }
+    const source = `function value() { return /** @type {number}${newline} * Explanation. */ (1) }`
+    assert.equal(
+      new Function(`${withoutComments('sample.js', source)}; return value()`)(),
+      undefined
+    )
+  }
+})

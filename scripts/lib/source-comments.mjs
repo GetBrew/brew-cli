@@ -130,18 +130,22 @@ function compilerCommentWithoutProse(value) {
     const newline = value
       .slice(start, end)
       .match(/\r\n|[\r\n\u2028\u2029]/)?.[0]
+    const endLine = value.slice(nextLine, end)
+    const endOfProse =
+      end === doc.end - 2 && /\S/.test(endLine) ? end : nextLine
+    const closingIndent = endOfProse === end ? endLine.match(/^[\t ]*/)[0] : ''
     let replacement = ' '
     if (/^[\t ]*(?:\*[\t ]*)?$/.test(prefix)) {
       start = prefixStart
       if (newline) {
-        end = nextLine
-        replacement = ''
+        end = endOfProse
+        replacement = closingIndent
       } else {
-        replacement = prefix
+        replacement = end === doc.end - 2 ? closingIndent : prefix
       }
     } else if (newline) {
-      end = nextLine
-      replacement = newline
+      end = endOfProse
+      replacement = newline + closingIndent
     }
     edits.push({ start, end, replacement })
   }
