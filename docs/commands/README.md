@@ -2,7 +2,7 @@
 
 Generated from the command registry with `bun run docs:commands`.
 
-163 commands. Classes: read (always safe), write
+167 commands. Classes: read (always safe), write
 (mutating, retry-safe), destructive (irreversible — the confirmation
 protocol applies: interactive y/N on a TTY, exit 4 + JSON envelope with
 a `confirmCommand` otherwise, `--yes` to proceed).
@@ -81,6 +81,10 @@ a `confirmCommand` otherwise, `--yes` to proceed).
 | `brew-cli emails get-inbox-placement-results` | read | `GET /v1/emails/{emailId}/inbox-placement-tests` | Inbox placement results: the recent tests, or one test with --test-id |
 | `brew-cli emails inbox-placement-tests get` | read | `GET /v1/emails/{emailId}/inbox-placement-tests/{testId}` | Fetch one inbox-placement (seed) test — the bare row, re-poll ~30s until completed |
 | `brew-cli emails send` | destructive | `POST /v1/sends` | Send an email: a real campaign, or a safe test with --test |
+| `brew-cli email-migrations start` | write | `POST /v1/email-migrations` | Preview connected historical email designs, or import an approved inventory |
+| `brew-cli email-migrations get` | read | `GET /v1/email-migrations/{migrationId}` | Read a migration cursor, per-source outcomes, limitations, and next action |
+| `brew-cli email-migrations resume` | write | `POST /v1/email-migrations/{migrationId}/resume` | Resume a held migration from its cursor with the original preview or import mode |
+| `brew-cli email-migrations cancel` | destructive | `POST /v1/email-migrations/{migrationId}/cancel` | Cancel further migration work while keeping already imported designs |
 | `brew-cli sends list` | read | `GET /v1/sends` | List sends (the unit of delivery and analytics) with lifetime stats |
 | `brew-cli sends get` | read | `GET /v1/sends/{sendId}` | Fetch one send by id — the bare row with its lifetime stats |
 | `brew-cli sends cancel` | destructive | `POST /v1/sends/{sendId}/cancel` | Cancel a scheduled or queued send before it goes out |
@@ -1213,6 +1217,68 @@ Send an email: a real campaign, or a safe test with --test
 brew-cli emails send eml_1 --test --to you@company.com --subject "Preview"
 brew-cli emails send eml_1 --subject "Fall sale" --domain dom_1 --audience aud_1 --yes
 brew-cli emails send eml_1 --subject "Fall sale" --domain dom_1 --audience aud_1 --schedule-at 2026-09-01T09:00:00Z --yes
+```
+
+### brew-cli email-migrations start
+
+Preview connected historical email designs, or import an approved inventory
+
+- Route: `POST /v1/email-migrations`
+- Class: write
+- SDK: `brew.emailMigrations.start(...)`
+- `--capability-grant-id <capabilityGrantId>` — Optional connected marketing_emails grant; omit when exactly one ready grant is available
+- `--source-ids <sourceIds...>` — Provider email source IDs to inventory or import
+- `--target-group <targetGroupId>` — Existing email group for imported designs
+- `--dry-run` — Inventory source availability and revisions without creating designs (default)
+- `--execute` — Import the source inventory after reviewing its dry-run results
+- `--input <json>` — Full JSON request body, or - to read stdin (flags override it)
+- `--idempotency-key <key>` — Idempotency-Key for safe retries (auto-generated otherwise)
+
+```bash
+brew-cli email-migrations start --source-ids 12345 67890
+brew-cli email-migrations start --input '{"capabilityGrantId":"grant_marketing_emails","items":[{"sourceId":"12345","expectedRevision":"revision-1"}]}' --execute --idempotency-key approved-migration-1
+cat migration-inventory.json | brew-cli email-migrations start --input - --dry-run
+```
+
+### brew-cli email-migrations get
+
+Read a migration cursor, per-source outcomes, limitations, and next action
+
+- Route: `GET /v1/email-migrations/{migrationId}`
+- Class: read
+- SDK: `brew.emailMigrations.get(...)`
+- Argument `migrationId` — Migration ID returned by start
+
+```bash
+brew-cli email-migrations get emigration_123
+```
+
+### brew-cli email-migrations resume
+
+Resume a held migration from its cursor with the original preview or import mode
+
+- Route: `POST /v1/email-migrations/{migrationId}/resume`
+- Class: write
+- SDK: `brew.emailMigrations.resume(...)`
+- Argument `migrationId` — Migration ID whose nextAction is resume
+- `--idempotency-key <key>` — Idempotency-Key for safe retries (auto-generated otherwise)
+
+```bash
+brew-cli email-migrations resume emigration_123 --idempotency-key resume-migration-1
+```
+
+### brew-cli email-migrations cancel
+
+Cancel further migration work while keeping already imported designs
+
+- Route: `POST /v1/email-migrations/{migrationId}/cancel`
+- Class: destructive
+- SDK: `brew.emailMigrations.cancel(...)`
+- Argument `migrationId` — Migration ID to cancel permanently
+- `--idempotency-key <key>` — Idempotency-Key for safe retries (auto-generated otherwise)
+
+```bash
+brew-cli email-migrations cancel emigration_123 --yes --idempotency-key cancel-migration-1
 ```
 
 ### brew-cli sends list

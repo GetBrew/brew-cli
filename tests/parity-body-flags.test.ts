@@ -104,6 +104,11 @@ const MAPPED: Readonly<
     '--domain': 'domainId',
     '--schedule-at': 'scheduledAt',
   },
+  'email-migrations start': {
+    '--source-ids': 'items',
+    '--target-group': 'targetGroupId',
+    '--execute': 'dryRun',
+  },
   'audiences update': {
     '--add-email': 'addEmails',
     '--remove-email': 'removeEmails',
