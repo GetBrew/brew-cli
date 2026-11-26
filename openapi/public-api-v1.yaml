@@ -1021,7 +1021,8 @@ components:
             - failed
             - canceled
         leaseExpiresAt:
-          type: number
+          type: string
+          format: date-time
         nextIndex:
           type: integer
           minimum: 0
@@ -1115,7 +1116,8 @@ components:
                 - unavailable
                 - invalid-source
             retryAt:
-              type: number
+              type: string
+              format: date-time
           required:
             - sourceId
             - reason

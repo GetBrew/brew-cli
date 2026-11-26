@@ -2092,7 +2092,7 @@ export interface components {
             dryRun: boolean;
             /** @enum {string} */
             status: "running" | "held" | "completed" | "partial" | "failed" | "canceled";
-            leaseExpiresAt?: number;
+            leaseExpiresAt?: string;
             nextIndex: number;
             total: number;
             outcomes: {
@@ -2110,7 +2110,7 @@ export interface components {
                 sourceId: string;
                 /** @enum {string} */
                 reason: "source-html-unavailable" | "not-found" | "access-denied" | "blocked" | "not-html" | "empty-source" | "source-too-large" | "source-changed" | "credential-unavailable" | "rate-limited" | "unavailable" | "invalid-source";
-                retryAt?: number;
+                retryAt?: string;
             };
             limitations: ("hosted-copy-may-differ" | "delivery-records-not-included")[];
             /** @enum {string} */

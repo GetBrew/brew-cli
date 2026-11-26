@@ -1,6 +1,7 @@
 import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import type { EmailMigration } from '@brew.new/sdk'
 import { HttpResponse, http } from 'msw'
 import { describe, expect, it } from 'vitest'
 import { server } from '../helpers/msw-server'
@@ -18,14 +19,18 @@ const view = {
   capabilityGrantId: input.capabilityGrantId,
   dryRun: true,
   status: 'held',
-  leaseExpiresAt: 1795802400000,
+  leaseExpiresAt: '2026-11-27T18:00:00.000Z',
   nextIndex: 0,
   total: 1,
   outcomes: [],
-  hold: { sourceId: '12345', reason: 'rate-limited', retryAt: 1795802400000 },
+  hold: {
+    sourceId: '12345',
+    reason: 'rate-limited',
+    retryAt: '2026-11-27T18:01:00.000Z',
+  },
   limitations: ['hosted-copy-may-differ', 'delivery-records-not-included'],
   nextAction: 'resume',
-}
+} satisfies EmailMigration
 function env() {
   return {
     BREW_CLI_CONFIG_DIR: mkdtempSync(join(tmpdir(), 'brew-cli-migration-')),
