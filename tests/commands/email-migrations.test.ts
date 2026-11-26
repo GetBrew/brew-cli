@@ -127,7 +127,7 @@ describe('email-migrations', () => {
         return HttpResponse.json(
           {
             error: {
-              code: 'CONFLICT',
+              code: 'EMAIL_MIGRATION_CONFLICT',
               type: 'conflict',
               message:
                 'Multiple ready HubSpot marketing-email connections are available. Retry with capabilityGrantId: grant_a (account 123); grant_b (account 456).',
@@ -145,7 +145,7 @@ describe('email-migrations', () => {
     expect(calls).toBe(1)
     expect(JSON.parse(result.stderr)).toMatchObject({
       error: {
-        code: 'CONFLICT',
+        code: 'EMAIL_MIGRATION_CONFLICT',
         status: 409,
         message: expect.stringContaining(
           'grant_a (account 123); grant_b (account 456)'

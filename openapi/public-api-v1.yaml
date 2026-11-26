@@ -47265,7 +47265,7 @@ paths:
 
         **Returns** `200` with the run’s new `status` and `resumedFrom` (`paused` or `failed`).
 
-        **Errors** `409 RUN_NOT_PAUSED` when the run is neither paused nor failed (scheduled, queued, running, completed or canceled); `409 RUN_NOT_RESUMABLE` when the run is held at the plan limit, or a failed run has no undelivered send step or a send step delivered to only part of its segment; `409 RUN_IN_PROGRESS` when another run of the automation is active; `402 SEND_QUOTA_EXCEEDED` when resuming would exceed the monthly send limit; `422 AUTOMATION_NOT_READY` when a send step still to go can no longer send, such as a sender domain that is no longer verified (the message names the step); `503 RUN_STOP_FAILED` / `RUN_START_FAILED` when the workflow engine could not stop the previous run or start the new one (retry); `404 AUDIENCE_RUN_NOT_FOUND` for an unknown or cross-brand id.
+        **Errors** `409 RUN_NOT_PAUSED` when the run is neither paused nor failed (scheduled, queued, running, completed or canceled); `409 RUN_NOT_RESUMABLE` when the run is held at the plan limit, or a failed run has no undelivered send step or a send step delivered to only part of its segment; `409 RUN_IN_PROGRESS` when another run of the automation is active; `402 SEND_QUOTA_EXCEEDED` when resuming would exceed the monthly send limit; `503 SERVICE_UNAVAILABLE` when the monthly send allowance cannot be checked (retry); `422 AUTOMATION_NOT_READY` when a send step still to go can no longer send, such as a sender domain that is no longer verified (the message names the step); `503 RUN_STOP_FAILED` / `RUN_START_FAILED` when the workflow engine could not stop the previous run or start the new one (retry); `404 AUDIENCE_RUN_NOT_FOUND` for an unknown or cross-brand id.
 
         **See also** `pauseAudienceRun`, `cancelAudienceRun`, `getAudienceRun`.
       parameters:
@@ -47710,6 +47710,8 @@ paths:
             `RUN_START_FAILED`: The workflow engine could not start the run right now.
 
             `RUN_STOP_FAILED`: The previous run of this cohort could not be stopped.
+
+            `SERVICE_UNAVAILABLE`: A dependency the operation must consult (billing, the idempotency store) is temporarily unavailable, so the request was refused rather than run unmetered.
           headers:
             x-request-id:
               schema:
@@ -47718,6 +47720,13 @@ paths:
                 example: req_8cac13fd94e6420cacdd75a1aa403a28
               required: true
               description: Unique request identifier. Share this with support when debugging a request.
+            Retry-After:
+              schema:
+                type: integer
+                description: Seconds to wait before retrying the request.
+                example: 42
+              required: true
+              description: Seconds to wait before retrying the request.
           content:
             application/json:
               schema:
@@ -47740,6 +47749,15 @@ paths:
                       type: service_unavailable
                       message: The previous run of this cohort could not be stopped.
                       suggestion: Retry the resume in a few seconds, or cancel the previous run first.
+                      docs: https://docs.brew.new/api-reference/api/errors
+                serviceUnavailable:
+                  summary: SERVICE_UNAVAILABLE
+                  value:
+                    error:
+                      code: SERVICE_UNAVAILABLE
+                      type: service_unavailable
+                      message: A dependency the operation must consult (billing, the idempotency store) is temporarily unavailable, so the request was refused rather than run unmetered.
+                      suggestion: Retry the request after a short delay.
                       docs: https://docs.brew.new/api-reference/api/errors
       x-brew-scope: automations
       x-brew-brand-scope: brand
