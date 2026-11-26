@@ -215,6 +215,9 @@ export const INPUT_KEYS: Readonly<Record<string, readonly string[]>> = {
   "GET /v1/email-groups/{groupId}": [
     "groupId"
   ],
+  "GET /v1/email-migrations/{migrationId}": [
+    "migrationId"
+  ],
   "GET /v1/emails": [
     "cursor",
     "from",
@@ -632,6 +635,18 @@ export const INPUT_KEYS: Readonly<Record<string, readonly string[]>> = {
   "POST /v1/email-groups": [
     "emailIds",
     "name"
+  ],
+  "POST /v1/email-migrations": [
+    "capabilityGrantId",
+    "dryRun",
+    "items",
+    "targetGroupId"
+  ],
+  "POST /v1/email-migrations/{migrationId}/cancel": [
+    "migrationId"
+  ],
+  "POST /v1/email-migrations/{migrationId}/resume": [
+    "migrationId"
   ],
   "POST /v1/emails": [
     "category",

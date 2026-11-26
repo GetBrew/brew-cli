@@ -104,6 +104,10 @@ import { domainsUnsubscribesListCommand } from './commands/domains/unsubscribes/
 import { domainsUnsubscribesRemoveCommand } from './commands/domains/unsubscribes/remove'
 import { domainsUpdateCommand } from './commands/domains/update'
 import { domainsVerifyCommand } from './commands/domains/verify'
+import { emailMigrationsCancelCommand } from './commands/email-migrations/cancel'
+import { emailMigrationsGetCommand } from './commands/email-migrations/get'
+import { emailMigrationsResumeCommand } from './commands/email-migrations/resume'
+import { emailMigrationsStartCommand } from './commands/email-migrations/start'
 import { emailsAuditCommand } from './commands/emails/audit'
 import { emailsCloneCommand } from './commands/emails/clone'
 import { emailsCommentsListCommand } from './commands/emails/comments/list'
@@ -227,6 +231,10 @@ export const ALL_COMMANDS: readonly CommandSpec[] = [
   emailsGetInboxPlacementResultsCommand,
   emailsInboxPlacementTestsGetCommand,
   emailsSendCommand,
+  emailMigrationsStartCommand,
+  emailMigrationsGetCommand,
+  emailMigrationsResumeCommand,
+  emailMigrationsCancelCommand,
   sendsListCommand,
   sendsGetCommand,
   sendsCancelCommand,

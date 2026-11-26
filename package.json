@@ -56,7 +56,7 @@
     "comments:setup": "python3 -m pip install --require-hashes --only-binary=:all: --no-deps --upgrade --target node_modules/.comment-parsers -r scripts/comment-parsers.txt"
   },
   "dependencies": {
-    "@brew.new/sdk": "git+https://github.com/GetBrew/typescript-sdk.git#ce17a70fafd0cf499649a5498dee30c88c9fc64e",
+    "@brew.new/sdk": "git+https://github.com/GetBrew/typescript-sdk.git#2e28c8295054643dc5612d69981b8997b1fc88ae",
     "commander": "^14.0.0"
   },
   "devDependencies": {
